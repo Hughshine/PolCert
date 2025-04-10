@@ -12,6 +12,10 @@ Require Import List.
 Import ListNotations.
 
 Require Import Linalg.
+Require Import Lia.
+Require Import LibTactics.
+Require Import sflib.
+Require Import Misc.
 
 Module Extractor (PolIRs: POLIRS).
 
@@ -195,7 +199,7 @@ Fixpoint extract_stmt (stmt: PolIRs.Loop.stmt) (constrs: Domain) (depth: nat) (s
                     PolIRs.PolyLang.pi_schedule := sched_prefix;  
                     PolIRs.PolyLang.pi_transformation := tf;
                     PolIRs.PolyLang.pi_waccess := w;
-                    PolIRs.PolyLang.pi_raccess := r;                
+                    PolIRs.PolyLang.pi_raccess := r;
                 |}]
             | _, _ => 
                 Err "Instr extract failed"%string
@@ -384,5 +388,33 @@ Definition extractor (loop: PolIRs.Loop.t): result PolIRs.PolyLang.t :=
     | Err msg => Err msg 
     end
 .
+
+Module Instr := PolIRs.Instr.
+Module State := PolIRs.State.
+Module Ty := PolIRs.Ty.
+Module PolyLang := PolIRs.PolyLang.
+Module Loop := PolIRs.Loop.
+Definition ident := Instr.ident.
+
+
+(* Lemma extract_stmt_correct: 
+    forall stmt constrs depth sched_prefix, 
+        extract_stmt stmt constrs depth sched_prefix = Okk [] ->
+        PolyLang.instance_list_semantics constrs [] []. *)
+
+Theorem extractor_correct: 
+  forall loop pol st1 st2, 
+    extractor loop = Okk pol ->
+    PolyLang.instance_list_semantics pol st1 st2 -> 
+    exists st2',
+    Loop.semantics loop st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros. unfold extractor in H.
+    destruct loop as [[stmt varctxt] vars].
+    remember (extract_stmt stmt [] (Datatypes.length varctxt) []) as Extract.
+    destruct Extract; try discriminate.
+    inv H. rename l into pol.
+Admitted.
+
 
 End Extractor.

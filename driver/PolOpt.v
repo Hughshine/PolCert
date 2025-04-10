@@ -85,6 +85,12 @@ Module Pol := PolIRs.PolyLang. *)
 
 (* Parameter scheduler: (Pol.t -> result Pol.t). *)
 Definition scheduler := PolIRs.scheduler.
+Module Instr := PolIRs.Instr.
+Module State := PolIRs.State.
+Module Ty := PolIRs.Ty.
+Module Loop := PolIRs.Loop.
+Module PolyLang := PolIRs.PolyLang.
+Definition ident := Instr.ident.
 
 Module Extractor := Extractor PolIRs.
 Module CodeGen := CodeGen PolIRs.
@@ -107,7 +113,6 @@ Definition scheduler' (pol: PolIRs.PolyLang.t): imp PolIRs.PolyLang.t :=
    end.
 
 
-
 Definition Opt (loop: PolIRs.Loop.t): imp PolIRs.Loop.t := 
    pure loop
    @@@[PolIRs.PolyLang.dummy] time "PolOpt.Extractor" Extractor.extractor
@@ -117,6 +122,56 @@ Definition Opt (loop: PolIRs.Loop.t): imp PolIRs.Loop.t :=
    (* @@@[cloop_ty_dummy] time "PolOpt.Codegen" CodeGen.codegen *)
    @@@ time "PolOpt.Codegen" CodeGen.codegen.
    (* @@ print (print_CLoop). *)
+
+
+
+
+Lemma scheduler'_correct:
+   forall pol  st1 st2,
+      WHEN pol' <- scheduler' pol THEN
+      PolyLang.instance_list_semantics pol' st1 st2 ->
+      exists st2',
+      PolyLang.instance_list_semantics pol st1 st2' /\ State.eq st2 st2'.
+Proof.
+   intros. intros pol' SCHE SEM'.
+   unfold scheduler' in SCHE.
+
+   destruct scheduler eqn:SCHE'.
+   2: {
+      simpls.
+      eapply mayReturn_alarm in SCHE; easy.
+   }
+   bind_imp_destruct SCHE res Hval.
+   destruct res; simpls.
+   2: {
+      eapply mayReturn_alarm in SCHE; easy.
+   }
+   eapply mayReturn_pure in SCHE. subst.
+   eapply Validator.validate_correct in Hval; eauto.
+Qed.
+
+Lemma Extract_Schedule_correct:
+   forall loop pol st1 st2,
+      Extractor.extractor loop = Okk pol ->
+      WHEN pol' <- scheduler' pol THEN
+      PolyLang.instance_list_semantics pol' st1 st2 ->
+      exists st2',
+      Loop.semantics loop st1 st2' /\ State.eq st2 st2'.
+Proof.
+   intros. intros pol' SCHE SEM'.
+   eapply scheduler'_correct in SCHE.
+   eapply SCHE in SEM'. clear SCHE.
+   destruct SEM' as [st2' [SEM' EQ]].
+
+   eapply Extractor.extractor_correct in H. 
+   2: { 
+      eapply SEM'.
+   }
+   destruct H as [st2'' [H' EQ']].
+   exists st2''.
+   split; eauto.
+   eapply State.eq_trans; eauto.
+Qed.   
 
 Close Scope impure_scope.
 Close Scope opt_scop.
