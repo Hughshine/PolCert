@@ -47,6 +47,46 @@ Fixpoint expr_to_aff (e: PolIRs.Loop.expr): result (list Z * Z) :=
     | _ => Err "Expr to aff failed."%string
     end.
 
+Lemma expr_to_aff_correct: 
+    forall e env aff v z, expr_to_aff e = Okk aff -> 
+    aff = (v, z) ->
+    PolIRs.Loop.eval_expr env e = (dot_product env v) + z.
+Proof.
+    induction e; intros; simpl in *; try discriminate. 
+    - inv H; eauto. inv H2; eauto.
+        rewrite dot_product_nil_right. lia.
+    - destruct (expr_to_aff e1) eqn: H1 in H; try discriminate.
+        destruct p as [v1 z1] eqn: H2 in H; try discriminate.
+        destruct (expr_to_aff e2) eqn: H3 in H; try discriminate.
+        destruct p0 as [v2 z2] eqn: H4 in H; try discriminate.
+        inv H; eauto. inv H6.
+        eapply IHe1 with (env:=env) in H1; eauto.
+        eapply IHe2 with (env:=env) in H3; eauto.
+        rewrite H1. rewrite H3. 
+        rewrite add_vector_dot_product_distr_right. lia.
+    - destruct (expr_to_aff e) eqn: H1 in H; try discriminate.
+        destruct p as [v1 z1] eqn: H2 in H; try discriminate.
+        inv H; eauto. inv H4; eauto.
+        eapply IHe with (env:=env) in H1; eauto.
+        rewrite H1.
+        rewrite dot_product_mult_right. lia.
+    - inv H. inv H2.
+        (* TODO: extract new lib lemma*)
+        remember (nth_error env n) as nth.
+        destruct nth; try discriminate.
+        + symmetry in Heqnth.
+        pose proof Heqnth as Heqnth0. 
+        eapply v0_n_app_1_dot_product_p_is_nth_p in Heqnth; eauto. 
+        rewrite dot_product_commutative.
+        rewrite Heqnth.
+        eapply nth_error_nth with (d:=0) in Heqnth0. lia. 
+        + symmetry in Heqnth.    
+        rewrite nth_error_None in Heqnth. pose proof Heqnth as Heqnth0.
+        eapply nth_overflow with (d:=0) in Heqnth. rewrite Heqnth.
+        eapply dot_product_v0_with_shorter_is_0 with (l:=[1]) in Heqnth0; eauto.
+        rewrite Heqnth0. lia.
+Qed.
+
 Example test_expr_to_aff_1: 
     expr_to_aff (PolIRs.Loop.Constant 5%Z) = Okk ([], 5%Z).
 Proof. reflexivity. Qed.

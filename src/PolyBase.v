@@ -373,6 +373,23 @@ induction n.
   eapply IHn in H. trivial. 
 Qed.
 
+Lemma dot_product_v0_with_shorter_is_0: 
+    forall n env l, 
+        (length env <= n)%nat -> 
+        dot_product env (V0 n ++ l) = 0%Z.
+Proof.
+    induction n.
+    - simpl. intros.
+    assert (env = []). {
+        eapply length_zero_iff_nil. lia.
+    }
+    subst. eapply dot_product_nil_left.
+    - intros. simpl. destruct env as [| v env]; try lia.
+        + trivial. 
+        + simpl. rewrite IHn; try lia.
+            simpl in H. lia.
+Qed.
+
 Lemma dot_product_opp_l: 
   forall v1 v2, 
     dot_product (-- v1) v2 = Z.opp (dot_product v1 v2).
