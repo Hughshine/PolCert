@@ -20,7 +20,7 @@ Require Import InstrTy.
 Require Import Misc.
 Require Import IterSemantics.
 Require Import AST.
-
+Require Import InstanceListSema.
 Open Scope Z_scope.
 Open Scope list_scope.
 
@@ -33,6 +33,9 @@ Definition instr:=IInstr.t.
 Definition mem:=IInstr.State.t.
 Module Ty:=IInstr.Ty.
 Definition instr_semantics:=IInstr.instr_semantics.
+Module ILSema := ILSema IInstr.
+Notation instr_point_sema := ILSema.instr_point_sema.
+Notation instr_point_list_semantics := ILSema.instr_point_list_semantics.
 
 Inductive expr :=
 | Constant : Z -> expr
