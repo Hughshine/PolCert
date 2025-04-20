@@ -120,7 +120,7 @@ BACKEND=
 
 POLYGEN=ASTGen.v Canonizer.v CodeGen.v StateTy.v InstrTy.v Loop.v LoopGen.v \
   PolyLang.v PolyLoop.v PolyLoopSimpl.v PolyOperations.v PolyTest.v \
-  Projection.v Result.v IterSemantics.v PolIRs.v CPolIRs.v TPolIRs.v
+  Projection.v Result.v IterSemantics.v PolIRs.v CPolIRs.v TPolIRs.v InstanceListSema.v
 
 # Parser
 

@@ -876,3 +876,85 @@ Proof.
       enough (length t = len) by lia.
       apply H. auto.
 Qed.
+
+Require Import Setoid Morphisms.
+(* Require Import List. *)
+Require Import SetoidList.
+Require Import sflib.
+Require Import LibTactics.
+
+(* Require Import MSets. *)
+
+Require Import Sorting.Sorted.
+
+(* Lemma strongly_sorted_lists_equal :
+  forall A leA l1 l2,
+    StronglySorted leA l1 ->
+    StronglySorted leA l2 ->
+    @NoDup A l1 ->
+    @NoDup A l2 ->
+    (forall x, In x l1 <-> In x l2) ->
+    l1 = l2.
+Proof.
+  intros A. induction l1 as [|x1 l1 IH]; intros l2 Hs1 Hs2 Hnd1 Hnd2 Hin.
+  - destruct l2; [reflexivity |].
+    exfalso. apply (Hin a). apply in_eq.
+  - destruct l2 as [|x2 l2']; [> exfalso; apply (Hin x1); left; reflexivity |].
+    rename l1 into l1'.
+    assert (x1 = x2).
+    {
+      assert (Hin1: In x1 (x1:: l1')) by apply in_eq.
+      assert (Hin2: In x2 (x2 :: l2')) by apply in_eq.
+      assert (In x1 (x2 :: l2')). {
+        eapply Hin; eauto.
+      } 
+      destruct H as [Heq | Hin_tail]; symmetry; trivial.
+      - (* use NoDup to derive contradiction *)
+        assert (Hback: In x2 (x1 :: l1')) by apply (Hin x2); left; reflexivity.
+        destruct Hback as [Heq' | Hin_tail'].
+        + symmetry in Heq'. contradiction.
+        + inversion Hnd1 as [Hn1 _].
+          contradiction (Hn1 x2); auto.
+    }
+    subst x2.
+    f_equal.
+    apply IH.
+    Search StronglySorted.
+    + eapply StronglySorted_inv; eauto.
+    + eapply StronglySorted_inv; eauto.
+    + eapply NoDup_cons_iff; eauto.
+    + eapply NoDup_cons_iff; eauto.
+    + intros x. split; intro Hx.
+      * assert (In x (x1 :: l1')). { eapply in_cons; trivial. }
+        eapply Hin in H; eauto.
+        destruct H as [Hx1 | Hx1].
+        -- subst. 
+          clear - Hnd1 Hx.
+          apply NoDup_cons_iff in Hnd1. destruct Hnd1 as [XIn].  contradiction. 
+        -- trivial.
+      * assert (In x (x1 :: l2')). { eapply in_cons; trivial. }
+        eapply Hin in H; eauto.
+        destruct H as [Hx1 | Hx1].
+        -- subst. 
+          clear - Hnd2 Hx.
+          apply NoDup_cons_iff in Hnd2. destruct Hnd2 as [XIn].  contradiction. 
+        -- trivial.   
+Admitted.
+
+
+Lemma Sorted_incl_eq :
+  forall A l1 l2 leA,
+    Relations_1.Transitive leA ->
+    Sorted leA l1 ->
+    Sorted leA l2 ->
+    (forall x, In x l1 <-> In x l2) ->
+    @NoDup A l1 ->
+    @NoDup A l2 ->
+    l1 = l2.
+Proof.
+  intros A l1 l2 leA Htrans Hs1 Hs2 Heq Hinj1 Hinj2.
+  apply Sorted_StronglySorted in Hs1; auto.
+  apply Sorted_StronglySorted in Hs2; auto.
+  eapply strongly_sorted_lists_equal; eauto.
+Qed.
+ *)

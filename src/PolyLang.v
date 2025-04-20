@@ -22,6 +22,8 @@ Require Import LibTactics.
 Require Import sflib.
 Import ListNotations.
 
+Require Import InstanceListSema.
+
 Require Import StateTy.
 Require Import InstrTy.
 
@@ -39,6 +41,7 @@ Definition ident := Instr.ident.
 Module State := Instr.State.
 Module Ty := Instr.Ty.
 Definition NonAlias := Instr.NonAlias.
+Module ILSema := ILSema Instr.
 
 Record PolyInstr := {
   pi_depth : nat;                    (** nested depth in nested loop *)
@@ -611,15 +614,22 @@ Proof.
 Qed.
 
 (** Part 2: Instruction Point Semantics *)
-Record InstrPoint := {
+(* Record InstrPoint := {
   ip_nth: nat;  (** belongs to nth polyhedral instruction *)
   ip_index: DomIndex;  (** index of the domain, i.e., iterator's value *)
   ip_transformation: Transformation; (** transformation function *)
   ip_time_stamp: TimeStamp;  (** schedule *)
   ip_instruction: Instr.t;  (** basic instruction *)
   ip_depth: nat;  (** surrounded iterator depth *)
-}.
+}. *)
 
+Notation InstrPoint := ILSema.InstrPoint.
+Notation ip_nth := ILSema.ip_nth.
+Notation ip_index := ILSema.ip_index.
+Notation ip_transformation := ILSema.ip_transformation.
+Notation ip_time_stamp := ILSema.ip_time_stamp.
+Notation ip_instruction := ILSema.ip_instruction.
+Notation ip_depth := ILSema.ip_depth.
 
 Record InstrPoint_ext := {
   ip_nth_ext: nat;  (** belongs to nth polyhedral instruction *)
@@ -632,12 +642,15 @@ Record InstrPoint_ext := {
 }.
 
 
-Definition eq_except_sched (ip1 ip2: InstrPoint): Prop := 
+Definition eq_except_sched := 
+  ILSema.eq_except_sched.
+
+(* Definition eq_except_sched (ip1 ip2: InstrPoint): Prop := 
   ip1.(ip_nth) = ip2.(ip_nth) /\ 
   ip1.(ip_index) = ip2.(ip_index) /\ 
   ip1.(ip_transformation) = ip2.(ip_transformation) /\
   ip1.(ip_instruction) = ip2.(ip_instruction) /\ 
-  ip1.(ip_depth) = ip2.(ip_depth).
+  ip1.(ip_depth) = ip2.(ip_depth). *)
 
 Definition old_of_ext (ip_ext: InstrPoint_ext): InstrPoint := 
   {|
@@ -665,12 +678,13 @@ Definition old_of_ext_list (ipl_ext: list InstrPoint_ext) :=
 Definition new_of_ext_list (ipl_ext: list InstrPoint_ext) := 
   map new_of_ext ipl_ext.
 
-Inductive instr_point_sema (ip: InstrPoint) 
+Notation instr_point_sema := ILSema.instr_point_sema.
+(* Inductive instr_point_sema (ip: InstrPoint) 
   (st1 st2: State.t): Prop :=
   | ip_sema_intro: forall wcs rcs,
     Instr.instr_semantics ip.(ip_instruction) 
       (affine_product ip.(ip_transformation) ip.(ip_index)) wcs rcs st1 st2 -> 
-    instr_point_sema ip st1 st2.
+    instr_point_sema ip st1 st2. *)
 
 Definition instr_point_sched_le (ip1 ip2: InstrPoint): Prop := 
   lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp) = Lt \/ 
@@ -705,59 +719,20 @@ Definition instr_point_ext_old_sched_le (ip1 ip2: InstrPoint_ext): Prop :=
   lex_compare ip1.(ip_time_stamp1_ext) ip2.(ip_time_stamp1_ext) = Eq. 
 
 (* TODO: Move to Base.v. Require Coqlib.v *)
-Definition comparison_eq_dec: 
+(* Definition comparison_eq_dec: 
   forall (x y: comparison), { x = y } + { x <> y }.
   decide equality.
-Defined.
-
-Definition comparison_eqb (x y: comparison):bool := 
-  comparison_eq_dec x y.
-
-Lemma comparison_eqb_iff_eq:
-  forall x cmp,
-    comparison_eqb x cmp = true <->
-    x = cmp. 
-Proof.
-  intros. split.
-  {
-    intro. 
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-  {
-    intro.
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-Qed.
-
-Lemma comparison_eqb_false_iff_neq:
-  forall x cmp,
-    comparison_eqb x cmp = false <->
-    x <> cmp. 
-Proof.
-  intros. split.
-  {
-    intro. 
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-  {
-    intro.
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-Qed.
-
+Defined. *)
+(* 
 Definition instr_point_sched_ltb (ip1 ip2: InstrPoint): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp)) Lt.
 
 Definition instr_point_sched_eqb (ip1 ip2: InstrPoint): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp)) Eq.
+ *)
+
+Notation instr_point_sched_ltb := ILSema.instr_point_sched_ltb.
+Notation instr_point_sched_eqb := ILSema.instr_point_sched_eqb.
 
 Definition instr_point_ext_old_sched_ltb (ip1 ip2: InstrPoint_ext): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp1_ext) ip2.(ip_time_stamp1_ext)) Lt.
@@ -788,38 +763,8 @@ Definition instr_point_ext_new_sched_geb (ip1 ip2: InstrPoint_ext): bool :=
   ||   
   comparison_eqb (lex_compare ip1.(ip_time_stamp2_ext) ip2.(ip_time_stamp2_ext)) Eq. 
 
-Definition Permutable (ip1 ip2: InstrPoint) := 
-  forall st1, 
-    Instr.NonAlias st1 ->
-    (forall st2' st3,
-      instr_point_sema ip1 st1 st2' ->
-      instr_point_sema ip2 st2' st3 ->
-      exists st2'' st3',
-      instr_point_sema ip2 st1 st2'' /\
-      instr_point_sema ip1 st2'' st3' /\
-      Instr.State.eq st3 st3'
-    ) /\
-    (forall st2' st3,
-      instr_point_sema ip2 st1 st2' ->
-      instr_point_sema ip1 st2' st3 ->
-      exists st2'' st3',
-      instr_point_sema ip1 st1 st2'' /\
-      instr_point_sema ip2 st2'' st3' /\
-      Instr.State.eq st3 st3'
-    ).
-
-Lemma Permutable_symm: 
-  forall ip1 ip2, 
-    Permutable ip1 ip2 -> 
-    Permutable ip2 ip1.
-Proof.
-  intros.
-  unfolds Permutable.
-  intros.
-  split. 
-  eapply H; eauto.
-  eapply H; eauto.
-Qed.
+Notation Permutable := ILSema.Permutable.
+Notation Permutable_symm := ILSema.Permutable_symm. 
 
 (** Note: this is irrelevent to schedule, so either old_of_ext or new_of_ext is ok *)
 Definition Permutable_ext (ip1_ext ip2_ext: InstrPoint_ext) := 
@@ -834,32 +779,9 @@ Proof.
   eapply Permutable_symm. trivial.
 Qed. 
 
-Inductive instr_point_list_semantics: list InstrPoint ->
-    State.t -> State.t -> Prop:=
-  | IPLS_nil: forall st st', 
-    Instr.State.eq st st' ->
-    instr_point_list_semantics [] st st'
-  | IPLS_cons: forall st1 st2 st3 ip il,
-    instr_point_sema ip st1 st2 ->
-    instr_point_list_semantics il st2 st3 ->
-    instr_point_list_semantics (ip::il) st1 st3.
-
-Definition veq_instance (ip1 ip2: InstrPoint): Prop :=
-  ip1.(ip_nth) = ip2.(ip_nth) 
-  /\ veq ip1.(ip_index) ip2.(ip_index) 
-  /\ ip1.(ip_transformation) = ip2.(ip_transformation)
-  /\ ip1.(ip_time_stamp) = ip2.(ip_time_stamp)
-  /\ ip1.(ip_instruction) = ip2.(ip_instruction)
-  /\ ip1.(ip_depth) = ip2.(ip_depth)
-.
-
-Lemma veq_instance_refl:
-  forall ip,
-    veq_instance ip ip.
-Proof.
-  intros. destruct ip. unfold veq_instance; splits; simpls; trivial.
-  eapply veq_refl.
-Qed.
+Notation instr_point_list_semantics:= ILSema.instr_point_list_semantics.
+Notation veq_instance := ILSema.veq_instance.
+Notation veq_instance_refl := ILSema.veq_instance_refl.
 
 Definition belongs_to (ip: InstrPoint) (pi: PolyInstr): Prop :=
   in_poly ip.(ip_index) pi.(pi_poly) 
@@ -4704,30 +4626,8 @@ Proof.
   rewrite H0 in H; trivial.
 Qed.
 
-Lemma instr_point_list_sema_stable_under_state_eq:
-  forall l st1 st2 st1' st2',
-    instr_point_list_semantics l st1 st2 ->
-    Instr.State.eq st1 st1' ->
-    Instr.State.eq st2 st2' ->
-    instr_point_list_semantics l st1' st2'.
-Proof.
-  induction l.
-  - 
-  intros. 
-  inv H. 
-  simpls. econs; eauto. 
-  eapply Instr.State.eq_sym in H0.
-  eapply Instr.State.eq_trans; eauto.
-  eapply Instr.State.eq_trans; eauto.
-  -
-  intros. inv H.
-  inv H4. 
-  eapply Instr.instr_semantics_stable_under_state_eq 
-    with (st1':=st1') (st2:=st3) (st2':=st3) in H; eauto.
-  2: {eapply Instr.State.eq_refl. }
-  econs; eauto. instantiate (1:=st3). econs; eauto.
-  eapply IHl; eauto. eapply Instr.State.eq_refl.  
-Qed.
+
+Notation instr_point_list_sema_stable_under_state_eq := ILSema.instr_point_list_sema_stable_under_state_eq.
 
 (** Stable permut instances lists are equivalent *)
 Lemma stable_permut_step_ext_lists_are_equivalent: 
