@@ -30,6 +30,12 @@ Inductive iter_semantics {A : Type} (P : A -> State.t -> State.t -> Prop) : list
     P x st1 st2 -> iter_semantics P l st2 st3 ->
     iter_semantics P (x :: l) st1 st3.
 
+Inductive iter_semantics_e {A B : Type} (P : A -> list B -> State.t -> State.t -> Prop) : list A -> list B -> State.t -> State.t -> Prop :=
+| IEDone : forall st, iter_semantics_e P nil nil st st
+| IEProgress : forall x l il1 il2 st1 st2 st3,
+    P x il1 st1 st2 -> iter_semantics_e P l il2 st2 st3 ->
+    iter_semantics_e P (x :: l) (il1++il2) st1 st3.
+
 Lemma iter_semantics_map {A : Type} (P Q : A -> State.t -> State.t -> Prop) :
   forall l st1 st2,
     (forall x st1 st2, In x l -> P x st1 st2 -> Q x st1 st2) ->

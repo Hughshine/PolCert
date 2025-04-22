@@ -34,6 +34,7 @@ Definition mem:=IInstr.State.t.
 Module Ty:=IInstr.Ty.
 Definition instr_semantics:=IInstr.instr_semantics.
 Module ILSema := ILSema IInstr.
+Notation InstrPoint := ILSema.InstrPoint.
 Notation instr_point_sema := ILSema.instr_point_sema.
 Notation instr_point_list_semantics := ILSema.instr_point_list_semantics.
 
@@ -204,6 +205,44 @@ Inductive loop_semantics : stmt -> list Z -> mem -> mem -> Prop :=
     IInstr.IterSem.iter_semantics (fun x => loop_semantics st (x :: env)) (Zrange (eval_expr env lb) (eval_expr env ub)) mem1 mem2 ->
     loop_semantics (Loop lb ub st) env mem1 mem2.
 
+
+Inductive loop_instance_list_semantics : stmt -> list Z -> list InstrPoint -> mem -> mem -> Prop :=
+| LILInstr : forall i es env iv mem1 mem2 wcs rcs,
+    iv = map (eval_expr env) es ->
+    instr_semantics i iv wcs rcs mem1 mem2 ->
+    loop_instance_list_semantics (Instr i es) env nil mem1 mem2
+| LILSeqEmpty : forall env mem, loop_instance_list_semantics (Seq SNil) env nil mem mem
+| LILSeq : forall env st sts il1 il2 mem1 mem2 mem3,
+    loop_instance_list_semantics st env il1 mem1 mem2 ->
+    loop_instance_list_semantics (Seq sts) env il2 mem2 mem3 ->
+    loop_instance_list_semantics (Seq (SCons st sts)) env (il1++il2) mem1 mem3
+| LILGuardTrue : forall env t st il mem1 mem2,
+    loop_instance_list_semantics st env il mem1 mem2 ->
+    eval_test env t = true ->
+    loop_instance_list_semantics (Guard t st) env il mem1 mem2
+| LILGuardFalse : forall env t st mem,
+    eval_test env t = false -> loop_instance_list_semantics (Guard t st) env nil mem mem
+| LILLoop : forall env lb ub st il mem1 mem2,
+    IInstr.IterSem.iter_semantics_e 
+      (fun x => loop_instance_list_semantics st (x :: env)) 
+      (Zrange (eval_expr env lb) (eval_expr env ub)) il mem1 mem2 ->
+    loop_instance_list_semantics (Loop lb ub st) env il mem1 mem2.
+    (*只能保证instruction, transformation, timestamp一致？因为只有这三部分最终决定语义.*)
+
+Lemma loop_semantics_eq :
+  forall loop env mem1 mem2 il,
+    loop_semantics loop env mem1 mem2 
+    <-> loop_instance_list_semantics loop env il mem1 mem2.
+Proof.
+Admitted.
+
+Lemma loop_semantics_to_instance_list_semantics :
+  forall loop env mem1 mem2 il,
+    loop_instance_list_semantics loop env il mem1 mem2 ->
+    ILSema.instr_point_list_semantics il mem1 mem2.
+Proof.
+Admitted.
+
 (** A wrapped semantics for loop semantics *)
 Inductive semantics: t -> mem -> mem -> Prop := 
 | LSemaIntro: forall loop_ext loop ctxt vars env mem1 mem2,
@@ -213,6 +252,8 @@ Inductive semantics: t -> mem -> mem -> Prop :=
     IInstr.InitEnv ctxt (rev env) mem1 ->
     loop_semantics loop env mem1 mem2 -> 
     semantics loop_ext mem1 mem2.
+
+
     
 Definition make_guard test inner :=
   match test with
