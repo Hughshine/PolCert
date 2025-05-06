@@ -25,6 +25,8 @@ Require Import Result.
 Require Import PolyBase.
 Require Import Linalg.
 Require Import String.
+Require Import sflib.
+Require Import LibTactics.
 
 Open Scope Z_scope.
 Open Scope list_scope.
@@ -369,7 +371,7 @@ Proof.
   - (* Instr *)
     exists (cons (mk_instr_point i es env) nil) . econstructor; eauto.
   - (* Seq SNil *)
-    exists nil. econstructor.
+     exists (@nil InstrPoint). constructor.
   - (* Seq *)
     destruct IHloop_semantics_aux1 as [il1 H1].
     destruct IHloop_semantics_aux2 as [il2 H2].
@@ -378,13 +380,13 @@ Proof.
     destruct IHloop_semantics_aux as [il H1].
     exists il. econstructor; eauto.
   - (* Guard false *)
-    exists nil. 
+    exists (@nil InstrPoint). 
     eapply LILGuardFalse; eauto.
   - (* Loop *)
     destruct IHloop_semantics_aux as [il H1].
     exists il. econstructor; eauto.
   - (* ListNil *)
-    exists nil. constructor.
+    exists (@nil InstrPoint). constructor.
   - (* ListCons *)
     destruct IHloop_semantics_aux as [il1 H1], IHloop_semantics_aux0 as [il2 H2].
     exists (il1 ++ il2). econstructor; eauto.
@@ -457,19 +459,131 @@ match s with
     | Okk _ => True
     | Err _ => False
     end
-| Seq SNil => True
-| Seq (SCons s' _) => all_es_safe s'
+| Seq sts => all_es_safe_list sts
 | Guard t s' => all_es_safe s'
+end
+with 
+all_es_safe_list (es: stmt_list): Prop :=
+match es with
+| SNil => True
+| SCons s sts => all_es_safe s /\ all_es_safe_list sts
 end
 .
 
+
+Lemma expr_to_aff_correct: 
+    forall e env aff v z, expr_to_aff e = Okk aff -> 
+    aff = (v, z) ->
+    eval_expr env e = (dot_product env v) + z.
+Proof.
+    induction e; intros; simpl in *; try discriminate. 
+    - inv H; eauto. inv H2; eauto.
+        rewrite dot_product_nil_right. lia.
+    - destruct (expr_to_aff e1) eqn: H1 in H; try discriminate.
+        destruct p as [v1 z1] eqn: H2 in H; try discriminate.
+        destruct (expr_to_aff e2) eqn: H3 in H; try discriminate.
+        destruct p0 as [v2 z2] eqn: H4 in H; try discriminate.
+        inv H; eauto. inv H6.
+        eapply IHe1 with (env:=env) in H1; eauto.
+        eapply IHe2 with (env:=env) in H3; eauto.
+        rewrite H1. rewrite H3. 
+        rewrite add_vector_dot_product_distr_right. lia.
+    - destruct (expr_to_aff e) eqn: H1 in H; try discriminate.
+        destruct p as [v1 z1] eqn: H2 in H; try discriminate.
+        inv H; eauto. inv H4; eauto.
+        eapply IHe with (env:=env) in H1; eauto.
+        rewrite H1.
+        rewrite dot_product_mult_right. lia.
+    - inv H. inv H2.
+        (* TODO: extract new lib lemma*)
+        remember (nth_error env n) as nth.
+        destruct nth; try discriminate.
+        + symmetry in Heqnth.
+        pose proof Heqnth as Heqnth0. 
+        eapply v0_n_app_1_dot_product_p_is_nth_p in Heqnth; eauto. 
+        rewrite dot_product_commutative.
+        rewrite Heqnth.
+        eapply nth_error_nth with (d:=0) in Heqnth0. lia. 
+        + symmetry in Heqnth.    
+        rewrite nth_error_None in Heqnth. pose proof Heqnth as Heqnth0.
+        eapply nth_overflow with (d:=0) in Heqnth. rewrite Heqnth.
+        eapply dot_product_v0_with_shorter_is_0 with (l:=[1]) in Heqnth0; eauto.
+        rewrite Heqnth0. lia.
+Qed.
+
+Lemma exprlist_to_aff_correct: 
+    forall es env affs, 
+    exprlist_to_aff es = Okk affs -> 
+    (map (eval_expr env) es) = affine_product affs env.
+Proof.
+  induction es as [|e es' IH]; intros env affs Haff.
+  - (* base: empty list *)
+    simpl in *. inversion Haff. reflexivity.
+
+  - (* inductive case *)
+    simpl in Haff.
+    destruct (expr_to_aff e) eqn:He1; try discriminate.
+    destruct (exprlist_to_aff es') eqn:He2; try discriminate.
+    inversion Haff; subst affs.
+
+    (* Now apply expr_to_aff_correct on head *)
+    simpl.
+    f_equal.
+    + destruct p as [v z]. inv Haff.
+      eapply expr_to_aff_correct with (env := env) in He1; eauto. simpl. 
+      rewrite He1. rewrite dot_product_commutative. trivial.
+    + eapply IH; trivial.
+Qed.
+
 Lemma loop_instance_list_semantics_implies_instr_point :
-  forall stmt env mem1 mem2 il,
-    all_es_safe stmt ->
-    loop_instance_list_semantics stmt env il mem1 mem2 ->
+  forall s env mem1 mem2 il,
+    loop_instance_list_semantics s env il mem1 mem2 ->
+    all_es_safe s ->
     instr_point_list_semantics il mem1 mem2.
 Proof.
-Admitted.
+intros s env mem1 mem2 il Hsem Hsafe.
+generalize dependent Hsafe.
+induction Hsem
+  using loop_instance_list_semantics_mutual_ind
+  with (P0 := fun zs s env il mem1 mem2 _ =>
+                all_es_safe s -> instr_point_list_semantics il mem1 mem2);
+  intros Hsafe; simpl in *.
+
+  - (* LILInstr *)
+    econstructor.
+    + econstructor.
+      unfold mk_instr_point. simpl.
+      destruct (exprlist_to_aff es) eqn:Haff; try contradiction. simpls.
+      eapply exprlist_to_aff_correct in Haff.
+      subst. rewrite <- Haff. eauto.
+    + constructor. apply IInstr.State.eq_refl.
+
+  - (* LILSeqEmpty *)
+    constructor. apply IInstr.State.eq_refl.
+  - (* LILSeq *)
+    destruct Hsafe.
+    eapply IHHsem1 in H; eauto.
+    eapply IHHsem2 in H0; eauto.
+   eapply ILSema.instr_point_list_sema_concat; eauto.
+  -
+    eapply IHHsem in Hsafe; eauto.
+  - eapply ILSema.IPLS_nil; eauto. eapply IInstr.State.eq_refl.
+  - (* LILSeq *)
+    assert (Hsafe': all_es_safe st).
+    { 
+      destruct (expr_to_aff lb); destruct (expr_to_aff ub); try contradiction. trivial.
+    }
+    eapply IHHsem in Hsafe'; eauto.
+  - (* LILGuardTrue *)
+    eapply ILSema.IPLS_nil; eauto.
+    apply IInstr.State.eq_refl.
+  - 
+   pose proof Hsafe.  
+  eapply IHHsem in Hsafe; eauto.
+  eapply IHHsem0 in H; eauto.
+  eapply ILSema.instr_point_list_sema_concat; eauto.
+Qed.
+
 
 
 (** A wrapped semantics for loop semantics *)

@@ -379,4 +379,11 @@ Proof.
   subst. trivial.
 Qed.
 
+Lemma instr_point_list_sema_concat:
+  forall l1 l2 st1 st2 st3,
+    instr_point_list_semantics l1 st1 st2 ->
+    instr_point_list_semantics l2 st2 st3 ->
+    instr_point_list_semantics (l1 ++ l2) st1 st3.
+Proof.
+Admitted.
 End ILSema.
