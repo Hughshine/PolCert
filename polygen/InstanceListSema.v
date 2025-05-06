@@ -385,5 +385,13 @@ Lemma instr_point_list_sema_concat:
     instr_point_list_semantics l2 st2 st3 ->
     instr_point_list_semantics (l1 ++ l2) st1 st3.
 Proof.
-Admitted.
+intros l1 l2 st1 st2 st3 Hsem1 Hsem2.
+induction Hsem1.
+- (* Base case: l1 = [] *)
+  simpl. eapply instr_point_list_sema_stable_under_state_eq; eauto.
+  + eapply Instr.State.eq_sym. trivial.
+  + eapply Instr.State.eq_refl.
+- (* Inductive case: l1 = ip :: il *)
+  simpl. econstructor; eauto.
+Qed.
 End ILSema.
