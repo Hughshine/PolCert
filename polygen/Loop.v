@@ -541,8 +541,7 @@ Lemma loop_instance_list_semantics_implies_instr_point :
     all_es_safe s ->
     instr_point_list_semantics il mem1 mem2.
 Proof.
-intros s env mem1 mem2 il Hsem Hsafe.
-generalize dependent Hsafe.
+intros s env mem1 mem2 il Hsem.
 induction Hsem
   using loop_instance_list_semantics_mutual_ind
   with (P0 := fun zs s env il mem1 mem2 _ =>
