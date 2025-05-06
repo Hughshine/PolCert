@@ -205,6 +205,52 @@ Inductive loop_semantics : stmt -> list Z -> mem -> mem -> Prop :=
     IInstr.IterSem.iter_semantics (fun x => loop_semantics st (x :: env)) (Zrange (eval_expr env lb) (eval_expr env ub)) mem1 mem2 ->
     loop_semantics (Loop lb ub st) env mem1 mem2.
 
+Inductive loop_semantics_aux : stmt -> list Z -> mem -> mem -> Prop :=
+| LSAuxInstr : forall i es env mem1 mem2 wcs rcs,
+    instr_semantics i (map (eval_expr env) es) wcs rcs mem1 mem2 ->
+    loop_semantics_aux (Instr i es) env mem1 mem2
+| LSAuxSeqEmpty : forall env mem,
+    loop_semantics_aux (Seq SNil) env mem mem
+| LSAuxSeq : forall env st sts mem1 mem2 mem3,
+    loop_semantics_aux st env mem1 mem2 ->
+    loop_semantics_aux (Seq sts) env mem2 mem3 ->
+    loop_semantics_aux (Seq (SCons st sts)) env mem1 mem3
+| LSAuxGuardTrue : forall env t st mem1 mem2,
+    eval_test env t = true ->
+    loop_semantics_aux st env mem1 mem2 ->
+    loop_semantics_aux (Guard t st) env mem1 mem2
+| LSAuxGuardFalse : forall env t st mem,
+    eval_test env t = false ->
+    loop_semantics_aux (Guard t st) env mem mem
+| LSAuxLoop : forall env lb ub st mem1 mem2,
+    loop_semantics_aux_list (Zrange (eval_expr env lb) (eval_expr env ub)) st env mem1 mem2 ->
+    loop_semantics_aux (Loop lb ub st) env mem1 mem2
+
+with loop_semantics_aux_list : list Z -> stmt -> list Z -> mem -> mem -> Prop :=
+| LSAuxListNil : forall st env mem,
+    loop_semantics_aux_list nil st env mem mem
+| LSAuxListCons : forall x xs st env mem1 mem2 mem3,
+    loop_semantics_aux st (x :: env) mem1 mem2 ->
+    loop_semantics_aux_list xs st env mem2 mem3 ->
+    loop_semantics_aux_list (x :: xs) st env mem1 mem3.
+
+
+Lemma loop_aux_list_iter_semantics_eq :
+forall (st : stmt) (env : list Z) (xs : list Z) (m1 m2 : mem),
+  loop_semantics_aux_list xs st env m1 m2 <->
+  IInstr.IterSem.iter_semantics (fun x => loop_semantics_aux st (x :: env)) xs m1 m2.
+Proof.
+intros st env xs. split.
+- (* → direction: list-based semantics → iter_semantics *)
+  intros H. induction H.
+  + constructor.
+  + econstructor; eauto.
+- (* ← direction: iter_semantics → list-based semantics *)
+  intros H. induction H.
+  + constructor.
+  + econstructor; eauto.
+Qed.
+
 
 Inductive loop_instance_list_semantics : stmt -> list Z -> list InstrPoint -> mem -> mem -> Prop :=
 | LILInstr : forall i es env iv mem1 mem2 wcs rcs,
@@ -223,25 +269,103 @@ Inductive loop_instance_list_semantics : stmt -> list Z -> list InstrPoint -> me
 | LILGuardFalse : forall env t st mem,
     eval_test env t = false -> loop_instance_list_semantics (Guard t st) env nil mem mem
 | LILLoop : forall env lb ub st il mem1 mem2,
-    IInstr.IterSem.iter_semantics_e 
-      (fun x => loop_instance_list_semantics st (x :: env)) 
-      (Zrange (eval_expr env lb) (eval_expr env ub)) il mem1 mem2 ->
-    loop_instance_list_semantics (Loop lb ub st) env il mem1 mem2.
-    (*只能保证instruction, transformation, timestamp一致？因为只有这三部分最终决定语义.*)
+loop_instance_list_semantics_list
+  (Zrange (eval_expr env lb) (eval_expr env ub)) st env il mem1 mem2 ->
+loop_instance_list_semantics (Loop lb ub st) env il mem1 mem2
 
-Lemma loop_semantics_eq :
-  forall loop env mem1 mem2 il,
-    loop_semantics loop env mem1 mem2 
-    <-> loop_instance_list_semantics loop env il mem1 mem2.
-Proof.
-Admitted.
+with loop_instance_list_semantics_list :
+       list Z -> stmt -> list Z -> list InstrPoint -> mem -> mem -> Prop :=
+| LILListNil : forall st env mem,
+    loop_instance_list_semantics_list nil st env nil mem mem
 
-Lemma loop_semantics_to_instance_list_semantics :
-  forall loop env mem1 mem2 il,
-    loop_instance_list_semantics loop env il mem1 mem2 ->
-    ILSema.instr_point_list_semantics il mem1 mem2.
+| LILListCons : forall x xs st env il1 il2 mem1 mem2 mem3,
+    loop_instance_list_semantics st (x :: env) il1 mem1 mem2 ->
+    loop_instance_list_semantics_list xs st env il2 mem2 mem3 ->
+    loop_instance_list_semantics_list (x :: xs) st env (il1 ++ il2) mem1 mem3.
+
+Scheme loop_semantics_aux_mutual_ind :=
+Induction for loop_semantics_aux Sort Prop
+with loop_semantics_aux_list_mutual_ind :=
+Induction for loop_semantics_aux_list Sort Prop.
+
+Lemma loop_semantics_aux_implies_instance_list :
+  forall stmt env mem1 mem2,
+    loop_semantics_aux stmt env mem1 mem2 ->
+    exists il, loop_instance_list_semantics stmt env il mem1 mem2.
 Proof.
-Admitted.
+  intros stmt env mem1 mem2 H.
+  induction H using loop_semantics_aux_mutual_ind
+    with
+      (P0 := fun zs stmt env mem1 mem2 Hlist =>
+               exists il, loop_instance_list_semantics_list zs stmt env il mem1 mem2).
+  - (* Instr *)
+    exists nil. econstructor; eauto.
+  - (* Seq SNil *)
+    exists nil. econstructor.
+  - (* Seq *)
+    destruct IHloop_semantics_aux1 as [il1 H1].
+    destruct IHloop_semantics_aux2 as [il2 H2].
+    exists (il1 ++ il2). econstructor; eauto.
+  - (* Guard true *)
+    destruct IHloop_semantics_aux as [il H1].
+    exists il. econstructor; eauto.
+  - (* Guard false *)
+    exists nil. 
+    eapply LILGuardFalse; eauto.
+  - (* Loop *)
+    destruct IHloop_semantics_aux as [il H1].
+    exists il. econstructor; eauto.
+  - (* ListNil *)
+    exists nil. constructor.
+  - (* ListCons *)
+    destruct IHloop_semantics_aux as [il1 H1], IHloop_semantics_aux0 as [il2 H2].
+    exists (il1 ++ il2). econstructor; eauto.
+Qed.
+
+Scheme loop_instance_list_semantics_mutual_ind :=
+  Induction for loop_instance_list_semantics Sort Prop
+  with loop_instance_list_semantics_list_mutual_ind :=
+  Induction for loop_instance_list_semantics_list Sort Prop.
+
+
+Lemma instance_list_implies_loop_semantics_aux :
+  forall stmt env mem1 mem2 il,
+    loop_instance_list_semantics stmt env il mem1 mem2 ->
+    loop_semantics_aux stmt env mem1 mem2.
+Proof.
+  intros stmt env il mem1 mem2 H.
+  induction H using loop_instance_list_semantics_mutual_ind
+    with
+      (P0 := fun zs stmt env il mem1 mem2 Hlist =>
+               loop_semantics_aux_list zs stmt env mem1 mem2); subst.
+  - (* Instr *)
+    econstructor; eauto.
+  - (* SeqEmpty *)
+    constructor.
+  - (* Seq *)
+    econstructor; eauto.
+  - (* GuardTrue *)
+    econstructor; eauto.
+  - (* GuardFalse *)
+    eapply LSAuxGuardFalse; eauto.
+  - (* Loop *)
+    econstructor; eauto.
+  - (* ListNil *)
+    constructor.
+  - (* ListCons *)
+    econstructor; eauto.
+Qed.
+
+Lemma loop_semantics_aux_equiv_instance :
+  forall stmt env mem1 mem2,
+    loop_semantics_aux stmt env mem1 mem2 <->
+    exists il, loop_instance_list_semantics stmt env il mem1 mem2.
+Proof.
+  split.
+  - apply loop_semantics_aux_implies_instance_list.
+  - intros [il H]. 
+    eapply instance_list_implies_loop_semantics_aux; eauto.
+Qed.
 
 (** A wrapped semantics for loop semantics *)
 Inductive semantics: t -> mem -> mem -> Prop := 
