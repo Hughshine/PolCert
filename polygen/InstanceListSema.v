@@ -43,6 +43,17 @@ Record InstrPoint := {
   ip_depth: nat;  (** surrounded iterator depth *)
 }.
 
+Definition naive_instr_point: InstrPoint := 
+{|
+ip_nth := 0;
+ip_index := nil;
+ip_transformation := nil;
+ip_time_stamp := nil;
+ip_instruction := Instr.dummy_instr;
+ip_depth := 0;
+|}.
+
+
 Definition eq_except_sched (ip1 ip2: InstrPoint): Prop := 
   ip1.(ip_nth) = ip2.(ip_nth) /\ 
   ip1.(ip_index) = ip2.(ip_index) /\ 

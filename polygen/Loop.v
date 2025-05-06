@@ -21,6 +21,11 @@ Require Import Misc.
 Require Import IterSemantics.
 Require Import AST.
 Require Import InstanceListSema.
+Require Import Result.
+Require Import PolyBase.
+Require Import Linalg.
+Require Import String.
+
 Open Scope Z_scope.
 Open Scope list_scope.
 
@@ -35,6 +40,13 @@ Module Ty:=IInstr.Ty.
 Definition instr_semantics:=IInstr.instr_semantics.
 Module ILSema := ILSema IInstr.
 Notation InstrPoint := ILSema.InstrPoint.
+Notation ip_nth := ILSema.ip_nth.
+Notation ip_index := ILSema.ip_index.
+Notation ip_transformation := ILSema.ip_transformation.
+Notation ip_time_stamp := ILSema.ip_time_stamp.
+Notation ip_instruction := ILSema.ip_instruction.
+Notation ip_depth := ILSema.ip_depth.
+
 Notation instr_point_sema := ILSema.instr_point_sema.
 Notation instr_point_list_semantics := ILSema.instr_point_list_semantics.
 
@@ -251,12 +263,68 @@ intros st env xs. split.
   + econstructor; eauto.
 Qed.
 
+Fixpoint expr_to_aff (e: expr): result (list Z * Z) := 
+    match e with 
+    (* base case, c*)
+    | Constant z => Okk (nil, z)
+    (* base case, xni + c / xni *)
+    | Var n => Okk (V0 n ++ (cons 1%Z nil) , 0%Z)
+    (* base case, anixni + c / anixni*)
+    | Mult z e2 => 
+        match expr_to_aff e2 with
+        | Okk (aff2, c2) => 
+                Okk (mult_vector z aff2, z * c2)
+        | Err msg => Err "Expr to aff failed, mult."%string
+        end
+    (* recursive case *)
+    | Sum e1 e2 =>
+        match expr_to_aff e1, expr_to_aff e2 with
+        | Okk (aff1, c1), Okk (aff2, c2) => 
+            Okk (add_vector aff1 aff2, c1 + c2)
+        | Err msg, _ => Err msg
+        | _, Err msg => Err msg
+        end
+    | _ => Err "Expr to aff failed."%string
+    end.
 
+
+Fixpoint exprlist_to_aff (es: list expr): result (list (list Z * Z)) 
+:= 
+    match es with 
+    | nil => Okk nil
+    | e :: es' => 
+        match (expr_to_aff e) with 
+        | Okk aff => 
+            match (exprlist_to_aff es') with 
+            | Okk affs => Okk (aff :: affs)
+            | Err msg => Err msg
+            end
+        | Err msg => Err msg
+        end
+    end.
+
+Definition mk_instr_point (i : instr) (es : list expr) (env : list Z) : InstrPoint :=
+  match exprlist_to_aff es with
+  | Okk tf =>
+  {|
+    ip_nth := 0;
+    ip_index := env;
+    ip_transformation := tf;
+    ip_time_stamp := env;
+    ip_instruction := i;
+    ip_depth := List.length env;
+  |}
+  | Err msg => ILSema.naive_instr_point
+  end.
+
+(** loop_instance_list_semantics: loop semantics with instance list *)
+(**没有办法完美变成instance list, 因为expr不一定变成matrix*)
+(**所以extractor其实是partial的*)
 Inductive loop_instance_list_semantics : stmt -> list Z -> list InstrPoint -> mem -> mem -> Prop :=
 | LILInstr : forall i es env iv mem1 mem2 wcs rcs,
     iv = map (eval_expr env) es ->
     instr_semantics i iv wcs rcs mem1 mem2 ->
-    loop_instance_list_semantics (Instr i es) env nil mem1 mem2
+    loop_instance_list_semantics (Instr i es) env (cons (mk_instr_point i es env) nil) mem1 mem2
 | LILSeqEmpty : forall env mem, loop_instance_list_semantics (Seq SNil) env nil mem mem
 | LILSeq : forall env st sts il1 il2 mem1 mem2 mem3,
     loop_instance_list_semantics st env il1 mem1 mem2 ->
@@ -299,7 +367,7 @@ Proof.
       (P0 := fun zs stmt env mem1 mem2 Hlist =>
                exists il, loop_instance_list_semantics_list zs stmt env il mem1 mem2).
   - (* Instr *)
-    exists nil. econstructor; eauto.
+    exists (cons (mk_instr_point i es env) nil) . econstructor; eauto.
   - (* Seq SNil *)
     exists nil. econstructor.
   - (* Seq *)
@@ -366,6 +434,43 @@ Proof.
   - intros [il H]. 
     eapply instance_list_implies_loop_semantics_aux; eauto.
 Qed.
+
+(* Inductive stmt :=
+| Loop : expr -> expr -> stmt -> stmt
+| Instr : instr -> list expr -> stmt (** list expr relates to iterators.  *)
+| Seq : stmt_list -> stmt
+| Guard : test -> stmt -> stmt
+with stmt_list := 
+| SNil : stmt_list
+| SCons : stmt -> stmt_list -> stmt_list *)
+(* . *)
+
+Fixpoint all_es_safe (s: stmt): Prop := 
+match s with
+| Loop lb ub s' => 
+    match expr_to_aff lb, expr_to_aff ub with
+    | Okk _, Okk _ => all_es_safe s'
+    | _, _=> False
+    end
+| Instr i es =>
+    match exprlist_to_aff es with
+    | Okk _ => True
+    | Err _ => False
+    end
+| Seq SNil => True
+| Seq (SCons s' _) => all_es_safe s'
+| Guard t s' => all_es_safe s'
+end
+.
+
+Lemma loop_instance_list_semantics_implies_instr_point :
+  forall stmt env mem1 mem2 il,
+    all_es_safe stmt ->
+    loop_instance_list_semantics stmt env il mem1 mem2 ->
+    instr_point_list_semantics il mem1 mem2.
+Proof.
+Admitted.
+
 
 (** A wrapped semantics for loop semantics *)
 Inductive semantics: t -> mem -> mem -> Prop := 
