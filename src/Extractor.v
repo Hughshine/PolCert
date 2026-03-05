@@ -4040,6 +4040,153 @@ Proof.
       exact Heq.
 Qed.
 
+Lemma extract_stmt_to_loop_semantics_core_sched:
+    forall stmt sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2,
+    wf_scop_stmt stmt = true ->
+    extract_stmt stmt [] (Datatypes.length varctxt) 0 sched_prefix = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Instr.Compat vars st1 ->
+    Instr.NonAlias st1 ->
+    Instr.InitEnv varctxt envv st1 ->
+    exists st2',
+      Loop.loop_semantics stmt (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros stmt sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hextract Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit.
+    destruct stmt as [lb ub body | i es | stmts | test body].
+    - (* Loop *)
+      (* Top-down pending:
+         1) partition by current iterator value from lifted schedule/domain,
+         2) recurse on body under lifted constraints, then rebuild LLoop. *)
+      admit.
+    - (* Instr *)
+      eapply extract_stmt_instr_success_inv in Hextract.
+      destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
+      subst pis.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Htf by lia.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hflat by lia.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hchk by lia.
+      eapply (instr_branch_core_with_constrs
+        i es [] sched_prefix varctxt envv ipl sorted_ipl st1 st2 tf w r); eauto.
+    - (* Seq *)
+      eapply extract_stmt_seq_success_inv in Hextract.
+      eapply wf_scop_seq_inv in Hwf.
+      destruct stmts as [|st sts].
+      + eapply extract_stmts_nil_success_inv in Hextract.
+        subst pis.
+        eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat.
+        subst ipl.
+        eapply Permutation_nil in Hperm.
+        subst sorted_ipl.
+        assert (State.eq st1 st2) as Heq12.
+        { eapply instr_point_list_semantics_nil_inv; eauto. }
+        exists st1.
+        split.
+        * constructor.
+        * eapply State.eq_sym.
+          exact Heq12.
+      + eapply wf_scop_stmts_cons_inv in Hwf.
+        destruct Hwf as [Hwf_hd Hwf_tl].
+        pose proof (
+          extract_stmts_cons_semantics_split_by_nth
+            st sts [] (Datatypes.length varctxt) sched_prefix 0
+            pis envv ipl sorted_ipl st1 st2
+            Hextract Hflat
+            (eq_sym (Instr.init_env_samelen varctxt envv st1 Hinit))
+            Hperm Hsorted Hipls
+        ) as Hsplit.
+        destruct Hsplit as
+          (pis1 & pis2 & ipl1 & ipl2 & stmid &
+           Hhdext & Htlext & Hpis & Hipl &
+           Hflat1 & Hflat2 & Hperm1 & Hperm2 & Hsem1 & Hsem2).
+        assert (Hhdext0:
+          extract_stmt st [] (Datatypes.length varctxt) 0
+            (sched_prefix ++ [(repeat 0%Z (Datatypes.length varctxt), 0%Z)]) = Okk pis1).
+        {
+          simpl in Hhdext.
+          replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hhdext by lia.
+          exact Hhdext.
+        }
+        assert (Hchk_hd_tl:
+          check_extracted_wf pis1 varctxt vars = true /\
+          check_extracted_wf pis2 varctxt vars = true).
+        {
+          subst pis.
+          eapply check_extracted_wf_app_inv; eauto.
+        }
+        destruct Hchk_hd_tl as [Hchk1 Hchk2].
+        assert (Hhead:
+          exists sth,
+            Loop.loop_semantics st (rev envv) st1 sth /\ State.eq stmid sth).
+        {
+          (* Top-down pending:
+             recursive call on head stmt with sched_prefix ++ [seq-row-0]. *)
+          admit.
+        }
+        destruct Hhead as [sth [Hloop_hd Heq_mid_h]].
+        assert (Hsem2_from_sth:
+          PolyLang.instr_point_list_semantics
+            (map (rebase_ip_nth (Datatypes.length pis1))
+              (filter
+                (fun ip : PolyLang.InstrPoint =>
+                  negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+                sorted_ipl))
+            sth st2).
+        {
+          eapply PolyLang.instr_point_list_sema_stable_under_state_eq
+            with (st1:=stmid) (st2:=st2) (st1':=sth) (st2':=st2) in Hsem2.
+          2: {
+            exact Heq_mid_h.
+          }
+          2: {
+            eapply State.eq_refl.
+          }
+          exact Hsem2.
+        }
+        assert (Htail:
+          exists stt,
+            Loop.loop_semantics (PolIRs.Loop.Seq sts) (rev envv) sth stt /\
+            State.eq st2 stt).
+        {
+          (* Top-down pending:
+             recursive call on tail seq with:
+             - extract_stmts sts ... sched_prefix 1 = Okk pis2
+             - flatten Hflat2
+             - permutation Hperm2 (after map/rebase as needed)
+             - semantics Hsem2_from_sth *)
+          admit.
+        }
+        destruct Htail as [stt [Hloop_tl Heq_tl]].
+        eapply seq_cons_semantics_with_eq
+          with (st:=st) (sts:=sts) (env:=rev envv)
+               (st1:=st1) (st2:=sth) (st3:=stt) (st3':=st2); eauto.
+    - (* Guard *)
+      destruct (Loop.eval_test (rev envv) test) eqn:Heval.
+      + assert (Hguard_true:
+          exists st2',
+            Loop.loop_semantics body (rev envv) st1 st2' /\ State.eq st2 st2').
+        {
+          (* Top-down pending:
+             recursive call on body under added guard constraints
+             from extract_stmt_guard_success_inv. *)
+          admit.
+        }
+        destruct Hguard_true as [st2' [Hbody Heq]].
+        exists st2'.
+        split.
+        * eapply Loop.LGuardTrue; eauto.
+        * exact Heq.
+      + eapply guard_false_core_case_constrs
+          with (constrs:=[]) (sched_prefix:=sched_prefix)
+               (test:=test) (body:=body) (varctxt:=varctxt)
+               (vars:=vars) (pis:=pis) (envv:=envv)
+               (ipl:=ipl) (sorted_ipl:=sorted_ipl) (st1:=st1); eauto.
+Admitted.
+
 Lemma extract_stmt_to_loop_semantics_core:
     forall stmt varctxt vars pis envv ipl sorted_ipl st1 st2,
     wf_scop_stmt stmt = true ->
@@ -4055,19 +4202,9 @@ Lemma extract_stmt_to_loop_semantics_core:
     exists st2',
       Loop.loop_semantics stmt (rev envv) st1 st2' /\ State.eq st2 st2'.
 Proof.
-    intros stmt varctxt vars pis envv ipl sorted_ipl st1 st2
-      Hwf Hextract Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit.
-    destruct stmt as [lb ub body | i es | stmts | test body].
-    2:{
-    eapply extract_stmt_instr_success_inv in Hextract.
-    destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
-    subst pis.
-    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Htf by lia.
-    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hflat by lia.
-    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hchk by lia.
-    eapply (instr_branch_core i es varctxt envv ipl sorted_ipl st1 st2 tf w r); eauto.
-    }
-Admitted.
+    intros.
+    eapply extract_stmt_to_loop_semantics_core_sched with (sched_prefix:=[]); eauto.
+Qed.
 
 
 (* Lemma extract_stmt_correct: 
