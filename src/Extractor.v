@@ -2420,6 +2420,66 @@ Definition rebase_ip_nth (base: nat) (ip: PolyLang.InstrPoint): PolyLang.InstrPo
     PolyLang.ip_depth := PolyLang.ip_depth ip;
   |}.
 
+Lemma rebase_ip_nth_injective_ge:
+    forall base ip1 ip2,
+    (base <= PolyLang.ip_nth ip1)%nat ->
+    (base <= PolyLang.ip_nth ip2)%nat ->
+    rebase_ip_nth base ip1 = rebase_ip_nth base ip2 ->
+    ip1 = ip2.
+Proof.
+    intros base ip1 ip2 Hge1 Hge2 Heq.
+    destruct ip1 as [n1 idx1 tf1 ts1 instr1 d1].
+    destruct ip2 as [n2 idx2 tf2 ts2 instr2 d2].
+    simpl in *.
+    inversion Heq; subst.
+    assert (Hnsub: (n1 - base)%nat = (n2 - base)%nat) by exact H0.
+    assert (Hnadd: ((n1 - base + base)%nat = (n2 - base + base)%nat)).
+    { now rewrite Hnsub. }
+    rewrite Nat.sub_add in Hnadd by exact Hge1.
+    rewrite Nat.sub_add in Hnadd by exact Hge2.
+    subst.
+    f_equal; auto.
+Qed.
+
+Lemma np_lt_rebase_ip_nth_iff:
+    forall base ip1 ip2,
+    (base <= PolyLang.ip_nth ip1)%nat ->
+    (base <= PolyLang.ip_nth ip2)%nat ->
+    PolyLang.np_lt (rebase_ip_nth base ip1) (rebase_ip_nth base ip2) <->
+    PolyLang.np_lt ip1 ip2.
+Proof.
+    intros base ip1 ip2 Hge1 Hge2.
+    unfold PolyLang.np_lt.
+    split; intro Hlt.
+    - destruct Hlt as [Hlt|[Heq Hlex]].
+      + left.
+        simpl in Hlt.
+        assert (Hplus: ((PolyLang.ip_nth ip1 - base + base < PolyLang.ip_nth ip2 - base + base)%nat)).
+        { apply (proj1 (Nat.add_lt_mono_r _ _ base)); exact Hlt. }
+        rewrite Nat.sub_add in Hplus by exact Hge1.
+        rewrite Nat.sub_add in Hplus by exact Hge2.
+        exact Hplus.
+      + right. split.
+        * simpl in Heq.
+          assert (Hplus: ((PolyLang.ip_nth ip1 - base + base)%nat = (PolyLang.ip_nth ip2 - base + base)%nat)).
+          { now rewrite Heq. }
+          rewrite Nat.sub_add in Hplus by exact Hge1.
+          rewrite Nat.sub_add in Hplus by exact Hge2.
+          exact Hplus.
+        * exact Hlex.
+    - destruct Hlt as [Hlt|[Heq Hlex]].
+      + left.
+        assert (Hplus: ((PolyLang.ip_nth ip1 - base + base < PolyLang.ip_nth ip2 - base + base)%nat)).
+        { rewrite Nat.sub_add by exact Hge1.
+          rewrite Nat.sub_add by exact Hge2.
+          exact Hlt. }
+        apply (proj2 (Nat.add_lt_mono_r _ _ base)).
+        exact Hplus.
+      + right. split.
+        * simpl. now rewrite Heq.
+        * exact Hlex.
+Qed.
+
 Lemma instr_point_sema_rebase_ip_nth:
     forall base ip st1 st2,
     PolyLang.instr_point_sema (rebase_ip_nth base ip) st1 st2 <->
