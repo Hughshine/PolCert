@@ -3533,6 +3533,81 @@ Proof.
           { exact Hsplit_sorted. }
 Qed.
 
+Lemma extract_stmts_cons_semantics_split_by_nth:
+    forall stmt stmts' constrs env_dim sched_prefix pos
+           pis envv ipl sorted_ipl st1 st2,
+    extract_stmts (PolIRs.Loop.SCons stmt stmts') constrs env_dim 0%nat sched_prefix pos = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    exists pis1 pis2 ipl1 ipl2 stmid,
+      extract_stmt stmt constrs env_dim 0%nat
+        (sched_prefix ++ [(repeat 0%Z env_dim, Z.of_nat pos)]) = Okk pis1 /\
+      extract_stmts stmts' constrs env_dim 0%nat sched_prefix (S pos) = Okk pis2 /\
+      pis = pis1 ++ pis2 /\
+      ipl = ipl1 ++ ipl2 /\
+      PolyLang.flatten_instrs envv pis1 ipl1 /\
+      PolyLang.flatten_instrs envv pis2
+        (map (rebase_ip_nth (Datatypes.length pis1)) ipl2) /\
+      Permutation ipl1
+        (filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl) /\
+      Permutation ipl2
+        (filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl) /\
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl)
+        st1 stmid /\
+      PolyLang.instr_point_list_semantics
+        (map (rebase_ip_nth (Datatypes.length pis1))
+          (filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl))
+        stmid st2.
+Proof.
+    intros stmt stmts' constrs env_dim sched_prefix pos
+      pis envv ipl sorted_ipl st1 st2
+      Hext Hflat Hlen Hperm Hsorted Hipls.
+    eapply extract_stmts_cons_sorted_split_by_nth
+      in Hext; eauto.
+    destruct Hext as
+      (pis1 & pis2 & ipl1 & ipl2 &
+       Hhdext & Htlext & Hpis & Hipl &
+       Hflat1 & Hflat2 & Hperm1 & Hperm2 & Hsplit).
+    pose proof (
+      instr_point_list_semantics_split_by_eq_app_rebase_right
+        (Datatypes.length pis1)
+        (filter (fun ip : PolyLang.InstrPoint =>
+           Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl)
+        (filter (fun ip : PolyLang.InstrPoint =>
+           negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl)
+        sorted_ipl st1 st2 Hsplit Hipls
+    ) as Hsemsplit.
+    destruct Hsemsplit as [stmid [Hsem1 Hsem2]].
+    exists pis1.
+    exists pis2.
+    exists ipl1.
+    exists ipl2.
+    exists stmid.
+    split.
+    - exact Hhdext.
+    - split.
+      + exact Htlext.
+      + split.
+        * exact Hpis.
+        * split.
+          { exact Hipl. }
+          split.
+          { exact Hflat1. }
+          split.
+          { exact Hflat2. }
+          split.
+          { exact Hperm1. }
+          split.
+          { exact Hperm2. }
+          split.
+          { exact Hsem1. }
+          { exact Hsem2. }
+Qed.
+
 Lemma nodup_all_eq_singleton:
     forall A (x: A) l,
     NoDup l ->
