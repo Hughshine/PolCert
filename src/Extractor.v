@@ -430,6 +430,18 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma affine_product_lift_affine_list_n_app:
+    forall prefix suffix affs,
+    affine_product (lift_affine_list_n (Datatypes.length prefix) affs) (prefix ++ suffix) =
+    affine_product affs suffix.
+Proof.
+    induction prefix as [|x prefix IH]; intros suffix affs; simpl.
+    - reflexivity.
+    - rewrite lift_affine_list_affine_product.
+      rewrite IH.
+      reflexivity.
+Qed.
+
 Lemma dot_product_repeat_zero_left:
     forall n l,
     dot_product (repeat 0%Z n) l = 0%Z.
@@ -1562,6 +1574,16 @@ Definition pi_has_lifted_prefix
         normalize_affine_list_rev (env_dim + PolyLang.pi_depth pi)%nat
           (lift_affine_list_n k constrs ++ tail).
 
+Definition pi_has_lifted_sched_prefix
+    (env_dim iter_depth: nat)
+    (sched_prefix: Schedule)
+    (pi: PolyLang.PolyInstr): Prop :=
+    exists k tail,
+      PolyLang.pi_depth pi = (iter_depth + k)%nat /\
+      PolyLang.pi_schedule pi =
+        normalize_affine_list_rev (env_dim + PolyLang.pi_depth pi)%nat
+          (lift_affine_list_n k sched_prefix ++ tail).
+
 Lemma extract_stmt_has_lifted_prefix:
     forall stmt constrs env_dim iter_depth sched_prefix pis,
     extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
@@ -1630,6 +1652,79 @@ Proof.
         eapply in_app_or in Hin.
         destruct Hin as [Hin1|Hin2].
         * eapply extract_stmt_has_lifted_prefix; eauto.
+        * eapply IHstmts'; eauto.
+Qed.
+
+Lemma extract_stmt_has_lifted_sched_prefix:
+    forall stmt constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
+    forall pi, In pi pis ->
+    pi_has_lifted_sched_prefix env_dim iter_depth sched_prefix pi
+with extract_stmts_has_lifted_sched_prefix:
+    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis ->
+    forall pi, In pi pis ->
+    pi_has_lifted_sched_prefix env_dim iter_depth sched_prefix pi.
+Proof.
+    - induction stmt as [lb ub body IHbody|i es|stmts|test body IHbody];
+        intros constrs env_dim iter_depth sched_prefix pis Hext pi Hin.
+      + eapply extract_stmt_loop_success_inv in Hext.
+        destruct Hext as (lbc & ubc & Hlb & Hub & Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k & tail & Hdepth & Hsched).
+        unfold pi_has_lifted_sched_prefix.
+        exists (S k).
+        exists (lift_affine_list_n k
+          [((1%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)] ++ tail).
+        split.
+        * lia.
+        * rewrite Hsched.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite lift_affine_list_n_succ.
+          rewrite app_assoc.
+          reflexivity.
+      + eapply extract_stmt_instr_success_inv in Hext.
+        destruct Hext as (tf & w & r & Htf & Hacc & Hpis).
+        subst pis.
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; [|contradiction].
+        subst pi.
+        unfold pi_has_lifted_sched_prefix.
+        exists 0%nat.
+        exists ([]: list (list Z * Z)).
+        split.
+        * rewrite Nat.add_0_r.
+          reflexivity.
+        * simpl.
+          rewrite app_nil_r.
+          reflexivity.
+      + eapply extract_stmt_seq_success_inv in Hext.
+        eapply extract_stmts_has_lifted_sched_prefix; eauto.
+      + eapply extract_stmt_guard_success_inv in Hext.
+        destruct Hext as (test_constrs & Htest & Hbody).
+        eapply IHbody in Hbody; eauto.
+    - induction stmts as [|stmt stmts' IHstmts']; intros constrs env_dim iter_depth sched_prefix pos pis Hext pi Hin.
+      + eapply extract_stmts_nil_success_inv in Hext.
+        subst pis.
+        contradiction.
+      + eapply extract_stmts_cons_success_inv in Hext.
+        destruct Hext as (pis1 & pis2 & Hstmt & Htl & Hpis).
+        subst pis.
+        eapply in_app_or in Hin.
+        destruct Hin as [Hin1|Hin2].
+        * eapply extract_stmt_has_lifted_sched_prefix in Hstmt; eauto.
+          destruct Hstmt as (k & tail & Hdepth & Hsched).
+          unfold pi_has_lifted_sched_prefix.
+          exists k.
+          exists (lift_affine_list_n k
+            [(repeat 0%Z (env_dim + iter_depth)%nat, Z.of_nat pos)] ++ tail).
+          split; auto.
+          rewrite Hsched.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite app_assoc.
+          reflexivity.
         * eapply IHstmts'; eauto.
 Qed.
 
@@ -1876,6 +1971,50 @@ Proof.
     rewrite <- Hlenrev in Hbase.
     rewrite in_poly_lift_affine_list_n_app in Hbase.
     exact Hbase.
+Qed.
+
+Lemma flattened_point_schedule_has_top_prefix:
+    forall stmt constrs env_dim sched_prefix pis envv ipl ip,
+    extract_stmt stmt constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++ tsuf.
+Proof.
+    intros stmt constrs env_dim sched_prefix pis envv ipl ip
+      Hext Hflat Hlenenv Hip.
+    destruct Hflat as (Hprefix & Hchar & Hnodup & Hsortednp).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    pose proof Hlenidx as Hlenidx0.
+    eapply extract_stmt_has_lifted_sched_prefix in Hext.
+    2: { eapply nth_error_In; eauto. }
+    destruct Hext as (k & tail & Hdepth & Hsched).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hindom & Htf & Hts & Hinst & Hdep).
+    rewrite Hsched in Hts.
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { rewrite Hlenenv in Hlenidx. exact Hlenidx. }
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx0. }
+    destruct Hpre as (suf & Hidx & Hsuflen).
+    rewrite Hidx in Hts.
+    rewrite rev_app_distr in Hts.
+    rewrite Hdepth in Hsuflen.
+    simpl in Hsuflen.
+    assert (Datatypes.length (rev suf) = k)%nat as Hlenrev.
+    { rewrite rev_length. lia. }
+    rewrite affine_product_app in Hts.
+    rewrite <- Hlenrev in Hts.
+    rewrite affine_product_lift_affine_list_n_app in Hts.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=env_dim) (env:=envv) (affs:=sched_prefix) in Hts.
+    2: { exact Hlenenv. }
+    exists (affine_product tail (rev suf ++ rev envv)).
+    exact Hts.
 Qed.
 
 Lemma flattened_guard_false_implies_nil:
