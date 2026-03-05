@@ -2135,6 +2135,115 @@ Proof.
       with (h1:=pos1) (h2:=pos2) (t1:=tsuf1) (t2:=tsuf2); eauto.
 Qed.
 
+Lemma filter_all_false_nil:
+    forall A (f: A -> bool) l,
+    (forall x, In x l -> f x = false) ->
+    filter f l = [].
+Proof.
+    intros A f l Hall.
+    induction l as [|a l IH]; simpl.
+    - reflexivity.
+    - rewrite Hall by (simpl; left; reflexivity).
+      apply IH.
+      intros x Hin.
+      eapply Hall.
+      simpl. right. exact Hin.
+Qed.
+
+Lemma filter_negb_all_false_id:
+    forall A (f: A -> bool) l,
+    (forall x, In x l -> f x = false) ->
+    filter (fun x => negb (f x)) l = l.
+Proof.
+    intros A f l Hall.
+    induction l as [|a l IH]; simpl.
+    - reflexivity.
+    - rewrite Hall by (simpl; left; reflexivity).
+      simpl.
+      f_equal.
+      apply IH.
+      intros x Hin.
+      eapply Hall.
+      simpl. right. exact Hin.
+Qed.
+
+Lemma sched_lt_not_sched_le_rev:
+    forall ip1 ip2,
+    lex_compare (PolyLang.ip_time_stamp ip1) (PolyLang.ip_time_stamp ip2) = Lt ->
+    ~ PolyLang.instr_point_sched_le ip2 ip1.
+Proof.
+    intros ip1 ip2 Hlt Hle.
+    unfold PolyLang.instr_point_sched_le in Hle.
+    destruct Hle as [Hrevlt|Hreveq].
+    - rewrite lex_compare_antisym in Hrevlt.
+      rewrite Hlt in Hrevlt.
+      discriminate.
+    - rewrite lex_compare_antisym in Hreveq.
+      rewrite Hlt in Hreveq.
+      discriminate.
+Qed.
+
+Lemma sorted_sched_head_le_all:
+    forall a l x,
+    Sorted PolyLang.instr_point_sched_le (a :: l) ->
+    In x l ->
+    PolyLang.instr_point_sched_le a x.
+Proof.
+    intros a l x Hsorted Hin.
+    pose proof (Sorted_extends PolyLang.instr_point_sched_le_trans Hsorted) as Hall.
+    eapply Forall_forall in Hall; eauto.
+Qed.
+
+Lemma sorted_sched_filter_split_if_cross_lt:
+    forall l (f: PolyLang.InstrPoint -> bool),
+    Sorted PolyLang.instr_point_sched_le l ->
+    (forall x y,
+      In x l ->
+      In y l ->
+      f x = true ->
+      f y = false ->
+      lex_compare (PolyLang.ip_time_stamp x) (PolyLang.ip_time_stamp y) = Lt) ->
+    l = filter f l ++ filter (fun x => negb (f x)) l.
+Proof.
+    intros l f Hsorted Hcross.
+    induction l as [|a l IH]; simpl.
+    - reflexivity.
+    - inversion Hsorted as [|a0 l0 Hsorted_tl Hhd]; subst.
+      destruct (f a) eqn:Hfa.
+      + simpl.
+        f_equal.
+        eapply IH.
+        * exact Hsorted_tl.
+        * intros x y Hinx Hiny Hfx Hfy.
+          eapply Hcross.
+          -- simpl. right. exact Hinx.
+          -- simpl. right. exact Hiny.
+          -- exact Hfx.
+          -- exact Hfy.
+      + assert (forall x, In x l -> f x = false) as Hallfalse.
+        {
+          intros x Hinx.
+          destruct (f x) eqn:Hfx; auto.
+          exfalso.
+          pose proof (Hcross x a) as Hlt.
+          specialize (Hlt (or_intror Hinx) (or_introl eq_refl) Hfx Hfa).
+          pose proof (sorted_sched_head_le_all a l x) as Hleax.
+          specialize (Hleax).
+          assert (Sorted PolyLang.instr_point_sched_le (a :: l)) as Hsorted_cons.
+          { constructor; assumption. }
+          specialize (Hleax Hsorted_cons Hinx).
+          eapply (sched_lt_not_sched_le_rev x a) in Hlt.
+          contradiction.
+        }
+        assert (filter f l = []) as Hnil.
+        { eapply filter_all_false_nil; eauto. }
+        assert (filter (fun x => negb (f x)) l = l) as Hnegb_id.
+        { eapply filter_negb_all_false_id; eauto. }
+        rewrite Hnil.
+        rewrite Hnegb_id.
+        reflexivity.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
@@ -2889,6 +2998,68 @@ Proof.
               + split.
                 * exact Hnlt.
                 * exact Hnge. }
+Qed.
+
+Lemma perm_partition_by_nth_threshold:
+    forall base ipl1 ipl2 sorted_ipl,
+    NoDup ipl1 ->
+    NoDup ipl2 ->
+    NoDup sorted_ipl ->
+    Permutation (ipl1 ++ ipl2) sorted_ipl ->
+    (forall ip, In ip ipl1 -> (PolyLang.ip_nth ip < base)%nat) ->
+    (forall ip, In ip ipl2 -> (base <= PolyLang.ip_nth ip)%nat) ->
+    Permutation ipl1 (filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) base) sorted_ipl) /\
+    Permutation ipl2 (filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) base)) sorted_ipl).
+Proof.
+    intros base ipl1 ipl2 sorted_ipl Hnd1 Hnd2 Hndsorted Hperm Hlt Hge.
+    pose proof (Permutation_sym Hperm) as Hperm_sym.
+    split.
+    - eapply NoDup_Permutation.
+      + exact Hnd1.
+      + eapply NoDup_filter.
+        exact Hndsorted.
+      + intros x.
+        split; intro Hin.
+        * eapply filter_In.
+          split.
+          { eapply Permutation_in; eauto.
+            eapply in_or_app. left. exact Hin. }
+          { eapply Nat.ltb_lt.
+            eapply Hlt; eauto. }
+        * eapply filter_In in Hin.
+          destruct Hin as [Hins Hpred].
+          eapply Permutation_in in Hins; [|exact Hperm_sym].
+          eapply in_app_or in Hins.
+          destruct Hins as [Hin1|Hin2].
+          { exact Hin1. }
+          exfalso.
+          eapply Nat.ltb_lt in Hpred.
+          pose proof (Hge _ Hin2) as Hge'.
+          lia.
+    - eapply NoDup_Permutation.
+      + exact Hnd2.
+      + eapply NoDup_filter.
+        exact Hndsorted.
+      + intros x.
+        split; intro Hin.
+        * eapply filter_In.
+          split.
+          { eapply Permutation_in; eauto.
+            eapply in_or_app. right. exact Hin. }
+          { apply negb_true_iff.
+            eapply Nat.ltb_ge.
+            eapply Hge; eauto. }
+        * eapply filter_In in Hin.
+          destruct Hin as [Hins Hpred].
+          apply negb_true_iff in Hpred.
+          eapply Nat.ltb_ge in Hpred.
+          eapply Permutation_in in Hins; [|exact Hperm_sym].
+          eapply in_app_or in Hins.
+          destruct Hins as [Hin1|Hin2].
+          { exfalso.
+            pose proof (Hlt _ Hin1) as Hlt'.
+            lia. }
+          { exact Hin2. }
 Qed.
 
 Lemma nodup_all_eq_singleton:
