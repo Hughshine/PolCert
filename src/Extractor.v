@@ -2040,6 +2040,33 @@ Proof.
     exact Hts.
 Qed.
 
+Lemma lex_compare_cons_head_lt:
+    forall h1 h2 t1 t2,
+    (h1 < h2)%Z ->
+    lex_compare (h1 :: t1) (h2 :: t2) = Lt.
+Proof.
+    intros h1 h2 t1 t2 Hlt.
+    simpl.
+    destruct (h1 ?= h2) eqn:Hcmp; simpl.
+    - eapply Z.compare_eq_iff in Hcmp. lia.
+    - reflexivity.
+    - eapply Z.compare_gt_iff in Hcmp. lia.
+Qed.
+
+Lemma instr_point_sched_le_from_cons_head_lt:
+    forall ip1 ip2 h1 h2 t1 t2,
+    PolyLang.ip_time_stamp ip1 = h1 :: t1 ->
+    PolyLang.ip_time_stamp ip2 = h2 :: t2 ->
+    (h1 < h2)%Z ->
+    PolyLang.instr_point_sched_le ip1 ip2.
+Proof.
+    intros ip1 ip2 h1 h2 t1 t2 Hts1 Hts2 Hlt.
+    unfold PolyLang.instr_point_sched_le.
+    left.
+    rewrite Hts1, Hts2.
+    eapply lex_compare_cons_head_lt; eauto.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
