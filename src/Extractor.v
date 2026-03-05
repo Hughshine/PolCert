@@ -4817,6 +4817,25 @@ Proof.
       eapply filter_all_true_id.
       exact Halltrue.
     }
+    set (in_loop_range :=
+      fun ip : PolyLang.InstrPoint =>
+        andb (negb (Z.ltb (head_ts ip) lbv))
+             (Z.ltb (head_ts ip) ubv)).
+    assert (Hrange_eq_sorted:
+      filter in_loop_range sorted_ipl = sorted_ipl).
+    {
+      eapply filter_all_true_id.
+      intros ip Hin.
+      unfold in_loop_range.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      rewrite andb_true_iff_local.
+      split.
+      - eapply Bool.negb_true_iff.
+        eapply Z.ltb_ge.
+        lia.
+      - eapply Z.ltb_lt.
+        lia.
+    }
     (*
       Remaining work (single hole):
       1) Refine sorted_ipl into per-iteration slices over Zrange lbv ubv
