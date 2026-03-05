@@ -2551,6 +2551,18 @@ Proof.
       simpl. right. exact Hin.
 Qed.
 
+Lemma filter_andb:
+    forall A (f g: A -> bool) l,
+    filter (fun x => andb (f x) (g x)) l = filter g (filter f l).
+Proof.
+    intros A f g l.
+    induction l as [|a l IH]; simpl.
+    - reflexivity.
+    - destruct (f a) eqn:Hfa; simpl.
+      + destruct (g a); simpl; rewrite IH; reflexivity.
+      + rewrite IH; reflexivity.
+Qed.
+
 Lemma filter_negb_all_false_id:
     forall A (f: A -> bool) l,
     (forall x, In x l -> f x = false) ->
@@ -2731,6 +2743,149 @@ Proof.
     replace (pfx ++ [iy] ++ ty) with (pfx ++ (iy :: ty)) by reflexivity.
     eapply lex_compare_prefix_cons_head_lt.
     exact Hlt.
+Qed.
+
+Lemma sorted_sched_filter_split_by_prefix_head_eq:
+    forall l pfx v,
+    Sorted PolyLang.instr_point_sched_le l ->
+    (forall ip, In ip l ->
+      exists i tsuf, PolyLang.ip_time_stamp ip = pfx ++ [i] ++ tsuf) ->
+    l =
+      filter (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) v) l ++
+      filter (fun ip => Z.eqb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) v) l ++
+      filter (fun ip => Z.ltb v (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z)) l.
+Proof.
+    intros l pfx v Hsorted Hhead.
+    set (head := fun ip : PolyLang.InstrPoint =>
+      nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z).
+    pose proof (
+      sorted_sched_filter_split_if_cross_lt
+        l
+        (fun ip => Z.ltb (head ip) v)
+        Hsorted
+    ) as Hsplit_lt.
+    assert (Hcross_lt:
+      forall x y,
+      In x l ->
+      In y l ->
+      Z.ltb (head x) v = true ->
+      Z.ltb (head y) v = false ->
+      lex_compare (PolyLang.ip_time_stamp x) (PolyLang.ip_time_stamp y) = Lt).
+    {
+      intros x y Hinx Hiny Hfx Hfy.
+      destruct (Hhead x Hinx) as [ix [tx Htsx]].
+      destruct (Hhead y Hiny) as [iy [ty Htsy]].
+      unfold head in Hfx, Hfy.
+      rewrite Htsx in Hfx.
+      rewrite Htsy in Hfy.
+      rewrite nth_after_prefix_singleton in Hfx.
+      rewrite nth_after_prefix_singleton in Hfy.
+      eapply Z.ltb_lt in Hfx.
+      eapply Z.ltb_ge in Hfy.
+      assert ((ix < iy)%Z) as Hlt by lia.
+      rewrite Htsx, Htsy.
+      replace (pfx ++ [ix] ++ tx) with (pfx ++ (ix :: tx)) by reflexivity.
+      replace (pfx ++ [iy] ++ ty) with (pfx ++ (iy :: ty)) by reflexivity.
+      eapply lex_compare_prefix_cons_head_lt.
+      exact Hlt.
+    }
+    specialize (Hsplit_lt Hcross_lt).
+    set (l_ge :=
+      filter (fun ip => negb (Z.ltb (head ip) v)) l).
+    assert (Hsorted_ge:
+      Sorted PolyLang.instr_point_sched_le l_ge).
+    {
+      unfold l_ge.
+      eapply sorted_sched_filter.
+      exact Hsorted.
+    }
+    pose proof (
+      sorted_sched_filter_split_if_cross_lt
+        l_ge
+        (fun ip => Z.eqb (head ip) v)
+        Hsorted_ge
+    ) as Hsplit_eq_in_ge.
+    assert (Hcross_eq:
+      forall x y,
+      In x l_ge ->
+      In y l_ge ->
+      Z.eqb (head x) v = true ->
+      Z.eqb (head y) v = false ->
+      lex_compare (PolyLang.ip_time_stamp x) (PolyLang.ip_time_stamp y) = Lt).
+    {
+      intros x y Hinx Hiny Hfx Hfy.
+      apply filter_In in Hinx.
+      apply filter_In in Hiny.
+      destruct Hinx as [Hinx Hxge].
+      destruct Hiny as [Hiny Hyge].
+      destruct (Hhead x Hinx) as [ix [tx Htsx]].
+      destruct (Hhead y Hiny) as [iy [ty Htsy]].
+      unfold head in Hfx, Hfy, Hxge, Hyge.
+      rewrite Htsx in Hfx.
+      rewrite Htsy in Hfy.
+      rewrite Htsx in Hxge.
+      rewrite Htsy in Hyge.
+      rewrite nth_after_prefix_singleton in Hfx.
+      rewrite nth_after_prefix_singleton in Hfy.
+      rewrite nth_after_prefix_singleton in Hxge.
+      rewrite nth_after_prefix_singleton in Hyge.
+      eapply Z.eqb_eq in Hfx.
+      eapply Z.eqb_neq in Hfy.
+      eapply Bool.negb_true_iff in Hxge.
+      eapply Bool.negb_true_iff in Hyge.
+      eapply Z.ltb_ge in Hxge.
+      eapply Z.ltb_ge in Hyge.
+      assert ((ix < iy)%Z) as Hlt by lia.
+      rewrite Htsx, Htsy.
+      replace (pfx ++ [ix] ++ tx) with (pfx ++ (ix :: tx)) by reflexivity.
+      replace (pfx ++ [iy] ++ ty) with (pfx ++ (iy :: ty)) by reflexivity.
+      eapply lex_compare_prefix_cons_head_lt.
+      exact Hlt.
+    }
+    specialize (Hsplit_eq_in_ge Hcross_eq).
+    unfold l_ge in Hsplit_eq_in_ge.
+    rewrite Hsplit_lt at 1.
+    rewrite Hsplit_eq_in_ge at 1.
+    repeat rewrite app_assoc.
+    f_equal.
+    - f_equal.
+      rewrite <- filter_andb.
+      eapply filter_ext_in.
+      intros ip Hin.
+      destruct (Z.eqb (head ip) v) eqn:Heq; simpl.
+      + eapply Z.eqb_eq in Heq.
+        subst.
+        rewrite Z.ltb_irrefl.
+        rewrite Z.eqb_refl.
+        simpl.
+        reflexivity.
+      + unfold head in Heq.
+        rewrite Heq.
+        rewrite andb_false_r.
+        reflexivity.
+    - rewrite <- filter_andb.
+      eapply filter_ext_in.
+      intros ip Hin.
+      destruct (Z.ltb (head ip) v) eqn:Hltv; simpl.
+      + eapply Z.ltb_lt in Hltv.
+        assert ((v <? head ip)%Z = false) as Hn.
+        { eapply Z.ltb_ge. lia. }
+        unfold head in Hn |- *.
+        rewrite Hn.
+        reflexivity.
+      + destruct (Z.eqb (head ip) v) eqn:Heq; simpl.
+        * eapply Z.eqb_eq in Heq.
+          subst.
+          rewrite Z.ltb_irrefl.
+          reflexivity.
+        * eapply Z.ltb_ge in Hltv.
+          eapply Z.eqb_neq in Heq.
+          assert ((v < head ip)%Z) as Hgt by lia.
+          assert ((v <? head ip)%Z = true) as Hv.
+          { eapply Z.ltb_lt. exact Hgt. }
+          unfold head in Hv |- *.
+          rewrite Hv.
+          reflexivity.
 Qed.
 
 Lemma flattened_guard_false_implies_nil:
@@ -4738,12 +4893,77 @@ Proof.
         unfold pfx.
         reflexivity.
     }
+    assert (Hsplit_head_eq:
+      forall i,
+      sorted_ipl =
+        filter
+          (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+          sorted_ipl ++
+        filter
+          (fun ip => Z.eqb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+          sorted_ipl ++
+        filter
+          (fun ip => Z.ltb i (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z))
+          sorted_ipl).
+    {
+      intros i.
+      eapply sorted_sched_filter_split_by_prefix_head_eq.
+      - exact Hsorted.
+      - intros ip Hin.
+        destruct (Hpoint_ts_head ip Hin) as [j [tsuf Hts]].
+        exists j.
+        exists tsuf.
+        rewrite Hts.
+        unfold pfx.
+        reflexivity.
+    }
     set (head_ts := fun ip : PolyLang.InstrPoint =>
       nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z).
     set (lbv := Loop.eval_expr (rev envv) lb).
     set (ubv := Loop.eval_expr (rev envv) ub).
     pose proof (Hsplit_head_bound lbv) as Hsplit_at_lb.
     pose proof (Hsplit_head_bound ubv) as Hsplit_at_ub.
+    assert (Hsem_split_head_eq:
+      forall i,
+      exists st_lt st_eq,
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.ltb (head_ts ip) i) sorted_ipl)
+          st1 st_lt /\
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.eqb (head_ts ip) i) sorted_ipl)
+          st_lt st_eq /\
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.ltb i (head_ts ip)) sorted_ipl)
+          st_eq st2).
+    {
+      intros i.
+      pose proof (Hsplit_head_eq i) as Hspliti.
+      unfold head_ts in Hspliti.
+      pose proof (
+        instr_point_list_semantics_split_by_eq_app
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+            sorted_ipl)
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.eqb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+            sorted_ipl ++
+           filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.ltb i (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z))
+            sorted_ipl)
+          sorted_ipl st1 st2
+          Hspliti Hipls
+      ) as Hsplit1.
+      destruct Hsplit1 as [st_lt [Hlt Hrest]].
+      eapply instr_point_list_semantics_app_inv in Hrest.
+      destruct Hrest as [st_eq [Heq Hgt]].
+      exists st_lt.
+      exists st_eq.
+      split; [exact Hlt|].
+      split; [exact Heq|exact Hgt].
+    }
     assert (Hpoint_head_in_bounds:
       forall ip, In ip sorted_ipl ->
       (lbv <= head_ts ip < ubv)%Z).
