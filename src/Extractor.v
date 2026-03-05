@@ -2535,6 +2535,22 @@ Proof.
       simpl. right. exact Hin.
 Qed.
 
+Lemma filter_all_true_id:
+    forall A (f: A -> bool) l,
+    (forall x, In x l -> f x = true) ->
+    filter f l = l.
+Proof.
+    intros A f l Hall.
+    induction l as [|a l IH]; simpl.
+    - reflexivity.
+    - rewrite Hall by (simpl; left; reflexivity).
+      f_equal.
+      apply IH.
+      intros x Hin.
+      eapply Hall.
+      simpl. right. exact Hin.
+Qed.
+
 Lemma filter_negb_all_false_id:
     forall A (f: A -> bool) l,
     (forall x, In x l -> f x = false) ->
@@ -4728,15 +4744,87 @@ Proof.
     set (ubv := Loop.eval_expr (rev envv) ub).
     pose proof (Hsplit_head_bound lbv) as Hsplit_at_lb.
     pose proof (Hsplit_head_bound ubv) as Hsplit_at_ub.
+    assert (Hpoint_head_in_bounds:
+      forall ip, In ip sorted_ipl ->
+      (lbv <= head_ts ip < ubv)%Z).
+    {
+      intros ip Hin.
+      eapply Permutation_in in Hin.
+      2: { exact (Permutation_sym Hperm). }
+      destruct (
+        flattened_point_loop_bounds_and_timestamp_head
+          lb ub body constrs sched_prefix varctxt
+          pis envv ipl ip Hextract_loop Hflat Hlenenv Hin
+      ) as [i [tsuf [Hbounds Hts]]].
+      unfold head_ts.
+      rewrite Hts.
+      unfold pfx.
+      rewrite nth_after_prefix_singleton.
+      exact Hbounds.
+    }
+    assert (Hlt_lb_nil:
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl = []).
+    {
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      eapply Z.ltb_ge.
+      lia.
+    }
+    assert (Hge_ub_nil:
+      filter
+        (fun ip : PolyLang.InstrPoint =>
+          negb (Z.ltb (head_ts ip) ubv))
+        sorted_ipl = []).
+    {
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      eapply Bool.negb_false_iff.
+      eapply Z.ltb_lt.
+      lia.
+    }
+    assert (Hge_lb_eq_sorted:
+      filter
+        (fun ip : PolyLang.InstrPoint =>
+          negb (Z.ltb (head_ts ip) lbv))
+        sorted_ipl = sorted_ipl).
+    {
+      assert (Hallfalse:
+        forall ip, In ip sorted_ipl ->
+          Z.ltb (head_ts ip) lbv = false).
+      {
+        intros ip Hin.
+        pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+        eapply Z.ltb_ge.
+        lia.
+      }
+      eapply filter_negb_all_false_id in Hallfalse.
+      exact Hallfalse.
+    }
+    assert (Hlt_ub_eq_sorted:
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) ubv) sorted_ipl = sorted_ipl).
+    {
+      assert (Halltrue:
+        forall ip, In ip sorted_ipl ->
+          Z.ltb (head_ts ip) ubv = true).
+      {
+        intros ip Hin.
+        pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+        eapply Z.ltb_lt.
+        lia.
+      }
+      eapply filter_all_true_id.
+      exact Halltrue.
+    }
     (*
       Remaining work (single hole):
-      1) Show canonical relation: for each point, timestamp-head (head_ts ip) is
-         exactly the loop iterator constrained by domain bounds;
-      2) Use Hsplit_at_lb/Hsplit_at_ub plus (1) to isolate points with lb <= head < ub;
-      3) Refine split to per-iteration slices over Zrange lbv ubv;
-      4) For each slice, derive body semantics under env (i :: rev envv);
-      5) Rebuild IterSem.iter_semantics and apply Loop.LLoop;
-      6) Thread State.eq to conclude final state equality with st2.
+      1) Refine sorted_ipl into per-iteration slices over Zrange lbv ubv
+         (using head_ts and sortedness).
+      2) For each slice, derive body semantics under env (i :: rev envv)
+         from depth-1 body extraction (Hbodyext).
+      3) Rebuild IterSem.iter_semantics and apply Loop.LLoop.
+      4) Thread State.eq to conclude final state equality with st2.
     *)
 Admitted.
 
