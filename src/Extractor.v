@@ -1035,6 +1035,19 @@ Proof.
     eapply guard_constraints_complete in Hin; eauto.
 Qed.
 
+Lemma guard_constraints_sound_in_poly:
+    forall test env cols constrs test_constrs,
+    test_to_aff test = Okk test_constrs ->
+    Loop.eval_test env test = true ->
+    Datatypes.length env = cols ->
+    in_poly env constrs = true ->
+    in_poly env (constrs ++ normalize_affine_list cols test_constrs) = true.
+Proof.
+    intros test env cols constrs test_constrs Htest Heval Hlen Hin.
+    unfold in_poly in *.
+    eapply guard_constraints_sound; eauto.
+Qed.
+
 Lemma wf_affine_expr_true_expr_to_aff_success:
     forall e,
     wf_affine_expr e = true ->
@@ -1241,6 +1254,32 @@ Proof.
     destruct Hin as [Hbase [Hlbc Hubc]].
     split; auto.
     eapply loop_bounds_sound; eauto.
+Qed.
+
+Lemma loop_constraints_sound_lifted:
+    forall lb ub env depth constrs lbc ubc i,
+    Datatypes.length env = depth ->
+    lb_to_constr lb depth = Okk lbc ->
+    ub_to_constr ub depth = Okk ubc ->
+    in_poly env constrs = true ->
+    (Loop.eval_expr env lb <= i < Loop.eval_expr env ub)%Z ->
+    in_poly (i :: env) (lift_affine_list constrs ++ [lbc; ubc]) = true.
+Proof.
+    intros lb ub env depth constrs lbc ubc i Hlen Hlb Hub Hconstr Hbounds.
+    unfold in_poly in *.
+    rewrite forallb_app.
+    apply andb_true_iff_local.
+    split.
+    - rewrite lift_affine_list_satisfies_constraint.
+      exact Hconstr.
+    - simpl.
+      apply andb_true_iff_local.
+      split.
+      + eapply (proj2 (lb_to_constr_sound lb env depth lbc i Hlen Hlb)); lia.
+      + apply andb_true_iff_local.
+        split.
+        * eapply (proj2 (ub_to_constr_sound ub env depth ubc i Hlen Hub)); lia.
+        * reflexivity.
 Qed.
 
 Lemma in_poly_app_inv:
@@ -2067,6 +2106,33 @@ Proof.
     eapply lex_compare_cons_head_lt; eauto.
 Qed.
 
+Lemma seq_pos_points_order:
+    forall stmt1 stmt2 constrs env_dim pos1 pos2 pis1 pis2 envv ipl1 ipl2 ip1 ip2,
+    (pos1 < pos2)%Z ->
+    extract_stmt stmt1 constrs env_dim 0%nat [(repeat 0%Z env_dim, pos1)] = Okk pis1 ->
+    extract_stmt stmt2 constrs env_dim 0%nat [(repeat 0%Z env_dim, pos2)] = Okk pis2 ->
+    PolyLang.flatten_instrs envv pis1 ipl1 ->
+    PolyLang.flatten_instrs envv pis2 ipl2 ->
+    Datatypes.length envv = env_dim ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    PolyLang.instr_point_sched_le ip1 ip2.
+Proof.
+    intros stmt1 stmt2 constrs env_dim pos1 pos2 pis1 pis2 envv ipl1 ipl2 ip1 ip2
+      Hlt Hext1 Hext2 Hflat1 Hflat2 Hlen Hip1 Hip2.
+    eapply flattened_point_seq_pos_timestamp
+      with (stmt:=stmt1) (constrs:=constrs) (pis:=pis1)
+           (envv:=envv) (ipl:=ipl1) (ip:=ip1) in Hext1; eauto.
+    destruct Hext1 as [tsuf1 Hts1].
+    eapply flattened_point_seq_pos_timestamp
+      with (stmt:=stmt2) (constrs:=constrs) (pis:=pis2)
+           (envv:=envv) (ipl:=ipl2) (ip:=ip2) in Hext2; eauto.
+    destruct Hext2 as [tsuf2 Hts2].
+    simpl in Hts1, Hts2.
+    eapply instr_point_sched_le_from_cons_head_lt
+      with (h1:=pos1) (h2:=pos2) (t1:=tsuf1) (t2:=tsuf2); eauto.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
@@ -2101,6 +2167,57 @@ Proof.
                (ip:=ip); eauto.
         simpl. left. reflexivity.
       }
+      eapply test_false_implies_not_in_poly_normalized in Hevalfalse; eauto.
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length (rev envv)) test_constrs) = true) as Hguardin'.
+      {
+        rewrite rev_length.
+        rewrite <- Hlenenv.
+        exact Hguardin.
+      }
+      rewrite Hguardin' in Hevalfalse.
+      discriminate.
+Qed.
+
+Lemma flattened_guard_false_implies_nil_constrs:
+    forall test body constrs sched_prefix varctxt vars envv pis ipl st1,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) constrs (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Instr.InitEnv varctxt envv st1 ->
+    Loop.eval_test (rev envv) test = false ->
+    ipl = [].
+Proof.
+    intros test body constrs sched_prefix varctxt vars envv pis ipl st1
+      Hwf Hext Hchk Hflat Hinit Hevalfalse.
+    eapply extract_stmt_guard_success_inv in Hext.
+    destruct Hext as (test_constrs & Htest & Hbodyext).
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    simpl in Hbodyext.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+    destruct ipl as [|ip ipl'].
+    - reflexivity.
+    - exfalso.
+      assert (in_poly (rev envv)
+        (constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardall.
+      {
+        eapply flattened_point_satisfies_top_constraints
+          with (stmt:=body)
+               (constrs:=constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs)
+               (env_dim:=Datatypes.length varctxt)
+               (sched_prefix:=sched_prefix)
+               (pis:=pis)
+               (envv:=envv)
+               (ipl:=ip :: ipl')
+               (ip:=ip); eauto.
+        simpl. left. reflexivity.
+      }
+      eapply in_poly_guard_split in Hguardall.
+      destruct Hguardall as [_ Hguardnorm].
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardin.
+      { unfold in_poly. exact Hguardnorm. }
       eapply test_false_implies_not_in_poly_normalized in Hevalfalse; eauto.
       assert (in_poly (rev envv)
         (normalize_affine_list (Datatypes.length (rev envv)) test_constrs) = true) as Hguardin'.
@@ -2180,6 +2297,44 @@ Proof.
     {
       eapply flattened_guard_false_implies_nil
         with (test:=test) (body:=body) (varctxt:=varctxt) (vars:=vars) (st1:=st1); eauto.
+    }
+    subst ipl.
+    eapply Permutation_nil in Hperm.
+    subst sorted_ipl.
+    assert (State.eq st1 st2) as Heq12.
+    { inversion Hipls; subst; auto. }
+    exists st1.
+    split.
+    - eapply Loop.LGuardFalse.
+      exact Hevalfalse.
+    - eapply State.eq_sym.
+      exact Heq12.
+Qed.
+
+Lemma guard_false_core_case_constrs:
+    forall test body constrs sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) constrs (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Instr.Compat vars st1 ->
+    Instr.NonAlias st1 ->
+    Instr.InitEnv varctxt envv st1 ->
+    Loop.eval_test (rev envv) test = false ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Guard test body) (rev envv) st1 st2' /\
+      State.eq st2 st2'.
+Proof.
+    intros test body constrs sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hext Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit Hevalfalse.
+    assert (Hnil: ipl = []).
+    {
+      eapply flattened_guard_false_implies_nil_constrs
+        with (test:=test) (body:=body) (constrs:=constrs) (sched_prefix:=sched_prefix)
+             (varctxt:=varctxt) (vars:=vars) (st1:=st1); eauto.
     }
     subst ipl.
     eapply Permutation_nil in Hperm.
@@ -2310,6 +2465,71 @@ Proof.
       - unfold PolyLang.belongs_to.
         simpl.
         rewrite Hpoly.
+        simpl.
+        repeat split; reflexivity.
+      - split.
+        + reflexivity.
+        + rewrite Hdepth. simpl. lia.
+    }
+    assert (forall ip, In ip ipl -> ip = ip0) as Hall.
+    {
+      intros ip Hin.
+      pose proof (proj1 (Hchar ip) Hin) as Hmem.
+      destruct Hmem as (Hbel & Hnth & Hlen).
+      pose proof (Hprefix ip Hin) as Hpre.
+      pose proof (firstn_length_decompose envv (PolyLang.ip_index ip) 0 Hpre) as Hsplit.
+      assert (Datatypes.length (PolyLang.ip_index ip) = Datatypes.length envv + 0)%nat as Hlen0 by lia.
+      specialize (Hsplit Hlen0).
+      destruct Hsplit as (suf & Hidx & Hsuflen).
+      assert (suf = []).
+      { destruct suf; simpl in Hsuflen; try lia; reflexivity. }
+      subst suf.
+      rewrite app_nil_r in Hidx.
+      subst.
+      unfold PolyLang.belongs_to in Hbel.
+      destruct Hbel as (_ & Htf & Hts & Hinst & Hdep).
+      destruct ip.
+      simpl in *.
+      subst.
+      reflexivity.
+    }
+    exists ip0.
+    split.
+    - eapply nodup_all_eq_singleton; eauto.
+    - repeat split; reflexivity.
+Qed.
+
+Lemma flatten_instr_nth_depth0_singleton_if_in_poly:
+    forall envv n pi ipl,
+    PolyLang.pi_depth pi = 0%nat ->
+    in_poly envv (PolyLang.pi_poly pi) = true ->
+    PolyLang.flatten_instr_nth envv n pi ipl ->
+    exists ip0,
+      ipl = [ip0] /\
+      PolyLang.ip_nth ip0 = n /\
+      PolyLang.ip_index ip0 = envv /\
+      PolyLang.ip_transformation ip0 = PolyLang.pi_transformation pi /\
+      PolyLang.ip_time_stamp ip0 = affine_product (PolyLang.pi_schedule pi) envv /\
+      PolyLang.ip_instruction ip0 = PolyLang.pi_instr pi /\
+      PolyLang.ip_depth ip0 = PolyLang.pi_depth pi.
+Proof.
+    intros envv n pi ipl Hdepth Hpolyin Hflat.
+    destruct Hflat as (Hprefix & Hchar & Hnodup & _).
+    set (ip0 := {|
+      PolyLang.ip_nth := n;
+      PolyLang.ip_index := envv;
+      PolyLang.ip_transformation := PolyLang.pi_transformation pi;
+      PolyLang.ip_time_stamp := affine_product (PolyLang.pi_schedule pi) envv;
+      PolyLang.ip_instruction := PolyLang.pi_instr pi;
+      PolyLang.ip_depth := PolyLang.pi_depth pi;
+    |}).
+    assert (In ip0 ipl) as Hin0.
+    {
+      eapply (proj2 (Hchar ip0)).
+      split.
+      - unfold PolyLang.belongs_to.
+        simpl.
+        rewrite Hpolyin.
         simpl.
         repeat split; reflexivity.
       - split.
@@ -2554,6 +2774,74 @@ Proof.
       exact Heq.
 Qed.
 
+Lemma instr_branch_core_with_constrs:
+    forall i es constrs sched_prefix varctxt envv ipl sorted_ipl st1 st2 tf w r,
+    exprlist_to_aff es (Datatypes.length varctxt) = Okk tf ->
+    resolve_access_functions i = Some (w, r) ->
+    in_poly (rev envv) constrs = true ->
+    PolyLang.flatten_instrs envv
+      [{|
+        PolyLang.pi_depth := 0;
+        PolyLang.pi_instr := i;
+        PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
+        PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
+        PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
+        PolyLang.pi_waccess := normalize_access_list_rev (Datatypes.length varctxt) w;
+        PolyLang.pi_raccess := normalize_access_list_rev (Datatypes.length varctxt) r;
+      |}] ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Instr.InitEnv varctxt envv st1 ->
+    exists st2',
+      Loop.loop_semantics (Loop.Instr i es) (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros i es constrs sched_prefix varctxt envv ipl sorted_ipl st1 st2 tf w r
+      Htf Hacc Hconstr Hflat Hperm Hsorted Hipls Hinit.
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlen.
+    assert (in_poly envv
+      (normalize_affine_list_rev (Datatypes.length varctxt) constrs) = true) as Hdom.
+    {
+      unfold in_poly in *.
+      rewrite normalize_affine_list_rev_satisfies_constraint
+        with (cols:=Datatypes.length varctxt) (env:=envv) (affs:=constrs).
+      exact Hconstr.
+      symmetry; exact Hlen.
+    }
+    assert (affine_product (normalize_affine_list_rev (Datatypes.length varctxt) tf) envv =
+            map (Loop.eval_expr (rev envv)) es) as Haff.
+    {
+      eapply exprlist_to_aff_rev_normalized_correct; eauto.
+    }
+    eapply flatten_instrs_singleton_inv in Hflat.
+    eapply flatten_instr_nth_depth0_singleton_if_in_poly in Hflat.
+    2: { reflexivity. }
+    2: { exact Hdom. }
+    destruct Hflat as (ip0 & Hipl & Hnth & Hidx & Htr & Hts & Hinstr & Hdep).
+    subst ipl.
+    eapply permutation_singleton in Hperm.
+    subst sorted_ipl.
+    eapply instr_point_list_semantics_singleton_inv in Hipls.
+    destruct Hipls as (stmid & Hipsema & Heq).
+    inversion Hipsema as [wcs rcs Hipinstr]; clear Hipsema.
+    assert (affine_product (PolyLang.ip_transformation ip0) (PolyLang.ip_index ip0) =
+            map (Loop.eval_expr (rev envv)) es) as Hargs_rev.
+    {
+      rewrite Htr.
+      rewrite Hidx.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) by lia.
+      exact Haff.
+    }
+    rewrite Hargs_rev in Hipinstr.
+    rewrite Hinstr in Hipinstr.
+    exists stmid.
+    split.
+    - eapply Loop.LInstr.
+      eauto.
+    - eapply State.eq_sym.
+      exact Heq.
+Qed.
+
 Lemma extract_stmt_to_loop_semantics_core:
     forall stmt varctxt vars pis envv ipl sorted_ipl st1 st2,
     wf_scop_stmt stmt = true ->
@@ -2573,13 +2861,13 @@ Proof.
       Hwf Hextract Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit.
     destruct stmt as [lb ub body | i es | stmts | test body].
     2:{
-      eapply extract_stmt_instr_success_inv in Hextract.
-      destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
-      subst pis.
-      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Htf by lia.
-      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hflat by lia.
-      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hchk by lia.
-      eapply (instr_branch_core i es varctxt envv ipl sorted_ipl st1 st2 tf w r); eauto.
+    eapply extract_stmt_instr_success_inv in Hextract.
+    destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
+    subst pis.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Htf by lia.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hflat by lia.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hchk by lia.
+    eapply (instr_branch_core i es varctxt envv ipl sorted_ipl st1 st2 tf w r); eauto.
     }
 Admitted.
 
