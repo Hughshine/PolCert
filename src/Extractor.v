@@ -331,6 +331,156 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma lift_affine_satisfies_constraint:
+    forall i env aff,
+    satisfies_constraint (i :: env) (lift_affine aff) =
+    satisfies_constraint env aff.
+Proof.
+    intros i env [v c].
+    unfold lift_affine.
+    unfold satisfies_constraint.
+    simpl.
+    rewrite Z.mul_0_r.
+    reflexivity.
+Qed.
+
+Lemma lift_affine_list_satisfies_constraint:
+    forall i env affs,
+    forallb (satisfies_constraint (i :: env)) (lift_affine_list affs) =
+    forallb (satisfies_constraint env) affs.
+Proof.
+    intros i env affs.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite lift_affine_satisfies_constraint.
+      rewrite IH.
+      reflexivity.
+Qed.
+
+Lemma in_poly_lift_affine_list:
+    forall i env affs,
+    in_poly (i :: env) (lift_affine_list affs) = in_poly env affs.
+Proof.
+    intros i env affs.
+    unfold in_poly.
+    eapply lift_affine_list_satisfies_constraint.
+Qed.
+
+Lemma lift_affine_eval:
+    forall i env aff,
+    dot_product (fst (lift_affine aff)) (i :: env) + snd (lift_affine aff) =
+    dot_product (fst aff) env + snd aff.
+Proof.
+    intros i env [v c].
+    unfold lift_affine.
+    simpl.
+    lia.
+Qed.
+
+Lemma lift_affine_list_affine_product:
+    forall i env affs,
+    affine_product (lift_affine_list affs) (i :: env) =
+    affine_product affs env.
+Proof.
+    intros i env affs.
+    induction affs as [|aff affs IH]; simpl.
+    - reflexivity.
+    - rewrite lift_affine_eval.
+      rewrite IH.
+      reflexivity.
+Qed.
+
+Lemma dot_product_repeat_zero_left:
+    forall n l,
+    dot_product (repeat 0%Z n) l = 0%Z.
+Proof.
+    induction n as [|n IH]; intros l; simpl.
+    - destruct l; reflexivity.
+    - destruct l as [|x l']; simpl.
+      + reflexivity.
+      + rewrite IH.
+        lia.
+Qed.
+
+Lemma affine_product_seq_row:
+    forall cols env pos,
+    affine_product [(repeat 0%Z cols, pos)] env = [pos].
+Proof.
+    intros cols env pos.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    reflexivity.
+Qed.
+
+Lemma affine_product_loop_row:
+    forall cols i env,
+    affine_product [((1%Z :: repeat 0%Z cols), 0%Z)] (i :: env) = [i].
+Proof.
+    intros cols i env.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    f_equal.
+    lia.
+Qed.
+
+Lemma affine_product_app:
+    forall m1 m2 p,
+    affine_product (m1 ++ m2) p = affine_product m1 p ++ affine_product m2 p.
+Proof.
+    intros m1 m2 p.
+    unfold affine_product.
+    rewrite map_app.
+    reflexivity.
+Qed.
+
+Lemma affine_product_sched_prefix_seq:
+    forall sched cols env pos,
+    affine_product (sched ++ [(repeat 0%Z cols, pos)]) env =
+    affine_product sched env ++ [pos].
+Proof.
+    intros sched cols env pos.
+    rewrite affine_product_app.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    reflexivity.
+Qed.
+
+Lemma affine_product_sched_prefix_loop:
+    forall sched cols i env,
+    affine_product (lift_affine_list sched ++ [((1%Z :: repeat 0%Z cols), 0%Z)]) (i :: env) =
+    affine_product sched env ++ [i].
+Proof.
+    intros sched cols i env.
+    rewrite affine_product_app.
+    rewrite lift_affine_list_affine_product.
+    rewrite affine_product_loop_row.
+    reflexivity.
+Qed.
+
+Lemma in_poly_lift_app_cons2_inv:
+    forall i env constrs c1 c2,
+    in_poly (i :: env) (lift_affine_list constrs ++ [c1; c2]) = true ->
+    in_poly env constrs = true /\
+    satisfies_constraint (i :: env) c1 = true /\
+    satisfies_constraint (i :: env) c2 = true.
+Proof.
+    intros i env constrs c1 c2 Hin.
+    unfold in_poly in Hin.
+    rewrite forallb_app in Hin.
+    eapply andb_prop in Hin.
+    destruct Hin as [Hlift Htail].
+    simpl in Htail.
+    eapply andb_prop in Htail.
+    destruct Htail as [Hc1 Hrest].
+    eapply andb_prop in Hrest.
+    destruct Hrest as [Hc2 _].
+    split.
+    - unfold in_poly.
+      rewrite lift_affine_list_satisfies_constraint in Hlift.
+      exact Hlift.
+    - split; auto.
+Qed.
+
 Definition normalize_affine_rev (cols: nat) (aff: list Z * Z): (list Z * Z) :=
     let (v, c) := aff in (rev (resize cols v), c).
 
@@ -1021,6 +1171,22 @@ Proof.
     destruct Hbounds as [Hlbc Hrest].
     eapply andb_true_iff_local in Hrest.
     destruct Hrest as [Hubc _].
+    split; auto.
+    eapply loop_bounds_sound; eauto.
+Qed.
+
+Lemma loop_constraints_complete_lifted:
+    forall lb ub env depth constrs lbc ubc i,
+    Datatypes.length env = depth ->
+    lb_to_constr lb depth = Okk lbc ->
+    ub_to_constr ub depth = Okk ubc ->
+    in_poly (i :: env) (lift_affine_list constrs ++ [lbc; ubc]) = true ->
+    in_poly env constrs = true /\
+    (Loop.eval_expr env lb <= i < Loop.eval_expr env ub)%Z.
+Proof.
+    intros lb ub env depth constrs lbc ubc i Hlen Hlb Hub Hin.
+    eapply in_poly_lift_app_cons2_inv in Hin.
+    destruct Hin as [Hbase [Hlbc Hubc]].
     split; auto.
     eapply loop_bounds_sound; eauto.
 Qed.
