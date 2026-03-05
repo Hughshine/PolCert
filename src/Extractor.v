@@ -2086,6 +2086,87 @@ Proof.
       discriminate.
 Qed.
 
+Lemma flattened_guard_nonempty_implies_true:
+    forall test body varctxt vars envv pis ip ipl' st1,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) [] (Datatypes.length varctxt) 0%nat [] = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis (ip :: ipl') ->
+    Instr.InitEnv varctxt envv st1 ->
+    Loop.eval_test (rev envv) test = true.
+Proof.
+    intros test body varctxt vars envv pis ip ipl' st1
+      Hwf Hext Hchk Hflat Hinit.
+    eapply extract_stmt_guard_success_inv in Hext.
+    destruct Hext as (test_constrs & Htest & Hbodyext).
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    simpl in Hbodyext.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+    assert (in_poly (rev envv)
+      (normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardin.
+    {
+      eapply flattened_point_satisfies_top_constraints
+        with (stmt:=body)
+             (constrs:=normalize_affine_list (Datatypes.length varctxt) test_constrs)
+             (env_dim:=Datatypes.length varctxt)
+             (sched_prefix:=[])
+             (pis:=pis)
+             (envv:=envv)
+             (ipl:=ip :: ipl')
+             (ip:=ip); eauto.
+      simpl. left. reflexivity.
+    }
+    assert (in_poly (rev envv)
+      ([] ++ normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardin_app.
+    { simpl. exact Hguardin. }
+    assert (Datatypes.length (rev envv) = Datatypes.length varctxt) as Hlenrev.
+    { rewrite rev_length. symmetry. exact Hlenenv. }
+    pose proof (
+      guard_constraints_complete_in_poly
+        test (rev envv) (Datatypes.length varctxt) [] test_constrs
+        Htest Hlenrev Hguardin_app
+    ) as Hguardtrue.
+    destruct Hguardtrue as [_ Heval].
+    exact Heval.
+Qed.
+
+Lemma guard_false_core_case:
+    forall test body varctxt vars pis envv ipl sorted_ipl st1 st2,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) [] (Datatypes.length varctxt) 0%nat [] = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Instr.Compat vars st1 ->
+    Instr.NonAlias st1 ->
+    Instr.InitEnv varctxt envv st1 ->
+    Loop.eval_test (rev envv) test = false ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Guard test body) (rev envv) st1 st2' /\
+      State.eq st2 st2'.
+Proof.
+    intros test body varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hext Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit Hevalfalse.
+    assert (Hnil: ipl = []).
+    {
+      eapply flattened_guard_false_implies_nil
+        with (test:=test) (body:=body) (varctxt:=varctxt) (vars:=vars) (st1:=st1); eauto.
+    }
+    subst ipl.
+    eapply Permutation_nil in Hperm.
+    subst sorted_ipl.
+    assert (State.eq st1 st2) as Heq12.
+    { inversion Hipls; subst; auto. }
+    exists st1.
+    split.
+    - eapply Loop.LGuardFalse.
+      exact Hevalfalse.
+    - eapply State.eq_sym.
+      exact Heq12.
+Qed.
+
 Lemma permutation_singleton:
     forall A (x: A) l,
     Permutation [x] l ->
