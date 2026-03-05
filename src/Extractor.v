@@ -1359,6 +1359,27 @@ Proof.
       lia.
 Qed.
 
+Lemma skipn_length_S_singleton:
+    forall (k: nat) (l: list Z),
+    Datatypes.length l = S k ->
+    exists x, skipn k l = [x].
+Proof.
+    intros k l Hlen.
+    assert (Datatypes.length (skipn k l) = 1%nat) as Hsk.
+    {
+      rewrite skipn_length.
+      rewrite Hlen.
+      lia.
+    }
+    destruct (skipn k l) as [|x xs] eqn:Hskip.
+    - simpl in Hsk. lia.
+    - exists x.
+      simpl in Hsk.
+      destruct xs as [|y ys].
+      + reflexivity.
+      + simpl in Hsk. lia.
+Qed.
+
 Lemma dot_product_firstn_right:
     forall v l n,
     Datatypes.length v = n ->
@@ -2033,6 +2054,190 @@ Proof.
     rewrite <- Hlenrev in Hbase.
     rewrite in_poly_lift_affine_list_n_app in Hbase.
     exact Hbase.
+Qed.
+
+Lemma flattened_point_loop_bounds:
+    forall lb ub body constrs sched_prefix (varctxt: list ident)
+           pis envv ipl ip,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+      (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    In ip ipl ->
+    exists i,
+      (Loop.eval_expr (rev envv) lb <= i < Loop.eval_expr (rev envv) ub)%Z.
+  Proof.
+    intros lb ub body constrs sched_prefix varctxt
+      pis envv ipl ip Hext Hflat Hlenenv Hip.
+    eapply extract_stmt_loop_success_inv in Hext.
+    destruct Hext as (lbc & ubc & Hlb & Hub & Hbodyext).
+    destruct Hflat as (Hprefix & Hchar & _ & _).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    assert (In pi pis) as Hpin.
+    { eapply nth_error_In; eauto. }
+    eapply extract_stmt_has_lifted_prefix in Hbodyext.
+    2: { exact Hpin. }
+    destruct Hbodyext as (k & tail & Hdepth & Hpoly).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hindom & _ & _ & _ & _).
+    rewrite Hpoly in Hindom.
+    eapply in_poly_normalize_affine_list_rev_app_inv
+      with (cols:=(Datatypes.length varctxt + PolyLang.pi_depth pi)%nat)
+           (env:=PolyLang.ip_index ip)
+           (pol1:=lift_affine_list_n k (lift_affine_list constrs ++ [lbc; ubc]))
+           (pol2:=tail) in Hindom.
+    2: { rewrite Hlenenv in Hlenidx. exact Hlenidx. }
+    destruct Hindom as [Hbase _].
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx. }
+    destruct Hpre as (suf & Hidx & Hsuflen).
+    rewrite Hidx in Hbase.
+    rewrite rev_app_distr in Hbase.
+    rewrite Hdepth in Hsuflen.
+    assert (Datatypes.length (rev suf) = S k)%nat as Hlenrev.
+    { rewrite rev_length. exact Hsuflen. }
+    assert (
+      rev suf ++ rev envv =
+      firstn k (rev suf) ++ (skipn k (rev suf) ++ rev envv)
+    ) as Hsplit.
+    {
+      replace (rev suf) with (firstn k (rev suf) ++ skipn k (rev suf)) at 1.
+      2: { eapply firstn_skipn. }
+      rewrite app_assoc.
+      reflexivity.
+    }
+    rewrite Hsplit in Hbase.
+    set (pref := firstn k (rev suf)) in *.
+    set (suff := skipn k (rev suf) ++ rev envv) in *.
+    assert (Datatypes.length pref = k)%nat as Hlenpref.
+    {
+      unfold pref.
+      rewrite firstn_length.
+      lia.
+    }
+    change (in_poly (pref ++ suff)
+      (lift_affine_list_n k (lift_affine_list constrs ++ [lbc; ubc])) = true) in Hbase.
+    rewrite <- Hlenpref in Hbase.
+    rewrite in_poly_lift_affine_list_n_app in Hbase.
+    unfold suff in Hbase.
+    eapply skipn_length_S_singleton in Hlenrev.
+    destruct Hlenrev as [i Hskip].
+    rewrite Hskip in Hbase.
+    simpl in Hbase.
+    assert (Hlb0: lb_to_constr lb (Datatypes.length varctxt) = Okk lbc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hlb.
+    }
+    assert (Hub0: ub_to_constr ub (Datatypes.length varctxt) = Okk ubc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hub.
+    }
+    exists i.
+    eapply loop_constraints_complete_lifted in Hbase.
+    2: { rewrite rev_length. exact Hlenenv. }
+    2: { exact Hlb0. }
+    2: { exact Hub0. }
+    destruct Hbase as [_ Hbounds].
+    exact Hbounds.
+Qed.
+
+Lemma flattened_point_loop_timestamp_head:
+    forall lb ub body constrs sched_prefix (varctxt: list ident)
+           pis envv ipl ip,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+      (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    In ip ipl ->
+    exists i tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv ++
+        [i] ++ tsuf.
+Proof.
+    intros lb ub body constrs sched_prefix varctxt
+      pis envv ipl ip Hext Hflat Hlenenv Hip.
+    eapply extract_stmt_loop_success_inv in Hext.
+    destruct Hext as (lbc & ubc & Hlb & Hub & Hbodyext).
+    pose proof Hbodyext as Hbodyext_sched.
+    destruct Hflat as (Hprefix & Hchar & _ & _).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    assert (In pi pis) as Hpin.
+    { eapply nth_error_In; eauto. }
+    eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
+    2: { exact Hpin. }
+    destruct Hbodyext_sched as (k & tail & Hdepth & Hsched).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (_ & _ & Hts & _ & _).
+    rewrite Hsched in Hts.
+    assert (Hlenidx_var:
+      Datatypes.length (PolyLang.ILSema.ip_index ip) =
+      (Datatypes.length varctxt + PolyLang.pi_depth pi)%nat).
+    {
+      rewrite <- Hlenenv.
+      exact Hlenidx.
+    }
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlenidx_var. }
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx. }
+    destruct Hpre as (suf & Hidx & Hsuflen).
+    rewrite Hidx in Hts.
+    rewrite rev_app_distr in Hts.
+    rewrite Hdepth in Hsuflen.
+    assert (Datatypes.length (rev suf) = S k)%nat as Hlenrev.
+    { rewrite rev_length. exact Hsuflen. }
+    assert (
+      rev suf ++ rev envv =
+      firstn k (rev suf) ++ (skipn k (rev suf) ++ rev envv)
+    ) as Hsplit.
+    {
+      replace (rev suf) with (firstn k (rev suf) ++ skipn k (rev suf)) at 1.
+      2: { eapply firstn_skipn. }
+      rewrite app_assoc.
+      reflexivity.
+    }
+    rewrite affine_product_app in Hts.
+    rewrite Hsplit in Hts.
+    assert (Datatypes.length (firstn k (rev suf)) = k)%nat as Hlenfirst.
+    {
+      rewrite firstn_length.
+      lia.
+    }
+    assert (Hlift:
+      affine_product
+        (lift_affine_list_n k
+          (lift_affine_list sched_prefix ++
+           [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)]))
+        (firstn k (rev suf) ++ (skipn k (rev suf) ++ rev envv)) =
+      affine_product
+        (lift_affine_list sched_prefix ++
+         [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)])
+        (skipn k (rev suf) ++ rev envv)).
+    {
+      replace k with (Datatypes.length (firstn k (rev suf))) at 1
+        by (symmetry; exact Hlenfirst).
+      eapply affine_product_lift_affine_list_n_app.
+    }
+    rewrite Hlift in Hts.
+    eapply skipn_length_S_singleton in Hlenrev.
+    destruct Hlenrev as [i Hskip].
+    rewrite Hskip in Hts.
+    simpl in Hts.
+    rewrite affine_product_sched_prefix_loop in Hts.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hts by lia.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=Datatypes.length varctxt) (env:=envv) (affs:=sched_prefix) in Hts.
+    2: { exact Hlenenv. }
+    rewrite <- app_assoc in Hts.
+    exists i.
+    exists (affine_product tail (firstn k (rev suf) ++ i :: rev envv)).
+    exact Hts.
 Qed.
 
 Lemma flattened_point_schedule_has_top_prefix:
@@ -4266,6 +4471,49 @@ Lemma core_sched_loop_constrs_len_todo:
     Datatypes.length envv = Datatypes.length varctxt ->
     exists st2',
       Loop.loop_semantics (PolIRs.Loop.Loop lb ub body) (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros lb ub body constrs sched_prefix varctxt vars
+      pis envv ipl sorted_ipl st1 st2
+      Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hipls Hlenenv.
+    pose proof Hextract as Hextract_loop.
+    eapply extract_stmt_loop_success_inv in Hextract.
+    destruct Hextract as (lbc & ubc & Hlb & Hub & Hbodyext).
+    assert (Hpoint_bounds:
+      forall ip, In ip sorted_ipl ->
+      exists i,
+        (Loop.eval_expr (rev envv) lb <= i < Loop.eval_expr (rev envv) ub)%Z).
+    {
+      intros ip Hin.
+      eapply (flattened_point_loop_bounds lb ub body constrs sched_prefix
+        varctxt pis envv ipl ip Hextract_loop Hflat Hlenenv).
+      eapply Permutation_in.
+      2: { exact Hin. }
+      eapply Permutation_sym.
+      exact Hperm.
+    }
+    assert (Hpoint_ts_head:
+      forall ip, In ip sorted_ipl ->
+      exists i tsuf,
+        PolyLang.ip_time_stamp ip =
+          affine_product (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv ++
+          [i] ++ tsuf).
+    {
+      intros ip Hin.
+      eapply (flattened_point_loop_timestamp_head lb ub body constrs sched_prefix
+        varctxt pis envv ipl ip Hextract_loop Hflat Hlenenv).
+      eapply Permutation_in.
+      2: { exact Hin. }
+      eapply Permutation_sym.
+      exact Hperm.
+    }
+    (*
+      Remaining work (single hole):
+      1) Recover a canonical iterator head from timestamp prefix for each point;
+      2) Use Hpoint_bounds + Hpoint_ts_head to partition sorted_ipl iteration-by-iteration over Zrange lb ub;
+      3) For each iteration slice, derive body semantics under env (i :: rev envv);
+      4) Rebuild IterSem.iter_semantics and apply Loop.LLoop;
+      5) Thread State.eq to conclude final state equality with st2.
+    *)
 Admitted.
 
 Scheme loop_stmt_mutind := Induction for PolIRs.Loop.stmt Sort Prop
