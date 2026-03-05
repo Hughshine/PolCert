@@ -315,6 +315,22 @@ Definition normalize_access (cols: nat) (acc: AccessFunction): AccessFunction :=
 Definition normalize_access_list (cols: nat) (accs: list AccessFunction) :=
     map (normalize_access cols) accs.
 
+Definition lift_affine (aff: list Z * Z): (list Z * Z) :=
+    let (v, c) := aff in (0%Z :: v, c).
+
+Definition lift_affine_list (affs: list (list Z * Z)) :=
+    map lift_affine affs.
+
+Lemma lift_affine_list_app:
+    forall l1 l2,
+    lift_affine_list (l1 ++ l2) = lift_affine_list l1 ++ lift_affine_list l2.
+Proof.
+    intros l1 l2.
+    unfold lift_affine_list.
+    rewrite map_app.
+    reflexivity.
+Qed.
+
 Definition normalize_affine_rev (cols: nat) (aff: list Z * Z): (list Z * Z) :=
     let (v, c) := aff in (rev (resize cols v), c).
 
@@ -889,33 +905,32 @@ Qed.
 (** depth is the loop's depth (counting ctxt), from zero *)
 Definition lb_to_constr (lb: PolIRs.Loop.expr) (depth: nat): result (list Z * Z) := 
     match (expr_to_aff lb) with 
-    | Okk (aff, c) => Okk ((resize depth aff) ++ [-1%Z], Z.opp c) 
+    | Okk (aff, c) => Okk ((-1%Z) :: (resize depth aff), Z.opp c) 
     | Err msg => Err msg
     end
 .
 
-(** $3 + 5 <= $4  ==> $3 - $4 <= -5 *)
+(** $3 + 5 <= $4  ==> -$4 + $3 <= -5 *)
 Example test_lb_to_constr_1:
     lb_to_constr (PolIRs.Loop.Sum (PolIRs.Loop.Var 3) (PolIRs.Loop.Constant 5%Z)) 4
-    = Okk ([0%Z; 0%Z; 0%Z; 1%Z; -1%Z], -5%Z).
+    = Okk ([-1%Z; 0%Z; 0%Z; 0%Z; 1%Z], -5%Z).
 Proof. reflexivity. Qed.
 
 Lemma lb_to_constr_sound:
     forall lb env depth constr i,
     Datatypes.length env = depth ->
     lb_to_constr lb depth = Okk constr ->
-    satisfies_constraint (env ++ [i]) constr = true <->
+    satisfies_constraint (i :: env) constr = true <->
     (Loop.eval_expr env lb <= i)%Z.
 Proof.
     intros lb env depth constr i Hlen Hlb.
     unfold lb_to_constr in Hlb.
     destruct (expr_to_aff lb) as [[v c]|msg] eqn:He; try discriminate.
+    pose proof Hlen as Hlen0.
     inversion Hlb; subst; clear Hlb.
     split; intro Hsat.
     - unfold satisfies_constraint in Hsat. simpl in Hsat.
       rewrite Z.leb_le in Hsat.
-      rewrite dot_product_app in Hsat.
-      2: rewrite resize_length; auto.
       rewrite dot_product_resize_right in Hsat.
       simpl in Hsat.
       pose proof (expr_to_aff_correct lb env (v, c) v c He eq_refl) as Heval.
@@ -925,8 +940,6 @@ Proof.
       rewrite Heval in Hsat.
       unfold satisfies_constraint. simpl.
       rewrite Z.leb_le.
-      rewrite dot_product_app.
-      2: rewrite resize_length; auto.
       rewrite dot_product_resize_right.
       simpl.
       lia.
@@ -934,33 +947,32 @@ Qed.
 
 Definition ub_to_constr (ub: PolIRs.Loop.expr) (depth: nat): result (list Z * Z) := 
     match (expr_to_aff ub) with
-    | Okk (aff, c) => Okk ((resize depth (map Z.opp aff)) ++ [1%Z], c-1)    (** < => <= -1*)
+    | Okk (aff, c) => Okk ((1%Z) :: (resize depth (map Z.opp aff)), c-1)    (** < => <= -1*)
     | Err msg => Err msg 
     end
 .
 
-(** $3 + 5 > $4 => -$3 + $4 < 5 *)
+(** $3 + 5 > $4 => $4 - $3 < 5 *)
 Example test_ub_to_constr_1:
     ub_to_constr (PolIRs.Loop.Sum (PolIRs.Loop.Var 3) (PolIRs.Loop.Constant 5%Z)) 4
-    = Okk ([0%Z; 0%Z; 0%Z; -1%Z; 1%Z], 4%Z).
+    = Okk ([1%Z; 0%Z; 0%Z; 0%Z; -1%Z], 4%Z).
 Proof. reflexivity. Qed.
 
 Lemma ub_to_constr_sound:
     forall ub env depth constr i,
     Datatypes.length env = depth ->
     ub_to_constr ub depth = Okk constr ->
-    satisfies_constraint (env ++ [i]) constr = true <->
+    satisfies_constraint (i :: env) constr = true <->
     (i < Loop.eval_expr env ub)%Z.
 Proof.
     intros ub env depth constr i Hlen Hub.
     unfold ub_to_constr in Hub.
     destruct (expr_to_aff ub) as [[v c]|msg] eqn:He; try discriminate.
+    pose proof Hlen as Hlen0.
     inversion Hub; subst; clear Hub.
     split; intro Hsat.
     - unfold satisfies_constraint in Hsat. simpl in Hsat.
       rewrite Z.leb_le in Hsat.
-      rewrite dot_product_app in Hsat.
-      2: rewrite resize_length; auto.
       rewrite dot_product_resize_right in Hsat.
       rewrite dot_product_opp_right in Hsat.
       simpl in Hsat.
@@ -971,8 +983,6 @@ Proof.
       rewrite Heval in Hsat.
       unfold satisfies_constraint. simpl.
       rewrite Z.leb_le.
-      rewrite dot_product_app.
-      2: rewrite resize_length; auto.
       rewrite dot_product_resize_right.
       rewrite dot_product_opp_right.
       simpl.
@@ -984,8 +994,8 @@ Lemma loop_bounds_sound:
     Datatypes.length env = depth ->
     lb_to_constr lb depth = Okk lbc ->
     ub_to_constr ub depth = Okk ubc ->
-    (satisfies_constraint (env ++ [i]) lbc = true /\
-     satisfies_constraint (env ++ [i]) ubc = true) <->
+    (satisfies_constraint (i :: env) lbc = true /\
+     satisfies_constraint (i :: env) ubc = true) <->
     (Loop.eval_expr env lb <= i < Loop.eval_expr env ub)%Z.
 Proof.
     intros lb ub env depth lbc ubc i Hlen Hlb Hub.
@@ -998,8 +1008,8 @@ Lemma loop_constraints_complete:
     Datatypes.length env = depth ->
     lb_to_constr lb depth = Okk lbc ->
     ub_to_constr ub depth = Okk ubc ->
-    forallb (satisfies_constraint (env ++ [i])) (constrs ++ [lbc; ubc]) = true ->
-    forallb (satisfies_constraint (env ++ [i])) constrs = true /\
+    forallb (satisfies_constraint (i :: env)) (constrs ++ [lbc; ubc]) = true ->
+    forallb (satisfies_constraint (i :: env)) constrs = true /\
     (Loop.eval_expr env lb <= i < Loop.eval_expr env ub)%Z.
 Proof.
     intros lb ub env depth constrs lbc ubc i Hlen Hlb Hub Hall.
@@ -1197,8 +1207,8 @@ Fixpoint extract_stmt
         let ub_constr := ub_to_constr ub cols in
         match lb_constr, ub_constr with
         | Okk lb_constr', Okk ub_constr' =>
-            let constrs' := constrs ++ [lb_constr'; ub_constr'] in
-            let sched_prefix' := sched_prefix ++ [((repeat 0%Z cols) ++ [1%Z], 0%Z)] in
+            let constrs' := lift_affine_list constrs ++ [lb_constr'; ub_constr'] in
+            let sched_prefix' := lift_affine_list sched_prefix ++ [((1%Z :: repeat 0%Z cols), 0%Z)] in
             extract_stmt stmt constrs' env_dim (S iter_depth) sched_prefix'
         | _, _ => Err "Loop bound to aff failed"%string
         end
@@ -1276,8 +1286,8 @@ Lemma extract_stmt_loop_success_inv:
     exists lbc ubc,
       lb_to_constr lb (env_dim + iter_depth)%nat = Okk lbc /\
       ub_to_constr ub (env_dim + iter_depth)%nat = Okk ubc /\
-      extract_stmt body (constrs ++ [lbc; ubc]) env_dim (S iter_depth)
-        (sched_prefix ++ [((repeat 0%Z (env_dim + iter_depth)%nat) ++ [1%Z], 0%Z)]) = Okk pis.
+      extract_stmt body (lift_affine_list constrs ++ [lbc; ubc]) env_dim (S iter_depth)
+        (lift_affine_list sched_prefix ++ [((1%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)]) = Okk pis.
 Proof.
     intros lb ub body constrs env_dim iter_depth sched_prefix pis Hext.
     simpl in Hext.
@@ -1334,71 +1344,6 @@ Lemma extract_stmts_nil_success_inv:
 Proof.
     intros constrs env_dim iter_depth sched_prefix pos pis Hext.
     simpl in Hext. inv Hext. reflexivity.
-Qed.
-
-Definition pi_has_prefix_constraints
-    (env_dim: nat)
-    (constrs: Domain)
-    (pi: PolyLang.PolyInstr): Prop :=
-    exists extra,
-      pi.(PolyLang.pi_poly) =
-      normalize_affine_list_rev (env_dim + pi.(PolyLang.pi_depth)) (constrs ++ extra).
-
-Lemma extract_stmt_prefix_constraints:
-    forall stmt constrs env_dim iter_depth sched_prefix pis,
-    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
-    Forall (pi_has_prefix_constraints env_dim constrs) pis
-with extract_stmts_prefix_constraints:
-    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
-    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis ->
-    Forall (pi_has_prefix_constraints env_dim constrs) pis.
-Proof.
-    - induction stmt; intros constrs env_dim iter_depth sched_prefix pis Hext.
-      + eapply extract_stmt_loop_success_inv in Hext.
-        destruct Hext as (lbc & ubc & Hlb & Hub & Hbody).
-        eapply IHstmt in Hbody.
-        eapply Forall_forall.
-        intros pi Hin.
-        eapply Forall_forall in Hbody; eauto.
-        unfold pi_has_prefix_constraints in *.
-        destruct Hbody as (extra & Hpi).
-        exists ([lbc; ubc] ++ extra).
-        rewrite app_assoc.
-        exact Hpi.
-      + eapply extract_stmt_instr_success_inv in Hext.
-        destruct Hext as (tf & w & r & Htf & Hacc & Hpis).
-        subst pis.
-        constructor.
-        * unfold pi_has_prefix_constraints.
-          exists (@nil (list Z * Z)).
-          simpl.
-          replace (env_dim + iter_depth + 0)%nat with (env_dim + iter_depth)%nat by lia.
-          rewrite app_nil_r.
-          reflexivity.
-        * constructor.
-      + eapply extract_stmt_seq_success_inv in Hext.
-        eapply extract_stmts_prefix_constraints; eauto.
-      + eapply extract_stmt_guard_success_inv in Hext.
-        destruct Hext as (test_constrs & Htest & Hbody).
-        eapply IHstmt in Hbody.
-        eapply Forall_forall.
-        intros pi Hin.
-        eapply Forall_forall in Hbody; eauto.
-        unfold pi_has_prefix_constraints in *.
-        destruct Hbody as (extra & Hpi).
-        exists (normalize_affine_list (env_dim + iter_depth) test_constrs ++ extra).
-        rewrite app_assoc.
-        exact Hpi.
-    - induction stmts; intros constrs env_dim iter_depth sched_prefix pos pis Hext.
-      + eapply extract_stmts_nil_success_inv in Hext.
-        subst pis.
-        constructor.
-      + eapply extract_stmts_cons_success_inv in Hext.
-        destruct Hext as (pis1 & pis2 & Hs1 & Hs2 & Hpis).
-        subst pis.
-        eapply extract_stmt_prefix_constraints in Hs1.
-        eapply IHstmts in Hs2.
-        eapply Forall_app; split; eauto.
 Qed.
 
 (* Extraction examples are kept in instance-level test files (e.g. CPolIRs/TPolIRs)
@@ -1601,31 +1546,6 @@ Proof.
     split.
     - eapply nth_error_In; eauto.
     - split; auto.
-Qed.
-
-Lemma flatten_point_satisfies_prefix_constraints:
-    forall stmt constrs env_dim iter_depth sched_prefix pis envv ipl ip,
-    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
-    Datatypes.length envv = env_dim ->
-    PolyLang.flatten_instrs envv pis ipl ->
-    In ip ipl ->
-    in_poly (rev (PolyLang.ip_index ip)) constrs = true.
-Proof.
-    intros stmt constrs env_dim iter_depth sched_prefix pis envv ipl ip
-      Hext Henvlen Hflat Hin.
-    eapply extract_stmt_prefix_constraints in Hext.
-    eapply flatten_instrs_in_inv in Hflat; eauto.
-    destruct Hflat as (pi & Hpiin & Hbel & Hlen).
-    eapply Forall_forall in Hext; eauto.
-    unfold pi_has_prefix_constraints in Hext.
-    destruct Hext as (extra & Hpoly).
-    unfold PolyLang.belongs_to in Hbel.
-    destruct Hbel as (Hinpoly & _).
-    rewrite Hpoly in Hinpoly.
-    rewrite Henvlen in Hlen.
-    eapply in_poly_normalize_affine_list_rev_app_inv in Hinpoly; eauto.
-    destruct Hinpoly as [Hprefix _].
-    exact Hprefix.
 Qed.
 
 Lemma permutation_singleton:
