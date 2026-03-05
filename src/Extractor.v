@@ -2522,6 +2522,140 @@ Proof.
       + eapply (proj2 (IH st3 st2)); eauto.
 Qed.
 
+Lemma flatten_instr_nth_all_nth:
+    forall envv n pi ipl ip,
+    PolyLang.flatten_instr_nth envv n pi ipl ->
+    In ip ipl ->
+    PolyLang.ip_nth ip = n.
+Proof.
+    intros envv n pi ipl ip Hflat Hin.
+    destruct Hflat as (_ & Hchar & _ & _).
+    eapply Hchar in Hin.
+    destruct Hin as (_ & Hnth & _).
+    exact Hnth.
+Qed.
+
+Lemma sorted_np_lt_map_rebase_ip_nth:
+    forall base ipl,
+    (forall ip, In ip ipl -> (base <= PolyLang.ip_nth ip)%nat) ->
+    Sorted PolyLang.np_lt ipl ->
+    Sorted PolyLang.np_lt (map (rebase_ip_nth base) ipl).
+Proof.
+    intros base ipl Hge Hsorted.
+    induction Hsorted.
+    - simpl. constructor.
+    - simpl. constructor.
+      + eapply IHHsorted.
+        intros ip Hin.
+        eapply Hge.
+        simpl. right. exact Hin.
+      + destruct H as [|b l0 Hlt].
+        * constructor.
+        * constructor.
+          assert ((base <= PolyLang.ip_nth a)%nat) as Hgea.
+          { eapply Hge. simpl. left. reflexivity. }
+          assert ((base <= PolyLang.ip_nth b)%nat) as Hgeb.
+          { eapply Hge. simpl. right. left. reflexivity. }
+          eapply (proj2 (np_lt_rebase_ip_nth_iff base a b Hgea Hgeb)).
+          exact Hlt.
+Qed.
+
+Lemma nodup_map_rebase_ip_nth:
+    forall base ipl,
+    (forall ip, In ip ipl -> (base <= PolyLang.ip_nth ip)%nat) ->
+    NoDup ipl ->
+    NoDup (map (rebase_ip_nth base) ipl).
+Proof.
+    intros base ipl Hge Hnodup.
+    induction Hnodup as [|x l Hnin Hnodup IH].
+    - simpl. constructor.
+    - simpl. constructor.
+      + intro Hin.
+        eapply in_map_iff in Hin.
+        destruct Hin as (y & Heq & Hyin).
+        assert ((base <= PolyLang.ip_nth y)%nat) as Hgey.
+        { eapply Hge. simpl. right. exact Hyin. }
+        assert ((base <= PolyLang.ip_nth x)%nat) as Hgex.
+        { eapply Hge. simpl. left. reflexivity. }
+        assert (y = x).
+        { eapply rebase_ip_nth_injective_ge; eauto. }
+        subst.
+        eapply Hnin.
+        exact Hyin.
+      + eapply IH.
+        intros ip Hin.
+        eapply Hge.
+        simpl. right. exact Hin.
+Qed.
+
+Lemma flatten_instr_nth_map_rebase_ip_nth:
+    forall envv n base pi ipl,
+    (base <= n)%nat ->
+    PolyLang.flatten_instr_nth envv n pi ipl ->
+    PolyLang.flatten_instr_nth envv (n - base)%nat pi (map (rebase_ip_nth base) ipl).
+Proof.
+    intros envv n base pi ipl Hbase Hflat.
+    destruct Hflat as (Hprefix & Hchar & Hnodup & Hsorted).
+    assert (forall ip, In ip ipl -> (base <= PolyLang.ip_nth ip)%nat) as Hgeall.
+    {
+      intros ip Hin.
+      eapply Hchar in Hin.
+      destruct Hin as (_ & Hnth & _).
+      rewrite Hnth.
+      exact Hbase.
+    }
+    split.
+    - intros ip' Hin.
+      eapply in_map_iff in Hin.
+      destruct Hin as (ip & Hip' & Hipin).
+      subst ip'.
+      simpl.
+      eapply Hprefix.
+      exact Hipin.
+    - split.
+      + intros ip'. split; intro Hin.
+        * eapply in_map_iff in Hin.
+          destruct Hin as (ip & Hip' & Hipin).
+          subst ip'.
+          eapply Hchar in Hipin.
+          destruct Hipin as (Hbel & Hnth & Hlen).
+          split; [exact Hbel|].
+          split.
+          { simpl. rewrite Hnth. lia. }
+          { exact Hlen. }
+        * destruct Hin as (Hbel & Hnth & Hlen).
+          destruct ip' as [n' idx tf ts instr depth].
+          simpl in *.
+          set (ip0 := {|
+            PolyLang.ip_nth := n;
+            PolyLang.ip_index := idx;
+            PolyLang.ip_transformation := tf;
+            PolyLang.ip_time_stamp := ts;
+            PolyLang.ip_instruction := instr;
+            PolyLang.ip_depth := depth;
+          |}).
+          assert (In ip0 ipl) as Hip0.
+          {
+            eapply Hchar.
+            split.
+            { exact Hbel. }
+            split.
+            { simpl. reflexivity. }
+            { exact Hlen. }
+          }
+          eapply in_map_iff.
+          exists ip0.
+          split.
+          { subst ip0.
+            simpl.
+            rewrite Hnth.
+            reflexivity. }
+          { exact Hip0. }
+      + split.
+        * eapply nodup_map_rebase_ip_nth; eauto.
+        * eapply sorted_np_lt_map_rebase_ip_nth; eauto.
+Qed.
+
 Lemma nodup_all_eq_singleton:
     forall A (x: A) l,
     NoDup l ->
