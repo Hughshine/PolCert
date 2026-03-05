@@ -1793,6 +1793,27 @@ Proof.
     split; auto.
 Qed.
 
+Lemma check_extracted_wf_app_inv:
+    forall pis1 pis2 varctxt vars,
+    check_extracted_wf (pis1 ++ pis2) varctxt vars = true ->
+    check_extracted_wf pis1 varctxt vars = true /\
+    check_extracted_wf pis2 varctxt vars = true.
+Proof.
+    intros pis1 pis2 varctxt vars Hchk.
+    apply check_extracted_wf_spec in Hchk.
+    destruct Hchk as [Hlen Hforall].
+    rewrite forallb_app in Hforall.
+    apply andb_true_iff_local in Hforall.
+    destruct Hforall as [Hforall1 Hforall2].
+    split; unfold check_extracted_wf.
+    - rewrite Hlen.
+      rewrite Hforall1.
+      reflexivity.
+    - rewrite Hlen.
+      rewrite Hforall2.
+      reflexivity.
+Qed.
+
 Definition extractor (loop: PolIRs.Loop.t): result PolIRs.PolyLang.t :=
     let '(stmt, varctxt, vars) := loop in
     if wf_scop_stmt stmt then
@@ -2092,6 +2113,17 @@ Proof.
     - eapply Z.compare_eq_iff in Hcmp. lia.
     - reflexivity.
     - eapply Z.compare_gt_iff in Hcmp. lia.
+Qed.
+
+Lemma lex_compare_prefix_cons_head_lt:
+    forall pref h1 h2 t1 t2,
+    (h1 < h2)%Z ->
+    lex_compare (pref ++ (h1 :: t1)) (pref ++ (h2 :: t2)) = Lt.
+Proof.
+    induction pref as [|p pref IH]; intros h1 h2 t1 t2 Hlt; simpl.
+    - eapply lex_compare_cons_head_lt; eauto.
+    - rewrite Z.compare_refl.
+      eapply IH; eauto.
 Qed.
 
 Lemma instr_point_sched_le_from_cons_head_lt:
@@ -2608,6 +2640,34 @@ Proof.
       exact Hsem.
 Qed.
 
+Lemma instr_point_sched_le_rebase_ip_nth:
+    forall base ip1 ip2,
+    PolyLang.instr_point_sched_le (rebase_ip_nth base ip1) (rebase_ip_nth base ip2) <->
+    PolyLang.instr_point_sched_le ip1 ip2.
+Proof.
+    intros base ip1 ip2.
+    unfold PolyLang.instr_point_sched_le.
+    simpl.
+    tauto.
+Qed.
+
+Lemma sorted_sched_le_map_rebase_ip_nth:
+    forall base ipl,
+    Sorted PolyLang.instr_point_sched_le ipl ->
+    Sorted PolyLang.instr_point_sched_le (map (rebase_ip_nth base) ipl).
+Proof.
+    intros base ipl Hsorted.
+    induction Hsorted.
+    - simpl. constructor.
+    - simpl. constructor.
+      + exact IHHsorted.
+      + destruct H as [|b l0 Hle].
+        * constructor.
+        * constructor.
+          eapply (proj2 (instr_point_sched_le_rebase_ip_nth base a b)).
+          exact Hle.
+Qed.
+
 Lemma instr_point_list_semantics_map_rebase_ip_nth:
     forall base ipl st1 st2,
     PolyLang.instr_point_list_semantics (map (rebase_ip_nth base) ipl) st1 st2 <->
@@ -3000,6 +3060,254 @@ Proof.
                 * exact Hnge. }
 Qed.
 
+Lemma flattened_stmts_empty_prefix_pos_ge:
+    forall stmts constrs env_dim pos pis envv ipl ip,
+    extract_stmts stmts constrs env_dim 0%nat [] pos = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists h tsuf,
+      PolyLang.ip_time_stamp ip = [h] ++ tsuf /\
+      (Z.of_nat pos <= h)%Z.
+Proof.
+    induction stmts as [|stmt stmts' IH];
+      intros constrs env_dim pos pis envv ipl ip Hext Hflat Hlen Hip.
+    - eapply extract_stmts_nil_success_inv in Hext.
+      subst pis.
+      eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat.
+      subst ipl.
+      contradiction.
+    - eapply extract_stmts_cons_flatten_inv_rebase in Hext; eauto.
+      destruct Hext as
+        (pis1 & pis2 & ipl1 & ipl2 &
+         Hhdext & Htlext & Hpis & Hipl & Hflat1 & Hflat2 & Hnlt & Hnge).
+      subst pis.
+      subst ipl.
+      eapply in_app_or in Hip.
+      destruct Hip as [Hin1|Hin2].
+      + assert (extract_stmt stmt constrs env_dim 0%nat
+                  [(repeat 0%Z env_dim, Z.of_nat pos)] = Okk pis1) as Hhdext'.
+        {
+          simpl in Hhdext.
+          replace (env_dim + 0)%nat with env_dim in Hhdext by lia.
+          exact Hhdext.
+        }
+        eapply flattened_point_seq_pos_timestamp
+          with (stmt:=stmt) (constrs:=constrs) (env_dim:=env_dim)
+               (pis:=pis1) (envv:=envv) (ipl:=ipl1) (ip:=ip)
+          in Hhdext'; eauto.
+        destruct Hhdext' as [tsuf Hts].
+        exists (Z.of_nat pos).
+        exists tsuf.
+        split; [exact Hts|lia].
+      + assert (In (rebase_ip_nth (Datatypes.length pis1) ip)
+               (map (rebase_ip_nth (Datatypes.length pis1)) ipl2)) as Hin2'.
+        {
+          eapply in_map.
+          exact Hin2.
+        }
+        eapply IH
+          with (constrs:=constrs)
+               (env_dim:=env_dim)
+               (pos:=S pos)
+               (pis:=pis2)
+               (envv:=envv)
+               (ipl:=map (rebase_ip_nth (Datatypes.length pis1)) ipl2)
+               (ip:=rebase_ip_nth (Datatypes.length pis1) ip)
+          in Htlext; eauto.
+        destruct Htlext as [h [tsuf [Hts Hge]]].
+        exists h.
+        exists tsuf.
+        split.
+        * simpl in Hts.
+          exact Hts.
+        * lia.
+Qed.
+
+Lemma flattened_point_seq_pos_timestamp_with_prefix:
+    forall stmt constrs env_dim sched_prefix pos pis envv ipl ip,
+    extract_stmt stmt constrs env_dim 0%nat
+      (sched_prefix ++ [(repeat 0%Z env_dim, pos)]) = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++ [pos] ++ tsuf.
+Proof.
+    intros stmt constrs env_dim sched_prefix pos pis envv ipl ip
+      Hext Hflat Hlen Hip.
+    eapply flattened_point_schedule_has_top_prefix
+      with (stmt:=stmt) (constrs:=constrs) (env_dim:=env_dim)
+           (sched_prefix:=sched_prefix ++ [(repeat 0%Z env_dim, pos)])
+           (pis:=pis) (envv:=envv) (ipl:=ipl) (ip:=ip) in Hext; eauto.
+    destruct Hext as [tsuf Hts].
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlen. }
+    rewrite affine_product_sched_prefix_seq in Hts.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=env_dim) (env:=envv) (affs:=sched_prefix) in Hts.
+    2: { exact Hlen. }
+    rewrite <- app_assoc in Hts.
+    exists tsuf.
+    exact Hts.
+Qed.
+
+Lemma flattened_stmts_pos_ge_with_prefix:
+    forall stmts constrs env_dim sched_prefix pos pis envv ipl ip,
+    extract_stmts stmts constrs env_dim 0%nat sched_prefix pos = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists h tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++ [h] ++ tsuf /\
+      (Z.of_nat pos <= h)%Z.
+Proof.
+    induction stmts as [|stmt stmts' IH];
+      intros constrs env_dim sched_prefix pos pis envv ipl ip
+        Hext Hflat Hlen Hip.
+    - eapply extract_stmts_nil_success_inv in Hext.
+      subst pis.
+      eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat.
+      subst ipl.
+      contradiction.
+    - eapply extract_stmts_cons_flatten_inv_rebase in Hext; eauto.
+      destruct Hext as
+        (pis1 & pis2 & ipl1 & ipl2 &
+         Hhdext & Htlext & Hpis & Hipl & Hflat1 & Hflat2 & Hnlt & Hnge).
+      subst pis.
+      subst ipl.
+      eapply in_app_or in Hip.
+      destruct Hip as [Hin1|Hin2].
+      + assert (extract_stmt stmt constrs env_dim 0%nat
+                  (sched_prefix ++ [(repeat 0%Z env_dim, Z.of_nat pos)]) = Okk pis1) as Hhdext0.
+        {
+          simpl in Hhdext.
+          replace (env_dim + 0)%nat with env_dim in Hhdext by lia.
+          exact Hhdext.
+        }
+        eapply flattened_point_seq_pos_timestamp_with_prefix
+          with (stmt:=stmt) (constrs:=constrs) (env_dim:=env_dim)
+               (sched_prefix:=sched_prefix) (pos:=Z.of_nat pos)
+               (pis:=pis1) (envv:=envv) (ipl:=ipl1) (ip:=ip)
+          in Hhdext0; eauto.
+        destruct Hhdext0 as [tsuf Hts].
+        exists (Z.of_nat pos).
+        exists tsuf.
+        split; [exact Hts|lia].
+      + assert (In (rebase_ip_nth (Datatypes.length pis1) ip)
+               (map (rebase_ip_nth (Datatypes.length pis1)) ipl2)) as Hin2'.
+        {
+          eapply in_map.
+          exact Hin2.
+        }
+        eapply IH
+          with (constrs:=constrs)
+               (env_dim:=env_dim)
+               (sched_prefix:=sched_prefix)
+               (pos:=S pos)
+               (pis:=pis2)
+               (envv:=envv)
+               (ipl:=map (rebase_ip_nth (Datatypes.length pis1)) ipl2)
+               (ip:=rebase_ip_nth (Datatypes.length pis1) ip)
+          in Htlext; eauto.
+        destruct Htlext as [h [tsuf [Hts Hge]]].
+        exists h.
+        exists tsuf.
+        split.
+        * simpl in Hts.
+          exact Hts.
+        * lia.
+Qed.
+
+Lemma seq_cons_cross_lt_by_nth:
+    forall stmt stmts' constrs env_dim pos
+           pis1 pis2 envv ipl1 ipl2 ip1 ip2,
+    extract_stmt stmt constrs env_dim 0%nat
+      [(repeat 0%Z env_dim, Z.of_nat pos)] = Okk pis1 ->
+    extract_stmts stmts' constrs env_dim 0%nat [] (S pos) = Okk pis2 ->
+    PolyLang.flatten_instrs envv pis1 ipl1 ->
+    PolyLang.flatten_instrs envv pis2
+      (map (rebase_ip_nth (Datatypes.length pis1)) ipl2) ->
+    Datatypes.length envv = env_dim ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    lex_compare (PolyLang.ip_time_stamp ip1) (PolyLang.ip_time_stamp ip2) = Lt.
+Proof.
+    intros stmt stmts' constrs env_dim pos
+      pis1 pis2 envv ipl1 ipl2 ip1 ip2
+      Hhdext Htlext Hflat1 Hflat2 Hlen Hip1 Hip2.
+    eapply flattened_point_seq_pos_timestamp
+      with (stmt:=stmt) (constrs:=constrs) (env_dim:=env_dim)
+           (pis:=pis1) (envv:=envv) (ipl:=ipl1) (ip:=ip1)
+      in Hhdext; eauto.
+    destruct Hhdext as [tsuf1 Hts1].
+    assert (In (rebase_ip_nth (Datatypes.length pis1) ip2)
+            (map (rebase_ip_nth (Datatypes.length pis1)) ipl2)) as Hip2'.
+    { eapply in_map. exact Hip2. }
+    eapply flattened_stmts_empty_prefix_pos_ge
+      with (stmts:=stmts') (constrs:=constrs) (env_dim:=env_dim) (pos:=S pos)
+           (pis:=pis2) (envv:=envv)
+           (ipl:=map (rebase_ip_nth (Datatypes.length pis1)) ipl2)
+           (ip:=rebase_ip_nth (Datatypes.length pis1) ip2)
+      in Htlext; eauto.
+    destruct Htlext as [h [tsuf2 [Hts2 Hge]]].
+    assert (PolyLang.ip_time_stamp (rebase_ip_nth (Datatypes.length pis1) ip2) =
+            PolyLang.ip_time_stamp ip2) as Hts_rebase.
+    { reflexivity. }
+    rewrite Hts_rebase in Hts2.
+    rewrite Hts1, Hts2.
+    eapply lex_compare_cons_head_lt.
+    lia.
+Qed.
+
+Lemma seq_cons_cross_lt_by_nth_with_prefix:
+    forall stmt stmts' constrs env_dim sched_prefix pos
+           pis1 pis2 envv ipl1 ipl2 ip1 ip2,
+    extract_stmt stmt constrs env_dim 0%nat
+      (sched_prefix ++ [(repeat 0%Z env_dim, Z.of_nat pos)]) = Okk pis1 ->
+    extract_stmts stmts' constrs env_dim 0%nat sched_prefix (S pos) = Okk pis2 ->
+    PolyLang.flatten_instrs envv pis1 ipl1 ->
+    PolyLang.flatten_instrs envv pis2
+      (map (rebase_ip_nth (Datatypes.length pis1)) ipl2) ->
+    Datatypes.length envv = env_dim ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    lex_compare (PolyLang.ip_time_stamp ip1) (PolyLang.ip_time_stamp ip2) = Lt.
+Proof.
+    intros stmt stmts' constrs env_dim sched_prefix pos
+      pis1 pis2 envv ipl1 ipl2 ip1 ip2
+      Hhdext Htlext Hflat1 Hflat2 Hlen Hip1 Hip2.
+    eapply flattened_point_seq_pos_timestamp_with_prefix
+      with (stmt:=stmt) (constrs:=constrs) (env_dim:=env_dim)
+           (sched_prefix:=sched_prefix) (pos:=Z.of_nat pos)
+           (pis:=pis1) (envv:=envv) (ipl:=ipl1) (ip:=ip1)
+      in Hhdext; eauto.
+    destruct Hhdext as [tsuf1 Hts1].
+    assert (In (rebase_ip_nth (Datatypes.length pis1) ip2)
+            (map (rebase_ip_nth (Datatypes.length pis1)) ipl2)) as Hip2'.
+    { eapply in_map. exact Hip2. }
+    eapply flattened_stmts_pos_ge_with_prefix
+      with (stmts:=stmts') (constrs:=constrs) (env_dim:=env_dim)
+           (sched_prefix:=sched_prefix) (pos:=S pos)
+           (pis:=pis2) (envv:=envv)
+           (ipl:=map (rebase_ip_nth (Datatypes.length pis1)) ipl2)
+           (ip:=rebase_ip_nth (Datatypes.length pis1) ip2)
+      in Htlext; eauto.
+    destruct Htlext as [h [tsuf2 [Hts2 Hge]]].
+    assert (PolyLang.ip_time_stamp (rebase_ip_nth (Datatypes.length pis1) ip2) =
+            PolyLang.ip_time_stamp ip2) as Hts_rebase.
+    { reflexivity. }
+    rewrite Hts_rebase in Hts2.
+    rewrite Hts1, Hts2.
+    set (pfx := affine_product (normalize_affine_list_rev env_dim sched_prefix) envv).
+    replace (pfx ++ [Z.of_nat pos] ++ tsuf1) with (pfx ++ (Z.of_nat pos :: tsuf1)) by reflexivity.
+    replace (pfx ++ [h] ++ tsuf2) with (pfx ++ (h :: tsuf2)) by reflexivity.
+    eapply lex_compare_prefix_cons_head_lt.
+    lia.
+Qed.
+
 Lemma perm_partition_by_nth_threshold:
     forall base ipl1 ipl2 sorted_ipl,
     NoDup ipl1 ->
@@ -3060,6 +3368,134 @@ Proof.
             pose proof (Hlt _ Hin1) as Hlt'.
             lia. }
           { exact Hin2. }
+Qed.
+
+Lemma extract_stmts_cons_sorted_split_by_nth:
+    forall stmt stmts' constrs env_dim sched_prefix pos
+           pis envv ipl sorted_ipl,
+    extract_stmts (PolIRs.Loop.SCons stmt stmts') constrs env_dim 0%nat sched_prefix pos = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    exists pis1 pis2 ipl1 ipl2,
+      extract_stmt stmt constrs env_dim 0%nat
+        (sched_prefix ++ [(repeat 0%Z env_dim, Z.of_nat pos)]) = Okk pis1 /\
+      extract_stmts stmts' constrs env_dim 0%nat sched_prefix (S pos) = Okk pis2 /\
+      pis = pis1 ++ pis2 /\
+      ipl = ipl1 ++ ipl2 /\
+      PolyLang.flatten_instrs envv pis1 ipl1 /\
+      PolyLang.flatten_instrs envv pis2
+        (map (rebase_ip_nth (Datatypes.length pis1)) ipl2) /\
+      Permutation ipl1
+        (filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl) /\
+      Permutation ipl2
+        (filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl) /\
+      sorted_ipl =
+        filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl ++
+        filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl.
+Proof.
+    intros stmt stmts' constrs env_dim sched_prefix pos
+      pis envv ipl sorted_ipl
+      Hext Hflat Hlen Hperm Hsorted.
+    eapply extract_stmts_cons_flatten_inv_rebase in Hext; eauto.
+    destruct Hext as
+      (pis1 & pis2 & ipl1 & ipl2 &
+       Hhdext & Htlext & Hpis & Hipl & Hflat1 & Hflat2 & Hnlt & Hnge).
+    subst pis ipl.
+    assert (extract_stmt stmt constrs env_dim 0%nat
+              (sched_prefix ++ [(repeat 0%Z env_dim, Z.of_nat pos)]) = Okk pis1) as Hhdext0.
+    {
+      simpl in Hhdext.
+      replace (env_dim + 0)%nat with env_dim in Hhdext by lia.
+      exact Hhdext.
+    }
+    assert (NoDup ipl1) as Hnd1.
+    { destruct Hflat1 as (_ & _ & Hnd & _). exact Hnd. }
+    assert (NoDup ipl2) as Hnd2.
+    {
+      destruct Hflat2 as (_ & _ & Hnd_map & _).
+      eapply NoDup_map_inv in Hnd_map.
+      exact Hnd_map.
+    }
+    assert (NoDup sorted_ipl) as Hndsorted.
+    {
+      destruct Hflat as (_ & _ & Hnd & _).
+      eapply Permutation_NoDup; [exact Hperm|exact Hnd].
+    }
+    pose proof (
+      perm_partition_by_nth_threshold
+        (Datatypes.length pis1) ipl1 ipl2 sorted_ipl
+        Hnd1 Hnd2 Hndsorted Hperm Hnlt Hnge
+    ) as Hparts.
+    destruct Hparts as [HpermL HpermR].
+    assert (sorted_ipl =
+      filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl ++
+      filter (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl) as Hsplit_sorted.
+    {
+      eapply sorted_sched_filter_split_if_cross_lt; eauto.
+      intros x y Hinx Hiny Hfx Hfy.
+      assert (In x (filter (fun ip : PolyLang.InstrPoint =>
+          Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) sorted_ipl)) as HxinF.
+      {
+        eapply filter_In.
+        split; [exact Hinx|exact Hfx].
+      }
+      assert (In y (filter (fun ip : PolyLang.InstrPoint =>
+          negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))) sorted_ipl)) as HyinF.
+      {
+        eapply filter_In.
+        split.
+        - exact Hiny.
+        - rewrite Hfy.
+          reflexivity.
+      }
+      assert (In x ipl1) as Hxin1.
+      {
+        eapply Permutation_in.
+        2: { exact HxinF. }
+        exact (Permutation_sym HpermL).
+      }
+      assert (In y ipl2) as Hyin2.
+      {
+        eapply Permutation_in.
+        2: { exact HyinF. }
+        exact (Permutation_sym HpermR).
+      }
+      eapply seq_cons_cross_lt_by_nth_with_prefix
+        with (stmt:=stmt) (stmts':=stmts') (constrs:=constrs)
+             (env_dim:=env_dim) (sched_prefix:=sched_prefix) (pos:=pos)
+             (pis1:=pis1) (pis2:=pis2)
+             (envv:=envv) (ipl1:=ipl1) (ipl2:=ipl2).
+      - exact Hhdext0.
+      - exact Htlext.
+      - exact Hflat1.
+      - exact Hflat2.
+      - exact Hlen.
+      - exact Hxin1.
+      - exact Hyin2.
+    }
+    exists pis1.
+    exists pis2.
+    exists ipl1.
+    exists ipl2.
+    split.
+    - exact Hhdext0.
+    - split.
+      + exact Htlext.
+      + split.
+        * reflexivity.
+        * split.
+          { reflexivity. }
+          split.
+          { exact Hflat1. }
+          split.
+          { exact Hflat2. }
+          split.
+          { exact HpermL. }
+          split.
+          { exact HpermR. }
+          { exact Hsplit_sorted. }
 Qed.
 
 Lemma nodup_all_eq_singleton:
