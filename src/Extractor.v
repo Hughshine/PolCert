@@ -1,4 +1,5 @@
 Require Import ZArith.
+Require Import Bool.
 Require Import Result.
 Require Import ImpureAlarmConfig.
 Require Import String.
@@ -9,6 +10,7 @@ Require Import AST.
 Require Import Base.
 Require Import PolyBase.
 Require Import List.
+Require Import SetoidList.
 Import ListNotations.
 
 Require Import Linalg.
@@ -2654,6 +2656,177 @@ Proof.
       + split.
         * eapply nodup_map_rebase_ip_nth; eauto.
         * eapply sorted_np_lt_map_rebase_ip_nth; eauto.
+Qed.
+
+Lemma flatten_instrs_app_inv_rebase:
+    forall envv pis1 pis2 ipl0,
+    PolyLang.flatten_instrs envv (pis1 ++ pis2) ipl0 ->
+    exists ipl1 ipl2,
+      ipl0 = ipl1 ++ ipl2 /\
+      PolyLang.flatten_instrs envv pis1 ipl1 /\
+      PolyLang.flatten_instrs envv pis2 (map (rebase_ip_nth (Datatypes.length pis1)) ipl2).
+Proof.
+    intros envv pis1 pis2 ipl0 Hflat.
+    destruct Hflat as (Hprefix & Hchar & Hnodup & Hsorted).
+    set (base := Datatypes.length pis1).
+    set (is_left := fun ip : PolyLang.InstrPoint => Nat.ltb (PolyLang.ip_nth ip) base).
+    set (ipl1 := filter is_left ipl0).
+    set (ipl2 := filter (fun ip => negb (is_left ip)) ipl0).
+    exists ipl1.
+    exists ipl2.
+    assert (ipl0 = ipl1 ++ ipl2) as Hsplit.
+    {
+      subst ipl1 ipl2 is_left.
+      eapply filter_split; eauto.
+      - eapply PolyLang.np_eq_equivalence.
+      - eapply PolyLang.np_lt_strict.
+      - eapply PolyLang.np_lt_proper.
+      - intros x y Hx Hy.
+        eapply Nat.ltb_lt in Hx.
+        eapply Nat.ltb_ge in Hy.
+        unfold PolyLang.np_lt.
+        left. lia.
+    }
+    split; [exact Hsplit|].
+    split.
+    - subst ipl1 is_left base.
+      split.
+      + intros ipt Hin.
+        eapply filter_In in Hin.
+        destruct Hin as [Hin _].
+        eapply Hprefix.
+        exact Hin.
+      + split.
+        * intros ip0. split; intro Hin.
+          { eapply filter_In in Hin.
+            destruct Hin as (Hin & Hltb).
+            eapply Hchar in Hin.
+            destruct Hin as (pi0 & Hnth & Hbel & Hlen).
+            exists pi0.
+            split.
+            { rewrite nth_error_app1 in Hnth.
+              - exact Hnth.
+              - eapply Nat.ltb_lt in Hltb. exact Hltb. }
+            split; auto. }
+          { destruct Hin as (pi0 & Hnth & Hbel & Hlen).
+            eapply filter_In.
+            split.
+            { eapply Hchar.
+              exists pi0.
+              split.
+              - rewrite nth_error_app1; eauto.
+                eapply nth_error_Some.
+                rewrite Hnth.
+                discriminate.
+              - split; auto. }
+            { eapply Nat.ltb_lt.
+              eapply nth_error_Some.
+              rewrite Hnth.
+              discriminate. } }
+        * split.
+          { eapply NoDup_filter.
+            exact Hnodup. }
+          { eapply filter_sort; eauto.
+            - eapply PolyLang.np_eq_equivalence.
+            - eapply PolyLang.np_lt_strict.
+            - eapply PolyLang.np_lt_proper. }
+    - subst ipl2 base.
+      split.
+      + intros ip' Hin.
+        eapply in_map_iff in Hin.
+        destruct Hin as (ip & Hip' & Hipin).
+        subst ip'.
+        eapply filter_In in Hipin.
+        destruct Hipin as (Hipin & _).
+        simpl.
+        eapply Hprefix.
+        exact Hipin.
+      + split.
+        * intros ip'. split; intro Hin.
+          { eapply in_map_iff in Hin.
+            destruct Hin as (ip & Hip' & Hipin).
+            subst ip'.
+            eapply filter_In in Hipin.
+            destruct Hipin as (Hipin0 & Hpredfalse).
+            apply negb_true_iff in Hpredfalse.
+            unfold is_left in Hpredfalse.
+            eapply Nat.ltb_ge in Hpredfalse.
+            eapply Hchar in Hipin0.
+            destruct Hipin0 as (pi & Hnthapp & Hbel & Hlen).
+            rewrite nth_error_app2 in Hnthapp by lia.
+            exists pi.
+            split.
+            { simpl. exact Hnthapp. }
+            split.
+            { exact Hbel. }
+            { exact Hlen. } }
+          { destruct Hin as (pi & Hnth & Hbel & Hlen).
+            destruct ip' as [n' idx tf ts instr depth].
+            simpl in *.
+            set (ip0 := {|
+              PolyLang.ip_nth := (n' + Datatypes.length pis1)%nat;
+              PolyLang.ip_index := idx;
+              PolyLang.ip_transformation := tf;
+              PolyLang.ip_time_stamp := ts;
+              PolyLang.ip_instruction := instr;
+              PolyLang.ip_depth := depth;
+            |}).
+            assert (In ip0 ipl0) as Hip0in.
+            {
+              eapply Hchar.
+              exists pi.
+              split.
+              { subst ip0.
+                simpl.
+                rewrite nth_error_app2 by lia.
+                replace (n' + Datatypes.length pis1 - Datatypes.length pis1)%nat with n' by lia.
+                exact Hnth. }
+              split.
+              { exact Hbel. }
+              { exact Hlen. }
+            }
+            assert (In ip0 (filter (fun ip : PolyLang.InstrPoint => negb (is_left ip)) ipl0)) as Hip0.
+            {
+              eapply filter_In.
+              split.
+              { exact Hip0in. }
+              { subst is_left ip0. simpl.
+                apply negb_true_iff.
+                apply Nat.ltb_ge.
+                lia. }
+            }
+            eapply in_map_iff.
+            exists ip0.
+            split.
+            { subst ip0.
+              unfold rebase_ip_nth.
+              simpl.
+              f_equal; try reflexivity.
+              lia. }
+            { exact Hip0. } }
+        * split.
+          { eapply nodup_map_rebase_ip_nth.
+            - intros ip Hin.
+              eapply filter_In in Hin.
+              destruct Hin as [_ Hpredfalse].
+              apply negb_true_iff in Hpredfalse.
+              unfold is_left in Hpredfalse.
+              eapply Nat.ltb_ge in Hpredfalse.
+              exact Hpredfalse.
+            - eapply NoDup_filter.
+              exact Hnodup. }
+          { eapply sorted_np_lt_map_rebase_ip_nth.
+            - intros ip Hin.
+              eapply filter_In in Hin.
+              destruct Hin as [_ Hpredfalse].
+              apply negb_true_iff in Hpredfalse.
+              unfold is_left in Hpredfalse.
+              eapply Nat.ltb_ge in Hpredfalse.
+              exact Hpredfalse.
+            - eapply filter_sort; eauto.
+              + eapply PolyLang.np_eq_equivalence.
+              + eapply PolyLang.np_lt_strict.
+              + eapply PolyLang.np_lt_proper. }
 Qed.
 
 Lemma nodup_all_eq_singleton:
