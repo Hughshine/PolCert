@@ -5037,6 +5037,21 @@ Proof.
       eapply filter_all_true_id.
       exact Halltrue.
     }
+    assert (Heq_out_of_range_nil:
+      forall i,
+      (i < lbv \/ ubv <= i)%Z ->
+      filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl = []).
+    {
+      intros i Hrange.
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      destruct Hrange as [Hlow | Hhigh].
+      - eapply Z.eqb_neq.
+        lia.
+      - eapply Z.eqb_neq.
+        lia.
+    }
     set (in_loop_range :=
       fun ip : PolyLang.InstrPoint =>
         andb (negb (Z.ltb (head_ts ip) lbv))
