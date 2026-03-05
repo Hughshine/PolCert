@@ -2442,6 +2442,38 @@ Proof.
     eapply Loop.instance_list_implies_loop_semantics_aux; eauto.
 Qed.
 
+Lemma guard_true_semantics_with_eq:
+    forall test body env st1 st2 st2',
+    Loop.loop_semantics body env st1 st2' ->
+    Loop.eval_test env test = true ->
+    State.eq st2 st2' ->
+    exists stmid,
+      Loop.loop_semantics (PolIRs.Loop.Guard test body) env st1 stmid /\
+      State.eq st2 stmid.
+Proof.
+    intros test body env st1 st2 st2' Hbody Heval Heq.
+    exists st2'.
+    split.
+    - eapply Loop.LGuardTrue; eauto.
+    - exact Heq.
+Qed.
+
+Lemma seq_cons_semantics_with_eq:
+    forall st sts env st1 st2 st3 st3',
+    Loop.loop_semantics st env st1 st2 ->
+    Loop.loop_semantics (PolIRs.Loop.Seq sts) env st2 st3 ->
+    State.eq st3' st3 ->
+    exists stmid,
+      Loop.loop_semantics (PolIRs.Loop.Seq (PolIRs.Loop.SCons st sts)) env st1 stmid /\
+      State.eq st3' stmid.
+Proof.
+    intros st sts env st1 st2 st3 st3' Hhd Htl Heq.
+    exists st3.
+    split.
+    - eapply Loop.LSeq; eauto.
+    - exact Heq.
+Qed.
+
 Lemma instr_branch_core:
     forall i es varctxt envv ipl sorted_ipl st1 st2 tf w r,
     exprlist_to_aff es (Datatypes.length varctxt) = Okk tf ->
