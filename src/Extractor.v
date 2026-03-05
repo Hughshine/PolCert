@@ -4551,6 +4551,29 @@ Proof.
       eapply Permutation_sym.
       exact Hperm.
     }
+    set (pfx :=
+      affine_product (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv).
+    assert (Hsplit_head_bound:
+      forall b,
+      sorted_ipl =
+        filter
+          (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) b)
+          sorted_ipl ++
+        filter
+          (fun ip => negb (Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) b))
+          sorted_ipl).
+    {
+      intros b.
+      eapply sorted_sched_filter_split_by_prefix_head_bound.
+      - exact Hsorted.
+      - intros ip Hin.
+        destruct (Hpoint_ts_head ip Hin) as [i [tsuf Hts]].
+        exists i.
+        exists tsuf.
+        rewrite Hts.
+        unfold pfx.
+        reflexivity.
+    }
     (*
       Remaining work (single hole):
       1) Recover a canonical iterator head from timestamp prefix for each point;
