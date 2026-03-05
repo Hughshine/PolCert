@@ -2406,8 +2406,60 @@ Proof.
       destruct H4 as (stmid & Hleft & Hright).
       exists stmid.
       split.
-      + econstructor; eauto.
-      + exact Hright.
+	      + econstructor; eauto.
+	      + exact Hright.
+Qed.
+
+Definition rebase_ip_nth (base: nat) (ip: PolyLang.InstrPoint): PolyLang.InstrPoint :=
+  {|
+    PolyLang.ip_nth := (PolyLang.ip_nth ip - base)%nat;
+    PolyLang.ip_index := PolyLang.ip_index ip;
+    PolyLang.ip_transformation := PolyLang.ip_transformation ip;
+    PolyLang.ip_time_stamp := PolyLang.ip_time_stamp ip;
+    PolyLang.ip_instruction := PolyLang.ip_instruction ip;
+    PolyLang.ip_depth := PolyLang.ip_depth ip;
+  |}.
+
+Lemma instr_point_sema_rebase_ip_nth:
+    forall base ip st1 st2,
+    PolyLang.instr_point_sema (rebase_ip_nth base ip) st1 st2 <->
+    PolyLang.instr_point_sema ip st1 st2.
+Proof.
+    intros base ip st1 st2.
+    split; intro Hsema.
+    - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
+      econstructor.
+      simpl in *.
+      exact Hsem.
+    - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
+      econstructor.
+      simpl in *.
+      exact Hsem.
+Qed.
+
+Lemma instr_point_list_semantics_map_rebase_ip_nth:
+    forall base ipl st1 st2,
+    PolyLang.instr_point_list_semantics (map (rebase_ip_nth base) ipl) st1 st2 <->
+    PolyLang.instr_point_list_semantics ipl st1 st2.
+Proof.
+    intros base ipl.
+    induction ipl as [|ip ipl IH]; intros st1 st2; split; intro Hsema.
+    - inversion Hsema; subst.
+      constructor.
+      exact H.
+    - inversion Hsema; subst.
+      constructor.
+      exact H.
+    - simpl in Hsema.
+      inversion Hsema; subst.
+      econstructor.
+      + eapply (proj1 (instr_point_sema_rebase_ip_nth base ip st1 st3)); eauto.
+      + eapply (proj1 (IH st3 st2)); eauto.
+    - simpl.
+      inversion Hsema; subst.
+      econstructor.
+      + eapply (proj2 (instr_point_sema_rebase_ip_nth base ip st1 st3)); eauto.
+      + eapply (proj2 (IH st3 st2)); eauto.
 Qed.
 
 Lemma nodup_all_eq_singleton:
