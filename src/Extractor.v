@@ -2524,6 +2524,51 @@ Proof.
     exact Hsorted.
 Qed.
 
+Lemma nth_after_prefix_singleton:
+    forall (pfx tsuf: list Z) (i d: Z),
+    nth (Datatypes.length pfx) (pfx ++ [i] ++ tsuf) d = i.
+Proof.
+    induction pfx as [|x pfx IH]; intros tsuf i d; simpl.
+    - reflexivity.
+    - eapply IH.
+Qed.
+
+Lemma sorted_sched_filter_split_by_prefix_head_bound:
+    forall l pfx bound,
+    Sorted PolyLang.instr_point_sched_le l ->
+    (forall ip, In ip l ->
+      exists i tsuf, PolyLang.ip_time_stamp ip = pfx ++ [i] ++ tsuf) ->
+    l =
+      filter (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) bound) l ++
+      filter
+        (fun ip =>
+          negb (Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) bound)) l.
+Proof.
+    intros l pfx bound Hsorted Hhead.
+    eapply sorted_sched_filter_split_if_cross_lt; eauto.
+    intros x y Hinx Hiny Hfx Hfy.
+    destruct (Hhead x Hinx) as [ix [tx Htsx]].
+    destruct (Hhead y Hiny) as [iy [ty Htsy]].
+    simpl in Hfx, Hfy.
+    rewrite Htsx in Hfx.
+    rewrite Htsy in Hfy.
+    rewrite nth_after_prefix_singleton in Hfx.
+    rewrite nth_after_prefix_singleton in Hfy.
+    eapply Z.ltb_lt in Hfx.
+    destruct (iy <? bound) eqn:Hiy in Hfy.
+    - discriminate.
+    - eapply Z.ltb_ge in Hiy.
+      clear Hfy.
+      rename Hiy into Hfy.
+    assert ((ix < iy)%Z) as Hlt.
+    { lia. }
+    rewrite Htsx, Htsy.
+    replace (pfx ++ [ix] ++ tx) with (pfx ++ (ix :: tx)) by reflexivity.
+    replace (pfx ++ [iy] ++ ty) with (pfx ++ (iy :: ty)) by reflexivity.
+    eapply lex_compare_prefix_cons_head_lt.
+    exact Hlt.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
