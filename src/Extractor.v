@@ -4574,13 +4574,21 @@ Proof.
         unfold pfx.
         reflexivity.
     }
+    set (head_ts := fun ip : PolyLang.InstrPoint =>
+      nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z).
+    set (lbv := Loop.eval_expr (rev envv) lb).
+    set (ubv := Loop.eval_expr (rev envv) ub).
+    pose proof (Hsplit_head_bound lbv) as Hsplit_at_lb.
+    pose proof (Hsplit_head_bound ubv) as Hsplit_at_ub.
     (*
       Remaining work (single hole):
-      1) Recover a canonical iterator head from timestamp prefix for each point;
-      2) Use Hpoint_bounds + Hpoint_ts_head to partition sorted_ipl iteration-by-iteration over Zrange lb ub;
-      3) For each iteration slice, derive body semantics under env (i :: rev envv);
-      4) Rebuild IterSem.iter_semantics and apply Loop.LLoop;
-      5) Thread State.eq to conclude final state equality with st2.
+      1) Show canonical relation: for each point, timestamp-head (head_ts ip) is
+         exactly the loop iterator constrained by domain bounds;
+      2) Use Hsplit_at_lb/Hsplit_at_ub plus (1) to isolate points with lb <= head < ub;
+      3) Refine split to per-iteration slices over Zrange lbv ubv;
+      4) For each slice, derive body semantics under env (i :: rev envv);
+      5) Rebuild IterSem.iter_semantics and apply Loop.LLoop;
+      6) Thread State.eq to conclude final state equality with st2.
     *)
 Admitted.
 
