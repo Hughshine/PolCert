@@ -1057,6 +1057,21 @@ Proof.
     exact Hin.
 Qed.
 
+Lemma in_poly_normalize_affine_list_rev_app_inv:
+    forall cols env pol1 pol2,
+    Datatypes.length env = cols ->
+    in_poly env (normalize_affine_list_rev cols (pol1 ++ pol2)) = true ->
+    in_poly (rev env) pol1 = true /\
+    in_poly (rev env) pol2 = true.
+Proof.
+    intros cols env pol1 pol2 Hlen Hin.
+    unfold in_poly in *.
+    rewrite normalize_affine_list_rev_satisfies_constraint in Hin; auto.
+    rewrite forallb_app in Hin.
+    eapply andb_true_iff_local in Hin.
+    exact Hin.
+Qed.
+
 Lemma firstn_length_decompose:
     forall (envv idx: list Z) d,
     firstn (Datatypes.length envv) idx = envv ->
@@ -1073,6 +1088,75 @@ Proof.
     - rewrite skipn_length.
       rewrite Hlen.
       lia.
+Qed.
+
+Lemma dot_product_firstn_right:
+    forall v l n,
+    Datatypes.length v = n ->
+    dot_product v l = dot_product v (firstn n l).
+Proof.
+    induction v as [|x v IH]; intros l n Hlen; simpl in *.
+    - destruct n; simpl in *; [destruct l; reflexivity|lia].
+    - destruct n; simpl in Hlen; [lia|].
+      destruct l as [|y l']; simpl.
+      + reflexivity.
+      + inversion Hlen as [Hlen'].
+        simpl.
+        f_equal.
+        eapply IH; eauto.
+Qed.
+
+Lemma dot_product_firstn_left:
+    forall l v n,
+    Datatypes.length v = n ->
+    dot_product l v = dot_product (firstn n l) v.
+Proof.
+    intros l v n Hlen.
+    rewrite dot_product_commutative.
+    rewrite dot_product_firstn_right with (n:=n) (v:=v) (l:=l); auto.
+    rewrite dot_product_commutative.
+    reflexivity.
+Qed.
+
+Lemma satisfies_constraint_prefix:
+    forall cols env idx aff,
+    Datatypes.length env = cols ->
+    firstn cols idx = env ->
+    Datatypes.length (fst aff) = cols ->
+    satisfies_constraint idx aff = satisfies_constraint env aff.
+Proof.
+    intros cols env idx [v c] Henv Hprefix Hlenv.
+    unfold satisfies_constraint. simpl.
+    rewrite dot_product_firstn_left with (n:=cols) (v:=v) (l:=idx); auto.
+Qed.
+
+Lemma in_poly_prefix:
+    forall cols env idx constrs,
+    Datatypes.length env = cols ->
+    firstn cols idx = env ->
+    Forall (fun aff => Datatypes.length (fst aff) = cols) constrs ->
+    in_poly idx constrs = in_poly env constrs.
+Proof.
+    intros cols env idx constrs Henv Hprefix Hcols.
+    induction constrs as [|aff constrs IH]; simpl in *.
+    - reflexivity.
+    - inversion Hcols as [|aff' constrs' Haff Hrest]; subst.
+      assert (Hs: satisfies_constraint idx aff = satisfies_constraint env aff).
+      { eapply satisfies_constraint_prefix; eauto. }
+      rewrite Hs.
+      rewrite IH; auto.
+Qed.
+
+Lemma normalize_affine_list_rev_rows_cols:
+    forall cols affs,
+    Forall (fun aff => Datatypes.length (fst aff) = cols) (normalize_affine_list_rev cols affs).
+Proof.
+    intros cols affs.
+    induction affs as [|[v c] affs IH]; simpl.
+    - constructor.
+    - constructor.
+      + simpl. rewrite rev_length. eapply resize_length.
+      + exact IH.
 Qed.
 
 (** $3 + 5 >= $4 => -$3 + $4 <= 5 *)
@@ -1317,7 +1401,6 @@ Proof.
         eapply Forall_app; split; eauto.
 Qed.
 
-
 (* Extraction examples are kept in instance-level test files (e.g. CPolIRs/TPolIRs)
    because generic functor-level examples become brittle after strengthening
    access-function resolution with checker-dependent branches. *)
@@ -1498,6 +1581,51 @@ Proof.
     pose proof (proj1 (Hbel ip) Hin) as Htmp.
     destruct Htmp as (_ & _ & Hlen).
     eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre; eauto.
+Qed.
+
+Lemma flatten_instrs_in_inv:
+    forall envv pis ipl ip,
+    PolyLang.flatten_instrs envv pis ipl ->
+    In ip ipl ->
+    exists pi,
+      In pi pis /\
+      PolyLang.belongs_to ip pi /\
+      Datatypes.length (PolyLang.ip_index ip) = (Datatypes.length envv + PolyLang.pi_depth pi)%nat.
+Proof.
+    intros envv pis ipl ip Hflat Hin.
+    destruct Hflat as (_ & Hchar & _ & _).
+    specialize (Hchar ip).
+    eapply Hchar in Hin.
+    destruct Hin as (pi & Hnth & Hbel & Hlen).
+    exists pi.
+    split.
+    - eapply nth_error_In; eauto.
+    - split; auto.
+Qed.
+
+Lemma flatten_point_satisfies_prefix_constraints:
+    forall stmt constrs env_dim iter_depth sched_prefix pis envv ipl ip,
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
+    Datatypes.length envv = env_dim ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    In ip ipl ->
+    in_poly (rev (PolyLang.ip_index ip)) constrs = true.
+Proof.
+    intros stmt constrs env_dim iter_depth sched_prefix pis envv ipl ip
+      Hext Henvlen Hflat Hin.
+    eapply extract_stmt_prefix_constraints in Hext.
+    eapply flatten_instrs_in_inv in Hflat; eauto.
+    destruct Hflat as (pi & Hpiin & Hbel & Hlen).
+    eapply Forall_forall in Hext; eauto.
+    unfold pi_has_prefix_constraints in Hext.
+    destruct Hext as (extra & Hpoly).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hinpoly & _).
+    rewrite Hpoly in Hinpoly.
+    rewrite Henvlen in Hlen.
+    eapply in_poly_normalize_affine_list_rev_app_inv in Hinpoly; eauto.
+    destruct Hinpoly as [Hprefix _].
+    exact Hprefix.
 Qed.
 
 Lemma permutation_singleton:
