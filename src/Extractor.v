@@ -2240,6 +2240,154 @@ Proof.
     exact Hts.
 Qed.
 
+Lemma flattened_point_loop_bounds_and_timestamp_head:
+    forall lb ub body constrs sched_prefix (varctxt: list ident)
+           pis envv ipl ip,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+      (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    In ip ipl ->
+    exists i tsuf,
+      (Loop.eval_expr (rev envv) lb <= i < Loop.eval_expr (rev envv) ub)%Z /\
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv ++
+        [i] ++ tsuf.
+Proof.
+    intros lb ub body constrs sched_prefix varctxt
+      pis envv ipl ip Hext Hflat Hlenenv Hip.
+    eapply extract_stmt_loop_success_inv in Hext.
+    destruct Hext as (lbc & ubc & Hlb & Hub & Hbodyext).
+    pose proof Hbodyext as Hbodyext_sched.
+    pose proof Hbodyext as Hbodyext_dom.
+    destruct Hflat as (Hprefix & Hchar & _ & _).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    assert (In pi pis) as Hpin.
+    { eapply nth_error_In; eauto. }
+    eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
+    2: { exact Hpin. }
+    destruct Hbodyext_sched as (ks & tail_sched & Hdepth_sched & Hsched).
+    eapply extract_stmt_has_lifted_prefix in Hbodyext_dom.
+    2: { exact Hpin. }
+    destruct Hbodyext_dom as (kd & tail_dom & Hdepth_dom & Hpoly).
+    assert (kd = ks) as Hk.
+    { lia. }
+    subst kd.
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hindom & _ & Hts & _ & _).
+    assert (Hlenidx_var:
+      Datatypes.length (PolyLang.ILSema.ip_index ip) =
+      (Datatypes.length varctxt + PolyLang.pi_depth pi)%nat).
+    {
+      rewrite <- Hlenenv.
+      exact Hlenidx.
+    }
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx. }
+    destruct Hpre as (suf & Hidx & Hsuflen).
+    rewrite Hdepth_sched in Hsuflen.
+    assert (Datatypes.length (rev suf) = S ks)%nat as Hlenrev.
+    { rewrite rev_length. exact Hsuflen. }
+    assert (
+      rev suf ++ rev envv =
+      firstn ks (rev suf) ++ skipn ks (rev suf) ++ rev envv
+    ) as Hsplit.
+    {
+      replace (rev suf) with (firstn ks (rev suf) ++ skipn ks (rev suf)) at 1.
+      2: { eapply firstn_skipn. }
+      rewrite app_assoc.
+      reflexivity.
+    }
+    assert (Datatypes.length (firstn ks (rev suf)) = ks)%nat as Hlenfirst.
+    {
+      rewrite firstn_length.
+      lia.
+    }
+    eapply skipn_length_S_singleton in Hlenrev.
+    destruct Hlenrev as [i Hskip].
+
+    (* Timestamp head: derive outer prefix ++ [i] ++ tsuf *)
+    rewrite Hsched in Hts.
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlenidx_var. }
+    rewrite Hidx in Hts.
+    rewrite rev_app_distr in Hts.
+    rewrite affine_product_app in Hts.
+    rewrite Hsplit in Hts.
+    assert (Hlift:
+      affine_product
+        (lift_affine_list_n ks
+          (lift_affine_list sched_prefix ++
+           [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)]))
+        (firstn ks (rev suf) ++ skipn ks (rev suf) ++ rev envv) =
+      affine_product
+        (lift_affine_list sched_prefix ++
+         [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)])
+        (skipn ks (rev suf) ++ rev envv)).
+    {
+      replace ks with (Datatypes.length (firstn ks (rev suf))) at 1
+        by (symmetry; exact Hlenfirst).
+      eapply affine_product_lift_affine_list_n_app.
+    }
+    rewrite Hlift in Hts.
+    rewrite Hskip in Hts.
+    simpl in Hts.
+    rewrite affine_product_sched_prefix_loop in Hts.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hts by lia.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=Datatypes.length varctxt) (env:=envv) (affs:=sched_prefix) in Hts.
+    2: { exact Hlenenv. }
+    rewrite <- app_assoc in Hts.
+
+    (* Domain bounds: use the same i from Hskip *)
+    rewrite Hpoly in Hindom.
+    eapply in_poly_normalize_affine_list_rev_app_inv
+      with (cols:=(Datatypes.length varctxt + PolyLang.pi_depth pi)%nat)
+           (env:=PolyLang.ip_index ip)
+           (pol1:=lift_affine_list_n ks (lift_affine_list constrs ++ [lbc; ubc]))
+           (pol2:=tail_dom) in Hindom.
+    2: { exact Hlenidx_var. }
+    destruct Hindom as [Hbase _].
+    rewrite Hidx in Hbase.
+    rewrite rev_app_distr in Hbase.
+    rewrite Hsplit in Hbase.
+    set (pref := firstn ks (rev suf)) in *.
+    set (suff := skipn ks (rev suf) ++ rev envv) in *.
+    assert (Datatypes.length pref = ks)%nat as Hlenpref.
+    {
+      unfold pref.
+      exact Hlenfirst.
+    }
+    change (in_poly (pref ++ suff)
+      (lift_affine_list_n ks (lift_affine_list constrs ++ [lbc; ubc])) = true) in Hbase.
+    rewrite <- Hlenpref in Hbase.
+    rewrite in_poly_lift_affine_list_n_app in Hbase.
+    unfold suff in Hbase.
+    rewrite Hskip in Hbase.
+    simpl in Hbase.
+    assert (Hlb0: lb_to_constr lb (Datatypes.length varctxt) = Okk lbc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hlb.
+    }
+    assert (Hub0: ub_to_constr ub (Datatypes.length varctxt) = Okk ubc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hub.
+    }
+    eapply loop_constraints_complete_lifted in Hbase.
+    2: { rewrite rev_length. exact Hlenenv. }
+    2: { exact Hlb0. }
+    2: { exact Hub0. }
+    destruct Hbase as [_ Hbounds].
+
+    exists i.
+    exists (affine_product tail_sched (firstn ks (rev suf) ++ i :: rev envv)).
+    split; auto.
+Qed.
+
 Lemma flattened_point_schedule_has_top_prefix:
     forall stmt constrs env_dim sched_prefix pis envv ipl ip,
     extract_stmt stmt constrs env_dim 0%nat sched_prefix = Okk pis ->
