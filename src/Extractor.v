@@ -2474,6 +2474,28 @@ Proof.
     - exact Heq.
 Qed.
 
+Lemma guard_branch_reduce:
+    forall test body env st1 st2,
+    (Loop.eval_test env test = true ->
+      exists st2',
+        Loop.loop_semantics body env st1 st2' /\ State.eq st2 st2') ->
+    (Loop.eval_test env test = false ->
+      exists st2',
+        Loop.loop_semantics (PolIRs.Loop.Guard test body) env st1 st2' /\ State.eq st2 st2') ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Guard test body) env st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros test body env st1 st2 Htrue Hfalse.
+    destruct (Loop.eval_test env test) eqn:Heval.
+    - destruct (Htrue eq_refl) as (st2' & Hbody & Heq).
+      exists st2'.
+      split.
+      + eapply Loop.LGuardTrue; eauto.
+      + exact Heq.
+    - eapply Hfalse.
+      reflexivity.
+Qed.
+
 Lemma instr_branch_core:
     forall i es varctxt envv ipl sorted_ipl st1 st2 tf w r,
     exprlist_to_aff es (Datatypes.length varctxt) = Okk tf ->
