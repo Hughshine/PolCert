@@ -4083,6 +4083,415 @@ Proof.
       exact Heq.
 Qed.
 
+Fixpoint stmt_size (stmt: PolIRs.Loop.stmt): nat :=
+    match stmt with
+    | PolIRs.Loop.Loop _ _ body => S (stmt_size body)
+    | PolIRs.Loop.Instr _ _ => 1%nat
+    | PolIRs.Loop.Seq stmts => S (stmt_list_size stmts)
+    | PolIRs.Loop.Guard _ body => S (stmt_size body)
+    end
+with stmt_list_size (stmts: PolIRs.Loop.stmt_list): nat :=
+    match stmts with
+    | PolIRs.Loop.SNil => 0%nat
+    | PolIRs.Loop.SCons st sts => S (stmt_size st + stmt_list_size sts)
+    end.
+
+Lemma instr_branch_core_with_constrs_len:
+    forall i es constrs sched_prefix (varctxt: list ident) (envv: list Z)
+           (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2 tf w r,
+    exprlist_to_aff es (Datatypes.length varctxt) = Okk tf ->
+    resolve_access_functions i = Some (w, r) ->
+    in_poly (rev envv) constrs = true ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    PolyLang.flatten_instrs envv
+      [{|
+        PolyLang.pi_depth := 0;
+        PolyLang.pi_instr := i;
+        PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
+        PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
+        PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
+        PolyLang.pi_waccess := normalize_access_list_rev (Datatypes.length varctxt) w;
+        PolyLang.pi_raccess := normalize_access_list_rev (Datatypes.length varctxt) r;
+      |}] ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    exists st2',
+      Loop.loop_semantics (Loop.Instr i es) (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros i es constrs sched_prefix varctxt envv ipl sorted_ipl st1 st2 tf w r
+      Htf Hacc Hconstr Hlen Hflat Hperm Hsorted Hipls.
+    assert (in_poly envv
+      (normalize_affine_list_rev (Datatypes.length varctxt) constrs) = true) as Hdom.
+    {
+      unfold in_poly in *.
+      rewrite normalize_affine_list_rev_satisfies_constraint
+        with (cols:=Datatypes.length varctxt) (env:=envv) (affs:=constrs).
+      exact Hconstr.
+      exact Hlen.
+    }
+    assert (affine_product (normalize_affine_list_rev (Datatypes.length varctxt) tf) envv =
+            map (Loop.eval_expr (rev envv)) es) as Haff.
+    {
+      eapply exprlist_to_aff_rev_normalized_correct; eauto.
+    }
+    eapply flatten_instrs_singleton_inv in Hflat.
+    eapply flatten_instr_nth_depth0_singleton_if_in_poly in Hflat.
+    2: { reflexivity. }
+    2: { exact Hdom. }
+    destruct Hflat as (ip0 & Hipl & Hnth & Hidx & Htr & Hts & Hinstr & Hdep).
+    subst ipl.
+    eapply permutation_singleton in Hperm.
+    subst sorted_ipl.
+    eapply instr_point_list_semantics_singleton_inv in Hipls.
+    destruct Hipls as (stmid & Hipsema & Heq).
+    inversion Hipsema as [wcs rcs Hipinstr]; clear Hipsema.
+    assert (affine_product (PolyLang.ip_transformation ip0) (PolyLang.ip_index ip0) =
+            map (Loop.eval_expr (rev envv)) es) as Hargs_rev.
+    {
+      rewrite Htr.
+      rewrite Hidx.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) by lia.
+      exact Haff.
+    }
+    rewrite Hargs_rev in Hipinstr.
+    rewrite Hinstr in Hipinstr.
+    exists stmid.
+    split.
+    - eapply Loop.LInstr.
+      eauto.
+    - eapply State.eq_sym.
+      exact Heq.
+Qed.
+
+Lemma flattened_guard_false_implies_nil_constrs_len:
+    forall test body constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           (envv: list Z) pis ipl,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) constrs (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    Loop.eval_test (rev envv) test = false ->
+    ipl = [].
+Proof.
+    intros test body constrs sched_prefix varctxt vars envv pis ipl
+      Hwf Hext Hchk Hflat Hlenenv Hevalfalse.
+    eapply extract_stmt_guard_success_inv in Hext.
+    destruct Hext as (test_constrs & Htest & Hbodyext).
+    simpl in Hbodyext.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+    destruct ipl as [|ip ipl'].
+    - reflexivity.
+    - exfalso.
+      assert (in_poly (rev envv)
+        (constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardall.
+      {
+        eapply flattened_point_satisfies_top_constraints
+          with (stmt:=body)
+               (constrs:=constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs)
+               (env_dim:=Datatypes.length varctxt)
+               (sched_prefix:=sched_prefix)
+               (pis:=pis)
+               (envv:=envv)
+               (ipl:=ip :: ipl')
+               (ip:=ip); eauto.
+        simpl. left. reflexivity.
+      }
+      eapply in_poly_guard_split in Hguardall.
+      destruct Hguardall as [_ Hguardnorm].
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardin.
+      { unfold in_poly. exact Hguardnorm. }
+      eapply test_false_implies_not_in_poly_normalized in Hevalfalse; eauto.
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length (rev envv)) test_constrs) = true) as Hguardin'.
+      {
+        rewrite rev_length.
+        rewrite Hlenenv.
+        exact Hguardin.
+      }
+      rewrite Hguardin' in Hevalfalse.
+      discriminate.
+Qed.
+
+Lemma guard_false_core_case_constrs_len:
+    forall test body constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) constrs (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    Loop.eval_test (rev envv) test = false ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Guard test body) (rev envv) st1 st2' /\
+      State.eq st2 st2'.
+Proof.
+    intros test body constrs sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hext Hchk Hflat Hperm Hsorted Hipls Hlenenv Hevalfalse.
+    assert (Hnil: ipl = []).
+    {
+      eapply flattened_guard_false_implies_nil_constrs_len
+        with (test:=test) (body:=body) (constrs:=constrs) (sched_prefix:=sched_prefix)
+             (varctxt:=varctxt) (vars:=vars); eauto.
+    }
+    subst ipl.
+    eapply Permutation_nil in Hperm.
+    subst sorted_ipl.
+    assert (State.eq st1 st2) as Heq12.
+    { inversion Hipls; subst; auto. }
+    exists st1.
+    split.
+    - eapply Loop.LGuardFalse.
+      exact Hevalfalse.
+    - eapply State.eq_sym.
+      exact Heq12.
+Qed.
+
+Lemma core_sched_loop_constrs_len_todo:
+    forall lb ub body constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2,
+    wf_scop_stmt (PolIRs.Loop.Loop lb ub body) = true ->
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs (Datatypes.length varctxt) 0 sched_prefix = Okk pis ->
+    in_poly (rev envv) constrs = true ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Loop lb ub body) (rev envv) st1 st2' /\ State.eq st2 st2'.
+Admitted.
+
+Lemma core_sched_seq_tail_constrs_len_todo:
+    forall sts constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           (pis1 pis2: list PolIRs.PolyLang.PolyInstr)
+           (envv: list Z) (ipl2 sorted_ipl: list PolyLang.InstrPoint)
+           (sth st2: State.t),
+    wf_scop_stmts sts = true ->
+    extract_stmts sts constrs (Datatypes.length varctxt) 0 sched_prefix 1 = Okk pis2 ->
+    in_poly (rev envv) constrs = true ->
+    check_extracted_wf pis2 varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis2
+      (map (rebase_ip_nth (Datatypes.length pis1)) ipl2) ->
+    Permutation ipl2
+      (filter
+        (fun ip : PolyLang.InstrPoint =>
+          negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+        sorted_ipl) ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics
+      (map (rebase_ip_nth (Datatypes.length pis1))
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+          sorted_ipl))
+      sth st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    exists stt,
+      Loop.loop_semantics (PolIRs.Loop.Seq sts) (rev envv) sth stt /\ State.eq st2 stt.
+Admitted.
+
+Lemma extract_stmt_to_loop_semantics_core_sched_constrs_fuel:
+    forall (fuel: nat) stmt constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2,
+    (stmt_size stmt <= fuel)%nat ->
+    wf_scop_stmt stmt = true ->
+    extract_stmt stmt constrs (Datatypes.length varctxt) 0 sched_prefix = Okk pis ->
+    in_poly (rev envv) constrs = true ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    exists st2',
+      Loop.loop_semantics stmt (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    induction fuel as [|fuel IH];
+      intros stmt constrs sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+        Hfuel Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hipls Hlenenv.
+    - destruct stmt; simpl in Hfuel; lia.
+    - destruct stmt as [lb ub body | i es | stmts | test body].
+      + (* Loop *)
+        eapply core_sched_loop_constrs_len_todo; eauto.
+      + (* Instr *)
+        eapply extract_stmt_instr_success_inv in Hextract.
+        destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
+        subst pis.
+        replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Htf by lia.
+        replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hflat by lia.
+        replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hchk by lia.
+        eapply (instr_branch_core_with_constrs_len
+          i es constrs sched_prefix varctxt envv ipl sorted_ipl st1 st2 tf w r); eauto.
+      + (* Seq *)
+        eapply extract_stmt_seq_success_inv in Hextract.
+        eapply wf_scop_seq_inv in Hwf.
+        simpl in Hfuel.
+        destruct stmts as [|st sts].
+        * eapply extract_stmts_nil_success_inv in Hextract.
+          subst pis.
+          eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat.
+          subst ipl.
+          eapply Permutation_nil in Hperm.
+          subst sorted_ipl.
+          assert (State.eq st1 st2) as Heq12.
+          { eapply instr_point_list_semantics_nil_inv; eauto. }
+          exists st1.
+          split.
+          -- constructor.
+          -- eapply State.eq_sym.
+             exact Heq12.
+        * eapply wf_scop_stmts_cons_inv in Hwf.
+          destruct Hwf as [Hwf_hd Hwf_tl].
+          simpl in Hfuel.
+          pose proof (
+            extract_stmts_cons_semantics_split_by_nth
+              st sts constrs (Datatypes.length varctxt) sched_prefix 0
+              pis envv ipl sorted_ipl st1 st2
+              Hextract Hflat Hlenenv Hperm Hsorted Hipls
+          ) as Hsplit.
+          destruct Hsplit as
+            (pis1 & pis2 & ipl1 & ipl2 & stmid &
+             Hhdext & Htlext & Hpis & Hipl &
+             Hflat1 & Hflat2 & Hperm1 & Hperm2 & Hsem1 & Hsem2).
+          assert (Hhdext0:
+            extract_stmt st constrs (Datatypes.length varctxt) 0
+              (sched_prefix ++ [(repeat 0%Z (Datatypes.length varctxt), 0%Z)]) = Okk pis1).
+          {
+            simpl in Hhdext.
+            replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hhdext by lia.
+            exact Hhdext.
+          }
+          assert (Hchk_hd_tl:
+            check_extracted_wf pis1 varctxt vars = true /\
+            check_extracted_wf pis2 varctxt vars = true).
+          {
+            subst pis.
+            eapply check_extracted_wf_app_inv; eauto.
+          }
+          destruct Hchk_hd_tl as [Hchk1 Hchk2].
+          assert (Hsize_hd: (stmt_size st <= fuel)%nat) by lia.
+          assert (Hsorted1:
+            Sorted PolyLang.instr_point_sched_le
+              (filter
+                (fun ip : PolyLang.InstrPoint =>
+                  Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+                sorted_ipl)).
+          { eapply sorted_sched_filter; eauto. }
+          pose proof (
+            IH st constrs
+               (sched_prefix ++ [(repeat 0%Z (Datatypes.length varctxt), 0%Z)])
+               varctxt vars pis1 envv ipl1
+               (filter
+                 (fun ip : PolyLang.InstrPoint =>
+                   Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+                 sorted_ipl)
+               st1 stmid
+               Hsize_hd Hwf_hd Hhdext0 Hconstr Hchk1
+               Hflat1 Hperm1 Hsorted1 Hsem1 Hlenenv
+          ) as Hhead.
+          destruct Hhead as [sth [Hloop_hd Heq_mid_h]].
+          assert (Hsem2_from_sth:
+            PolyLang.instr_point_list_semantics
+              (map (rebase_ip_nth (Datatypes.length pis1))
+                (filter
+                  (fun ip : PolyLang.InstrPoint =>
+                    negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+                  sorted_ipl))
+              sth st2).
+          {
+            eapply PolyLang.instr_point_list_sema_stable_under_state_eq
+              with (st1:=stmid) (st2:=st2) (st1':=sth) (st2':=st2) in Hsem2.
+            2: { exact Heq_mid_h. }
+            2: { eapply State.eq_refl. }
+            exact Hsem2.
+          }
+          assert (Htail:
+            exists stt,
+              Loop.loop_semantics (PolIRs.Loop.Seq sts) (rev envv) sth stt /\
+              State.eq st2 stt).
+          {
+            eapply core_sched_seq_tail_constrs_len_todo
+              with (constrs:=constrs) (sched_prefix:=sched_prefix)
+                   (varctxt:=varctxt) (vars:=vars)
+                   (pis1:=pis1) (pis2:=pis2)
+                   (envv:=envv) (ipl2:=ipl2) (sorted_ipl:=sorted_ipl); eauto.
+          }
+          destruct Htail as [stt [Hloop_tl Heq_tl]].
+          eapply seq_cons_semantics_with_eq
+            with (st:=st) (sts:=sts) (env:=rev envv)
+                 (st1:=st1) (st2:=sth) (st3:=stt) (st3':=st2); eauto.
+      + (* Guard *)
+        pose proof Hwf as Hwf_guard.
+        pose proof Hextract as Hextract_guard.
+        eapply extract_stmt_guard_success_inv in Hextract.
+        destruct Hextract as (test_constrs & Htest & Hbodyext).
+        eapply wf_scop_guard_inv in Hwf.
+        destruct Hwf as [_ Hwf_body].
+        assert (Hbodyext0:
+          extract_stmt body
+            (constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs)
+            (Datatypes.length varctxt) 0 sched_prefix = Okk pis).
+        {
+          simpl in Hbodyext.
+          replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+          exact Hbodyext.
+        }
+        simpl in Hfuel.
+        destruct (Loop.eval_test (rev envv) test) eqn:Heval.
+        * assert (Hconstr_body:
+            in_poly (rev envv)
+              (constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs) = true).
+          {
+            eapply guard_constraints_sound_in_poly with (test:=test) (cols:=Datatypes.length varctxt); eauto.
+            rewrite rev_length. exact Hlenenv.
+          }
+          assert (Hsize_body: (stmt_size body <= fuel)%nat) by lia.
+          pose proof (
+            IH body
+               (constrs ++ normalize_affine_list (Datatypes.length varctxt) test_constrs)
+               sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+               Hsize_body Hwf_body Hbodyext0 Hconstr_body Hchk
+               Hflat Hperm Hsorted Hipls Hlenenv
+          ) as Hbody.
+          destruct Hbody as [st2' [Hloop_body Heq_body]].
+          exists st2'.
+          split.
+          { eapply Loop.LGuardTrue; eauto. }
+          { exact Heq_body. }
+        * eapply guard_false_core_case_constrs_len
+            with (constrs:=constrs) (sched_prefix:=sched_prefix)
+                 (varctxt:=varctxt) (vars:=vars) (pis:=pis) (envv:=envv)
+                 (ipl:=ipl) (sorted_ipl:=sorted_ipl); eauto.
+Qed.
+
+Lemma extract_stmt_to_loop_semantics_core_sched_constrs:
+    forall stmt constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
+           pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2,
+    wf_scop_stmt stmt = true ->
+    extract_stmt stmt constrs (Datatypes.length varctxt) 0 sched_prefix = Okk pis ->
+    in_poly (rev envv) constrs = true ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    exists st2',
+      Loop.loop_semantics stmt (rev envv) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros stmt constrs sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hipls Hlenenv.
+    eapply extract_stmt_to_loop_semantics_core_sched_constrs_fuel
+      with (fuel:=stmt_size stmt); eauto.
+Qed.
+
 Lemma core_sched_loop_todo:
     forall lb ub body sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2,
     wf_scop_stmt (PolIRs.Loop.Loop lb ub body) = true ->
@@ -4097,7 +4506,15 @@ Lemma core_sched_loop_todo:
     Instr.InitEnv varctxt envv st1 ->
     exists st2',
       Loop.loop_semantics (PolIRs.Loop.Loop lb ub body) (rev envv) st1 st2' /\ State.eq st2 st2'.
-Admitted.
+Proof.
+    intros lb ub body sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hextract Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit.
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    eapply core_sched_loop_constrs_len_todo
+      with (constrs:=[]) (sched_prefix:=sched_prefix) (varctxt:=varctxt)
+           (vars:=vars) (pis:=pis) (envv:=envv) (ipl:=ipl)
+           (sorted_ipl:=sorted_ipl) (st1:=st1); eauto.
+Qed.
 
 Lemma core_sched_seq_head_todo:
     forall st sched_prefix varctxt vars pis1 envv ipl1 sorted_ipl st1 stmid,
@@ -4123,7 +4540,29 @@ Lemma core_sched_seq_head_todo:
     Instr.InitEnv varctxt envv st1 ->
     exists sth,
       Loop.loop_semantics st (rev envv) st1 sth /\ State.eq stmid sth.
-Admitted.
+Proof.
+    intros st sched_prefix varctxt vars pis1 envv ipl1 sorted_ipl st1 stmid
+      Hwf Hextract Hchk Hflat Hperm Hsorted Hsem Hcompat Hnonalias Hinit.
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    assert (Hsorted1:
+      Sorted PolyLang.instr_point_sched_le
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+          sorted_ipl)).
+    { eapply sorted_sched_filter; eauto. }
+    eapply extract_stmt_to_loop_semantics_core_sched_constrs
+      with (constrs:=[])
+           (sched_prefix:=sched_prefix ++ [(repeat 0%Z (Datatypes.length varctxt), 0%Z)])
+           (varctxt:=varctxt) (vars:=vars) (pis:=pis1)
+           (envv:=envv) (ipl:=ipl1)
+           (sorted_ipl:=
+             filter
+               (fun ip : PolyLang.InstrPoint =>
+                 Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+               sorted_ipl)
+           (st1:=st1) (st2:=stmid); eauto.
+Qed.
 
 Lemma core_sched_seq_tail_todo:
     forall sts sched_prefix varctxt vars
@@ -4149,9 +4588,18 @@ Lemma core_sched_seq_tail_todo:
             negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
           sorted_ipl))
       sth st2 ->
+    Datatypes.length envv = Datatypes.length varctxt ->
     exists stt,
       Loop.loop_semantics (PolIRs.Loop.Seq sts) (rev envv) sth stt /\ State.eq st2 stt.
-Admitted.
+Proof.
+    intros sts sched_prefix varctxt vars pis1 pis2 envv ipl2 sorted_ipl sth st2
+      Hwf Hextract Hchk Hflat Hperm Hsorted Hsem Hlenenv.
+    eapply core_sched_seq_tail_constrs_len_todo
+      with (constrs:=[]) (sched_prefix:=sched_prefix)
+           (varctxt:=varctxt) (vars:=vars)
+           (pis1:=pis1) (pis2:=pis2)
+           (envv:=envv) (ipl2:=ipl2) (sorted_ipl:=sorted_ipl); eauto.
+Qed.
 
 Lemma core_sched_guard_true_todo:
     forall test body sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2,
@@ -4168,7 +4616,39 @@ Lemma core_sched_guard_true_todo:
     Loop.eval_test (rev envv) test = true ->
     exists st2',
       Loop.loop_semantics body (rev envv) st1 st2' /\ State.eq st2 st2'.
-Admitted.
+Proof.
+    intros test body sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2
+      Hwf Hextract Hchk Hflat Hperm Hsorted Hipls Hcompat Hnonalias Hinit Heval.
+    eapply extract_stmt_guard_success_inv in Hextract.
+    destruct Hextract as (test_constrs & Htest & Hbodyext).
+    eapply wf_scop_guard_inv in Hwf.
+    destruct Hwf as [_ Hwf_body].
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    assert (Hlenenv': Datatypes.length envv = Datatypes.length varctxt).
+    { symmetry. exact Hlenenv. }
+    assert (Hbodyext0:
+      extract_stmt body
+        (normalize_affine_list (Datatypes.length varctxt) test_constrs)
+        (Datatypes.length varctxt) 0 sched_prefix = Okk pis).
+    {
+      simpl in Hbodyext.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+      exact Hbodyext.
+    }
+    assert (Hconstr_body:
+      in_poly (rev envv) ([] ++ normalize_affine_list (Datatypes.length varctxt) test_constrs) = true).
+    {
+      eapply guard_constraints_sound_in_poly with (test:=test) (cols:=Datatypes.length varctxt); eauto.
+      rewrite rev_length. exact Hlenenv'.
+    }
+    eapply extract_stmt_to_loop_semantics_core_sched_constrs
+      with (stmt:=body)
+           (constrs:=normalize_affine_list (Datatypes.length varctxt) test_constrs)
+           (sched_prefix:=sched_prefix)
+           (varctxt:=varctxt) (vars:=vars) (pis:=pis)
+           (envv:=envv) (ipl:=ipl) (sorted_ipl:=sorted_ipl)
+           (st1:=st1) (st2:=st2); eauto.
+Qed.
 
 Lemma extract_stmt_to_loop_semantics_core_sched:
     forall stmt sched_prefix varctxt vars pis envv ipl sorted_ipl st1 st2,
@@ -4277,6 +4757,12 @@ Proof.
             Loop.loop_semantics (PolIRs.Loop.Seq sts) (rev envv) sth stt /\
             State.eq st2 stt).
         {
+          assert (Hlenenv: Datatypes.length envv = Datatypes.length varctxt).
+          {
+            symmetry.
+            eapply Instr.init_env_samelen.
+            exact Hinit.
+          }
           eapply core_sched_seq_tail_todo
             with (sched_prefix:=sched_prefix)
                  (pis1:=pis1) (pis2:=pis2) (ipl2:=ipl2) (sorted_ipl:=sorted_ipl)
