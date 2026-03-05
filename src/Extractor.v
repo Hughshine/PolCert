@@ -321,6 +321,12 @@ Definition lift_affine (aff: list Z * Z): (list Z * Z) :=
 Definition lift_affine_list (affs: list (list Z * Z)) :=
     map lift_affine affs.
 
+Fixpoint lift_affine_list_n (n: nat) (affs: list (list Z * Z)) :=
+    match n with
+    | O => affs
+    | S n' => lift_affine_list (lift_affine_list_n n' affs)
+    end.
+
 Lemma lift_affine_list_app:
     forall l1 l2,
     lift_affine_list (l1 ++ l2) = lift_affine_list l1 ++ lift_affine_list l2.
@@ -329,6 +335,29 @@ Proof.
     unfold lift_affine_list.
     rewrite map_app.
     reflexivity.
+Qed.
+
+Lemma lift_affine_list_n_app:
+    forall n l1 l2,
+    lift_affine_list_n n (l1 ++ l2) =
+    lift_affine_list_n n l1 ++ lift_affine_list_n n l2.
+Proof.
+    induction n as [|n IH]; intros l1 l2; simpl.
+    - reflexivity.
+    - rewrite IH.
+      rewrite lift_affine_list_app.
+      reflexivity.
+Qed.
+
+Lemma lift_affine_list_n_succ:
+    forall n l,
+    lift_affine_list_n n (lift_affine_list l) =
+    lift_affine_list_n (S n) l.
+Proof.
+    induction n as [|n IH]; intros l; simpl.
+    - reflexivity.
+    - rewrite IH.
+      reflexivity.
 Qed.
 
 Lemma lift_affine_satisfies_constraint:
@@ -364,6 +393,17 @@ Proof.
     intros i env affs.
     unfold in_poly.
     eapply lift_affine_list_satisfies_constraint.
+Qed.
+
+Lemma in_poly_lift_affine_list_n_app:
+    forall prefix suffix affs,
+    in_poly (prefix ++ suffix) (lift_affine_list_n (Datatypes.length prefix) affs) =
+    in_poly suffix affs.
+Proof.
+    induction prefix as [|x prefix IH]; intros suffix affs; simpl.
+    - reflexivity.
+    - rewrite in_poly_lift_affine_list.
+      eapply IH.
 Qed.
 
 Lemma lift_affine_eval:
@@ -1512,6 +1552,87 @@ Proof.
     simpl in Hext. inv Hext. reflexivity.
 Qed.
 
+Definition pi_has_lifted_prefix
+    (env_dim iter_depth: nat)
+    (constrs: Domain)
+    (pi: PolyLang.PolyInstr): Prop :=
+    exists k tail,
+      PolyLang.pi_depth pi = (iter_depth + k)%nat /\
+      PolyLang.pi_poly pi =
+        normalize_affine_list_rev (env_dim + PolyLang.pi_depth pi)%nat
+          (lift_affine_list_n k constrs ++ tail).
+
+Lemma extract_stmt_has_lifted_prefix:
+    forall stmt constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
+    forall pi, In pi pis ->
+    pi_has_lifted_prefix env_dim iter_depth constrs pi
+with extract_stmts_has_lifted_prefix:
+    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis ->
+    forall pi, In pi pis ->
+    pi_has_lifted_prefix env_dim iter_depth constrs pi.
+Proof.
+    - induction stmt as [lb ub body IHbody|i es|stmts|test body IHbody];
+        intros constrs env_dim iter_depth sched_prefix pis Hext pi Hin.
+      + eapply extract_stmt_loop_success_inv in Hext.
+        destruct Hext as (lbc & ubc & Hlb & Hub & Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k & tail & Hdepth & Hpoly).
+        unfold pi_has_lifted_prefix.
+        exists (S k).
+        exists (lift_affine_list_n k [lbc; ubc] ++ tail).
+        split.
+        * lia.
+        * rewrite Hpoly.
+          f_equal.
+          rewrite lift_affine_list_n_app.
+          rewrite lift_affine_list_n_succ.
+          rewrite app_assoc.
+          reflexivity.
+      + eapply extract_stmt_instr_success_inv in Hext.
+        destruct Hext as (tf & w & r & Htf & Hacc & Hpis).
+        subst pis.
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; [|contradiction].
+        subst pi.
+        unfold pi_has_lifted_prefix.
+        exists 0%nat.
+        exists ([]: list (list Z * Z)).
+        split.
+        * rewrite Nat.add_0_r.
+          reflexivity.
+        * simpl.
+          rewrite app_nil_r.
+          reflexivity.
+      + eapply extract_stmt_seq_success_inv in Hext.
+        eapply extract_stmts_has_lifted_prefix; eauto.
+      + eapply extract_stmt_guard_success_inv in Hext.
+        destruct Hext as (test_constrs & Htest & Hbody).
+        eapply IHbody in Hbody; eauto.
+        destruct Hbody as (k & tail & Hdepth & Hpoly).
+        unfold pi_has_lifted_prefix.
+        exists k.
+        exists (lift_affine_list_n k (normalize_affine_list (env_dim + iter_depth)%nat test_constrs) ++ tail).
+        split; auto.
+        rewrite Hpoly.
+        f_equal.
+        rewrite lift_affine_list_n_app.
+        rewrite app_assoc.
+        reflexivity.
+    - induction stmts as [|stmt stmts' IHstmts']; intros constrs env_dim iter_depth sched_prefix pos pis Hext pi Hin.
+      + eapply extract_stmts_nil_success_inv in Hext.
+        subst pis.
+        contradiction.
+      + eapply extract_stmts_cons_success_inv in Hext.
+        destruct Hext as (pis1 & pis2 & Hstmt & Htl & Hpis).
+        subst pis.
+        eapply in_app_or in Hin.
+        destruct Hin as [Hin1|Hin2].
+        * eapply extract_stmt_has_lifted_prefix; eauto.
+        * eapply IHstmts'; eauto.
+Qed.
+
 (* Extraction examples are kept in instance-level test files (e.g. CPolIRs/TPolIRs)
    because generic functor-level examples become brittle after strengthening
    access-function resolution with checker-dependent branches. *)
@@ -1712,6 +1833,95 @@ Proof.
     split.
     - eapply nth_error_In; eauto.
     - split; auto.
+Qed.
+
+Lemma flattened_point_satisfies_top_constraints:
+    forall stmt constrs env_dim sched_prefix pis envv ipl ip,
+    extract_stmt stmt constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    in_poly (rev envv) constrs = true.
+Proof.
+    intros stmt constrs env_dim sched_prefix pis envv ipl ip
+      Hext Hflat Hlenenv Hip.
+    destruct Hflat as (Hprefix & Hchar & Hnodup & Hsortednp).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    pose proof Hlenidx as Hlenidx0.
+    eapply extract_stmt_has_lifted_prefix in Hext.
+    2: { eapply nth_error_In; eauto. }
+    destruct Hext as (k & tail & Hdepth & Hpoly).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hindom & Htf & Hts & Hinst & Hdep).
+    rewrite Hpoly in Hindom.
+    rewrite Hlenenv in Hlenidx.
+    eapply in_poly_normalize_affine_list_rev_app_inv
+      with (cols:=(env_dim + PolyLang.pi_depth pi)%nat)
+           (env:=PolyLang.ip_index ip)
+           (pol1:=lift_affine_list_n k constrs)
+           (pol2:=tail) in Hindom.
+    2: { exact Hlenidx. }
+    destruct Hindom as [Hbase _].
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx0. }
+    destruct Hpre as (suf & Hidx & Hsuflen).
+    rewrite Hidx in Hbase.
+    rewrite rev_app_distr in Hbase.
+    rewrite Hdepth in Hsuflen.
+    simpl in Hsuflen.
+    assert (Datatypes.length (rev suf) = k)%nat as Hlenrev.
+    { rewrite rev_length. lia. }
+    rewrite <- Hlenrev in Hbase.
+    rewrite in_poly_lift_affine_list_n_app in Hbase.
+    exact Hbase.
+Qed.
+
+Lemma flattened_guard_false_implies_nil:
+    forall test body varctxt vars envv pis ipl st1,
+    wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
+    extract_stmt (PolIRs.Loop.Guard test body) [] (Datatypes.length varctxt) 0%nat [] = Okk pis ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Instr.InitEnv varctxt envv st1 ->
+    Loop.eval_test (rev envv) test = false ->
+    ipl = [].
+Proof.
+    intros test body varctxt vars envv pis ipl st1
+      Hwf Hext Hchk Hflat Hinit Hevalfalse.
+    eapply extract_stmt_guard_success_inv in Hext.
+    destruct Hext as (test_constrs & Htest & Hbodyext).
+    pose proof (Instr.init_env_samelen varctxt envv st1 Hinit) as Hlenenv.
+    simpl in Hbodyext.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+    destruct ipl as [|ip ipl'].
+    - reflexivity.
+    - exfalso.
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length varctxt) test_constrs) = true) as Hguardin.
+      {
+        eapply flattened_point_satisfies_top_constraints
+          with (stmt:=body)
+               (constrs:=normalize_affine_list (Datatypes.length varctxt) test_constrs)
+               (env_dim:=Datatypes.length varctxt)
+               (sched_prefix:=[])
+               (pis:=pis)
+               (envv:=envv)
+               (ipl:=ip :: ipl')
+               (ip:=ip); eauto.
+        simpl. left. reflexivity.
+      }
+      eapply test_false_implies_not_in_poly_normalized in Hevalfalse; eauto.
+      assert (in_poly (rev envv)
+        (normalize_affine_list (Datatypes.length (rev envv)) test_constrs) = true) as Hguardin'.
+      {
+        rewrite rev_length.
+        rewrite <- Hlenenv.
+        exact Hguardin.
+      }
+      rewrite Hguardin' in Hevalfalse.
+      discriminate.
 Qed.
 
 Lemma permutation_singleton:
