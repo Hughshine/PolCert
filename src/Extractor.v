@@ -1656,6 +1656,39 @@ Proof.
     split; auto.
 Qed.
 
+Lemma instr_point_list_semantics_nil_inv:
+    forall st1 st2,
+    PolyLang.instr_point_list_semantics [] st1 st2 ->
+    State.eq st1 st2.
+Proof.
+    intros st1 st2 Hsema.
+    inversion Hsema; subst; auto.
+Qed.
+
+Lemma instr_point_list_semantics_app_inv:
+    forall l1 l2 st1 st3,
+    PolyLang.instr_point_list_semantics (l1 ++ l2) st1 st3 ->
+    exists st2,
+      PolyLang.instr_point_list_semantics l1 st1 st2 /\
+      PolyLang.instr_point_list_semantics l2 st2 st3.
+Proof.
+    induction l1 as [|ip l1 IH]; intros l2 st1 st3 Hsema.
+    - simpl in Hsema.
+      exists st1.
+      split.
+      + constructor.
+        eapply State.eq_refl.
+      + exact Hsema.
+    - simpl in Hsema.
+      inversion Hsema; subst; clear Hsema.
+      eapply IH in H4.
+      destruct H4 as (stmid & Hleft & Hright).
+      exists stmid.
+      split.
+      + econstructor; eauto.
+      + exact Hright.
+Qed.
+
 Lemma nodup_all_eq_singleton:
     forall A (x: A) l,
     NoDup l ->
