@@ -2017,6 +2017,29 @@ Proof.
     exact Hts.
 Qed.
 
+Lemma flattened_point_seq_pos_timestamp:
+    forall stmt constrs env_dim pos pis envv ipl ip,
+    extract_stmt stmt constrs env_dim 0%nat [(repeat 0%Z env_dim, pos)] = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip = [pos] ++ tsuf.
+Proof.
+    intros stmt constrs env_dim pos pis envv ipl ip
+      Hext Hflat Hlenenv Hip.
+    eapply flattened_point_schedule_has_top_prefix
+      with (ip:=ip) in Hext; eauto.
+    destruct Hext as [tsuf Hts].
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlenenv. }
+    assert (affine_product [(repeat 0%Z env_dim, pos)] (rev envv) = [pos]) as Hrow.
+    { eapply affine_product_seq_row. }
+    rewrite Hrow in Hts.
+    exists tsuf.
+    exact Hts.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
