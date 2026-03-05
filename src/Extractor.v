@@ -2276,6 +2276,49 @@ Proof.
         reflexivity.
 Qed.
 
+Lemma sorted_filter_trans:
+    forall A (R: A -> A -> Prop) (f: A -> bool) l,
+    Transitive R ->
+    Sorted R l ->
+    Sorted R (filter f l).
+Proof.
+    intros A R f l Htrans Hsorted.
+    induction Hsorted as [|a l Hsorted_tl IH Hhd].
+    - simpl. constructor.
+    - simpl.
+      destruct (f a) eqn:Hfa.
+      + constructor.
+        * exact IH.
+        * destruct (filter f l) as [|b l'] eqn:Hfilter.
+          { constructor. }
+          { apply HdRel_cons.
+            assert (Forall (R a) l) as Hforall.
+            {
+              eapply Sorted_extends.
+              - exact Htrans.
+              - constructor; eauto.
+            }
+            assert (In b (filter f l)) as Hin_filter.
+            { rewrite Hfilter. simpl. left. reflexivity. }
+            apply filter_In in Hin_filter.
+            destruct Hin_filter as [Hin_l _].
+            eapply Forall_forall; eauto.
+          }
+      + exact IH.
+Qed.
+
+Lemma sorted_sched_filter:
+    forall l (f: PolyLang.InstrPoint -> bool),
+    Sorted PolyLang.instr_point_sched_le l ->
+    Sorted PolyLang.instr_point_sched_le (filter f l).
+Proof.
+    intros l f Hsorted.
+    eapply sorted_filter_trans.
+    intros x y z Hxy Hyz.
+    eapply PolyLang.instr_point_sched_le_trans; eauto.
+    exact Hsorted.
+Qed.
+
 Lemma flattened_guard_false_implies_nil:
     forall test body varctxt vars envv pis ipl st1,
     wf_scop_stmt (PolIRs.Loop.Guard test body) = true ->
