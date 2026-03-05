@@ -2693,6 +2693,41 @@ Proof.
       + eapply (proj2 (IH st3 st2)); eauto.
 Qed.
 
+Lemma instr_point_list_semantics_split_by_eq_app:
+    forall l1 l2 l st1 st2,
+    l = l1 ++ l2 ->
+    PolyLang.instr_point_list_semantics l st1 st2 ->
+    exists stmid,
+      PolyLang.instr_point_list_semantics l1 st1 stmid /\
+      PolyLang.instr_point_list_semantics l2 stmid st2.
+Proof.
+    intros l1 l2 l st1 st2 Heq Hsema.
+    subst l.
+    eapply instr_point_list_semantics_app_inv in Hsema.
+    exact Hsema.
+Qed.
+
+Lemma instr_point_list_semantics_split_by_eq_app_rebase_right:
+    forall base l1 l2 l st1 st2,
+    l = l1 ++ l2 ->
+    PolyLang.instr_point_list_semantics l st1 st2 ->
+    exists stmid,
+      PolyLang.instr_point_list_semantics l1 st1 stmid /\
+      PolyLang.instr_point_list_semantics (map (rebase_ip_nth base) l2) stmid st2.
+Proof.
+    intros base l1 l2 l st1 st2 Heq Hsema.
+    pose proof (
+      instr_point_list_semantics_split_by_eq_app
+        l1 l2 l st1 st2 Heq Hsema
+    ) as Hsplit.
+    destruct Hsplit as [stmid [Hleft Hright]].
+    exists stmid.
+    split.
+    - exact Hleft.
+    - eapply (proj2 (instr_point_list_semantics_map_rebase_ip_nth base l2 stmid st2)).
+      exact Hright.
+Qed.
+
 Lemma flatten_instr_nth_all_nth:
     forall envv n pi ipl ip,
     PolyLang.flatten_instr_nth envv n pi ipl ->
