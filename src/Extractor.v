@@ -7246,6 +7246,586 @@ Proof.
       exact Heq12.
 Qed.
 
+Lemma flatten_instrs_prefix_slice_nil_implies_nil:
+    forall envv prefix ipl,
+    flatten_instrs_prefix_slice envv prefix [] ipl ->
+    ipl = [].
+Proof.
+    intros envv prefix ipl Hslice.
+    destruct Hslice as [Hchar [_ _]].
+    destruct ipl as [|ip ipl'].
+    - reflexivity.
+    - exfalso.
+      pose proof (proj1 (Hchar ip) (or_introl eq_refl)) as Hm.
+      destruct Hm as (pi & suf & Hnth & _).
+      destruct (PolyLang.ip_nth ip); simpl in Hnth; discriminate.
+Qed.
+
+Lemma flatten_instr_prefix_slice_singleton_if_in_poly:
+    forall envv prefix pi ipl,
+    Datatypes.length prefix = PolyLang.pi_depth pi ->
+    in_poly (envv ++ prefix) (PolyLang.pi_poly pi) = true ->
+    flatten_instrs_prefix_slice envv prefix [pi] ipl ->
+    exists ip0,
+      ipl = [ip0] /\
+      PolyLang.ip_nth ip0 = 0%nat /\
+      PolyLang.ip_index ip0 = envv ++ prefix /\
+      PolyLang.ip_transformation ip0 = PolyLang.pi_transformation pi /\
+      PolyLang.ip_time_stamp ip0 = affine_product (PolyLang.pi_schedule pi) (envv ++ prefix) /\
+      PolyLang.ip_instruction ip0 = PolyLang.pi_instr pi /\
+      PolyLang.ip_depth ip0 = PolyLang.pi_depth pi.
+Proof.
+    intros envv prefix pi ipl Hprefixlen Hpolyin Hslice.
+    destruct Hslice as [Hchar [Hnodup _]].
+    set (ip0 := {|
+      PolyLang.ip_nth := 0%nat;
+      PolyLang.ip_index := envv ++ prefix;
+      PolyLang.ip_transformation := PolyLang.pi_transformation pi;
+      PolyLang.ip_time_stamp := affine_product (PolyLang.pi_schedule pi) (envv ++ prefix);
+      PolyLang.ip_instruction := PolyLang.pi_instr pi;
+      PolyLang.ip_depth := PolyLang.pi_depth pi;
+    |}).
+    assert (Hin0 : In ip0 ipl).
+    {
+      eapply (proj2 (Hchar ip0)).
+      exists pi.
+      exists ([]: list Z).
+      split.
+      - reflexivity.
+      - split.
+        + unfold PolyLang.belongs_to.
+          simpl.
+          rewrite Hpolyin.
+          simpl.
+          repeat split; reflexivity.
+        + split.
+          * lia.
+          * split.
+            { rewrite app_nil_r. reflexivity. }
+            { rewrite Hprefixlen. simpl. lia. }
+    }
+    assert (Hall : forall ip, In ip ipl -> ip = ip0).
+    {
+      intros ip Hin.
+      pose proof (proj1 (Hchar ip) Hin) as Hm.
+      destruct Hm as (pi' & suf & Hnth & Hbel & _ & Hidx & Hsuflen).
+      assert (nth_error [pi] (PolyLang.ip_nth ip) <> None) as Hnth_some.
+      {
+        rewrite Hnth.
+        discriminate.
+      }
+      eapply nth_error_Some in Hnth_some.
+      simpl in Hnth_some.
+      assert (PolyLang.ip_nth ip = 0%nat) as Hnth0 by lia.
+      rewrite Hnth0 in Hnth.
+      simpl in Hnth.
+      inversion Hnth; subst pi'; clear Hnth.
+      rewrite Hprefixlen in Hsuflen.
+      destruct suf as [|z suf'] eqn:Hsuf; simpl in Hsuflen; try lia.
+      rewrite app_nil_r in Hidx.
+      unfold PolyLang.belongs_to in Hbel.
+      destruct Hbel as (_ & Htf & Hts & Hinstr & Hdepth).
+      destruct ip as [n' idx tf ts instr depth].
+      simpl in *.
+      subst.
+      reflexivity.
+    }
+    exists ip0.
+    split.
+    - eapply nodup_all_eq_singleton; eauto.
+    - repeat split; reflexivity.
+Qed.
+
+Lemma instr_branch_core_with_constrs_prefix_len:
+    forall i es constrs sched_prefix env_dim iter_depth prefix envv
+           ipl sorted_ipl st1 st2 tf w r,
+    Datatypes.length prefix = iter_depth ->
+    exprlist_to_aff es (env_dim + iter_depth)%nat = Okk tf ->
+    resolve_access_functions i = Some (w, r) ->
+    in_poly (rev (envv ++ prefix)) constrs = true ->
+    flatten_instrs_prefix_slice envv prefix
+      [{|
+        PolyLang.pi_depth := iter_depth;
+        PolyLang.pi_instr := i;
+        PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
+        PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
+        PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
+        PolyLang.pi_waccess := normalize_access_list_rev (env_dim + iter_depth)%nat w;
+        PolyLang.pi_raccess := normalize_access_list_rev (env_dim + iter_depth)%nat r;
+      |}] ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = env_dim ->
+    exists st2',
+      Loop.loop_semantics (Loop.Instr i es) (rev (envv ++ prefix)) st1 st2' /\ State.eq st2 st2'.
+Proof.
+    intros i es constrs sched_prefix env_dim iter_depth prefix envv
+      ipl sorted_ipl st1 st2 tf w r
+      Hprefixlen Htf Hacc Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    assert (Hlenenvprefix :
+      Datatypes.length (envv ++ prefix) = (env_dim + iter_depth)%nat).
+    {
+      rewrite app_length.
+      rewrite Hlenenv, Hprefixlen.
+      lia.
+    }
+    assert (Hdom :
+      in_poly (envv ++ prefix)
+        (normalize_affine_list_rev (env_dim + iter_depth)%nat constrs) = true).
+    {
+      unfold in_poly in *.
+      rewrite normalize_affine_list_rev_satisfies_constraint
+        with (cols := (env_dim + iter_depth)%nat)
+             (env := envv ++ prefix)
+             (affs := constrs).
+      - exact Hconstr.
+      - exact Hlenenvprefix.
+    }
+    assert (Haff :
+      affine_product
+        (normalize_affine_list_rev (env_dim + iter_depth)%nat tf)
+        (envv ++ prefix) =
+      map (Loop.eval_expr (rev (envv ++ prefix))) es).
+    {
+      eapply exprlist_to_aff_rev_normalized_correct; eauto.
+    }
+    eapply flatten_instr_prefix_slice_singleton_if_in_poly in Hflat.
+    2: {
+      simpl.
+      exact Hprefixlen.
+    }
+    2: { exact Hdom. }
+    destruct Hflat as (ip0 & Hipl & Hnth & Hidx & Htr & Hts & Hinstr & Hdep).
+    subst ipl.
+    eapply permutation_singleton in Hperm.
+    subst sorted_ipl.
+    eapply instr_point_list_semantics_singleton_inv in Hipls.
+    destruct Hipls as (stmid & Hipsema & Heq).
+    inversion Hipsema as [wcs rcs Hipinstr]; clear Hipsema.
+    assert (affine_product (PolyLang.ip_transformation ip0) (PolyLang.ip_index ip0) =
+            map (Loop.eval_expr (rev (envv ++ prefix))) es) as Hargs_rev.
+    {
+      rewrite Htr.
+      rewrite Hidx.
+      exact Haff.
+    }
+    rewrite Hargs_rev in Hipinstr.
+    rewrite Hinstr in Hipinstr.
+    exists stmid.
+    split.
+    - eapply Loop.LInstr.
+      exact Hipinstr.
+    - eapply State.eq_sym.
+      exact Heq.
+Qed.
+
+Lemma iter_semantics_shift_start_with_state_eq:
+    forall A (P: A -> State.t -> State.t -> Prop),
+    (forall x st1 st2 st1' st2',
+      State.eq st1 st1' ->
+      State.eq st2 st2' ->
+      P x st1 st2 ->
+      P x st1' st2') ->
+    forall xs st1 st2 st1',
+      Instr.IterSem.iter_semantics P xs st1 st2 ->
+      State.eq st1 st1' ->
+      exists st2',
+        Instr.IterSem.iter_semantics P xs st1' st2' /\
+        State.eq st2 st2'.
+Proof.
+    intros A P Hstable xs st1 st2 st1' Hiter.
+    revert st1'.
+    induction Hiter; intros st1' Heqstart.
+    - exists st1'.
+      split.
+      + constructor.
+      + exact Heqstart.
+    - assert (HP':
+          P x st1' st2).
+      {
+        eapply Hstable with (st1 := st1) (st2 := st2).
+        - exact Heqstart.
+        - eapply State.eq_refl.
+        - exact H.
+      }
+      destruct (IHHiter st2 (State.eq_refl st2)) as [st3' [Htail' Heq3]].
+      exists st3'.
+      split.
+      + econstructor; eauto.
+      + exact Heq3.
+Qed.
+
+Lemma iter_semantics_refine_with_state_eq:
+    forall A (P Q: A -> State.t -> State.t -> Prop),
+    (forall x st1 st2 st1' st2',
+      State.eq st1 st1' ->
+      State.eq st2 st2' ->
+      P x st1 st2 ->
+      P x st1' st2') ->
+    forall xs st1 st2,
+      Instr.IterSem.iter_semantics P xs st1 st2 ->
+      (forall x stA stB, In x xs -> P x stA stB ->
+        exists stB', Q x stA stB' /\ State.eq stB stB') ->
+      exists st2',
+        Instr.IterSem.iter_semantics Q xs st1 st2' /\
+        State.eq st2 st2'.
+Proof.
+    intros A P Q Hstable xs.
+    induction xs as [|x xs IH]; intros st1 st2 Hiter Hbridge.
+    - inversion Hiter; subst; clear Hiter.
+      eexists.
+      split.
+      + constructor.
+      + eapply State.eq_refl.
+    - inversion Hiter as [|x' xs' st1a st2a st3a HP Htail]; subst; clear Hiter.
+      destruct (Hbridge x st1 st2a (or_introl eq_refl) HP)
+        as [st2' [HQx Heq2']].
+      lazymatch goal with
+      | Htail0 : Instr.IterSem.iter_semantics P xs ?stmid ?stend |- _ =>
+          destruct (
+            iter_semantics_shift_start_with_state_eq
+              A P Hstable xs stmid stend st2' Htail0 Heq2'
+          ) as [st3' [HtailP' Heq3']]
+      end.
+      destruct (IH st2' st3' HtailP')
+        as [st3'' [HtailQ Heq3'']].
+      {
+        intros y stA stB Hyin HyP.
+        eapply Hbridge.
+        - right. exact Hyin.
+        - exact HyP.
+      }
+      exists st3''.
+      split.
+      + econstructor; eauto.
+      + eapply State.eq_trans.
+        * exact Heq3'.
+        * exact Heq3''.
+Qed.
+
+Scheme loop_stmt_mutind_prefix := Induction for PolIRs.Loop.stmt Sort Prop
+with loop_stmts_mutind_prefix := Induction for PolIRs.Loop.stmt_list Sort Prop.
+Combined Scheme loop_stmt_stmts_mutind_prefix
+  from loop_stmt_mutind_prefix, loop_stmts_mutind_prefix.
+
+Definition stmt_constrs_prefix_goal (stmt: PolIRs.Loop.stmt): Prop :=
+  forall constrs sched_prefix env_dim iter_depth prefix
+         pis envv ipl sorted_ipl st1 st2,
+    Datatypes.length prefix = iter_depth ->
+    wf_scop_stmt stmt = true ->
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
+    in_poly (rev (envv ++ prefix)) constrs = true ->
+    flatten_instrs_prefix_slice envv prefix pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = env_dim ->
+    exists st2',
+      Loop.loop_semantics stmt (rev (envv ++ prefix)) st1 st2' /\ State.eq st2 st2'.
+
+Definition stmts_constrs_prefix_goal (stmts: PolIRs.Loop.stmt_list): Prop :=
+  forall constrs sched_prefix env_dim iter_depth prefix pos
+         pis envv ipl sorted_ipl st1 st2,
+    Datatypes.length prefix = iter_depth ->
+    wf_scop_stmts stmts = true ->
+    extract_stmts stmts constrs env_dim iter_depth sched_prefix pos = Okk pis ->
+    in_poly (rev (envv ++ prefix)) constrs = true ->
+    flatten_instrs_prefix_slice envv prefix pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    PolyLang.instr_point_list_semantics sorted_ipl st1 st2 ->
+    Datatypes.length envv = env_dim ->
+    exists st2',
+      Loop.loop_semantics (PolIRs.Loop.Seq stmts) (rev (envv ++ prefix)) st1 st2' /\
+      State.eq st2 st2'.
+
+Lemma core_sched_stmt_stmts_constrs_prefix_mutual:
+  (forall stmt, stmt_constrs_prefix_goal stmt) /\
+  (forall stmts, stmts_constrs_prefix_goal stmts).
+Proof.
+  apply
+    (loop_stmt_stmts_mutind_prefix
+       stmt_constrs_prefix_goal stmts_constrs_prefix_goal).
+  - (* Loop *)
+    intros lb ub body IHbody constrs sched_prefix env_dim iter_depth prefix
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    shelve.
+  - (* Instr *)
+    intros i es constrs sched_prefix env_dim iter_depth prefix
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    eapply extract_stmt_instr_success_inv in Hextract.
+    destruct Hextract as (tf & w & r & Htf & Hacc & Hpis).
+    subst pis.
+    eapply instr_branch_core_with_constrs_prefix_len
+      with (tf:=tf) (w:=w) (r:=r); eauto.
+  - (* Seq *)
+    intros stmts IHstmts constrs sched_prefix env_dim iter_depth prefix
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    eapply wf_scop_seq_inv in Hwf.
+    eapply extract_stmt_seq_success_inv in Hextract.
+    exact (
+      IHstmts constrs sched_prefix env_dim iter_depth prefix 0%nat
+              pis envv ipl sorted_ipl st1 st2
+              Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv
+    ).
+  - (* Guard *)
+    intros test body IHbody constrs sched_prefix env_dim iter_depth prefix
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    pose proof Hwf as Hwf_guard.
+    pose proof Hextract as Hextract_guard.
+    eapply extract_stmt_guard_success_inv in Hextract.
+    destruct Hextract as (test_constrs & Htest & Hbodyext).
+    eapply wf_scop_guard_inv in Hwf.
+    destruct Hwf as [_ Hwf_body].
+    destruct (Loop.eval_test (rev (envv ++ prefix)) test) eqn:Heval.
+    + assert (Hconstr_body:
+        in_poly (rev (envv ++ prefix))
+          (constrs ++ normalize_affine_list (env_dim + iter_depth)%nat test_constrs) = true).
+      {
+        eapply guard_constraints_sound_in_poly
+          with (test:=test) (cols:=(env_dim + iter_depth)%nat); eauto.
+        rewrite rev_length.
+        rewrite app_length, Hlenenv, Hprefixlen.
+        lia.
+      }
+      pose proof (
+        IHbody
+          (constrs ++ normalize_affine_list (env_dim + iter_depth)%nat test_constrs)
+          sched_prefix env_dim iter_depth prefix
+          pis envv ipl sorted_ipl st1 st2
+          Hprefixlen Hwf_body Hbodyext Hconstr_body Hflat Hperm Hsorted Hipls Hlenenv
+      ) as Hbody_sem.
+      destruct Hbody_sem as [st2' [Hloop_body Heq_body]].
+      exists st2'.
+      split.
+      * eapply Loop.LGuardTrue.
+        -- exact Hloop_body.
+        -- exact Heval.
+      * exact Heq_body.
+    + assert (Hnil: ipl = []).
+      {
+        replace (rev prefix ++ rev envv) with (rev (envv ++ prefix)) in Heval.
+        2: { rewrite rev_app_distr. reflexivity. }
+        destruct ipl as [|ip ipl'].
+        - reflexivity.
+        - exfalso.
+          assert (Hguardall:
+            in_poly (rev (envv ++ prefix))
+              (constrs ++ normalize_affine_list (env_dim + iter_depth)%nat test_constrs) = true).
+          {
+            eapply flattened_point_satisfies_top_constraints_slice
+              with (stmt:=body)
+                   (env_dim:=env_dim)
+                   (iter_depth:=iter_depth)
+                   (sched_prefix:=sched_prefix)
+                   (prefix:=prefix)
+                   (pis:=pis)
+                   (envv:=envv)
+                   (ipl:=ip :: ipl')
+                   (ip:=ip); eauto.
+            simpl. left. reflexivity.
+          }
+          eapply in_poly_guard_split in Hguardall.
+          destruct Hguardall as [_ Hguardnorm].
+          assert (Hguardin:
+            in_poly (rev (envv ++ prefix))
+              (normalize_affine_list (env_dim + iter_depth)%nat test_constrs) = true).
+          {
+            unfold in_poly.
+            exact Hguardnorm.
+          }
+          assert (Hlenrevprefix:
+            Datatypes.length (rev (envv ++ prefix)) = (env_dim + iter_depth)%nat).
+          {
+            rewrite rev_length.
+            rewrite app_length, Hlenenv, Hprefixlen.
+            lia.
+          }
+          pose proof
+            (test_false_implies_not_in_poly_normalized
+               test
+               (rev (envv ++ prefix))
+               (env_dim + iter_depth)%nat
+               test_constrs
+               Htest
+               Hlenrevprefix
+               Heval) as Hguardfalse.
+          rewrite Hguardin in Hguardfalse.
+          discriminate.
+      }
+      subst ipl.
+      eapply Permutation_nil in Hperm.
+      subst sorted_ipl.
+      assert (State.eq st1 st2) as Heq12.
+      { eapply instr_point_list_semantics_nil_inv; eauto. }
+      exists st1.
+      split.
+      * eapply Loop.LGuardFalse.
+        exact Heval.
+      * eapply State.eq_sym.
+        exact Heq12.
+  - (* SNil *)
+    intros constrs sched_prefix env_dim iter_depth prefix pos
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    eapply extract_stmts_nil_success_inv in Hextract.
+    subst pis.
+    eapply flatten_instrs_prefix_slice_nil_implies_nil in Hflat.
+    subst ipl.
+    eapply Permutation_nil in Hperm.
+    subst sorted_ipl.
+    assert (State.eq st1 st2) as Heq12.
+    { eapply instr_point_list_semantics_nil_inv; eauto. }
+    exists st1.
+    split.
+    + constructor.
+    + eapply State.eq_sym.
+      exact Heq12.
+  - (* SCons *)
+    intros st IHstmt sts IHsts
+      constrs sched_prefix env_dim iter_depth prefix pos
+      pis envv ipl sorted_ipl st1 st2
+      Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
+    eapply wf_scop_stmts_cons_inv in Hwf.
+    destruct Hwf as [Hwf_hd Hwf_tl].
+    pose proof (
+      extract_stmts_cons_semantics_split_by_nth_prefix_slice
+        st sts constrs env_dim iter_depth sched_prefix prefix pos
+        pis envv ipl sorted_ipl st1 st2
+        Hprefixlen Hextract Hflat Hlenenv Hperm Hsorted Hipls
+    ) as Hsplit.
+    destruct Hsplit as
+      (pis1 & pis2 & stmid &
+       Hhdext & Htlext & Hpis &
+       Hflat1 & Hflat2 & Hsem1 & Hsem2).
+    assert (Hperm1:
+      Permutation
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+          ipl)
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+          sorted_ipl)).
+    {
+      eapply permutation_filter.
+      exact Hperm.
+    }
+    pose proof (
+      IHstmt constrs
+             (sched_prefix ++ [(repeat 0%Z (env_dim + iter_depth)%nat, Z.of_nat pos)])
+             env_dim iter_depth prefix
+             pis1 envv
+             (filter
+               (fun ip : PolyLang.InstrPoint =>
+                 Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+               ipl)
+             (filter
+               (fun ip : PolyLang.InstrPoint =>
+                 Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1))
+               sorted_ipl)
+             st1 stmid
+             Hprefixlen Hwf_hd Hhdext Hconstr
+             Hflat1
+             Hperm1
+             (sorted_sched_filter _ _ Hsorted)
+             Hsem1 Hlenenv
+    ) as Hhead.
+    destruct Hhead as [sth [Hloop_hd Heq_mid_h]].
+    assert (Hsem2_from_sth:
+      PolyLang.instr_point_list_semantics
+        (map (rebase_ip_nth (Datatypes.length pis1))
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+            sorted_ipl))
+        sth st2).
+    {
+      eapply PolyLang.instr_point_list_sema_stable_under_state_eq
+        with (st1:=stmid) (st2:=st2) (st1':=sth) (st2':=st2) in Hsem2.
+      2: { exact Heq_mid_h. }
+      2: { eapply State.eq_refl. }
+      exact Hsem2.
+    }
+    assert (Hsorted2_base:
+      Sorted PolyLang.instr_point_sched_le
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+          sorted_ipl)).
+    { eapply sorted_sched_filter; eauto. }
+    assert (Hsorted2:
+      Sorted PolyLang.instr_point_sched_le
+        (map (rebase_ip_nth (Datatypes.length pis1))
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+            sorted_ipl))).
+    {
+      eapply sorted_sched_le_map_rebase_ip_nth.
+      exact Hsorted2_base.
+    }
+    assert (Hperm2:
+      Permutation
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+          ipl)
+        (filter
+          (fun ip : PolyLang.InstrPoint =>
+            negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+          sorted_ipl)).
+    {
+      eapply permutation_filter.
+      exact Hperm.
+    }
+    assert (Hperm2_map:
+      Permutation
+        (map (rebase_ip_nth (Datatypes.length pis1))
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+            ipl))
+        (map (rebase_ip_nth (Datatypes.length pis1))
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+            sorted_ipl))).
+    {
+      eapply Permutation_map.
+      exact Hperm2.
+    }
+    pose proof (
+      IHsts constrs sched_prefix env_dim iter_depth prefix (S pos)
+            pis2 envv
+            (map (rebase_ip_nth (Datatypes.length pis1))
+              (filter
+                (fun ip : PolyLang.InstrPoint =>
+                  negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+                ipl))
+            (map (rebase_ip_nth (Datatypes.length pis1))
+              (filter
+                (fun ip : PolyLang.InstrPoint =>
+                  negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+                sorted_ipl))
+            sth st2
+            Hprefixlen Hwf_tl Htlext Hconstr
+            Hflat2
+            Hperm2_map
+            Hsorted2 Hsem2_from_sth Hlenenv
+    ) as Htail.
+    destruct Htail as [stt [Hloop_tl Heq_tl]].
+    eapply seq_cons_semantics_with_eq
+      with (st:=st) (sts:=sts) (env:=rev (envv ++ prefix))
+           (st1:=st1) (st2:=sth) (st3:=stt) (st3':=st2); eauto.
+Admitted.
+
 Lemma loop_slice_to_body_semantics_todo:
     forall lb ub body constrs sched_prefix
            (varctxt: list ident) (vars: list (ident * Ty.t))
@@ -7273,13 +7853,16 @@ Lemma loop_slice_to_body_semantics_todo:
     PolyLang.instr_point_list_semantics
       (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl)
       stA stB ->
-    Loop.loop_semantics body (i :: rev envv) stA stB.
+    exists stB',
+      Loop.loop_semantics body (i :: rev envv) stA stB' /\
+      State.eq stB stB'.
 Proof.
     intros lb ub body constrs sched_prefix varctxt vars
       pis envv ipl sorted_ipl head_ts lbv ubv i stA stB
       Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hlenenv
       Hhead Hlbv Hubv Hrange Hslice.
     subst head_ts lbv ubv.
+    pose proof Hextract as Hextract_loop.
     eapply extract_stmt_loop_success_inv in Hextract.
     destruct Hextract as (lbc & ubc & Hlb & Hub & Hbodyext).
     replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hlb by lia.
@@ -7297,9 +7880,97 @@ Proof.
       - exact Hconstr.
       - exact Hrange.
     }
-    (* TODO: derive body slice flatten/semantic reconstruction from [Hslice], then
-       apply the constrained core theorem on [body] under env (i :: rev envv). *)
-Admitted.
+    set (slice_pred :=
+      fun ip : PolyLang.InstrPoint =>
+        Z.eqb
+          (nth
+            (Datatypes.length
+              (affine_product
+                (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix)
+                envv))
+            (PolyLang.ip_time_stamp ip) 0%Z)
+          i).
+    assert (Hslice_flat:
+      flatten_instrs_prefix_slice envv [i] pis (filter slice_pred ipl)).
+    {
+      unfold slice_pred.
+      pose proof (flatten_instrs_prefix_slice_nil envv pis ipl Hflat) as Hflat_nil.
+      pose proof (
+        loop_slice_filter_prefix_slice_gen
+          lb ub body constrs sched_prefix
+          (Datatypes.length varctxt) 0%nat []
+          pis envv ipl i
+          eq_refl
+          Hextract_loop
+          Hflat_nil
+          Hlenenv
+      ) as Hslice_flat0.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hslice_flat0 by lia.
+      rewrite app_nil_r in Hslice_flat0.
+      exact Hslice_flat0.
+    }
+    assert (Hperm_slice:
+      Permutation
+        (filter slice_pred ipl)
+        (filter slice_pred sorted_ipl)).
+    {
+      eapply permutation_filter.
+      exact Hperm.
+    }
+    assert (Hsorted_slice:
+      Sorted PolyLang.instr_point_sched_le
+        (filter slice_pred sorted_ipl)).
+    {
+      eapply sorted_sched_filter.
+      exact Hsorted.
+    }
+    assert (Hbodyext1:
+      extract_stmt body
+        (lift_affine_list constrs ++ [lbc; ubc])
+        (Datatypes.length varctxt) 1
+        (lift_affine_list sched_prefix ++
+         [((1%Z :: repeat 0%Z (Datatypes.length varctxt))%list, 0%Z)]) = Okk pis).
+    {
+      simpl in Hbodyext.
+      replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hbodyext by lia.
+      exact Hbodyext.
+    }
+    assert (Hconstr_body':
+      in_poly (rev (envv ++ [i])) (lift_affine_list constrs ++ [lbc; ubc]) = true).
+    {
+      replace (rev (envv ++ [i])) with (i :: rev envv).
+      - exact Hconstr_body.
+      - rewrite rev_app_distr. simpl. reflexivity.
+    }
+    destruct core_sched_stmt_stmts_constrs_prefix_mutual as [Hstmt_prefix _].
+    destruct (
+      Hstmt_prefix
+        body
+        (lift_affine_list constrs ++ [lbc; ubc])
+        (lift_affine_list sched_prefix ++
+         [((1%Z :: repeat 0%Z (Datatypes.length varctxt))%list, 0%Z)])
+        (Datatypes.length varctxt) 1%nat [i]
+        pis envv
+        (filter slice_pred ipl)
+        (filter slice_pred sorted_ipl)
+        stA stB
+        eq_refl
+        Hwf_body
+        Hbodyext1
+        Hconstr_body'
+        Hslice_flat
+        Hperm_slice
+        Hsorted_slice
+        Hslice
+        Hlenenv
+    ) as [stB' [Hbody_loop HeqB]].
+    exists stB'.
+    split.
+    + replace (rev (envv ++ [i])) with (i :: rev envv) in Hbody_loop.
+      2: { rewrite rev_app_distr. simpl. reflexivity. }
+      exact Hbody_loop.
+    + exact HeqB.
+Qed.
 
 Lemma core_sched_loop_constrs_len_todo:
     forall lb ub body constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
@@ -7843,7 +8514,7 @@ Proof.
       + eapply State.eq_sym.
         exact Heq12.
     }
-    assert (Hiter_loop_exact:
+    assert (Hiter_loop_refined:
       forall stA stB,
       Instr.IterSem.iter_semantics
         (fun x stX stY =>
@@ -7851,32 +8522,44 @@ Proof.
             (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
             stX stY)
         (Zrange lbv ubv) stA stB ->
-      Instr.IterSem.iter_semantics
-        (fun x stX stY =>
-          Loop.loop_semantics body (x :: rev envv) stX stY)
-        (Zrange lbv ubv) stA stB).
+      exists stB',
+        Instr.IterSem.iter_semantics
+          (fun x stX stY =>
+            Loop.loop_semantics body (x :: rev envv) stX stY)
+          (Zrange lbv ubv) stA stB' /\
+        State.eq stB stB').
     {
       intros stA stB Hiter.
-      eapply Instr.IterSem.iter_semantics_map with
-        (P := fun x stX stY =>
-                PolyLang.instr_point_list_semantics
-                  (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
-                  stX stY); eauto.
-      intros x stX stY Hin Hslice.
-      eapply Zrange_in in Hin.
-      eapply loop_slice_to_body_semantics_todo
-        with (lb:=lb) (ub:=ub) (constrs:=constrs) (sched_prefix:=sched_prefix)
-             (varctxt:=varctxt) (vars:=vars) (pis:=pis)
-             (envv:=envv) (ipl:=ipl) (sorted_ipl:=sorted_ipl)
-             (head_ts:=head_ts) (lbv:=lbv) (ubv:=ubv); eauto.
+      eapply iter_semantics_refine_with_state_eq
+        with
+          (P := fun x stX stY =>
+                  PolyLang.instr_point_list_semantics
+                    (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                    stX stY)
+          (Q := fun x stX stY =>
+                  Loop.loop_semantics body (x :: rev envv) stX stY)
+          (xs := Zrange lbv ubv) (st1 := stA) (st2 := stB).
+      - intros x stX stY stX' stY' HeqX HeqY Hslice0.
+        eapply PolyLang.instr_point_list_sema_stable_under_state_eq; eauto.
+      - exact Hiter.
+      - intros x stX stY Hin Hslice0.
+        eapply Zrange_in in Hin.
+        eapply loop_slice_to_body_semantics_todo
+          with (lb:=lb) (ub:=ub) (constrs:=constrs) (sched_prefix:=sched_prefix)
+               (varctxt:=varctxt) (vars:=vars) (pis:=pis)
+               (envv:=envv) (ipl:=ipl) (sorted_ipl:=sorted_ipl)
+               (head_ts:=head_ts) (lbv:=lbv) (ubv:=ubv); eauto.
     }
-    destruct (Hiter_eq_range_from_st1 (ltac:(lia))) as [st2' [Hiter_range Heq2']].
+    destruct (Hiter_eq_range_from_st1 (ltac:(lia))) as [st2_mid [Hiter_range Heq2_mid]].
+    destruct (Hiter_loop_refined st1 st2_mid Hiter_range)
+      as [st2' [Hiter_loop Heq2']].
     exists st2'.
     split.
     - eapply Loop.LLoop.
-      eapply Hiter_loop_exact.
-      exact Hiter_range.
-    - exact Heq2'.
+      exact Hiter_loop.
+    - eapply State.eq_trans.
+      + exact Heq2_mid.
+      + exact Heq2'.
 Qed.
 
 Scheme loop_stmt_mutind := Induction for PolIRs.Loop.stmt Sort Prop
