@@ -982,20 +982,23 @@ Qed.
 
 Definition flatten_instrs (envv: list Z) (poly_instrs: list PolyInstr) (ipl: list InstrPoint): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of all instructions *)
     forall ip,
       In ip ipl
       <->
       (
       exists pi,
         nth_error poly_instrs ip.(ip_nth) = Some pi 
+        /\ firstn (length envv) ip.(ip_index) = envv
         /\ belongs_to ip pi
         /\ length ip.(ip_index) = length envv + pi.(pi_depth) 
       )
@@ -1014,17 +1017,21 @@ Definition flatten_instrs (envv: list Z) (poly_instrs: list PolyInstr) (ipl: lis
 
 Definition flatten_instr_nth (envv: list Z) (nth: nat) (pi: PolyInstr) (ipl: list InstrPoint): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of this instruction *)
     forall ip,
       In ip ipl
       <->
+      firstn (length envv) ip.(ip_index) = envv
+      /\
       belongs_to ip pi
       /\ ip.(ip_nth) = nth
       /\ length ip.(ip_index) = length envv + pi.(pi_depth) 
@@ -1115,7 +1122,7 @@ Proof.
       eapply in_app_or in H.
       destruct H.
       * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & Hpref & H & Hlen).
         exists pi0.
         splits; eauto.
         rewrite nth_error_app1; eauto.
@@ -1123,7 +1130,7 @@ Proof.
         intro. tryfalse.
       * 
         eapply H2' in H; eauto.
-        destruct H as (H & NTH & Hlen).
+        destruct H as (Hpref & H & NTH & Hlen).
         exists pi.
         splits; eauto.
         rewrite nth_error_app2; eauto; try lia.
@@ -1131,7 +1138,7 @@ Proof.
         simpls. trivial. 
     + intros.
       destruct H.
-      destruct H as (NTH & BEL & LEN).
+      destruct H as (NTH & HPREF & BEL & LEN).
       * 
         assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
           eapply nth_error_Some' in NTH.
@@ -1143,8 +1150,7 @@ Proof.
         rewrite in_app. left. 
         eapply H2.
         exists x.
-        split; eauto.
-        rewrite nth_error_app1 in NTH; eauto. 
+        rewrite nth_error_app1 in NTH; eauto.
         --
         rewrite in_app. right.
         eapply H2'.
@@ -1157,9 +1163,9 @@ Proof.
     eapply NoDup_app; eauto.
     intros.
     eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
+    destruct H as (pi0 & NTH & Hpref & H & Hlen).
     intro. eapply H2' in H0.
-    destruct H0 as (H0 & NTH' & Hlen').
+    destruct H0 as (Hpref' & H0 & NTH' & Hlen').
     rewrite NTH' in NTH.
     assert (nth_error pis (length pis) = None). {
       eapply nth_error_None; eauto.
@@ -1171,8 +1177,8 @@ Proof.
     intros.
     eapply H2 in H; eauto.
     eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
-    destruct H0 as (H' & NTH' & Hlen').
+    destruct H as (pi0 & NTH & Hpref & H & Hlen).
+    destruct H0 as (Hpref' & H' & NTH' & Hlen').
     unfold np_lt. left.
     clear - NTH NTH'.
     eapply nth_error_Some' in NTH. lia.
@@ -1188,7 +1194,7 @@ Proof.
   intros.
   destruct H as (H1 & H2 & H3 & H4).
   eapply H2 in H0.
-  destruct H0 as (pi & NTH & BEL & LEN).
+  destruct H0 as (pi & NTH & HPREF & BEL & LEN).
   eapply nth_error_Some' in NTH. trivial.
 Qed.
 
@@ -1216,19 +1222,19 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & Hpref & H & Hlen).
         exists pi0.
-        splits; eauto.
         rewrite nth_error_app1 in NTH; eauto.
+        repeat split; eauto.
         eapply Nat.ltb_lt in Hlt. trivial.
       * 
         eapply filter_In.
-        destruct H as (pi' & NTH & BEL & LEN).
+        destruct H as (pi' & NTH & HPREF & BEL & LEN).
         split.
         -- eapply H2. 
           exists pi'.
-          splits; eauto.
           rewrite nth_error_app1; eauto.
+          repeat split; eauto.
           clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
         -- eapply Nat.ltb_lt.
           eapply nth_error_Some' in NTH. trivial.
@@ -1250,7 +1256,7 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & BEL & Hlen).
+        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
         eapply Nat.eqb_eq in Hlt.
         assert (pi = pi'). {
           rewrite nth_error_app2 in NTH.
@@ -1261,7 +1267,7 @@ Proof.
         splits; eauto.
       * 
         eapply filter_In.
-        destruct H as (BEL & NTH & LEN).
+        destruct H as (HPREF & BEL & NTH & LEN).
         split.
         -- eapply H2. 
           exists pi.
@@ -1323,6 +1329,7 @@ Proof.
   destruct H. 
   assert ( exists pi,
     nth_error [] (ip_nth i) = Some pi /\
+    firstn (Datatypes.length envv) (ip_index i) = envv /\
     belongs_to i pi /\
     Datatypes.length (ip_index i) = Datatypes.length envv + pi_depth pi). {
       eapply H. eapply in_eq.
@@ -1345,7 +1352,7 @@ Proof.
     -
     intros. split; intros; trivial.
     inv H; tryfalse.
-    destruct H as (pi' & NTH & BEL & LEN).
+    destruct H as (pi' & NTH & HPREF & BEL & LEN).
     eapply H2.
     exists pi'. splits; trivial.
     rewrite nth_error_app1; eauto.
@@ -1356,7 +1363,7 @@ Proof.
     split; intro; tryfalse.
     eapply H2.
     exists pi. 
-    destruct H as (BEL & NTH & LEN).
+    destruct H as (HPREF & BEL & NTH & LEN).
     rewrite NTH.
     splits; eauto.
     rewrite nth_error_app2; try lia.
@@ -1366,7 +1373,7 @@ Proof.
     splits; eauto; try solve [econs; eauto].
     intros. inv H1; tryfalse.
     intros. split; intro. inv H1; tryfalse.
-    destruct H1 as (pi' & NTH & BEL & LEN).
+    destruct H1 as (pi' & NTH & HPREF & BEL & LEN).
     assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
       eapply nth_error_Some' in NTH.
       rewrite app_length in NTH.
@@ -1393,7 +1400,7 @@ Lemma flatten_instrs_nil:
 Proof.
   intros. splits; intros; tryfalse.
   split; intros; tryfalse.
-  destruct H as (pi & NTH & BEL & LEN).
+  destruct H as (pi & NTH & HPREF & BEL & LEN).
   rewrite nth_error_nil in NTH. tryfalse.
   econs. econs.
 Qed.
@@ -1567,8 +1574,8 @@ Lemma eqdom_pinstr_implies_flatten_instr_nth_exists:
     exists ipl2,
     flatten_instr_nth envv n pi2 ipl2.
 Proof.
-  intros. 
-  exists (map (fun ip1 => 
+  intros ipl1 pi1 pi2 envv n Heq Hflat.
+  exists (map (fun ip1 =>
     {|
       ip_nth := ip_nth ip1;
       ip_index := ip_index ip1;
@@ -1576,40 +1583,46 @@ Proof.
       ip_time_stamp := affine_product (pi_schedule pi2) (ip_index ip1);
       ip_instruction := ip_instruction ip1;
       ip_depth := pi_depth pi2;
-    |}
-  ) ipl1).
-  splits; trivial.
-  - 
-    destruct H0 as (H1 & H2 & H3 & H4).
-    intros. eapply in_map_iff in H0.
-    destruct H0 as (ip1 & H0 & H0').
-    eapply H1 in H0'; eauto. subst; simpls; trivial.
-  - intros. splits. 
-    -- intro.
-      rewrite in_map_iff in H1.
-      destruct H1 as (ip1 & Hip1 & IN1).
-      destruct H0 as (H1 & H2 & H3 & H4).
-      splits.
-      --- 
-         eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial. 
-          destruct BEL as (POL & TS & T & I & D).
-          destruct H as (DEPTH & INSTR & DOM & TSF & W & R). 
-          splits; try solve [subst; simpls; eauto].
-          simpls. rewrite <- DOM; trivial.
-          simpls. rewrite <- TSF; trivial.
-          simpls. rewrite <- INSTR; trivial.
-      --- 
-          eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial.
-      --- 
-          eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial.
-          destruct H as (DEPTH & INSTR & DOM & TSF & W & R). rewrite <- DEPTH. trivial.
-    -- intro.
-      destruct H1 as (BEL & NTH & LEN).
+    |}) ipl1).
+  destruct Heq as (DEPTH & INSTR & DOM & TSF & W & R).
+  destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
+  refine (conj _ (conj _ (conj _ _))).
+  { intros ip Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as (ip1 & Hip & Hin1).
+    subst ip.
+    simpl.
+    apply Hprefix.
+    exact Hin1. }
+  { intros ip.
+    split.
+    - intro Hin.
+      rewrite in_map_iff in Hin.
+      destruct Hin as (ip1 & Hip & Hin1).
+      subst ip.
+      destruct (Hmem ip1) as [Hin1_to _].
+      specialize (Hin1_to Hin1).
+      destruct Hin1_to as (HPREF & HBEL & HNTH & HLEN).
+      destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+      split.
+      + exact HPREF.
+      + split.
+        * unfold belongs_to; simpl.
+          split.
+          { rewrite <- DOM. exact HPOL. }
+          split.
+          { rewrite <- TSF. exact HTRANS. }
+          split.
+          { reflexivity. }
+          split.
+          { rewrite <- INSTR. exact HINSTR. }
+          { reflexivity. }
+        * split.
+          { exact HNTH. }
+          { rewrite <- DEPTH. exact HLEN. }
+    - intro Hin.
+      destruct Hin as (HPREF & HBEL & HNTH & HLEN).
       rewrite in_map_iff.
-      destruct H0 as (H1 & H2 & H3 & H4).
       exists {|
         ip_nth := ip_nth ip;
         ip_index := ip_index ip;
@@ -1617,31 +1630,43 @@ Proof.
         ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
         ip_instruction := ip_instruction ip;
         ip_depth := pi_depth pi2;
-      |}. simpls. 
+      |}.
       split.
-      --- 
-        destruct BEL as (POL & TS & T & I & D).
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R). 
-        destruct ip eqn:Hip; simpls; subst; trivial.
-      --- 
-        eapply H2. splits; try solve [splits; simpls; subst; eauto;trivial].
-        destruct BEL as (POL & TS & T & I & D).
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-        splits; destruct ip eqn:Hip; simpls; try solve [subst; trivial].
-        rewrite DOM; trivial.
-        all: try solve [subst; eauto]. 
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-        simpl; eauto. 
-        rewrite DEPTH; trivial.
-  - 
-    pose proof H0 as G0.
+      + destruct ip; simpl in *.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        simpl in *.
+        subst.
+        f_equal; auto.
+      + destruct (Hmem {|
+           ip_nth := ip_nth ip;
+           ip_index := ip_index ip;
+           ip_transformation := ip_transformation ip;
+           ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
+           ip_instruction := ip_instruction ip;
+           ip_depth := pi_depth pi2;
+         |}) as [_ Hback].
+        apply Hback.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        refine (conj HPREF _).
+        refine (conj _ _).
+        * unfold belongs_to; simpl in *.
+          split.
+          { rewrite DOM. exact HPOL. }
+          split.
+          { rewrite TSF. exact HTRANS. }
+          split.
+          { reflexivity. }
+          split.
+          { rewrite INSTR. exact HINSTR. }
+          { rewrite DEPTH. reflexivity. }
+        * split.
+          { exact HNTH. }
+          { rewrite DEPTH. exact HLEN. } }
+  { pose proof (conj Hprefix (conj Hmem (conj Hnodup Hsorted))) as G0.
     eapply flatten_instr_nth_NoDupA_np in G0.
-    destruct H0 as (H1 & H2 & H3 & H4).
     eapply NoDup_implies_NoDupA_np.
-    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto.
-  -
-    destruct H0 as (H1 & H2 & H3 & H4). 
-    eapply Sorted_ipl_map_np_sorted_np; eauto.
+    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto. }
+  { eapply Sorted_ipl_map_np_sorted_np; eauto. }
 Qed.
 
 Lemma eqdom_pinstrs_implies_flatten_instrs_exists:
@@ -1722,7 +1747,7 @@ Proof.
   - intros. 
     destruct H0 as (ENV & BEL & NODUP & SORTED).
     destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL in H2. destruct H2 as (BEL1 & NTH & LEN).
+    eapply BEL in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
     eapply InA_alt.
     remember {|
       ip_nth := ip_nth ip1;
@@ -1734,20 +1759,22 @@ Proof.
     |} as ip2.
     exists ip2. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
+    subst ip2.
     destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-    eapply BEL'. splits; try solve [subst; simpls; trivial].
-    {
-      destruct BEL1 as (POL & TS & T & I & D).
+    eapply BEL'.
+    split; [exact HPREF|].
+    split.
+    { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite <- DOM; subst; simpls; trivial.
       rewrite <- TSF; subst; simpls; trivial.
-      rewrite <- INSTR; subst; simpls; trivial.
-    }
+      rewrite <- INSTR; subst; simpls; trivial. }
+    split; [subst; simpls; trivial|].
     rewrite <- DEPTH; subst; simpls; trivial.
   - intros. 
     destruct H0 as (ENV & BEL & NODUP & SORTED).
     destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL' in H2. destruct H2 as (BEL1 & NTH & LEN).
+    eapply BEL' in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
     eapply InA_alt.
     remember {|
       ip_nth := ip_nth ip2;
@@ -1759,15 +1786,17 @@ Proof.
     |} as ip1.
     exists ip1. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
+    subst ip1.
     destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-    eapply BEL. splits; try solve [subst; simpls; trivial].
-    {
-      destruct BEL1 as (POL & TS & T & I & D).
+    eapply BEL.
+    split; [exact HPREF|].
+    split.
+    { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite DOM; subst; simpls; trivial.
       rewrite TSF; subst; simpls; trivial.
-      rewrite INSTR; subst; simpls; trivial.
-    }
+      rewrite INSTR; subst; simpls; trivial. }
+    split; [subst; simpls; trivial|].
     rewrite DEPTH; subst; simpls; trivial.
 Qed.
 
@@ -2163,7 +2192,7 @@ Proof.
 Qed.
 
 Lemma eqdom_same_ipl_length_lt_impossible:
-  forall len1 len2 ipl1 ipl2 pol tsf sch1 sch2 instr n len depth,
+  forall len1 len2 ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
     NoDupA np_eq ipl1 -> 
     NoDupA np_eq ipl2 -> 
     (forall n ip1 ip2, 
@@ -2171,26 +2200,28 @@ Lemma eqdom_same_ipl_length_lt_impossible:
       nth_error ipl2 n = Some ip2 ->
       np_eq ip1 ip2
     ) ->
-    (forall ip1, 
-      In ip1 ipl1 <-> 
-        in_poly (ip_index ip1) pol 
-        /\ ip_transformation ip1 = tsf 
+    (forall ip1,
+      In ip1 ipl1 <->
+        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
+        in_poly (ip_index ip1) pol
+        /\ ip_transformation ip1 = tsf
         /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
         /\ ip_instruction ip1 = instr
         /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n 
-        /\ length (ip_index ip1) = len 
+        /\ ip_nth ip1 = n
+        /\ length (ip_index ip1) = len
       )
     -> 
-    (forall ip2, 
-      In ip2 ipl2 <-> 
-        in_poly (ip_index ip2) pol 
-        /\ ip_transformation ip2 = tsf 
+    (forall ip2,
+      In ip2 ipl2 <->
+        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
+        in_poly (ip_index ip2) pol
+        /\ ip_transformation ip2 = tsf
         /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
         /\ ip_instruction ip2 = instr
         /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n 
-        /\ length (ip_index ip2) = len 
+        /\ ip_nth ip2 = n
+        /\ length (ip_index ip2) = len
       )
     ->
     len1 = length ipl1 ->
@@ -2226,10 +2257,13 @@ Proof.
       ip_depth := depth;
     |} as ip1.
     exists ip1. 
-    destruct NTH2 as (POL & TSF & T & I & D & N & L).
+    destruct NTH2 as (HPREF & POL & TSF & T & I & D & N & L).
     split.
-    - 
-      eapply H2. splits; try solve [subst; simpls; trivial].
+    -
+      eapply H2.
+      subst ip1.
+      simpl.
+      repeat split; eauto.
     - unfold np_eq. split; subst; simpls; trivial.
       eapply lex_compare_reflexive.
   }
@@ -2266,7 +2300,7 @@ Proof.
 Qed.
 
 Lemma eqdom_same_ipl_length:
-  forall ipl1 ipl2 pol tsf sch1 sch2 instr n len depth,
+  forall ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
     NoDupA np_eq ipl1 -> 
     NoDupA np_eq ipl2 -> 
     (forall n ip1 ip2, 
@@ -2274,26 +2308,28 @@ Lemma eqdom_same_ipl_length:
       nth_error ipl2 n = Some ip2 ->
       np_eq ip1 ip2
     ) ->
-    (forall ip1, 
-      In ip1 ipl1 <-> 
-        in_poly (ip_index ip1) pol 
-        /\ ip_transformation ip1 = tsf 
+    (forall ip1,
+      In ip1 ipl1 <->
+        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
+        in_poly (ip_index ip1) pol
+        /\ ip_transformation ip1 = tsf
         /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
         /\ ip_instruction ip1 = instr
         /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n 
-        /\ length (ip_index ip1) = len 
+        /\ ip_nth ip1 = n
+        /\ length (ip_index ip1) = len
       )
     -> 
-    (forall ip2, 
-      In ip2 ipl2 <-> 
-        in_poly (ip_index ip2) pol 
-        /\ ip_transformation ip2 = tsf 
+    (forall ip2,
+      In ip2 ipl2 <->
+        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
+        in_poly (ip_index ip2) pol
+        /\ ip_transformation ip2 = tsf
         /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
         /\ ip_instruction ip2 = instr
         /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n 
-        /\ length (ip_index ip2) = len 
+        /\ ip_nth ip2 = n
+        /\ length (ip_index ip2) = len
       )
     ->
     length ipl1 = length ipl2.
@@ -2335,6 +2371,7 @@ Proof.
   destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
   eapply eqdom_same_ipl_length 
     with  
+      (envv:=envv)
       (pol := (pi_poly pi1)) 
       (tsf := pi_transformation pi1) 
       (sch1 := pi_schedule pi1)
@@ -2348,20 +2385,38 @@ Proof.
     eapply eqdom_pinstr_implies_flatten_same_np_set; eauto.
     eapply flatten_instr_nth_NoDupA_np; eauto.
     eapply flatten_instr_nth_NoDupA_np; eauto.
-  -  
+  -
     clear - BEL.
-    intros. split; intro. 
-    -- eapply BEL in H. firstorder.
-    -- eapply BEL. firstorder.
-  - intros.
-    intros. split; intro; trivial.
-    -- eapply BEL' in H. 
-    rewrite DOM. rewrite TSF. rewrite INSTR. 
-    rewrite DEPTH. clear - H. firstorder.
-    -- 
-    eapply BEL'. 
-    rewrite <- DOM. rewrite <- TSF. rewrite <- INSTR. 
-    rewrite <- DEPTH. clear - H. firstorder.
+    intros ip. split; intro Hin.
+    -- eapply BEL in Hin.
+       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
+       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
+       repeat split; eauto.
+    -- eapply BEL.
+       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
+       repeat split; eauto.
+  - intros ip.
+    split; intro Hin; trivial.
+    -- eapply BEL' in Hin.
+       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
+       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
+       rewrite <- DOM in HPOL.
+       rewrite <- TSF in HTSF.
+       rewrite <- INSTR in HINSTR.
+       rewrite <- DEPTH in HDEPTH.
+       rewrite <- DEPTH in HLEN.
+       repeat split; eauto.
+    -- eapply BEL'.
+       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
+       rewrite DOM in HPOL.
+       rewrite TSF in HTSF.
+       rewrite INSTR in HINSTR.
+       rewrite DEPTH in HDEPTH.
+       rewrite DEPTH in HLEN.
+       split; [exact HPREF|].
+       split.
+       ++ repeat split; eauto.
+       ++ split; [exact HNTH| exact HLEN].
 Qed.
 
 Lemma eqdom_pinstr_implies_flatten_instr_nth_rel':
@@ -2393,8 +2448,8 @@ Proof.
   destruct H0 as (ENV & BEL & NODUP & SORTED).
   destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
   eapply BEL in H5. eapply BEL' in H6.
-  destruct H5 as (BEL1 & NTH1 & LEN1).
-  destruct H6 as (BEL2 & NTH2 & LEN2).
+  destruct H5 as (HPREF1 & BEL1 & NTH1 & LEN1).
+  destruct H6 as (HPREF2 & BEL2 & NTH2 & LEN2).
   destruct BEL1 as (POL1 & TS1 & T1 & I1 & D1).
   destruct BEL2 as (POL2 & TS2 & T2 & I2 & D2).
   destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
@@ -2802,19 +2857,22 @@ Qed.
 
 Definition flatten_instrs_ext (envv: list Z) (poly_instrs: list PolyInstr_ext) (ipl: list InstrPoint_ext): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index_ext) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of all instructions *)
     forall ip,
       In ip ipl
       <->
       exists pi,
       nth_error poly_instrs ip.(ip_nth_ext) = Some pi 
+      /\ firstn (length envv) ip.(ip_index_ext) = envv
       /\ belongs_to_ext ip pi
       /\ length ip.(ip_index_ext) = length envv + pi.(pi_depth_ext)
   )
@@ -2832,17 +2890,21 @@ Definition flatten_instrs_ext (envv: list Z) (poly_instrs: list PolyInstr_ext) (
 
 Definition flatten_instr_nth_ext (envv: list Z) (nth: nat) (pi: PolyInstr_ext) (ipl: list InstrPoint_ext): Prop := 
     (
-      (* 1. firstn of length env is envv *)
+      (* 1. firstn of length env is envv.
+         Redundant with clause 2 after the env-scoped membership repair, but
+         kept to minimize breakage in existing proofs. *)
       forall ip,
         In ip ipl ->
         firstn (length envv) ip.(ip_index_ext) = envv 
     )
     /\
     (
-      (* 2. contains only but all instances of all instructions *)
+      (* 2. contains only but all env-scoped instances of this instruction *)
       forall ip,
         In ip ipl
         <->
+        firstn (length envv) ip.(ip_index_ext) = envv
+        /\
         belongs_to_ext ip pi
         /\ ip.(ip_nth_ext) = nth
         /\ length ip.(ip_index_ext) = length envv + pi.(pi_depth_ext) 
@@ -2881,11 +2943,12 @@ Proof.
   destruct H. 
   assert ( exists pi,
     nth_error [] (ip_nth_ext i) = Some pi /\
+    firstn (Datatypes.length envv) (ip_index_ext i) = envv /\
     belongs_to_ext i pi /\
     Datatypes.length (ip_index_ext i) = Datatypes.length envv + pi_depth_ext pi). {
       eapply H. eapply in_eq.
   }
-  destruct H1 as (pi & NTH & _).
+  destruct H1 as (pi & NTH & _ & _ & _).
   eapply nth_error_rev_some in NTH; tryfalse.
 Qed.
 
@@ -2931,23 +2994,27 @@ Proof.
       eapply in_app_or in H.
       destruct H.
       * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & HPREF & H & Hlen).
         exists pi0.
-        splits; eauto.
-        rewrite nth_error_app1; eauto.
-        eapply nth_error_Some; rewrite NTH; eauto.
-        intro. tryfalse.
+        split.
+        -- rewrite nth_error_app1; eauto.
+           eapply nth_error_Some; rewrite NTH; eauto.
+           intro. tryfalse.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
       * 
         eapply H2' in H; eauto.
-        destruct H as (H & NTH & Hlen).
+        destruct H as (HPREF & H & NTH & Hlen).
         exists pi.
-        splits; eauto.
-        rewrite nth_error_app2; eauto; try lia.
-        replace (ip_nth_ext ip - length pis) with 0; try lia.
-        simpls. trivial. 
+        split.
+        -- rewrite nth_error_app2; eauto; try lia.
+           replace (ip_nth_ext ip - length pis) with 0; try lia.
+           simpls. trivial.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
     + intros.
       destruct H.
-      destruct H as (NTH & BEL & LEN).
+      destruct H as (NTH & HPREF & BEL & LEN).
       * 
         assert (ip_nth_ext ip < length pis \/ ip_nth_ext ip = length pis). {
           eapply nth_error_Some' in NTH.
@@ -2959,23 +3026,29 @@ Proof.
         rewrite in_app. left. 
         eapply H2.
         exists x.
-        split; eauto.
-        rewrite nth_error_app1 in NTH; eauto. 
+        split.
+        --- rewrite nth_error_app1 in NTH; [exact NTH|].
+            lia.
+        --- split; [exact HPREF|].
+            split; [exact BEL| exact LEN].
         --
         rewrite in_app. right.
         eapply H2'.
         rewrite H in NTH.
-        rewrite nth_error_app2 in NTH; eauto.
-        replace (length pis - length pis) with 0 in NTH; try lia.
-        simpls; trivial. inv NTH. trivial.
-        splits; eauto.
+        rewrite nth_error_app2 in NTH; [|lia].
+        replace (length pis - length pis) with 0 in NTH by lia.
+        simpl in NTH.
+        inv NTH.
+        split; [exact HPREF|].
+        split; [exact BEL|].
+        split; [exact H| exact LEN].
   - 
     eapply NoDup_app; eauto.
     intros.
     eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
+    destruct H as (pi0 & NTH & HPREF & H & Hlen).
     intro. eapply H2' in H0.
-    destruct H0 as (H0 & NTH' & Hlen').
+    destruct H0 as (HPREF' & H0 & NTH' & Hlen').
     rewrite NTH' in NTH.
     assert (nth_error pis (length pis) = None). {
       eapply nth_error_None; eauto.
@@ -2987,8 +3060,8 @@ Proof.
     intros.
     eapply H2 in H; eauto.
     eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
-    destruct H0 as (H' & NTH' & Hlen').
+    destruct H as (pi0 & NTH & HPREF & H & Hlen).
+    destruct H0 as (HPREF' & H' & NTH' & Hlen').
     unfold np_lt. left.
     clear - NTH NTH'.
     eapply nth_error_Some' in NTH. lia.
@@ -3004,7 +3077,7 @@ Proof.
   intros.
   destruct H as (H1 & H2 & H3 & H4).
   eapply H2 in H0.
-  destruct H0 as (pi & NTH & BEL & LEN).
+  destruct H0 as (pi & NTH & HPREF & BEL & LEN).
   eapply nth_error_Some' in NTH. trivial.
 Qed.
 
@@ -3032,20 +3105,24 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & HPREF & H & Hlen).
         exists pi0.
-        splits; eauto.
-        rewrite nth_error_app1 in NTH; eauto.
-        eapply Nat.ltb_lt in Hlt. trivial.
+        split.
+        -- rewrite nth_error_app1 in NTH; [exact NTH|].
+           eapply Nat.ltb_lt in Hlt. trivial.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
       * 
         eapply filter_In.
-        destruct H as (pi' & NTH & BEL & LEN).
+        destruct H as (pi' & NTH & HPREF & BEL & LEN).
         split.
         -- eapply H2. 
           exists pi'.
-          splits; eauto.
-          rewrite nth_error_app1; eauto.
-          clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
+          split.
+          --- rewrite nth_error_app1; eauto.
+              clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
+          --- split; [exact HPREF|].
+              split; [exact BEL| exact LEN].
         -- eapply Nat.ltb_lt.
           eapply nth_error_Some' in NTH. trivial.
     + eapply NoDup_filter; trivial.
@@ -3066,25 +3143,31 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & BEL & Hlen).
+        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
         eapply Nat.eqb_eq in Hlt.
         assert (pi = pi'). {
           rewrite nth_error_app2 in NTH.
-          replace (ip_nth_ext ip - length pis) with 0 in NTH; simpls; try lia. inv NTH; trivial.
-          lia. 
+          replace (ip_nth_ext ip - length pis) with 0 in NTH by lia.
+          simpl in NTH.
+          inv NTH; trivial.
+          lia.
         }
         subst.
-        splits; eauto.
+        split; [exact HPREF|].
+        split; [exact BEL|].
+        split; [lia| exact Hlen].
       * 
         eapply filter_In.
-        destruct H as (BEL & NTH & LEN).
+        destruct H as (HPREF & BEL & NTH & LEN).
         split.
         -- eapply H2. 
           exists pi.
-          splits; eauto.
-          rewrite nth_error_app2; eauto; try lia.
-          replace (ip_nth_ext ip - length pis) with 0; try lia.
-          simpls; trivial. 
+          split.
+          --- rewrite nth_error_app2; [|lia].
+              replace (ip_nth_ext ip - length pis) with 0 by lia.
+              simpls. trivial.
+          --- split; [exact HPREF|].
+              split; [exact BEL| exact LEN].
         -- eapply Nat.eqb_eq. lia.
     + eapply NoDup_filter; trivial.
     + 
@@ -3171,7 +3254,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3185,7 +3268,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3200,7 +3283,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3214,7 +3297,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3289,7 +3372,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3304,7 +3387,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.

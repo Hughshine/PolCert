@@ -152,14 +152,14 @@ endif
 # Source of PolCert
 
 POLCERT_SRC = Base.v Convert.v \
-  Extractor.v \
+  Extractor.v PrepareCodegen.v \
   OpenScop.v OpenScopAST.v PolyBase.v PolyLang.v \
   SelectionSort.v StablePermut.v CState.v Validator.v \
   CInstr.v TInstr.v TyTy.v CTy.v
 
 # Putting everything together (in driver/)
 
-DRIVER=PolOpt.v CPolOpt.v TPolOpt.v TPolValidator.v
+DRIVER=PolOpt.v PolOptPrepared.v CPolOpt.v TPolOpt.v TPolValidator.v
 
 SAMPLES=CSample1.v CSample2.v CSample3.v ExtractorSmoke.v
 

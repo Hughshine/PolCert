@@ -2125,7 +2125,8 @@ Proof.
     intros envv n pi ipl ip Hflat Hin.
     destruct Hflat as (_ & Hbel & _ & _).
     eapply Hbel in Hin.
-    exact Hin.
+    destruct Hin as (_ & Hbelong & Hnth & Hlen).
+    exact (conj Hbelong (conj Hnth Hlen)).
 Qed.
 
 Lemma flatten_instr_nth_index_split:
@@ -2140,8 +2141,8 @@ Proof.
     destruct Hflat as (Hprefix & Hbel & _ & _).
     pose proof (Hprefix ip Hin) as Hpre.
     pose proof (proj1 (Hbel ip) Hin) as Htmp.
-    destruct Htmp as (_ & _ & Hlen).
-    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre; eauto.
+    destruct Htmp as (_ & _ & _ & Hlen).
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi); eauto.
 Qed.
 
 Lemma flatten_instrs_in_inv:
@@ -2157,11 +2158,29 @@ Proof.
     destruct Hflat as (_ & Hchar & _ & _).
     specialize (Hchar ip).
     eapply Hchar in Hin.
-    destruct Hin as (pi & Hnth & Hbel & Hlen).
+    destruct Hin as (pi & Hnth & _ & Hbel & Hlen).
     exists pi.
     split.
     - eapply nth_error_In; eauto.
     - split; auto.
+Qed.
+
+Lemma flatten_instrs_in_intro:
+    forall envv pis ipl ip pi,
+    PolyLang.flatten_instrs envv pis ipl ->
+    firstn (Datatypes.length envv) (PolyLang.ip_index ip) = envv ->
+    nth_error pis (PolyLang.ip_nth ip) = Some pi ->
+    PolyLang.belongs_to ip pi ->
+    Datatypes.length (PolyLang.ip_index ip) = (Datatypes.length envv + PolyLang.pi_depth pi)%nat ->
+    In ip ipl.
+Proof.
+    intros envv pis ipl ip pi Hflat Hpre Hnth Hbel Hlen.
+    destruct Hflat as (_ & Hchar & _ & _).
+    apply (proj2 (Hchar ip)).
+    exists pi.
+    split; [exact Hnth|].
+    split; [exact Hpre|].
+    split; [exact Hbel| exact Hlen].
 Qed.
 
 Lemma flattened_point_satisfies_top_constraints:
@@ -2176,7 +2195,7 @@ Proof.
       Hext Hflat Hlenenv Hip.
     destruct Hflat as (Hprefix & Hchar & Hnodup & Hsortednp).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     pose proof Hlenidx as Hlenidx0.
     eapply extract_stmt_has_lifted_prefix in Hext.
     2: { eapply nth_error_In; eauto. }
@@ -2224,7 +2243,7 @@ Lemma flattened_point_loop_bounds:
     destruct Hext as (lbc & ubc & Hlb & Hub & Hbodyext).
     destruct Hflat as (Hprefix & Hchar & _ & _).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     assert (In pi pis) as Hpin.
     { eapply nth_error_In; eauto. }
     eapply extract_stmt_has_lifted_prefix in Hbodyext.
@@ -2316,7 +2335,7 @@ Proof.
     pose proof Hbodyext as Hbodyext_sched.
     destruct Hflat as (Hprefix & Hchar & _ & _).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     assert (In pi pis) as Hpin.
     { eapply nth_error_In; eauto. }
     eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
@@ -2414,7 +2433,7 @@ Proof.
     pose proof Hbodyext as Hbodyext_dom.
     destruct Hflat as (Hprefix & Hchar & _ & _).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     assert (In pi pis) as Hpin.
     { eapply nth_error_In; eauto. }
     eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
@@ -2791,7 +2810,7 @@ Proof.
       split.
       + intro Hin.
         pose proof (proj1 (Hchar ip) Hin) as Hmem.
-        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        destruct Hmem as [pi [Hnth [_ [Hbel Hlenidx]]]].
         pose proof (Hprefix ip Hin) as Hpre.
         pose proof (firstn_length_decompose envv (PolyLang.ip_index ip) (PolyLang.pi_depth pi) Hpre Hlenidx)
           as Hsplit.
@@ -2807,11 +2826,22 @@ Proof.
             rewrite Nat.sub_0_r.
             exact Hsuflen. }
       + intros (pi & suf & Hnth & Hbel & _ & Hidx & Hsuflen).
+        simpl in Hidx.
+        assert (firstn (Datatypes.length envv) (PolyLang.ip_index ip) = envv) as Hpre.
+        {
+          rewrite Hidx.
+          rewrite firstn_app.
+          rewrite firstn_all.
+          replace ((Datatypes.length envv - Datatypes.length envv)%nat) with 0%nat by lia.
+          simpl.
+          rewrite app_nil_r.
+          reflexivity.
+        }
         apply (proj2 (Hchar ip)).
         exists pi.
         split; [exact Hnth|].
+        split; [exact Hpre|].
         split; [exact Hbel|].
-        simpl in Hidx.
         rewrite Hidx.
         rewrite app_length.
         simpl.
@@ -3397,7 +3427,7 @@ Proof.
         apply filter_In in Hin.
         destruct Hin as [Hip Hpred].
         pose proof (proj1 (Hchar ip) Hip) as Hmem.
-        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        destruct Hmem as [pi [Hnth [_ [Hbel Hlenidx]]]].
         assert (Hin_filter:
           In ip
             (filter
@@ -3435,18 +3465,22 @@ Proof.
       + intros (pi & suf & Hnth & Hbel & Hge & Hidx & Hsuflen).
         assert (Hip : In ip ipl).
         {
-          apply (proj2 (Hchar ip)).
-          exists pi.
-          split; [exact Hnth|].
-          split; [exact Hbel|].
+          assert (firstn (Datatypes.length envv) (PolyLang.ip_index ip) = envv) as Hpre.
+          {
+            rewrite Hidx.
+            rewrite firstn_app.
+            rewrite firstn_all.
+            replace ((Datatypes.length envv - Datatypes.length envv)%nat) with 0%nat by lia.
+            simpl.
+            rewrite app_nil_r.
+            reflexivity.
+          }
+          eapply flatten_instrs_in_intro with (pi:=pi); eauto.
           rewrite Hidx.
           simpl.
-          replace (Datatypes.length (envv ++ i :: suf))
-            with (Datatypes.length envv + PolyLang.pi_depth pi)%nat.
-          - reflexivity.
-          - rewrite app_length. simpl.
-            rewrite Hsuflen.
-            destruct (PolyLang.pi_depth pi); simpl in *; lia.
+          rewrite app_length. simpl.
+          rewrite Hsuflen.
+          destruct (PolyLang.pi_depth pi); simpl in *; lia.
         }
         apply (
           proj2 (
@@ -3488,7 +3522,7 @@ Proof.
     pose proof Hbodyext as Hbodyext_dom.
     destruct Hflat as (Hprefix & Hchar & _ & _).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     assert (In pi pis) as Hpin.
     { eapply nth_error_In; eauto. }
     eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
@@ -3628,7 +3662,7 @@ Proof.
       Hext Hflat Hlenenv Hip.
     destruct Hflat as (Hprefix & Hchar & Hnodup & Hsortednp).
     pose proof (proj1 (Hchar ip) Hip) as Hm.
-    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    destruct Hm as (pi & Hnth & _ & Hbel & Hlenidx).
     pose proof Hlenidx as Hlenidx0.
     eapply extract_stmt_has_lifted_sched_prefix in Hext.
     2: { eapply nth_error_In; eauto. }
@@ -5032,7 +5066,7 @@ Proof.
     intros envv n pi ipl ip Hflat Hin.
     destruct Hflat as (_ & Hchar & _ & _).
     eapply Hchar in Hin.
-    destruct Hin as (_ & Hnth & _).
+    destruct Hin as (_ & _ & Hnth & _).
     exact Hnth.
 Qed.
 
@@ -5291,7 +5325,7 @@ Proof.
         apply filter_In in Hin.
         destruct Hin as [Hip Hpred].
         pose proof (proj1 (Hchar ip) Hip) as Hmem.
-        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        destruct Hmem as [pi [Hnth [_ [Hbel Hlenidx]]]].
         assert (Hipfix:
           In ip ipl /\ exists suf, PolyLang.ip_index ip = envv ++ [i] ++ suf).
         {
@@ -5322,10 +5356,17 @@ Proof.
       + intros (pi & suf & Hnth & Hbel & Hgepref & Hidx & Hsuflen).
         apply filter_In.
         split.
-        * apply (proj2 (Hchar ip)).
-          exists pi.
-          split; [exact Hnth|].
-          split; [exact Hbel|].
+        * assert (firstn (Datatypes.length envv) (PolyLang.ip_index ip) = envv) as Hpre.
+          {
+            rewrite Hidx.
+            rewrite firstn_app.
+            rewrite firstn_all.
+            replace ((Datatypes.length envv - Datatypes.length envv)%nat) with 0%nat by lia.
+            simpl.
+            rewrite app_nil_r.
+            reflexivity.
+          }
+          eapply flatten_instrs_in_intro with (pi:=pi); eauto.
           rewrite Hidx.
           rewrite app_length.
           simpl.
@@ -5348,21 +5389,30 @@ Proof.
                       (PolyLang.ip_time_stamp ip) 0%Z)
                     i)
                 ipl)).
-          {
-            eapply (proj2 Hiff).
-            split.
-            { apply (proj2 (Hchar ip)).
-              exists pi.
-              split; [exact Hnth|].
-              split; [exact Hbel|].
-              rewrite Hidx.
-              rewrite app_length.
-              simpl.
-              rewrite Hsuflen.
-              destruct (PolyLang.pi_depth pi); simpl in *; lia. }
-            { exists suf.
-              exact Hidx. }
-          }
+	          {
+	            eapply (proj2 Hiff).
+	            split.
+	            {
+	              assert (firstn (Datatypes.length envv) (PolyLang.ip_index ip) = envv) as Hpre.
+	              {
+	                rewrite Hidx.
+	                rewrite firstn_app.
+	                rewrite firstn_all.
+	                replace ((Datatypes.length envv - Datatypes.length envv)%nat) with 0%nat by lia.
+	                simpl.
+	                rewrite app_nil_r.
+	                reflexivity.
+	              }
+	              eapply flatten_instrs_in_intro with (pi:=pi); eauto.
+	              rewrite Hidx.
+	              rewrite app_length.
+	              simpl.
+	              rewrite Hsuflen.
+	              destruct (PolyLang.pi_depth pi); simpl in *; lia.
+	            }
+	            { exists suf.
+	              exact Hidx. }
+	          }
           apply filter_In in Hin_filter.
           exact (proj2 Hin_filter).
     - split.
@@ -5383,13 +5433,13 @@ Proof.
     intros envv n base pi ipl Hbase Hflat.
     destruct Hflat as (Hprefix & Hchar & Hnodup & Hsorted).
     assert (forall ip, In ip ipl -> (base <= PolyLang.ip_nth ip)%nat) as Hgeall.
-    {
-      intros ip Hin.
-      eapply Hchar in Hin.
-      destruct Hin as (_ & Hnth & _).
-      rewrite Hnth.
-      exact Hbase.
-    }
+	    {
+	      intros ip Hin.
+	      eapply Hchar in Hin.
+	      destruct Hin as (_ & _ & Hnth & _).
+	      rewrite Hnth.
+	      exact Hbase.
+	    }
     split.
     - intros ip' Hin.
       eapply in_map_iff in Hin.
@@ -5404,12 +5454,13 @@ Proof.
           destruct Hin as (ip & Hip' & Hipin).
           subst ip'.
           eapply Hchar in Hipin.
-          destruct Hipin as (Hbel & Hnth & Hlen).
+          destruct Hipin as (Hpre & Hbel & Hnth & Hlen).
+          split; [exact Hpre|].
           split; [exact Hbel|].
           split.
           { simpl. rewrite Hnth. lia. }
           { exact Hlen. }
-        * destruct Hin as (Hbel & Hnth & Hlen).
+        * destruct Hin as (Hpre & Hbel & Hnth & Hlen).
           destruct ip' as [n' idx tf ts instr depth].
           simpl in *.
           set (ip0 := {|
@@ -5423,6 +5474,8 @@ Proof.
           assert (In ip0 ipl) as Hip0.
           {
             eapply Hchar.
+            split.
+            { exact Hpre. }
             split.
             { exact Hbel. }
             split.
@@ -5976,22 +6029,24 @@ Proof.
               eapply filter_In in Hipin.
               destruct Hipin as (Hipin0 & Hpredfalse).
               apply negb_true_iff in Hpredfalse.
-              unfold is_left in Hpredfalse.
-              eapply Nat.ltb_ge in Hpredfalse.
-              eapply Hchar in Hipin0.
-              destruct Hipin0 as (pi & Hnthapp & Hbel & Hlen).
-              rewrite nth_error_app2 in Hnthapp by lia.
-              exists pi.
-              split.
-              { simpl. exact Hnthapp. }
-              split.
-              { exact Hbel. }
-              { exact Hlen. } }
-            { destruct Hin as (pi & Hnth & Hbel & Hlen).
-              destruct ip' as [n' idx tf ts instr depth].
-              simpl in *.
-              set (ip0 := {|
-                PolyLang.ip_nth := (n' + Datatypes.length pis1)%nat;
+	              unfold is_left in Hpredfalse.
+	              eapply Nat.ltb_ge in Hpredfalse.
+	              eapply Hchar in Hipin0.
+	              destruct Hipin0 as (pi & Hnthapp & Hpre & Hbel & Hlen).
+	              rewrite nth_error_app2 in Hnthapp by lia.
+	              exists pi.
+	              split.
+	              { simpl. exact Hnthapp. }
+	              split.
+	              { exact Hpre. }
+	              split.
+	              { exact Hbel. }
+	              { exact Hlen. } }
+	            { destruct Hin as (pi & Hnth & Hpre & Hbel & Hlen).
+	              destruct ip' as [n' idx tf ts instr depth].
+	              simpl in *.
+	              set (ip0 := {|
+	                PolyLang.ip_nth := (n' + Datatypes.length pis1)%nat;
                 PolyLang.ip_index := idx;
                 PolyLang.ip_transformation := tf;
                 PolyLang.ip_time_stamp := ts;
@@ -6002,16 +6057,18 @@ Proof.
               {
                 eapply Hchar.
                 exists pi.
-                split.
-                { subst ip0.
-                  simpl.
-                  rewrite nth_error_app2 by lia.
-                  replace (n' + Datatypes.length pis1 - Datatypes.length pis1)%nat with n' by lia.
-                  exact Hnth. }
-                split.
-                { exact Hbel. }
-                { exact Hlen. }
-              }
+	                split.
+	                { subst ip0.
+	                  simpl.
+	                  rewrite nth_error_app2 by lia.
+	                  replace (n' + Datatypes.length pis1 - Datatypes.length pis1)%nat with n' by lia.
+	                  exact Hnth. }
+	                split.
+	                { exact Hpre. }
+	                split.
+	                { exact Hbel. }
+	                { exact Hlen. }
+	              }
               assert (In ip0 (filter (fun ip : PolyLang.InstrPoint => negb (is_left ip)) ipl0)) as Hip0.
               {
                 eapply filter_In.
@@ -6679,21 +6736,23 @@ Proof.
     {
       eapply (proj2 (Hchar ip0)).
       split.
-      - unfold PolyLang.belongs_to.
-        simpl.
-        rewrite Hpoly.
-        simpl.
-        repeat split; reflexivity.
+      - subst ip0. simpl. rewrite firstn_all. reflexivity.
       - split.
-        + reflexivity.
-        + rewrite Hdepth. simpl. lia.
+        + unfold PolyLang.belongs_to.
+          simpl.
+          rewrite Hpoly.
+          simpl.
+          repeat split; reflexivity.
+        + split.
+          * reflexivity.
+          * rewrite Hdepth. simpl. lia.
     }
     assert (forall ip, In ip ipl -> ip = ip0) as Hall.
-    {
-      intros ip Hin.
-      pose proof (proj1 (Hchar ip) Hin) as Hmem.
-      destruct Hmem as (Hbel & Hnth & Hlen).
-      pose proof (Hprefix ip Hin) as Hpre.
+	    {
+	      intros ip Hin.
+	      pose proof (proj1 (Hchar ip) Hin) as Hmem.
+	      destruct Hmem as (_ & Hbel & Hnth & Hlen).
+	      pose proof (Hprefix ip Hin) as Hpre.
       pose proof (firstn_length_decompose envv (PolyLang.ip_index ip) 0 Hpre) as Hsplit.
       assert (Datatypes.length (PolyLang.ip_index ip) = Datatypes.length envv + 0)%nat as Hlen0 by lia.
       specialize (Hsplit Hlen0).
@@ -6744,20 +6803,22 @@ Proof.
     {
       eapply (proj2 (Hchar ip0)).
       split.
-      - unfold PolyLang.belongs_to.
-        simpl.
-        rewrite Hpolyin.
-        simpl.
-        repeat split; reflexivity.
+      - subst ip0. simpl. rewrite firstn_all. reflexivity.
       - split.
-        + reflexivity.
-        + rewrite Hdepth. simpl. lia.
+        + unfold PolyLang.belongs_to.
+          simpl.
+          rewrite Hpolyin.
+          simpl.
+          repeat split; reflexivity.
+        + split.
+          * reflexivity.
+          * rewrite Hdepth. simpl. lia.
     }
     assert (forall ip, In ip ipl -> ip = ip0) as Hall.
     {
       intros ip Hin.
-      pose proof (proj1 (Hchar ip) Hin) as Hmem.
-      destruct Hmem as (Hbel & Hnth & Hlen).
+	      pose proof (proj1 (Hchar ip) Hin) as Hmem.
+	      destruct Hmem as (_ & Hbel & Hnth & Hlen).
       pose proof (Hprefix ip Hin) as Hpre.
       pose proof (firstn_length_decompose envv (PolyLang.ip_index ip) 0 Hpre) as Hsplit.
       assert (Datatypes.length (PolyLang.ip_index ip) = Datatypes.length envv + 0)%nat as Hlen0 by lia.

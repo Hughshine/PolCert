@@ -51,6 +51,8 @@ time-of-build-pretty.log
 *.v.d
 polcomp
 polcert
+polopt
+polopt.byte
 test
 
 # Coq Makefile
