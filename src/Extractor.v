@@ -7551,7 +7551,668 @@ Proof.
     intros lb ub body IHbody constrs sched_prefix env_dim iter_depth prefix
       pis envv ipl sorted_ipl st1 st2
       Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
-    shelve.
+    pose proof Hextract as Hextract_loop.
+    eapply extract_stmt_loop_success_inv in Hextract.
+    destruct Hextract as (lbc & ubc & Hlb & Hub & Hbodyext).
+    eapply wf_scop_loop_inv in Hwf.
+    destruct Hwf as (_ & _ & Hwf_body).
+    assert (Hpoint_bounds:
+      forall ip, In ip sorted_ipl ->
+      exists i,
+        (Loop.eval_expr (rev (envv ++ prefix)) lb <= i <
+         Loop.eval_expr (rev (envv ++ prefix)) ub)%Z).
+    {
+      intros ip Hin.
+      eapply Permutation_in in Hin.
+      2: { exact (Permutation_sym Hperm). }
+      destruct (
+        flattened_point_loop_index_prefix_bounds_and_timestamp_head_slice
+          lb ub body constrs env_dim iter_depth sched_prefix prefix
+          pis envv ipl ip Hprefixlen Hextract_loop Hflat Hlenenv Hin
+      ) as [i [suf [tsuf [_ [Hbounds _]]]]].
+      exists i.
+      exact Hbounds.
+    }
+    assert (Hpoint_ts_head:
+      forall ip, In ip sorted_ipl ->
+      exists i tsuf,
+        PolyLang.ip_time_stamp ip =
+          affine_product
+            (normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix)
+            (envv ++ prefix) ++ [i] ++ tsuf).
+    {
+      intros ip Hin.
+      eapply Permutation_in in Hin.
+      2: { exact (Permutation_sym Hperm). }
+      destruct (
+        flattened_point_loop_index_prefix_bounds_and_timestamp_head_slice
+          lb ub body constrs env_dim iter_depth sched_prefix prefix
+          pis envv ipl ip Hprefixlen Hextract_loop Hflat Hlenenv Hin
+      ) as [i [suf [tsuf [_ [_ Hts]]]]].
+      exists i.
+      exists tsuf.
+      exact Hts.
+    }
+    set (pfx :=
+      affine_product
+        (normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix)
+        (envv ++ prefix)).
+    assert (Hsplit_head_bound:
+      forall b,
+      sorted_ipl =
+        filter
+          (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) b)
+          sorted_ipl ++
+        filter
+          (fun ip => negb (Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) b))
+          sorted_ipl).
+    {
+      intros b.
+      eapply sorted_sched_filter_split_by_prefix_head_bound.
+      - exact Hsorted.
+      - intros ip Hin.
+        destruct (Hpoint_ts_head ip Hin) as [i [tsuf Hts]].
+        exists i.
+        exists tsuf.
+        rewrite Hts.
+        unfold pfx.
+        reflexivity.
+    }
+    assert (Hsplit_head_eq:
+      forall i,
+      sorted_ipl =
+        filter
+          (fun ip => Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+          sorted_ipl ++
+        filter
+          (fun ip => Z.eqb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+          sorted_ipl ++
+        filter
+          (fun ip => Z.ltb i (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z))
+          sorted_ipl).
+    {
+      intros i.
+      eapply sorted_sched_filter_split_by_prefix_head_eq.
+      - exact Hsorted.
+      - intros ip Hin.
+        destruct (Hpoint_ts_head ip Hin) as [j [tsuf Hts]].
+        exists j.
+        exists tsuf.
+        rewrite Hts.
+        unfold pfx.
+        reflexivity.
+    }
+    set (head_ts := fun ip : PolyLang.InstrPoint =>
+      nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z).
+    set (lbv := Loop.eval_expr (rev (envv ++ prefix)) lb).
+    set (ubv := Loop.eval_expr (rev (envv ++ prefix)) ub).
+    pose proof (Hsplit_head_bound lbv) as Hsplit_at_lb.
+    pose proof (Hsplit_head_bound ubv) as Hsplit_at_ub.
+    assert (Hsem_split_head_eq:
+      forall i,
+      exists st_lt st_eq,
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.ltb (head_ts ip) i) sorted_ipl)
+          st1 st_lt /\
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.eqb (head_ts ip) i) sorted_ipl)
+          st_lt st_eq /\
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip => Z.ltb i (head_ts ip)) sorted_ipl)
+          st_eq st2).
+    {
+      intros i.
+      pose proof (Hsplit_head_eq i) as Hspliti.
+      unfold head_ts in Hspliti.
+      pose proof (
+        instr_point_list_semantics_split_by_eq_app
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.ltb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+            sorted_ipl)
+          (filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.eqb (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z) i)
+            sorted_ipl ++
+           filter
+            (fun ip : PolyLang.InstrPoint =>
+              Z.ltb i (nth (Datatypes.length pfx) (PolyLang.ip_time_stamp ip) 0%Z))
+            sorted_ipl)
+          sorted_ipl st1 st2
+          Hspliti Hipls
+      ) as Hsplit1.
+      destruct Hsplit1 as [st_lt [Hlt Hrest]].
+      eapply instr_point_list_semantics_app_inv in Hrest.
+      destruct Hrest as [st_eq [Heq Hgt]].
+      exists st_lt.
+      exists st_eq.
+      split; [exact Hlt|].
+      split; [exact Heq|exact Hgt].
+    }
+    assert (Hpoint_head_in_bounds:
+      forall ip, In ip sorted_ipl ->
+      (lbv <= head_ts ip < ubv)%Z).
+    {
+      intros ip Hin.
+      eapply Permutation_in in Hin.
+      2: { exact (Permutation_sym Hperm). }
+      destruct (
+        flattened_point_loop_index_prefix_bounds_and_timestamp_head_slice
+          lb ub body constrs env_dim iter_depth sched_prefix prefix
+          pis envv ipl ip Hprefixlen Hextract_loop Hflat Hlenenv Hin
+      ) as [i [suf [tsuf [_ [Hbounds Hts]]]]].
+      unfold head_ts.
+      rewrite Hts.
+      unfold pfx.
+      rewrite nth_after_prefix_singleton.
+      exact Hbounds.
+    }
+    assert (Hlt_lb_nil:
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl = []).
+    {
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      eapply Z.ltb_ge.
+      lia.
+    }
+    assert (Hge_ub_nil:
+      filter
+        (fun ip : PolyLang.InstrPoint =>
+          negb (Z.ltb (head_ts ip) ubv))
+        sorted_ipl = []).
+    {
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      eapply Bool.negb_false_iff.
+      eapply Z.ltb_lt.
+      lia.
+    }
+    assert (Hge_lb_eq_sorted:
+      filter
+        (fun ip : PolyLang.InstrPoint =>
+          negb (Z.ltb (head_ts ip) lbv))
+        sorted_ipl = sorted_ipl).
+    {
+      assert (Hallfalse:
+        forall ip, In ip sorted_ipl ->
+          Z.ltb (head_ts ip) lbv = false).
+      {
+        intros ip Hin.
+        pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+        eapply Z.ltb_ge.
+        lia.
+      }
+      eapply filter_negb_all_false_id in Hallfalse.
+      exact Hallfalse.
+    }
+    assert (Hlt_ub_eq_sorted:
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) ubv) sorted_ipl = sorted_ipl).
+    {
+      assert (Halltrue:
+        forall ip, In ip sorted_ipl ->
+          Z.ltb (head_ts ip) ubv = true).
+      {
+        intros ip Hin.
+        pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+        eapply Z.ltb_lt.
+        lia.
+      }
+      eapply filter_all_true_id.
+      exact Halltrue.
+    }
+    assert (Heq_out_of_range_nil:
+      forall i,
+      (i < lbv \/ ubv <= i)%Z ->
+      filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl = []).
+    {
+      intros i Hrange.
+      eapply filter_all_false_nil.
+      intros ip Hin.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      destruct Hrange as [Hlow | Hhigh].
+      - eapply Z.eqb_neq.
+        lia.
+      - eapply Z.eqb_neq.
+        lia.
+    }
+    set (in_loop_range :=
+      fun ip : PolyLang.InstrPoint =>
+        andb (negb (Z.ltb (head_ts ip) lbv))
+             (Z.ltb (head_ts ip) ubv)).
+    assert (Hrange_eq_sorted:
+      filter in_loop_range sorted_ipl = sorted_ipl).
+    {
+      eapply filter_all_true_id.
+      intros ip Hin.
+      unfold in_loop_range.
+      pose proof (Hpoint_head_in_bounds ip Hin) as Hbounds.
+      rewrite andb_true_iff_local.
+      split.
+      - eapply Bool.negb_true_iff.
+        eapply Z.ltb_ge.
+        lia.
+      - eapply Z.ltb_lt.
+        lia.
+    }
+    assert (Hlt_succ_split:
+      forall i,
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) (i + 1)) sorted_ipl =
+      filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) i) sorted_ipl ++
+      filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl).
+    {
+      intros i.
+      unfold head_ts.
+      eapply sorted_sched_filter_ltb_succ_by_prefix_head.
+      - exact Hsorted.
+      - intros ip Hin.
+        destruct (Hpoint_ts_head ip Hin) as [j [tsuf Hts]].
+        exists j.
+        exists tsuf.
+        rewrite Hts.
+        unfold pfx.
+        reflexivity.
+    }
+    assert (Hsem_prefix_step:
+      forall i st_next,
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) (i + 1)) sorted_ipl)
+        st1 st_next ->
+      exists st_prev,
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) i) sorted_ipl)
+          st1 st_prev /\
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl)
+          st_prev st_next).
+    {
+      intros i st_next Hsem_next.
+      pose proof (Hlt_succ_split i) as Hsplit_succ.
+      eapply instr_point_list_semantics_split_by_eq_app
+        with
+          (l1 := filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) i) sorted_ipl)
+          (l2 := filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl)
+          (l := filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) (i + 1)) sorted_ipl)
+          (st1 := st1) (st2 := st_next)
+        in Hsem_next.
+      2: { exact Hsplit_succ. }
+      exact Hsem_next.
+    }
+    assert (Hpref_lb_eq_st1:
+      forall st_lb,
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl)
+        st1 st_lb ->
+      State.eq st1 st_lb).
+    {
+      intros st_lb Hsem_lb.
+      rewrite Hlt_lb_nil in Hsem_lb.
+      eapply instr_point_list_semantics_nil_inv in Hsem_lb.
+      exact Hsem_lb.
+    }
+
+    assert (Hsem_pref_ub:
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) ubv) sorted_ipl)
+        st1 st2).
+    {
+      rewrite Hlt_ub_eq_sorted.
+      exact Hipls.
+    }
+    assert (Hiter_prefix:
+      forall i st_i,
+      (lbv <= i <= ubv)%Z ->
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) i) sorted_ipl)
+        st1 st_i ->
+      exists st_lb,
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl)
+          st1 st_lb /\
+        Instr.IterSem.iter_semantics
+          (fun x stA stB =>
+            PolyLang.instr_point_list_semantics
+              (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+              stA stB)
+          (Zrange lbv i) st_lb st_i).
+    {
+      intros i st_i Hrange Hpref_i.
+      remember (Z.to_nat (i - lbv)) as n eqn:Hn.
+      assert (Hi: i = lbv + Z.of_nat n).
+      {
+        subst n.
+        rewrite Z2Nat.id; lia.
+      }
+      clear Hn.
+      revert i st_i Hrange Hpref_i Hi.
+      induction n as [|n IH]; intros i st_i Hrange Hpref_i Hi.
+      - rewrite Hi in Hpref_i.
+        replace (lbv + Z.of_nat 0)%Z with lbv in Hpref_i by lia.
+        exists st_i.
+        split.
+        + exact Hpref_i.
+        + rewrite Zrange_empty by lia.
+          constructor.
+      - assert (Hlt_i: (lbv < i)%Z) by lia.
+        set (iprev := (i - 1)%Z).
+        assert (Hiprev_range: (lbv <= iprev <= ubv)%Z) by (unfold iprev; lia).
+        assert (Hpref_prev_input:
+          PolyLang.instr_point_list_semantics
+            (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) (iprev + 1)) sorted_ipl)
+            st1 st_i).
+        {
+          unfold iprev.
+          replace (i - 1 + 1)%Z with i by lia.
+          exact Hpref_i.
+        }
+        destruct (Hsem_prefix_step iprev st_i Hpref_prev_input)
+          as [st_prev [Hpref_prev Heq_prev]].
+        assert (Hiprev_eq: iprev = lbv + Z.of_nat n).
+        { unfold iprev. lia. }
+        specialize (IH iprev st_prev Hiprev_range Hpref_prev Hiprev_eq).
+        destruct IH as [st_lb [Hpref_lb Hiter_prev]].
+        assert (Hiter_single:
+          Instr.IterSem.iter_semantics
+            (fun x stA stB =>
+              PolyLang.instr_point_list_semantics
+                (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                stA stB)
+            [iprev] st_prev st_i).
+        {
+          econstructor.
+          - exact Heq_prev.
+          - constructor.
+        }
+        exists st_lb.
+        split.
+        + exact Hpref_lb.
+        + assert (Hiter_cat:
+            Instr.IterSem.iter_semantics
+              (fun x stA stB =>
+                PolyLang.instr_point_list_semantics
+                  (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                  stA stB)
+              (Zrange lbv iprev ++ [iprev]) st_lb st_i).
+          {
+            eapply iter_semantics_app; eauto.
+          }
+          unfold iprev in Hiter_cat.
+          replace (Zrange lbv i) with (Zrange lbv (i - 1) ++ [(i - 1)%Z]) by
+            (symmetry; eapply Zrange_end; exact Hlt_i).
+          exact Hiter_cat.
+    }
+    assert (Hiter_eq_range:
+      (lbv <= ubv)%Z ->
+      exists st_lb,
+        PolyLang.instr_point_list_semantics
+          (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl)
+          st1 st_lb /\
+        Instr.IterSem.iter_semantics
+          (fun x stA stB =>
+            PolyLang.instr_point_list_semantics
+              (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+              stA stB)
+          (Zrange lbv ubv) st_lb st2).
+    {
+      intros Hle.
+      eapply Hiter_prefix.
+      - split; lia.
+      - exact Hsem_pref_ub.
+    }
+    assert (Hiter_prefix_eq:
+      forall i st_i,
+      (lbv <= i <= ubv)%Z ->
+      PolyLang.instr_point_list_semantics
+        (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) i) sorted_ipl)
+        st1 st_i ->
+      exists st_i',
+        Instr.IterSem.iter_semantics
+          (fun x stA stB =>
+            PolyLang.instr_point_list_semantics
+              (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+              stA stB)
+          (Zrange lbv i) st1 st_i' /\
+        State.eq st_i st_i').
+    {
+      intros i st_i Hrange Hpref_i.
+      remember (Z.to_nat (i - lbv)) as n eqn:Hn.
+      assert (Hi: i = lbv + Z.of_nat n).
+      {
+        subst n.
+        rewrite Z2Nat.id; lia.
+      }
+      clear Hn.
+      revert i st_i Hrange Hpref_i Hi.
+      induction n as [|n IH]; intros i st_i Hrange Hpref_i Hi.
+      - rewrite Hi in Hpref_i.
+        replace (lbv + Z.of_nat 0)%Z with lbv in Hpref_i by lia.
+        exists st1.
+        split.
+        + rewrite Zrange_empty by lia.
+          constructor.
+        + pose proof (Hpref_lb_eq_st1 st_i Hpref_i) as Heq.
+          eapply State.eq_sym.
+          exact Heq.
+      - assert (Hlt_i: (lbv < i)%Z) by lia.
+        set (iprev := (i - 1)%Z).
+        assert (Hiprev_range: (lbv <= iprev <= ubv)%Z) by (unfold iprev; lia).
+        assert (Hpref_prev_input:
+          PolyLang.instr_point_list_semantics
+            (filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) (iprev + 1)) sorted_ipl)
+            st1 st_i).
+        {
+          unfold iprev.
+          replace (i - 1 + 1)%Z with i by lia.
+          exact Hpref_i.
+        }
+        destruct (Hsem_prefix_step iprev st_i Hpref_prev_input)
+          as [st_prev [Hpref_prev Heq_prev]].
+        assert (Hiprev_eq: iprev = lbv + Z.of_nat n).
+        { unfold iprev. lia. }
+        specialize (IH iprev st_prev Hiprev_range Hpref_prev Hiprev_eq).
+        destruct IH as [st_prev' [Hiter_prev Heq_prev_state]].
+        assert (Heq_prev_from_prev':
+          PolyLang.instr_point_list_semantics
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) iprev) sorted_ipl)
+            st_prev' st_i).
+        {
+          eapply PolyLang.instr_point_list_sema_stable_under_state_eq
+            with (st1:=st_prev) (st2:=st_i) (st1':=st_prev') (st2':=st_i) in Heq_prev.
+          2: { exact Heq_prev_state. }
+          2: { eapply State.eq_refl. }
+          exact Heq_prev.
+        }
+        assert (Hiter_single:
+          Instr.IterSem.iter_semantics
+            (fun x stA stB =>
+              PolyLang.instr_point_list_semantics
+                (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                stA stB)
+            [iprev] st_prev' st_i).
+        {
+          econstructor.
+          - exact Heq_prev_from_prev'.
+          - constructor.
+        }
+        exists st_i.
+        split.
+        + assert (Hiter_cat:
+            Instr.IterSem.iter_semantics
+              (fun x stA stB =>
+                PolyLang.instr_point_list_semantics
+                  (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                  stA stB)
+              (Zrange lbv iprev ++ [iprev]) st1 st_i).
+          {
+            eapply iter_semantics_app; eauto.
+          }
+          unfold iprev in Hiter_cat.
+          replace (Zrange lbv i) with (Zrange lbv (i - 1) ++ [(i - 1)%Z]) by
+            (symmetry; eapply Zrange_end; exact Hlt_i).
+          exact Hiter_cat.
+        + eapply State.eq_refl.
+    }
+    assert (Hiter_eq_range_from_st1:
+      (lbv <= ubv)%Z ->
+      exists st2',
+        Instr.IterSem.iter_semantics
+          (fun x stA stB =>
+            PolyLang.instr_point_list_semantics
+              (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+              stA stB)
+          (Zrange lbv ubv) st1 st2' /\
+        State.eq st2 st2').
+    {
+      intros Hle.
+      eapply Hiter_prefix_eq.
+      - split; lia.
+      - exact Hsem_pref_ub.
+    }
+    destruct (Z_lt_ge_dec lbv ubv) as [Hlb_lt_ub | Hlb_ge_ub].
+    2: {
+      assert (sorted_ipl = []) as Hsorted_nil.
+      {
+        destruct sorted_ipl as [|ip tl].
+        + reflexivity.
+        + exfalso.
+          pose proof (Hpoint_head_in_bounds ip (or_introl eq_refl)) as Hb.
+          lia.
+      }
+      subst sorted_ipl.
+      assert (State.eq st1 st2) as Heq12.
+      { eapply instr_point_list_semantics_nil_inv; eauto. }
+      exists st1.
+      split.
+      + eapply Loop.LLoop.
+        rewrite Zrange_empty by lia.
+        constructor.
+      + eapply State.eq_sym.
+        exact Heq12.
+    }
+    assert (Hiter_loop_refined:
+      forall stA stB,
+      Instr.IterSem.iter_semantics
+        (fun x stX stY =>
+          PolyLang.instr_point_list_semantics
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+            stX stY)
+        (Zrange lbv ubv) stA stB ->
+      exists stB',
+        Instr.IterSem.iter_semantics
+          (fun x stX stY =>
+            Loop.loop_semantics body (x :: rev (envv ++ prefix)) stX stY)
+          (Zrange lbv ubv) stA stB' /\
+        State.eq stB stB').
+    {
+      intros stA stB Hiter.
+      eapply iter_semantics_refine_with_state_eq
+        with
+          (P := fun x stX stY =>
+                  PolyLang.instr_point_list_semantics
+                    (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+                    stX stY)
+          (Q := fun x stX stY =>
+                  Loop.loop_semantics body (x :: rev (envv ++ prefix)) stX stY)
+          (xs := Zrange lbv ubv) (st1 := stA) (st2 := stB).
+      - intros x stX stY stX' stY' HeqX HeqY Hslice0.
+        eapply PolyLang.instr_point_list_sema_stable_under_state_eq; eauto.
+      - exact Hiter.
+      - intros x stX stY Hin Hslice0.
+        eapply Zrange_in in Hin.
+        assert (Hprefixlen':
+          Datatypes.length (prefix ++ [x]) = S iter_depth).
+        {
+          rewrite app_length.
+          simpl.
+          rewrite Hprefixlen.
+          lia.
+        }
+        assert (Hconstr_body:
+          in_poly (rev (envv ++ (prefix ++ [x])))
+            (lift_affine_list constrs ++ [lbc; ubc]) = true).
+        {
+          replace (rev (envv ++ (prefix ++ [x]))) with (x :: rev (envv ++ prefix)).
+          2: {
+            symmetry.
+            rewrite app_assoc.
+            apply rev_unit.
+          }
+          eapply loop_constraints_sound_lifted
+            with (lb:=lb) (ub:=ub) (depth:=(env_dim + iter_depth)%nat).
+          - rewrite rev_length.
+            rewrite app_length, Hlenenv, Hprefixlen.
+            lia.
+          - exact Hlb.
+          - exact Hub.
+          - exact Hconstr.
+          - exact Hin.
+        }
+        assert (Hslice_flat:
+          flatten_instrs_prefix_slice envv (prefix ++ [x]) pis
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) ipl)).
+        {
+          eapply loop_slice_filter_prefix_slice_gen
+            with (lb:=lb) (ub:=ub) (body:=body) (constrs:=constrs)
+                 (sched_prefix:=sched_prefix) (env_dim:=env_dim)
+                 (iter_depth:=iter_depth) (prefix:=prefix) (pis:=pis); eauto.
+        }
+        assert (Hperm_slice:
+          Permutation
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) ipl)
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)).
+        {
+          eapply permutation_filter.
+          exact Hperm.
+        }
+        assert (Hsorted_slice:
+          Sorted PolyLang.instr_point_sched_le
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)).
+        {
+          eapply sorted_sched_filter.
+          exact Hsorted.
+        }
+        destruct (
+          IHbody
+            (lift_affine_list constrs ++ [lbc; ubc])
+            (lift_affine_list sched_prefix ++
+             [((1%Z :: repeat 0%Z (env_dim + iter_depth)%nat)%list, 0%Z)])
+            env_dim (S iter_depth) (prefix ++ [x])
+            pis envv
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) ipl)
+            (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) x) sorted_ipl)
+            stX stY
+            Hprefixlen'
+            Hwf_body
+            Hbodyext
+            Hconstr_body
+            Hslice_flat
+            Hperm_slice
+            Hsorted_slice
+            Hslice0
+            Hlenenv
+        ) as [stY' [Hbody_loop HeqY']].
+        replace (rev (envv ++ (prefix ++ [x]))) with (x :: rev (envv ++ prefix)) in Hbody_loop.
+        2: {
+          symmetry.
+          rewrite app_assoc.
+          apply rev_unit.
+        }
+        exists stY'.
+        split.
+        + exact Hbody_loop.
+        + exact HeqY'.
+    }
+    destruct (Hiter_eq_range_from_st1 (ltac:(lia))) as [st2_mid [Hiter_range Heq2_mid]].
+    destruct (Hiter_loop_refined st1 st2_mid Hiter_range)
+      as [st2' [Hiter_loop Heq2']].
+    exists st2'.
+    split.
+    + eapply Loop.LLoop.
+      exact Hiter_loop.
+    + eapply State.eq_trans.
+      * exact Heq2_mid.
+      * exact Heq2'.
   - (* Instr *)
     intros i es constrs sched_prefix env_dim iter_depth prefix
       pis envv ipl sorted_ipl st1 st2
@@ -7824,7 +8485,7 @@ Proof.
     eapply seq_cons_semantics_with_eq
       with (st:=st) (sts:=sts) (env:=rev (envv ++ prefix))
            (st1:=st1) (st2:=sth) (st3:=stt) (st3':=st2); eauto.
-Admitted.
+Qed.
 
 Lemma loop_slice_to_body_semantics_todo:
     forall lb ub body constrs sched_prefix
