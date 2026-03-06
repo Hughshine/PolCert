@@ -44,7 +44,7 @@ include Makefile.menhir
 # Directories containing plain Caml code
 
 DIRS=extraction \
-  lib common $(ARCH) cfrontend cparser driver $(shell find VPL/ocaml/src -type d ! -name extracted ! -name smt)
+  lib common $(ARCH) cfrontend cparser driver syntax $(shell find VPL/ocaml/src -type d ! -name extracted ! -name smt)
 
 INCLUDES=$(patsubst %,-I %, $(DIRS))
 
@@ -96,7 +96,7 @@ GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) driver/Entry.cmx)
-POLOPT_OBJS:=$(shell $(MODORDER) driver/EntryOpt.cmx)
+POLOPT_OBJS:=$(shell $(MODORDER) syntax/SLoopMain.cmx)
 
 ifeq ($(OCAML_NATIVE_COMP),true)
 polcert: $(CCOMP_OBJS)
