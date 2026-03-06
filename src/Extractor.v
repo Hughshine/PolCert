@@ -3165,6 +3165,111 @@ Proof.
     exact Hts.
 Qed.
 
+Lemma flattened_point_schedule_has_top_prefix_slice:
+    forall stmt constrs env_dim iter_depth sched_prefix prefix
+           pis envv ipl ip,
+    Datatypes.length prefix = iter_depth ->
+    extract_stmt stmt constrs env_dim iter_depth sched_prefix = Okk pis ->
+    flatten_instrs_prefix_slice envv prefix pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product
+          (normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix)
+          (envv ++ prefix) ++ tsuf.
+Proof.
+    intros stmt constrs env_dim iter_depth sched_prefix prefix
+      pis envv ipl ip Hprefixlen Hext Hslice Hlenenv Hip.
+    destruct Hslice as [Hchar [_ _]].
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & suf & Hnth & Hbel & Hgeprefix & Hidx & Hsuflen).
+    eapply extract_stmt_has_lifted_sched_prefix in Hext.
+    2: { eapply nth_error_In; eauto. }
+    destruct Hext as (k & tail & Hdepth & Hsched).
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (_ & _ & Hts & _ & _).
+    rewrite Hsched in Hts.
+    assert (Hlenidx:
+      Datatypes.length (PolyLang.ip_index ip) =
+      (env_dim + PolyLang.pi_depth pi)%nat).
+    {
+      rewrite Hdepth in Hsuflen.
+      rewrite Hprefixlen in Hsuflen.
+      replace ((iter_depth + k - iter_depth)%nat) with k in Hsuflen by lia.
+      rewrite Hidx.
+      repeat rewrite app_length.
+      simpl.
+      rewrite Hsuflen.
+      rewrite Hdepth.
+      rewrite Hprefixlen.
+      rewrite <- Hlenenv.
+      lia.
+    }
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlenidx. }
+    assert (Hidx_app: PolyLang.ip_index ip = (envv ++ prefix) ++ suf).
+    { rewrite <- app_assoc. exact Hidx. }
+    rewrite Hidx_app in Hts.
+    rewrite rev_app_distr in Hts.
+    assert (Datatypes.length (rev suf) = k)%nat as Hlenrev.
+    { rewrite rev_length. lia. }
+    rewrite affine_product_app in Hts.
+    rewrite <- Hlenrev in Hts.
+    rewrite affine_product_lift_affine_list_n_app in Hts.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=(env_dim + iter_depth)%nat) (env:=envv ++ prefix) (affs:=sched_prefix) in Hts.
+    2: {
+      rewrite app_length.
+      rewrite Hprefixlen.
+      rewrite Hlenenv.
+      lia.
+    }
+    exists (affine_product tail (rev suf ++ rev (envv ++ prefix))).
+    exact Hts.
+Qed.
+
+Lemma flattened_point_seq_pos_timestamp_with_prefix_slice:
+    forall stmt constrs env_dim iter_depth sched_prefix prefix pos
+           pis envv ipl ip,
+    Datatypes.length prefix = iter_depth ->
+    extract_stmt stmt constrs env_dim iter_depth
+      (sched_prefix ++ [(repeat 0%Z (env_dim + iter_depth)%nat, pos)]) = Okk pis ->
+    flatten_instrs_prefix_slice envv prefix pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product
+          (normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix)
+          (envv ++ prefix) ++ [pos] ++ tsuf.
+Proof.
+    intros stmt constrs env_dim iter_depth sched_prefix prefix pos
+      pis envv ipl ip Hprefixlen Hext Hslice Hlenenv Hip.
+    eapply flattened_point_schedule_has_top_prefix_slice
+      with (ip:=ip) in Hext; eauto.
+    destruct Hext as [tsuf Hts].
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: {
+      rewrite app_length.
+      rewrite Hprefixlen.
+      rewrite Hlenenv.
+      lia.
+    }
+    rewrite affine_product_sched_prefix_seq in Hts.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=(env_dim + iter_depth)%nat) (env:=envv ++ prefix) (affs:=sched_prefix) in Hts.
+    2: {
+      rewrite app_length.
+      rewrite Hprefixlen.
+      rewrite Hlenenv.
+      lia.
+    }
+    rewrite <- app_assoc in Hts.
+    exists tsuf.
+    exact Hts.
+Qed.
+
 Lemma flattened_point_seq_pos_timestamp:
     forall stmt constrs env_dim pos pis envv ipl ip,
     extract_stmt stmt constrs env_dim 0%nat [(repeat 0%Z env_dim, pos)] = Okk pis ->
