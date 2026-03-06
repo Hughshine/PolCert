@@ -91,16 +91,16 @@ let dump_scheduled_openscop loop =
 let debug_scheduler loop =
   let pol = extract_poly loop in
   let inscop = poly_to_openscop pol in
-  let (self_valid, self_alarmed) = SPolOpt.SVal.validate pol pol in
+  let (self_valid, self_ok) = SPolOpt.SVal.validate pol pol in
   Printf.eprintf
-    "[debug] validate(extracted, extracted) = %b (alarmed=%b)\n"
-    self_valid self_alarmed;
+    "[debug] validate(extracted, extracted) = %b (ok=%b, alarm=%b)\n"
+    self_valid self_ok (not self_ok);
   let pol_roundtrip =
     match SPolIRs.SPolIRs.PolyLang.from_openscop pol inscop with
     | Okk pol' -> pol'
     | Err msg -> frontend_failf "self round-trip failed: %s" (string_of_coq_err msg)
   in
-  let (roundtrip_valid, roundtrip_alarmed) = SPolOpt.SVal.validate pol pol_roundtrip in
+  let (roundtrip_valid, roundtrip_ok) = SPolOpt.SVal.validate pol pol_roundtrip in
   print_endline "== Debug Extracted OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout inscop;
   print_newline ();
@@ -108,16 +108,16 @@ let debug_scheduler loop =
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_roundtrip);
   print_newline ();
   Printf.eprintf
-    "[debug] validate(extracted, roundtrip-before) = %b (alarmed=%b)\n"
-    roundtrip_valid roundtrip_alarmed;
+    "[debug] validate(extracted, roundtrip-before) = %b (ok=%b, alarm=%b)\n"
+    roundtrip_valid roundtrip_ok (not roundtrip_ok);
   let pol_sched = schedule_poly pol in
-  let (sched_valid, sched_alarmed) = SPolOpt.SVal.validate pol pol_sched in
+  let (sched_valid, sched_ok) = SPolOpt.SVal.validate pol pol_sched in
   print_endline "== Debug Scheduled OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_sched);
   print_newline ();
   Printf.eprintf
-    "[debug] validate(extracted, scheduled) = %b (alarmed=%b)\n"
-    sched_valid sched_alarmed
+    "[debug] validate(extracted, scheduled) = %b (ok=%b, alarm=%b)\n"
+    sched_valid sched_ok (not sched_ok)
 
 let dump_extracted_openscop loop =
   print_endline "== Extracted OpenScop ==";
@@ -146,8 +146,8 @@ let () =
         if cfg.dump_extracted_openscop then dump_extracted_openscop loop;
         if cfg.dump_scheduled_openscop then dump_scheduled_openscop loop;
         if cfg.debug_scheduler then debug_scheduler loop;
-        let (optimized, alarmed) = SPolOpt.opt loop in
-        if alarmed then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
+        let (optimized, ok) = SPolOpt.opt loop in
+        if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
         print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
   with
   | Sys_error msg -> error no_loc "%s" msg; exit 2
