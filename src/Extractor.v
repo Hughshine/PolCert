@@ -4922,6 +4922,7 @@ Lemma loop_slice_to_body_semantics_todo:
     PolyLang.flatten_instrs envv pis ipl ->
     Permutation ipl sorted_ipl ->
     Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
     head_ts =
       (fun ip : PolyLang.InstrPoint =>
          nth
