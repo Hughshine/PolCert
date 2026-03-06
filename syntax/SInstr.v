@@ -1,5 +1,7 @@
 Require Import List.
 Require Import Bool.
+Require Import String.
+Require Import Ascii.
 Require Import ZArith.
 Require Import StateTy.
 Require Import TyTy.
@@ -263,8 +265,18 @@ Module SInstr <: INSTR.
     inversion H.
   Qed.
 
+  Definition is_iterator_varname (name : varname) : bool :=
+    match name with
+    | String "$"%char (String "i"%char _) => true
+    | _ => false
+    end.
+
+  Definition syntax_slot_names (names : list varname) : list varname :=
+    filter is_iterator_varname names ++
+    rev (filter (fun name => negb (is_iterator_varname name)) names).
+
   Definition fallback_name (names : list varname) (n : nat) : varname :=
-    nth n names (ident_to_varname (free_ident tt)).
+    nth n (syntax_slot_names names) (ident_to_varname (free_ident tt)).
 
   Fixpoint affine_expr_to_openscop (e : affine_expr) (names : list varname) : AffineExpr :=
     match e with
