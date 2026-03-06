@@ -2644,6 +2644,335 @@ Proof.
     split; auto.
 Qed.
 
+Lemma flattened_point_loop_fixed_prefix_implies_timestamp_head:
+    forall lb ub body constrs sched_prefix env_dim
+           pis envv ipl ip i suf,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip ipl ->
+    PolyLang.ip_index ip = envv ++ [i] ++ suf ->
+    exists tsuf,
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++ [i] ++ tsuf.
+Proof.
+    intros lb ub body constrs sched_prefix env_dim
+      pis envv ipl ip i suf Hext Hflat Hlenenv Hip Hidxi.
+    assert (Hext':
+      extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+        (Datatypes.length (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim))
+        0%nat sched_prefix = Okk pis).
+    {
+      rewrite repeat_length.
+      exact Hext.
+    }
+    assert (Hlenrepeat:
+      Datatypes.length envv =
+      Datatypes.length (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim)).
+    {
+      rewrite repeat_length.
+      exact Hlenenv.
+    }
+    destruct (
+      flattened_point_loop_index_prefix_bounds_and_timestamp_head
+        lb ub body constrs sched_prefix
+        (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim)
+        pis envv ipl ip Hext' Hflat Hlenrepeat Hip
+    ) as [j [suf' [tsuf [Hidx [_ Hts]]]]].
+    assert (Hidx':
+      envv ++ [j] ++ suf' = envv ++ [i] ++ suf).
+    { rewrite <- Hidx. exact Hidxi. }
+    apply app_inv_head in Hidx'.
+    inversion Hidx'; subst.
+    rewrite repeat_length in Hts.
+    exists tsuf.
+    exact Hts.
+Qed.
+
+Lemma loop_slice_filter_iff_fixed_prefix:
+    forall lb ub body constrs sched_prefix env_dim
+           pis envv ipl ip i,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip (filter
+      (fun ip =>
+        Z.eqb
+          (nth
+            (Datatypes.length
+              (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+            (PolyLang.ip_time_stamp ip) 0%Z)
+          i) ipl) <->
+    In ip ipl /\
+    exists suf, PolyLang.ip_index ip = envv ++ [i] ++ suf.
+Proof.
+    intros lb ub body constrs sched_prefix env_dim
+      pis envv ipl ip i Hext Hflat Hlenenv.
+    split.
+    - intro Hin.
+      apply filter_In in Hin.
+      destruct Hin as [Hip Hpred].
+      assert (Hin_filter:
+        In ip
+          (filter
+            (fun ip =>
+              Z.eqb
+                (nth
+                  (Datatypes.length
+                    (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+                  (PolyLang.ip_time_stamp ip) 0%Z)
+                i) ipl)).
+      {
+        apply filter_In.
+        split; auto.
+      }
+      split.
+      + exact Hip.
+      + destruct (
+          loop_slice_point_fixed_prefix
+            lb ub body constrs sched_prefix env_dim
+            pis envv ipl ip i Hext Hflat Hlenenv Hin_filter
+        ) as [suf [tsuf Hpre]].
+        exists suf.
+        exact (proj1 Hpre).
+    - intros [Hip [suf Hidx]].
+      apply filter_In.
+      split.
+      + exact Hip.
+      + destruct (
+          flattened_point_loop_fixed_prefix_implies_timestamp_head
+            lb ub body constrs sched_prefix env_dim
+            pis envv ipl ip i suf Hext Hflat Hlenenv Hip Hidx
+        ) as [tsuf Hts].
+        rewrite Hts.
+        assert (
+          nth
+            (Datatypes.length
+              (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+            (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++
+             [i] ++ tsuf) 0%Z = i) as Hnth.
+        {
+          clear.
+          induction (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv)
+            as [|z zs IH]; simpl.
+          - reflexivity.
+          - exact IH.
+        }
+        rewrite Hnth.
+        apply Z.eqb_eq.
+        reflexivity.
+Qed.
+
+Definition flatten_instrs_prefix_slice
+    (envv prefix: list Z)
+    (pis: list PolyLang.PolyInstr)
+    (ipl: list PolyLang.InstrPoint) : Prop :=
+  (forall ip,
+      In ip ipl <->
+      exists pi suf,
+        nth_error pis (PolyLang.ip_nth ip) = Some pi /\
+        PolyLang.belongs_to ip pi /\
+        (Datatypes.length prefix <= PolyLang.pi_depth pi)%nat /\
+        PolyLang.ip_index ip = envv ++ prefix ++ suf /\
+        Datatypes.length suf = (PolyLang.pi_depth pi - Datatypes.length prefix)%nat) /\
+  NoDup ipl /\
+  Sorted PolyLang.np_lt ipl.
+
+Lemma flatten_instrs_prefix_slice_nil:
+    forall envv pis ipl,
+    PolyLang.flatten_instrs envv pis ipl ->
+    flatten_instrs_prefix_slice envv [] pis ipl.
+Proof.
+    intros envv pis ipl Hflat.
+    destruct Hflat as [Hprefix [Hchar [Hnodup Hsorted]]].
+    unfold flatten_instrs_prefix_slice.
+    split.
+    - intros ip.
+      split.
+      + intro Hin.
+        pose proof (proj1 (Hchar ip) Hin) as Hmem.
+        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        pose proof (Hprefix ip Hin) as Hpre.
+        pose proof (firstn_length_decompose envv (PolyLang.ip_index ip) (PolyLang.pi_depth pi) Hpre Hlenidx)
+          as Hsplit.
+        destruct Hsplit as [suf [Hidx Hsuflen]].
+        exists pi.
+        exists suf.
+        split; [exact Hnth|].
+        split; [exact Hbel|].
+        split.
+        * simpl. lia.
+        * split; [exact Hidx|].
+          { simpl.
+            rewrite Nat.sub_0_r.
+            exact Hsuflen. }
+      + intros (pi & suf & Hnth & Hbel & _ & Hidx & Hsuflen).
+        apply (proj2 (Hchar ip)).
+        exists pi.
+        split; [exact Hnth|].
+        split; [exact Hbel|].
+        simpl in Hidx.
+        rewrite Hidx.
+        rewrite app_length.
+        simpl.
+        rewrite Hsuflen.
+        rewrite Nat.sub_0_r.
+        reflexivity.
+    - split; auto.
+Qed.
+
+Lemma flatten_instrs_prefix_slice_filter_left:
+    forall envv prefix pis1 pis2 ipl,
+    flatten_instrs_prefix_slice envv prefix (pis1 ++ pis2) ipl ->
+    flatten_instrs_prefix_slice envv prefix pis1
+      (filter (fun ip => Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)) ipl).
+Proof.
+    intros envv prefix pis1 pis2 ipl Hslice.
+    destruct Hslice as [Hchar [Hnodup Hsorted]].
+    unfold flatten_instrs_prefix_slice.
+    split.
+    - intros ip.
+      split.
+      + intro Hin.
+        apply filter_In in Hin.
+        destruct Hin as [Hip Hlt].
+        pose proof (proj1 (Hchar ip) Hip) as Hmem.
+        destruct Hmem as (pi & suf & Hnth & Hbel & Hge & Hidx & Hsuflen).
+        exists pi.
+        exists suf.
+        split.
+        * rewrite nth_error_app1 in Hnth.
+          2: { apply Nat.ltb_lt in Hlt; exact Hlt. }
+          exact Hnth.
+        * split; [exact Hbel|].
+          split; [exact Hge|].
+          split; [exact Hidx|exact Hsuflen].
+      + intros (pi & suf & Hnth & Hbel & Hge & Hidx & Hsuflen).
+        apply filter_In.
+        split.
+        * apply (proj2 (Hchar ip)).
+          exists pi.
+          exists suf.
+          split.
+          { rewrite nth_error_app1.
+            - exact Hnth.
+            - eapply nth_error_Some.
+              rewrite Hnth.
+              discriminate. }
+          split; [exact Hbel|].
+          split; [exact Hge|].
+          split; [exact Hidx|exact Hsuflen].
+        * apply Nat.ltb_lt.
+          eapply nth_error_Some.
+          rewrite Hnth.
+          discriminate.
+    - split.
+      + eapply NoDup_filter.
+        exact Hnodup.
+      + eapply filter_sort; eauto.
+        * eapply PolyLang.np_eq_equivalence.
+        * eapply PolyLang.np_lt_strict.
+        * eapply PolyLang.np_lt_proper.
+Qed.
+
+
+Lemma loop_slice_filter_prefix_slice:
+    forall lb ub body constrs sched_prefix env_dim
+           pis envv ipl i,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    flatten_instrs_prefix_slice envv [i] pis
+      (filter
+        (fun ip =>
+          Z.eqb
+            (nth
+              (Datatypes.length
+                (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+              (PolyLang.ip_time_stamp ip) 0%Z)
+            i) ipl).
+Proof.
+    intros lb ub body constrs sched_prefix env_dim
+      pis envv ipl i Hext Hflat Hlenenv.
+    pose proof Hflat as Hflat0.
+    destruct Hflat as [Hprefix [Hchar [Hnodup Hsorted]]].
+    unfold flatten_instrs_prefix_slice.
+    split.
+    - intros ip.
+      split.
+      + intro Hin.
+        apply filter_In in Hin.
+        destruct Hin as [Hip Hpred].
+        pose proof (proj1 (Hchar ip) Hip) as Hmem.
+        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        assert (Hin_filter:
+          In ip
+            (filter
+              (fun ip =>
+                Z.eqb
+                  (nth
+                    (Datatypes.length
+                      (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+                    (PolyLang.ip_time_stamp ip) 0%Z)
+                  i) ipl)).
+        {
+          apply filter_In.
+          split; auto.
+        }
+        destruct (
+          loop_slice_point_fixed_prefix
+            lb ub body constrs sched_prefix env_dim
+            pis envv ipl ip i Hext Hflat0 Hlenenv Hin_filter
+        ) as [suf [tsuf Hpre]].
+        destruct Hpre as [Hidx _].
+        exists pi.
+        exists suf.
+        split; [exact Hnth|].
+        split; [exact Hbel|].
+        split.
+        * rewrite Hidx in Hlenidx.
+          rewrite app_length in Hlenidx.
+          simpl in Hlenidx.
+          destruct (PolyLang.pi_depth pi) as [|d]; simpl in *; lia.
+        * split; [exact Hidx|].
+          rewrite Hidx in Hlenidx.
+          rewrite app_length in Hlenidx.
+          simpl in Hlenidx.
+          destruct (PolyLang.pi_depth pi) as [|d]; simpl in *; lia.
+      + intros (pi & suf & Hnth & Hbel & Hge & Hidx & Hsuflen).
+        assert (Hip : In ip ipl).
+        {
+          apply (proj2 (Hchar ip)).
+          exists pi.
+          split; [exact Hnth|].
+          split; [exact Hbel|].
+          rewrite Hidx.
+          simpl.
+          replace (Datatypes.length (envv ++ i :: suf))
+            with (Datatypes.length envv + PolyLang.pi_depth pi)%nat.
+          - reflexivity.
+          - rewrite app_length. simpl.
+            rewrite Hsuflen.
+            destruct (PolyLang.pi_depth pi); simpl in *; lia.
+        }
+        apply (
+          proj2 (
+            loop_slice_filter_iff_fixed_prefix
+              lb ub body constrs sched_prefix env_dim
+              pis envv ipl ip i Hext Hflat0 Hlenenv)).
+        split.
+        * exact Hip.
+        * exists suf.
+          exact Hidx.
+    - split.
+      + eapply NoDup_filter.
+        exact Hnodup.
+      + eapply filter_sort; eauto.
+        * eapply PolyLang.np_eq_equivalence.
+        * eapply PolyLang.np_lt_strict.
+        * eapply PolyLang.np_lt_proper.
+Qed.
+
 Lemma flattened_point_loop_bounds_and_timestamp_head:
     forall lb ub body constrs sched_prefix (varctxt: list ident)
            pis envv ipl ip,
@@ -4041,6 +4370,291 @@ Proof.
         intros ip Hin.
         eapply Hge.
         simpl. right. exact Hin.
+Qed.
+
+Lemma flatten_instrs_prefix_slice_filter_right_rebase:
+    forall envv prefix pis1 pis2 ipl,
+    flatten_instrs_prefix_slice envv prefix (pis1 ++ pis2) ipl ->
+    flatten_instrs_prefix_slice envv prefix pis2
+      (map (rebase_ip_nth (Datatypes.length pis1))
+        (filter
+          (fun ip => negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+          ipl)).
+Proof.
+    intros envv prefix pis1 pis2 ipl Hslice.
+    destruct Hslice as [Hchar [Hnodup Hsorted]].
+    unfold flatten_instrs_prefix_slice.
+    split.
+    - intros ip.
+      split.
+      + intro Hin.
+        eapply in_map_iff in Hin.
+        destruct Hin as (ip0 & Hip & Hip0in).
+        subst ip.
+        apply filter_In in Hip0in.
+        destruct Hip0in as [Hip0in Hge0].
+        apply negb_true_iff in Hge0.
+        apply Nat.ltb_ge in Hge0.
+        pose proof (proj1 (Hchar ip0) Hip0in) as Hmem.
+        destruct Hmem as (pi & suf & Hnth & Hbel & Hgepref & Hidx & Hsuflen).
+        exists pi.
+        exists suf.
+        split.
+        * rewrite nth_error_app2 in Hnth by exact Hge0.
+          exact Hnth.
+        * split.
+          { exact Hbel. }
+          split.
+          { exact Hgepref. }
+          split.
+          { exact Hidx. }
+          { exact Hsuflen. }
+      + intros (pi & suf & Hnth & Hbel & Hgepref & Hidx & Hsuflen).
+        set (base := Datatypes.length pis1).
+        set (ip0 := {|
+          PolyLang.ip_nth := (PolyLang.ip_nth ip + base)%nat;
+          PolyLang.ip_index := PolyLang.ip_index ip;
+          PolyLang.ip_transformation := PolyLang.ip_transformation ip;
+          PolyLang.ip_time_stamp := PolyLang.ip_time_stamp ip;
+          PolyLang.ip_instruction := PolyLang.ip_instruction ip;
+          PolyLang.ip_depth := PolyLang.ip_depth ip;
+        |}).
+        assert (Hip0in : In ip0 ipl).
+        {
+          apply (proj2 (Hchar ip0)).
+          exists pi.
+          exists suf.
+          split.
+	          { subst base ip0.
+	            destruct ip.
+	            simpl in *.
+	            rewrite nth_error_app2 by lia.
+	            replace
+	              (ip_nth + Datatypes.length pis1 - Datatypes.length pis1)%nat
+	              with ip_nth by lia.
+	            exact Hnth. }
+          split.
+          { exact Hbel. }
+          split.
+          { exact Hgepref. }
+          split.
+          { exact Hidx. }
+          { exact Hsuflen. }
+        }
+        eapply in_map_iff.
+	        exists ip0.
+	        split.
+	        * subst base ip0.
+	          destruct ip.
+	          unfold rebase_ip_nth.
+	          simpl.
+	          replace
+	            (ip_nth + Datatypes.length pis1 - Datatypes.length pis1)%nat
+	            with ip_nth by lia.
+	          reflexivity.
+        * apply filter_In.
+          split.
+          { exact Hip0in. }
+          { apply negb_true_iff.
+            apply Nat.ltb_ge.
+            subst base ip0.
+            destruct ip.
+            simpl.
+            lia. }
+    - split.
+      + assert (Hgeall:
+          forall ip,
+            In
+              ip
+              (filter
+                (fun ip0 : PolyLang.InstrPoint =>
+                  negb (Nat.ltb (PolyLang.ip_nth ip0) (Datatypes.length pis1)))
+                ipl) ->
+            (Datatypes.length pis1 <= PolyLang.ip_nth ip)%nat).
+        {
+          intros ip Hin.
+          apply filter_In in Hin.
+          destruct Hin as [_ Hge].
+          apply negb_true_iff in Hge.
+          apply Nat.ltb_ge in Hge.
+          exact Hge.
+        }
+        eapply nodup_map_rebase_ip_nth.
+        * exact Hgeall.
+        * eapply NoDup_filter.
+          exact Hnodup.
+      + assert (Hsorted_filter:
+          Sorted PolyLang.np_lt
+            (filter
+              (fun ip : PolyLang.InstrPoint =>
+                negb (Nat.ltb (PolyLang.ip_nth ip) (Datatypes.length pis1)))
+              ipl)).
+        {
+          eapply filter_sort; eauto.
+          - eapply PolyLang.np_eq_equivalence.
+          - eapply PolyLang.np_lt_strict.
+          - eapply PolyLang.np_lt_proper.
+        }
+        assert (Hgeall:
+          forall ip,
+            In
+              ip
+              (filter
+                (fun ip0 : PolyLang.InstrPoint =>
+                  negb (Nat.ltb (PolyLang.ip_nth ip0) (Datatypes.length pis1)))
+                ipl) ->
+            (Datatypes.length pis1 <= PolyLang.ip_nth ip)%nat).
+        {
+          intros ip Hin.
+          apply filter_In in Hin.
+          destruct Hin as [_ Hge].
+          apply negb_true_iff in Hge.
+          apply Nat.ltb_ge in Hge.
+          exact Hge.
+        }
+        eapply sorted_np_lt_map_rebase_ip_nth.
+        * exact Hgeall.
+        * exact Hsorted_filter.
+Qed.
+
+Lemma nth_error_map_inv:
+    forall A B (f: A -> B) l n y,
+    nth_error (map f l) n = Some y ->
+    exists x, nth_error l n = Some x /\ y = f x.
+Proof.
+    intros A B f l.
+    induction l as [|a l IH]; intros n y Hnth.
+    - destruct n; simpl in Hnth; discriminate.
+    - destruct n as [|n']; simpl in Hnth.
+      + inv Hnth.
+        exists a.
+        split; reflexivity.
+      + eapply IH in Hnth.
+        destruct Hnth as [x [Hx Hy]].
+        exists x.
+        split; auto.
+Qed.
+
+Lemma flatten_instrs_loop_head_slice_prefix:
+    forall lb ub body constrs sched_prefix env_dim
+           pis envv ipl i,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    flatten_instrs_prefix_slice envv [i] pis
+      (filter
+        (fun ip =>
+          Z.eqb
+            (nth
+              (Datatypes.length
+                (affine_product
+                  (normalize_affine_list_rev env_dim sched_prefix) envv))
+              (PolyLang.ip_time_stamp ip) 0%Z)
+            i)
+        ipl).
+Proof.
+    intros lb ub body constrs sched_prefix env_dim
+      pis envv ipl i Hext Hflat Hlenenv.
+    destruct Hflat as [Hprefix [Hchar [Hnodup Hsorted]]].
+    assert (Hflat0: PolyLang.flatten_instrs envv pis ipl).
+    {
+      split.
+      - exact Hprefix.
+      - split.
+        + exact Hchar.
+        + split.
+          * exact Hnodup.
+          * exact Hsorted.
+    }
+    unfold flatten_instrs_prefix_slice.
+    split.
+    - intros ip.
+      split.
+      + intro Hin.
+        apply filter_In in Hin.
+        destruct Hin as [Hip Hpred].
+        pose proof (proj1 (Hchar ip) Hip) as Hmem.
+        destruct Hmem as [pi [Hnth [Hbel Hlenidx]]].
+        assert (Hipfix:
+          In ip ipl /\ exists suf, PolyLang.ip_index ip = envv ++ [i] ++ suf).
+        {
+          pose proof (
+            loop_slice_filter_iff_fixed_prefix
+              lb ub body constrs sched_prefix env_dim
+              pis envv ipl ip i Hext Hflat0 Hlenenv
+          ) as Hiff.
+          eapply (proj1 Hiff).
+          apply filter_In.
+          split; auto.
+        }
+        destruct Hipfix as [_ [suf Hidx]].
+        exists pi.
+        exists suf.
+        split; [exact Hnth|].
+        split; [exact Hbel|].
+        split.
+        * rewrite Hidx in Hlenidx.
+          rewrite app_length in Hlenidx.
+          simpl in Hlenidx.
+          destruct (PolyLang.pi_depth pi); simpl in *; lia.
+        * split; [exact Hidx|].
+          rewrite Hidx in Hlenidx.
+          rewrite app_length in Hlenidx.
+          simpl in Hlenidx.
+          destruct (PolyLang.pi_depth pi); simpl in *; lia.
+      + intros (pi & suf & Hnth & Hbel & Hgepref & Hidx & Hsuflen).
+        apply filter_In.
+        split.
+        * apply (proj2 (Hchar ip)).
+          exists pi.
+          split; [exact Hnth|].
+          split; [exact Hbel|].
+          rewrite Hidx.
+          rewrite app_length.
+          simpl.
+          rewrite Hsuflen.
+          destruct (PolyLang.pi_depth pi); simpl in *; lia.
+        * pose proof (
+            loop_slice_filter_iff_fixed_prefix
+              lb ub body constrs sched_prefix env_dim
+              pis envv ipl ip i Hext Hflat0 Hlenenv
+          ) as Hiff.
+          assert (Hin_filter:
+            In ip
+              (filter
+                (fun ip =>
+                  Z.eqb
+                    (nth
+                      (Datatypes.length
+                        (affine_product
+                          (normalize_affine_list_rev env_dim sched_prefix) envv))
+                      (PolyLang.ip_time_stamp ip) 0%Z)
+                    i)
+                ipl)).
+          {
+            eapply (proj2 Hiff).
+            split.
+            { apply (proj2 (Hchar ip)).
+              exists pi.
+              split; [exact Hnth|].
+              split; [exact Hbel|].
+              rewrite Hidx.
+              rewrite app_length.
+              simpl.
+              rewrite Hsuflen.
+              destruct (PolyLang.pi_depth pi); simpl in *; lia. }
+            { exists suf.
+              exact Hidx. }
+          }
+          apply filter_In in Hin_filter.
+          exact (proj2 Hin_filter).
+    - split.
+      + eapply NoDup_filter.
+        exact Hnodup.
+      + eapply filter_sort; eauto.
+        * eapply PolyLang.np_eq_equivalence.
+        * eapply PolyLang.np_lt_strict.
+        * eapply PolyLang.np_lt_proper.
 Qed.
 
 Lemma flatten_instr_nth_map_rebase_ip_nth:
