@@ -33,8 +33,8 @@ type env = {
   loops : string list;
 }
 
-let loop_env env = List.rev env.loops @ env.params
-let slot_env env = env.params @ env.loops
+let loop_env env = List.rev env.loops @ List.rev env.params
+let slot_env env = loop_env env
 
 let lookup_in names name =
   let rec go idx = function

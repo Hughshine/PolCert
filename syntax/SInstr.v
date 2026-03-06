@@ -205,10 +205,53 @@ Module SInstr <: INSTR.
     | SAssign lhs _ => negb (existsb (ident_eqb (access_ident lhs)) ctxt)
     end.
 
+  Definition normalize_affine_rev (cols : nat) (aff : list Z * Z) : (list Z * Z) :=
+    let '(v, c) := aff in
+    (rev (resize cols v), c).
+
+  Definition normalize_affine_list_rev (cols : nat) (affs : list (list Z * Z)) :=
+    map (normalize_affine_rev cols) affs.
+
+  Definition normalize_access_rev (cols : nat) (acc : AccessFunction) : AccessFunction :=
+    let '(arrid, affs) := acc in
+    (arrid, normalize_affine_list_rev cols affs).
+
+  Definition access_cols (acc : AccessFunction) : nat :=
+    let '(_, affs) := acc in
+    list_max (map (fun aff => let '(zs, _) := aff in length zs) affs).
+
+  Definition access_function_checker_access
+      (al : list AccessFunction) (a : access) : bool :=
+    let acc := access_to_function a in
+    existsb
+      (fun target =>
+        access_strict_eqb acc target ||
+        access_strict_eqb
+          (normalize_access_rev (access_cols target) acc)
+          target)
+      al.
+
+  Fixpoint access_function_checker_expr
+      (rl : list AccessFunction) (e : expr) : bool :=
+    match e with
+    | ExConst _ => true
+    | ExVar _ => true
+    | ExAccess a => access_function_checker_access rl a
+    | ExAdd e1 e2 =>
+        access_function_checker_expr rl e1 &&
+        access_function_checker_expr rl e2
+    | ExSub e1 e2 =>
+        access_function_checker_expr rl e1 &&
+        access_function_checker_expr rl e2
+    | ExMul _ e => access_function_checker_expr rl e
+    end.
+
   Definition access_function_checker (wl rl : list AccessFunction) (i : t) : bool :=
-    match waccess i, raccess i with
-    | Some wl', Some rl' => access_list_strict_eqb wl wl' && access_list_strict_eqb rl rl'
-    | _, _ => false
+    match i with
+    | SSkip => true
+    | SAssign lhs rhs =>
+        access_function_checker_access wl lhs &&
+        access_function_checker_expr rl rhs
     end.
 
   Lemma access_function_checker_correct :

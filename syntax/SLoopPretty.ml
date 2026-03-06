@@ -93,4 +93,4 @@ let string_of_loop (((stmt, varctxt), _vars) : IR.Loop.t) =
     | [] -> []
     | _ -> ["context(" ^ String.concat ", " ctxt_names ^ ");"; ""]
   in
-  String.concat "\n" (header @ lines_of_stmt ctxt_names 0 0 stmt) ^ "\n"
+  String.concat "\n" (header @ lines_of_stmt (List.rev ctxt_names) 0 0 stmt) ^ "\n"

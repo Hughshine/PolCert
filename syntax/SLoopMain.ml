@@ -9,12 +9,14 @@ let frontend_failf fmt = Printf.ksprintf (fun s -> raise (FrontendFailure s)) fm
 
 let usage prog =
   Printf.sprintf
-    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--extract-only] <file.loop>"
+    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] <file.loop>"
     prog
 
 type config = {
   mutable dump_input : bool;
   mutable dump_extracted_openscop : bool;
+  mutable dump_scheduled_openscop : bool;
+  mutable debug_scheduler : bool;
   mutable extract_only : bool;
   mutable input : string option;
 }
@@ -24,6 +26,8 @@ let parse_args () =
     {
       dump_input = false;
       dump_extracted_openscop = false;
+      dump_scheduled_openscop = false;
+      debug_scheduler = false;
       extract_only = false;
       input = None;
     }
@@ -34,6 +38,8 @@ let parse_args () =
       match Sys.argv.(i) with
       | "--dump-input" -> cfg.dump_input <- true; go (i + 1)
       | "--dump-extracted-openscop" -> cfg.dump_extracted_openscop <- true; go (i + 1)
+      | "--dump-scheduled-openscop" -> cfg.dump_scheduled_openscop <- true; go (i + 1)
+      | "--debug-scheduler" -> cfg.debug_scheduler <- true; go (i + 1)
       | "--extract-only" -> cfg.extract_only <- true; go (i + 1)
       | s when String.length s > 0 && s.[0] = '-' ->
           prerr_endline ("unknown option: " ^ s);
@@ -59,14 +65,59 @@ let print_section title body =
   if body = "" || body.[String.length body - 1] <> '\n' then print_newline ();
   print_newline ()
 
-let extract_to_openscop loop =
+let extract_poly loop =
   match SPolOpt.CoreOpt.Extractor.extractor loop with
   | Err msg -> frontend_failf "extractor failed: %s" (string_of_coq_err msg)
-  | Okk pol ->
-      begin match SPolIRs.SPolIRs.PolyLang.to_openscop pol with
-      | None -> frontend_failf "cannot convert extracted polyhedral model to OpenScop"
-      | Some scop -> scop
-      end
+  | Okk pol -> pol
+
+let poly_to_openscop pol =
+  match SPolIRs.SPolIRs.PolyLang.to_openscop pol with
+  | None -> frontend_failf "cannot convert extracted polyhedral model to OpenScop"
+  | Some scop -> scop
+
+let extract_to_openscop loop =
+  poly_to_openscop (extract_poly loop)
+
+let schedule_poly pol =
+  match SPolIRs.SPolIRs.scheduler pol with
+  | Err msg -> frontend_failf "scheduler failed: %s" (string_of_coq_err msg)
+  | Okk pol' -> pol'
+
+let dump_scheduled_openscop loop =
+  print_endline "== Scheduled OpenScop ==";
+  OpenScopPrinter.openscop_printer' stdout (poly_to_openscop (schedule_poly (extract_poly loop)));
+  print_newline ()
+
+let debug_scheduler loop =
+  let pol = extract_poly loop in
+  let inscop = poly_to_openscop pol in
+  let (self_valid, self_alarmed) = SPolOpt.SVal.validate pol pol in
+  Printf.eprintf
+    "[debug] validate(extracted, extracted) = %b (alarmed=%b)\n"
+    self_valid self_alarmed;
+  let pol_roundtrip =
+    match SPolIRs.SPolIRs.PolyLang.from_openscop pol inscop with
+    | Okk pol' -> pol'
+    | Err msg -> frontend_failf "self round-trip failed: %s" (string_of_coq_err msg)
+  in
+  let (roundtrip_valid, roundtrip_alarmed) = SPolOpt.SVal.validate pol pol_roundtrip in
+  print_endline "== Debug Extracted OpenScop ==";
+  OpenScopPrinter.openscop_printer' stdout inscop;
+  print_newline ();
+  print_endline "== Debug Roundtrip-Before OpenScop ==";
+  OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_roundtrip);
+  print_newline ();
+  Printf.eprintf
+    "[debug] validate(extracted, roundtrip-before) = %b (alarmed=%b)\n"
+    roundtrip_valid roundtrip_alarmed;
+  let pol_sched = schedule_poly pol in
+  let (sched_valid, sched_alarmed) = SPolOpt.SVal.validate pol pol_sched in
+  print_endline "== Debug Scheduled OpenScop ==";
+  OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_sched);
+  print_newline ();
+  Printf.eprintf
+    "[debug] validate(extracted, scheduled) = %b (alarmed=%b)\n"
+    sched_valid sched_alarmed
 
 let dump_extracted_openscop loop =
   print_endline "== Extracted OpenScop ==";
@@ -93,6 +144,8 @@ let () =
           exit 0
         end;
         if cfg.dump_extracted_openscop then dump_extracted_openscop loop;
+        if cfg.dump_scheduled_openscop then dump_scheduled_openscop loop;
+        if cfg.debug_scheduler then debug_scheduler loop;
         let (optimized, alarmed) = SPolOpt.opt loop in
         if alarmed then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
         print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
