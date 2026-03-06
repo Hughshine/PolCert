@@ -5322,6 +5322,28 @@ Proof.
       - split; lia.
       - exact Hsem_pref_ub.
     }
+    destruct (Z_lt_ge_dec lbv ubv) as [Hlb_lt_ub | Hlb_ge_ub].
+    2: {
+      assert (sorted_ipl = []) as Hsorted_nil.
+      {
+        destruct sorted_ipl as [|ip tl].
+        + reflexivity.
+        + exfalso.
+          pose proof (Hpoint_head_in_bounds ip (or_introl eq_refl)) as Hb.
+          lia.
+      }
+      subst sorted_ipl.
+      assert (State.eq st1 st2) as Heq12.
+      { eapply instr_point_list_semantics_nil_inv; eauto. }
+      exists st1.
+      split.
+      + eapply Loop.LLoop.
+        rewrite Zrange_empty by lia.
+        constructor.
+      + eapply State.eq_sym.
+        exact Heq12.
+    }
+    (* Remaining hard branch: non-empty range body bridge. *)
     (*
       Remaining work (single hole):
       1) Refine sorted_ipl into per-iteration slices over Zrange lbv ubv
