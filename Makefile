@@ -188,6 +188,7 @@ all:
 	$(MAKE) proof
 	$(MAKE) extraction
 	$(MAKE) polcert
+	$(MAKE) polopt
 
 # $(MAKE) polcert # we don't compile the full polyhedral compiler now 
 
@@ -218,6 +219,9 @@ extraction/STAMP: $(FILES:.v=.vo) extraction/extraction.v $(ARCH)/extractionMach
 
 polcert: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.extr polcert
+
+polopt: .depend.extr driver/Version.ml FORCE
+	$(MAKE) -f Makefile.extr polopt
 
 FORCE:
 

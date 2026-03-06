@@ -5,5 +5,5 @@ Require Import Vpl.Impure.
 (** The final polyhedral optimizer *)
 
 Require Import PolOpt.
-Module TPolOpt := PolOpt TPolIRs.
-Module TVal := TPolOpt.Validator.
+Module TValidatorOpt := PolOpt TPolIRs.
+Module TVal := TValidatorOpt.Validator.
