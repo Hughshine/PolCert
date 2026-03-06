@@ -16,6 +16,16 @@ Module TPolIRs <: POLIRS with Module Instr := TInstr.
    Module PolyLang := PolyLang TInstr.
    Module PolyLoop := PolyLoop TInstr.
    Module Loop := Loop TInstr.
-   Definition scop_scheduler (scop: OpenScop): result OpenScop := Err "invalid". 
-   Definition scheduler (cpol: PolyLang.t): result PolyLang.t := Err "invalid".
+   Parameter scop_scheduler: OpenScop -> result OpenScop.
+
+   Definition scheduler cpol :=
+      match PolyLang.to_openscop cpol with
+      | Some inscop =>
+         match scop_scheduler inscop with
+         | Okk outscop => PolyLang.from_openscop cpol outscop
+         | Err msg => Err msg
+         end
+      | None => Err "Transform pol to openscop failed"
+      end
+   .
 End TPolIRs.

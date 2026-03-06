@@ -159,7 +159,7 @@ POLCERT_SRC = Base.v Convert.v \
 
 # Putting everything together (in driver/)
 
-DRIVER=PolOpt.v CPolOpt.v TPolValidator.v
+DRIVER=PolOpt.v CPolOpt.v TPolOpt.v TPolValidator.v
 
 SAMPLES=CSample1.v CSample2.v CSample3.v ExtractorSmoke.v
 
