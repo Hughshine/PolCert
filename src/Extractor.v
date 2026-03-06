@@ -4937,6 +4937,31 @@ Lemma loop_slice_to_body_semantics_todo:
       (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl)
       stA stB ->
     Loop.loop_semantics body (i :: rev envv) stA stB.
+Proof.
+    intros lb ub body constrs sched_prefix varctxt vars
+      pis envv ipl sorted_ipl head_ts lbv ubv i stA stB
+      Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hlenenv
+      Hhead Hlbv Hubv Hrange Hslice.
+    subst head_ts lbv ubv.
+    eapply extract_stmt_loop_success_inv in Hextract.
+    destruct Hextract as (lbc & ubc & Hlb & Hub & Hbodyext).
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hlb by lia.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hub by lia.
+    eapply wf_scop_loop_inv in Hwf.
+    destruct Hwf as (_ & _ & Hwf_body).
+    assert (Hconstr_body:
+      in_poly (i :: rev envv) (lift_affine_list constrs ++ [lbc; ubc]) = true).
+    {
+      eapply loop_constraints_sound_lifted
+        with (lb:=lb) (ub:=ub) (depth:=Datatypes.length varctxt).
+      - rewrite rev_length. exact Hlenenv.
+      - exact Hlb.
+      - exact Hub.
+      - exact Hconstr.
+      - exact Hrange.
+    }
+    (* TODO: derive body slice flatten/semantic reconstruction from [Hslice], then
+       apply the constrained core theorem on [body] under env (i :: rev envv). *)
 Admitted.
 
 Lemma core_sched_loop_constrs_len_todo:
