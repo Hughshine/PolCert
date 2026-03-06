@@ -4910,9 +4910,27 @@ Proof.
 Qed.
 
 Lemma loop_slice_to_body_semantics_todo:
-    forall body envv sorted_ipl
+    forall lb ub body constrs sched_prefix
+           (varctxt: list ident) (vars: list (ident * Ty.t))
+           pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint)
            (head_ts: PolyLang.InstrPoint -> Z)
            lbv ubv i stA stB,
+    wf_scop_stmt (PolIRs.Loop.Loop lb ub body) = true ->
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs (Datatypes.length varctxt) 0 sched_prefix = Okk pis ->
+    in_poly (rev envv) constrs = true ->
+    check_extracted_wf pis varctxt vars = true ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Permutation ipl sorted_ipl ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl ->
+    head_ts =
+      (fun ip : PolyLang.InstrPoint =>
+         nth
+           (Datatypes.length
+             (affine_product
+               (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv))
+           (PolyLang.ip_time_stamp ip) 0%Z) ->
+    lbv = Loop.eval_expr (rev envv) lb ->
+    ubv = Loop.eval_expr (rev envv) ub ->
     (lbv <= i < ubv)%Z ->
     PolyLang.instr_point_list_semantics
       (filter (fun ip : PolyLang.InstrPoint => Z.eqb (head_ts ip) i) sorted_ipl)
@@ -5484,7 +5502,9 @@ Proof.
       intros x stX stY Hin Hslice.
       eapply Zrange_in in Hin.
       eapply loop_slice_to_body_semantics_todo
-        with (body:=body) (envv:=envv) (sorted_ipl:=sorted_ipl)
+        with (lb:=lb) (ub:=ub) (constrs:=constrs) (sched_prefix:=sched_prefix)
+             (varctxt:=varctxt) (vars:=vars) (pis:=pis)
+             (envv:=envv) (ipl:=ipl) (sorted_ipl:=sorted_ipl)
              (head_ts:=head_ts) (lbv:=lbv) (ubv:=ubv); eauto.
     }
     destruct (Hiter_eq_range_from_st1 (ltac:(lia))) as [st2' [Hiter_range Heq2']].
