@@ -44,7 +44,7 @@ let rec string_of_instr_expr env slots = function
   | Instr.ExAccess a -> string_of_access env slots a
   | Instr.ExAdd (a, b) -> Printf.sprintf "(%s + %s)" (string_of_instr_expr env slots a) (string_of_instr_expr env slots b)
   | Instr.ExSub (a, b) -> Printf.sprintf "(%s - %s)" (string_of_instr_expr env slots a) (string_of_instr_expr env slots b)
-  | Instr.ExMul (k, e) -> Printf.sprintf "(%s * %s)" (string_of_z k) (string_of_instr_expr env slots e)
+  | Instr.ExMul (a, b) -> Printf.sprintf "(%s * %s)" (string_of_instr_expr env slots a) (string_of_instr_expr env slots b)
 
 let rec string_of_test env = function
   | Loop.LE (a, b) -> Printf.sprintf "%s <= %s" (string_of_loop_expr env a) (string_of_loop_expr env b)

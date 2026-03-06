@@ -58,6 +58,25 @@ let stmt_of_list = function
   | [st] -> st
   | sts -> Loop.Seq (stmt_list_of_list sts)
 
+let rec stmt_depth = function
+  | Assign _ -> 0
+  | If (_, body) -> stmt_list_depth body
+  | For (_, _, _, body) -> 1 + stmt_list_depth body
+
+and stmt_list_depth body =
+  List.fold_left (fun acc st -> max acc (stmt_depth st)) 0 body
+
+let fresh_padding_names used count =
+  let rec pick used acc next remaining =
+    if remaining = 0 then List.rev acc
+    else
+      let cand = Printf.sprintf "_slot%d" next in
+      if List.mem cand used
+      then pick used acc (next + 1) remaining
+      else pick (cand :: used) (cand :: acc) (next + 1) (remaining - 1)
+  in
+  pick used [] 0 count
+
 let slot_exprs env =
   List.map
     (fun name ->
@@ -131,12 +150,7 @@ let rec elab_expr env seen = function
   | Access a -> Instr.ExAccess (elab_access env seen a)
   | AddE (a, b) -> Instr.ExAdd (elab_expr env seen a, elab_expr env seen b)
   | SubE (a, b) -> Instr.ExSub (elab_expr env seen a, elab_expr env seen b)
-  | MulE (a, b) ->
-      begin match const_expr a, const_expr b with
-      | Some k, _ -> Instr.ExMul (z_of_int k, elab_expr env seen b)
-      | _, Some k -> Instr.ExMul (z_of_int k, elab_expr env seen a)
-      | None, None -> errorf "non-affine multiplication is not supported in instruction expressions"
-      end
+  | MulE (a, b) -> Instr.ExMul (elab_expr env seen a, elab_expr env seen b)
 
 let rec elab_test env = function
   | Le (a, b) -> Loop.make_le (elab_loop_aff env a) (elab_loop_aff env b)
@@ -166,9 +180,12 @@ let elaborate (prog : program) : IR.Loop.t =
   let env = { params = prog.context; loops = [] } in
   let body = stmt_of_list (List.map (elab_stmt env seen_memory) prog.body) in
   let varctxt = List.map ident_of_string prog.context in
+  let base_names = dedup (prog.context @ !seen_memory) in
+  let needed_slots = List.length prog.context + stmt_list_depth prog.body in
+  let padding = fresh_padding_names base_names (max 0 (needed_slots - List.length base_names)) in
   let vars =
     List.map
       (fun name -> (ident_of_string name, IR.Ty.dummy))
-      (dedup (prog.context @ !seen_memory))
+      (base_names @ padding)
   in
   ((body, varctxt), vars)

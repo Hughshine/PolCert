@@ -67,7 +67,7 @@ Module SInstr <: INSTR.
   | ExAccess (a : access)
   | ExAdd (e1 e2 : expr)
   | ExSub (e1 e2 : expr)
-  | ExMul (z : Z) (e : expr).
+  | ExMul (e1 e2 : expr).
 
   Inductive lang : Type :=
   | SSkip
@@ -179,7 +179,7 @@ Module SInstr <: INSTR.
     | ExAccess a => [access_to_function a]
     | ExAdd e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
     | ExSub e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
-    | ExMul _ e => read_accesses_expr e
+    | ExMul e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
     end.
 
   Definition waccess (i : t) : option (list AccessFunction) :=
@@ -243,7 +243,7 @@ Module SInstr <: INSTR.
     | ExSub e1 e2 =>
         access_function_checker_expr rl e1 &&
         access_function_checker_expr rl e2
-    | ExMul _ e => access_function_checker_expr rl e
+    | ExMul e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
     end.
 
   Definition access_function_checker (wl rl : list AccessFunction) (i : t) : bool :=
@@ -288,7 +288,7 @@ Module SInstr <: INSTR.
     | ExAccess a => ArrAccessAtom (access_to_openscop a names)
     | ExAdd e1 e2 => ArrAdd (expr_to_openscop e1 names) (expr_to_openscop e2 names)
     | ExSub e1 e2 => ArrMinus (expr_to_openscop e1 names) (expr_to_openscop e2 names)
-    | ExMul z e => ArrMulti (ArrAtom (AInt z)) (expr_to_openscop e names)
+    | ExMul e1 e2 => ArrMulti (expr_to_openscop e1 names) (expr_to_openscop e2 names)
     end.
 
   Definition to_openscop (i : t) (names : list varname) : option OpenScop.ArrayStmt :=
