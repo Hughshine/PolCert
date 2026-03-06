@@ -1626,6 +1626,144 @@ Proof.
     simpl in Hext. inv Hext. reflexivity.
 Qed.
 
+Definition lower_ip_depth (ip: PolyLang.InstrPoint): PolyLang.InstrPoint :=
+  {|
+    PolyLang.ip_nth := PolyLang.ip_nth ip;
+    PolyLang.ip_index := PolyLang.ip_index ip;
+    PolyLang.ip_transformation := PolyLang.ip_transformation ip;
+    PolyLang.ip_time_stamp := PolyLang.ip_time_stamp ip;
+    PolyLang.ip_instruction := PolyLang.ip_instruction ip;
+    PolyLang.ip_depth := Nat.pred (PolyLang.ip_depth ip);
+  |}.
+
+Definition lower_pi_depth (pi: PolyLang.PolyInstr): PolyLang.PolyInstr :=
+  {|
+    PolyLang.pi_depth := Nat.pred (PolyLang.pi_depth pi);
+    PolyLang.pi_instr := PolyLang.pi_instr pi;
+    PolyLang.pi_poly := PolyLang.pi_poly pi;
+    PolyLang.pi_schedule := PolyLang.pi_schedule pi;
+    PolyLang.pi_transformation := PolyLang.pi_transformation pi;
+    PolyLang.pi_waccess := PolyLang.pi_waccess pi;
+    PolyLang.pi_raccess := PolyLang.pi_raccess pi;
+  |}.
+
+Lemma extract_stmt_lower_env_dim:
+    forall stmt constrs env_dim iter_depth sched_prefix pis,
+    extract_stmt stmt constrs env_dim (S iter_depth) sched_prefix = Okk pis ->
+    extract_stmt stmt constrs (S env_dim) iter_depth sched_prefix =
+      Okk (map lower_pi_depth pis)
+with extract_stmts_lower_env_dim:
+    forall stmts constrs env_dim iter_depth sched_prefix pos pis,
+    extract_stmts stmts constrs env_dim (S iter_depth) sched_prefix pos = Okk pis ->
+    extract_stmts stmts constrs (S env_dim) iter_depth sched_prefix pos =
+      Okk (map lower_pi_depth pis).
+Proof.
+    - induction stmt as [lb ub body IHbody|instr es|stmts|test body IHbody];
+        intros constrs env_dim iter_depth sched_prefix pis Hext.
+      + eapply extract_stmt_loop_success_inv in Hext.
+        destruct Hext as (lbc & ubc & Hlb & Hub & Hbody).
+        simpl.
+        assert (Hlb':
+          lb_to_constr lb (S (env_dim + iter_depth)) = Okk lbc).
+        {
+          replace (S (env_dim + iter_depth)) with (env_dim + S iter_depth)%nat by lia.
+          exact Hlb.
+        }
+        assert (Hub':
+          ub_to_constr ub (S (env_dim + iter_depth)) = Okk ubc).
+        {
+          replace (S (env_dim + iter_depth)) with (env_dim + S iter_depth)%nat by lia.
+          exact Hub.
+        }
+        rewrite Hlb', Hub'.
+        eapply IHbody in Hbody.
+        assert (Hbody':
+          extract_stmt body (lift_affine_list constrs ++ [lbc; ubc])
+            (S env_dim) (S iter_depth)
+            (lift_affine_list sched_prefix ++
+             [((1%Z :: 0%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)]) =
+          Okk (map lower_pi_depth pis)).
+        {
+          replace
+            (lift_affine_list sched_prefix ++
+             [((1%Z :: 0%Z :: repeat 0%Z (env_dim + iter_depth)%nat), 0%Z)])
+            with
+            (lift_affine_list sched_prefix ++
+             [((1%Z :: repeat 0%Z (env_dim + S iter_depth)%nat), 0%Z)]).
+          - exact Hbody.
+          - f_equal.
+            f_equal.
+            replace (env_dim + S iter_depth)%nat with (S (env_dim + iter_depth)) by lia.
+            reflexivity.
+        }
+        exact Hbody'.
+      + eapply extract_stmt_instr_success_inv in Hext.
+        destruct Hext as (tf & w & r & Htf & Hacc & Hpis).
+        subst pis.
+        simpl.
+        replace (S (env_dim + iter_depth)) with (env_dim + S iter_depth)%nat by lia.
+        rewrite Htf, Hacc.
+        simpl.
+        reflexivity.
+      + eapply extract_stmt_seq_success_inv in Hext.
+        simpl.
+        eapply extract_stmts_lower_env_dim in Hext.
+        exact Hext.
+      + eapply extract_stmt_guard_success_inv in Hext.
+        destruct Hext as (test_constrs & Htest & Hbody).
+        simpl.
+        rewrite Htest.
+        eapply IHbody in Hbody.
+        assert (Hbody':
+          extract_stmt body
+            (constrs ++ normalize_affine_list (S (env_dim + iter_depth)) test_constrs)
+            (S env_dim) iter_depth sched_prefix =
+          Okk (map lower_pi_depth pis)).
+        {
+          replace
+            (constrs ++ normalize_affine_list (S (env_dim + iter_depth)) test_constrs)
+            with
+            (constrs ++ normalize_affine_list (env_dim + S iter_depth) test_constrs).
+          - exact Hbody.
+          - f_equal.
+            replace (env_dim + S iter_depth)%nat with (S (env_dim + iter_depth)) by lia.
+            reflexivity.
+        }
+        exact Hbody'.
+    - induction stmts as [|stmt stmts' IHstmts']; intros constrs env_dim iter_depth sched_prefix pos pis Hext.
+      + simpl in Hext.
+        inv Hext.
+        reflexivity.
+      + eapply extract_stmts_cons_success_inv in Hext.
+        destruct Hext as (pis1 & pis2 & Hhd & Htl & Hpis).
+        subst pis.
+        simpl.
+        replace (S (env_dim + iter_depth)) with (env_dim + S iter_depth)%nat by lia.
+        eapply extract_stmt_lower_env_dim in Hhd.
+        eapply IHstmts' in Htl.
+        assert (Hhd':
+          extract_stmt stmt constrs (S env_dim) iter_depth
+            (sched_prefix ++
+             [((0%Z :: repeat 0%Z (env_dim + iter_depth)%nat), Z.of_nat pos)]) =
+          Okk (map lower_pi_depth pis1)).
+        {
+          replace
+            (sched_prefix ++
+             [((0%Z :: repeat 0%Z (env_dim + iter_depth)%nat), Z.of_nat pos)])
+            with
+            (sched_prefix ++
+             [((repeat 0%Z (env_dim + S iter_depth)%nat), Z.of_nat pos)]).
+          - exact Hhd.
+          - f_equal.
+            f_equal.
+            replace (env_dim + S iter_depth)%nat with (S (env_dim + iter_depth)) by lia.
+            reflexivity.
+        }
+        rewrite Hhd', Htl.
+        rewrite map_app.
+        reflexivity.
+Qed.
+
 Definition pi_has_lifted_prefix
     (env_dim iter_depth: nat)
     (constrs: Domain)
@@ -1788,6 +1926,19 @@ Proof.
           rewrite app_assoc.
           reflexivity.
         * eapply IHstmts'; eauto.
+Qed.
+
+Lemma extract_stmt_member_positive_depth:
+    forall stmt constrs env_dim iter_depth sched_prefix pis pi,
+    extract_stmt stmt constrs env_dim (S iter_depth) sched_prefix = Okk pis ->
+    In pi pis ->
+    (0 < PolyLang.pi_depth pi)%nat.
+Proof.
+    intros stmt constrs env_dim iter_depth sched_prefix pis pi Hext Hin.
+    eapply extract_stmt_has_lifted_prefix in Hext.
+    2: { exact Hin. }
+    destruct Hext as (k & tail & Hdepth & _).
+    lia.
 Qed.
 
 (* Extraction examples are kept in instance-level test files (e.g. CPolIRs/TPolIRs)
@@ -2238,6 +2389,259 @@ Proof.
     exists i.
     exists (affine_product tail (firstn k (rev suf) ++ i :: rev envv)).
     exact Hts.
+Qed.
+
+Lemma flattened_point_loop_index_prefix_bounds_and_timestamp_head:
+    forall lb ub body constrs sched_prefix (varctxt: list ident)
+           pis envv ipl ip,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+      (Datatypes.length varctxt) 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = Datatypes.length varctxt ->
+    In ip ipl ->
+    exists i suf tsuf,
+      PolyLang.ip_index ip = envv ++ [i] ++ suf /\
+      (Loop.eval_expr (rev envv) lb <= i < Loop.eval_expr (rev envv) ub)%Z /\
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix) envv ++
+        [i] ++ tsuf.
+Proof.
+    intros lb ub body constrs sched_prefix varctxt
+      pis envv ipl ip Hext Hflat Hlenenv Hip.
+    eapply extract_stmt_loop_success_inv in Hext.
+    destruct Hext as (lbc & ubc & Hlb & Hub & Hbodyext).
+    pose proof Hbodyext as Hbodyext_sched.
+    pose proof Hbodyext as Hbodyext_dom.
+    destruct Hflat as (Hprefix & Hchar & _ & _).
+    pose proof (proj1 (Hchar ip) Hip) as Hm.
+    destruct Hm as (pi & Hnth & Hbel & Hlenidx).
+    assert (In pi pis) as Hpin.
+    { eapply nth_error_In; eauto. }
+    eapply extract_stmt_has_lifted_sched_prefix in Hbodyext_sched.
+    2: { exact Hpin. }
+    destruct Hbodyext_sched as (k & tail_sched & Hdepth_sched & Hsched).
+    eapply extract_stmt_has_lifted_prefix in Hbodyext_dom.
+    2: { exact Hpin. }
+    destruct Hbodyext_dom as (kd & tail_dom & Hdepth_dom & Hpoly).
+    assert (kd = k) as Hk by lia.
+    subst kd.
+    unfold PolyLang.belongs_to in Hbel.
+    destruct Hbel as (Hindom & _ & Hts & _ & _).
+    rewrite Hsched in Hts.
+    rewrite Hpoly in Hindom.
+    assert (Hlenidx_var:
+      Datatypes.length (PolyLang.ip_index ip) =
+      (Datatypes.length varctxt + PolyLang.pi_depth pi)%nat).
+    {
+      rewrite <- Hlenenv.
+      exact Hlenidx.
+    }
+    pose proof (Hprefix ip Hip) as Hpre.
+    eapply firstn_length_decompose with (d:=PolyLang.pi_depth pi) in Hpre.
+    2: { exact Hlenidx. }
+    destruct Hpre as (suf0 & Hidx & Hsuflen).
+    rewrite normalize_affine_list_rev_affine_product in Hts.
+    2: { exact Hlenidx_var. }
+    eapply in_poly_normalize_affine_list_rev_app_inv
+      with (cols:=(Datatypes.length varctxt + PolyLang.pi_depth pi)%nat)
+           (env:=PolyLang.ip_index ip)
+           (pol1:=lift_affine_list_n k (lift_affine_list constrs ++ [lbc; ubc]))
+           (pol2:=tail_dom) in Hindom.
+    2: { rewrite Hlenenv in Hlenidx. exact Hlenidx. }
+    destruct Hindom as [Hbase _].
+    rewrite Hidx in Hts.
+    rewrite Hidx in Hbase.
+    rewrite rev_app_distr in Hts.
+    rewrite rev_app_distr in Hbase.
+    rewrite Hdepth_sched in Hsuflen.
+    assert (Datatypes.length (rev suf0) = S k)%nat as Hlenrev.
+    { rewrite rev_length. exact Hsuflen. }
+    assert (
+      rev suf0 ++ rev envv =
+      firstn k (rev suf0) ++ (skipn k (rev suf0) ++ rev envv)
+    ) as Hsplit.
+    {
+      replace (rev suf0) with (firstn k (rev suf0) ++ skipn k (rev suf0)) at 1.
+      2: { eapply firstn_skipn. }
+      rewrite app_assoc.
+      reflexivity.
+    }
+    rewrite affine_product_app in Hts.
+    rewrite Hsplit in Hts.
+    rewrite Hsplit in Hbase.
+    assert (Datatypes.length (firstn k (rev suf0)) = k)%nat as Hlenfirst.
+    {
+      rewrite firstn_length.
+      lia.
+    }
+    assert (Hlift_sched:
+      affine_product
+        (lift_affine_list_n k
+          (lift_affine_list sched_prefix ++
+           [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)]))
+        (firstn k (rev suf0) ++ (skipn k (rev suf0) ++ rev envv)) =
+      affine_product
+        (lift_affine_list sched_prefix ++
+         [((1%Z :: repeat 0%Z (Datatypes.length varctxt + 0)%nat), 0%Z)])
+        (skipn k (rev suf0) ++ rev envv)).
+    {
+      replace k with (Datatypes.length (firstn k (rev suf0))) at 1
+        by (symmetry; exact Hlenfirst).
+      eapply affine_product_lift_affine_list_n_app.
+    }
+    rewrite Hlift_sched in Hts.
+    set (pref := firstn k (rev suf0)) in *.
+    set (suff := skipn k (rev suf0) ++ rev envv) in *.
+    assert (Datatypes.length pref = k)%nat as Hlenpref.
+    {
+      unfold pref.
+      exact Hlenfirst.
+    }
+    change (in_poly
+      (pref ++ suff)
+      (lift_affine_list_n k (lift_affine_list constrs ++ [lbc; ubc])) = true)
+      in Hbase.
+    rewrite <- Hlenpref in Hbase.
+    rewrite in_poly_lift_affine_list_n_app in Hbase.
+    unfold suff in Hts.
+    unfold suff in Hbase.
+    eapply skipn_length_S_singleton in Hlenrev.
+    destruct Hlenrev as [i Hskip].
+    rewrite Hskip in Hts.
+    rewrite Hskip in Hbase.
+    simpl in Hts.
+    simpl in Hbase.
+    rewrite affine_product_sched_prefix_loop in Hts.
+    replace (Datatypes.length varctxt + 0)%nat with (Datatypes.length varctxt) in Hts by lia.
+    rewrite <- normalize_affine_list_rev_affine_product
+      with (cols:=Datatypes.length varctxt) (env:=envv) (affs:=sched_prefix) in Hts.
+    2: { exact Hlenenv. }
+    rewrite <- app_assoc in Hts.
+    assert (Hlb0: lb_to_constr lb (Datatypes.length varctxt) = Okk lbc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hlb.
+    }
+    assert (Hub0: ub_to_constr ub (Datatypes.length varctxt) = Okk ubc).
+    {
+      replace (Datatypes.length varctxt) with (Datatypes.length varctxt + 0)%nat by lia.
+      exact Hub.
+    }
+    assert (Hbounds:
+      (Loop.eval_expr (rev envv) lb <= i < Loop.eval_expr (rev envv) ub)%Z).
+    {
+      eapply loop_constraints_complete_lifted in Hbase.
+      2: { rewrite rev_length. exact Hlenenv. }
+      2: { exact Hlb0. }
+      2: { exact Hub0. }
+      destruct Hbase as [_ Hbounds].
+      exact Hbounds.
+    }
+    assert (Hrevsuf:
+      rev suf0 = pref ++ [i]).
+    {
+      rewrite <- Hskip.
+      symmetry.
+      eapply firstn_skipn.
+    }
+    assert (Hsuf0:
+      suf0 = [i] ++ rev pref).
+    {
+      apply (f_equal (@rev Z)) in Hrevsuf.
+      rewrite rev_involutive in Hrevsuf.
+      rewrite rev_app_distr in Hrevsuf.
+      simpl in Hrevsuf.
+      exact Hrevsuf.
+    }
+    exists i.
+    exists (rev pref).
+    exists (affine_product tail_sched (pref ++ i :: rev envv)).
+    split.
+    - rewrite Hidx.
+      rewrite Hsuf0.
+      rewrite app_assoc.
+      reflexivity.
+    - split.
+      + exact Hbounds.
+      + exact Hts.
+Qed.
+
+Lemma loop_slice_point_fixed_prefix:
+    forall lb ub body constrs sched_prefix env_dim
+           pis envv ipl ip i,
+    extract_stmt (PolIRs.Loop.Loop lb ub body) constrs env_dim 0%nat sched_prefix = Okk pis ->
+    PolyLang.flatten_instrs envv pis ipl ->
+    Datatypes.length envv = env_dim ->
+    In ip
+      (filter
+        (fun ip =>
+          Z.eqb
+            (nth
+              (Datatypes.length
+                (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+              (PolyLang.ip_time_stamp ip) 0%Z)
+            i)
+        ipl) ->
+    exists suf tsuf,
+      PolyLang.ip_index ip = envv ++ [i] ++ suf /\
+      PolyLang.ip_time_stamp ip =
+        affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++ [i] ++ tsuf.
+Proof.
+    intros lb ub body constrs sched_prefix env_dim
+      pis envv ipl ip i Hext Hflat Hlenenv Hin.
+    apply filter_In in Hin.
+    destruct Hin as [Hip Hheq].
+    assert (Hext':
+      extract_stmt (PolIRs.Loop.Loop lb ub body) constrs
+        (Datatypes.length (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim))
+        0%nat sched_prefix = Okk pis).
+    {
+      rewrite repeat_length.
+      exact Hext.
+    }
+    assert (Hlenrepeat:
+      Datatypes.length envv =
+      Datatypes.length (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim)).
+    {
+      rewrite repeat_length.
+      exact Hlenenv.
+    }
+    destruct (
+      flattened_point_loop_index_prefix_bounds_and_timestamp_head
+        lb ub body constrs sched_prefix
+        (repeat (Instr.openscop_ident_to_ident 1%positive) env_dim)
+        pis envv ipl ip Hext' Hflat Hlenrepeat Hip
+    ) as [j [suf [tsuf [Hidx [_ Hts]]]]].
+    assert (Hts':
+      PolyLang.ip_time_stamp ip =
+      affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++
+      [j] ++ tsuf).
+    {
+      rewrite repeat_length in Hts.
+      exact Hts.
+    }
+    replace (PolyLang.ip_time_stamp ip)
+      with (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++
+            [j] ++ tsuf) in Hheq by exact Hts'.
+    assert (
+      nth
+        (Datatypes.length
+          (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv))
+        (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv ++
+         [j] ++ tsuf) 0%Z = j) as Hnthj.
+    {
+      clear.
+      induction (affine_product (normalize_affine_list_rev env_dim sched_prefix) envv)
+        as [|z zs IH]; simpl.
+      - reflexivity.
+      - exact IH.
+    }
+    rewrite Hnthj in Hheq.
+    apply Z.eqb_eq in Hheq.
+    subst j.
+    exists suf.
+    exists tsuf.
+    split; auto.
 Qed.
 
 Lemma flattened_point_loop_bounds_and_timestamp_head:
@@ -3245,6 +3649,70 @@ Definition rebase_ip_nth (base: nat) (ip: PolyLang.InstrPoint): PolyLang.InstrPo
     PolyLang.ip_depth := PolyLang.ip_depth ip;
   |}.
 
+Lemma lower_ip_depth_injective_pos:
+    forall ip1 ip2,
+    (0 < PolyLang.ip_depth ip1)%nat ->
+    (0 < PolyLang.ip_depth ip2)%nat ->
+    lower_ip_depth ip1 = lower_ip_depth ip2 ->
+    ip1 = ip2.
+Proof.
+    intros ip1 ip2 Hpos1 Hpos2 Heq.
+    destruct ip1 as [n1 idx1 tf1 ts1 instr1 d1].
+    destruct ip2 as [n2 idx2 tf2 ts2 instr2 d2].
+    simpl in *.
+    assert (Nat.pred d1 = Nat.pred d2) as Hpred.
+    {
+      inversion Heq.
+      reflexivity.
+    }
+    inversion Heq; subst.
+    assert (d1 = d2).
+    {
+      destruct d1 as [|d1']; destruct d2 as [|d2']; simpl in *; try lia.
+    }
+    subst.
+    f_equal; auto.
+Qed.
+
+Lemma np_lt_lower_ip_depth_iff:
+    forall ip1 ip2,
+    PolyLang.np_lt (lower_ip_depth ip1) (lower_ip_depth ip2) <->
+    PolyLang.np_lt ip1 ip2.
+Proof.
+    intros ip1 ip2.
+    unfold PolyLang.np_lt.
+    simpl.
+    tauto.
+Qed.
+
+Lemma instr_point_sema_lower_ip_depth:
+    forall ip st1 st2,
+    PolyLang.instr_point_sema (lower_ip_depth ip) st1 st2 <->
+    PolyLang.instr_point_sema ip st1 st2.
+Proof.
+    intros ip st1 st2.
+    split; intro Hsema.
+    - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
+      econstructor.
+      simpl in *.
+      exact Hsem.
+    - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
+      econstructor.
+      simpl in *.
+      exact Hsem.
+Qed.
+
+Lemma instr_point_sched_le_lower_ip_depth:
+    forall ip1 ip2,
+    PolyLang.instr_point_sched_le (lower_ip_depth ip1) (lower_ip_depth ip2) <->
+    PolyLang.instr_point_sched_le ip1 ip2.
+Proof.
+    intros ip1 ip2.
+    unfold PolyLang.instr_point_sched_le.
+    simpl.
+    tauto.
+Qed.
+
 Lemma rebase_ip_nth_injective_ge:
     forall base ip1 ip2,
     (base <= PolyLang.ip_nth ip1)%nat ->
@@ -3350,6 +3818,23 @@ Proof.
           exact Hle.
 Qed.
 
+Lemma sorted_sched_le_map_lower_ip_depth:
+    forall ipl,
+    Sorted PolyLang.instr_point_sched_le ipl ->
+    Sorted PolyLang.instr_point_sched_le (map lower_ip_depth ipl).
+Proof.
+    intros ipl Hsorted.
+    induction Hsorted.
+    - simpl. constructor.
+    - simpl. constructor.
+      + exact IHHsorted.
+      + destruct H as [|b l0 Hle].
+        * constructor.
+        * constructor.
+          eapply (proj2 (instr_point_sched_le_lower_ip_depth a b)).
+          exact Hle.
+Qed.
+
 Lemma instr_point_list_semantics_map_rebase_ip_nth:
     forall base ipl st1 st2,
     PolyLang.instr_point_list_semantics (map (rebase_ip_nth base) ipl) st1 st2 <->
@@ -3373,6 +3858,88 @@ Proof.
       econstructor.
       + eapply (proj2 (instr_point_sema_rebase_ip_nth base ip st1 st3)); eauto.
       + eapply (proj2 (IH st3 st2)); eauto.
+Qed.
+
+Lemma instr_point_list_semantics_map_lower_ip_depth:
+    forall ipl st1 st2,
+    PolyLang.instr_point_list_semantics (map lower_ip_depth ipl) st1 st2 <->
+    PolyLang.instr_point_list_semantics ipl st1 st2.
+Proof.
+    intros ipl.
+    induction ipl as [|ip ipl IH]; intros st1 st2; split; intro Hsema.
+    - inversion Hsema; subst.
+      constructor.
+      exact H.
+    - inversion Hsema; subst.
+      constructor.
+      exact H.
+    - simpl in Hsema.
+      inversion Hsema; subst.
+      econstructor.
+      + eapply (proj1 (instr_point_sema_lower_ip_depth ip st1 st3)); eauto.
+      + eapply (proj1 (IH st3 st2)); eauto.
+    - simpl.
+      inversion Hsema; subst.
+      econstructor.
+      + eapply (proj2 (instr_point_sema_lower_ip_depth ip st1 st3)); eauto.
+      + eapply (proj2 (IH st3 st2)); eauto.
+Qed.
+
+Lemma belongs_to_lower_pi_depth:
+    forall ip pi,
+    PolyLang.belongs_to ip pi ->
+    (0 < PolyLang.pi_depth pi)%nat ->
+    PolyLang.belongs_to (lower_ip_depth ip) (lower_pi_depth pi).
+Proof.
+    intros ip pi Hbel Hpos.
+    unfold PolyLang.belongs_to in *.
+    destruct Hbel as (Hpoly & Htf & Hts & Hinstr & Hdepth).
+    repeat split; simpl; auto.
+Qed.
+
+Lemma nodup_map_lower_ip_depth:
+    forall ipl,
+    (forall ip, In ip ipl -> (0 < PolyLang.ip_depth ip)%nat) ->
+    NoDup ipl ->
+    NoDup (map lower_ip_depth ipl).
+Proof.
+    intros ipl Hpos Hnodup.
+    induction Hnodup as [|x l Hnin Hnodup IH].
+    - simpl. constructor.
+    - simpl. constructor.
+      + intro Hin.
+        eapply in_map_iff in Hin.
+        destruct Hin as (y & Heq & Hyin).
+        assert ((0 < PolyLang.ip_depth y)%nat) as Hposy.
+        { eapply Hpos. simpl. right. exact Hyin. }
+        assert ((0 < PolyLang.ip_depth x)%nat) as Hposx.
+        { eapply Hpos. simpl. left. reflexivity. }
+        assert (y = x).
+        { eapply lower_ip_depth_injective_pos; eauto. }
+        subst.
+        eapply Hnin.
+        exact Hyin.
+      + eapply IH.
+        intros ip Hin.
+        eapply Hpos.
+        simpl. right. exact Hin.
+Qed.
+
+Lemma sorted_np_lt_map_lower_ip_depth:
+    forall ipl,
+    Sorted PolyLang.np_lt ipl ->
+    Sorted PolyLang.np_lt (map lower_ip_depth ipl).
+Proof.
+    intros ipl Hsorted.
+    induction Hsorted.
+    - simpl. constructor.
+    - simpl. constructor.
+      + exact IHHsorted.
+      + destruct H as [|b l0 Hlt].
+        * constructor.
+        * constructor.
+          eapply (proj2 (np_lt_lower_ip_depth_iff a b)).
+          exact Hlt.
 Qed.
 
 Lemma instr_point_list_semantics_split_by_eq_app:
