@@ -214,6 +214,17 @@ Module SInstr <: INSTR.
   Definition normalize_affine_list_rev (cols : nat) (affs : list (list Z * Z)) :=
     map (normalize_affine_rev cols) affs.
 
+  Definition normalize_affine (cols : nat) (aff : list Z * Z) : (list Z * Z) :=
+    let '(v, c) := aff in
+    (resize cols v, c).
+
+  Definition normalize_affine_list (cols : nat) (affs : list (list Z * Z)) :=
+    map (normalize_affine cols) affs.
+
+  Definition normalize_access (cols : nat) (acc : AccessFunction) : AccessFunction :=
+    let '(arrid, affs) := acc in
+    (arrid, normalize_affine_list cols affs).
+
   Definition normalize_access_rev (cols : nat) (acc : AccessFunction) : AccessFunction :=
     let '(arrid, affs) := acc in
     (arrid, normalize_affine_list_rev cols affs).
@@ -228,6 +239,9 @@ Module SInstr <: INSTR.
     existsb
       (fun target =>
         access_strict_eqb acc target ||
+        access_strict_eqb
+          (normalize_access (access_cols target) acc)
+          target ||
         access_strict_eqb
           (normalize_access_rev (access_cols target) acc)
           target)

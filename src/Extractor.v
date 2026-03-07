@@ -1473,8 +1473,8 @@ Fixpoint extract_stmt
                     PolIRs.PolyLang.pi_poly := normalize_affine_list_rev cols constrs;
                     PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev cols sched_prefix;
                     PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev cols tf;
-                    PolIRs.PolyLang.pi_waccess := normalize_access_list_rev cols w;
-                    PolIRs.PolyLang.pi_raccess := normalize_access_list_rev cols r;
+                    PolIRs.PolyLang.pi_waccess := normalize_access_list cols w;
+                    PolIRs.PolyLang.pi_raccess := normalize_access_list cols r;
                 |}]
             | None => Err "Instr access extraction/check failed"%string
             end
@@ -1536,8 +1536,8 @@ Lemma extract_stmt_instr_success_inv:
         PolIRs.PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
         PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
         PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
-        PolIRs.PolyLang.pi_waccess := normalize_access_list_rev (env_dim + iter_depth)%nat w;
-        PolIRs.PolyLang.pi_raccess := normalize_access_list_rev (env_dim + iter_depth)%nat r;
+        PolIRs.PolyLang.pi_waccess := normalize_access_list (env_dim + iter_depth)%nat w;
+        PolIRs.PolyLang.pi_raccess := normalize_access_list (env_dim + iter_depth)%nat r;
       |}].
 Proof.
     intros instr es constrs env_dim iter_depth sched_prefix pis Hext.
@@ -7023,8 +7023,8 @@ Lemma instr_branch_core:
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) [];
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) [];
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
-        PolyLang.pi_waccess := normalize_access_list_rev (Datatypes.length varctxt) w;
-        PolyLang.pi_raccess := normalize_access_list_rev (Datatypes.length varctxt) r;
+        PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
+        PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
     Permutation ipl sorted_ipl ->
     Sorted PolyLang.instr_point_sched_le sorted_ipl ->
@@ -7082,8 +7082,8 @@ Lemma instr_branch_core_with_constrs:
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
-        PolyLang.pi_waccess := normalize_access_list_rev (Datatypes.length varctxt) w;
-        PolyLang.pi_raccess := normalize_access_list_rev (Datatypes.length varctxt) r;
+        PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
+        PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
     Permutation ipl sorted_ipl ->
     Sorted PolyLang.instr_point_sched_le sorted_ipl ->
@@ -7165,8 +7165,8 @@ Lemma instr_branch_core_with_constrs_len:
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
-        PolyLang.pi_waccess := normalize_access_list_rev (Datatypes.length varctxt) w;
-        PolyLang.pi_raccess := normalize_access_list_rev (Datatypes.length varctxt) r;
+        PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
+        PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
     Permutation ipl sorted_ipl ->
     Sorted PolyLang.instr_point_sched_le sorted_ipl ->
@@ -7411,8 +7411,8 @@ Lemma instr_branch_core_with_constrs_prefix_len:
         PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
         PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
-        PolyLang.pi_waccess := normalize_access_list_rev (env_dim + iter_depth)%nat w;
-        PolyLang.pi_raccess := normalize_access_list_rev (env_dim + iter_depth)%nat r;
+        PolyLang.pi_waccess := normalize_access_list (env_dim + iter_depth)%nat w;
+        PolyLang.pi_raccess := normalize_access_list (env_dim + iter_depth)%nat r;
       |}] ipl ->
     Permutation ipl sorted_ipl ->
     Sorted PolyLang.instr_point_sched_le sorted_ipl ->
