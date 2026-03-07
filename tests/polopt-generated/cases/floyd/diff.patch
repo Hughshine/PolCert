@@ -1,0 +1,22 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,9 +1,15 @@
+ context(NUM_NODES);
+ 
+-for i0 in range(0, NUM_NODES) {
+-  for i1 in range(0, NUM_NODES) {
+-    for i2 in range(0, NUM_NODES) {
+-      pathDistanceMatrix[i1][i2] = (((((pathDistanceMatrix[i1][i0] + pathDistanceMatrix[i0][i2]) + pathDistanceMatrix[i1][i2]) + pathDistanceMatrix[i1][i0]) + pathDistanceMatrix[i0][i2]) + pathDistanceMatrix[i1][i2]);
++for i0 in range(0, (1 + (NUM_NODES + -1))) {
++  for i1 in range(0, (1 + (NUM_NODES + -1))) {
++    for i2 in range(0, (1 + (NUM_NODES + -1))) {
++      for i3 in range(i0, (i0 + 1)) {
++        for i4 in range(i1, (i1 + 1)) {
++          for i5 in range(i2, (i2 + 1)) {
++            pathDistanceMatrix[i4][i5] = (((((pathDistanceMatrix[i4][i3] + pathDistanceMatrix[i3][i5]) + pathDistanceMatrix[i4][i5]) + pathDistanceMatrix[i4][i3]) + pathDistanceMatrix[i3][i5]) + pathDistanceMatrix[i4][i5]);
++          }
++        }
++      }
+     }
+   }
+ }

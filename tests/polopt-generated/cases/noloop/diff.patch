@@ -1,0 +1,7 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1 +1,3 @@
+-s = 0;
++for i0 in range(0, (0 + 1)) {
++  s = 0;
++}

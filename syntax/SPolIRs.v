@@ -22,7 +22,7 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
     match PolyLang.to_openscop cpol with
     | Some inscop =>
         match scop_scheduler inscop with
-        | Okk outscop => PolyLang.from_openscop cpol outscop
+      | Okk outscop => PolyLang.from_openscop_like_source cpol outscop
         | Err msg => Err msg
         end
     | None => Err "Transform pol to openscop failed"

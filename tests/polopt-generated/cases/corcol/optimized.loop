@@ -1,0 +1,107 @@
+context(M, N);
+
+if ((-1 * N) <= -1) {
+  for i0 in range(1, (1 + (M + -1))) {
+    for i1 in range(0, (0 + 1)) {
+      for i2 in range(0, (0 + 1)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(0, (0 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i5][i5] = 1;
+                }
+              }
+            }
+          }
+        }
+      }
+      for i2 in range((i0 + 1), (1 + M)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(i2, (i2 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i6][i5] = symmat[i5][i6];
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    for i1 in range(1, (1 + 1)) {
+      for i2 in range((i0 + 1), (1 + M)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(i2, (i2 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i5][i6] = 0;
+                }
+              }
+            }
+          }
+        }
+        for i3 in range(1, (1 + 1)) {
+          for i4 in range(1, (1 + N)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(i2, (i2 + 1)) {
+                for i7 in range(i4, (i4 + 1)) {
+                  symmat[i5][i6] = (symmat[i5][i6] + (data[i7][i5] * data[i7][i6]));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+if (N <= 0) {
+  for i0 in range(1, (1 + (M + -1))) {
+    for i1 in range(0, (0 + 1)) {
+      for i2 in range(0, (0 + 1)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(0, (0 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i5][i5] = 1;
+                }
+              }
+            }
+          }
+        }
+      }
+      for i2 in range((i0 + 1), (1 + M)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(i2, (i2 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i6][i5] = symmat[i5][i6];
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    for i1 in range(1, (1 + 1)) {
+      for i2 in range((i0 + 1), (1 + M)) {
+        for i3 in range(0, (0 + 1)) {
+          for i4 in range(0, (0 + 1)) {
+            for i5 in range(i0, (i0 + 1)) {
+              for i6 in range(i2, (i2 + 1)) {
+                for i7 in range(0, (0 + 1)) {
+                  symmat[i5][i6] = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

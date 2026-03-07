@@ -1,0 +1,13 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,5 +1,9 @@
+ for i0 in range(0, 100) {
+   for i1 in range(0, 4) {
+-    A[((4 * i0) + i1)] = ((2 * A[((4 * i0) + i1)]) + 2);
++    for i2 in range(i0, (i0 + 1)) {
++      for i3 in range(i1, (i1 + 1)) {
++        A[((4 * i2) + i3)] = ((2 * A[((4 * i2) + i3)]) + 2);
++      }
++    }
+   }
+ }

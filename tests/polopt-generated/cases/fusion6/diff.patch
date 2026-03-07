@@ -1,0 +1,67 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,9 +1,59 @@
+ context(N);
+ 
+-for i0 in range(0, N) {
+-  x[i0] = (a[i0] + b[i0]);
++if ((-1 * N) <= -1) {
++  for i0 in range(0, (0 + 1)) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(0, (0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              x[i2] = (a[i2] + b[i2]);
++              s = 0;
++            }
++          }
++        }
++      }
++    }
++    for i1 in range(1, (1 + (N + -1))) {
++      for i2 in range(i1, (i1 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(0, (0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              x[i2] = (a[i2] + b[i2]);
++            }
++          }
++        }
++      }
++    }
++  }
+ }
+-s = 0;
+-for i0 in range(0, N) {
+-  s = (s + (x[i0] * 3));
++if ((-1 * N) <= -1) {
++  for i0 in range(2, (2 + 1)) {
++    for i1 in range(0, (1 + (N + -1))) {
++      for i2 in range(i1, (i1 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(0, (0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              s = (s + (x[i2] * 3));
++            }
++          }
++        }
++      }
++    }
++  }
+ }
++if (N <= 0) {
++  for i0 in range(0, (0 + 1)) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(0, (0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              s = 0;
++            }
++          }
++        }
++      }
++    }
++  }
++}

@@ -1,0 +1,19 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,7 +1,13 @@
+ context(N, M);
+ 
+-for i0 in range(0, N) {
+-  for i1 in range(0, M) {
+-    d[i1] = (d[i1] + a[i0][i1]);
++if ((-1 * N) <= -1) {
++  for i0 in range(0, (1 + (M + -1))) {
++    for i1 in range(0, (1 + (N + -1))) {
++      for i2 in range(i1, (i1 + 1)) {
++        for i3 in range(i0, (i0 + 1)) {
++          d[i3] = (d[i3] + a[i2][i3]);
++        }
++      }
++    }
+   }
+ }

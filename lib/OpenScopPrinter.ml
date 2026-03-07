@@ -73,9 +73,12 @@ let relation_printer out relation =
 let ctxt_params_printer out params =
   match params with 
   | None -> fprintf out "# Empty param information...\n"
+  | Some [] ->
+      fprintf out "# Parameters are not provided\n";
+      fprintf out "0\n\n"
   | Some params -> 
       fprintf out "# Parameter names are provided ...\n";
-      fprintf out "%d\n" (if (List.length params) > 0 then 1 else 0);
+      fprintf out "1\n";
       fprintf out "# Parameter names ...\n";
       fprintf out "<strings>\n";
       List.iter (fun name -> fprintf out "%s " (Camlcoq.camlstring_of_coqstring name)) params;

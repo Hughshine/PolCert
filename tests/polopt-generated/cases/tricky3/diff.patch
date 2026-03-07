@@ -1,0 +1,197 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,12 +1,186 @@
+ context(pointc, clusterc, dims);
+ 
+-for i0 in range(0, pointc) {
+-  dist_min = 0;
+-  for i1 in range(0, clusterc) {
+-    dist = 0;
+-    kmin = 0;
+-  }
+-  for i1 in range(0, dims) {
+-    clusterv = 0;
++if (((-1 * dims) <= -1 && (-1 * clusterc) <= -1)) {
++  for i0 in range(0, (1 + (pointc + -1))) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist_min = 0;
++                }
++              }
++            }
++          }
++        }
++        for i3 in range(1, (1 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  kmin = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++      for i2 in range(1, (1 + (clusterc + -1))) {
++        for i3 in range(1, (1 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  kmin = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++    for i1 in range(1, (1 + 1)) {
++      for i2 in range(0, (1 + (clusterc + -1))) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++    for i1 in range(2, (2 + 1)) {
++      for i2 in range(0, (1 + (dims + -1))) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  clusterv = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
+   }
+ }
++if ((clusterc <= 0 && (-1 * dims) <= -1)) {
++  for i0 in range(0, (1 + (pointc + -1))) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist_min = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++    for i1 in range(2, (2 + 1)) {
++      for i2 in range(0, (1 + (dims + -1))) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  clusterv = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++  }
++}
++if ((dims <= 0 && (-1 * clusterc) <= -1)) {
++  for i0 in range(0, (1 + (pointc + -1))) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist_min = 0;
++                }
++              }
++            }
++          }
++        }
++        for i3 in range(1, (1 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  kmin = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++      for i2 in range(1, (1 + (clusterc + -1))) {
++        for i3 in range(1, (1 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  kmin = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++    for i1 in range(1, (1 + 1)) {
++      for i2 in range(0, (1 + (clusterc + -1))) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(i2, (i2 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++  }
++}
++if ((clusterc <= 0 && dims <= 0)) {
++  for i0 in range(0, (1 + (pointc + -1))) {
++    for i1 in range(0, (0 + 1)) {
++      for i2 in range(0, (0 + 1)) {
++        for i3 in range(0, (0 + 1)) {
++          for i4 in range(i0, (i0 + 1)) {
++            for i5 in range(0, (0 + 1)) {
++              for i6 in range(0, (0 + 1)) {
++                for i7 in range(0, (0 + 1)) {
++                  dist_min = 0;
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++  }
++}

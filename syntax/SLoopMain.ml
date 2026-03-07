@@ -65,6 +65,9 @@ let print_section title body =
   if body = "" || body.[String.length body - 1] <> '\n' then print_newline ();
   print_newline ()
 
+let rec nat_of_int n =
+  if n <= 0 then Datatypes.O else Datatypes.S (nat_of_int (n - 1))
+
 let extract_poly loop =
   match SPolOpt.CoreOpt.Extractor.extractor loop with
   | Err msg -> frontend_failf "extractor failed: %s" (string_of_coq_err msg)
@@ -74,6 +77,26 @@ let poly_to_openscop pol =
   match SPolIRs.SPolIRs.PolyLang.to_openscop pol with
   | None -> frontend_failf "cannot convert extracted polyhedral model to OpenScop"
   | Some scop -> scop
+
+let validate_components pp1 pp2 =
+  let ((pil1, varctxt1), _) = pp1 in
+  let ((pil2, _), _) = pp2 in
+  let (wf1, wf1_ok) = SPolOpt.SVal.check_wf_polyprog pp1 in
+  let (wf2, wf2_ok) = SPolOpt.SVal.check_wf_polyprog pp2 in
+  let (eqdom, eqdom_ok) = SPolOpt.SVal.coq_EqDom pp1 pp2 in
+  let env_dim = nat_of_int (List.length varctxt1) in
+  let pil_ext = SPolIRs.SPolIRs.PolyLang.compose_pinstrs_ext pil1 pil2 in
+  let valid_access = SPolOpt.SVal.check_valid_access pil_ext in
+  let (res, res_ok) = SPolOpt.SVal.validate_instr_list (List.rev pil_ext) env_dim in
+  ((wf1, wf1_ok), (wf2, wf2_ok), (eqdom, eqdom_ok), (valid_access, true), (res, res_ok))
+
+let print_validate_components label pp1 pp2 =
+  let ((wf1, wf1_ok), (wf2, wf2_ok), (eqdom, eqdom_ok), (valid_access, _), (res, res_ok)) =
+    validate_components pp1 pp2
+  in
+  Printf.eprintf
+    "[debug] %s components: wf1=%b(ok=%b) wf2=%b(ok=%b) eqdom=%b(ok=%b) valid_access=%b res=%b(ok=%b)\n"
+    label wf1 wf1_ok wf2 wf2_ok eqdom eqdom_ok valid_access res res_ok
 
 let extract_to_openscop loop =
   poly_to_openscop (extract_poly loop)
@@ -92,15 +115,17 @@ let debug_scheduler loop =
   let pol = extract_poly loop in
   let inscop = poly_to_openscop pol in
   let (self_valid, self_ok) = SPolOpt.SVal.validate pol pol in
+  print_validate_components "validate(extracted, extracted)" pol pol;
   Printf.eprintf
     "[debug] validate(extracted, extracted) = %b (ok=%b, alarm=%b)\n"
     self_valid self_ok (not self_ok);
   let pol_roundtrip =
-    match SPolIRs.SPolIRs.PolyLang.from_openscop pol inscop with
+    match SPolIRs.SPolIRs.PolyLang.from_openscop_like_source pol inscop with
     | Okk pol' -> pol'
     | Err msg -> frontend_failf "self round-trip failed: %s" (string_of_coq_err msg)
   in
   let (roundtrip_valid, roundtrip_ok) = SPolOpt.SVal.validate pol pol_roundtrip in
+  print_validate_components "validate(extracted, roundtrip-before)" pol pol_roundtrip;
   print_endline "== Debug Extracted OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout inscop;
   print_newline ();
@@ -112,6 +137,7 @@ let debug_scheduler loop =
     roundtrip_valid roundtrip_ok (not roundtrip_ok);
   let pol_sched = schedule_poly pol in
   let (sched_valid, sched_ok) = SPolOpt.SVal.validate pol pol_sched in
+  print_validate_components "validate(extracted, scheduled)" pol pol_sched;
   print_endline "== Debug Scheduled OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_sched);
   print_newline ();
@@ -146,7 +172,9 @@ let () =
         if cfg.dump_extracted_openscop then dump_extracted_openscop loop;
         if cfg.dump_scheduled_openscop then dump_scheduled_openscop loop;
         if cfg.debug_scheduler then debug_scheduler loop;
-        let (optimized, ok) = SPolOpt.opt loop in
+        let (optimized, ok) =
+          SPolOpt.opt loop
+        in
         if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
         print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
   with

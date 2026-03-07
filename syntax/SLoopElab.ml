@@ -34,7 +34,7 @@ type env = {
 }
 
 let loop_env env = List.rev env.loops @ List.rev env.params
-let slot_env env = loop_env env
+let slot_env env = env.params @ env.loops
 
 let lookup_in names name =
   let rec go idx = function

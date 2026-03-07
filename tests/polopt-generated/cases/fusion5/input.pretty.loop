@@ -1,0 +1,12 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    B[i0][i1] = (2 * A[i0][i1]);
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    C[i0][i1] = (3 * B[(i0 - 1)][(N - i1)]);
+  }
+}

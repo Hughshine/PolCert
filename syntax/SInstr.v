@@ -285,9 +285,11 @@ Module SInstr <: INSTR.
     | _ => false
     end.
 
+  (* Syntax instruction slots are laid out directly in PolyLang point order:
+     params first, then outer-to-inner iterators. OpenScop names arrive in the
+     same order, so no reordering is needed here. *)
   Definition syntax_slot_names (names : list varname) : list varname :=
-    filter is_iterator_varname names ++
-    rev (filter (fun name => negb (is_iterator_varname name)) names).
+    names.
 
   Definition fallback_name (names : list varname) (n : nat) : varname :=
     nth n (syntax_slot_names names) (ident_to_varname (free_ident tt)).
