@@ -16,16 +16,26 @@ Per-case files:
 
 Current strict-path status:
 - total: 62
-- succeeded: 55
-- failed: 7
+- succeeded: 45
+- failed: 17
 
 Current strict-path failing set:
+- adi
 - advect3d
+- corcol
 - corcol3
+- covcol
+- dct
+- doitgen
 - fusion1
+- fusion8
 - jacobi-1d-imper
 - jacobi-2d-imper
 - lu
 - multi-stmt-stencil-seq
+- pca
+- ssymm
+- tricky1
+- trisolv
 
-This directory intentionally reflects the strict proved runtime path: no CLI fallback exporter is used.
+This directory intentionally reflects the strict proved runtime path: no CLI fallback exporter is used, and `polopt` now runs `PreparedOpt.Opt` directly.
