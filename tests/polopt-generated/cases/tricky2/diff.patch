@@ -1,57 +1,31 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,8 +1,50 @@
+@@ -1,8 +1,24 @@
  context(N, M);
  
 -for i0 in range(0, N) {
 -  autocorr = (autocorr + 1);
-+if (((-1 * M) <= -1 && (-1 * N) <= -1)) {
-+  for i0 in range(0, (0 + 1)) {
-+    for i1 in range(0, min((1 + (M + -1)), (1 + (N + -1)))) {
-+      for i2 in range(i1, (i1 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          autocorr = (autocorr + 1);
-+          temp3 = (temp3 + 1);
-+        }
-+      }
-+    }
-+    for i1 in range(N, (1 + (M + -1))) {
-+      for i2 in range(i1, (i1 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          temp3 = (temp3 + 1);
-+        }
-+      }
-+    }
-+    for i1 in range(M, (1 + (N + -1))) {
-+      for i2 in range(i1, (i1 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          autocorr = (autocorr + 1);
-+        }
-+      }
-+    }
++if ((1 <= M && 1 <= N)) {
++  for i1 in range(0, min(M, N)) {
++    autocorr = (autocorr + 1);
++    temp3 = (temp3 + 1);
++  }
++  for i1 in range(N, M) {
++    temp3 = (temp3 + 1);
++  }
++  for i1 in range(M, N) {
++    autocorr = (autocorr + 1);
 +  }
  }
 -for i0 in range(0, M) {
 -  temp3 = (temp3 + 1);
-+if (((-1 * M) <= -1 && N <= 0)) {
-+  for i0 in range(0, (0 + 1)) {
-+    for i1 in range(0, (1 + (M + -1))) {
-+      for i2 in range(i1, (i1 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          temp3 = (temp3 + 1);
-+        }
-+      }
-+    }
++if ((1 <= M && N <= 0)) {
++  for i1 in range(0, M) {
++    temp3 = (temp3 + 1);
 +  }
  }
-+if ((M <= 0 && (-1 * N) <= -1)) {
-+  for i0 in range(0, (0 + 1)) {
-+    for i1 in range(0, (1 + (N + -1))) {
-+      for i2 in range(i1, (i1 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          autocorr = (autocorr + 1);
-+        }
-+      }
-+    }
++if ((M <= 0 && 1 <= N)) {
++  for i1 in range(0, N) {
++    autocorr = (autocorr + 1);
 +  }
 +}

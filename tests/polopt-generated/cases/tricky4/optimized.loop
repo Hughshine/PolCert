@@ -1,7 +1,5 @@
 context(M);
 
-for i0 in range(0, (1 + (-1 * M))) {
-  for i1 in range(i0, (i0 + 1)) {
-    s = (s + 1);
-  }
+for i0 in range(0, ((-1 * M) + 1)) {
+  s = (s + 1);
 }

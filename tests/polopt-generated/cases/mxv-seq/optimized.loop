@@ -1,40 +1,16 @@
 context(N);
 
-if ((-1 * N) <= -1) {
-  for i0 in range(0, (0 + 1)) {
-    for i1 in range(0, (1 + (N + -1))) {
-      for i2 in range(0, (1 + (N + -1))) {
-        for i3 in range(i1, (i1 + 1)) {
-          for i4 in range(i2, (i2 + 1)) {
-            for i5 in range(0, (0 + 1)) {
-              for i6 in range(0, (0 + 1)) {
-                for i7 in range(0, (0 + 1)) {
-                  y[i3] = (y[i3] + (a[i3][i4] * x[i4]));
-                }
-              }
-            }
-          }
-        }
-      }
+if (1 <= N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      y[i1] = (y[i1] + (a[i1][i2] * x[i2]));
     }
   }
 }
-if ((-1 * N) <= -1) {
-  for i0 in range(1, (1 + 1)) {
-    for i1 in range(0, (1 + (N + -1))) {
-      for i2 in range(0, (1 + (N + -1))) {
-        for i3 in range(i1, (i1 + 1)) {
-          for i4 in range(i2, (i2 + 1)) {
-            for i5 in range(0, (0 + 1)) {
-              for i6 in range(0, (0 + 1)) {
-                for i7 in range(0, (0 + 1)) {
-                  z[i3] = (z[i3] + (b[i3][i4] * y[i4]));
-                }
-              }
-            }
-          }
-        }
-      }
+if (1 <= N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      z[i1] = (z[i1] + (b[i1][i2] * y[i2]));
     }
   }
 }

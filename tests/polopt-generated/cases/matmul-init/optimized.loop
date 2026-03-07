@@ -1,28 +1,10 @@
 context(N);
 
-for i0 in range(0, (1 + (N + -1))) {
-  for i1 in range(0, (1 + (N + -1))) {
-    for i2 in range(0, (0 + 1)) {
-      for i3 in range(0, (0 + 1)) {
-        for i4 in range(i0, (i0 + 1)) {
-          for i5 in range(i1, (i1 + 1)) {
-            for i6 in range(0, (0 + 1)) {
-              C[i4][i5] = 0;
-            }
-          }
-        }
-      }
-    }
-    for i2 in range(1, (1 + 1)) {
-      for i3 in range(0, (1 + (N + -1))) {
-        for i4 in range(i0, (i0 + 1)) {
-          for i5 in range(i1, (i1 + 1)) {
-            for i6 in range(i3, (i3 + 1)) {
-              C[i4][i5] = (C[i4][i5] + (A[i4][i6] * B[i6][i5]));
-            }
-          }
-        }
-      }
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    C[i0][i1] = 0;
+    for i3 in range(0, N) {
+      C[i0][i1] = (C[i0][i1] + (A[i0][i3] * B[i3][i1]));
     }
   }
 }

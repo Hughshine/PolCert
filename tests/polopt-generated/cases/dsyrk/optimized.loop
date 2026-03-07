@@ -1,15 +1,9 @@
 context(NMAX);
 
-for i0 in range(0, (1 + (NMAX + -1))) {
-  for i1 in range(0, (1 + (NMAX + -1))) {
-    for i2 in range(i1, (1 + (NMAX + -1))) {
-      for i3 in range(i0, (i0 + 1)) {
-        for i4 in range(i1, (i1 + 1)) {
-          for i5 in range(i2, (i2 + 1)) {
-            c[i4][i5] = (c[i4][i5] + (a[i3][i4] * a[i3][i5]));
-          }
-        }
-      }
+for i0 in range(0, NMAX) {
+  for i1 in range(0, NMAX) {
+    for i2 in range(i1, NMAX) {
+      c[i1][i2] = (c[i1][i2] + (a[i0][i1] * a[i0][i2]));
     }
   }
 }

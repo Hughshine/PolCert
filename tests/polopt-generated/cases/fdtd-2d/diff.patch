@@ -1,6 +1,6 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,22 +1,191 @@
+@@ -1,22 +1,61 @@
  context(tmax, ny, nx);
  
 -for i0 in range(0, tmax) {
@@ -8,202 +8,71 @@
 -    ey[0][i1] = i0;
 -  }
 -  for i1 in range(1, nx) {
--    for i2 in range(0, ny) {
--      ey[i1][i2] = (ey[i1][i2] - (1 * (hz[i1][i2] - hz[(i1 - 1)][i2])));
-+if (((-1 * nx) <= -2 && (-1 * ny) <= -2)) {
-+  for i0 in range(0, (1 + (tmax + -1))) {
-+    for i1 in range(0, (0 + 1)) {
-+      for i2 in range(0, (1 + (ny + -1))) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[0][i5] = i4;
-+              }
-+            }
-+          }
-+        }
-+      }
++if ((2 <= nx && 2 <= ny)) {
++  for i0 in range(0, tmax) {
+     for i2 in range(0, ny) {
+-      ey[i1][i2] = (ey[i1][i2] - (hz[i1][i2] - hz[(i1 - 1)][i2]));
++      ey[0][i2] = i0;
      }
 -  }
 -  for i1 in range(0, nx) {
 -    for i2 in range(1, ny) {
--      ex[i1][i2] = (ex[i1][i2] - (1 * (hz[i1][i2] - hz[i1][(i2 - 1)])));
-+    for i1 in range(1, (1 + 1)) {
-+      for i2 in range(1, (1 + (nx + -1))) {
-+        for i3 in range(0, (1 + (ny + -1))) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(i3, (i3 + 1)) {
-+                ey[i5][i6] = (ey[i5][i6] - (1 * (hz[i5][i6] - hz[(i5 - 1)][i6])));
-+              }
-+            }
-+          }
-+        }
+-      ex[i1][i2] = (ex[i1][i2] - (hz[i1][i2] - hz[i1][(i2 - 1)]));
++    for i2 in range(1, nx) {
++      for i3 in range(0, ny) {
++        ey[i2][i3] = (ey[i2][i3] - (hz[i2][i3] - hz[(i2 - 1)][i3]));
 +      }
      }
 -  }
 -  for i1 in range(0, nx) {
 -    for i2 in range(0, ny) {
--      hz[i1][i2] = (hz[i1][i2] - (1 * (((ex[i1][(i2 + 1)] - ex[i1][i2]) + ey[(i1 + 1)][i2]) - ey[i1][i2])));
-+    for i1 in range(2, (2 + 1)) {
-+      for i2 in range(0, (1 + (nx + -1))) {
-+        for i3 in range(1, (1 + (ny + -1))) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(i3, (i3 + 1)) {
-+                ex[i5][i6] = (ex[i5][i6] - (1 * (hz[i5][i6] - hz[i5][(i6 - 1)])));
-+              }
-+            }
-+          }
-+        }
+-      hz[i1][i2] = (hz[i1][i2] - (((ex[i1][(i2 + 1)] - ex[i1][i2]) + ey[(i1 + 1)][i2]) - ey[i1][i2]));
++    for i2 in range(0, nx) {
++      for i3 in range(1, ny) {
++        ex[i2][i3] = (ex[i2][i3] - (hz[i2][i3] - hz[i2][(i3 - 1)]));
 +      }
 +    }
-+    for i1 in range(3, (3 + 1)) {
-+      for i2 in range(0, (1 + (nx + -1))) {
-+        for i3 in range(0, (1 + (ny + -1))) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(i3, (i3 + 1)) {
-+                hz[i5][i6] = (hz[i5][i6] - (1 * (((ex[i5][(i6 + 1)] - ex[i5][i6]) + ey[(i5 + 1)][i6]) - ey[i5][i6])));
-+              }
-+            }
-+          }
-+        }
++    for i2 in range(0, nx) {
++      for i3 in range(0, ny) {
++        hz[i2][i3] = (hz[i2][i3] - (((ex[i2][(i3 + 1)] - ex[i2][i3]) + ey[(i2 + 1)][i3]) - ey[i2][i3]));
 +      }
      }
    }
  }
-+if (((-1 * ny) <= -2 && (nx <= 1 && (-1 * nx) <= -1))) {
-+  for i0 in range(0, (1 + (tmax + -1))) {
-+    for i1 in range(0, (0 + 1)) {
-+      for i2 in range(0, (1 + (ny + -1))) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[0][i5] = i4;
-+              }
-+            }
-+          }
-+        }
-+      }
++if ((2 <= ny && (nx <= 1 && 1 <= nx))) {
++  for i0 in range(0, tmax) {
++    for i2 in range(0, ny) {
++      ey[0][i2] = i0;
 +    }
-+    for i1 in range(2, (2 + 1)) {
-+      for i2 in range(0, (0 + 1)) {
-+        for i3 in range(1, (1 + (ny + -1))) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(0, (0 + 1)) {
-+              for i6 in range(i3, (i3 + 1)) {
-+                ex[i5][i6] = (ex[i5][i6] - (1 * (hz[i5][i6] - hz[i5][(i6 - 1)])));
-+              }
-+            }
-+          }
-+        }
-+      }
++    for i3 in range(1, ny) {
++      ex[0][i3] = (ex[0][i3] - (hz[0][i3] - hz[0][(i3 - 1)]));
 +    }
-+    for i1 in range(3, (3 + 1)) {
-+      for i2 in range(0, (0 + 1)) {
-+        for i3 in range(0, (1 + (ny + -1))) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(0, (0 + 1)) {
-+              for i6 in range(i3, (i3 + 1)) {
-+                hz[i5][i6] = (hz[i5][i6] - (1 * (((ex[i5][(i6 + 1)] - ex[i5][i6]) + ey[(i5 + 1)][i6]) - ey[i5][i6])));
-+              }
-+            }
-+          }
-+        }
-+      }
++    for i3 in range(0, ny) {
++      hz[0][i3] = (hz[0][i3] - (((ex[0][(i3 + 1)] - ex[0][i3]) + ey[(0 + 1)][i3]) - ey[0][i3]));
 +    }
 +  }
 +}
-+if (((-1 * nx) <= -2 && (ny <= 1 && (-1 * ny) <= -1))) {
-+  for i0 in range(0, (1 + (tmax + -1))) {
-+    for i1 in range(0, (0 + 1)) {
-+      for i2 in range(0, (0 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(0, (0 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[0][i5] = i4;
-+              }
-+            }
-+          }
-+        }
-+      }
++if ((2 <= nx && (ny <= 1 && 1 <= ny))) {
++  for i0 in range(0, tmax) {
++    ey[0][0] = i0;
++    for i2 in range(1, nx) {
++      ey[i2][0] = (ey[i2][0] - (hz[i2][0] - hz[(i2 - 1)][0]));
 +    }
-+    for i1 in range(1, (1 + 1)) {
-+      for i2 in range(1, (1 + (nx + -1))) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[i5][i6] = (ey[i5][i6] - (1 * (hz[i5][i6] - hz[(i5 - 1)][i6])));
-+              }
-+            }
-+          }
-+        }
-+      }
-+    }
-+    for i1 in range(3, (3 + 1)) {
-+      for i2 in range(0, (1 + (nx + -1))) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                hz[i5][i6] = (hz[i5][i6] - (1 * (((ex[i5][(i6 + 1)] - ex[i5][i6]) + ey[(i5 + 1)][i6]) - ey[i5][i6])));
-+              }
-+            }
-+          }
-+        }
-+      }
++    for i2 in range(0, nx) {
++      hz[i2][0] = (hz[i2][0] - (((ex[i2][(0 + 1)] - ex[i2][0]) + ey[(i2 + 1)][0]) - ey[i2][0]));
 +    }
 +  }
 +}
-+if ((nx <= 1 && ((-1 * nx) <= -1 && (ny <= 1 && (-1 * ny) <= -1)))) {
-+  for i0 in range(0, (1 + (tmax + -1))) {
-+    for i1 in range(0, (0 + 1)) {
-+      for i2 in range(0, (0 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(0, (0 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[0][i5] = i4;
-+              }
-+            }
-+          }
-+        }
-+      }
-+    }
-+    for i1 in range(3, (3 + 1)) {
-+      for i2 in range(0, (0 + 1)) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(0, (0 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                hz[i5][i6] = (hz[i5][i6] - (1 * (((ex[i5][(i6 + 1)] - ex[i5][i6]) + ey[(i5 + 1)][i6]) - ey[i5][i6])));
-+              }
-+            }
-+          }
-+        }
-+      }
-+    }
++if ((nx <= 1 && (1 <= nx && (ny <= 1 && 1 <= ny)))) {
++  for i0 in range(0, tmax) {
++    ey[0][0] = i0;
++    hz[0][0] = (hz[0][0] - (((ex[0][(0 + 1)] - ex[0][0]) + ey[(0 + 1)][0]) - ey[0][0]));
 +  }
 +}
-+if ((nx <= 0 && (-1 * ny) <= -1)) {
-+  for i0 in range(0, (1 + (tmax + -1))) {
-+    for i1 in range(0, (0 + 1)) {
-+      for i2 in range(0, (1 + (ny + -1))) {
-+        for i3 in range(0, (0 + 1)) {
-+          for i4 in range(i0, (i0 + 1)) {
-+            for i5 in range(i2, (i2 + 1)) {
-+              for i6 in range(0, (0 + 1)) {
-+                ey[0][i5] = i4;
-+              }
-+            }
-+          }
-+        }
-+      }
++if ((nx <= 0 && 1 <= ny)) {
++  for i0 in range(0, tmax) {
++    for i2 in range(0, ny) {
++      ey[0][i2] = i0;
 +    }
 +  }
 +}
