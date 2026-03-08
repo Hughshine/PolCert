@@ -1,9 +1,0 @@
-context(N, M);
-
-if (1 <= N) {
-  for i0 in range(0, M) {
-    for i1 in range(0, N) {
-      d[i0] = (d[i0] + a[i1][i0]);
-    }
-  }
-}

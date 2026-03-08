@@ -1,0 +1,20 @@
+context(T, N);
+
+if (4 <= N) {
+  for i0 in range(0, T) {
+    for i2 in range(((2 * i0) + 2), ((N + -1) + (2 * i0))) {
+      for i3 in range(2, (N + -1)) {
+        for i5 in range((i2 + (-2 * i0)), ((i2 + 1) + (-2 * i0))) {
+          b[i5][i3] = (0.2 * ((((a[i5][i3] + a[i5][(i3 - 1)]) + a[i5][(1 + i3)]) + a[(1 + i5)][i3]) + a[(i5 - 1)][i3]));
+        }
+      }
+    }
+    for i2 in range(((2 * i0) + 3), (N + (2 * i0))) {
+      for i3 in range(2, (N + -1)) {
+        for i5 in range(((i2 + -1) + (-2 * i0)), (i2 + (-2 * i0))) {
+          a[i5][i3] = b[i5][i3];
+        }
+      }
+    }
+  }
+}
