@@ -24,38 +24,58 @@ Definition env_dim_of (pp: PolyLang.t) : nat :=
   let '(_, varctxt, _) := pp in
   length varctxt.
 
-Definition is_param_only_constraint (env_dim: nat) (c: constraint) : bool :=
-  is_null (skipn env_dim (fst c)).
+Definition is_prefix_only_constraint (prefix_len: nat) (c: constraint) : bool :=
+  is_null (skipn prefix_len (fst c)).
+
+Definition strengthen_prefix_len (env_dim depth: nat) : nat :=
+  env_dim + Nat.pred depth.
+
+Definition nth_or_zero (n: nat) (xs: list Z) : Z :=
+  nth n xs 0%Z.
+
+Definition cancels_current_iter (iter_idx: nat) (c1 c2: constraint) : bool :=
+  let z1 := nth_or_zero iter_idx (fst c1) in
+  let z2 := nth_or_zero iter_idx (fst c2) in
+  negb (Z.eqb z1 0) &&
+  negb (Z.eqb z2 0) &&
+  Z.eqb (z1 + z2) 0.
 
 Fixpoint guards_from_constraint
-    (env_dim: nat) (c: constraint) (pol: Domain) : Domain :=
+    (iter_idx prefix_len: nat) (c: constraint) (pol: Domain) : Domain :=
   match pol with
   | [] => []
   | c' :: pol' =>
       let guard := add_constraint c c' in
-      let guards := guards_from_constraint env_dim c pol' in
-      if is_param_only_constraint env_dim guard
+      let guards := guards_from_constraint iter_idx prefix_len c pol' in
+      if cancels_current_iter iter_idx c c' &&
+         is_prefix_only_constraint prefix_len guard
       then guard :: guards
       else guards
   end.
 
-Fixpoint inferred_param_guards (env_dim: nat) (pol: Domain) : Domain :=
+Fixpoint inferred_prefix_guards (iter_idx prefix_len: nat) (pol: Domain) : Domain :=
   match pol with
   | [] => []
   | c :: pol' =>
-      guards_from_constraint env_dim c pol' ++
-      inferred_param_guards env_dim pol'
+      guards_from_constraint iter_idx prefix_len c pol' ++
+      inferred_prefix_guards iter_idx prefix_len pol'
   end.
 
-Definition strengthen_domain (env_dim: nat) (pol: Domain) : Domain :=
-  pol ++ inferred_param_guards env_dim pol.
+Definition strengthen_domain (depth env_dim: nat) (pol: Domain) : Domain :=
+  match depth with
+  | O => pol
+  | S depth' =>
+      let prefix_len := env_dim + depth' in
+      let iter_idx := prefix_len in
+      pol ++ inferred_prefix_guards iter_idx prefix_len pol
+  end.
 
 Definition strengthen_pi (env_dim: nat) (pi: PolyLang.PolyInstr)
   : PolyLang.PolyInstr :=
   {|
     PolyLang.pi_depth := pi.(PolyLang.pi_depth);
     PolyLang.pi_instr := pi.(PolyLang.pi_instr);
-    PolyLang.pi_poly := strengthen_domain env_dim pi.(PolyLang.pi_poly);
+    PolyLang.pi_poly := strengthen_domain pi.(PolyLang.pi_depth) env_dim pi.(PolyLang.pi_poly);
     PolyLang.pi_schedule := pi.(PolyLang.pi_schedule);
     PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
     PolyLang.pi_waccess := pi.(PolyLang.pi_waccess);
@@ -67,19 +87,20 @@ Definition strengthen_pprog (pp: PolyLang.t) : PolyLang.t :=
   (map (strengthen_pi (length varctxt)) pis, varctxt, vars).
 
 Lemma guards_from_constraint_satisfied:
-  forall env_dim p c pol,
+  forall iter_idx prefix_len p c pol,
     satisfies_constraint p c = true ->
     in_poly p pol = true ->
-    in_poly p (guards_from_constraint env_dim c pol) = true.
+    in_poly p (guards_from_constraint iter_idx prefix_len c pol) = true.
 Proof.
-  intros env_dim p c pol Hc.
+  intros iter_idx prefix_len p c pol Hc.
   induction pol as [|c' pol IH]; intros Hpol; simpl.
   - reflexivity.
   - unfold in_poly in Hpol. simpl in Hpol.
     apply andb_true_iff in Hpol.
     destruct Hpol as [Hc' Hpol].
     specialize (IH Hpol).
-    destruct (is_param_only_constraint env_dim (add_constraint c c')) eqn:Hguard;
+    destruct (cancels_current_iter iter_idx c c' &&
+              is_prefix_only_constraint prefix_len (add_constraint c c')) eqn:Hkeep;
       simpl; auto.
     rewrite IH.
     apply andb_true_iff.
@@ -87,31 +108,34 @@ Proof.
     eapply add_constraint_satisfy; eauto.
 Qed.
 
-Lemma inferred_param_guards_satisfied:
-  forall env_dim p pol,
+Lemma inferred_prefix_guards_satisfied:
+  forall iter_idx prefix_len p pol,
     in_poly p pol = true ->
-    in_poly p (inferred_param_guards env_dim pol) = true.
+    in_poly p (inferred_prefix_guards iter_idx prefix_len pol) = true.
 Proof.
-  intros env_dim p pol.
+  intros iter_idx prefix_len p pol.
   induction pol as [|c pol IH]; intros Hpol; simpl.
   - reflexivity.
   - unfold in_poly in Hpol. simpl in Hpol.
     apply andb_true_iff in Hpol.
     destruct Hpol as [Hc Hpol].
     rewrite in_poly_app.
-    rewrite guards_from_constraint_satisfied with (c := c); auto.
+    rewrite guards_from_constraint_satisfied with (iter_idx := iter_idx) (c := c); auto.
 Qed.
 
 Lemma strengthen_domain_in_poly:
-  forall env_dim p pol,
-    in_poly p (strengthen_domain env_dim pol) = in_poly p pol.
+  forall depth env_dim p pol,
+    in_poly p (strengthen_domain depth env_dim pol) = in_poly p pol.
 Proof.
-  intros env_dim p pol.
+  intros depth env_dim p pol.
   unfold strengthen_domain.
-  rewrite in_poly_app.
-  destruct (in_poly p pol) eqn:Hpol; simpl; auto.
-  rewrite inferred_param_guards_satisfied by exact Hpol.
-  reflexivity.
+  destruct depth as [|depth']; simpl.
+  - reflexivity.
+  - rewrite in_poly_app.
+    destruct (in_poly p pol) eqn:Hpol; simpl; auto.
+    rewrite inferred_prefix_guards_satisfied
+      with (iter_idx := env_dim + depth') (prefix_len := env_dim + depth') by exact Hpol.
+    reflexivity.
 Qed.
 
 Lemma strengthen_pi_in_poly:
@@ -158,15 +182,16 @@ Proof.
 Qed.
 
 Lemma guards_from_constraint_exact_cols:
-  forall env_dim cols c pol,
+  forall iter_idx prefix_len cols c pol,
     length (fst c) = cols ->
     exact_listzzs_cols cols pol ->
-    exact_listzzs_cols cols (guards_from_constraint env_dim c pol).
+    exact_listzzs_cols cols (guards_from_constraint iter_idx prefix_len c pol).
 Proof.
-  intros env_dim cols c pol Hc Hexact listz z listzz Hin Heq.
+  intros iter_idx prefix_len cols c pol Hc Hexact listz z listzz Hin Heq.
   induction pol as [|[v' z'] pol IH]; simpl in Hin.
   - contradiction.
-  - destruct (is_param_only_constraint env_dim (add_constraint c (v', z'))) eqn:Hguard.
+  - destruct (cancels_current_iter iter_idx c (v', z') &&
+              is_prefix_only_constraint prefix_len (add_constraint c (v', z'))) eqn:Hkeep.
     + simpl in Hin. destruct Hin as [Hin | Hin].
       * subst listzz.
         assert (Hc' : length v' = length (fst c)).
@@ -184,12 +209,12 @@ Proof.
       eapply Hexact; eauto. right; exact Hin0.
 Qed.
 
-Lemma inferred_param_guards_exact_cols:
-  forall env_dim cols pol,
+Lemma inferred_prefix_guards_exact_cols:
+  forall iter_idx prefix_len cols pol,
     exact_listzzs_cols cols pol ->
-    exact_listzzs_cols cols (inferred_param_guards env_dim pol).
+    exact_listzzs_cols cols (inferred_prefix_guards iter_idx prefix_len pol).
 Proof.
-  intros env_dim cols pol Hexact listz z listzz Hin Heq.
+  intros iter_idx prefix_len cols pol Hexact listz z listzz Hin Heq.
   induction pol as [|[v z0] pol IH]; simpl in Hin.
   - contradiction.
   - apply in_app_or in Hin.
@@ -199,7 +224,7 @@ Proof.
         pose proof (Hexact v z0 (v, z0) (or_introl eq_refl) eq_refl) as Hv.
         exact Hv.
       }
-      eapply (guards_from_constraint_exact_cols env_dim cols (v, z0) pol).
+      eapply (guards_from_constraint_exact_cols iter_idx prefix_len cols (v, z0) pol).
       * exact Hc.
       * intros listz0 z1 listzz0 Hin0 Heq0.
         eapply Hexact; eauto. right; exact Hin0.
@@ -249,14 +274,18 @@ Proof.
   unfold strengthen_pi. simpl.
   destruct Hwf as
       [Hcols_le [Hpoly_nrl [Hsched_nrl [Hpoly_exact [Htf_exact [Hsched_exact [Hw [Hr Htflen]]]]]]]].
+  set (prefix_len := strengthen_prefix_len (length env) (PolyLang.pi_depth pi)).
   assert (Hpoly_exact' :
     exact_listzzs_cols (length env + PolyLang.pi_depth pi)
-      (strengthen_domain (length env) (PolyLang.pi_poly pi))).
+      (strengthen_domain (PolyLang.pi_depth pi) (length env) (PolyLang.pi_poly pi))).
   {
     unfold strengthen_domain.
-    eapply exact_listzzs_cols_app.
+    destruct (PolyLang.pi_depth pi) as [|depth'] eqn:Hdepth.
     - exact Hpoly_exact.
-    - eapply inferred_param_guards_exact_cols; eauto.
+    - simpl.
+      eapply exact_listzzs_cols_app.
+      * exact Hpoly_exact.
+      * eapply inferred_prefix_guards_exact_cols; eauto.
   }
   split; [exact Hcols_le|].
   split.
