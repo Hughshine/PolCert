@@ -84,6 +84,28 @@ Definition listzzs_to_domain_constr (constr: list Z * Z) (varctxt_dim: nat) (ite
   let iters_constr := skipn varctxt_dim zs in
   (true, iters_constr ++ varctxt_constr ++ [z]).
 
+Fixpoint list_Z_eqb (xs ys: list Z) : bool :=
+  match xs, ys with
+  | nil, nil => true
+  | x :: xs', y :: ys' => Z.eqb x y && list_Z_eqb xs' ys'
+  | _, _ => false
+  end.
+
+Definition affine_constraint_eqb (c1 c2: list Z * Z) : bool :=
+  let '(zs1, z1) := c1 in
+  let '(zs2, z2) := c2 in
+  list_Z_eqb zs1 zs2 && Z.eqb z1 z2.
+
+Fixpoint dedup_domain_rows (rows: Domain) : Domain :=
+  match rows with
+  | nil => nil
+  | row :: rows' =>
+      let rows'' := dedup_domain_rows rows' in
+      if existsb (affine_constraint_eqb row) rows''
+      then rows''
+      else row :: rows''
+  end.
+
 Definition listzzs_to_sctt_constr (idx: nat) (aff_func: list Z * Z) (varctxt_dim: nat) (iters_dim: nat)(sctt_dim:nat) : (bool * openscop_constraint) := 
   let (zs, z) := aff_func in 
   let tgt_aff := (repeat 0%Z idx) ++ [-1%Z] ++ (repeat 0%Z (sctt_dim - idx - 1)) in 
@@ -153,17 +175,21 @@ Definition source_like_sctt_rows
     (sched: Schedule)
     (tail_const: option Z)
     (dim: nat) : Schedule :=
-  (match sched with
-   | aff :: _ =>
-       if affine_function_is_const aff
+  match sched with
+  | nil =>
+      [match tail_const with
+       | Some c => constant_affine_function dim c
+       | None => zero_affine_function dim
+       end]
+  | aff :: _ =>
+      (if affine_function_is_const aff
        then schedule_to_source_like_rows sched
-       else zero_affine_function dim :: schedule_to_source_like_rows sched
-   | nil => zero_affine_function dim :: nil
-   end) ++
-  [match tail_const with
-   | Some c => constant_affine_function dim c
-   | None => zero_affine_function dim
-   end].
+       else zero_affine_function dim :: schedule_to_source_like_rows sched) ++
+      [match tail_const with
+       | Some c => constant_affine_function dim c
+       | None => zero_affine_function dim
+       end]
+  end.
 
 Definition affine_rows_to_sctt_constrs
     (rows: Schedule)
@@ -234,9 +260,10 @@ Definition pi_to_openscop_statement
   let normalized_sched := remove_zero_schedule_dims pi.(pi_schedule) in
   let '(sched_core, tail_const) := split_trailing_const_schedule normalized_sched in
   let compact_sctt_dim := List.length sched_core in
+  let domain_rows := dedup_domain_rows pi.(pi_poly) in
   let domain_dim := list_max (map 
     (fun (constr: (list Z * Z)) => let (zs, z) := constr in 
-      length zs) pi.(pi_poly)) in
+      length zs) domain_rows) in
   let varctxt_dim := length varctxt in
   let iters_dim := domain_dim - varctxt_dim in
   let rows := source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim) in
@@ -250,14 +277,14 @@ Definition pi_to_openscop_statement
         (** the domain relation *)
         OpenScop.rel_type := OpenScop.DomTy;
         OpenScop.meta := {|
-          OpenScop.row_nb := List.length (pi.(pi_poly));
+          OpenScop.row_nb := List.length domain_rows;
           OpenScop.col_nb := iters_dim + varctxt_dim + 2;
           OpenScop.out_dim_nb := iters_dim;
           OpenScop.in_dim_nb := 0;
           OpenScop.local_dim_nb := 0;
           OpenScop.param_nb := varctxt_dim;
         |};
-        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) (pi.(pi_poly));
+        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) domain_rows;
       |};
       (* schedule *)
       (*
@@ -301,9 +328,10 @@ Definition pi_to_openscop_statement_global
   let normalized_sched := remove_zero_schedule_dims pi.(pi_schedule) in
   let '(sched_core_raw, tail_const) := split_trailing_const_schedule normalized_sched in
   let compact_sctt_dim := Nat.max global_compact_sctt_dim (List.length sched_core_raw) in
+  let domain_rows := dedup_domain_rows pi.(pi_poly) in
   let domain_dim := list_max (map
     (fun (constr: (list Z * Z)) => let (zs, z) := constr in
-      length zs) pi.(pi_poly)) in
+      length zs) domain_rows) in
   let varctxt_dim := length varctxt in
   let iters_dim := domain_dim - varctxt_dim in
   let sched_core :=
@@ -319,14 +347,14 @@ Definition pi_to_openscop_statement_global
       OpenScop.domain := {|
         OpenScop.rel_type := OpenScop.DomTy;
         OpenScop.meta := {|
-          OpenScop.row_nb := List.length (pi.(pi_poly));
+          OpenScop.row_nb := List.length domain_rows;
           OpenScop.col_nb := iters_dim + varctxt_dim + 2;
           OpenScop.out_dim_nb := iters_dim;
           OpenScop.in_dim_nb := 0;
           OpenScop.local_dim_nb := 0;
           OpenScop.param_nb := varctxt_dim;
         |};
-        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) (pi.(pi_poly));
+        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) domain_rows;
       |};
       OpenScop.scattering := {|
         OpenScop.rel_type := OpenScop.ScttTy;
@@ -377,7 +405,7 @@ Definition to_openscop (pol: t): option OpenScop :=
   |} in 
   let ostatements := unwrap_option (List.map (fun pi => pi_to_openscop_statement pi varctxt 0) pis) in 
   let glb_exts := (
-      ArrayExt (List.map (fun var => (Instr.ident_to_openscop_ident var, Instr.ident_to_varname var)) (map fst vars))
+      ArrayExt (List.map (fun x => (Instr.ident_to_openscop_ident (fst x), Instr.ident_to_varname (fst x))) vars)
   )::nil in 
   match ostatements with
   | Some statements => 
@@ -417,7 +445,7 @@ Definition to_openscop_global_padded (pol: t): option OpenScop :=
       pis) in
   let ostatements := unwrap_option (List.map (fun pi => pi_to_openscop_statement_global pi varctxt compact_sctt_dim) pis) in
   let glb_exts := (
-      ArrayExt (List.map (fun var => (Instr.ident_to_openscop_ident var, Instr.ident_to_varname var)) (map fst vars))
+      ArrayExt (List.map (fun x => (Instr.ident_to_openscop_ident (fst x), Instr.ident_to_varname (fst x))) vars)
   )::nil in 
   match ostatements with
   | Some statements => 
@@ -629,6 +657,82 @@ Definition source_like_rows_from_schedule
   let '(sched_core, tail_const) := split_trailing_const_schedule normalized_sched in
   source_like_sctt_rows sched_core tail_const dim.
 
+Definition pad_schedule_to_len (dim len : nat) (sched : Schedule)
+  : Schedule :=
+  List.app sched
+    (List.repeat (zero_affine_function dim) (len - List.length sched)).
+
+Definition source_like_pi_schedule (env_dim : nat) (pi : PolyInstr)
+  : Schedule :=
+  source_like_rows_from_schedule (env_dim + pi_depth pi) (pi_schedule pi).
+
+Definition source_like_schedule_pprog (pp : t) : t :=
+  let '(pis, varctxt, vars) := pp in
+  let env_dim := List.length varctxt in
+  let canon_pi pi :=
+    {|
+      pi_depth := pi_depth pi;
+      pi_instr := pi_instr pi;
+      pi_poly := pi_poly pi;
+      pi_schedule := source_like_pi_schedule env_dim pi;
+      pi_transformation := pi_transformation pi;
+      pi_waccess := pi_waccess pi;
+      pi_raccess := pi_raccess pi;
+    |} in
+  (List.map canon_pi pis, varctxt, vars).
+
+Definition max_schedule_len (pis : list PolyInstr) : nat :=
+  List.fold_left Nat.max
+    (List.map (fun pi => List.length (pi_schedule pi)) pis) 0.
+
+Definition keep_schedule_row_at
+    (env_dim len idx : nat) (pis : list PolyInstr) : bool :=
+  existsb
+    (fun pi =>
+       negb (affine_function_is_zero
+               (List.nth idx
+                 (pad_schedule_to_len
+                    (env_dim + pi_depth pi) len
+                    (pi_schedule pi))
+                 (zero_affine_function
+                    (env_dim + pi_depth pi)))))
+    pis.
+
+Fixpoint keep_schedule_rows
+    (dim idx : nat) (mask : list bool) (sched : Schedule)
+  : Schedule :=
+  match mask with
+  | nil => nil
+  | keep :: mask' =>
+      let aff := List.nth idx sched (zero_affine_function dim) in
+      let rest := keep_schedule_rows dim (S idx) mask' sched in
+      if keep then aff :: rest else rest
+  end.
+
+Definition canonicalize_schedule_pprog (pp : t) : t :=
+  let '(pis, varctxt, vars) := pp in
+  let env_dim := List.length varctxt in
+  let len := max_schedule_len pis in
+  let mask :=
+    List.map
+      (fun idx => keep_schedule_row_at env_dim len idx pis)
+      (List.seq 0 len) in
+  let canon_pi pi :=
+    let dim := env_dim + pi_depth pi in
+    let sched :=
+      keep_schedule_rows dim 0 mask
+        (pad_schedule_to_len dim len (pi_schedule pi)) in
+    {|
+      pi_depth := pi_depth pi;
+      pi_instr := pi_instr pi;
+      pi_poly := pi_poly pi;
+      pi_schedule := sched;
+      pi_transformation := pi_transformation pi;
+      pi_waccess := pi_waccess pi;
+      pi_raccess := pi_raccess pi;
+    |} in
+  (List.map canon_pi pis, varctxt, vars).
+
 Definition raw_scattering_rows
     (sctt : Relation) (varctxt_dim iters_dim : nat) : Schedule :=
   let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
@@ -694,7 +798,7 @@ Definition from_openscop_schedule_only (pol: t) (scop: OpenScop): result t :=
       pi_raccess := pi.(pi_raccess);
     |}
   ) (List.combine pis (OpenScop.statements scop)) in
-  Okk (pis', varctxt, vars)
+  Okk (canonicalize_schedule_pprog (pis', varctxt, vars))
   )
   else Err "from_openscop_schedule_only: pol and scop are not consistent".
 

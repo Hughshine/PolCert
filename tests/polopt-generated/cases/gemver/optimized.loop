@@ -4,13 +4,7 @@ if (1 <= N) {
   for i1 in range(0, N) {
     for i2 in range(0, N) {
       B[i1][i2] = ((A[i1][i2] + (u1[i1] * v1[i2])) + (u2[i1] * v2[i2]));
-    }
-  }
-}
-if (1 <= N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, N) {
-      x[i1] = (x[i1] + ((beta * B[i2][i1]) * y[i2]));
+      x[i2] = (x[i2] + ((beta * B[i1][i2]) * y[i1]));
     }
   }
 }

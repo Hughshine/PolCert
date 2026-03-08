@@ -1,23 +1,13 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,12 +1,16 @@
- context(N);
- 
--for i0 in range(0, N) {
-+if (1 <= N) {
+@@ -3,10 +3,6 @@
+ for i0 in range(0, N) {
    for i1 in range(0, N) {
--    x1[i0] = (x1[i0] + (a[i0][i1] * y_1[i1]));
-+    for i2 in range(0, N) {
-+      x1[i1] = (x1[i1] + (a[i1][i2] * y_1[i2]));
-+    }
-   }
- }
+     x1[i0] = (x1[i0] + (a[i0][i1] * y_1[i1]));
+-  }
+-}
 -for i0 in range(0, N) {
-+if (1 <= N) {
-   for i1 in range(0, N) {
--    x2[i0] = (x2[i0] + (a[i1][i0] * y_2[i1]));
-+    for i2 in range(0, N) {
-+      x2[i1] = (x2[i1] + (a[i2][i1] * y_2[i2]));
-+    }
+-  for i1 in range(0, N) {
+     x2[i0] = (x2[i0] + (a[i1][i0] * y_2[i1]));
    }
  }

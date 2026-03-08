@@ -21,27 +21,8 @@ Current benchmark split:
 
 Current strict-path status:
 - total inputs: `62`
-- succeeded: `45`
-- failed: `17`
-
-Current strict-path failing set:
-- `adi`
-- `advect3d`
-- `corcol`
-- `corcol3`
-- `covcol`
-- `dct`
-- `doitgen`
-- `fusion1`
-- `fusion8`
-- `jacobi-1d-imper`
-- `jacobi-2d-imper`
-- `lu`
-- `multi-stmt-stencil-seq`
-- `pca`
-- `ssymm`
-- `tricky1`
-- `trisolv`
+- succeeded: `62`
+- failed: `0`
 
 Current successful-but-unchanged set:
 - `1dloop-invar`

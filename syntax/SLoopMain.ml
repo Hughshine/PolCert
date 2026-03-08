@@ -131,7 +131,7 @@ let extract_poly loop =
   | Okk pol -> pol
 
 let poly_to_openscop pol =
-  match SPolIRs.SPolIRs.PolyLang.to_openscop pol with
+  match SPolOpt.to_source_openscop pol with
   | None -> frontend_failf "cannot convert extracted polyhedral model to OpenScop"
   | Some scop -> scop
 
@@ -218,6 +218,10 @@ let debug_scheduler loop =
   dump_poly_payload "complete-after" pol_complete_after;
   let (sched_valid, sched_ok) = SPolOpt.SVal.validate pol pol_sched in
   print_validate_components "validate(strengthened, scheduled)" pol pol_sched;
+  let (old_complete_sched_valid, old_complete_sched_ok) = SPolOpt.SVal.validate pol_complete_before pol_sched in
+  print_validate_components "validate(complete-before, scheduled)" pol_complete_before pol_sched;
+  let (new_complete_sched_valid, new_complete_sched_ok) = SPolOpt.SVal.validate pol pol_complete_after in
+  print_validate_components "validate(strengthened, complete-after)" pol pol_complete_after;
   let (complete_sched_valid, complete_sched_ok) = SPolOpt.SVal.validate pol_complete_before pol_complete_after in
   print_validate_components "validate(complete-before, complete-after)" pol_complete_before pol_complete_after;
   print_endline "== Debug Scheduled OpenScop ==";

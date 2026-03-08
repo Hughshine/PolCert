@@ -594,6 +594,53 @@ Module SInstr <: INSTR.
     | SAssign _ rhs => Some (read_accesses_expr rhs)
     end.
 
+  Definition scalar_access_of_slot
+      (names : list varname) (n : nat) : option AccessFunction :=
+    match nth_error names n with
+    | Some name => Some (varname_to_ident name, [])
+    | None => None
+    end.
+
+  Fixpoint export_scalar_reads_expr
+      (names : list varname) (e : expr) : list AccessFunction :=
+    match e with
+    | ExConst _ => []
+    | ExFloat _ => []
+    | ExVar n =>
+        match scalar_access_of_slot names n with
+        | Some acc => [acc]
+        | None => []
+        end
+    | ExAccess _ => []
+    | ExAdd e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExSub e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExMul e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExDiv e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExLe e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExEq e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExAnd e1 e2 => export_scalar_reads_expr names e1 ++ export_scalar_reads_expr names e2
+    | ExCall _ args =>
+        let fix go es :=
+            match es with
+            | [] => []
+            | e :: es' => export_scalar_reads_expr names e ++ go es'
+            end
+        in go args
+    | ExCond c et ef =>
+        export_scalar_reads_expr names c ++
+        export_scalar_reads_expr names et ++
+        export_scalar_reads_expr names ef
+    end.
+
+  Definition export_scalar_reads (names : list varname) (i : t) : list AccessFunction :=
+    match i with
+    | SSkip => []
+    | SAssign _ rhs => export_scalar_reads_expr names rhs
+    end.
+
+  Definition export_scalar_read_vars (names : list varname) (i : t) : list (ident * Ty.t) :=
+    List.map (fun acc => (fst acc, Ty.dummy)) (export_scalar_reads names i).
+
   Definition valid_access_function (wl rl : list AccessFunction) (i : t) : Prop :=
     forall p st st' wcells rcells,
       instr_semantics i p wcells rcells st st' ->

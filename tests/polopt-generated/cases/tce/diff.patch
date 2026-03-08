@@ -1,63 +1,65 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,44 +1,52 @@
- context(N);
+@@ -2,45 +2,25 @@
  
--for i0 in range(0, N) {
-+if (1 <= N) {
+ for i0 in range(0, N) {
    for i1 in range(0, N) {
-     for i2 in range(0, N) {
-       for i3 in range(0, N) {
-         for i4 in range(0, N) {
+-    for i2 in range(0, N) {
+-      for i3 in range(0, N) {
+-        for i4 in range(0, N) {
 -          T1[i0][i1][i2][i3] = (T1[i0][i1][i2][i3] + (A[i4][i1][i2][i3] * C4[i4][i0]));
-+          for i5 in range(0, N) {
-+            T1[i1][i2][i3][i4] = (T1[i1][i2][i3][i4] + (A[i5][i2][i3][i4] * C4[i5][i1]));
-+          }
++    for i3 in range(0, N) {
++      for i4 in range(0, N) {
++        for i7 in range(0, N) {
++          T1[i0][i3][i4][i1] = (T1[i0][i3][i4][i1] + (A[i7][i3][i4][i1] * C4[i7][i0]));
++        }
++        for i7 in range(0, N) {
++          T2[i0][i7][i4][i1] = (T2[i0][i7][i4][i1] + (T1[i0][i3][i4][i1] * C3[i3][i7]));
++        }
++      }
++    }
++    for i3 in range(0, N) {
++      for i4 in range(0, N) {
++        for i7 in range(0, N) {
++          T3[i0][i3][i4][i1] = (T3[i0][i3][i4][i1] + (T2[i0][i3][i7][i1] * C2[i7][i4]));
++        }
++        for i7 in range(0, N) {
++          B[i0][i3][i4][i7] = (B[i0][i3][i4][i7] + (T3[i0][i3][i4][i1] * C1[i1][i7]));
          }
        }
      }
    }
  }
 -for i0 in range(0, N) {
-+if (1 <= N) {
-   for i1 in range(0, N) {
-     for i2 in range(0, N) {
-       for i3 in range(0, N) {
-         for i4 in range(0, N) {
+-  for i1 in range(0, N) {
+-    for i2 in range(0, N) {
+-      for i3 in range(0, N) {
+-        for i4 in range(0, N) {
 -          T2[i0][i1][i2][i3] = (T2[i0][i1][i2][i3] + (T1[i0][i4][i2][i3] * C3[i4][i1]));
-+          for i5 in range(0, N) {
-+            T2[i1][i2][i3][i4] = (T2[i1][i2][i3][i4] + (T1[i1][i5][i3][i4] * C3[i5][i2]));
-+          }
-         }
-       }
-     }
-   }
- }
+-        }
+-      }
+-    }
+-  }
+-}
 -for i0 in range(0, N) {
-+if (1 <= N) {
-   for i1 in range(0, N) {
-     for i2 in range(0, N) {
-       for i3 in range(0, N) {
-         for i4 in range(0, N) {
+-  for i1 in range(0, N) {
+-    for i2 in range(0, N) {
+-      for i3 in range(0, N) {
+-        for i4 in range(0, N) {
 -          T3[i0][i1][i2][i3] = (T3[i0][i1][i2][i3] + (T2[i0][i1][i4][i3] * C2[i4][i2]));
-+          for i5 in range(0, N) {
-+            T3[i1][i2][i3][i4] = (T3[i1][i2][i3][i4] + (T2[i1][i2][i5][i4] * C2[i5][i3]));
-+          }
-         }
-       }
-     }
-   }
- }
+-        }
+-      }
+-    }
+-  }
+-}
 -for i0 in range(0, N) {
-+if (1 <= N) {
-   for i1 in range(0, N) {
-     for i2 in range(0, N) {
-       for i3 in range(0, N) {
-         for i4 in range(0, N) {
+-  for i1 in range(0, N) {
+-    for i2 in range(0, N) {
+-      for i3 in range(0, N) {
+-        for i4 in range(0, N) {
 -          B[i0][i1][i2][i3] = (B[i0][i1][i2][i3] + (T3[i0][i1][i2][i4] * C1[i4][i3]));
-+          for i5 in range(0, N) {
-+            B[i1][i2][i3][i4] = (B[i1][i2][i3][i4] + (T3[i1][i2][i3][i5] * C1[i5][i4]));
-+          }
-         }
-       }
-     }
+-        }
+-      }
+-    }
+-  }
+-}

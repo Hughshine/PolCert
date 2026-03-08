@@ -1,19 +1,16 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,18 +1,36 @@
+@@ -1,18 +1,34 @@
  context(m, n);
  
 -for i0 in range(1, (m + 1)) {
 -  mean[i0] = 0.0;
 -  for i1 in range(1, (n + 1)) {
 -    mean[i0] = (mean[i0] + data[i1][i0]);
-+if ((1 <= n && 1 <= m)) {
++if (1 <= m) {
 +  for i1 in range(1, (m + 1)) {
++    stddev[i1] = 0.0;
 +    mean[i1] = 0.0;
-+    for i3 in range(1, (n + 1)) {
-+      mean[i1] = (mean[i1] + data[i3][i1]);
-+    }
-+    mean[i1] = (mean[i1] / float_n);
    }
 -  mean[i0] = (mean[i0] / float_n);
  }
@@ -21,29 +18,30 @@
 -  stddev[i0] = 0.0;
 -  for i1 in range(1, (n + 1)) {
 -    stddev[i0] = (stddev[i0] + ((data[i1][i0] - mean[i0]) * (data[i1][i0] - mean[i0])));
-+if ((1 <= n && 1 <= m)) {
++if ((1 <= m && 1 <= n)) {
 +  for i1 in range(1, (m + 1)) {
-+    stddev[i1] = 0.0;
-+    for i3 in range(1, (n + 1)) {
-+      stddev[i1] = (stddev[i1] + ((data[i3][i1] - mean[i1]) * (data[i3][i1] - mean[i1])));
++    for i2 in range(1, (n + 1)) {
++      mean[i1] = (mean[i1] + data[i2][i1]);
 +    }
-+    stddev[i1] = (stddev[i1] / float_n);
-+    stddev[i1] = my_sqrt_array(stddev, i1);
-+    stddev[i1] = ((stddev[i1] <= eps) ? 1.0 : stddev[i1]);
    }
 -  stddev[i0] = (stddev[i0] / float_n);
 -  stddev[i0] = my_sqrt_array(stddev, i0);
 -  stddev[i0] = ((stddev[i0] <= eps) ? 1.0 : stddev[i0]);
  }
-+if ((n <= 0 && 1 <= m)) {
++if (1 <= m) {
 +  for i1 in range(1, (m + 1)) {
-+    mean[i1] = 0.0;
 +    mean[i1] = (mean[i1] / float_n);
 +  }
 +}
-+if ((n <= 0 && 1 <= m)) {
++if ((1 <= n && 1 <= m)) {
 +  for i1 in range(1, (m + 1)) {
-+    stddev[i1] = 0.0;
++    for i2 in range(1, (n + 1)) {
++      stddev[i1] = (stddev[i1] + ((data[i2][i1] - mean[i1]) * (data[i2][i1] - mean[i1])));
++    }
++  }
++}
++if (1 <= m) {
++  for i1 in range(1, (m + 1)) {
 +    stddev[i1] = (stddev[i1] / float_n);
 +    stddev[i1] = my_sqrt_array(stddev, i1);
 +    stddev[i1] = ((stddev[i1] <= eps) ? 1.0 : stddev[i1]);

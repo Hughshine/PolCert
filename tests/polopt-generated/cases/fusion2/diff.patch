@@ -1,19 +1,35 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,10 +1,10 @@
+@@ -1,10 +1,24 @@
 -for i0 in range(0, 100) {
 -  for i1 in range(0, 100) {
 -    A[i0][i1] = 1;
-+for i1 in range(0, 100) {
-+  for i2 in range(0, 100) {
-+    A[i1][i2] = 1;
++A[0][0] = 1;
++for i0 in range(1, 199) {
++  if (i0 <= 99) {
++    A[i0][0] = 1;
++  }
++  for i1 in range(max(1, (i0 + -99)), min((i0 + 1), 100)) {
++    for i3 in range((i0 + (-1 * i1)), ((i0 + 1) + (-1 * i1))) {
++      for i4 in range((i0 + (-1 * i3)), ((i0 + 1) + (-1 * i3))) {
++        A[i3][i4] = 1;
++      }
++    }
++    for i3 in range((i0 + (-1 * i1)), ((i0 + 1) + (-1 * i1))) {
++      for i4 in range(((i0 + -1) + (-1 * i3)), (i0 + (-1 * i3))) {
++        B[i3][i4] = (A[(i3 + 1)][i4] + A[i3][(i4 + 1)]);
++      }
++    }
++  }
++  if (100 <= i0) {
++    for i3 in range((i0 + -100), (i0 + -99)) {
++      B[i3][99] = (A[(i3 + 1)][99] + A[i3][(99 + 1)]);
++    }
    }
  }
 -for i0 in range(0, 100) {
 -  for i1 in range(0, 100) {
 -    B[i0][i1] = (A[(i0 + 1)][i1] + A[i0][(i1 + 1)]);
-+for i1 in range(0, 100) {
-+  for i2 in range(0, 100) {
-+    B[i1][i2] = (A[(i1 + 1)][i2] + A[i1][(i2 + 1)]);
-   }
- }
+-  }
+-}
++B[99][99] = (A[(99 + 1)][99] + A[99][(99 + 1)]);

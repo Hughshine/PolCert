@@ -1,67 +1,74 @@
 context(m, n);
 
-if ((1 <= n && 1 <= m)) {
-  for i1 in range(1, (m + 1)) {
-    mean[i1] = 0.0;
-    for i3 in range(1, (n + 1)) {
-      mean[i1] = (mean[i1] + data[i3][i1]);
+if (2 <= m) {
+  for i1 in range(1, m) {
+    for i2 in range((i1 + 1), (m + 1)) {
+      symmat[i1][i2] = 0.0;
     }
+  }
+}
+if (2 <= m) {
+  for i1 in range(1, m) {
+    symmat[i1][i1] = 1.0;
+    stddev[i1] = 0.0;
+    mean[i1] = 0.0;
+  }
+  stddev[m] = 0.0;
+  mean[m] = 0.0;
+}
+if ((m <= 1 && 1 <= m)) {
+  stddev[1] = 0.0;
+  mean[1] = 0.0;
+}
+if ((1 <= m && 1 <= n)) {
+  for i1 in range(1, (m + 1)) {
+    for i2 in range(1, (n + 1)) {
+      mean[i1] = (mean[i1] + data[i2][i1]);
+    }
+  }
+}
+if (1 <= m) {
+  for i1 in range(1, (m + 1)) {
     mean[i1] = (mean[i1] / float_n);
   }
 }
-if ((1 <= n && 1 <= m)) {
+if ((1 <= m && 1 <= n)) {
   for i1 in range(1, (m + 1)) {
-    stddev[i1] = 0.0;
-    for i3 in range(1, (n + 1)) {
-      stddev[i1] = (stddev[i1] + ((data[i3][i1] - mean[i1]) * (data[i3][i1] - mean[i1])));
+    for i2 in range(1, (n + 1)) {
+      stddev[i1] = (stddev[i1] + ((data[i2][i1] - mean[i1]) * (data[i2][i1] - mean[i1])));
+      data[i2][i1] = (data[i2][i1] - mean[i1]);
     }
+  }
+}
+if (1 <= m) {
+  for i1 in range(1, (m + 1)) {
     stddev[i1] = (stddev[i1] / float_n);
     stddev[i1] = sqrt(stddev[i1]);
     stddev[i1] = ((stddev[i1] <= eps) ? 1.0 : stddev[i1]);
   }
 }
-if ((1 <= m && 1 <= n)) {
+if ((1 <= n && 1 <= m)) {
   for i1 in range(1, (n + 1)) {
     for i2 in range(1, (m + 1)) {
-      data[i1][i2] = (data[i1][i2] - mean[i2]);
       x = sqrt(float_n);
       x = (x * stddev[i2]);
       data[i1][i2] = (data[i1][i2] / x);
     }
   }
 }
-if ((2 <= m && 1 <= n)) {
+if ((1 <= n && 2 <= m)) {
   for i1 in range(1, m) {
-    symmat[i1][i1] = 1.0;
-    for i3 in range((i1 + 1), (m + 1)) {
-      symmat[i1][i3] = 0.0;
-      for i5 in range(1, (n + 1)) {
-        symmat[i1][i3] = (symmat[i1][i3] + (data[i5][i1] * data[i5][i3]));
+    for i2 in range((i1 + 1), (m + 1)) {
+      for i3 in range(1, (n + 1)) {
+        symmat[i1][i2] = (symmat[i1][i2] + (data[i3][i1] * data[i3][i2]));
       }
-      symmat[i3][i1] = symmat[i1][i3];
     }
   }
 }
-if ((n <= 0 && 1 <= m)) {
-  for i1 in range(1, (m + 1)) {
-    mean[i1] = 0.0;
-    mean[i1] = (mean[i1] / float_n);
-  }
-}
-if ((n <= 0 && 1 <= m)) {
-  for i1 in range(1, (m + 1)) {
-    stddev[i1] = 0.0;
-    stddev[i1] = (stddev[i1] / float_n);
-    stddev[i1] = sqrt(stddev[i1]);
-    stddev[i1] = ((stddev[i1] <= eps) ? 1.0 : stddev[i1]);
-  }
-}
-if ((2 <= m && n <= 0)) {
+if (2 <= m) {
   for i1 in range(1, m) {
-    symmat[i1][i1] = 1.0;
-    for i3 in range((i1 + 1), (m + 1)) {
-      symmat[i1][i3] = 0.0;
-      symmat[i3][i1] = symmat[i1][i3];
+    for i2 in range((i1 + 1), (m + 1)) {
+      symmat[i2][i1] = symmat[i1][i2];
     }
   }
 }

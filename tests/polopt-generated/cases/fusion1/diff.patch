@@ -1,0 +1,17 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,8 +1,11 @@
+ context(N);
+ 
+-for i0 in range(1, (N + -2)) {
++for i0 in range(1, min(3, (N + -2))) {
+   A[i0] = (0.33 * ((In[(i0 - 1)] + In[i0]) + In[(i0 + 1)]));
+ }
+-for i0 in range(2, (N + -3)) {
+-  Out[i0] = (0.33 * ((A[(i0 - 1)] + A[i0]) + A[(i0 + 1)]));
++for i0 in range(3, (N + -2)) {
++  A[i0] = (0.33 * ((In[(i0 - 1)] + In[i0]) + In[(i0 + 1)]));
++  for i2 in range((i0 + -1), i0) {
++    Out[i2] = (0.33 * ((A[(i2 - 1)] + A[i2]) + A[(i2 + 1)]));
++  }
+ }

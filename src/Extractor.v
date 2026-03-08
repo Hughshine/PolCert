@@ -2017,15 +2017,14 @@ Lemma extractor_success_implies_wf_check:
     let '(pis, varctxt, vars) := pol in
     check_extracted_wf pis varctxt vars = true.
 Proof.
-    intros [[stmt varctxt] vars] [[pis varctxt'] vars'] Hext.
-    simpl in *.
-    unfold extractor in Hext. simpl in Hext.
-    remember (wf_scop_stmt stmt) as WfScop.
-    destruct WfScop; try discriminate.
+    intros [[stmt varctxt] vars] [[pis varctxt_out] vars_out] Hext.
+    unfold extractor in Hext.
+    destruct (wf_scop_stmt stmt) eqn:WfScop; try discriminate.
     remember (extract_stmt stmt [] (Datatypes.length varctxt) 0 []) as Extract.
-    destruct Extract as [l|msg]; try discriminate.
-    destruct (check_extracted_wf l varctxt vars) eqn: Hwf; try discriminate.
-    inv Hext. simpl. exact Hwf.
+    destruct Extract as [pis0|msg]; try discriminate.
+    destruct (check_extracted_wf pis0 varctxt vars) eqn:Hwf; try discriminate.
+    inversion Hext; subst.
+    exact Hwf.
 Qed.
 
 Lemma extractor_success_inv:
@@ -2037,13 +2036,12 @@ Lemma extractor_success_inv:
     pol = (pis, varctxt, vars).
 Proof.
     intros stmt varctxt vars pol Hext.
-    unfold extractor in Hext. simpl in Hext.
-    remember (wf_scop_stmt stmt) as WfScop.
-    destruct WfScop; try discriminate.
-    remember (extract_stmt stmt [] (Datatypes.length varctxt) 0 []) as Extract.
-    destruct Extract as [pis|msg]; try discriminate.
+    unfold extractor in Hext.
+    destruct (wf_scop_stmt stmt) eqn:WfScop; try discriminate.
+    destruct (extract_stmt stmt [] (Datatypes.length varctxt) 0 []) as [pis|msg] eqn:Hextract;
+      try discriminate.
     destruct (check_extracted_wf pis varctxt vars) eqn:Hwf; try discriminate.
-    inv Hext.
+    inversion Hext; subst.
     exists pis.
     repeat split; auto.
 Qed.
@@ -2069,13 +2067,12 @@ Lemma extractor_success_implies_wf_pinstrs:
     Forall (fun pi => PolyLang.wf_pinstr varctxt vars pi) pis.
 Proof.
     intros [[stmt varctxt0] vars0] pis varctxt vars Hext.
-    unfold extractor in Hext. simpl in Hext.
-    remember (wf_scop_stmt stmt) as WfScop.
-    destruct WfScop; try discriminate.
-    remember (extract_stmt stmt [] (Datatypes.length varctxt0) 0 []) as Extract.
-    destruct Extract as [pis0|msg]; try discriminate.
+    unfold extractor in Hext.
+    destruct (wf_scop_stmt stmt) eqn:WfScop; try discriminate.
+    destruct (extract_stmt stmt [] (Datatypes.length varctxt0) 0 []) as [pis0|msg] eqn:Hextract;
+      try discriminate.
     destruct (check_extracted_wf pis0 varctxt0 vars0) eqn:Hwf; try discriminate.
-    inv Hext.
+    inversion Hext; subst.
     apply check_extracted_wf_spec in Hwf.
     destruct Hwf as [_ Hall].
     eapply Forall_forall.
