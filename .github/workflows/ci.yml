@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build CI image
+        run: docker build -t polcert-ci .
+
+      - name: Run proof, extraction, polcert, and strict polopt suite
+        run: >-
+          docker run --rm --entrypoint bash polcert-ci
+          -lc 'bash /polcert/tools/ci/run_ci.sh'
