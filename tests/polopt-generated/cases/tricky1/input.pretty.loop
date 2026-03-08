@@ -1,8 +1,8 @@
 context(N);
 
 for i0 in range(0, N) {
-  y[i0] = 0;
   for i1 in range(0, N) {
-    y[i0] = (y[i0] + (a[i0][i1] * x[i1]));
+    a[i0] = 0;
+    a[i1] = 0;
   }
 }

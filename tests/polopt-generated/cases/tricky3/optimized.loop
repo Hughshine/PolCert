@@ -3,19 +3,28 @@ context(pointc, clusterc, dims);
 if ((1 <= dims && 1 <= clusterc)) {
   for i0 in range(0, pointc) {
     dist_min = 0;
-    for i2 in range(0, clusterc) {
+    dist = 0;
+    kmin = 0;
+    clusterv = 0;
+    for i1 in range(1, min(dims, clusterc)) {
       dist = 0;
       kmin = 0;
-    }
-    for i2 in range(0, dims) {
       clusterv = 0;
+    }
+    for i1 in range(clusterc, dims) {
+      clusterv = 0;
+    }
+    for i1 in range(dims, clusterc) {
+      dist = 0;
+      kmin = 0;
     }
   }
 }
 if ((clusterc <= 0 && 1 <= dims)) {
   for i0 in range(0, pointc) {
     dist_min = 0;
-    for i2 in range(0, dims) {
+    clusterv = 0;
+    for i1 in range(1, dims) {
       clusterv = 0;
     }
   }
@@ -23,7 +32,9 @@ if ((clusterc <= 0 && 1 <= dims)) {
 if ((dims <= 0 && 1 <= clusterc)) {
   for i0 in range(0, pointc) {
     dist_min = 0;
-    for i2 in range(0, clusterc) {
+    dist = 0;
+    kmin = 0;
+    for i1 in range(1, clusterc) {
       dist = 0;
       kmin = 0;
     }

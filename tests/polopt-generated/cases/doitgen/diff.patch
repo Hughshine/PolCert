@@ -1,23 +1,40 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -2,14 +2,14 @@
+@@ -1,15 +1,31 @@
+ context(N);
  
- for i0 in range(0, N) {
+-for i0 in range(0, N) {
++if (1 <= N) {
    for i1 in range(0, N) {
--    for i2 in range(0, N) {
+     for i2 in range(0, N) {
 -      sum[i0][i1][i2] = 0;
--      for i3 in range(0, N) {
+       for i3 in range(0, N) {
 -        sum[i0][i1][i2] = (sum[i0][i1][i2] + (A[i0][i1][i3] * C4[i3][i2]));
-+    for i3 in range(0, N) {
-+      sum[i0][i1][i3] = 0;
-+      for i5 in range(0, N) {
-+        sum[i0][i1][i3] = (sum[i0][i1][i3] + (A[i0][i1][i5] * C4[i5][i3]));
++        sum[i1][i2][i3] = 0;
        }
-     }
+-    }
 -    for i2 in range(0, N) {
 -      A[i0][i1][i2] = sum[i0][i1][i2];
-+    for i3 in range(0, N) {
-+      A[i0][i1][i3] = sum[i0][i1][i3];
      }
    }
  }
++if (1 <= N) {
++  for i1 in range(0, N) {
++    for i2 in range(0, N) {
++      for i3 in range(0, N) {
++        for i4 in range(0, N) {
++          sum[i1][i2][i3] = (sum[i1][i2][i3] + (A[i1][i2][i4] * C4[i4][i3]));
++        }
++      }
++    }
++  }
++}
++if (1 <= N) {
++  for i1 in range(0, N) {
++    for i2 in range(0, N) {
++      for i3 in range(0, N) {
++        A[i1][i2][i3] = sum[i1][i2][i3];
++      }
++    }
++  }
++}

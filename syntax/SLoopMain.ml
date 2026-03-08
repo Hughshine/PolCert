@@ -68,6 +68,63 @@ let print_section title body =
 let rec nat_of_int n =
   if n <= 0 then Datatypes.O else Datatypes.S (nat_of_int (n - 1))
 
+let rec int_of_nat = function
+  | Datatypes.O -> 0
+  | Datatypes.S n -> 1 + int_of_nat n
+
+let string_of_z z = string_of_int (Camlcoq.Z.to_int z)
+
+let string_of_aff (zs, c) =
+  let coeffs = String.concat "," (List.map string_of_z zs) in
+  Printf.sprintf "[%s | %s]" coeffs (string_of_z c)
+
+let string_of_aff_list affs =
+  "[" ^ String.concat "; " (List.map string_of_aff affs) ^ "]"
+
+let string_of_access acc =
+  let (arr, affs) = acc in
+  Printf.sprintf "(%s,%s)" (string_of_int (Camlcoq.P.to_int arr)) (string_of_aff_list affs)
+
+let string_of_access_list accs =
+  "[" ^ String.concat "; " (List.map string_of_access accs) ^ "]"
+
+let dump_poly_payload label pp =
+  let module PL = SPolIRs.SPolIRs.PolyLang in
+  let ((pis, varctxt), vars) = pp in
+  Printf.eprintf
+    "[debug] %s payload: pis=%d varctxt=%d vars=%d
+"
+    label (List.length pis) (List.length varctxt) (List.length vars);
+  List.iteri
+    (fun idx pi ->
+      Printf.eprintf
+        "[debug]   pi[%d]: depth=%d poly_rows=%d sched_rows=%d tf_rows=%d w=%d r=%d
+"
+        idx
+        (int_of_nat (PL.pi_depth pi))
+        (List.length (PL.pi_poly pi))
+        (List.length (PL.pi_schedule pi))
+        (List.length (PL.pi_transformation pi))
+        (List.length (PL.pi_waccess pi))
+        (List.length (PL.pi_raccess pi));
+      Printf.eprintf
+        "[debug]     schedule=%s
+"
+        (string_of_aff_list (PL.pi_schedule pi));
+      Printf.eprintf
+        "[debug]     transformation=%s
+"
+        (string_of_aff_list (PL.pi_transformation pi));
+      Printf.eprintf
+        "[debug]     waccess=%s
+"
+        (string_of_access_list (PL.pi_waccess pi));
+      Printf.eprintf
+        "[debug]     raccess=%s
+"
+        (string_of_access_list (PL.pi_raccess pi)))
+    pis
+
 let extract_poly loop =
   match SPolOpt.CoreOpt.Extractor.extractor loop with
   | Err msg -> frontend_failf "extractor failed: %s" (string_of_coq_err msg)
@@ -112,20 +169,32 @@ let dump_scheduled_openscop loop =
   print_newline ()
 
 let debug_scheduler loop =
-  let pol = extract_poly loop in
+  let pol0 = extract_poly loop in
+  dump_poly_payload "extracted" pol0;
+  let pol = SPolOpt.PreparedOpt.Strengthen.strengthen_pprog pol0 in
+  dump_poly_payload "strengthened" pol;
   let inscop = poly_to_openscop pol in
   let (self_valid, self_ok) = SPolOpt.SVal.validate pol pol in
-  print_validate_components "validate(extracted, extracted)" pol pol;
+  print_validate_components "validate(strengthened, strengthened)" pol pol;
   Printf.eprintf
-    "[debug] validate(extracted, extracted) = %b (ok=%b, alarm=%b)\n"
+    "[debug] validate(strengthened, strengthened) = %b (ok=%b, alarm=%b)\n"
     self_valid self_ok (not self_ok);
   let pol_roundtrip =
     match SPolIRs.SPolIRs.PolyLang.from_openscop_like_source pol inscop with
     | Okk pol' -> pol'
     | Err msg -> frontend_failf "self round-trip failed: %s" (string_of_coq_err msg)
   in
+  let pol_complete_before =
+    match SPolIRs.SPolIRs.PolyLang.from_openscop_complete inscop with
+    | Okk pol' -> pol'
+    | Err _ -> SPolIRs.SPolIRs.PolyLang.dummy
+  in
+  dump_poly_payload "roundtrip-before" pol_roundtrip;
+  dump_poly_payload "complete-before" pol_complete_before;
   let (roundtrip_valid, roundtrip_ok) = SPolOpt.SVal.validate pol pol_roundtrip in
-  print_validate_components "validate(extracted, roundtrip-before)" pol pol_roundtrip;
+  print_validate_components "validate(strengthened, roundtrip-before)" pol pol_roundtrip;
+  let (complete_before_valid, complete_before_ok) = SPolOpt.SVal.validate pol pol_complete_before in
+  print_validate_components "validate(strengthened, complete-before)" pol pol_complete_before;
   print_endline "== Debug Extracted OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout inscop;
   print_newline ();
@@ -133,16 +202,29 @@ let debug_scheduler loop =
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_roundtrip);
   print_newline ();
   Printf.eprintf
-    "[debug] validate(extracted, roundtrip-before) = %b (ok=%b, alarm=%b)\n"
+    "[debug] validate(strengthened, roundtrip-before) = %b (ok=%b, alarm=%b)\n"
     roundtrip_valid roundtrip_ok (not roundtrip_ok);
   let pol_sched = schedule_poly pol in
+  dump_poly_payload "scheduled" pol_sched;
+  let pol_complete_after =
+    match SPolIRs.SPolIRs.scop_scheduler inscop with
+    | Okk outscop ->
+        begin match SPolIRs.SPolIRs.PolyLang.from_openscop_complete outscop with
+        | Okk pol' -> pol'
+        | Err _ -> SPolIRs.SPolIRs.PolyLang.dummy
+        end
+    | Err _ -> SPolIRs.SPolIRs.PolyLang.dummy
+  in
+  dump_poly_payload "complete-after" pol_complete_after;
   let (sched_valid, sched_ok) = SPolOpt.SVal.validate pol pol_sched in
-  print_validate_components "validate(extracted, scheduled)" pol pol_sched;
+  print_validate_components "validate(strengthened, scheduled)" pol pol_sched;
+  let (complete_sched_valid, complete_sched_ok) = SPolOpt.SVal.validate pol_complete_before pol_complete_after in
+  print_validate_components "validate(complete-before, complete-after)" pol_complete_before pol_complete_after;
   print_endline "== Debug Scheduled OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_sched);
   print_newline ();
   Printf.eprintf
-    "[debug] validate(extracted, scheduled) = %b (ok=%b, alarm=%b)\n"
+    "[debug] validate(strengthened, scheduled) = %b (ok=%b, alarm=%b)\n"
     sched_valid sched_ok (not sched_ok)
 
 let dump_extracted_openscop loop =

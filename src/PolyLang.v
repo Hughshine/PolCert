@@ -153,8 +153,13 @@ Definition source_like_sctt_rows
     (sched: Schedule)
     (tail_const: option Z)
     (dim: nat) : Schedule :=
-  zero_affine_function dim ::
-  schedule_to_source_like_rows sched ++
+  (match sched with
+   | aff :: _ =>
+       if affine_function_is_const aff
+       then schedule_to_source_like_rows sched
+       else zero_affine_function dim :: schedule_to_source_like_rows sched
+   | nil => zero_affine_function dim :: nil
+   end) ++
   [match tail_const with
    | Some c => constant_affine_function dim c
    | None => zero_affine_function dim
@@ -658,7 +663,10 @@ Definition source_like_template_matches_scattering
   let '(sched_core, tail_const) := source_like_rows_to_compact_schedule rows in
   let sched :=
     refill_source_like_schedule_from_template template sched_core tail_const in
-  listzzs_strict_eqb rows (source_like_rows_from_schedule (varctxt_dim + iters_dim) sched).
+  listzzs_strict_eqb
+    (drop_trailing_zero_schedule rows)
+    (drop_trailing_zero_schedule
+       (source_like_rows_from_schedule (varctxt_dim + iters_dim) sched)).
 
 Definition from_openscop_schedule_only (pol: t) (scop: OpenScop): result t := 
   if check_pol_openscop_consistency pol scop then 

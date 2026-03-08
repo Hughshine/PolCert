@@ -1,23 +1,27 @@
 context(NMAX);
 
 if (3 <= NMAX) {
-  for i0 in range(0, NMAX) {
-    for i1 in range(0, 2) {
-      c[i0][i1] = (c[i0][i1] + (a[i1][i1] * b[i0][i1]));
-    }
-    for i1 in range(2, NMAX) {
-      for i3 in range(0, (i1 + -1)) {
-        c[i0][i3] = (c[i0][i3] + (a[i1][i3] * b[i0][i1]));
-        c[i0][i1] = (c[i0][i1] + (a[i1][i1] * b[i0][i1]));
+  for i1 in range(0, NMAX) {
+    for i2 in range(2, NMAX) {
+      for i3 in range(0, (i2 + -1)) {
+        c[i1][i2] = (c[i1][i2] + (a[i2][i2] * b[i1][i2]));
       }
-      c[i0][i1] = (c[i0][i1] + (a[i1][i1] * b[i0][i1]));
     }
   }
 }
-if (NMAX <= 2) {
-  for i0 in range(0, NMAX) {
-    for i1 in range(0, NMAX) {
-      c[i0][i1] = (c[i0][i1] + (a[i1][i1] * b[i0][i1]));
+if (1 <= NMAX) {
+  for i1 in range(0, NMAX) {
+    for i2 in range(0, NMAX) {
+      c[i1][i2] = (c[i1][i2] + (a[i2][i2] * b[i1][i2]));
+    }
+  }
+}
+if (3 <= NMAX) {
+  for i1 in range(0, NMAX) {
+    for i2 in range(2, NMAX) {
+      for i3 in range(0, (i2 + -1)) {
+        c[i1][i3] = (c[i1][i3] + (a[i2][i3] * b[i1][i2]));
+      }
     }
   }
 }
