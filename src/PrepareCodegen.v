@@ -17,6 +17,7 @@ Require Import ImpureAlarmConfig.
 Require Import PolIRs.
 Require Import ASTGen.
 Require Import CodeGen.
+Require Import LoopCleanup.
 Require Import SelectionSort.
 Require Import LibTactics.
 
@@ -29,6 +30,7 @@ Module Loop := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
 Module ASTGen := ASTGen PolIRs.
 Module CodeGen := CodeGen PolIRs.
+Module Cleanup := LoopCleanup PolIRs.
 
 Definition resize_affine (cols: nat) (aff: list Z * Z) : list Z * Z :=
   let '(zs, c) := aff in
@@ -1451,7 +1453,8 @@ Proof.
 Qed.
 
 Definition prepared_codegen (pol: PolyLang.t) : imp Loop.t :=
-  CodeGen.codegen (prepare_codegen pol).
+  BIND loop <- CodeGen.codegen (prepare_codegen pol) -;
+  pure (Cleanup.cleanup loop).
 
 Theorem prepared_codegen_correct:
   forall pol st st',
@@ -1463,23 +1466,39 @@ Proof.
   intros [[pis varctxt] vars] st st' loop Hcodegen Hwf Hloop.
   pose proof (prepare_codegen_preserves_wf ((pis, varctxt), vars) Hwf) as Hcgwf.
   destruct Hcgwf as [Hctxt [Hdim Hsched]].
-  inversion Hloop. rename env into envv.
+  set (es := length varctxt).
+  set (n := length vars).
+  set (prep_pis := map (prepare_pi es n) pis).
   unfold prepared_codegen in Hcodegen.
-  unfold CodeGen.codegen in Hcodegen. simpl in Hcodegen.
-  bind_imp_destruct Hcodegen loop' Hgen.
-  eapply mayReturn_pure in Hcodegen. subst. inversion H; subst.
+  bind_imp_destruct Hcodegen loop_raw Hcodegen_raw.
+  eapply mayReturn_pure in Hcodegen. subst loop.
+  pose proof ((proj1 (Cleanup.cleanup_correct loop_raw st st')) Hloop) as Hloop_raw.
+  unfold CodeGen.codegen in Hcodegen_raw. simpl in Hcodegen_raw.
+  bind_imp_destruct Hcodegen_raw loop_stmt Hgen.
+  eapply mayReturn_pure in Hcodegen_raw. subst loop_raw.
+  inversion Hloop_raw. rename env into envv.
+  inversion H; subst.
+  assert (Hctxt' : (es <= n)%nat).
+  { subst es n. exact Hctxt. }
+  assert (Hdim' : ASTGen.pis_have_dimension prep_pis n).
+  { subst prep_pis es n. exact Hdim. }
+  assert (Hsched' : forall pi, In pi prep_pis -> (poly_nrl pi.(PolyLang.pi_schedule) <= n)%nat).
+  { subst prep_pis es n. exact Hsched. }
+  pose proof (CodeGen.complete_generate_many_preserve_sem
+        es n prep_pis envv st st' Hctxt' loop Hgen H3) as Hpoly.
   eapply prepare_codegen_semantics_correct.
   - exact Hwf.
-  - eapply PolyLang.PSemaIntro with (envv := rev envv); eauto.
-    { clear - Hwf. firstorder. }
-    eapply CodeGen.complete_generate_many_preserve_sem with (env := envv) in Hgen; eauto.
-    eapply Hgen.
-    + exact H3.
-    + symmetry.
-      eapply Instr.init_env_samelen with (envv := rev envv) in H2.
-      rewrite rev_length in H2. exact H2.
-    + exact Hdim.
-    + exact Hsched.
+  - econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply Hpoly.
+      * symmetry.
+        eapply Instr.init_env_samelen with (envv := rev envv) in H2.
+        rewrite rev_length in H2. exact H2.
+      * exact Hdim'.
+      * exact Hsched'.
 Qed.
 
 End PrepareCodegen.
