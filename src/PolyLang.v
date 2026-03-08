@@ -618,6 +618,19 @@ Definition compact_schedule_to_source_like
    | None => zero_affine_function dim
    end].
 
+Definition source_like_rows_from_schedule
+    (dim : nat) (sched : Schedule) : Schedule :=
+  let normalized_sched := remove_zero_schedule_dims sched in
+  let '(sched_core, tail_const) := split_trailing_const_schedule normalized_sched in
+  source_like_sctt_rows sched_core tail_const dim.
+
+Definition raw_scattering_rows
+    (sctt : Relation) (varctxt_dim iters_dim : nat) : Schedule :=
+  let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
+  map (fun (aff: bool * openscop_constraint) =>
+    openscop_sctt_row_to_affine aff openscop_sctt_dim varctxt_dim iters_dim)
+    sctt.(OpenScop.constrs).
+
 Fixpoint overwrite_last_schedule_const
     (sched : Schedule) (tail_const : option Z) : Schedule :=
   match sched with
@@ -631,6 +644,21 @@ Fixpoint overwrite_last_schedule_const
       else aff :: nil
   | aff :: sched' => aff :: overwrite_last_schedule_const sched' tail_const
   end.
+
+Definition refill_source_like_schedule_from_template
+    (template rows : Schedule) (tail_const : option Z) : Schedule :=
+  let '(const_rows, dyn_rows) := split_const_and_nonconst_schedule_rows rows in
+  overwrite_last_schedule_const
+    (refill_schedule_from_template_keep_zero_consts template const_rows dyn_rows)
+    tail_const.
+
+Definition source_like_template_matches_scattering
+    (template : Schedule) (sctt : Relation) (varctxt_dim iters_dim : nat) : bool :=
+  let rows := raw_scattering_rows sctt varctxt_dim iters_dim in
+  let '(sched_core, tail_const) := source_like_rows_to_compact_schedule rows in
+  let sched :=
+    refill_source_like_schedule_from_template template sched_core tail_const in
+  listzzs_strict_eqb rows (source_like_rows_from_schedule (varctxt_dim + iters_dim) sched).
 
 Definition from_openscop_schedule_only (pol: t) (scop: OpenScop): result t := 
   if check_pol_openscop_consistency pol scop then 
@@ -674,18 +702,23 @@ Definition from_openscop_like_source (pol: t) (scop: OpenScop): result t :=
       (fun (constr: (list Z * Z)) => let (zs, z) := constr in 
         length zs) pi.(pi_poly)) in
     let iters_dim := domain_dim - varctxt_dim in
-    let '(sched_core, tail_const) :=
-      from_openscop_sctt_to_source_like_compact_schedule
-        (OpenScop.scattering stmt_scop) varctxt_dim iters_dim in
-    let '(const_rows, dyn_rows) := split_const_and_nonconst_schedule_rows sched_core in
     {|
       pi_depth := pi.(pi_depth);
       pi_instr := pi.(pi_instr);
       pi_poly := pi.(pi_poly);
       pi_schedule :=
-        overwrite_last_schedule_const
-          (refill_schedule_from_template_keep_zero_consts pi.(pi_schedule) const_rows dyn_rows)
-          tail_const;
+        if source_like_template_matches_scattering
+             pi.(pi_schedule) (OpenScop.scattering stmt_scop) varctxt_dim iters_dim
+        then
+          let '(sched_core, tail_const) :=
+            from_openscop_sctt_to_source_like_compact_schedule
+              (OpenScop.scattering stmt_scop) varctxt_dim iters_dim in
+          refill_source_like_schedule_from_template pi.(pi_schedule) sched_core tail_const
+        else
+          from_openscop_sctt_to_pol_schedule
+            (OpenScop.scattering stmt_scop)
+            domain_dim iters_dim
+            (length (OpenScop.constrs (OpenScop.scattering stmt_scop)));
       pi_transformation := pi.(pi_transformation);
       pi_waccess := pi.(pi_waccess);
       pi_raccess := pi.(pi_raccess);
