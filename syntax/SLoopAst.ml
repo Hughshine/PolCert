@@ -12,11 +12,18 @@ type access = {
 
 type expr =
   | IntLit of int
+  | FloatLit of string
   | NameRef of string
   | Access of access
   | AddE of expr * expr
   | SubE of expr * expr
   | MulE of expr * expr
+  | DivE of expr * expr
+  | LeE of expr * expr
+  | EqE of expr * expr
+  | AndE of expr * expr
+  | CallE of string * expr list
+  | CondE of expr * expr * expr
 
 type test =
   | Le of affine * affine

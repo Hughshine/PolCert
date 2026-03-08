@@ -20,6 +20,7 @@ Inductive Atom :=
 | AInt: Z -> Atom
 | AVar: string -> Atom
 | AFloat: float -> Atom
+| AFloatLiteral: string -> Atom
 .
 
 (* AfAtom *)
@@ -47,6 +48,8 @@ Inductive ArrayExpr :=
 
 | ArrLt: ArrayExpr -> ArrayExpr -> ArrayExpr
 | ArrLe: ArrayExpr -> ArrayExpr -> ArrayExpr
+| ArrEq: ArrayExpr -> ArrayExpr -> ArrayExpr
+| ArrAnd: ArrayExpr -> ArrayExpr -> ArrayExpr
 | ArrCond: ArrayExpr (*bool*) -> ArrayExpr -> ArrayExpr -> ArrayExpr
 
 | ArrCall: varname -> list ArrayExpr -> ArrayExpr

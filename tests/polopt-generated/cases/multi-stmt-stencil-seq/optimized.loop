@@ -1,0 +1,35 @@
+context(n);
+
+if (3 <= n) {
+  for i1 in range(2, n) {
+    for i2 in range((i1 + -1), i1) {
+      a1[i2] = ((a0[(i2 - 1)] + a0[i2]) + a0[(i2 + 1)]);
+    }
+  }
+}
+if (5 <= n) {
+  for i1 in range(2, (n + -2)) {
+    a2[i1] = ((a1[(i1 - 1)] + a1[i1]) + a1[(i1 + 1)]);
+  }
+}
+if (7 <= n) {
+  for i1 in range(4, (n + -2)) {
+    for i2 in range((i1 + -1), i1) {
+      a3[i2] = ((a2[(i2 - 1)] + a2[i2]) + a2[(i2 + 1)]);
+    }
+  }
+}
+if (9 <= n) {
+  for i1 in range(6, (n + -2)) {
+    for i2 in range((i1 + -2), (i1 + -1)) {
+      a4[i2] = ((a3[(i2 - 1)] + a3[i2]) + a3[(i2 + 1)]);
+    }
+  }
+}
+if (11 <= n) {
+  for i1 in range(8, (n + -2)) {
+    for i2 in range((i1 + -3), (i1 + -2)) {
+      a5[i2] = ((a4[(i2 - 1)] + a4[i2]) + a4[(i2 + 1)]);
+    }
+  }
+}

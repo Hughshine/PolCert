@@ -95,7 +95,7 @@ let rec simplify_loop_expr = function
         end
 
 let rec simplify_instr_expr = function
-  | (Instr.ExConst _ | Instr.ExVar _ | Instr.ExAccess _) as e -> e
+  | (Instr.ExConst _ | Instr.ExFloat _ | Instr.ExVar _ | Instr.ExAccess _) as e -> e
   | Instr.ExAdd (a, b) ->
       let a = simplify_instr_expr a in
       let b = simplify_instr_expr b in
@@ -124,6 +124,31 @@ let rec simplify_instr_expr = function
       | e, Instr.ExConst zb when z_eq zb z1 -> e
       | _ -> Instr.ExMul (a, b)
       end
+  | Instr.ExDiv (a, b) ->
+      let a = simplify_instr_expr a in
+      let b = simplify_instr_expr b in
+      begin match a, b with
+      | Instr.ExConst za, Instr.ExConst zb -> Instr.ExConst (Camlcoq.Z.div za zb)
+      | Instr.ExConst za, _ when z_eq za z0 -> Instr.ExConst z0
+      | e, Instr.ExConst zb when z_eq zb z1 -> e
+      | _ -> Instr.ExDiv (a, b)
+      end
+  | Instr.ExLe (a, b) ->
+      let a = simplify_instr_expr a in
+      let b = simplify_instr_expr b in
+      Instr.ExLe (a, b)
+  | Instr.ExEq (a, b) ->
+      let a = simplify_instr_expr a in
+      let b = simplify_instr_expr b in
+      Instr.ExEq (a, b)
+  | Instr.ExAnd (a, b) ->
+      let a = simplify_instr_expr a in
+      let b = simplify_instr_expr b in
+      Instr.ExAnd (a, b)
+  | Instr.ExCall (fn, args) ->
+      Instr.ExCall (fn, List.map simplify_instr_expr args)
+  | Instr.ExCond (c, t, f) ->
+      Instr.ExCond (simplify_instr_expr c, simplify_instr_expr t, simplify_instr_expr f)
 
 let normalize_loop_le a b =
   match a, b with
@@ -215,11 +240,26 @@ let string_of_access env slots = function
 let string_of_instr_expr env slots expr =
   let rec go = function
     | Instr.ExConst z -> string_of_z z
+    | Instr.ExFloat lit -> Camlcoq.camlstring_of_coqstring lit
     | Instr.ExVar n -> string_of_loop_expr env (slot_expr slots n)
     | Instr.ExAccess a -> string_of_access env slots a
     | Instr.ExAdd (a, b) -> Printf.sprintf "(%s + %s)" (go a) (go b)
     | Instr.ExSub (a, b) -> Printf.sprintf "(%s - %s)" (go a) (go b)
     | Instr.ExMul (a, b) -> Printf.sprintf "(%s * %s)" (go a) (go b)
+    | Instr.ExDiv (a, b) -> Printf.sprintf "(%s / %s)" (go a) (go b)
+    | Instr.ExLe (a, b) -> Printf.sprintf "(%s <= %s)" (go a) (go b)
+    | Instr.ExEq (a, b) -> Printf.sprintf "(%s == %s)" (go a) (go b)
+    | Instr.ExAnd (a, b) -> Printf.sprintf "(%s && %s)" (go a) (go b)
+    | Instr.ExCall (fn, args) ->
+        let fn = Camlcoq.camlstring_of_coqstring fn in
+        let args =
+          match List.map go args with
+          | [] -> ""
+          | hd :: tl -> List.fold_left (fun acc s -> acc ^ ", " ^ s) hd tl
+        in
+        Printf.sprintf "%s(%s)" fn args
+    | Instr.ExCond (c, t, f) ->
+        Printf.sprintf "(%s ? %s : %s)" (go c) (go t) (go f)
   in
   go (simplify_instr_expr expr)
 

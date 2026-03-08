@@ -2,7 +2,7 @@ context(N);
 
 for k in range(0, N) {
   for j in range((k + 1), N) {
-    a[k][j] = (a[k][j] * a[k][k]);
+    a[k][j] = (a[k][j] / a[k][k]);
   }
   for i in range((k + 1), N) {
     for j in range((k + 1), N) {

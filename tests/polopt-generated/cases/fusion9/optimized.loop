@@ -2,9 +2,10 @@ context(N);
 
 if (2 <= N) {
   for i0 in range(0, N) {
-    a[(2 * i0)] = (a[(2 * i0)] + b[0]);
-    for i2 in range(1, N) {
+    for i2 in range(0, N) {
       a[(2 * i0)] = (a[(2 * i0)] + b[i2]);
+    }
+    for i2 in range(1, N) {
       a[((2 * i0) + 1)] = (a[((2 * i0) + 1)] + b[i2]);
     }
   }

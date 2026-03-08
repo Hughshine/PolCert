@@ -8,6 +8,7 @@ type token_kind =
   | KRange
   | Ident of string
   | Int of int
+  | Float of string
   | LParen
   | RParen
   | LBrace
@@ -20,9 +21,12 @@ type token_kind =
   | Plus
   | Minus
   | Star
+  | Slash
   | Le
   | EqEq
   | AndAnd
+  | Question
+  | Colon
   | Eof
 
 type token = {
@@ -42,6 +46,7 @@ let string_of_token_kind = function
   | KRange -> "range"
   | Ident s -> Printf.sprintf "identifier(%s)" s
   | Int n -> Printf.sprintf "int(%d)" n
+  | Float s -> Printf.sprintf "float(%s)" s
   | LParen -> "("
   | RParen -> ")"
   | LBrace -> "{"
@@ -54,9 +59,12 @@ let string_of_token_kind = function
   | Plus -> "+"
   | Minus -> "-"
   | Star -> "*"
+  | Slash -> "/"
   | Le -> "<="
   | EqEq -> "=="
   | AndAnd -> "&&"
+  | Question -> "?"
+  | Colon -> ":"
   | Eof -> "<eof>"
 
 let is_space = function
@@ -106,8 +114,11 @@ let lex input =
   let rec ident_end i =
     if i < len && is_ident_char input.[i] then ident_end (i + 1) else i
   in
-  let rec number_end i =
-    if i < len && is_digit input.[i] then number_end (i + 1) else i
+  let rec number_end i seen_dot seen_digit =
+    if i >= len then (i, seen_dot, seen_digit)
+    else if is_digit input.[i] then number_end (i + 1) seen_dot true
+    else if input.[i] = '.' && not seen_dot then number_end (i + 1) true seen_digit
+    else (i, seen_dot, seen_digit)
   in
   let rec go i acc =
     let i = skip i in
@@ -140,19 +151,26 @@ let lex input =
                   | '+' -> go (i + 1) ({ kind = Plus; pos = i } :: acc)
                   | '-' -> go (i + 1) ({ kind = Minus; pos = i } :: acc)
                   | '*' -> go (i + 1) ({ kind = Star; pos = i } :: acc)
+                  | '/' -> go (i + 1) ({ kind = Slash; pos = i } :: acc)
+                  | '?' -> go (i + 1) ({ kind = Question; pos = i } :: acc)
+                  | ':' -> go (i + 1) ({ kind = Colon; pos = i } :: acc)
                   | c when is_ident_start c ->
                       let j = ident_end (i + 1) in
                       let s = String.sub input i (j - i) in
                       go j ({ kind = keyword_or_ident s; pos = i } :: acc)
-                  | c when is_digit c ->
-                      let j = number_end (i + 1) in
+                  | c when is_digit c || (c = '.' && i + 1 < len && is_digit input.[i + 1]) ->
+                      let j, seen_dot, seen_digit = number_end (i + 1) (c = '.') (is_digit c) in
+                      if not seen_digit then error i "malformed numeric literal";
                       let s = String.sub input i (j - i) in
-                      let n =
-                        match int_of_string_opt s with
-                        | Some n -> n
-                        | None -> error i (Printf.sprintf "integer literal out of range: %s" s)
-                      in
-                      go j ({ kind = Int n; pos = i } :: acc)
+                      if seen_dot then
+                        go j ({ kind = Float s; pos = i } :: acc)
+                      else
+                        let n =
+                          match int_of_string_opt s with
+                          | Some n -> n
+                          | None -> error i (Printf.sprintf "integer literal out of range: %s" s)
+                        in
+                        go j ({ kind = Int n; pos = i } :: acc)
                   | c -> error i (Printf.sprintf "unexpected character %C" c)
                   end
   in
@@ -329,7 +347,33 @@ and parse_affine_atom st =
       e
   | tok -> error tok.pos (Printf.sprintf "unexpected token in affine expression: %s" (string_of_token_kind tok.kind))
 
-and parse_expr st = parse_expr_add st
+and parse_expr st = parse_expr_ternary st
+
+and parse_expr_ternary st =
+  let lhs = parse_expr_and st in
+  match accept st (function Question -> true | _ -> false) with
+  | None -> lhs
+  | Some _ ->
+      let then_e = parse_expr st in
+      expect_token st Colon ":";
+      let else_e = parse_expr st in
+      CondE (lhs, then_e, else_e)
+
+and parse_expr_and st =
+  let lhs = parse_expr_cmp st in
+  let rec more acc =
+    match peek st with
+    | { kind = AndAnd; _ } -> ignore (bump st); more (AndE (acc, parse_expr_cmp st))
+    | _ -> acc
+  in
+  more lhs
+
+and parse_expr_cmp st =
+  let lhs = parse_expr_add st in
+  match peek st with
+  | { kind = Le; _ } -> ignore (bump st); LeE (lhs, parse_expr_add st)
+  | { kind = EqEq; _ } -> ignore (bump st); EqE (lhs, parse_expr_add st)
+  | _ -> lhs
 
 and parse_expr_add st =
   let lhs = parse_expr_mul st in
@@ -346,6 +390,7 @@ and parse_expr_mul st =
   let rec more acc =
     match peek st with
     | { kind = Star; _ } -> ignore (bump st); more (MulE (acc, parse_expr_atom st))
+    | { kind = Slash; _ } -> ignore (bump st); more (DivE (acc, parse_expr_atom st))
     | _ -> acc
   in
   more lhs
@@ -353,8 +398,24 @@ and parse_expr_mul st =
 and parse_expr_atom st =
   match bump st with
   | { kind = Int n; _ } -> IntLit n
+  | { kind = Float s; _ } -> FloatLit s
   | { kind = Ident s; _ } ->
-      if Option.is_some (accept st (function LBracket -> true | _ -> false)) then begin
+      if Option.is_some (accept st (function LParen -> true | _ -> false)) then begin
+        let rec args acc =
+          match peek st with
+          | { kind = RParen; _ } ->
+              ignore (bump st);
+              List.rev acc
+          | _ ->
+              let arg = parse_expr st in
+              begin match peek st with
+              | { kind = Comma; _ } -> ignore (bump st); args (arg :: acc)
+              | { kind = RParen; _ } -> ignore (bump st); List.rev (arg :: acc)
+              | tok -> error tok.pos (Printf.sprintf "expected , or ), got %s" (string_of_token_kind tok.kind))
+              end
+        in
+        CallE (s, args [])
+      end else if Option.is_some (accept st (function LBracket -> true | _ -> false)) then begin
         st.idx <- st.idx - 1;
         Access (parse_access_after_base st s)
       end else NameRef s

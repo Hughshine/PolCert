@@ -1,0 +1,15 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,6 +1,8 @@
+-for i0 in range(0, 100) {
+-  A[(2 * i0)] = 1;
++for i1 in range(0, 100) {
++  A[(2 * i1)] = 1;
+ }
+-for i0 in range(0, 100) {
+-  B[(2 * i0)] = A[((2 * i0) + 2)];
++for i1 in range(1, 101) {
++  for i2 in range((i1 + -1), i1) {
++    B[(2 * i2)] = A[((2 * i2) + 2)];
++  }
+ }

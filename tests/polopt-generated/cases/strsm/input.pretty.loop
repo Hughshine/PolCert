@@ -4,7 +4,7 @@ for i0 in range(0, N) {
   for i1 in range(0, N) {
     for i2 in range((i0 + 1), N) {
       if (i2 == (i0 + 1)) {
-        b[i1][i0] = (b[i1][i0] * a[i0][i0]);
+        b[i1][i0] = (b[i1][i0] / a[i0][i0]);
       }
       b[i1][i2] = (b[i1][i2] - (a[i0][i2] * b[i1][i0]));
     }

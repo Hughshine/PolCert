@@ -1,0 +1,15 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i3 in range(0, N) {
+      sum[i0][i1][i3] = 0;
+      for i5 in range(0, N) {
+        sum[i0][i1][i3] = (sum[i0][i1][i3] + (A[i0][i1][i5] * C4[i5][i3]));
+      }
+    }
+    for i3 in range(0, N) {
+      A[i0][i1][i3] = sum[i0][i1][i3];
+    }
+  }
+}

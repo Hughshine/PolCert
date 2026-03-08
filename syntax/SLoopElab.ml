@@ -140,6 +140,7 @@ let elab_access env seen { base; indices } =
 
 let rec elab_expr env seen = function
   | IntLit n -> Instr.ExConst (z_of_int n)
+  | FloatLit s -> Instr.ExFloat (Camlcoq.coqstring_of_camlstring s)
   | NameRef x ->
       begin match lookup_slot env x with
       | Some idx -> Instr.ExVar (nat_of_int idx)
@@ -151,6 +152,14 @@ let rec elab_expr env seen = function
   | AddE (a, b) -> Instr.ExAdd (elab_expr env seen a, elab_expr env seen b)
   | SubE (a, b) -> Instr.ExSub (elab_expr env seen a, elab_expr env seen b)
   | MulE (a, b) -> Instr.ExMul (elab_expr env seen a, elab_expr env seen b)
+  | DivE (a, b) -> Instr.ExDiv (elab_expr env seen a, elab_expr env seen b)
+  | LeE (a, b) -> Instr.ExLe (elab_expr env seen a, elab_expr env seen b)
+  | EqE (a, b) -> Instr.ExEq (elab_expr env seen a, elab_expr env seen b)
+  | AndE (a, b) -> Instr.ExAnd (elab_expr env seen a, elab_expr env seen b)
+  | CallE (name, args) ->
+      Instr.ExCall (Camlcoq.coqstring_of_camlstring name, List.map (elab_expr env seen) args)
+  | CondE (c, t, f) ->
+      Instr.ExCond (elab_expr env seen c, elab_expr env seen t, elab_expr env seen f)
 
 let rec elab_test env = function
   | Le (a, b) -> Loop.make_le (elab_loop_aff env a) (elab_loop_aff env b)

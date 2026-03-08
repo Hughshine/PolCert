@@ -404,6 +404,15 @@ Definition openscop_constraint_eqb
   let '(b2, zs2) := c2 in
   Bool.eqb b1 b2 && list_beq Z.t Z.eqb zs1 zs2.
 
+Definition openscop_sctt_row_to_affine
+    (constr: bool * openscop_constraint)
+    (openscop_sctt_dim varctxt_dim iters_dim: nat) : list Z * Z :=
+  let '(_, aff) := constr in
+  let aff' := List.removelast aff in
+  let iters := firstn iters_dim (skipn openscop_sctt_dim aff') in
+  let varctxt := skipn iters_dim (skipn openscop_sctt_dim aff') in
+  (varctxt ++ iters, List.last aff 0%Z).
+
 Fixpoint even_slots_are_zero_sctt_rows
     (constrs: list (bool * openscop_constraint))
     (slot openscop_sctt_dim varctxt_dim iters_dim: nat) : bool :=
@@ -412,9 +421,12 @@ Fixpoint even_slots_are_zero_sctt_rows
   | constr :: constrs' =>
       let slot_ok :=
         if Nat.even slot
-        then openscop_constraint_eqb
-            constr
-            (zero_sctt_constr slot varctxt_dim iters_dim openscop_sctt_dim)
+        then
+          let aff :=
+            openscop_sctt_row_to_affine constr openscop_sctt_dim varctxt_dim iters_dim in
+          if Nat.eqb slot (openscop_sctt_dim - 1)
+          then affine_function_is_const aff
+          else affine_function_is_zero aff
         else true in
       slot_ok &&
       even_slots_are_zero_sctt_rows
@@ -520,6 +532,28 @@ Fixpoint refill_schedule_from_template
            end
   end.
 
+Fixpoint refill_schedule_from_template_keep_zero_consts
+    (template const_rows dyn_rows: Schedule) : Schedule :=
+  match template with
+  | nil => nil
+  | aff :: template' =>
+      if affine_function_is_const aff
+      then if affine_function_is_zero aff
+           then aff :: refill_schedule_from_template_keep_zero_consts template' const_rows dyn_rows
+           else match const_rows with
+                | const_row :: const_rows' =>
+                    const_row :: refill_schedule_from_template_keep_zero_consts template' const_rows' dyn_rows
+                | nil =>
+                    aff :: refill_schedule_from_template_keep_zero_consts template' nil dyn_rows
+                end
+      else match dyn_rows with
+           | dim :: dims' =>
+               dim :: refill_schedule_from_template_keep_zero_consts template' const_rows dims'
+           | nil =>
+               aff :: refill_schedule_from_template_keep_zero_consts template' const_rows nil
+           end
+  end.
+
 Fixpoint interleave_zero_schedule_rows (dim : nat) (sched : Schedule) : Schedule :=
   match sched with
   | nil => nil
@@ -594,15 +628,14 @@ Definition from_openscop_like_source (pol: t) (scop: OpenScop): result t :=
     let '(sched_core, tail_const) :=
       from_openscop_sctt_to_compact_schedule
         (OpenScop.scattering stmt_scop) varctxt_dim iters_dim in
-    let '(const_rows, dyn_rows) :=
-      split_const_and_nonconst_schedule_rows sched_core in
+    let '(const_rows, dyn_rows) := split_const_and_nonconst_schedule_rows sched_core in
     {|
       pi_depth := pi.(pi_depth);
       pi_instr := pi.(pi_instr);
       pi_poly := pi.(pi_poly);
       pi_schedule :=
         overwrite_last_schedule_const
-          (refill_schedule_from_template pi.(pi_schedule) const_rows dyn_rows)
+          (refill_schedule_from_template_keep_zero_consts pi.(pi_schedule) const_rows dyn_rows)
           tail_const;
       pi_transformation := pi.(pi_transformation);
       pi_waccess := pi.(pi_waccess);

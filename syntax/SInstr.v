@@ -28,7 +28,21 @@ Module Ty <: TY.
 End Ty.
 
 Module State <: STATE.
-  Definition t := MemCell -> Z.
+  Inductive value : Type :=
+  | VInt (z : Z)
+  | VFloat (lit : string)
+  | VBool (b : bool)
+  | VAdd (v1 v2 : value)
+  | VSub (v1 v2 : value)
+  | VMul (v1 v2 : value)
+  | VDiv (v1 v2 : value)
+  | VLe (v1 v2 : value)
+  | VEq (v1 v2 : value)
+  | VAnd (v1 v2 : value)
+  | VCall (fn : varname) (args : list value)
+  | VIte (c t e : value).
+
+  Definition t := MemCell -> value.
   Definition non_alias (_ : t) := True.
   Definition eq (st1 st2 : t) : Prop := forall c, st1 c = st2 c.
 
@@ -41,7 +55,7 @@ Module State <: STATE.
   Lemma eq_trans : forall s1 s2 s3, eq s1 s2 -> eq s2 s3 -> eq s1 s3.
   Proof. intros s1 s2 s3 H12 H23 c. rewrite H12, H23. reflexivity. Qed.
 
-  Definition dummy_state : t := fun _ => 0%Z.
+  Definition dummy_state : t := fun _ => VInt 0%Z.
 End State.
 
 Module SInstr <: INSTR.
@@ -74,11 +88,18 @@ Module SInstr <: INSTR.
 
   Inductive expr : Type :=
   | ExConst (z : Z)
+  | ExFloat (lit : string)
   | ExVar (n : nat)
   | ExAccess (a : access)
   | ExAdd (e1 e2 : expr)
   | ExSub (e1 e2 : expr)
-  | ExMul (e1 e2 : expr).
+  | ExMul (e1 e2 : expr)
+  | ExDiv (e1 e2 : expr)
+  | ExLe (e1 e2 : expr)
+  | ExEq (e1 e2 : expr)
+  | ExAnd (e1 e2 : expr)
+  | ExCall (fn : varname) (args : list expr)
+  | ExCond (c et ef : expr).
 
   Inductive lang : Type :=
   | SSkip
@@ -106,7 +127,15 @@ Module SInstr <: INSTR.
   Defined.
 
   Fixpoint expr_eq_dec (e1 e2 : expr) : {e1 = e2} + {e1 <> e2}.
-  Proof. decide equality; try apply access_eq_dec; try apply Z.eq_dec; try apply Nat.eq_dec. Defined.
+  Proof.
+    decide equality;
+      try apply list_eq_dec;
+      try apply expr_eq_dec;
+      try apply string_dec;
+      try apply access_eq_dec;
+      try apply Z.eq_dec;
+      try apply Nat.eq_dec.
+  Defined.
 
   Fixpoint lang_eq_dec (i1 i2 : lang) : {i1 = i2} + {i1 <> i2}.
   Proof. decide equality; try apply expr_eq_dec; try apply access_eq_dec. Defined.
@@ -166,11 +195,25 @@ Module SInstr <: INSTR.
   Fixpoint read_accesses_expr (e : expr) : list AccessFunction :=
     match e with
     | ExConst _ => []
+    | ExFloat _ => []
     | ExVar _ => []
     | ExAccess a => [access_to_function a]
     | ExAdd e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
     | ExSub e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
     | ExMul e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
+    | ExDiv e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
+    | ExLe e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
+    | ExEq e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
+    | ExAnd e1 e2 => read_accesses_expr e1 ++ read_accesses_expr e2
+    | ExCall _ args =>
+        let fix read_args (es : list expr) :=
+            match es with
+            | [] => []
+            | e :: es' => read_accesses_expr e ++ read_args es'
+            end
+        in read_args args
+    | ExCond c et ef =>
+        read_accesses_expr c ++ read_accesses_expr et ++ read_accesses_expr ef
     end.
 
   Definition normalize_affine (cols : nat) (aff : list Z * Z) : (list Z * Z) :=
@@ -191,6 +234,56 @@ Module SInstr <: INSTR.
   Definition access_cell (a : access) (p : list Z) : MemCell :=
     exact_cell (access_to_function a) p.
 
+  Definition value_add (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VInt (z1 + z2)%Z
+    | _, _ => State.VAdd v1 v2
+    end.
+
+  Definition value_sub (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VInt (z1 - z2)%Z
+    | _, _ => State.VSub v1 v2
+    end.
+
+  Definition value_mul (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VInt (z1 * z2)%Z
+    | _, _ => State.VMul v1 v2
+    end.
+
+  Definition value_div (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VInt (Z.div z1 z2)
+    | _, _ => State.VDiv v1 v2
+    end.
+
+  Definition value_le (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VBool (Z.leb z1 z2)
+    | _, _ => State.VLe v1 v2
+    end.
+
+  Definition value_eq (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VInt z1, State.VInt z2 => State.VBool (Z.eqb z1 z2)
+    | State.VBool b1, State.VBool b2 => State.VBool (Bool.eqb b1 b2)
+    | _, _ => State.VEq v1 v2
+    end.
+
+  Definition value_and (v1 v2 : State.value) : State.value :=
+    match v1, v2 with
+    | State.VBool b1, State.VBool b2 => State.VBool (andb b1 b2)
+    | _, _ => State.VAnd v1 v2
+    end.
+
+  Definition value_cond (c vt vf : State.value) : State.value :=
+    match c with
+    | State.VBool true => vt
+    | State.VBool false => vf
+    | _ => State.VIte c vt vf
+    end.
+
   Definition memcell_eq_dec (c1 c2 : MemCell) : {cell_eq c1 c2} + {~ cell_eq c1 c2}.
   Proof.
     destruct c1 as [id1 idx1], c2 as [id2 idx2].
@@ -201,28 +294,110 @@ Module SInstr <: INSTR.
     - right. intros [Heq _]. contradiction.
   Defined.
 
-  Definition state_write (st : State.t) (cell : MemCell) (v : Z) : State.t :=
+  Definition state_write (st : State.t) (cell : MemCell) (v : State.value) : State.t :=
     fun c => if memcell_eq_dec c cell then v else st c.
 
-  Fixpoint eval_expr (e : expr) (p : list Z) (st : State.t) : Z :=
+  Fixpoint eval_expr (e : expr) (p : list Z) (st : State.t) : State.value :=
     match e with
-    | ExConst z => z
-    | ExVar n => nth n p 0%Z
+    | ExConst z => State.VInt z
+    | ExFloat lit => State.VFloat lit
+    | ExVar n => State.VInt (nth n p 0%Z)
     | ExAccess a => st (access_cell a p)
-    | ExAdd e1 e2 => (eval_expr e1 p st + eval_expr e2 p st)%Z
-    | ExSub e1 e2 => (eval_expr e1 p st - eval_expr e2 p st)%Z
-    | ExMul e1 e2 => (eval_expr e1 p st * eval_expr e2 p st)%Z
+    | ExAdd e1 e2 => value_add (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExSub e1 e2 => value_sub (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExMul e1 e2 => value_mul (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExDiv e1 e2 => value_div (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExLe e1 e2 => value_le (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExEq e1 e2 => value_eq (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExAnd e1 e2 => value_and (eval_expr e1 p st) (eval_expr e2 p st)
+    | ExCall fn args =>
+        let fix eval_args (es : list expr) :=
+            match es with
+            | [] => []
+            | e :: es' => eval_expr e p st :: eval_args es'
+            end
+        in State.VCall fn (eval_args args)
+    | ExCond c et ef =>
+        value_cond (eval_expr c p st) (eval_expr et p st) (eval_expr ef p st)
     end.
 
   Fixpoint read_cells_expr (e : expr) (p : list Z) : list MemCell :=
     match e with
     | ExConst _ => []
+    | ExFloat _ => []
     | ExVar _ => []
     | ExAccess a => [access_cell a p]
     | ExAdd e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
     | ExSub e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
     | ExMul e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
+    | ExDiv e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
+    | ExLe e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
+    | ExEq e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
+    | ExAnd e1 e2 => read_cells_expr e1 p ++ read_cells_expr e2 p
+    | ExCall _ args =>
+        let fix read_args (es : list expr) :=
+            match es with
+            | [] => []
+            | e :: es' => read_cells_expr e p ++ read_args es'
+            end
+        in read_args args
+    | ExCond c et ef =>
+        read_cells_expr c p ++ read_cells_expr et p ++ read_cells_expr ef p
     end.
+
+  Fixpoint eval_expr_args (es : list expr) (p : list Z) (st : State.t) : list State.value :=
+    match es with
+    | [] => []
+    | e :: es' => eval_expr e p st :: eval_expr_args es' p st
+    end.
+
+  Fixpoint read_cells_expr_args (es : list expr) (p : list Z) : list MemCell :=
+    match es with
+    | [] => []
+    | e :: es' => read_cells_expr e p ++ read_cells_expr_args es' p
+    end.
+
+  Lemma eval_expr_local_args_eq :
+    forall args p st,
+      (fix eval_args (es : list expr) : list State.value :=
+          match es with
+          | [] => []
+          | e :: es' => eval_expr e p st :: eval_args es'
+          end) args = eval_expr_args args p st.
+  Proof.
+    intros args p st.
+    induction args as [|e args IH]; simpl.
+    - reflexivity.
+    - now rewrite IH.
+  Qed.
+
+  Lemma read_cells_expr_local_args_eq :
+    forall args p,
+      (fix read_args (es : list expr) : list MemCell :=
+          match es with
+          | [] => []
+          | e :: es' => read_cells_expr e p ++ read_args es'
+          end) args = read_cells_expr_args args p.
+  Proof.
+    intros args p.
+    induction args as [|e args IH]; simpl.
+    - reflexivity.
+    - now rewrite IH.
+  Qed.
+
+  Lemma eval_expr_call_unfold :
+    forall fn args p st,
+      eval_expr (ExCall fn args) p st = State.VCall fn (eval_expr_args args p st).
+  Proof.
+    intros fn args p st. simpl. now rewrite eval_expr_local_args_eq.
+  Qed.
+
+  Lemma read_cells_expr_call_unfold :
+    forall fn args p,
+      read_cells_expr (ExCall fn args) p = read_cells_expr_args args p.
+  Proof.
+    intros fn args p. simpl. apply read_cells_expr_local_args_eq.
+  Qed.
 
   Inductive sema : t -> list Z -> list MemCell -> list MemCell -> State.t -> State.t -> Prop :=
   | SemaSkip : forall p st1 st2,
@@ -299,15 +474,47 @@ Module SInstr <: INSTR.
     - destruct (memcell_eq_dec c cell1) as [Hc1|Hc1]; reflexivity.
   Qed.
 
-  Lemma eval_expr_state_eq : forall e p st1 st2,
-    State.eq st1 st2 ->
-    eval_expr e p st1 = eval_expr e p st2.
+  Lemma eval_expr_state_eq :
+    forall e p st1 st2,
+      State.eq st1 st2 ->
+      eval_expr e p st1 = eval_expr e p st2.
   Proof.
-    induction e; intros; simpl; try reflexivity.
-    - apply H.
-    - rewrite (IHe1 p st1 st2 H). rewrite (IHe2 p st1 st2 H). reflexivity.
-    - rewrite (IHe1 p st1 st2 H). rewrite (IHe2 p st1 st2 H). reflexivity.
-    - rewrite (IHe1 p st1 st2 H). rewrite (IHe2 p st1 st2 H). reflexivity.
+    fix IH_expr 1.
+    intros e p st1 st2 Heq.
+    destruct e as
+        [z | lit | n | a
+         | e1 e2 | e1 e2 | e1 e2 | e1 e2
+         | e1 e2 | e1 e2 | e1 e2
+         | fn args
+         | c et ef];
+      simpl; try reflexivity.
+    - apply Heq.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite (IH_expr e1 p st1 st2 Heq), (IH_expr e2 p st1 st2 Heq). reflexivity.
+    - rewrite eval_expr_local_args_eq. f_equal.
+      revert args.
+      fix IH_args 1.
+      intros args0.
+      destruct args0 as [|arg args0]; simpl.
+      + reflexivity.
+      + rewrite (IH_expr arg p st1 st2 Heq), (IH_args args0). reflexivity.
+    - rewrite (IH_expr c p st1 st2 Heq), (IH_expr et p st1 st2 Heq), (IH_expr ef p st1 st2 Heq).
+      reflexivity.
+  Qed.
+
+  Lemma eval_expr_args_state_eq :
+    forall es p st1 st2,
+      State.eq st1 st2 ->
+      eval_expr_args es p st1 = eval_expr_args es p st2.
+  Proof.
+    induction es as [|e es IH]; intros p st1 st2 Heq; simpl.
+    - reflexivity.
+    - rewrite (eval_expr_state_eq e p st1 st2 Heq), (IH p st1 st2 Heq). reflexivity.
   Qed.
 
   Lemma valid_access_cells_nil : forall p al,
@@ -323,6 +530,28 @@ Module SInstr <: INSTR.
   Proof.
     unfold valid_access_cells. intros p c1 c2 al H1 H2 c Hin.
     apply in_app_or in Hin. destruct Hin; auto.
+  Qed.
+
+  Lemma valid_access_cells_concat : forall p css al,
+    Forall (fun cs => valid_access_cells p cs al) css ->
+    valid_access_cells p (concat css) al.
+  Proof.
+    intros p css al Hvalid.
+    induction Hvalid as [|cs css Hcs Hcss IH]; simpl.
+    - apply valid_access_cells_nil.
+    - eapply valid_access_cells_app; eauto.
+  Qed.
+
+  Lemma Forall_concat_map_inv :
+    forall (A : Type) (f : A -> list MemCell) xs cell,
+      Forall (fun rc => cell_neq rc cell) (concat (map f xs)) ->
+      Forall (fun x => Forall (fun rc => cell_neq rc cell) (f x)) xs.
+  Proof.
+    intros A f xs cell.
+    induction xs as [|x xs IH]; intros Hforall; simpl in *.
+    - constructor.
+    - apply Forall_app in Hforall as [Hx Hxs].
+      constructor; auto.
   Qed.
 
   Lemma listzzs_eqb_affine_product_eq :
@@ -384,6 +613,7 @@ Module SInstr <: INSTR.
       (rl : list AccessFunction) (e : expr) : bool :=
     match e with
     | ExConst _ => true
+    | ExFloat _ => true
     | ExVar _ => true
     | ExAccess a => access_function_checker_access rl a
     | ExAdd e1 e2 =>
@@ -393,7 +623,21 @@ Module SInstr <: INSTR.
         access_function_checker_expr rl e1 &&
         access_function_checker_expr rl e2
     | ExMul e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
-    end.
+    | ExDiv e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
+    | ExLe e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
+    | ExEq e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
+    | ExAnd e1 e2 => access_function_checker_expr rl e1 && access_function_checker_expr rl e2
+    | ExCall _ args => forallb (access_function_checker_expr rl) args
+    | ExCond c et ef =>
+        access_function_checker_expr rl c &&
+        access_function_checker_expr rl et &&
+        access_function_checker_expr rl ef
+    end
+  .
+
+  Definition access_function_checker_expr_list
+      (rl : list AccessFunction) (es : list expr) : bool :=
+    forallb (access_function_checker_expr rl) es.
 
   Definition access_function_checker (wl rl : list AccessFunction) (i : t) : bool :=
     match i with
@@ -419,16 +663,65 @@ Module SInstr <: INSTR.
       access_function_checker_expr rl e = true ->
       valid_access_cells p (read_cells_expr e p) rl.
   Proof.
-    induction e; intros p Hchk; simpl in *.
+    fix IH_expr 2.
+    intros rl e p Hchk.
+    destruct e as
+        [z | lit | n | a
+         | e1 e2 | e1 e2 | e1 e2 | e1 e2
+         | e1 e2 | e1 e2 | e1 e2
+         | fn args
+         | c et ef];
+      simpl in *.
+    - apply valid_access_cells_nil.
     - apply valid_access_cells_nil.
     - apply valid_access_cells_nil.
     - apply access_function_checker_access_correct; exact Hchk.
     - apply andb_true_iff in Hchk as [H1 H2].
-      eapply valid_access_cells_app; [apply IHe1|apply IHe2]; eauto.
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
     - apply andb_true_iff in Hchk as [H1 H2].
-      eapply valid_access_cells_app; [apply IHe1|apply IHe2]; eauto.
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
     - apply andb_true_iff in Hchk as [H1 H2].
-      eapply valid_access_cells_app; [apply IHe1|apply IHe2]; eauto.
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
+    - apply andb_true_iff in Hchk as [H1 H2].
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
+    - apply andb_true_iff in Hchk as [H1 H2].
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
+    - apply andb_true_iff in Hchk as [H1 H2].
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
+    - apply andb_true_iff in Hchk as [H1 H2].
+      eapply valid_access_cells_app; [apply IH_expr|apply IH_expr]; eauto.
+    - rewrite read_cells_expr_local_args_eq.
+      unfold access_function_checker_expr_list in *.
+      revert args Hchk.
+      fix IH_args 1.
+      intros args0 Hchk0.
+      destruct args0 as [|arg args0]; simpl in *.
+      + apply valid_access_cells_nil.
+      + apply andb_true_iff in Hchk0 as [Harg Hargs].
+        eapply valid_access_cells_app.
+        * apply IH_expr. exact Harg.
+        * apply IH_args. exact Hargs.
+    - apply andb_true_iff in Hchk as [Hct Hf].
+      apply andb_true_iff in Hct as [Hc Ht].
+      eapply valid_access_cells_app.
+      * apply IH_expr. exact Hc.
+      * eapply valid_access_cells_app.
+        -- apply IH_expr. exact Ht.
+        -- apply IH_expr. exact Hf.
+  Qed.
+
+  Lemma access_function_checker_expr_list_correct :
+    forall rl es p,
+      access_function_checker_expr_list rl es = true ->
+      valid_access_cells p (read_cells_expr_args es p) rl.
+  Proof.
+    unfold access_function_checker_expr_list.
+    induction es as [|e es IH]; intros p Hchk; simpl in *.
+    - apply valid_access_cells_nil.
+    - apply andb_true_iff in Hchk as [He Hes].
+      eapply valid_access_cells_app.
+      + eapply access_function_checker_expr_correct; eauto.
+      + apply IH. exact Hes.
   Qed.
 
   Lemma access_function_checker_correct :
@@ -445,19 +738,64 @@ Module SInstr <: INSTR.
       + apply access_function_checker_expr_correct. exact Hrl.
   Qed.
 
-  Lemma eval_expr_write_irrelevant : forall e p st cell val,
-    Forall (fun rc => cell_neq rc cell) (read_cells_expr e p) ->
-    eval_expr e p (state_write st cell val) = eval_expr e p st.
+  Lemma eval_expr_write_irrelevant :
+    forall e p st cell val,
+      Forall (fun rc => cell_neq rc cell) (read_cells_expr e p) ->
+      eval_expr e p (state_write st cell val) = eval_expr e p st.
   Proof.
-    induction e; intros p st cell val Hneq; simpl in *; auto.
+    fix IH_expr 1.
+    intros e p st cell val Hneq.
+    destruct e as
+        [z | lit | n | a
+         | e1 e2 | e1 e2 | e1 e2 | e1 e2
+         | e1 e2 | e1 e2 | e1 e2
+         | fn args
+         | c et ef];
+      simpl in *; auto.
     - inversion Hneq as [|? ? Hc _].
       rewrite state_write_other; auto.
     - apply Forall_app in Hneq as [H1 H2].
-      rewrite IHe1 by exact H1. rewrite IHe2 by exact H2. reflexivity.
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
     - apply Forall_app in Hneq as [H1 H2].
-      rewrite IHe1 by exact H1. rewrite IHe2 by exact H2. reflexivity.
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
     - apply Forall_app in Hneq as [H1 H2].
-      rewrite IHe1 by exact H1. rewrite IHe2 by exact H2. reflexivity.
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
+    - apply Forall_app in Hneq as [H1 H2].
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
+    - apply Forall_app in Hneq as [H1 H2].
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
+    - apply Forall_app in Hneq as [H1 H2].
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
+    - apply Forall_app in Hneq as [H1 H2].
+      rewrite (IH_expr e1 p st cell val H1), (IH_expr e2 p st cell val H2). reflexivity.
+    - rewrite !eval_expr_local_args_eq.
+      f_equal.
+      revert args Hneq.
+      fix IH_args 1.
+      intros args0 Hneq0.
+      destruct args0 as [|arg args0]; simpl in *.
+      + reflexivity.
+      + apply Forall_app in Hneq0 as [Harg Hargs].
+        rewrite (IH_expr arg p st cell val Harg).
+        f_equal.
+        apply IH_args. exact Hargs.
+    - apply Forall_app in Hneq as [Hc Htf].
+      apply Forall_app in Htf as [Ht Hf].
+      rewrite (IH_expr c p st cell val Hc), (IH_expr et p st cell val Ht), (IH_expr ef p st cell val Hf).
+      reflexivity.
+  Qed.
+
+  Lemma eval_expr_args_write_irrelevant :
+    forall es p st cell val,
+      Forall (fun rc => cell_neq rc cell) (read_cells_expr_args es p) ->
+      eval_expr_args es p (state_write st cell val) =
+      eval_expr_args es p st.
+  Proof.
+    induction es as [|e es IH]; intros p st cell val Hneq; simpl in *.
+    - reflexivity.
+    - apply Forall_app in Hneq as [He Hes].
+      rewrite (eval_expr_write_irrelevant e p st cell val He), (IH p st cell val Hes).
+      reflexivity.
   Qed.
 
   Lemma instr_semantics_stable_under_state_eq :
@@ -525,11 +863,19 @@ Module SInstr <: INSTR.
   Fixpoint expr_to_openscop (e : expr) (names : list varname) : ArrayExpr :=
     match e with
     | ExConst z => ArrAtom (AInt z)
+    | ExFloat lit => ArrAtom (AFloatLiteral lit)
     | ExVar n => ArrAtom (AVar (fallback_name names n))
     | ExAccess a => ArrAccessAtom (access_to_openscop a names)
     | ExAdd e1 e2 => ArrAdd (expr_to_openscop e1 names) (expr_to_openscop e2 names)
     | ExSub e1 e2 => ArrMinus (expr_to_openscop e1 names) (expr_to_openscop e2 names)
     | ExMul e1 e2 => ArrMulti (expr_to_openscop e1 names) (expr_to_openscop e2 names)
+    | ExDiv e1 e2 => ArrDiv (expr_to_openscop e1 names) (expr_to_openscop e2 names)
+    | ExLe e1 e2 => ArrLe (expr_to_openscop e1 names) (expr_to_openscop e2 names)
+    | ExEq e1 e2 => ArrEq (expr_to_openscop e1 names) (expr_to_openscop e2 names)
+    | ExAnd e1 e2 => ArrAnd (expr_to_openscop e1 names) (expr_to_openscop e2 names)
+    | ExCall fn args => ArrCall fn (map (fun e => expr_to_openscop e names) args)
+    | ExCond c et ef =>
+        ArrCond (expr_to_openscop c names) (expr_to_openscop et names) (expr_to_openscop ef names)
     end.
 
   Definition to_openscop (i : t) (names : list varname) : option OpenScop.ArrayStmt :=

@@ -5,7 +5,8 @@ import argparse
 import dataclasses
 import os
 import re
-from typing import Iterable, Iterator, Sequence
+from decimal import Decimal, InvalidOperation
+from typing import Iterable, Iterator, Optional, Sequence, Tuple, Union
 
 
 TOKEN_RE = re.compile(
@@ -106,7 +107,7 @@ class CondExpr:
     cond: "Cond"
 
 
-Expr = Number | Name | Access | Unary | Binary | Call | Ternary | CondExpr
+Expr = Union[Number, Name, Access, Unary, Binary, Call, Ternary, CondExpr]
 
 
 @dataclasses.dataclass
@@ -123,7 +124,7 @@ class Logic:
     rhs: "Cond"
 
 
-Cond = Cmp | Logic
+Cond = Union[Cmp, Logic]
 
 
 @dataclasses.dataclass
@@ -147,7 +148,7 @@ class ForStmt:
     body: list["Stmt"]
 
 
-Stmt = AssignStmt | IfStmt | ForStmt
+Stmt = Union[AssignStmt, IfStmt, ForStmt]
 
 
 class Parser:
@@ -163,7 +164,7 @@ class Parser:
         self.i += 1
         return tok
 
-    def accept(self, kind: str, text: str | None = None) -> Token | None:
+    def accept(self, kind: str, text: Optional[str] = None) -> Optional[Token]:
         tok = self.peek()
         if tok.kind != kind:
             return None
@@ -172,7 +173,7 @@ class Parser:
         self.i += 1
         return tok
 
-    def expect(self, kind: str, text: str | None = None) -> Token:
+    def expect(self, kind: str, text: Optional[str] = None) -> Token:
         tok = self.peek()
         if tok.kind != kind or (text is not None and tok.text != text):
             want = text if text is not None else kind
@@ -329,7 +330,7 @@ class Parser:
             return Ternary(cond, then_expr, else_expr)
         return lhs
 
-    def maybe_parse_expr_cond(self, lhs: Expr) -> Cond | None:
+    def maybe_parse_expr_cond(self, lhs: Expr) -> Optional[Cond]:
         tok = self.peek()
         if not (
             (tok.kind == "LE")
@@ -426,12 +427,23 @@ def is_one_expr(expr: Expr) -> bool:
 def normalize_number(text: str) -> str:
     if "." not in text:
         return str(int(text))
-    value = float(text)
-    if value == 0.0:
-        return "0"
-    if value > 0:
-        return "1"
-    return "-1"
+    try:
+        value = Decimal(text)
+    except InvalidOperation as exc:
+        raise ParseError(f"invalid numeric literal {text!r}") from exc
+    if value != value.to_integral_value():
+        raise ParseError(f"non-integral numeric literal is not supported: {text}")
+    return str(int(value))
+
+
+def expr_number_text(text: str) -> str:
+    if "." not in text:
+        return str(int(text))
+    if text.startswith("."):
+        return "0" + text
+    if text.startswith("-."):
+        return "-0" + text[1:]
+    return text
 
 
 def access_bases_expr(expr: Expr) -> list[str]:
@@ -516,7 +528,7 @@ def free_names_expr(expr: Expr) -> list[str]:
     return out
 
 
-def expr_reads_as_expr(expr: Expr) -> Expr | None:
+def expr_reads_as_expr(expr: Expr) -> Optional[Expr]:
     terms: list[Expr] = []
 
     def add_term(e: Expr) -> None:
@@ -597,7 +609,7 @@ def parenthesize_affine(expr: Expr) -> str:
 
 def to_expr(expr: Expr) -> str:
     if isinstance(expr, Number):
-        return normalize_number(expr.text)
+        return expr_number_text(expr.text)
     if isinstance(expr, Name):
         return expr.name
     if isinstance(expr, Access):
@@ -605,18 +617,14 @@ def to_expr(expr: Expr) -> str:
     if isinstance(expr, Unary) and expr.op == "-":
         return f"(0 - {parenthesize_expr(expr.expr)})"
     if isinstance(expr, Binary):
-        if expr.op == "/":
-            return f"({to_expr(expr.lhs)} * {to_expr(expr.rhs)})"
         return f"({to_expr(expr.lhs)} {expr.op} {to_expr(expr.rhs)})"
     if isinstance(expr, Call):
-        collapsed = expr_reads_as_expr(expr)
-        return "0" if collapsed is None else to_expr(collapsed)
+        args = ", ".join(to_expr(arg) for arg in expr.args)
+        return f"{expr.name}({args})"
     if isinstance(expr, CondExpr):
-        collapsed = expr_reads_as_expr(expr)
-        return "0" if collapsed is None else to_expr(collapsed)
+        return to_expr_cond(expr.cond)
     if isinstance(expr, Ternary):
-        reads = expr_reads_as_expr(expr)
-        return "0" if reads is None else to_expr(reads)
+        return f"({to_expr_cond(expr.cond)} ? {to_expr(expr.then_expr)} : {to_expr(expr.else_expr)})"
     raise ParseError(f"unsupported expression node: {expr!r}")
 
 
@@ -637,6 +645,17 @@ def to_cond(cond: Cond) -> str:
     raise ParseError(f"unsupported condition operator: {cond.op}")
 
 
+def to_expr_cond(cond: Cond) -> str:
+    if isinstance(cond, Logic):
+        if cond.op != "&&":
+            raise ParseError(f"unsupported expression condition operator: {cond.op}")
+        return f"({to_expr_cond(cond.lhs)} && {to_expr_cond(cond.rhs)})"
+    assert isinstance(cond, Cmp)
+    if cond.op in {"==", "<="}:
+        return f"({to_expr(cond.lhs)} {cond.op} {to_expr(cond.rhs)})"
+    raise ParseError(f"unsupported expression condition operator: {cond.op}")
+
+
 def assign_to_stmt(stmt: AssignStmt) -> str:
     lhs = stmt.lhs.base + "".join(f"[{to_affine(idx)}]" for idx in stmt.lhs.indices)
     lhs_expr: Expr = Access(stmt.lhs.base, stmt.lhs.indices)
@@ -648,7 +667,7 @@ def assign_to_stmt(stmt: AssignStmt) -> str:
     elif stmt.op == "*=":
         rhs = Binary("*", lhs_expr, rhs)
     elif stmt.op == "/=":
-        rhs = Binary("*", lhs_expr, rhs)
+        rhs = Binary("/", lhs_expr, rhs)
     return f"{lhs} = {to_expr(rhs)};"
 
 
@@ -749,19 +768,37 @@ def main() -> int:
     args = ap.parse_args()
 
     os.makedirs(args.dst_root, exist_ok=True)
+    for stale in os.listdir(args.dst_root):
+        if stale.endswith(".loop") or stale == "unsupported.txt":
+            os.unlink(os.path.join(args.dst_root, stale))
     c_files = sorted(
         path
         for path in glob_c_files(args.src_root)
         if has_scop(path)
     )
+    unsupported: list[Tuple[str, str]] = []
     for path in c_files:
         name = os.path.basename(os.path.dirname(path))
         out_path = os.path.join(args.dst_root, f"{name}.loop")
-        with open(path) as f:
-            converted = convert_source(f.read())
+        try:
+            with open(path) as f:
+                converted = convert_source(f.read())
+        except ParseError as exc:
+            unsupported.append((name, str(exc)))
+            continue
         with open(out_path, "w") as f:
             f.write(converted)
-    print(f"generated {len(c_files)} loop files into {args.dst_root}")
+    if unsupported:
+        report_path = os.path.join(args.dst_root, "unsupported.txt")
+        with open(report_path, "w") as f:
+            for name, msg in unsupported:
+                f.write(f"{name}: {msg}\n")
+        print(
+            f"generated {len(c_files) - len(unsupported)} loop files into {args.dst_root}; "
+            f"skipped {len(unsupported)} unsupported cases"
+        )
+    else:
+        print(f"generated {len(c_files)} loop files into {args.dst_root}")
     return 0
 
 
