@@ -22,6 +22,7 @@ Require Import CodeGen.
 Require Import Validator.
 Require Import PolOpt.
 Require Import PrepareCodegen.
+Require Import StrengthenDomain.
 Require Import LibTactics.
 Require Import sflib.
 Require Import ImpureAlarmConfig.
@@ -41,13 +42,14 @@ Module Extractor := Extractor PolIRs.
 Module CodeGen := CodeGen PolIRs.
 Module Validator := Validator PolIRs.
 Module Prepare := PrepareCodegen PolIRs.
+Module Strengthen := StrengthenDomain PolIRs.
 Module BaseOpt := PolOpt PolIRs.
 
 Local Open Scope impure_scope.
 
 Definition Opt_prepared (loop: Loop.t): imp Loop.t :=
-  BIND pol <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
-  BIND pol' <- BaseOpt.scheduler' pol -;
+  BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
+  BIND pol' <- BaseOpt.scheduler' (Strengthen.strengthen_pprog pol0) -;
   Prepare.prepared_codegen pol'.
 
 Definition Opt : Loop.t -> imp Loop.t := Opt_prepared.
@@ -96,7 +98,7 @@ Qed.
 Theorem Extract_Schedule_Prepared_correct:
   forall loop pol st1 st2,
     Extractor.extractor loop = Okk pol ->
-    WHEN pol' <- BaseOpt.scheduler' pol THEN
+    WHEN pol' <- BaseOpt.scheduler' (Strengthen.strengthen_pprog pol) THEN
     PolyLang.wf_pprog pol' ->
     PolyLang.semantics (Prepare.prepare_codegen pol') st1 st2 ->
     exists st2',
@@ -104,7 +106,14 @@ Theorem Extract_Schedule_Prepared_correct:
 Proof.
   intros loop pol st1 st2 Hext pol' Hsched Hwf Hsem.
   eapply Prepare.prepare_codegen_semantics_correct in Hsem; eauto.
-  eapply BaseOpt.Extract_Schedule_correct; eauto.
+  pose proof (BaseOpt.scheduler'_correct (Strengthen.strengthen_pprog pol) st1 st2 pol' Hsched Hsem)
+    as Hsched_corr.
+  destruct Hsched_corr as [st_mid [Hips Heq]].
+  eapply Strengthen.instance_list_semantics_unstrengthen in Hips.
+  pose proof (Extractor.extractor_correct loop pol st1 st_mid Hext Hips) as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop Heq_src]].
+  exists st_src. split; auto.
+  eapply State.eq_trans; eauto.
 Qed.
 
 Theorem Opt_prepared_correct:
@@ -116,18 +125,26 @@ Theorem Opt_prepared_correct:
 Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared in Hopt.
-  bind_imp_destruct Hopt pol Hextimp.
+  bind_imp_destruct Hopt pol0 Hextimp.
   bind_imp_destruct Hopt pol' Hsched.
   apply res_to_alarm_correct in Hextimp.
   assert (Hwfpol' : PolyLang.wf_pprog pol').
   {
     eapply scheduler'_preserve_wf.
-    - eapply extractor_success_wf_pprog; eauto.
+    - eapply Strengthen.strengthen_pprog_wf.
+      eapply extractor_success_wf_pprog; eauto.
     - exact Hsched.
     - reflexivity.
   }
   pose proof (Prepare.prepared_codegen_correct pol' st st' loop' Hopt Hwfpol' Hloop) as Hips.
-  eapply BaseOpt.Extract_Schedule_correct; eauto.
+  pose proof (BaseOpt.scheduler'_correct (Strengthen.strengthen_pprog pol0) st st' pol' Hsched Hips)
+    as Hsched_corr.
+  destruct Hsched_corr as [st_mid [Hips' Heq]].
+  eapply Strengthen.instance_list_semantics_unstrengthen in Hips'.
+  pose proof (Extractor.extractor_correct loop pol0 st st_mid Hextimp Hips') as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src. split; auto.
+  eapply State.eq_trans; eauto.
 Qed.
 
 Theorem Opt_correct:
