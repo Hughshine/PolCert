@@ -4,8 +4,6 @@ Require Import Linalg.
 Require Import OpenScop.
 Require Import Result.
 Require Import PolOpt.
-Require Import PolOptPrepared.
-Require Import PrepareCodegen.
 Require Import String.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
@@ -13,8 +11,6 @@ Require Import Vpl.Impure.
 Local Open Scope string_scope.
 
 Module CoreOpt := PolOpt SPolIRs.
-Module PreparedOpt := PolOptPrepared SPolIRs.
-Module Prepare := PrepareCodegen SPolIRs.
 Module SVal := CoreOpt.Validator.
 Module Extractor := CoreOpt.Extractor.
 
@@ -62,14 +58,14 @@ Definition to_source_openscop (pol : SPolIRs.PolyLang.t) : option OpenScop :=
   SPolIRs.PolyLang.to_openscop (export_pprog_for_openscop pol).
 
 Definition proved_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
-  PreparedOpt.Opt.
+  CoreOpt.Opt.
 
 Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_opt loop.
 
 Definition opt_poly (pol : SPolIRs.PolyLang.t) : imp SPolIRs.Loop.t :=
-  BIND pol' <- CoreOpt.scheduler' (PreparedOpt.Strengthen.strengthen_pprog pol) -;
-  Prepare.prepared_codegen pol'.
+  BIND pol' <- CoreOpt.scheduler' (CoreOpt.Strengthen.strengthen_pprog pol) -;
+  CoreOpt.Prepare.prepared_codegen pol'.
 
 Definition opt_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
   match SPolIRs.PolyLang.from_openscop_complete scop with

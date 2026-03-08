@@ -12,8 +12,8 @@ Definition opt : TPolIRs.Loop.t -> imp TPolIRs.Loop.t :=
   CoreOpt.Opt.
 
 Definition opt_poly (pol: TPolIRs.PolyLang.t): imp TPolIRs.Loop.t :=
-  BIND pol' <- CoreOpt.scheduler' pol -;
-  CoreOpt.CodeGen.codegen pol'.
+  BIND pol' <- CoreOpt.scheduler' (CoreOpt.Strengthen.strengthen_pprog pol) -;
+  CoreOpt.Prepare.prepared_codegen pol'.
 
 Definition opt_scop (scop: OpenScop): imp TPolIRs.Loop.t :=
   match TPolIRs.PolyLang.from_openscop_complete scop with

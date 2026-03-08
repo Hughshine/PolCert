@@ -171,7 +171,7 @@ let dump_scheduled_openscop loop =
 let debug_scheduler loop =
   let pol0 = extract_poly loop in
   dump_poly_payload "extracted" pol0;
-  let pol = SPolOpt.PreparedOpt.Strengthen.strengthen_pprog pol0 in
+  let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   dump_poly_payload "strengthened" pol;
   let inscop = poly_to_openscop pol in
   let (self_valid, self_ok) = SPolOpt.SVal.validate pol pol in

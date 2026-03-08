@@ -38,7 +38,7 @@ Current successful-but-unchanged set:
 
 This directory intentionally reflects the strict proved runtime path:
 - no CLI fallback exporter is used
-- `polopt` runs `PreparedOpt.Opt` directly
+- `polopt` runs `CoreOpt.Opt` directly, i.e. the final `Opt` from `driver/PolOpt.v`
 
 Important generator policy:
 - `.loop` generation must preserve source semantics
