@@ -1,0 +1,30 @@
+context(ny, nx, nz);
+
+for i0 in range(4, (((ny + 9) + -2) + 1)) {
+  for i1 in range(4, (((nx + 9) + -3) + 1)) {
+    for i2 in range(4, (((nz + 9) + -3) + 1)) {
+      ab[i0][i1][i2] = (((((f60 * (a[(i0 - 1)][i1][i2] + a[i0][i1][i2])) + (f61 * (a[(i0 - 2)][i1][i2] + a[(i0 + 1)][i1][i2]))) + (f62 * (a[(i0 - 3)][i1][i2] + a[(i0 + 2)][i1][i2]))) * thirddtbydy) * uyb[i0][i1][i2]);
+    }
+  }
+}
+for i0 in range(4, (((ny + 9) + -3) + 1)) {
+  for i1 in range(4, (((nx + 9) + -2) + 1)) {
+    for i2 in range(4, (((nz + 9) + -3) + 1)) {
+      al[i0][i1][i2] = (((((f60 * (a[i0][(i1 - 1)][i2] + a[i0][i1][i2])) + (f61 * (a[i0][(i1 - 2)][i2] + a[i0][(i1 + 1)][i2]))) + (f62 * (a[i0][(i1 - 3)][i2] + a[i0][(i1 + 2)][i2]))) * thirddtbydx) * uxl[i0][i1][i2]);
+    }
+  }
+}
+for i0 in range(4, (((ny + 9) + -3) + 1)) {
+  for i1 in range(4, (((nx + 9) + -3) + 1)) {
+    for i2 in range(4, (((nz + 9) + -2) + 1)) {
+      af[i0][i1][i2] = (((((f60 * (a[i0][i1][(i2 - 1)] + a[i0][i1][i2])) + (f61 * (a[i0][i1][(i2 - 2)] + a[i0][i1][(i2 + 1)]))) + (f62 * (a[i0][i1][(i2 - 3)] + a[i0][i1][(i2 + 2)]))) * thirddtbydz) * uzf[i0][i1][i2]);
+    }
+  }
+}
+for i0 in range(4, (((ny + 9) + -3) + 1)) {
+  for i1 in range(4, (((nx + 9) + -3) + 1)) {
+    for i2 in range(4, (((nz + 9) + -3) + 1)) {
+      athird[i0][i1][i2] = (((a[i0][i1][i2] + (al[i0][(i1 + 1)][i2] - al[i0][i1][i2])) + (ab[(i0 + 1)][i1][i2] - ab[i0][i1][i2])) + (af[i0][i1][(i2 + 1)] - af[i0][i1][i2]));
+    }
+  }
+}

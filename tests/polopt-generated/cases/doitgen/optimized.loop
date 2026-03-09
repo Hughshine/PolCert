@@ -1,0 +1,31 @@
+context(N);
+
+if (1 <= N) {
+  for i0 in range(0, N) {
+    for i1 in range(0, N) {
+      for i2 in range(0, N) {
+        sum[i0][i1][i2] = 0;
+      }
+    }
+  }
+}
+if (1 <= N) {
+  for i0 in range(0, N) {
+    for i1 in range(0, N) {
+      for i2 in range(0, N) {
+        for i3 in range(0, N) {
+          sum[i0][i1][i2] = (sum[i0][i1][i2] + (A[i0][i1][i3] * C4[i3][i2]));
+        }
+      }
+    }
+  }
+}
+if (1 <= N) {
+  for i0 in range(0, N) {
+    for i1 in range(0, N) {
+      for i2 in range(0, N) {
+        A[i0][i1][i2] = sum[i0][i1][i2];
+      }
+    }
+  }
+}

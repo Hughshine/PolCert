@@ -73,9 +73,12 @@ let relation_printer out relation =
 let ctxt_params_printer out params =
   match params with 
   | None -> fprintf out "# Empty param information...\n"
+  | Some [] ->
+      fprintf out "# Parameters are not provided\n";
+      fprintf out "0\n\n"
   | Some params -> 
       fprintf out "# Parameter names are provided ...\n";
-      fprintf out "%d\n" (if (List.length params) > 0 then 1 else 0);
+      fprintf out "1\n";
       fprintf out "# Parameter names ...\n";
       fprintf out "<strings>\n";
       List.iter (fun name -> fprintf out "%s " (Camlcoq.camlstring_of_coqstring name)) params;
@@ -120,6 +123,7 @@ let rec arr_expr_str arr_expr =
       | OpenScop.AInt z -> Camlcoq.Z.to_string z
       | OpenScop.AVar id -> Camlcoq.camlstring_of_coqstring id
       | OpenScop.AFloat f -> Float.to_string (Camlcoq.camlfloat_of_coqfloat f)
+      | OpenScop.AFloatLiteral f -> Camlcoq.camlstring_of_coqstring f
     )  
   | OpenScop.ArrAccessAtom (arr_access) -> 
       arr_access_str arr_access 
@@ -135,6 +139,10 @@ let rec arr_expr_str arr_expr =
     (arr_expr_str arr_expr1) ^ " < " ^ (arr_expr_str arr_expr2)
   | OpenScop.ArrLe (arr_expr1, arr_expr2) -> 
     (arr_expr_str arr_expr1) ^ " <= " ^ (arr_expr_str arr_expr2)
+  | OpenScop.ArrEq (arr_expr1, arr_expr2) ->
+    (arr_expr_str arr_expr1) ^ " == " ^ (arr_expr_str arr_expr2)
+  | OpenScop.ArrAnd (arr_expr1, arr_expr2) ->
+    (arr_expr_str arr_expr1) ^ " && " ^ (arr_expr_str arr_expr2)
   | OpenScop.ArrCond (arr_expr1, arr_expr2, arr_expr3) -> 
     (arr_expr_str arr_expr1) ^ " ? " ^ (arr_expr_str arr_expr2) ^ " : " ^ (arr_expr_str arr_expr3)
   | OpenScop.ArrCall (id, arr_exprs) -> 

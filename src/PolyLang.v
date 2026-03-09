@@ -22,6 +22,8 @@ Require Import LibTactics.
 Require Import sflib.
 Import ListNotations.
 
+Require Import InstanceListSema.
+
 Require Import StateTy.
 Require Import InstrTy.
 
@@ -39,6 +41,7 @@ Definition ident := Instr.ident.
 Module State := Instr.State.
 Module Ty := Instr.Ty.
 Definition NonAlias := Instr.NonAlias.
+Module ILSema := ILSema Instr.
 
 Record PolyInstr := {
   pi_depth : nat;                    (** nested depth in nested loop *)
@@ -81,12 +84,148 @@ Definition listzzs_to_domain_constr (constr: list Z * Z) (varctxt_dim: nat) (ite
   let iters_constr := skipn varctxt_dim zs in
   (true, iters_constr ++ varctxt_constr ++ [z]).
 
+Fixpoint list_Z_eqb (xs ys: list Z) : bool :=
+  match xs, ys with
+  | nil, nil => true
+  | x :: xs', y :: ys' => Z.eqb x y && list_Z_eqb xs' ys'
+  | _, _ => false
+  end.
+
+Definition affine_constraint_eqb (c1 c2: list Z * Z) : bool :=
+  let '(zs1, z1) := c1 in
+  let '(zs2, z2) := c2 in
+  list_Z_eqb zs1 zs2 && Z.eqb z1 z2.
+
+Fixpoint dedup_domain_rows (rows: Domain) : Domain :=
+  match rows with
+  | nil => nil
+  | row :: rows' =>
+      let rows'' := dedup_domain_rows rows' in
+      if existsb (affine_constraint_eqb row) rows''
+      then rows''
+      else row :: rows''
+  end.
+
 Definition listzzs_to_sctt_constr (idx: nat) (aff_func: list Z * Z) (varctxt_dim: nat) (iters_dim: nat)(sctt_dim:nat) : (bool * openscop_constraint) := 
   let (zs, z) := aff_func in 
   let tgt_aff := (repeat 0%Z idx) ++ [-1%Z] ++ (repeat 0%Z (sctt_dim - idx - 1)) in 
   let varctxt_aff := firstn varctxt_dim zs in 
   let iters_aff := skipn varctxt_dim zs in
   (false, tgt_aff ++ iters_aff ++ varctxt_aff ++ [z]).
+
+Definition zero_affine_function (dim: nat) : (list Z * Z) :=
+  (repeat 0%Z dim, 0%Z).
+
+Definition constant_affine_function (dim: nat) (c: Z) : (list Z * Z) :=
+  (repeat 0%Z dim, c).
+
+Definition affine_function_is_zero (aff: list Z * Z) : bool :=
+  let (zs, z) := aff in
+  forallb (Z.eqb 0%Z) zs && Z.eqb z 0%Z.
+
+Definition affine_function_is_const (aff: list Z * Z) : bool :=
+  let (zs, _) := aff in
+  forallb (Z.eqb 0%Z) zs.
+
+Definition remove_zero_schedule_dims (sched: Schedule) : Schedule :=
+  filter (fun aff => negb (affine_function_is_zero aff)) sched.
+
+Definition split_trailing_const_schedule (sched: Schedule) : Schedule * option Z :=
+  match rev sched with
+  | nil => (nil, None)
+  | aff :: sched_rev =>
+      let '(zs, c) := aff in
+      if affine_function_is_const (zs, c)
+      then (rev sched_rev, Some c)
+      else (sched, None)
+  end.
+
+Definition padded_sctt_out_dim (compact_dim: nat) : nat :=
+  S (compact_dim + compact_dim).
+
+Definition zero_sctt_constr
+    (idx varctxt_dim iters_dim openscop_sctt_dim: nat) : (bool * openscop_constraint) :=
+  listzzs_to_sctt_constr idx
+    (zero_affine_function (varctxt_dim + iters_dim))
+    varctxt_dim iters_dim openscop_sctt_dim.
+
+Definition constant_sctt_constr
+    (idx varctxt_dim iters_dim openscop_sctt_dim: nat) (c: Z)
+    : (bool * openscop_constraint) :=
+  listzzs_to_sctt_constr idx
+    (constant_affine_function (varctxt_dim + iters_dim) c)
+    varctxt_dim iters_dim openscop_sctt_dim.
+
+Fixpoint schedule_to_source_like_rows (sched: Schedule) : Schedule :=
+  match sched with
+  | nil => nil
+  | aff1 :: tl =>
+      match tl with
+      | nil => aff1 :: nil
+      | aff2 :: _ =>
+          if andb (negb (affine_function_is_const aff1))
+                  (negb (affine_function_is_const aff2))
+          then aff1 :: zero_affine_function (length (fst aff1)) ::
+               schedule_to_source_like_rows tl
+          else aff1 :: schedule_to_source_like_rows tl
+      end
+  end.
+
+Definition source_like_sctt_rows
+    (sched: Schedule)
+    (tail_const: option Z)
+    (dim: nat) : Schedule :=
+  match sched with
+  | nil =>
+      [match tail_const with
+       | Some c => constant_affine_function dim c
+       | None => zero_affine_function dim
+       end]
+  | aff :: _ =>
+      (if affine_function_is_const aff
+       then schedule_to_source_like_rows sched
+       else zero_affine_function dim :: schedule_to_source_like_rows sched) ++
+      [match tail_const with
+       | Some c => constant_affine_function dim c
+       | None => zero_affine_function dim
+       end]
+  end.
+
+Definition affine_rows_to_sctt_constrs
+    (rows: Schedule)
+    (varctxt_dim iters_dim openscop_sctt_dim: nat)
+    : list (bool * openscop_constraint) :=
+  mapi_ascend
+    (fun idx aff =>
+       listzzs_to_sctt_constr idx aff varctxt_dim iters_dim openscop_sctt_dim)
+    rows.
+
+Definition tail_const_of_affine (aff: list Z * Z) : option Z :=
+  if affine_function_is_zero aff
+  then None
+  else if affine_function_is_const aff then Some (snd aff) else None.
+
+Definition drop_leading_zero_schedule_row (rows: Schedule) : Schedule :=
+  match rows with
+  | aff :: rows' =>
+      if affine_function_is_zero aff then rows' else rows
+  | nil => nil
+  end.
+
+Definition source_like_rows_to_compact_schedule
+    (rows: Schedule) : Schedule * option Z :=
+  let rows' := drop_leading_zero_schedule_row rows in
+  let '(body_rows, tail_aff_opt) :=
+    match rev rows' with
+    | nil => (nil, None)
+    | aff :: rows_rev => (rev rows_rev, Some aff)
+    end in
+  let tail_const :=
+    match tail_aff_opt with
+    | Some aff => tail_const_of_affine aff
+    | None => None
+    end in
+  (remove_zero_schedule_dims body_rows, tail_const).
 
   
 Definition listzzs_to_access_constr (idx: nat) (aff_func: list Z * Z) (varctxt_dim: nat) (iters_dim: nat) (arr_dim: nat): (bool * openscop_constraint) := 
@@ -116,43 +255,57 @@ Definition access_to_openscop (access: AccessFunction) (ty: RelType) (varctxt_di
     ;
   |}.
 
-Definition pi_to_openscop_statement (pi: PolyInstr) (varctxt: list ident) (sctt_dim: nat): option Statement :=
+Definition pi_to_openscop_statement
+    (pi: PolyInstr) (varctxt: list ident) (_global_compact_sctt_dim: nat): option Statement :=
+  let normalized_sched := remove_zero_schedule_dims pi.(pi_schedule) in
+  let '(sched_core, tail_const) := split_trailing_const_schedule normalized_sched in
+  let compact_sctt_dim := List.length sched_core in
+  let domain_rows := dedup_domain_rows pi.(pi_poly) in
   let domain_dim := list_max (map 
     (fun (constr: (list Z * Z)) => let (zs, z) := constr in 
-      length zs) pi.(pi_poly)) in
+      length zs) domain_rows) in
   let varctxt_dim := length varctxt in
   let iters_dim := domain_dim - varctxt_dim in
+  let rows := source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim) in
   let varctxt_varnames := map Instr.ident_to_varname varctxt in
   let iters_varnames := map Instr.iterator_to_varname (seq 0 (pi.(pi_depth))) in
   match (Instr.to_openscop pi.(pi_instr) (List.app varctxt_varnames iters_varnames)) with
   | Some arr_stmt =>
-    let sctt_dim := List.length (pi.(pi_schedule)) in
+    let openscop_sctt_dim := padded_sctt_out_dim compact_sctt_dim in
     Some {|
       OpenScop.domain := {|
         (** the domain relation *)
         OpenScop.rel_type := OpenScop.DomTy;
         OpenScop.meta := {|
-          OpenScop.row_nb := List.length (pi.(pi_poly));
+          OpenScop.row_nb := List.length domain_rows;
           OpenScop.col_nb := iters_dim + varctxt_dim + 2;
           OpenScop.out_dim_nb := iters_dim;
           OpenScop.in_dim_nb := 0;
           OpenScop.local_dim_nb := 0;
           OpenScop.param_nb := varctxt_dim;
         |};
-        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) (pi.(pi_poly));
+        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) domain_rows;
       |};
-      (* schedule *)  (* pi_transformation is discarded, schedule should not modify it (if it change the domain, it should notify the validator with extra input ) *)
+      (* schedule *)
+      (*
+         OpenScop/Pluto does not carry a separate transformation field.
+         For source schedules, middle constant rows encode statement-order
+         skeleton directly. They must therefore be emitted as constant rows,
+         not as "zero row + constant row" pairs; otherwise the resulting
+         source scattering no longer matches Clan on imperfect nests.
+       *)
       OpenScop.scattering := {|
         OpenScop.rel_type := OpenScop.ScttTy;
         OpenScop.meta := {|
-          OpenScop.row_nb := sctt_dim;
-          OpenScop.col_nb := sctt_dim + iters_dim + varctxt_dim + 2;
-          OpenScop.out_dim_nb := sctt_dim;
+          OpenScop.row_nb := length (source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim));
+          OpenScop.col_nb := length (source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim)) + iters_dim + varctxt_dim + 2;
+          OpenScop.out_dim_nb := length (source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim));
           OpenScop.in_dim_nb := iters_dim;
           OpenScop.local_dim_nb := 0;
           OpenScop.param_nb := varctxt_dim;
         |};
-        OpenScop.constrs := mapi_ascend (fun idx aff => listzzs_to_sctt_constr idx aff varctxt_dim iters_dim sctt_dim) (pi.(pi_schedule));
+        OpenScop.constrs :=
+          affine_rows_to_sctt_constrs rows varctxt_dim iters_dim (length rows);
       |};  
       OpenScop.access := 
         (map (fun access => access_to_openscop access OpenScop.WriteTy varctxt_dim iters_dim) (pi.(pi_waccess))) ++
@@ -170,10 +323,70 @@ Definition pi_to_openscop_statement (pi: PolyInstr) (varctxt: list ident) (sctt_
   end
   .
 
+Definition pi_to_openscop_statement_global
+    (pi: PolyInstr) (varctxt: list ident) (global_compact_sctt_dim: nat): option Statement :=
+  let normalized_sched := remove_zero_schedule_dims pi.(pi_schedule) in
+  let '(sched_core_raw, tail_const) := split_trailing_const_schedule normalized_sched in
+  let compact_sctt_dim := Nat.max global_compact_sctt_dim (List.length sched_core_raw) in
+  let domain_rows := dedup_domain_rows pi.(pi_poly) in
+  let domain_dim := list_max (map
+    (fun (constr: (list Z * Z)) => let (zs, z) := constr in
+      length zs) domain_rows) in
+  let varctxt_dim := length varctxt in
+  let iters_dim := domain_dim - varctxt_dim in
+  let sched_core :=
+    repeat (constant_affine_function (varctxt_dim + iters_dim) 0%Z)
+      (compact_sctt_dim - List.length sched_core_raw) ++
+    sched_core_raw in
+  let rows := source_like_sctt_rows sched_core tail_const (varctxt_dim + iters_dim) in
+  let varctxt_varnames := map Instr.ident_to_varname varctxt in
+  let iters_varnames := map Instr.iterator_to_varname (seq 0 (pi.(pi_depth))) in
+  match (Instr.to_openscop pi.(pi_instr) (List.app varctxt_varnames iters_varnames)) with
+  | Some arr_stmt =>
+    Some {|
+      OpenScop.domain := {|
+        OpenScop.rel_type := OpenScop.DomTy;
+        OpenScop.meta := {|
+          OpenScop.row_nb := List.length domain_rows;
+          OpenScop.col_nb := iters_dim + varctxt_dim + 2;
+          OpenScop.out_dim_nb := iters_dim;
+          OpenScop.in_dim_nb := 0;
+          OpenScop.local_dim_nb := 0;
+          OpenScop.param_nb := varctxt_dim;
+        |};
+        OpenScop.constrs := map (fun constr => listzzs_to_domain_constr constr varctxt_dim iters_dim) domain_rows;
+      |};
+      OpenScop.scattering := {|
+        OpenScop.rel_type := OpenScop.ScttTy;
+        OpenScop.meta := {|
+          OpenScop.row_nb := length rows;
+          OpenScop.col_nb := length rows + iters_dim + varctxt_dim + 2;
+          OpenScop.out_dim_nb := length rows;
+          OpenScop.in_dim_nb := iters_dim;
+          OpenScop.local_dim_nb := 0;
+          OpenScop.param_nb := varctxt_dim;
+        |};
+        OpenScop.constrs :=
+          affine_rows_to_sctt_constrs rows varctxt_dim iters_dim (length rows);
+      |};
+      OpenScop.access :=
+        (map (fun access => access_to_openscop access OpenScop.WriteTy varctxt_dim iters_dim) (pi.(pi_waccess))) ++
+        (map (fun access => access_to_openscop access OpenScop.ReadTy varctxt_dim iters_dim) (pi.(pi_raccess)));
+      OpenScop.stmt_exts_opt :=
+      Some ([
+        OpenScop.StmtBody (
+          iters_varnames
+        )
+        arr_stmt
+      ]);
+    |}
+  | None => None
+  end
+  .
+
 (** Part 0: transformation from and to OpenScop *)
 Definition to_openscop (pol: t): option OpenScop := 
   let '(pis, varctxt, vars) := pol in 
-  let sctt_dim := list_max (map (fun pi => length pi.(pi_schedule)) pis) in
   let context := {|
     OpenScop.lang := "C";
     OpenScop.param_domain := {|
@@ -190,9 +403,49 @@ Definition to_openscop (pol: t): option OpenScop :=
     |};
     OpenScop.params := Some (List.map Instr.ident_to_varname varctxt);  
   |} in 
-  let ostatements := unwrap_option (List.map (fun pi => pi_to_openscop_statement pi varctxt sctt_dim) pis) in 
+  let ostatements := unwrap_option (List.map (fun pi => pi_to_openscop_statement pi varctxt 0) pis) in 
   let glb_exts := (
-      ArrayExt (List.map (fun var => (Instr.ident_to_openscop_ident var, Instr.ident_to_varname var)) (map fst vars))
+      ArrayExt (List.map (fun x => (Instr.ident_to_openscop_ident (fst x), Instr.ident_to_varname (fst x))) vars)
+  )::nil in 
+  match ostatements with
+  | Some statements => 
+    Some {|
+      OpenScop.context := context; 
+      OpenScop.statements := statements;
+      OpenScop.glb_exts := glb_exts;
+    |}
+  | None => None
+  end
+  .
+
+Definition to_openscop_global_padded (pol: t): option OpenScop :=
+  let '(pis, varctxt, vars) := pol in
+  let context := {|
+    OpenScop.lang := "C";
+    OpenScop.param_domain := {|
+      OpenScop.rel_type := OpenScop.CtxtTy;
+      OpenScop.meta := {|
+        OpenScop.row_nb := 0;
+        OpenScop.col_nb := List.length (varctxt) + 2;
+        OpenScop.out_dim_nb := 0;
+        OpenScop.in_dim_nb := 0;
+        OpenScop.local_dim_nb := 0;
+        OpenScop.param_nb := List.length (varctxt);
+      |};
+      OpenScop.constrs := nil;
+    |};
+    OpenScop.params := Some (List.map Instr.ident_to_varname varctxt);
+  |} in
+  let compact_sctt_dim :=
+    list_max (List.map
+      (fun pi =>
+        let normalized_sched := remove_zero_schedule_dims pi.(pi_schedule) in
+        let '(sched_core, _) := split_trailing_const_schedule normalized_sched in
+        List.length sched_core)
+      pis) in
+  let ostatements := unwrap_option (List.map (fun pi => pi_to_openscop_statement_global pi varctxt compact_sctt_dim) pis) in
+  let glb_exts := (
+      ArrayExt (List.map (fun x => (Instr.ident_to_openscop_ident (fst x), Instr.ident_to_varname (fst x))) vars)
   )::nil in 
   match ostatements with
   | Some statements => 
@@ -208,7 +461,68 @@ Definition to_openscop (pol: t): option OpenScop :=
 (** No check currently, but possible in future (for tiling, for example) *)
 Definition check_pol_openscop_consistency (pol: t) (scop: OpenScop) := true.
 
-Definition from_openscop_sctt_to_pol_schedule (sctt: Relation) (varctxt_dim: nat) (iters_dim: nat) (sctt_dim: nat): (Schedule) := 
+Fixpoint odd_positions {A: Type} (l: list A) : list A :=
+  match l with
+  | _ :: x :: xs => x :: odd_positions xs
+  | _ => nil
+  end.
+
+Definition openscop_constraint_eqb
+    (c1 c2: bool * openscop_constraint) : bool :=
+  let '(b1, zs1) := c1 in
+  let '(b2, zs2) := c2 in
+  Bool.eqb b1 b2 && list_beq Z.t Z.eqb zs1 zs2.
+
+Definition openscop_sctt_row_to_affine
+    (constr: bool * openscop_constraint)
+    (openscop_sctt_dim varctxt_dim iters_dim: nat) : list Z * Z :=
+  let '(_, aff) := constr in
+  let aff' := List.removelast aff in
+  let iters := firstn iters_dim (skipn openscop_sctt_dim aff') in
+  let varctxt := skipn iters_dim (skipn openscop_sctt_dim aff') in
+  (varctxt ++ iters, List.last aff 0%Z).
+
+Fixpoint even_slots_are_zero_sctt_rows
+    (constrs: list (bool * openscop_constraint))
+    (slot openscop_sctt_dim varctxt_dim iters_dim: nat) : bool :=
+  match constrs with
+  | nil => true
+  | constr :: constrs' =>
+      let slot_ok :=
+        if Nat.even slot
+        then
+          let aff :=
+            openscop_sctt_row_to_affine constr openscop_sctt_dim varctxt_dim iters_dim in
+          if Nat.eqb slot (openscop_sctt_dim - 1)
+          then affine_function_is_const aff
+          else affine_function_is_zero aff
+        else true in
+      slot_ok &&
+      even_slots_are_zero_sctt_rows
+        constrs' (S slot) openscop_sctt_dim varctxt_dim iters_dim
+  end.
+
+Definition uses_padded_sctt_shape
+    (constrs: list (bool * openscop_constraint))
+    (openscop_sctt_dim varctxt_dim iters_dim: nat) : bool :=
+  Nat.odd openscop_sctt_dim &&
+  even_slots_are_zero_sctt_rows
+    constrs 0 openscop_sctt_dim varctxt_dim iters_dim.
+
+Fixpoint drop_trailing_zero_schedule_rev (sched: Schedule) : Schedule :=
+  match sched with
+  | aff :: sched' =>
+      if affine_function_is_zero aff
+      then drop_trailing_zero_schedule_rev sched'
+      else aff :: sched'
+  | nil => nil
+  end.
+
+Definition drop_trailing_zero_schedule (sched: Schedule) : Schedule :=
+  rev (drop_trailing_zero_schedule_rev (rev sched)).
+
+Definition from_openscop_sctt_to_pol_schedule
+    (sctt: Relation) (varctxt_dim: nat) (iters_dim: nat) (sctt_dim: nat): Schedule :=
   let aff_func := sctt.(OpenScop.constrs) in
   map (fun (aff: bool * openscop_constraint) => 
     let (_, aff) := aff in 
@@ -219,7 +533,246 @@ Definition from_openscop_sctt_to_pol_schedule (sctt: Relation) (varctxt_dim: nat
   ) aff_func
   .
 
-Definition from_openscop (pol: t) (scop: OpenScop): result t := 
+Definition from_openscop_sctt_to_sched_rows
+    (sctt: Relation) (varctxt_dim: nat) (iters_dim: nat): Schedule :=
+  let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
+  let aff_func :=
+    if uses_padded_sctt_shape
+        sctt.(OpenScop.constrs) openscop_sctt_dim varctxt_dim iters_dim
+    then odd_positions sctt.(OpenScop.constrs)
+    else sctt.(OpenScop.constrs) in
+  map (fun (aff: bool * openscop_constraint) =>
+    let (_, aff) := aff in
+    let aff' := List.removelast aff in
+    let iters := firstn iters_dim (skipn openscop_sctt_dim aff') in
+    let varctxt := skipn iters_dim (skipn openscop_sctt_dim aff') in
+    (varctxt ++ iters, List.last aff 0%Z)
+  ) aff_func.
+
+Definition from_openscop_sctt_to_compact_schedule
+    (sctt: Relation) (varctxt_dim: nat) (iters_dim: nat) : Schedule * option Z :=
+  let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
+  let rows :=
+    map (fun (aff: bool * openscop_constraint) =>
+      let (_, aff) := aff in
+      let aff' := List.removelast aff in
+      let iters := firstn iters_dim (skipn openscop_sctt_dim aff') in
+      let varctxt := skipn iters_dim (skipn openscop_sctt_dim aff') in
+      (varctxt ++ iters, List.last aff 0%Z)
+    ) sctt.(OpenScop.constrs) in
+  if uses_padded_sctt_shape
+      sctt.(OpenScop.constrs) openscop_sctt_dim varctxt_dim iters_dim
+  then
+    let tail := List.last rows (zero_affine_function (varctxt_dim + iters_dim)) in
+    let tail_const :=
+      if affine_function_is_zero tail then None
+      else if affine_function_is_const tail then Some (snd tail) else None in
+    (odd_positions rows, tail_const)
+  else split_trailing_const_schedule rows.
+
+Definition from_openscop_sctt_to_source_like_compact_schedule
+    (sctt: Relation) (varctxt_dim: nat) (iters_dim: nat) : Schedule * option Z :=
+  let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
+  let rows :=
+    map (fun (aff: bool * openscop_constraint) =>
+      let (_, aff) := aff in
+      let aff' := List.removelast aff in
+      let iters := firstn iters_dim (skipn openscop_sctt_dim aff') in
+      let varctxt := skipn iters_dim (skipn openscop_sctt_dim aff') in
+      (varctxt ++ iters, List.last aff 0%Z)
+    ) sctt.(OpenScop.constrs) in
+  source_like_rows_to_compact_schedule rows.
+
+Definition split_const_and_nonconst_schedule_rows
+    (sched: Schedule) : Schedule * Schedule :=
+  fold_right
+    (fun aff acc =>
+      let '(const_rows, dyn_rows) := acc in
+      if affine_function_is_const aff
+      then (aff :: const_rows, dyn_rows)
+      else (const_rows, aff :: dyn_rows))
+    (nil, nil) sched.
+
+Fixpoint refill_schedule_from_template
+    (template const_rows dyn_rows: Schedule) : Schedule :=
+  match template with
+  | nil => nil
+  | aff :: template' =>
+      if affine_function_is_const aff
+      then match const_rows with
+           | const_row :: const_rows' =>
+               const_row :: refill_schedule_from_template template' const_rows' dyn_rows
+           | nil =>
+               zero_affine_function (length (fst aff)) ::
+               refill_schedule_from_template template' nil dyn_rows
+           end
+      else match dyn_rows with
+           | dim :: dims' =>
+               dim :: refill_schedule_from_template template' const_rows dims'
+           | nil =>
+               aff :: refill_schedule_from_template template' const_rows nil
+           end
+  end.
+
+Fixpoint refill_schedule_from_template_keep_zero_consts
+    (template const_rows dyn_rows: Schedule) : Schedule :=
+  match template with
+  | nil => nil
+  | aff :: template' =>
+      if affine_function_is_const aff
+      then if affine_function_is_zero aff
+           then aff :: refill_schedule_from_template_keep_zero_consts template' const_rows dyn_rows
+           else match const_rows with
+                | const_row :: const_rows' =>
+                    const_row :: refill_schedule_from_template_keep_zero_consts template' const_rows' dyn_rows
+                | nil =>
+                    aff :: refill_schedule_from_template_keep_zero_consts template' nil dyn_rows
+                end
+      else match dyn_rows with
+           | dim :: dims' =>
+               dim :: refill_schedule_from_template_keep_zero_consts template' const_rows dims'
+           | nil =>
+               aff :: refill_schedule_from_template_keep_zero_consts template' const_rows nil
+           end
+  end.
+
+Fixpoint interleave_zero_schedule_rows (dim : nat) (sched : Schedule) : Schedule :=
+  match sched with
+  | nil => nil
+  | aff :: sched' =>
+      zero_affine_function dim :: aff :: interleave_zero_schedule_rows dim sched'
+  end.
+
+Definition compact_schedule_to_source_like
+    (dim : nat) (sched_core : Schedule) (tail_const : option Z) : Schedule :=
+  interleave_zero_schedule_rows dim sched_core ++
+  [match tail_const with
+   | Some c => constant_affine_function dim c
+   | None => zero_affine_function dim
+   end].
+
+Definition source_like_rows_from_schedule
+    (dim : nat) (sched : Schedule) : Schedule :=
+  let normalized_sched := remove_zero_schedule_dims sched in
+  let '(sched_core, tail_const) := split_trailing_const_schedule normalized_sched in
+  source_like_sctt_rows sched_core tail_const dim.
+
+Definition pad_schedule_to_len (dim len : nat) (sched : Schedule)
+  : Schedule :=
+  List.app sched
+    (List.repeat (zero_affine_function dim) (len - List.length sched)).
+
+Definition source_like_pi_schedule (env_dim : nat) (pi : PolyInstr)
+  : Schedule :=
+  source_like_rows_from_schedule (env_dim + pi_depth pi) (pi_schedule pi).
+
+Definition source_like_schedule_pprog (pp : t) : t :=
+  let '(pis, varctxt, vars) := pp in
+  let env_dim := List.length varctxt in
+  let canon_pi pi :=
+    {|
+      pi_depth := pi_depth pi;
+      pi_instr := pi_instr pi;
+      pi_poly := pi_poly pi;
+      pi_schedule := source_like_pi_schedule env_dim pi;
+      pi_transformation := pi_transformation pi;
+      pi_waccess := pi_waccess pi;
+      pi_raccess := pi_raccess pi;
+    |} in
+  (List.map canon_pi pis, varctxt, vars).
+
+Definition max_schedule_len (pis : list PolyInstr) : nat :=
+  List.fold_left Nat.max
+    (List.map (fun pi => List.length (pi_schedule pi)) pis) 0.
+
+Definition keep_schedule_row_at
+    (env_dim len idx : nat) (pis : list PolyInstr) : bool :=
+  existsb
+    (fun pi =>
+       negb (affine_function_is_zero
+               (List.nth idx
+                 (pad_schedule_to_len
+                    (env_dim + pi_depth pi) len
+                    (pi_schedule pi))
+                 (zero_affine_function
+                    (env_dim + pi_depth pi)))))
+    pis.
+
+Fixpoint keep_schedule_rows
+    (dim idx : nat) (mask : list bool) (sched : Schedule)
+  : Schedule :=
+  match mask with
+  | nil => nil
+  | keep :: mask' =>
+      let aff := List.nth idx sched (zero_affine_function dim) in
+      let rest := keep_schedule_rows dim (S idx) mask' sched in
+      if keep then aff :: rest else rest
+  end.
+
+Definition canonicalize_schedule_pprog (pp : t) : t :=
+  let '(pis, varctxt, vars) := pp in
+  let env_dim := List.length varctxt in
+  let len := max_schedule_len pis in
+  let mask :=
+    List.map
+      (fun idx => keep_schedule_row_at env_dim len idx pis)
+      (List.seq 0 len) in
+  let canon_pi pi :=
+    let dim := env_dim + pi_depth pi in
+    let sched :=
+      keep_schedule_rows dim 0 mask
+        (pad_schedule_to_len dim len (pi_schedule pi)) in
+    {|
+      pi_depth := pi_depth pi;
+      pi_instr := pi_instr pi;
+      pi_poly := pi_poly pi;
+      pi_schedule := sched;
+      pi_transformation := pi_transformation pi;
+      pi_waccess := pi_waccess pi;
+      pi_raccess := pi_raccess pi;
+    |} in
+  (List.map canon_pi pis, varctxt, vars).
+
+Definition raw_scattering_rows
+    (sctt : Relation) (varctxt_dim iters_dim : nat) : Schedule :=
+  let openscop_sctt_dim := OpenScop.out_dim_nb (OpenScop.meta sctt) in
+  map (fun (aff: bool * openscop_constraint) =>
+    openscop_sctt_row_to_affine aff openscop_sctt_dim varctxt_dim iters_dim)
+    sctt.(OpenScop.constrs).
+
+Fixpoint overwrite_last_schedule_const
+    (sched : Schedule) (tail_const : option Z) : Schedule :=
+  match sched with
+  | nil => nil
+  | aff :: nil =>
+      if affine_function_is_const aff
+      then match tail_const with
+           | Some c => constant_affine_function (length (fst aff)) c :: nil
+           | None => aff :: nil
+           end
+      else aff :: nil
+  | aff :: sched' => aff :: overwrite_last_schedule_const sched' tail_const
+  end.
+
+Definition refill_source_like_schedule_from_template
+    (template rows : Schedule) (tail_const : option Z) : Schedule :=
+  let '(const_rows, dyn_rows) := split_const_and_nonconst_schedule_rows rows in
+  overwrite_last_schedule_const
+    (refill_schedule_from_template_keep_zero_consts template const_rows dyn_rows)
+    tail_const.
+
+Definition source_like_template_matches_scattering
+    (template : Schedule) (sctt : Relation) (varctxt_dim iters_dim : nat) : bool :=
+  let rows := raw_scattering_rows sctt varctxt_dim iters_dim in
+  let '(sched_core, tail_const) := source_like_rows_to_compact_schedule rows in
+  let sched :=
+    refill_source_like_schedule_from_template template sched_core tail_const in
+  listzzs_strict_eqb
+    (drop_trailing_zero_schedule rows)
+    (drop_trailing_zero_schedule
+       (source_like_rows_from_schedule (varctxt_dim + iters_dim) sched)).
+
+Definition from_openscop_schedule_only (pol: t) (scop: OpenScop): result t := 
   if check_pol_openscop_consistency pol scop then 
   (
     (* FUTURE: vars may change due to tiling or else *)
@@ -233,22 +786,59 @@ Definition from_openscop (pol: t) (scop: OpenScop): result t :=
       length zs) pi.(pi_poly)) in
     let iters_dim := domain_dim - varctxt_dim in
     let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
-    let schedule := from_openscop_sctt_to_pol_schedule (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim in 
     {|
-      (* FUTURE: if tiling exists, we should not inherit iter list directly *)
-      pi_depth := pi.(pi_depth);  
+      pi_depth := pi.(pi_depth);
       pi_instr := pi.(pi_instr);
       pi_poly := pi.(pi_poly);
-      (* only schedule is changed *)
-      pi_schedule := schedule; 
+      pi_schedule :=
+        from_openscop_sctt_to_pol_schedule
+          (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim;
+      pi_transformation := pi.(pi_transformation);
+      pi_waccess := pi.(pi_waccess);
+      pi_raccess := pi.(pi_raccess);
+    |}
+  ) (List.combine pis (OpenScop.statements scop)) in
+  Okk (canonicalize_schedule_pprog (pis', varctxt, vars))
+  )
+  else Err "from_openscop_schedule_only: pol and scop are not consistent".
+
+
+Definition from_openscop_like_source (pol: t) (scop: OpenScop): result t := 
+  if check_pol_openscop_consistency pol scop then 
+  (
+  let '(pis, varctxt, vars) := pol in 
+  let varctxt_dim := length varctxt in
+  let pis' := map (fun (pair: PolyInstr * (OpenScop.Statement)) =>
+    let (pi, stmt_scop) := pair in
+    let domain_dim := list_max (map 
+      (fun (constr: (list Z * Z)) => let (zs, z) := constr in 
+        length zs) pi.(pi_poly)) in
+    let iters_dim := domain_dim - varctxt_dim in
+    {|
+      pi_depth := pi.(pi_depth);
+      pi_instr := pi.(pi_instr);
+      pi_poly := pi.(pi_poly);
+      pi_schedule :=
+        if source_like_template_matches_scattering
+             pi.(pi_schedule) (OpenScop.scattering stmt_scop) varctxt_dim iters_dim
+        then
+          let '(sched_core, tail_const) :=
+            from_openscop_sctt_to_source_like_compact_schedule
+              (OpenScop.scattering stmt_scop) varctxt_dim iters_dim in
+          refill_source_like_schedule_from_template pi.(pi_schedule) sched_core tail_const
+        else
+          from_openscop_sctt_to_pol_schedule
+            (OpenScop.scattering stmt_scop)
+            domain_dim iters_dim
+            (length (OpenScop.constrs (OpenScop.scattering stmt_scop)));
       pi_transformation := pi.(pi_transformation);
       pi_waccess := pi.(pi_waccess);
       pi_raccess := pi.(pi_raccess);
     |}
   ) (List.combine pis (OpenScop.statements scop)) in
   Okk (pis', varctxt, vars)
-  )  
-  else Err "from_openscop: pol and scop are not consistent".
+  )
+  else Err "from_openscop_like_source: pol and scop are not consistent".
 
 Definition from_openscop_ctxt (ctxtscop: OpenScop.ContextScop): list ident := 
   match (OpenScop.params ctxtscop) with
@@ -348,6 +938,34 @@ Fixpoint from_openscop_raccesslist (accesslist: list OpenScop.Relation) (iters_d
   | nil => nil
   end.
 
+Definition from_openscop (pol: t) (scop: OpenScop): result t := 
+  if check_pol_openscop_consistency pol scop then 
+  (
+  let '(pis, varctxt, vars) := pol in 
+  let varctxt_dim := length varctxt in
+  let pis' := map (fun (pair: PolyInstr * (OpenScop.Statement)) =>
+    let (pi, stmt_scop) := pair in
+    let domain_dim := 
+      list_max (map (fun (constr: (bool * list Z)) => let (_, zs) := constr in length zs - 1)
+                    (OpenScop.constrs (OpenScop.domain stmt_scop))) in
+    let iters_dim := domain_dim - varctxt_dim in
+    {|
+      pi_depth := pi.(pi_depth);
+      pi_instr := pi.(pi_instr);
+      pi_poly := from_openscop_domain (OpenScop.domain stmt_scop) iters_dim varctxt_dim;
+      pi_schedule := 
+        let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
+        from_openscop_sctt_to_pol_schedule 
+          (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim; 
+      pi_transformation := pi.(pi_transformation);
+      pi_waccess := from_openscop_waccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
+      pi_raccess := from_openscop_raccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
+    |}
+  ) (List.combine pis (OpenScop.statements scop)) in
+  Okk (pis', varctxt, vars)
+  )
+  else Err "from_openscop: pol and scop are not consistent".
+
 (* for reordering-only validation, we always premuse transformation is identical *)
 Definition create_id_transformation (dim: nat): Transformation := 
   map (fun k => (assign k (1%Z) (V0 dim), 0%Z)) (seq 0 dim)  
@@ -357,7 +975,6 @@ Definition create_id_transformation (dim: nat): Transformation :=
 (* Instruction will be omitted (viewed as a dummy one) *)
 (* And therefore no instruction-level semantics guarantee anymore. *)
 Definition from_openscop_complete (scop: OpenScop): result t := 
-  let sctt_dim := list_max (map (fun stmt => length stmt.(OpenScop.scattering).(OpenScop.constrs)) (OpenScop.statements scop)) in
   let vars := from_openscop_vars (OpenScop.glb_exts scop) in
   let varctxt := from_openscop_ctxt (OpenScop.context scop) in
   let varctxt_dim := length varctxt in
@@ -365,12 +982,12 @@ Definition from_openscop_complete (scop: OpenScop): result t :=
     let domain_dim := 
       list_max (map (fun (constr: (bool * list Z)) => let (z, zs) := constr in length zs -1) (OpenScop.constrs (OpenScop.domain stmt_scop))) in
     let iters_dim := domain_dim - varctxt_dim in
-    let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
     {|
       pi_depth := length (from_openscop_iterlist (OpenScop.stmt_exts_opt stmt_scop));
       pi_instr := Instr.dummy_instr;
       pi_poly := from_openscop_domain (OpenScop.domain stmt_scop) iters_dim varctxt_dim;
       pi_schedule := 
+        let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
         from_openscop_sctt_to_pol_schedule 
           (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim; 
       pi_transformation := create_id_transformation (varctxt_dim + iters_dim);
@@ -611,15 +1228,22 @@ Proof.
 Qed.
 
 (** Part 2: Instruction Point Semantics *)
-Record InstrPoint := {
+(* Record InstrPoint := {
   ip_nth: nat;  (** belongs to nth polyhedral instruction *)
   ip_index: DomIndex;  (** index of the domain, i.e., iterator's value *)
   ip_transformation: Transformation; (** transformation function *)
   ip_time_stamp: TimeStamp;  (** schedule *)
   ip_instruction: Instr.t;  (** basic instruction *)
   ip_depth: nat;  (** surrounded iterator depth *)
-}.
+}. *)
 
+Notation InstrPoint := ILSema.InstrPoint.
+Notation ip_nth := ILSema.ip_nth.
+Notation ip_index := ILSema.ip_index.
+Notation ip_transformation := ILSema.ip_transformation.
+Notation ip_time_stamp := ILSema.ip_time_stamp.
+Notation ip_instruction := ILSema.ip_instruction.
+Notation ip_depth := ILSema.ip_depth.
 
 Record InstrPoint_ext := {
   ip_nth_ext: nat;  (** belongs to nth polyhedral instruction *)
@@ -632,12 +1256,15 @@ Record InstrPoint_ext := {
 }.
 
 
-Definition eq_except_sched (ip1 ip2: InstrPoint): Prop := 
+Definition eq_except_sched := 
+  ILSema.eq_except_sched.
+
+(* Definition eq_except_sched (ip1 ip2: InstrPoint): Prop := 
   ip1.(ip_nth) = ip2.(ip_nth) /\ 
   ip1.(ip_index) = ip2.(ip_index) /\ 
   ip1.(ip_transformation) = ip2.(ip_transformation) /\
   ip1.(ip_instruction) = ip2.(ip_instruction) /\ 
-  ip1.(ip_depth) = ip2.(ip_depth).
+  ip1.(ip_depth) = ip2.(ip_depth). *)
 
 Definition old_of_ext (ip_ext: InstrPoint_ext): InstrPoint := 
   {|
@@ -665,12 +1292,13 @@ Definition old_of_ext_list (ipl_ext: list InstrPoint_ext) :=
 Definition new_of_ext_list (ipl_ext: list InstrPoint_ext) := 
   map new_of_ext ipl_ext.
 
-Inductive instr_point_sema (ip: InstrPoint) 
+Notation instr_point_sema := ILSema.instr_point_sema.
+(* Inductive instr_point_sema (ip: InstrPoint) 
   (st1 st2: State.t): Prop :=
   | ip_sema_intro: forall wcs rcs,
     Instr.instr_semantics ip.(ip_instruction) 
       (affine_product ip.(ip_transformation) ip.(ip_index)) wcs rcs st1 st2 -> 
-    instr_point_sema ip st1 st2.
+    instr_point_sema ip st1 st2. *)
 
 Definition instr_point_sched_le (ip1 ip2: InstrPoint): Prop := 
   lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp) = Lt \/ 
@@ -705,59 +1333,20 @@ Definition instr_point_ext_old_sched_le (ip1 ip2: InstrPoint_ext): Prop :=
   lex_compare ip1.(ip_time_stamp1_ext) ip2.(ip_time_stamp1_ext) = Eq. 
 
 (* TODO: Move to Base.v. Require Coqlib.v *)
-Definition comparison_eq_dec: 
+(* Definition comparison_eq_dec: 
   forall (x y: comparison), { x = y } + { x <> y }.
   decide equality.
-Defined.
-
-Definition comparison_eqb (x y: comparison):bool := 
-  comparison_eq_dec x y.
-
-Lemma comparison_eqb_iff_eq:
-  forall x cmp,
-    comparison_eqb x cmp = true <->
-    x = cmp. 
-Proof.
-  intros. split.
-  {
-    intro. 
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-  {
-    intro.
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-Qed.
-
-Lemma comparison_eqb_false_iff_neq:
-  forall x cmp,
-    comparison_eqb x cmp = false <->
-    x <> cmp. 
-Proof.
-  intros. split.
-  {
-    intro. 
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-  {
-    intro.
-    destruct x; destruct cmp; simpls; trivial; 
-    unfold comparison_eqb in H; 
-    unfold comparison_eq_dec in H; simpls; try congruence.
-  }
-Qed.
-
+Defined. *)
+(* 
 Definition instr_point_sched_ltb (ip1 ip2: InstrPoint): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp)) Lt.
 
 Definition instr_point_sched_eqb (ip1 ip2: InstrPoint): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp) ip2.(ip_time_stamp)) Eq.
+ *)
+
+Notation instr_point_sched_ltb := ILSema.instr_point_sched_ltb.
+Notation instr_point_sched_eqb := ILSema.instr_point_sched_eqb.
 
 Definition instr_point_ext_old_sched_ltb (ip1 ip2: InstrPoint_ext): bool := 
   comparison_eqb (lex_compare ip1.(ip_time_stamp1_ext) ip2.(ip_time_stamp1_ext)) Lt.
@@ -788,38 +1377,8 @@ Definition instr_point_ext_new_sched_geb (ip1 ip2: InstrPoint_ext): bool :=
   ||   
   comparison_eqb (lex_compare ip1.(ip_time_stamp2_ext) ip2.(ip_time_stamp2_ext)) Eq. 
 
-Definition Permutable (ip1 ip2: InstrPoint) := 
-  forall st1, 
-    Instr.NonAlias st1 ->
-    (forall st2' st3,
-      instr_point_sema ip1 st1 st2' ->
-      instr_point_sema ip2 st2' st3 ->
-      exists st2'' st3',
-      instr_point_sema ip2 st1 st2'' /\
-      instr_point_sema ip1 st2'' st3' /\
-      Instr.State.eq st3 st3'
-    ) /\
-    (forall st2' st3,
-      instr_point_sema ip2 st1 st2' ->
-      instr_point_sema ip1 st2' st3 ->
-      exists st2'' st3',
-      instr_point_sema ip1 st1 st2'' /\
-      instr_point_sema ip2 st2'' st3' /\
-      Instr.State.eq st3 st3'
-    ).
-
-Lemma Permutable_symm: 
-  forall ip1 ip2, 
-    Permutable ip1 ip2 -> 
-    Permutable ip2 ip1.
-Proof.
-  intros.
-  unfolds Permutable.
-  intros.
-  split. 
-  eapply H; eauto.
-  eapply H; eauto.
-Qed.
+Notation Permutable := ILSema.Permutable.
+Notation Permutable_symm := ILSema.Permutable_symm. 
 
 (** Note: this is irrelevent to schedule, so either old_of_ext or new_of_ext is ok *)
 Definition Permutable_ext (ip1_ext ip2_ext: InstrPoint_ext) := 
@@ -834,32 +1393,9 @@ Proof.
   eapply Permutable_symm. trivial.
 Qed. 
 
-Inductive instr_point_list_semantics: list InstrPoint ->
-    State.t -> State.t -> Prop:=
-  | IPLS_nil: forall st st', 
-    Instr.State.eq st st' ->
-    instr_point_list_semantics [] st st'
-  | IPLS_cons: forall st1 st2 st3 ip il,
-    instr_point_sema ip st1 st2 ->
-    instr_point_list_semantics il st2 st3 ->
-    instr_point_list_semantics (ip::il) st1 st3.
-
-Definition veq_instance (ip1 ip2: InstrPoint): Prop :=
-  ip1.(ip_nth) = ip2.(ip_nth) 
-  /\ veq ip1.(ip_index) ip2.(ip_index) 
-  /\ ip1.(ip_transformation) = ip2.(ip_transformation)
-  /\ ip1.(ip_time_stamp) = ip2.(ip_time_stamp)
-  /\ ip1.(ip_instruction) = ip2.(ip_instruction)
-  /\ ip1.(ip_depth) = ip2.(ip_depth)
-.
-
-Lemma veq_instance_refl:
-  forall ip,
-    veq_instance ip ip.
-Proof.
-  intros. destruct ip. unfold veq_instance; splits; simpls; trivial.
-  eapply veq_refl.
-Qed.
+Notation instr_point_list_semantics:= ILSema.instr_point_list_semantics.
+Notation veq_instance := ILSema.veq_instance.
+Notation veq_instance_refl := ILSema.veq_instance_refl.
 
 Definition belongs_to (ip: InstrPoint) (pi: PolyInstr): Prop :=
   in_poly ip.(ip_index) pi.(pi_poly) 
@@ -959,20 +1495,23 @@ Qed.
 
 Definition flatten_instrs (envv: list Z) (poly_instrs: list PolyInstr) (ipl: list InstrPoint): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of all instructions *)
     forall ip,
       In ip ipl
       <->
       (
       exists pi,
         nth_error poly_instrs ip.(ip_nth) = Some pi 
+        /\ firstn (length envv) ip.(ip_index) = envv
         /\ belongs_to ip pi
         /\ length ip.(ip_index) = length envv + pi.(pi_depth) 
       )
@@ -991,17 +1530,21 @@ Definition flatten_instrs (envv: list Z) (poly_instrs: list PolyInstr) (ipl: lis
 
 Definition flatten_instr_nth (envv: list Z) (nth: nat) (pi: PolyInstr) (ipl: list InstrPoint): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of this instruction *)
     forall ip,
       In ip ipl
       <->
+      firstn (length envv) ip.(ip_index) = envv
+      /\
       belongs_to ip pi
       /\ ip.(ip_nth) = nth
       /\ length ip.(ip_index) = length envv + pi.(pi_depth) 
@@ -1092,7 +1635,7 @@ Proof.
       eapply in_app_or in H.
       destruct H.
       * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & Hpref & H & Hlen).
         exists pi0.
         splits; eauto.
         rewrite nth_error_app1; eauto.
@@ -1100,7 +1643,7 @@ Proof.
         intro. tryfalse.
       * 
         eapply H2' in H; eauto.
-        destruct H as (H & NTH & Hlen).
+        destruct H as (Hpref & H & NTH & Hlen).
         exists pi.
         splits; eauto.
         rewrite nth_error_app2; eauto; try lia.
@@ -1108,7 +1651,7 @@ Proof.
         simpls. trivial. 
     + intros.
       destruct H.
-      destruct H as (NTH & BEL & LEN).
+      destruct H as (NTH & HPREF & BEL & LEN).
       * 
         assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
           eapply nth_error_Some' in NTH.
@@ -1120,8 +1663,7 @@ Proof.
         rewrite in_app. left. 
         eapply H2.
         exists x.
-        split; eauto.
-        rewrite nth_error_app1 in NTH; eauto. 
+        rewrite nth_error_app1 in NTH; eauto.
         --
         rewrite in_app. right.
         eapply H2'.
@@ -1134,9 +1676,9 @@ Proof.
     eapply NoDup_app; eauto.
     intros.
     eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
+    destruct H as (pi0 & NTH & Hpref & H & Hlen).
     intro. eapply H2' in H0.
-    destruct H0 as (H0 & NTH' & Hlen').
+    destruct H0 as (Hpref' & H0 & NTH' & Hlen').
     rewrite NTH' in NTH.
     assert (nth_error pis (length pis) = None). {
       eapply nth_error_None; eauto.
@@ -1148,8 +1690,8 @@ Proof.
     intros.
     eapply H2 in H; eauto.
     eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
-    destruct H0 as (H' & NTH' & Hlen').
+    destruct H as (pi0 & NTH & Hpref & H & Hlen).
+    destruct H0 as (Hpref' & H' & NTH' & Hlen').
     unfold np_lt. left.
     clear - NTH NTH'.
     eapply nth_error_Some' in NTH. lia.
@@ -1165,7 +1707,7 @@ Proof.
   intros.
   destruct H as (H1 & H2 & H3 & H4).
   eapply H2 in H0.
-  destruct H0 as (pi & NTH & BEL & LEN).
+  destruct H0 as (pi & NTH & HPREF & BEL & LEN).
   eapply nth_error_Some' in NTH. trivial.
 Qed.
 
@@ -1193,19 +1735,19 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & Hpref & H & Hlen).
         exists pi0.
-        splits; eauto.
         rewrite nth_error_app1 in NTH; eauto.
+        repeat split; eauto.
         eapply Nat.ltb_lt in Hlt. trivial.
       * 
         eapply filter_In.
-        destruct H as (pi' & NTH & BEL & LEN).
+        destruct H as (pi' & NTH & HPREF & BEL & LEN).
         split.
         -- eapply H2. 
           exists pi'.
-          splits; eauto.
           rewrite nth_error_app1; eauto.
+          repeat split; eauto.
           clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
         -- eapply Nat.ltb_lt.
           eapply nth_error_Some' in NTH. trivial.
@@ -1227,7 +1769,7 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & BEL & Hlen).
+        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
         eapply Nat.eqb_eq in Hlt.
         assert (pi = pi'). {
           rewrite nth_error_app2 in NTH.
@@ -1238,7 +1780,7 @@ Proof.
         splits; eauto.
       * 
         eapply filter_In.
-        destruct H as (BEL & NTH & LEN).
+        destruct H as (HPREF & BEL & NTH & LEN).
         split.
         -- eapply H2. 
           exists pi.
@@ -1300,6 +1842,7 @@ Proof.
   destruct H. 
   assert ( exists pi,
     nth_error [] (ip_nth i) = Some pi /\
+    firstn (Datatypes.length envv) (ip_index i) = envv /\
     belongs_to i pi /\
     Datatypes.length (ip_index i) = Datatypes.length envv + pi_depth pi). {
       eapply H. eapply in_eq.
@@ -1322,7 +1865,7 @@ Proof.
     -
     intros. split; intros; trivial.
     inv H; tryfalse.
-    destruct H as (pi' & NTH & BEL & LEN).
+    destruct H as (pi' & NTH & HPREF & BEL & LEN).
     eapply H2.
     exists pi'. splits; trivial.
     rewrite nth_error_app1; eauto.
@@ -1333,7 +1876,7 @@ Proof.
     split; intro; tryfalse.
     eapply H2.
     exists pi. 
-    destruct H as (BEL & NTH & LEN).
+    destruct H as (HPREF & BEL & NTH & LEN).
     rewrite NTH.
     splits; eauto.
     rewrite nth_error_app2; try lia.
@@ -1343,7 +1886,7 @@ Proof.
     splits; eauto; try solve [econs; eauto].
     intros. inv H1; tryfalse.
     intros. split; intro. inv H1; tryfalse.
-    destruct H1 as (pi' & NTH & BEL & LEN).
+    destruct H1 as (pi' & NTH & HPREF & BEL & LEN).
     assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
       eapply nth_error_Some' in NTH.
       rewrite app_length in NTH.
@@ -1370,7 +1913,7 @@ Lemma flatten_instrs_nil:
 Proof.
   intros. splits; intros; tryfalse.
   split; intros; tryfalse.
-  destruct H as (pi & NTH & BEL & LEN).
+  destruct H as (pi & NTH & HPREF & BEL & LEN).
   rewrite nth_error_nil in NTH. tryfalse.
   econs. econs.
 Qed.
@@ -1544,8 +2087,8 @@ Lemma eqdom_pinstr_implies_flatten_instr_nth_exists:
     exists ipl2,
     flatten_instr_nth envv n pi2 ipl2.
 Proof.
-  intros. 
-  exists (map (fun ip1 => 
+  intros ipl1 pi1 pi2 envv n Heq Hflat.
+  exists (map (fun ip1 =>
     {|
       ip_nth := ip_nth ip1;
       ip_index := ip_index ip1;
@@ -1553,40 +2096,46 @@ Proof.
       ip_time_stamp := affine_product (pi_schedule pi2) (ip_index ip1);
       ip_instruction := ip_instruction ip1;
       ip_depth := pi_depth pi2;
-    |}
-  ) ipl1).
-  splits; trivial.
-  - 
-    destruct H0 as (H1 & H2 & H3 & H4).
-    intros. eapply in_map_iff in H0.
-    destruct H0 as (ip1 & H0 & H0').
-    eapply H1 in H0'; eauto. subst; simpls; trivial.
-  - intros. splits. 
-    -- intro.
-      rewrite in_map_iff in H1.
-      destruct H1 as (ip1 & Hip1 & IN1).
-      destruct H0 as (H1 & H2 & H3 & H4).
-      splits.
-      --- 
-         eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial. 
-          destruct BEL as (POL & TS & T & I & D).
-          destruct H as (DEPTH & INSTR & DOM & TSF & W & R). 
-          splits; try solve [subst; simpls; eauto].
-          simpls. rewrite <- DOM; trivial.
-          simpls. rewrite <- TSF; trivial.
-          simpls. rewrite <- INSTR; trivial.
-      --- 
-          eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial.
-      --- 
-          eapply H2 in IN1. destruct IN1 as (BEL & NTH & LEN).
-          subst. simpls; trivial.
-          destruct H as (DEPTH & INSTR & DOM & TSF & W & R). rewrite <- DEPTH. trivial.
-    -- intro.
-      destruct H1 as (BEL & NTH & LEN).
+    |}) ipl1).
+  destruct Heq as (DEPTH & INSTR & DOM & TSF & W & R).
+  destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
+  refine (conj _ (conj _ (conj _ _))).
+  { intros ip Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as (ip1 & Hip & Hin1).
+    subst ip.
+    simpl.
+    apply Hprefix.
+    exact Hin1. }
+  { intros ip.
+    split.
+    - intro Hin.
+      rewrite in_map_iff in Hin.
+      destruct Hin as (ip1 & Hip & Hin1).
+      subst ip.
+      destruct (Hmem ip1) as [Hin1_to _].
+      specialize (Hin1_to Hin1).
+      destruct Hin1_to as (HPREF & HBEL & HNTH & HLEN).
+      destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+      split.
+      + exact HPREF.
+      + split.
+        * unfold belongs_to; simpl.
+          split.
+          { rewrite <- DOM. exact HPOL. }
+          split.
+          { rewrite <- TSF. exact HTRANS. }
+          split.
+          { reflexivity. }
+          split.
+          { rewrite <- INSTR. exact HINSTR. }
+          { reflexivity. }
+        * split.
+          { exact HNTH. }
+          { rewrite <- DEPTH. exact HLEN. }
+    - intro Hin.
+      destruct Hin as (HPREF & HBEL & HNTH & HLEN).
       rewrite in_map_iff.
-      destruct H0 as (H1 & H2 & H3 & H4).
       exists {|
         ip_nth := ip_nth ip;
         ip_index := ip_index ip;
@@ -1594,31 +2143,43 @@ Proof.
         ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
         ip_instruction := ip_instruction ip;
         ip_depth := pi_depth pi2;
-      |}. simpls. 
+      |}.
       split.
-      --- 
-        destruct BEL as (POL & TS & T & I & D).
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R). 
-        destruct ip eqn:Hip; simpls; subst; trivial.
-      --- 
-        eapply H2. splits; try solve [splits; simpls; subst; eauto;trivial].
-        destruct BEL as (POL & TS & T & I & D).
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-        splits; destruct ip eqn:Hip; simpls; try solve [subst; trivial].
-        rewrite DOM; trivial.
-        all: try solve [subst; eauto]. 
-        destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-        simpl; eauto. 
-        rewrite DEPTH; trivial.
-  - 
-    pose proof H0 as G0.
+      + destruct ip; simpl in *.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        simpl in *.
+        subst.
+        f_equal; auto.
+      + destruct (Hmem {|
+           ip_nth := ip_nth ip;
+           ip_index := ip_index ip;
+           ip_transformation := ip_transformation ip;
+           ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
+           ip_instruction := ip_instruction ip;
+           ip_depth := pi_depth pi2;
+         |}) as [_ Hback].
+        apply Hback.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        refine (conj HPREF _).
+        refine (conj _ _).
+        * unfold belongs_to; simpl in *.
+          split.
+          { rewrite DOM. exact HPOL. }
+          split.
+          { rewrite TSF. exact HTRANS. }
+          split.
+          { reflexivity. }
+          split.
+          { rewrite INSTR. exact HINSTR. }
+          { rewrite DEPTH. reflexivity. }
+        * split.
+          { exact HNTH. }
+          { rewrite DEPTH. exact HLEN. } }
+  { pose proof (conj Hprefix (conj Hmem (conj Hnodup Hsorted))) as G0.
     eapply flatten_instr_nth_NoDupA_np in G0.
-    destruct H0 as (H1 & H2 & H3 & H4).
     eapply NoDup_implies_NoDupA_np.
-    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto.
-  -
-    destruct H0 as (H1 & H2 & H3 & H4). 
-    eapply Sorted_ipl_map_np_sorted_np; eauto.
+    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto. }
+  { eapply Sorted_ipl_map_np_sorted_np; eauto. }
 Qed.
 
 Lemma eqdom_pinstrs_implies_flatten_instrs_exists:
@@ -1699,7 +2260,7 @@ Proof.
   - intros. 
     destruct H0 as (ENV & BEL & NODUP & SORTED).
     destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL in H2. destruct H2 as (BEL1 & NTH & LEN).
+    eapply BEL in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
     eapply InA_alt.
     remember {|
       ip_nth := ip_nth ip1;
@@ -1711,20 +2272,22 @@ Proof.
     |} as ip2.
     exists ip2. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
+    subst ip2.
     destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-    eapply BEL'. splits; try solve [subst; simpls; trivial].
-    {
-      destruct BEL1 as (POL & TS & T & I & D).
+    eapply BEL'.
+    split; [exact HPREF|].
+    split.
+    { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite <- DOM; subst; simpls; trivial.
       rewrite <- TSF; subst; simpls; trivial.
-      rewrite <- INSTR; subst; simpls; trivial.
-    }
+      rewrite <- INSTR; subst; simpls; trivial. }
+    split; [subst; simpls; trivial|].
     rewrite <- DEPTH; subst; simpls; trivial.
   - intros. 
     destruct H0 as (ENV & BEL & NODUP & SORTED).
     destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL' in H2. destruct H2 as (BEL1 & NTH & LEN).
+    eapply BEL' in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
     eapply InA_alt.
     remember {|
       ip_nth := ip_nth ip2;
@@ -1736,15 +2299,17 @@ Proof.
     |} as ip1.
     exists ip1. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
+    subst ip1.
     destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-    eapply BEL. splits; try solve [subst; simpls; trivial].
-    {
-      destruct BEL1 as (POL & TS & T & I & D).
+    eapply BEL.
+    split; [exact HPREF|].
+    split.
+    { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite DOM; subst; simpls; trivial.
       rewrite TSF; subst; simpls; trivial.
-      rewrite INSTR; subst; simpls; trivial.
-    }
+      rewrite INSTR; subst; simpls; trivial. }
+    split; [subst; simpls; trivial|].
     rewrite DEPTH; subst; simpls; trivial.
 Qed.
 
@@ -2140,7 +2705,7 @@ Proof.
 Qed.
 
 Lemma eqdom_same_ipl_length_lt_impossible:
-  forall len1 len2 ipl1 ipl2 pol tsf sch1 sch2 instr n len depth,
+  forall len1 len2 ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
     NoDupA np_eq ipl1 -> 
     NoDupA np_eq ipl2 -> 
     (forall n ip1 ip2, 
@@ -2148,26 +2713,28 @@ Lemma eqdom_same_ipl_length_lt_impossible:
       nth_error ipl2 n = Some ip2 ->
       np_eq ip1 ip2
     ) ->
-    (forall ip1, 
-      In ip1 ipl1 <-> 
-        in_poly (ip_index ip1) pol 
-        /\ ip_transformation ip1 = tsf 
+    (forall ip1,
+      In ip1 ipl1 <->
+        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
+        in_poly (ip_index ip1) pol
+        /\ ip_transformation ip1 = tsf
         /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
         /\ ip_instruction ip1 = instr
         /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n 
-        /\ length (ip_index ip1) = len 
+        /\ ip_nth ip1 = n
+        /\ length (ip_index ip1) = len
       )
     -> 
-    (forall ip2, 
-      In ip2 ipl2 <-> 
-        in_poly (ip_index ip2) pol 
-        /\ ip_transformation ip2 = tsf 
+    (forall ip2,
+      In ip2 ipl2 <->
+        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
+        in_poly (ip_index ip2) pol
+        /\ ip_transformation ip2 = tsf
         /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
         /\ ip_instruction ip2 = instr
         /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n 
-        /\ length (ip_index ip2) = len 
+        /\ ip_nth ip2 = n
+        /\ length (ip_index ip2) = len
       )
     ->
     len1 = length ipl1 ->
@@ -2203,10 +2770,13 @@ Proof.
       ip_depth := depth;
     |} as ip1.
     exists ip1. 
-    destruct NTH2 as (POL & TSF & T & I & D & N & L).
+    destruct NTH2 as (HPREF & POL & TSF & T & I & D & N & L).
     split.
-    - 
-      eapply H2. splits; try solve [subst; simpls; trivial].
+    -
+      eapply H2.
+      subst ip1.
+      simpl.
+      repeat split; eauto.
     - unfold np_eq. split; subst; simpls; trivial.
       eapply lex_compare_reflexive.
   }
@@ -2243,7 +2813,7 @@ Proof.
 Qed.
 
 Lemma eqdom_same_ipl_length:
-  forall ipl1 ipl2 pol tsf sch1 sch2 instr n len depth,
+  forall ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
     NoDupA np_eq ipl1 -> 
     NoDupA np_eq ipl2 -> 
     (forall n ip1 ip2, 
@@ -2251,26 +2821,28 @@ Lemma eqdom_same_ipl_length:
       nth_error ipl2 n = Some ip2 ->
       np_eq ip1 ip2
     ) ->
-    (forall ip1, 
-      In ip1 ipl1 <-> 
-        in_poly (ip_index ip1) pol 
-        /\ ip_transformation ip1 = tsf 
+    (forall ip1,
+      In ip1 ipl1 <->
+        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
+        in_poly (ip_index ip1) pol
+        /\ ip_transformation ip1 = tsf
         /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
         /\ ip_instruction ip1 = instr
         /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n 
-        /\ length (ip_index ip1) = len 
+        /\ ip_nth ip1 = n
+        /\ length (ip_index ip1) = len
       )
     -> 
-    (forall ip2, 
-      In ip2 ipl2 <-> 
-        in_poly (ip_index ip2) pol 
-        /\ ip_transformation ip2 = tsf 
+    (forall ip2,
+      In ip2 ipl2 <->
+        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
+        in_poly (ip_index ip2) pol
+        /\ ip_transformation ip2 = tsf
         /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
         /\ ip_instruction ip2 = instr
         /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n 
-        /\ length (ip_index ip2) = len 
+        /\ ip_nth ip2 = n
+        /\ length (ip_index ip2) = len
       )
     ->
     length ipl1 = length ipl2.
@@ -2312,6 +2884,7 @@ Proof.
   destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
   eapply eqdom_same_ipl_length 
     with  
+      (envv:=envv)
       (pol := (pi_poly pi1)) 
       (tsf := pi_transformation pi1) 
       (sch1 := pi_schedule pi1)
@@ -2325,20 +2898,38 @@ Proof.
     eapply eqdom_pinstr_implies_flatten_same_np_set; eauto.
     eapply flatten_instr_nth_NoDupA_np; eauto.
     eapply flatten_instr_nth_NoDupA_np; eauto.
-  -  
+  -
     clear - BEL.
-    intros. split; intro. 
-    -- eapply BEL in H. firstorder.
-    -- eapply BEL. firstorder.
-  - intros.
-    intros. split; intro; trivial.
-    -- eapply BEL' in H. 
-    rewrite DOM. rewrite TSF. rewrite INSTR. 
-    rewrite DEPTH. clear - H. firstorder.
-    -- 
-    eapply BEL'. 
-    rewrite <- DOM. rewrite <- TSF. rewrite <- INSTR. 
-    rewrite <- DEPTH. clear - H. firstorder.
+    intros ip. split; intro Hin.
+    -- eapply BEL in Hin.
+       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
+       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
+       repeat split; eauto.
+    -- eapply BEL.
+       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
+       repeat split; eauto.
+  - intros ip.
+    split; intro Hin; trivial.
+    -- eapply BEL' in Hin.
+       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
+       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
+       rewrite <- DOM in HPOL.
+       rewrite <- TSF in HTSF.
+       rewrite <- INSTR in HINSTR.
+       rewrite <- DEPTH in HDEPTH.
+       rewrite <- DEPTH in HLEN.
+       repeat split; eauto.
+    -- eapply BEL'.
+       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
+       rewrite DOM in HPOL.
+       rewrite TSF in HTSF.
+       rewrite INSTR in HINSTR.
+       rewrite DEPTH in HDEPTH.
+       rewrite DEPTH in HLEN.
+       split; [exact HPREF|].
+       split.
+       ++ repeat split; eauto.
+       ++ split; [exact HNTH| exact HLEN].
 Qed.
 
 Lemma eqdom_pinstr_implies_flatten_instr_nth_rel':
@@ -2370,8 +2961,8 @@ Proof.
   destruct H0 as (ENV & BEL & NODUP & SORTED).
   destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
   eapply BEL in H5. eapply BEL' in H6.
-  destruct H5 as (BEL1 & NTH1 & LEN1).
-  destruct H6 as (BEL2 & NTH2 & LEN2).
+  destruct H5 as (HPREF1 & BEL1 & NTH1 & LEN1).
+  destruct H6 as (HPREF2 & BEL2 & NTH2 & LEN2).
   destruct BEL1 as (POL1 & TS1 & T1 & I1 & D1).
   destruct BEL2 as (POL2 & TS2 & T2 & I2 & D2).
   destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
@@ -2779,19 +3370,22 @@ Qed.
 
 Definition flatten_instrs_ext (envv: list Z) (poly_instrs: list PolyInstr_ext) (ipl: list InstrPoint_ext): Prop := 
   (
-    (* 1. firstn of length env is envv *)
+    (* 1. firstn of length env is envv.
+       Redundant with clause 2 after the env-scoped membership repair, but
+       kept to minimize breakage in existing proofs. *)
     forall ip,
       In ip ipl ->
       firstn (length envv) ip.(ip_index_ext) = envv 
   )
   /\
   (
-    (* 2. contains only but all instances of all instructions *)
+    (* 2. contains only but all env-scoped instances of all instructions *)
     forall ip,
       In ip ipl
       <->
       exists pi,
       nth_error poly_instrs ip.(ip_nth_ext) = Some pi 
+      /\ firstn (length envv) ip.(ip_index_ext) = envv
       /\ belongs_to_ext ip pi
       /\ length ip.(ip_index_ext) = length envv + pi.(pi_depth_ext)
   )
@@ -2809,17 +3403,21 @@ Definition flatten_instrs_ext (envv: list Z) (poly_instrs: list PolyInstr_ext) (
 
 Definition flatten_instr_nth_ext (envv: list Z) (nth: nat) (pi: PolyInstr_ext) (ipl: list InstrPoint_ext): Prop := 
     (
-      (* 1. firstn of length env is envv *)
+      (* 1. firstn of length env is envv.
+         Redundant with clause 2 after the env-scoped membership repair, but
+         kept to minimize breakage in existing proofs. *)
       forall ip,
         In ip ipl ->
         firstn (length envv) ip.(ip_index_ext) = envv 
     )
     /\
     (
-      (* 2. contains only but all instances of all instructions *)
+      (* 2. contains only but all env-scoped instances of this instruction *)
       forall ip,
         In ip ipl
         <->
+        firstn (length envv) ip.(ip_index_ext) = envv
+        /\
         belongs_to_ext ip pi
         /\ ip.(ip_nth_ext) = nth
         /\ length ip.(ip_index_ext) = length envv + pi.(pi_depth_ext) 
@@ -2858,11 +3456,12 @@ Proof.
   destruct H. 
   assert ( exists pi,
     nth_error [] (ip_nth_ext i) = Some pi /\
+    firstn (Datatypes.length envv) (ip_index_ext i) = envv /\
     belongs_to_ext i pi /\
     Datatypes.length (ip_index_ext i) = Datatypes.length envv + pi_depth_ext pi). {
       eapply H. eapply in_eq.
   }
-  destruct H1 as (pi & NTH & _).
+  destruct H1 as (pi & NTH & _ & _ & _).
   eapply nth_error_rev_some in NTH; tryfalse.
 Qed.
 
@@ -2908,23 +3507,27 @@ Proof.
       eapply in_app_or in H.
       destruct H.
       * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & HPREF & H & Hlen).
         exists pi0.
-        splits; eauto.
-        rewrite nth_error_app1; eauto.
-        eapply nth_error_Some; rewrite NTH; eauto.
-        intro. tryfalse.
+        split.
+        -- rewrite nth_error_app1; eauto.
+           eapply nth_error_Some; rewrite NTH; eauto.
+           intro. tryfalse.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
       * 
         eapply H2' in H; eauto.
-        destruct H as (H & NTH & Hlen).
+        destruct H as (HPREF & H & NTH & Hlen).
         exists pi.
-        splits; eauto.
-        rewrite nth_error_app2; eauto; try lia.
-        replace (ip_nth_ext ip - length pis) with 0; try lia.
-        simpls. trivial. 
+        split.
+        -- rewrite nth_error_app2; eauto; try lia.
+           replace (ip_nth_ext ip - length pis) with 0; try lia.
+           simpls. trivial.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
     + intros.
       destruct H.
-      destruct H as (NTH & BEL & LEN).
+      destruct H as (NTH & HPREF & BEL & LEN).
       * 
         assert (ip_nth_ext ip < length pis \/ ip_nth_ext ip = length pis). {
           eapply nth_error_Some' in NTH.
@@ -2936,23 +3539,29 @@ Proof.
         rewrite in_app. left. 
         eapply H2.
         exists x.
-        split; eauto.
-        rewrite nth_error_app1 in NTH; eauto. 
+        split.
+        --- rewrite nth_error_app1 in NTH; [exact NTH|].
+            lia.
+        --- split; [exact HPREF|].
+            split; [exact BEL| exact LEN].
         --
         rewrite in_app. right.
         eapply H2'.
         rewrite H in NTH.
-        rewrite nth_error_app2 in NTH; eauto.
-        replace (length pis - length pis) with 0 in NTH; try lia.
-        simpls; trivial. inv NTH. trivial.
-        splits; eauto.
+        rewrite nth_error_app2 in NTH; [|lia].
+        replace (length pis - length pis) with 0 in NTH by lia.
+        simpl in NTH.
+        inv NTH.
+        split; [exact HPREF|].
+        split; [exact BEL|].
+        split; [exact H| exact LEN].
   - 
     eapply NoDup_app; eauto.
     intros.
     eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
+    destruct H as (pi0 & NTH & HPREF & H & Hlen).
     intro. eapply H2' in H0.
-    destruct H0 as (H0 & NTH' & Hlen').
+    destruct H0 as (HPREF' & H0 & NTH' & Hlen').
     rewrite NTH' in NTH.
     assert (nth_error pis (length pis) = None). {
       eapply nth_error_None; eauto.
@@ -2964,8 +3573,8 @@ Proof.
     intros.
     eapply H2 in H; eauto.
     eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & H & Hlen).
-    destruct H0 as (H' & NTH' & Hlen').
+    destruct H as (pi0 & NTH & HPREF & H & Hlen).
+    destruct H0 as (HPREF' & H' & NTH' & Hlen').
     unfold np_lt. left.
     clear - NTH NTH'.
     eapply nth_error_Some' in NTH. lia.
@@ -2981,7 +3590,7 @@ Proof.
   intros.
   destruct H as (H1 & H2 & H3 & H4).
   eapply H2 in H0.
-  destruct H0 as (pi & NTH & BEL & LEN).
+  destruct H0 as (pi & NTH & HPREF & BEL & LEN).
   eapply nth_error_Some' in NTH. trivial.
 Qed.
 
@@ -3009,20 +3618,24 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & H & Hlen).
+        destruct H as (pi0 & NTH & HPREF & H & Hlen).
         exists pi0.
-        splits; eauto.
-        rewrite nth_error_app1 in NTH; eauto.
-        eapply Nat.ltb_lt in Hlt. trivial.
+        split.
+        -- rewrite nth_error_app1 in NTH; [exact NTH|].
+           eapply Nat.ltb_lt in Hlt. trivial.
+        -- split; [exact HPREF|].
+           split; [exact H| exact Hlen].
       * 
         eapply filter_In.
-        destruct H as (pi' & NTH & BEL & LEN).
+        destruct H as (pi' & NTH & HPREF & BEL & LEN).
         split.
         -- eapply H2. 
           exists pi'.
-          splits; eauto.
-          rewrite nth_error_app1; eauto.
-          clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
+          split.
+          --- rewrite nth_error_app1; eauto.
+              clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
+          --- split; [exact HPREF|].
+              split; [exact BEL| exact LEN].
         -- eapply Nat.ltb_lt.
           eapply nth_error_Some' in NTH. trivial.
     + eapply NoDup_filter; trivial.
@@ -3043,25 +3656,31 @@ Proof.
         eapply filter_In in H.
         destruct H as (H & Hlt).
         eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & BEL & Hlen).
+        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
         eapply Nat.eqb_eq in Hlt.
         assert (pi = pi'). {
           rewrite nth_error_app2 in NTH.
-          replace (ip_nth_ext ip - length pis) with 0 in NTH; simpls; try lia. inv NTH; trivial.
-          lia. 
+          replace (ip_nth_ext ip - length pis) with 0 in NTH by lia.
+          simpl in NTH.
+          inv NTH; trivial.
+          lia.
         }
         subst.
-        splits; eauto.
+        split; [exact HPREF|].
+        split; [exact BEL|].
+        split; [lia| exact Hlen].
       * 
         eapply filter_In.
-        destruct H as (BEL & NTH & LEN).
+        destruct H as (HPREF & BEL & NTH & LEN).
         split.
         -- eapply H2. 
           exists pi.
-          splits; eauto.
-          rewrite nth_error_app2; eauto; try lia.
-          replace (ip_nth_ext ip - length pis) with 0; try lia.
-          simpls; trivial. 
+          split.
+          --- rewrite nth_error_app2; [|lia].
+              replace (ip_nth_ext ip - length pis) with 0 by lia.
+              simpls. trivial.
+          --- split; [exact HPREF|].
+              split; [exact BEL| exact LEN].
         -- eapply Nat.eqb_eq. lia.
     + eapply NoDup_filter; trivial.
     + 
@@ -3148,7 +3767,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3162,7 +3781,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3177,7 +3796,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3191,7 +3810,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3266,7 +3885,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -3281,7 +3900,7 @@ Proof.
   intros.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
-  destruct H0 as (BEL & NTH & LEN).
+  destruct H0 as (HPREF & BEL & NTH & LEN).
   destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
@@ -4704,30 +5323,8 @@ Proof.
   rewrite H0 in H; trivial.
 Qed.
 
-Lemma instr_point_list_sema_stable_under_state_eq:
-  forall l st1 st2 st1' st2',
-    instr_point_list_semantics l st1 st2 ->
-    Instr.State.eq st1 st1' ->
-    Instr.State.eq st2 st2' ->
-    instr_point_list_semantics l st1' st2'.
-Proof.
-  induction l.
-  - 
-  intros. 
-  inv H. 
-  simpls. econs; eauto. 
-  eapply Instr.State.eq_sym in H0.
-  eapply Instr.State.eq_trans; eauto.
-  eapply Instr.State.eq_trans; eauto.
-  -
-  intros. inv H.
-  inv H4. 
-  eapply Instr.instr_semantics_stable_under_state_eq 
-    with (st1':=st1') (st2:=st3) (st2':=st3) in H; eauto.
-  2: {eapply Instr.State.eq_refl. }
-  econs; eauto. instantiate (1:=st3). econs; eauto.
-  eapply IHl; eauto. eapply Instr.State.eq_refl.  
-Qed.
+
+Notation instr_point_list_sema_stable_under_state_eq := ILSema.instr_point_list_sema_stable_under_state_eq.
 
 (** Stable permut instances lists are equivalent *)
 Lemma stable_permut_step_ext_lists_are_equivalent: 
@@ -5482,4 +6079,3 @@ Proof.
 Qed.
 
 End PolyLang.
-

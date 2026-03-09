@@ -1,0 +1,26 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          T1[i0][i2][i3][i1] = (T1[i0][i2][i3][i1] + (A[i4][i2][i3][i1] * C4[i4][i0]));
+        }
+        for i4 in range(0, N) {
+          T2[i0][i4][i3][i1] = (T2[i0][i4][i3][i1] + (T1[i0][i2][i3][i1] * C3[i2][i4]));
+        }
+      }
+    }
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          T3[i0][i2][i3][i1] = (T3[i0][i2][i3][i1] + (T2[i0][i2][i4][i1] * C2[i4][i3]));
+        }
+        for i4 in range(0, N) {
+          B[i0][i2][i3][i4] = (B[i0][i2][i3][i4] + (T3[i0][i2][i3][i1] * C1[i1][i4]));
+        }
+      }
+    }
+  }
+}

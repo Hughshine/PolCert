@@ -30,6 +30,41 @@ Inductive iter_semantics {A : Type} (P : A -> State.t -> State.t -> Prop) : list
     P x st1 st2 -> iter_semantics P l st2 st3 ->
     iter_semantics P (x :: l) st1 st3.
 
+Inductive iter_semantics_e {A B : Type} (P : A -> list B -> State.t -> State.t -> Prop) : list A -> list B -> State.t -> State.t -> Prop :=
+| IEDone : forall st, iter_semantics_e P nil nil st st
+| IEProgress : forall x l il1 il2 st1 st2 st3,
+    P x il1 st1 st2 -> iter_semantics_e P l il2 st2 st3 ->
+    iter_semantics_e P (x :: l) (il1++il2) st1 st3.
+
+Lemma iter_semantics_to_e :
+    forall (A B : Type) 
+        (P : A -> State.t -> State.t -> Prop) 
+        (Q : A -> list B -> State.t -> State.t -> Prop)  
+        (xs : list A) (st1 st2 : State.t),
+      (forall x st1 st2, P x st1 st2 <-> exists il, Q x il st1 st2) ->
+      iter_semantics P xs st1 st2 <-> exists il, iter_semantics_e Q xs il st1 st2.
+Proof.
+  intros A B P Q xs st1 st2 Hstep.
+  split.
+  - (* -> *)
+    intros H.
+    induction H.
+    + exists nil. constructor.
+    + 
+      pose proof (Hstep x st1 st2).
+      eapply H1 in H.
+      destruct H as [il1 HQ].
+
+      destruct IHiter_semantics as [il2 HI].
+      exists (il1 ++ il2). econstructor; eauto.
+  - (* <- *)
+    intros [il Hie].
+    induction Hie.
+    + constructor.
+    + destruct (Hstep x st1 st2) as [_ Hrev].
+      econstructor; eauto.
+Qed.
+
 Lemma iter_semantics_map {A : Type} (P Q : A -> State.t -> State.t -> Prop) :
   forall l st1 st2,
     (forall x st1 st2, In x l -> P x st1 st2 -> Q x st1 st2) ->

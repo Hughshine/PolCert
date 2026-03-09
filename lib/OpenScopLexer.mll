@@ -86,6 +86,8 @@ rule read =
   | "-="     { SUBASSIGN }
   | "/="     { DIVASSIGN }
   | "*="     { MULTIASSIGN }
+  | "=="     { EQEQ }
+  | "&&"     { ANDAND }
   | "<"      { LT }
   | "<="     { LE }
   | "?"      { QUESTION }
@@ -118,7 +120,7 @@ rule read =
       }
   | decimal_floating_constant as c 
       {
-        FLOAT (intpart, frac, (currentLoc lexbuf))
+        FLOAT (c, (currentLoc lexbuf))
       }
   | eof  { EOF }
   | _ { raise (LexError ("Invalid symbol: " ^ lexeme lexbuf)) }
@@ -129,4 +131,3 @@ and singleline_comment = parse
     }
   | eof    { EOF }
   | _      { singleline_comment lexbuf }
-

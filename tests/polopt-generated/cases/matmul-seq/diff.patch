@@ -1,0 +1,16 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -5,12 +5,8 @@
+     for i2 in range(0, N) {
+       C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
+     }
+-  }
+-}
+-for i0 in range(0, N) {
+-  for i1 in range(0, N) {
+     for i2 in range(0, N) {
+-      D[i0][i1] = (D[i0][i1] + (C[i0][i2] * E[i2][i1]));
++      D[i0][i2] = (D[i0][i2] + (C[i0][i1] * E[i1][i2]));
+     }
+   }
+ }

@@ -44,7 +44,7 @@ include Makefile.menhir
 # Directories containing plain Caml code
 
 DIRS=extraction \
-  lib common $(ARCH) cfrontend cparser driver $(shell find VPL/ocaml/src -type d ! -name extracted ! -name smt)
+  lib common $(ARCH) cfrontend cparser driver syntax $(shell find VPL/ocaml/src -type d ! -name extracted ! -name smt)
 
 INCLUDES=$(patsubst %,-I %, $(DIRS))
 
@@ -88,7 +88,7 @@ LEXERS=lib/Tokenize.mll \
 LIBS=str.cmxa unix.cmxa zarith.cmxa $(MENHIR_LIBS)
 LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 
-EXECUTABLES=polcert polcert.byte cchecklink cchecklink.byte clightgen clightgen.byte
+EXECUTABLES=polcert polcert.byte polopt polopt.byte cchecklink cchecklink.byte clightgen clightgen.byte
 GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 
 # Beginning of part that assumes .depend.extr already exists
@@ -96,6 +96,7 @@ GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) driver/Entry.cmx)
+POLOPT_OBJS:=$(shell $(MODORDER) syntax/SLoopMain.cmx)
 
 ifeq ($(OCAML_NATIVE_COMP),true)
 polcert: $(CCOMP_OBJS)
@@ -108,6 +109,20 @@ polcert: polcert.byte
 endif
 
 polcert.byte: $(CCOMP_OBJS:.cmx=.cmo)
+	@echo "Linking $@"
+	@$(OCAMLC) -o $@ $(LIBS_BYTE) $+
+
+ifeq ($(OCAML_NATIVE_COMP),true)
+polopt: $(POLOPT_OBJS)
+	@echo "Linking $@"
+	@$(OCAMLOPT) -o $@ $(LIBS) $(LINK_OPT) $+
+else
+polopt: polopt.byte
+	@echo "Copying to $@"
+	@$(COPY) $+ $@
+endif
+
+polopt.byte: $(POLOPT_OBJS:.cmx=.cmo)
 	@echo "Linking $@"
 	@$(OCAMLC) -o $@ $(LIBS_BYTE) $+
 

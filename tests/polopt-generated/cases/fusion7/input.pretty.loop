@@ -1,0 +1,8 @@
+context(N, M);
+
+for i0 in range(0, N) {
+  a[i0] = b[i0];
+}
+for i0 in range(0, M) {
+  a[i0] = b[i0];
+}

@@ -1,12 +1,10 @@
 %{
     open Camlcoq 
     open Exceptions
-    open Printf
-    open Floats
     open C2C
 %}
 %token <string * OpenScopAST.location> INT
-%token <(string option)*(string option)* OpenScopAST.location> FLOAT
+%token <string * OpenScopAST.location> FLOAT
 %token <string * OpenScopAST.location> IDENT
 %token NULLFILE
 %token <OpenScopAST.location> OPENSCOP OPENSCOPEND
@@ -24,7 +22,7 @@
 %token EOF
 %token <string> LINE
 %token LBRACK RBRACK LPAREN RPAREN EQUAL PLUS MINUS MULTI DIV SEMI
-%token LT LE QUESTION COLON COMMA
+%token LT LE EQEQ ANDAND QUESTION COLON COMMA
 %token ADDASSIGN SUBASSIGN DIVASSIGN MULTIASSIGN
 
 // %left MINUS
@@ -44,8 +42,7 @@
 %type <OpenScopAST.coq_GlbExtLoc> arrays_extension comment_extension coord_extension scatnames_extension global_extension
 %type <OpenScop.coq_Atom> atom
 %type <Camlcoq.Z.t> int
-(* defaultly use 64-bit float *)
-%type <Floats.float> float
+%type <char list> float
 %type <OpenScopAST.coq_GlbExtLoc list> global_extensions list(global_extension)
 %type <OpenScopAST.coq_ContextLoc> context
 %type <char list list> ctxt_param
@@ -383,7 +380,7 @@ array_expr:
     OpenScop.ArrAtom (OpenScop.AInt c) 
 }
 | c=float {
-    OpenScop.ArrAtom (OpenScop.AFloat c)
+    OpenScop.ArrAtom (OpenScop.AFloatLiteral c)
 }
 | aa=array_access { OpenScop.ArrAccessAtom aa }
 | LPAREN; ae=array_expr; RPAREN {ae} 
@@ -393,6 +390,8 @@ array_expr:
 | ae1=array_expr; DIV; ae2=array_expr {OpenScop.ArrDiv (ae1, ae2)}
 | ae1=array_expr; LT; ae2=array_expr {OpenScop.ArrLt (ae1, ae2)}
 | ae1=array_expr; LE; ae2=array_expr {OpenScop.ArrLe (ae1, ae2)} 
+| ae1=array_expr; EQEQ; ae2=array_expr {OpenScop.ArrEq (ae1, ae2)}
+| ae1=array_expr; ANDAND; ae2=array_expr {OpenScop.ArrAnd (ae1, ae2)}
 | cond=array_expr; QUESTION; ae1=array_expr; COLON; ae2=array_expr 
     {OpenScop.ArrCond (cond, ae1, ae2)}
 | idloc=IDENT; LPAREN; RPAREN {
@@ -433,33 +432,13 @@ int:
 (* TODO: done in lexer part should be better *)
 (* TODO: all parser-related definition should move to ocaml, not coq *)
 float:
-| cloc=FLOAT { 
-    let (intpart, frac, loc) = cloc in 
-    let cInfo = 
-    { 
-        OpenScopAST.isHex_FI = false;
-        OpenScopAST.integer_FI = (Option.map (fun x -> coqstring_of_camlstring x) intpart);
-        OpenScopAST.fraction_FI = (Option.map (fun x -> coqstring_of_camlstring x) frac);
-        OpenScopAST.exponent_FI = None;
-        OpenScopAST.suffix_FI = None
-    }
-    in 
-    let (v, ty) = (elab_float_constant cInfo loc) in
-    (convertFloatPure v ty)
+| cloc=FLOAT {
+    let (c, loc) = cloc in
+    (coqstring_of_camlstring c)
 }
 | MINUS cloc=FLOAT {
-    let (intpart, frac, loc) = cloc in 
-    let cInfo = 
-    { 
-        OpenScopAST.isHex_FI = false;
-        OpenScopAST.integer_FI = (Option.map (fun x -> coqstring_of_camlstring x) intpart);
-        OpenScopAST.fraction_FI = (Option.map (fun x -> coqstring_of_camlstring x) frac);
-        OpenScopAST.exponent_FI = None;
-        OpenScopAST.suffix_FI = None
-    }
-    in 
-    let (v, ty) = (elab_float_constant cInfo loc) in
-    (Float.neg (convertFloatPure v ty))
+    let (c, loc) = cloc in
+    (coqstring_of_camlstring ("-" ^ c))
 }
 ;;
 
@@ -469,7 +448,7 @@ atom:
     OpenScop.AInt c 
 }
 | c=float {
-    OpenScop.AFloat c
+    OpenScop.AFloatLiteral c
 }
 ;; 
 

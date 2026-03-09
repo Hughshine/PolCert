@@ -1945,136 +1945,194 @@ Proof.
         clear - Heqip1.
         unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
       }
-      splits.
-      + 
-        assert (PolyLang.ip_index_ext ip = PolyLang.ip_index ip1). {
-          clear - Heqip1.
-          unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-        }
-        assert ((PolyLang.pi_poly_ext pi_ext) = (PolyLang.pi_poly pi1)). {
-          clear - H2.
-          unfold PolyLang.compose_pinstr_ext in H2.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
-          clear - H2.
-          unfold PolyLang.compose_pinstr_ext in H2.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        assert ((PolyLang.pi_schedule1_ext pi_ext) = (PolyLang.pi_schedule pi1)) as PSCHED1. {
-          clear - H2.
-          unfold PolyLang.compose_pinstr_ext in H2.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        assert ((PolyLang.pi_schedule2_ext pi_ext) = (PolyLang.pi_schedule pi2)) as PSCHED2. {
-          clear - H2.
-          unfold PolyLang.compose_pinstr_ext in H2.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
-          clear - H2.
-          unfold PolyLang.compose_pinstr_ext in H2.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        splits; eauto.
-        {
-          rewrite H7. rewrite H8. eapply BEL1; eauto.
-        }
-        {
-          assert (PolyLang.ip_transformation_ext ip = PolyLang.ip_transformation ip1). {
-            unfold PolyLang.compose_pinstr_ext in SAMEI.
-            destruct pi1 eqn:Hpi; simpls; subst; eauto.
-          }
-          rewrite H9; eauto.
-          eapply (BEL1 ip1) in H1.
-          destruct H1. destruct H1 as (POL & TSF & TS & INSTR & D). rewrite TSF. eauto.  
-        }
-        {
-          assert (PolyLang.ip_time_stamp1_ext ip = PolyLang.ip_time_stamp ip1). {
-            unfold PolyLang.old_of_ext in Heqip1; subst; simpls; trivial.
-          }
-          rewrite H7. rewrite PSCHED1. 
-          rewrite H9; eauto.
-          eapply (BEL1 ip1) in H1.
-          destruct H1. destruct H1 as (POL & TSF & TS & INSTR & D).  eauto.  
-        }
-        {
-          assert (PolyLang.ip_time_stamp2_ext ip = PolyLang.ip_time_stamp ip2). {
-            unfold PolyLang.old_of_ext in Heqip1; subst; simpls; trivial.
-          }
-          rewrite PSCHED2.
-          rewrite H9; eauto.
-          assert (In ip2 ipl2). {
-            rewrite <- Hipl2. rewrite Heqip2.
-            eapply in_map.
-            subst. trivial.
-          }
-          eapply (BEL2 ip2) in H10.
-          destruct H10. destruct H10 as (POL & TSF & TS & INSTR & D).  
-          assert ((PolyLang.ip_index ip2) = (PolyLang.ip_index_ext ip)). {
-            unfold PolyLang.new_of_ext in Heqip2; subst; simpls; trivial.
-          }
-          rewrite <- H10.
-          eauto. 
-        }
-        {
-          assert (PolyLang.ip_instruction_ext ip = PolyLang.ip_instruction ip1). {
-            unfold PolyLang.compose_pinstr_ext in SAMEI.
-            destruct pi1 eqn:Hpi; simpls; subst; eauto.
-          }
-          rewrite H9; eauto.
-          eapply (BEL1 ip1) in H1.
-          destruct H1. destruct H1 as (POL & TSF & TS & INSTR & D). rewrite INSTR. eauto.  
-        }
-        {
-          assert (PolyLang.ip_depth_ext ip = PolyLang.ip_depth ip1). {
-            unfold PolyLang.compose_pinstr_ext in SAMEI.
-            destruct pi1 eqn:Hpi; simpls; subst; eauto.
-          }
-          rewrite H9; eauto.
-          eapply (BEL1 ip1) in H1.
-          destruct H1. destruct H1 as (POL & TSF & TS & INSTR & D). rewrite D. eauto.  
-        }
-      + rewrite H6. eapply BEL1; eauto.
-      + 
-        assert (PolyLang.ip_index_ext ip = PolyLang.ip_index ip1). {
-          clear - Heqip1.
-          unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-        }
-        assert (PolyLang.pi_depth_ext pi_ext = PolyLang.pi_depth pi1). {
-          clear - SAMEI.
-          unfold PolyLang.compose_pinstr_ext in SAMEI.
-          destruct pi1 eqn:Hpi; subst; eauto.
-        }
-        rewrite H7. rewrite H8. eapply BEL1; eauto.
+      assert (PolyLang.ip_index_ext ip = PolyLang.ip_index ip1) as HINDEX1. {
+        clear - Heqip1.
+        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
+      }
+      assert ((PolyLang.pi_poly_ext pi_ext) = (PolyLang.pi_poly pi1)) as HPOLYEXT. {
+        clear - H2.
+        unfold PolyLang.compose_pinstr_ext in H2.
+        destruct pi1 eqn:Hpi; subst; eauto.
+      }
+      assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
+        clear - H2.
+        unfold PolyLang.compose_pinstr_ext in H2.
+        destruct pi1 eqn:Hpi; subst; eauto.
+      }
+      assert ((PolyLang.pi_schedule1_ext pi_ext) = (PolyLang.pi_schedule pi1)) as PSCHED1. {
+        clear - H2.
+        unfold PolyLang.compose_pinstr_ext in H2.
+        destruct pi1 eqn:Hpi; subst; eauto.
+      }
+      assert ((PolyLang.pi_schedule2_ext pi_ext) = (PolyLang.pi_schedule pi2)) as PSCHED2. {
+        clear - H2.
+        unfold PolyLang.compose_pinstr_ext in H2.
+        destruct pi1 eqn:Hpi; subst; eauto.
+      }
+      assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
+        clear - H2.
+        unfold PolyLang.compose_pinstr_ext in H2.
+        destruct pi1 eqn:Hpi; subst; eauto.
+      }
+      assert (
+        firstn (length envv) (PolyLang.ip_index ip1) = envv /\
+        PolyLang.belongs_to ip1 pi1 /\
+        PolyLang.ip_nth ip1 = nth /\
+        Datatypes.length (PolyLang.ip_index ip1) = Datatypes.length envv + PolyLang.pi_depth pi1
+      ) as HBEL1PACK. {
+        eapply BEL1; eauto.
+      }
+      destruct HBEL1PACK as (HPREF1 & HBEL1 & HNTH1 & HLEN1).
+      destruct HBEL1 as (POL1 & TSF1 & TS1 & INSTR1 & D1).
+      assert (PolyLang.ip_transformation_ext ip = PolyLang.ip_transformation ip1) as HTSFEXT1. {
+        clear - Heqip1.
+        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
+      }
+      assert (PolyLang.ip_time_stamp1_ext ip = PolyLang.ip_time_stamp ip1) as HTS1EXT. {
+        clear - Heqip1.
+        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
+      }
+      assert (PolyLang.ip_instruction_ext ip = PolyLang.ip_instruction ip1) as HINSTEXT1. {
+        clear - Heqip1.
+        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
+      }
+      assert (PolyLang.ip_depth_ext ip = PolyLang.ip_depth ip1) as HDEPTHEXT1. {
+        clear - Heqip1.
+        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
+      }
+      assert (In ip2 ipl2) as HIN2. {
+        rewrite <- Hipl2. rewrite Heqip2.
+        eapply in_map.
+        subst. trivial.
+      }
+      assert (
+        firstn (length envv) (PolyLang.ip_index ip2) = envv /\
+        PolyLang.belongs_to ip2 pi2 /\
+        PolyLang.ip_nth ip2 = nth /\
+        Datatypes.length (PolyLang.ip_index ip2) = Datatypes.length envv + PolyLang.pi_depth pi2
+      ) as HBEL2PACK. {
+        eapply BEL2; eauto.
+      }
+      destruct HBEL2PACK as (HPREF2 & HBEL2 & HNTH2 & HLEN2).
+      destruct HBEL2 as (POL2 & TSF2 & TS2 & INSTR2 & D2).
+      assert (PolyLang.ip_time_stamp2_ext ip = PolyLang.ip_time_stamp ip2) as HTS2EXT. {
+        clear - Heqip2.
+        unfold PolyLang.new_of_ext in Heqip2; subst; trivial.
+      }
+      assert (PolyLang.ip_index ip2 = PolyLang.ip_index_ext ip) as HINDEX2. {
+        clear - Heqip2.
+        unfold PolyLang.new_of_ext in Heqip2; subst; trivial.
+      }
+      split.
+      + rewrite HINDEX1. exact HPREF1.
+      + split.
+        * unfold PolyLang.belongs_to_ext.
+          repeat split.
+          { rewrite HPOLYEXT, HINDEX1. exact POL1. }
+          { rewrite HTSFEXT1, PTSF. exact TSF1. }
+          { rewrite HTS1EXT, PSCHED1, HINDEX1. exact TS1. }
+          { rewrite HTS2EXT, PSCHED2, <- HINDEX2. exact TS2. }
+          { rewrite HINSTEXT1, PINSTR. exact INSTR1. }
+          { rewrite HDEPTHEXT1, SAMEI. exact D1. }
+        * split.
+          { rewrite H6. exact HNTH1. }
+          { rewrite HINDEX1, SAMEI. exact HLEN1. }
     --
-      destruct H0 as (BEL & NTH & LEN).
+      destruct H0 as (HPREF & BEL & HNTHEXT & LEN).
       assert (exists n, nth_error ipl1 n = Some ip1 /\ nth_error ipl2 n = Some ip2). {
         assert (In ip1 ipl1). {
-          eapply BEL1; eauto. 
-          unfolds PolyLang.old_of_ext.
-          destruct ip. simpls. 
-          splits; try solve [subst; simpls; trivial].
           destruct H as (DEPTH & INSTR & DOM & TSF & F & R).
-          destruct BEL as (POL & TS & T1 & T2 & Instr & D). simpls.
-          splits; simpls; trivial.  
-          all: try solve [subst; eauto].
+          destruct BEL as (POL & TS & T1 & T2 & Instr & D).
+          assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert ((PolyLang.pi_schedule1_ext pi_ext) = (PolyLang.pi_schedule pi1)) as PSCHED1. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert (HBEL1OLD : PolyLang.belongs_to ip1 pi1). {
+            unfold PolyLang.belongs_to.
+            repeat split.
+            - clear - POL H5 Heqip1.
+              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+              rewrite H5 in POL. exact POL.
+            - clear - TS PTSF Heqip1.
+              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+              rewrite PTSF in TS. exact TS.
+            - clear - T1 PSCHED1 Heqip1.
+              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+              rewrite PSCHED1 in T1. exact T1.
+            - clear - Instr PINSTR Heqip1.
+              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+              rewrite PINSTR in Instr. exact Instr.
+            - clear - D SAMEI Heqip1.
+              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+              rewrite SAMEI in D. exact D.
+          }
+          eapply BEL1.
+          refine (conj _ (conj _ (conj _ _))).
+          - clear - HPREF Heqip1.
+            unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *. exact HPREF.
+          - exact HBEL1OLD.
+          - unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+            reflexivity.
+          - unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
+            exact LEN.
         }
         assert (In ip2 ipl2). {
-          eapply BEL2; eauto. 
-          unfolds PolyLang.new_of_ext.
-          destruct ip. simpls. 
           destruct H as (DEPTH & INSTR & DOM & TSF & F & R).
-          destruct BEL as (POL & TS & T1 & T2 & Instr & D). simpls.
-          splits; try solve [subst; simpls; trivial].
-
-          splits; simpls; trivial.  
-          all: try solve [subst; eauto].
-          subst. simpls. 
-          rewrite DOM in POL; trivial.
-
-          subst. simpls. 
-          rewrite <- DEPTH; trivial.
+          destruct BEL as (POL & TS & T1 & T2 & Instr & D).
+          assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert ((PolyLang.pi_schedule2_ext pi_ext) = (PolyLang.pi_schedule pi2)) as PSCHED2. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
+            clear - H2.
+            unfold PolyLang.compose_pinstr_ext in H2.
+            destruct pi1 eqn:Hpi; subst; eauto.
+          }
+          assert (HBEL2NEW : PolyLang.belongs_to ip2 pi2). {
+            unfold PolyLang.belongs_to.
+            repeat split.
+            - clear - POL H5 DOM Heqip2.
+              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+              rewrite H5 in POL. rewrite DOM in POL. exact POL.
+            - clear - TS PTSF TSF Heqip2.
+              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+              rewrite PTSF in TS. rewrite TSF in TS. exact TS.
+            - clear - T2 PSCHED2 Heqip2.
+              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+              rewrite PSCHED2 in T2. exact T2.
+            - clear - Instr PINSTR INSTR Heqip2.
+              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+              rewrite PINSTR in Instr. rewrite INSTR in Instr. exact Instr.
+            - clear - D SAMEI DEPTH Heqip2.
+              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+              rewrite SAMEI in D. rewrite DEPTH in D. exact D.
+          }
+          eapply BEL2.
+          refine (conj _ (conj _ (conj _ _))).
+          - clear - HPREF Heqip2.
+            unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *. exact HPREF.
+          - exact HBEL2NEW.
+          - unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+            reflexivity.
+          - unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
+            rewrite <- DEPTH. exact LEN.
         }
 
         pose proof H as G.

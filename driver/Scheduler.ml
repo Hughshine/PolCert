@@ -18,8 +18,8 @@ let scheduler' inscop =
   let cmd = List.concat [
     ["pluto";
     "--dumpscop";
-    (* "--nointratileopt"; *)
-    (* "--nodiamond-tile";      *)
+    "--nointratileopt";
+    "--nodiamond-tile";
     "--noprevector";
     "--smartfuse";     
     "--nounrolljam";
@@ -32,14 +32,14 @@ let scheduler' inscop =
   (* print_string ((String.concat " " cmd) ^ "\n"); *)
   let stdout =  (tmp_file (".stdout")) in
   let exc = command ?stdout:(Some stdout) cmd in
-  if exc <> 0 then (
-    safe_remove outscop_file;
-    command_error "scheduler" exc;)
-  else 
-    (* print_string ("Reading " ^ (basename outscop_file) ^ " ...\n"); *)
-    match OpenScopReader.read outscop_file with 
-    | Some outscop -> Okk outscop
-    | None -> Err (coqstring_of_camlstring ("scheduler failed")) 
+  match OpenScopReader.read outscop_file with
+  | Some outscop -> Okk outscop
+  | None ->
+      if exc <> 0 then (
+        safe_remove outscop_file;
+        command_error "scheduler" exc
+      ) else
+        Err (coqstring_of_camlstring ("scheduler failed"))
 
 
 let find_and_extract_time filename =
@@ -68,8 +68,8 @@ let invoke_pluto testname =
   let cmd = List.concat [
     ["pluto";
     "--dumpscop";
-    (* "--nointratileopt"; *)
-    (* "--nodiamond-tile";      *)
+    "--nointratileopt";
+    "--nodiamond-tile";
     "--noprevector";
     "--smartfuse";     
     "--nounrolljam";
