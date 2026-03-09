@@ -1,29 +1,16 @@
 # PolCert
 
-PolCert now exposes two user-facing entrypoints:
+PolCert provides two user-facing tools:
 
-- [`polcert`](./POLCERT.md): the original validator-only tool for comparing two OpenScop models.
-- [`polopt`](./POLOPT.md): the loop-language optimizer frontend backed by the verified optimization core.
+- [`polcert`](./POLCERT.md): validate a Pluto/OpenScop scheduling result.
+- [`polopt`](./POLOPT.md): run a verified polyhedral optimization pipeline on a structured loop fragment.
 
-If you only want the optimizer story, start with [`POLOPT.md`](./POLOPT.md).
-If you only want the validator story, start with [`POLCERT.md`](./POLCERT.md).
+If you care about the optimizer, start with [`POLOPT.md`](./POLOPT.md).
+If you already have OpenScop files and only want validation, start with [`POLCERT.md`](./POLCERT.md).
 
-## Status
+## Quick start
 
-- The verified optimization core now lives in [driver/PolOpt.v](./driver/PolOpt.v).
-- The final optimizer definition is `Opt = Opt_prepared`.
-- The final end-to-end theorem is `Opt_correct`.
-- `polcert` remains the original validator CLI and is intentionally unaffected by the `polopt` work.
-- The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
-  - total inputs: `62`
-  - succeeded: `62`
-  - changed: `52`
-  - unchanged: `10`
-
-## Build
-
-The repository is developed and tested primarily through the Docker image defined in [Dockerfile](./Dockerfile).
-The recommended build order inside the container is:
+Inside the project container, build with:
 
 ```sh
 make clean
@@ -39,8 +26,32 @@ make test
 
 This produces:
 
-- `polcert <before.scop> <after.scop>`
-- `polopt <file.loop>`
+- `./polcert <before.scop> <after.scop>`
+- `./polopt <file.loop>`
+
+## Two usage stories
+
+### 1. I already have Pluto `before.scop` / `after.scop`
+
+Use [`polcert`](./POLCERT.md).
+It checks whether the schedule change preserves the polyhedral dependence semantics.
+
+### 2. I have a loop nest and want the optimizer to do the full pipeline
+
+Use [`polopt`](./POLOPT.md).
+It parses a `.loop` file, extracts a polyhedral model, validates the Pluto schedule, generates optimized loop code, and applies verified post-codegen cleanup.
+
+## Status
+
+- The verified optimization core lives in [driver/PolOpt.v](./driver/PolOpt.v).
+- The final optimizer definition is `Opt = Opt_prepared`.
+- The final end-to-end theorem is `Opt_correct`.
+- `polcert` remains the original validator-only executable and is intentionally unaffected by the `polopt` work.
+- The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
+  - total inputs: `62`
+  - succeeded: `62`
+  - changed: `52`
+  - unchanged: `10`
 
 ## CI
 
@@ -56,10 +67,10 @@ The CI job builds the image from [Dockerfile](./Dockerfile) and then runs [tools
 
 ## Documentation map
 
-- [`POLCERT.md`](./POLCERT.md): validator-only executable, scope, workflow, and usage.
-- [`POLOPT.md`](./POLOPT.md): verified optimizer pipeline, proof boundary, supported input language, benchmark behavior, and testing workflow.
-- [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference.
-- [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs and outputs.
+- [`POLCERT.md`](./POLCERT.md): validator-only executable, user workflow, and examples.
+- [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
+- [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
+- [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.
 - [`doc/`](./doc): additional design notes and analysis.
 
 ## Project structure
@@ -77,24 +88,21 @@ Main mechanized development is in:
 The paper of this mechanization is published at Springer:
 <https://link.springer.com/chapter/10.1007/978-3-031-64626-3_17>
 
-BibTeX:
+<details>
+<summary>BibTeX</summary>
 
 ```bibtex
-@InProceedings{10.1007/978-3-031-64626-3_17,
-author="Li, Xuyang
-and Liang, Hongjin
-and Feng, Xinyu",
-editor="Chin, Wei-Ngan
-and Xu, Zhiwu",
-title="Verified Validation for Affine Scheduling in Polyhedral Compilation",
-booktitle="Theoretical Aspects of Software Engineering",
-year="2024",
-publisher="Springer Nature Switzerland",
-address="Cham",
-pages="287--305",
-isbn="978-3-031-64626-3"
+@inproceedings{li2024verified,
+  title={Verified Validation for Affine Scheduling in Polyhedral Compilation},
+  author={Li, Xuyang and Liang, Hongjin and Feng, Xinyu},
+  booktitle={Theoretical Aspects of Software Engineering},
+  pages={287--305},
+  year={2024},
+  publisher={Springer}
 }
 ```
+
+</details>
 
 ## License
 

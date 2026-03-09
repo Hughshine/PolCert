@@ -6,6 +6,59 @@ It reads two polyhedral models in OpenScop format, converts both to the internal
 This tool does **not** run extraction or code generation.
 It is the direct CLI for the original PolCert validation story.
 
+## When to use it
+
+Use `polcert` when you already have two OpenScop files, typically:
+
+- `before.scop`: the source schedule emitted by Pluto/Clan
+- `after.scop`: the optimized schedule emitted by Pluto
+
+and you want to check whether the schedule transformation is dependence-safe.
+
+## Typical user workflow: C fragment -> Pluto -> polcert
+
+Write a C loop fragment surrounded by `#pragma scop`.
+For example:
+
+```c
+#pragma scop
+for (j1 = 1; j1 <= M; j1++) {
+  for (j2 = j1; j2 <= M; j2++) {
+    for (i = 1; i <= N; i++) {
+      symmat[j1][j2] = symmat[j1][j2] + data[i][j1] * data[i][j2];
+    }
+    symmat[j2][j1] = symmat[j1][j2];
+  }
+}
+#pragma endscop
+```
+
+Run Pluto with the repository's standard flags:
+
+```sh
+pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
+      --smartfuse --nounrolljam --noparallel --notile --rar test.c
+```
+
+This produces:
+
+```text
+test.beforescheduling.scop
+test.afterscheduling.scop
+```
+
+Then validate:
+
+```sh
+./polcert test.beforescheduling.scop test.afterscheduling.scop
+```
+
+Typical output:
+
+```text
+[EQ] The two polyhedral models ... are equivalent.
+```
+
 ## What it validates
 
 `polcert` checks schedule-preserving refinement/equivalence between two polyhedral models that share the same instruction/access structure and differ only by scheduling.
@@ -16,6 +69,12 @@ The top-level validation entrypoint is built from:
 - [driver/TPolValidator.v](./driver/TPolValidator.v)
 - [src/Validator.v](./src/Validator.v)
 - [src/PolyLang.v](./src/PolyLang.v)
+
+## Result meanings
+
+- `EQ`: the two models are mutually equivalent
+- `LT` / `GT`: one model refines the other in only one direction
+- `NE`: the validator cannot prove a refinement relation
 
 ## Proof boundary
 
@@ -30,30 +89,6 @@ It does **not** prove correctness of:
 - OpenScop textual parsing / printing implementation details
 - Pluto itself
 - any frontend from source code to OpenScop
-
-## Build and run
-
-Build inside the project container with the standard sequence from [README.md](./README.md).
-Then run:
-
-```sh
-./polcert before.scop after.scop
-```
-
-Typical workflow:
-
-1. Produce `before.scop` and `after.scop` with Pluto:
-
-```sh
-pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
-      --smartfuse --nounrolljam --noparallel --notile --rar test.c
-```
-
-2. Validate the result:
-
-```sh
-./polcert test.beforescheduling.scop test.afterscheduling.scop
-```
 
 ## Notes
 

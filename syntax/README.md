@@ -2,6 +2,9 @@
 
 This directory contains the textual loop-language frontend used by the `polopt` executable.
 
+For a user-oriented overview of the optimizer itself, start with [../POLOPT.md](../POLOPT.md).
+This file focuses on the surface language.
+
 ## Purpose
 
 `polopt` is a user-facing entrypoint for the verified optimization core in [driver/PolOpt.v](../driver/PolOpt.v). It is intended to exercise the real proved pipeline on a structured loop fragment:
@@ -51,6 +54,21 @@ Still intentionally restricted in affine positions (bounds, guards, indexes):
 - general calls in affine bounds / guards / indexes
 - non-affine ternaries in affine bounds / guards / indexes
 
+## Writing examples
+
+Recommended workflow:
+
+1. start from a small structured nest
+2. keep bounds / guards / indexes affine
+3. put calls and ternaries only in RHS expressions
+4. run `./polopt your-example.loop`
+5. inspect `--extract-only` or `--debug-scheduler` if needed
+
+Good starter examples live in:
+
+- [examples](./examples)
+- [../tests/polopt-generated/inputs](../tests/polopt-generated/inputs)
+
 ## Current Status
 
 This frontend now drives the strict proved runtime path:
@@ -86,7 +104,7 @@ Debug scheduler stages:
 
 ## Benchmark status
 
-The generated regression suite is under [tests/polopt-generated](../tests/polopt-generated).
+The generated regression suite is under [../tests/polopt-generated](../tests/polopt-generated).
 
 Current strict proved-path status:
 

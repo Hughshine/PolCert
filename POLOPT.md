@@ -3,9 +3,12 @@
 `polopt` is the loop-language optimizer frontend backed by the verified optimization core.
 It is the closest thing in this repository to a Pluto counterpart: Pluto is still used as the untrusted scheduler, but extraction, schedule validation, schedule/domain strengthening, code generation, and post-codegen cleanup are all tied to Coq proofs.
 
-## Pipeline
+## What it does
 
-The runtime pipeline is:
+`polopt` takes a structured loop fragment, runs the verified polyhedral optimization core, and prints an optimized loop.
+The scheduler is Pluto itself, so the optimization decisions come from Pluto; the difference is that extraction, schedule validation, code generation, and cleanup are integrated into a proved pipeline.
+
+At a high level:
 
 ```text
 .loop text
@@ -19,6 +22,79 @@ The runtime pipeline is:
 -> verified cleanup passes
 -> Loop IR
 ```
+
+## Pluto configuration used by `polopt`
+
+`polopt` intentionally tracks the scheduling capability of Pluto under the same flag set used throughout this repository:
+
+```sh
+pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
+      --smartfuse --nounrolljam --noparallel --notile --rar
+```
+
+This matters because the current verified path is aimed at **schedule validation and schedule-driven code generation**, not at the full Pluto transformation space.
+In particular, the current `polopt` path is aligned with the capabilities of Pluto under these flags:
+
+- affine scheduling / loop reordering
+- skewing / wavefront-style rescheduling
+- statement reordering, fission, and related schedule effects
+- schedule changes that stay within the validated affine-scheduling story
+
+The current path does **not** claim support for more structural Pluto transformations such as:
+
+- tiling
+- index-set splitting
+- transformations whose correctness would require a stronger structural validator than the current schedule-only validation path
+
+## Main example: covariance (`covcol`)
+
+Input `.loop`:
+
+```text
+context(M, N);
+
+for j1 in range(1, (M + 1)) {
+  for j2 in range(j1, (M + 1)) {
+    for i in range(1, (N + 1)) {
+      symmat[j1][j2] = (symmat[j1][j2] + (data[i][j1] * data[i][j2]));
+    }
+    symmat[j2][j1] = symmat[j1][j2];
+  }
+}
+```
+
+Current optimized output:
+
+```text
+context(M, N);
+
+if ((1 <= N && 1 <= M)) {
+  for i0 in range(1, (N + 1)) {
+    for i1 in range(1, (M + 1)) {
+      for i2 in range(i1, (M + 1)) {
+        symmat[i1][i2] = (symmat[i1][i2] + (data[i0][i1] * data[i0][i2]));
+      }
+    }
+  }
+}
+if (1 <= M) {
+  for i0 in range(1, (M + 1)) {
+    for i1 in range(i0, (M + 1)) {
+      symmat[i1][i0] = symmat[i0][i1];
+    }
+  }
+}
+```
+
+What changed:
+
+- the accumulation statement and the symmetry-copy statement are split into separate phases
+- the accumulation is reordered to run with `i` outermost
+- this improves temporal locality for the accumulation phase and matches the Pluto-style optimization family for this kernel
+
+In the previous evaluation for this kernel, with `M = N = 1500`, this transformation achieved about **4x speed-up** on our machine.
+
+## What is proved
 
 The final optimizer definition and theorem are in [driver/PolOpt.v](./driver/PolOpt.v):
 
@@ -45,16 +121,11 @@ The proved passes used by `Opt` are:
    - [polygen/LoopCleanup.v](./polygen/LoopCleanup.v)
    - [polygen/LoopSingletonCleanup.v](./polygen/LoopSingletonCleanup.v)
 
-## What is proved
+At a high level, `Opt_correct` states:
 
-The core theorem is `Opt_correct` in [driver/PolOpt.v](./driver/PolOpt.v).
-At a high level, it states:
-
-- if `polopt`'s verified core returns an optimized loop
-- and the optimized loop runs to a final state
+- if the verified optimizer returns an optimized loop
+- and that optimized loop runs to a final state
 - then the original input loop can also run to an equivalent final state
-
-This proof covers the optimizer core from `Loop` IR to optimized `Loop` IR.
 
 ## What is not proved
 
@@ -65,12 +136,10 @@ The following remain engineering layers around the proved core:
 - Pluto itself
 - the final OCaml pretty-printer
 
-## Input language
+## What inputs it supports
 
 `polopt` reads the structured `.loop` syntax documented in [syntax/README.md](./syntax/README.md).
-This frontend is intentionally smaller than C. It is designed to give the verified core a clean structured loop fragment.
-
-Supported in the current syntax frontend:
+The current frontend supports:
 
 - symbolic parameters via `context(...)`
 - structured `for` loops with half-open bounds
@@ -81,28 +150,29 @@ Supported in the current syntax frontend:
 - ternary expressions in RHS expressions
 - float literals in RHS expressions
 
-Still restricted in affine positions (bounds, guards, indexes):
+Still intentionally restricted in affine positions (bounds, guards, indexes):
 
 - non-affine multiplication
 - general calls in affine bounds / guards / indexes
 - non-affine ternaries in affine bounds / guards / indexes
 
-## Assumptions / model boundary
+## Assumptions and model boundary
 
-For the syntax-oriented frontend, `polopt` currently works over the lightweight `SInstr` model rather than full CompCert C semantics.
+The current `polopt` frontend works over the lightweight `SInstr` model rather than full CompCert C semantics.
 That means:
 
 - calls are treated as pure computations
-- the frontend does not model realistic floating-point rounding/precision effects
-- the verified core still assumes the instruction-level non-aliasing / compatibility conditions required by the instantiated `Instr`
+- the frontend does not model realistic floating-point precision/rounding effects
+- the instantiated instruction model still assumes the non-aliasing / compatibility conditions required by the verified core
 - practical C-level issues such as overflow, aliasing, and full floating-point semantics remain separate integration work
 
-So the current `polopt` result should be read as:
+So the right reading is:
 
-- verified extraction / validation / code generation over the current loop-language model
-- Pluto used as the untrusted scheduler inside that model
+- the optimizer uses **Pluto's optimization choices** under the flag set above
+- the surrounding extraction / validation / code generation path has a formal correctness argument in the current loop-language model
+- users should read current floating-point and overflow behavior under the current simplified model assumptions
 
-## Benchmarks and effect
+## Benchmark behavior
 
 The generated strict regression suite is under [tests/polopt-generated](./tests/polopt-generated).
 Current strict proved-path status:
@@ -115,8 +185,9 @@ Current strict proved-path status:
 Interpretation:
 
 - scheduling decisions come from Pluto itself
-- the validated `polopt` path now accepts the same benchmark family across the suite
-- the observed transformed loops therefore reflect Pluto's optimization choices, checked by the verified validator and completed by verified code generation / cleanup
+- the strict `polopt` path now succeeds on the full generated benchmark suite
+- across the suite, the resulting loop transformations follow the same optimization families as the corresponding C-path Pluto runs under the same Pluto flag set
+- the observed transformed loops therefore reflect Pluto's scheduling capability, but now inside a validated extractor/scheduler/codegen pipeline
 
 One practical exception is performance on `advect3d`:
 
@@ -138,6 +209,26 @@ Useful modes:
 ./polopt --extract-only file.loop
 ./polopt --debug-scheduler file.loop
 ```
+
+## How to write your own example
+
+Start from a small structured loop fragment, for example:
+
+```text
+context(N, M);
+for i in range(0, N) {
+  for j in range(0, M) {
+    C[i][j] = A[i][j] + B[i][j];
+  }
+}
+```
+
+Guidelines:
+
+- use `context(...)` for symbolic parameters
+- use half-open loop bounds `range(lb, ub)`
+- keep bounds, guards, and indexes affine
+- use calls/ternaries only in RHS expressions, not in affine control/index positions
 
 ## How to test
 

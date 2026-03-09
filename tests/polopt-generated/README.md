@@ -2,6 +2,9 @@
 
 This directory contains the generated `.loop` suite and per-case strict `polopt` results.
 
+For the user-facing optimizer story, see [../../POLOPT.md](../../POLOPT.md).
+This file explains how to inspect the generated regression artifacts.
+
 Layout:
 - `inputs/`: generated `.loop` inputs, one file per Pluto benchmark case
 - `cases/<name>/`: strict-path `polopt` result for one case
@@ -13,6 +16,19 @@ Per-case files:
 - `diff.patch`: unified diff between normalized input and optimized output, when optimization succeeded
 - `status.txt`: exit code and result metadata
 - `stderr.txt`: failure diagnostics when optimization failed
+
+How to inspect a case:
+
+1. read `input.loop`
+2. compare with `optimized.loop`
+3. scan `diff.patch` for the actual structural change
+4. use `status.txt` to see whether the case changed or was left unchanged
+
+Good cases to inspect first:
+- `covcol`: statement splitting + reordered accumulation
+- `intratileopt1`: clear loop interchange
+- `costfunc`: skewing / wavefront-style reordering
+- `matmul`: loop-order change on a familiar kernel
 
 Current benchmark split:
 - total benchmark cases seen by the generator: `62`
