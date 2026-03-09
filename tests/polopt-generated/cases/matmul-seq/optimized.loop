@@ -2,11 +2,11 @@ context(N);
 
 for i0 in range(0, N) {
   for i1 in range(0, N) {
-    for i3 in range(0, N) {
-      C[i0][i1] = (C[i0][i1] + (A[i0][i3] * B[i3][i1]));
+    for i2 in range(0, N) {
+      C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
     }
-    for i3 in range(0, N) {
-      D[i0][i3] = (D[i0][i3] + (C[i0][i1] * E[i1][i3]));
+    for i2 in range(0, N) {
+      D[i0][i2] = (D[i0][i2] + (C[i0][i1] * E[i1][i2]));
     }
   }
 }

@@ -1,30 +1,18 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -2,22 +2,36 @@
- 
- for i0 in range(0, N) {
+@@ -4,20 +4,22 @@
    for i1 in range(0, N) {
--    for i2 in range(0, N) {
--      C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
-+    for i3 in range(0, N) {
-+      C[i0][i1] = (C[i0][i1] + (A[i0][i3] * B[i3][i1]));
-+      F[i0][i1] = (F[i0][i1] + (D[i0][i3] * E[i3][i1]));
+     for i2 in range(0, N) {
+       C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
++      F[i0][i1] = (F[i0][i1] + (D[i0][i2] * E[i2][i1]));
 +    }
-+    for i3 in range(0, min((i1 + 1), (i0 + 1))) {
-+      for i4 in range((i0 + (-1 * i3)), ((i0 + 1) + (-1 * i3))) {
-+        for i5 in range((i1 + (-1 * i3)), ((i1 + 1) + (-1 * i3))) {
-+          G[i4][i5] = (G[i4][i5] + (C[i4][i3] * F[i3][i5]));
-+        }
-+      }
++    for i2 in range(0, min((i1 + 1), (i0 + 1))) {
++      G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] = (G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] + (C[(i0 + (-1 * i2))][i2] * F[i2][(i1 + (-1 * i2))]));
 +    }
 +  }
 +  for i1 in range(N, (N + i0)) {
-+    for i3 in range((((-1 * N) + 1) + i1), (i0 + 1)) {
-+      for i4 in range((i0 + (-1 * i3)), ((i0 + 1) + (-1 * i3))) {
-+        for i5 in range((i1 + (-1 * i3)), ((i1 + 1) + (-1 * i3))) {
-+          G[i4][i5] = (G[i4][i5] + (C[i4][i3] * F[i3][i5]));
-+        }
-+      }
++    for i2 in range((((-1 * N) + 1) + i1), (i0 + 1)) {
++      G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] = (G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] + (C[(i0 + (-1 * i2))][i2] * F[i2][(i1 + (-1 * i2))]));
      }
    }
  }
@@ -34,12 +22,8 @@
 -      F[i0][i1] = (F[i0][i1] + (D[i0][i2] * E[i2][i1]));
 +for i0 in range(N, ((2 * N) + -1)) {
 +  for i1 in range((((-1 * N) + 1) + i0), ((2 * N) + -1)) {
-+    for i3 in range(max((((-1 * N) + 1) + i1), (((-1 * N) + 1) + i0)), min((i1 + 1), N)) {
-+      for i4 in range((i0 + (-1 * i3)), ((i0 + 1) + (-1 * i3))) {
-+        for i5 in range((i1 + (-1 * i3)), ((i1 + 1) + (-1 * i3))) {
-+          G[i4][i5] = (G[i4][i5] + (C[i4][i3] * F[i3][i5]));
-+        }
-+      }
++    for i2 in range(max((((-1 * N) + 1) + i1), (((-1 * N) + 1) + i0)), min((i1 + 1), N)) {
++      G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] = (G[(i0 + (-1 * i2))][(i1 + (-1 * i2))] + (C[(i0 + (-1 * i2))][i2] * F[i2][(i1 + (-1 * i2))]));
      }
    }
  }

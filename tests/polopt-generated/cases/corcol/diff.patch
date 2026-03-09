@@ -10,31 +10,31 @@
 -    for i2 in range(1, (N + 1)) {
 -      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
 +if (2 <= M) {
-+  for i1 in range(1, M) {
-+    for i2 in range((i1 + 1), (M + 1)) {
-+      symmat[i1][i2] = 0.0;
++  for i0 in range(1, M) {
++    for i1 in range((i0 + 1), (M + 1)) {
++      symmat[i0][i1] = 0.0;
      }
 -    symmat[i1][i0] = symmat[i0][i1];
    }
  }
 +if ((1 <= N && 2 <= M)) {
-+  for i1 in range(1, (N + 1)) {
-+    for i2 in range(1, M) {
-+      for i3 in range((i2 + 1), (M + 1)) {
-+        symmat[i2][i3] = (symmat[i2][i3] + (data[i1][i2] * data[i1][i3]));
++  for i0 in range(1, (N + 1)) {
++    for i1 in range(1, M) {
++      for i2 in range((i1 + 1), (M + 1)) {
++        symmat[i1][i2] = (symmat[i1][i2] + (data[i0][i1] * data[i0][i2]));
 +      }
 +    }
 +  }
 +}
 +if (2 <= M) {
-+  for i1 in range(1, M) {
-+    for i2 in range((i1 + 1), (M + 1)) {
-+      symmat[i2][i1] = symmat[i1][i2];
++  for i0 in range(1, M) {
++    for i1 in range((i0 + 1), (M + 1)) {
++      symmat[i1][i0] = symmat[i0][i1];
 +    }
 +  }
 +}
 +if (2 <= M) {
-+  for i1 in range(1, M) {
-+    symmat[i1][i1] = 1.0;
++  for i0 in range(1, M) {
++    symmat[i0][i0] = 1.0;
 +  }
 +}

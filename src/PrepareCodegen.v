@@ -18,6 +18,7 @@ Require Import PolIRs.
 Require Import ASTGen.
 Require Import CodeGen.
 Require Import LoopCleanup.
+Require Import LoopSingletonCleanup.
 Require Import SelectionSort.
 Require Import LibTactics.
 
@@ -30,7 +31,7 @@ Module Loop := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
 Module ASTGen := ASTGen PolIRs.
 Module CodeGen := CodeGen PolIRs.
-Module Cleanup := LoopCleanup PolIRs.
+Module Cleanup := LoopSingletonCleanup PolIRs.
 
 Definition resize_affine (cols: nat) (aff: list Z * Z) : list Z * Z :=
   let '(zs, c) := aff in

@@ -4,36 +4,40 @@
  context(M);
  
 -for i0 in range(0, M) {
-+if (1 <= M) {
-   for i1 in range(0, M) {
+-  for i1 in range(0, M) {
 -    temp2d[i0][i1] = 0.0;
-     for i2 in range(0, M) {
+-    for i2 in range(0, M) {
 -      temp2d[i0][i1] = (temp2d[i0][i1] + (block[i0][i2] * cos1[i1][i2]));
-+      sum2[i1][i2] = 0.0;
-+      temp2d[i1][i2] = 0.0;
++if (1 <= M) {
++  for i0 in range(0, M) {
++    for i1 in range(0, M) {
++      sum2[i0][i1] = 0.0;
++      temp2d[i0][i1] = 0.0;
      }
    }
  }
 -for i0 in range(0, M) {
-+if (1 <= M) {
-   for i1 in range(0, M) {
+-  for i1 in range(0, M) {
 -    sum2[i0][i1] = 0.0;
-     for i2 in range(0, M) {
+-    for i2 in range(0, M) {
 -      sum2[i0][i1] = (sum2[i0][i1] + (cos1[i0][i2] * temp2d[i2][i1]));
-+      for i4 in range(0, M) {
-+        temp2d[i1][i2] = (temp2d[i1][i2] + (block[i1][i4] * cos1[i2][i4]));
++if (1 <= M) {
++  for i0 in range(0, M) {
++    for i1 in range(0, M) {
++      for i2 in range(0, M) {
++        temp2d[i0][i1] = (temp2d[i0][i1] + (block[i0][i2] * cos1[i1][i2]));
 +      }
-+      for i4 in range(0, M) {
-+        sum2[i4][i2] = (sum2[i4][i2] + (cos1[i4][i1] * temp2d[i1][i2]));
++      for i2 in range(0, M) {
++        sum2[i2][i1] = (sum2[i2][i1] + (cos1[i2][i0] * temp2d[i0][i1]));
 +      }
      }
 -    block[i0][i1] = sum2[i0][i1];
    }
  }
 +if (1 <= M) {
-+  for i1 in range(0, M) {
-+    for i2 in range(0, M) {
-+      block[i1][i2] = sum2[i1][i2];
++  for i0 in range(0, M) {
++    for i1 in range(0, M) {
++      block[i0][i1] = sum2[i0][i1];
 +    }
 +  }
 +}

@@ -3,24 +3,14 @@ context(T, N);
 if (2 <= N) {
   for i0 in range(1, (T + 1)) {
     for i1 in range((i0 + 1), (N + i0)) {
-      for i4 in range(((-1 * i0) + i1), (((-1 * i0) + 1) + i1)) {
-        e[i4] = (e[i4] - (coeff1 * (h[i4] - h[(i4 - 1)])));
-      }
-      for i4 in range((((-1 * i0) + -1) + i1), ((-1 * i0) + i1)) {
-        h[i4] = (h[i4] - (coeff2 * (e[(i4 + 1)] - e[i4])));
-      }
+      e[((-1 * i0) + i1)] = (e[((-1 * i0) + i1)] - (coeff1 * (h[((-1 * i0) + i1)] - h[(((-1 * i0) + i1) - 1)])));
+      h[(((-1 * i0) + -1) + i1)] = (h[(((-1 * i0) + -1) + i1)] - (coeff2 * (e[((((-1 * i0) + -1) + i1) + 1)] - e[(((-1 * i0) + -1) + i1)])));
     }
-    for i1 in range((N + i0), ((N + 1) + i0)) {
-      for i4 in range((N + -1), N) {
-        h[i4] = (h[i4] - (coeff2 * (e[(i4 + 1)] - e[i4])));
-      }
-    }
+    h[(N + -1)] = (h[(N + -1)] - (coeff2 * (e[((N + -1) + 1)] - e[(N + -1)])));
   }
 }
 if ((N <= 1 && 1 <= N)) {
   for i0 in range(1, (T + 1)) {
-    for i1 in range((i0 + 1), (i0 + 2)) {
-      h[0] = (h[0] - (coeff2 * (e[(0 + 1)] - e[0])));
-    }
+    h[0] = (h[0] - (coeff2 * (e[(0 + 1)] - e[0])));
   }
 }

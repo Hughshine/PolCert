@@ -1,6 +1,6 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,11 +1,16 @@
+@@ -1,11 +1,10 @@
  context(N);
  
 -for i0 in range(0, N) {
@@ -8,14 +8,10 @@
    for i1 in range(0, N) {
 -    for i2 in range((i0 + 1), N) {
 -      if (i2 == (i0 + 1)) {
-+    for i2 in range((i0 + 1), (i0 + 2)) {
-+      for i6 in range((i0 + 1), (i0 + 2)) {
-         b[i1][i0] = (b[i1][i0] / a[i0][i0]);
-       }
-+      for i6 in range((i0 + 1), (i0 + 2)) {
-+        b[i1][i6] = (b[i1][i6] - (a[i0][i6] * b[i1][i0]));
-+      }
-+    }
+-        b[i1][i0] = (b[i1][i0] / a[i0][i0]);
+-      }
++    b[i1][i0] = (b[i1][i0] / a[i0][i0]);
++    b[i1][(i0 + 1)] = (b[i1][(i0 + 1)] - (a[i0][(i0 + 1)] * b[i1][i0]));
 +    for i2 in range((i0 + 2), N) {
        b[i1][i2] = (b[i1][i2] - (a[i0][i2] * b[i1][i0]));
      }
