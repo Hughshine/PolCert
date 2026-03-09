@@ -1,0 +1,34 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,11 +1,28 @@
+ context(N, M, L);
+ 
+-for i0 in range(0, N) {
++for i0 in range(0, min(min(M, L), N)) {
++  a[i0] = b[i0];
++  a[i0] = b[i0];
+   a[i0] = b[i0];
+ }
+-for i0 in range(0, M) {
++for i0 in range(max(0, N), min(M, L)) {
++  a[i0] = b[i0];
+   a[i0] = b[i0];
+ }
+-for i0 in range(0, L) {
++for i0 in range(max(M, 0), min(L, N)) {
++  a[i0] = b[i0];
+   a[i0] = b[i0];
+ }
++for i0 in range(max(max(M, 0), N), L) {
++  a[i0] = b[i0];
++}
++for i0 in range(max(0, L), min(M, N)) {
++  a[i0] = b[i0];
++  a[i0] = b[i0];
++}
++for i0 in range(max(max(0, L), N), M) {
++  a[i0] = b[i0];
++}
++for i0 in range(max(max(M, L), 0), N) {
++  a[i0] = b[i0];
++}

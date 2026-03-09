@@ -152,11 +152,15 @@ Definition sample_scop := {|
 (** sample CPol.t *)
 Require Import PolyBase.
 Require Import CPolIRs.
+Require Import TPolIRs.
+Require Import SPolIRs.
 Extraction Inline CoreAlarmed.Base.pure CoreAlarmed.Base.imp.
 
 Extract Constant PolOpt.time  => "Timing.time_coq".
 Extract Constant print_CompCertC_stmt => "PrintCsyntax.print_if".
 Extract Constant CPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
+Extract Constant TPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
+Extract Constant SPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
 Extract Constant PolOpt.print => "fun (f: 'a -> unit) (x: 'a) -> f x; x".
 Extract Constant AST.ident_to_varname => "Camlcoq.extern_atom'".
 Extract Constant AST.iterator_to_varname => "Camlcoq.iterator_to_varname".
@@ -171,11 +175,12 @@ Cd "extraction".
 Require Import Initializers.
 Require Import Ctyping.
 Require Import CPolOpt.
-Require Import TPolIRs.
+Require Import TPolOpt.
+Require Import SPolOpt.
 Require Import TPolValidator.
 
 
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)
 
-Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn CPolOpt TPolIRs TPolValidator.
+Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt TPolValidator.

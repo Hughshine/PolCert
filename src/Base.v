@@ -36,7 +36,7 @@ Definition mapi_ascend {A B: Type} (f: nat -> A -> B) (l: list A) :=
   rev (mapi f (rev l)).
 
 Example example_mapi_ascend:
-    mapi_ascend (fun i n => (i, n)) [1;2;3] = [(0, 1); (1, 2); (2, 3)].
+    mapi_ascend (fun i n => (i, n)) [1;2;3]%nat = [(0, 1); (1, 2); (2, 3)]%nat.
 Proof. reflexivity. Qed.  
 
 Lemma mapi_nil:
@@ -870,5 +870,56 @@ Proof.
     - inv H.
       eapply IHl1 in H2. 
       destruct H2; subst; split; trivial. 
+  }
+Qed.
+
+Require Import Coqlib.
+
+Definition comparison_eq_dec: 
+  forall (x y: comparison), { x = y } + { x <> y }.
+  decide equality.
+Defined.
+
+Definition comparison_eqb (x y: comparison):bool := 
+  comparison_eq_dec x y.
+
+Lemma comparison_eqb_iff_eq:
+  forall x cmp,
+    comparison_eqb x cmp = true <->
+    x = cmp. 
+Proof.
+  intros. split.
+  {
+    intro. 
+    destruct x; destruct cmp; simpls; trivial; 
+    unfold comparison_eqb in H; 
+    unfold comparison_eq_dec in H; simpls; try congruence.
+  }
+  {
+    intro.
+    destruct x; destruct cmp; simpls; trivial; 
+    unfold comparison_eqb in H; 
+    unfold comparison_eq_dec in H; simpls; try congruence.
+  }
+Qed.
+
+
+Lemma comparison_eqb_false_iff_neq:
+  forall x cmp,
+    comparison_eqb x cmp = false <->
+    x <> cmp. 
+Proof.
+  intros. split.
+  {
+    intro. 
+    destruct x; destruct cmp; simpls; trivial; 
+    unfold comparison_eqb in H; 
+    unfold comparison_eq_dec in H; simpls; try congruence.
+  }
+  {
+    intro.
+    destruct x; destruct cmp; simpls; trivial; 
+    unfold comparison_eqb in H; 
+    unfold comparison_eq_dec in H; simpls; try congruence.
   }
 Qed.

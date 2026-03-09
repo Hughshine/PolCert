@@ -1,0 +1,9 @@
+context(N, M);
+
+for i in range(0, N) {
+  for j1 in range(0, M) {
+    for j2 in range(j1, M) {
+      outer[i][j1][j2] = (data[i][j1] * data[i][j2]);
+    }
+  }
+}
