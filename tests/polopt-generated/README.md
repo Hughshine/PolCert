@@ -44,3 +44,8 @@ Important generator policy:
 - `.loop` generation must preserve source semantics
 - `/=` is lowered to `x = x / y`
 - `/`, pure calls, ternaries, and float literals are preserved rather than approximated
+
+Proof boundary:
+- The strict suite runs the proved optimizer path from `driver/PolOpt.v` (`Opt = Opt_prepared`).
+- The textual `.loop` parser/elaborator and the final pretty-printer are not part of the Coq theorem.
+- The verified post-codegen cleanup passes are inside the proved path.

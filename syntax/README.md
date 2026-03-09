@@ -1,17 +1,29 @@
-# Syntax Frontend Experiment
+# Syntax Frontend (`polopt`)
 
-This directory isolates a lightweight frontend for `SPolOpt`.
-It does not reuse `Convert.v` and does not touch the existing validator driver.
+This directory contains the textual loop-language frontend used by the `polopt` executable.
 
 ## Purpose
 
-The goal is to exercise the real `Loop -> extractor -> scheduler/validator -> codegen -> Loop`
-pipeline with a syntax-oriented instruction language (`SInstr`) whose dynamic semantics stay trivial,
-but whose structural interface (`waccess`, `raccess`, `to_openscop`) is real.
+`polopt` is a user-facing entrypoint for the verified optimization core in [driver/PolOpt.v](../driver/PolOpt.v). It is intended to exercise the real proved pipeline on a structured loop fragment:
+
+```text
+.loop text
+-> parser / elaborator
+-> Loop IR
+-> Extractor.extractor
+-> StrengthenDomain.strengthen_pprog
+-> scheduler' (Pluto + verified validation)
+-> PrepareCodegen.prepare_codegen
+-> CodeGen.codegen
+-> verified cleanup passes
+-> Loop IR
+```
+
+The parser/elaborator and pretty-printer are engineering layers. The verified core starts at the `Loop` IR.
 
 ## Surface Syntax
 
-Top-level:
+Top-level example:
 
 ```text
 context(N, M);
@@ -28,35 +40,57 @@ Supported constructs:
 - `for i in range(lb, ub) { ... }` with half-open bounds `[lb, ub)`
 - `if (a <= b && c == d) { ... }`
 - scalar and array assignments
-- affine arithmetic using `+`, `-`, `*` by integer constants
+- arithmetic using `+`, `-`, `*`, `/`
+- pure calls in RHS expressions
+- ternary expressions `cond ? e1 : e2` in RHS expressions
+- float literals in RHS expressions
 
-Deliberately unsupported for now:
+Still intentionally restricted in affine positions (bounds, guards, indexes):
 
-- `else`
-- `||`, `!`
-- division/mod/max/min in source syntax
 - non-affine multiplication
+- general calls in affine bounds / guards / indexes
+- non-affine ternaries in affine bounds / guards / indexes
 
 ## Current Status
 
-- `polopt --extract-only <file.loop>` is working and emits raw OpenScop on stdout.
-- The extracted OpenScop is accepted by the existing `polcert` validator when read back as a `.scop`.
-- The default `polopt <file.loop>` currently stops inside Pluto scheduling. Pluto reports
-  `isl_map.c:12117: number of columns too small`, and the extracted runtime reports
-  `Scheduler validation failed`.
+This frontend now drives the strict proved runtime path:
 
-This points to a scheduler/OpenScop compatibility gap, not a frontend parse/elaboration failure.
-The most visible difference from Pluto-generated `.scop` files is that the current generic
-`PolyLang.to_openscop` emits a compact scattering relation and fewer domain/context guards.
+- `SPolOpt.opt = PolOpt.Opt`
+- no CLI fallback exporter is used
+- the scheduler path is the same path used by the proved optimizer definition
 
-## Elaboration Convention
+The pretty-printer is now display-oriented only. Semantic cleanup is performed in Coq after code generation. In particular:
 
-The frontend elaborates source names to the actual `Loop` environment order used by the Coq semantics:
+- affine expression/test simplification is done in [polygen/LoopCleanup.v](../polygen/LoopCleanup.v)
+- singleton-loop elimination is done in [polygen/LoopSingletonCleanup.v](../polygen/LoopSingletonCleanup.v)
 
-- innermost iterator is `Var 0`
-- then outer iterators
-- then top-level context parameters
+## Example commands
 
-Instruction slots are emitted as the identity list `[Var 0; Var 1; ...]` at parse time.
-The pretty-printer for optimized output does not ignore these slots; it substitutes them back through
-`Loop.Instr instr es`, so optimized schedules still print meaningfully.
+Emit optimized loop:
+
+```sh
+./polopt syntax/examples/matadd.loop
+```
+
+Dump the extracted source OpenScop only:
+
+```sh
+./polopt --extract-only syntax/examples/matadd.loop
+```
+
+Debug scheduler stages:
+
+```sh
+./polopt --debug-scheduler syntax/examples/matadd.loop
+```
+
+## Benchmark status
+
+The generated regression suite is under [tests/polopt-generated](../tests/polopt-generated).
+
+Current strict proved-path status:
+
+- total generated inputs: `62`
+- succeeded: `62`
+- changed: `52`
+- unchanged: `10`

@@ -32,11 +32,34 @@ isbn="978-3-031-64626-3"
 
 ## Overview
 
-The validator takes two polyhedral models (before and after auto-transformation like pluto's core algorithm), and output their equivalence (equal or unknown). It can only deal with two polyhedron models with strictly equal instructions, differing only in schedule (scattering) functions (then only supports reordering of instances, not supporting tiling etc). The validation algorithm just constructs test polyhedrons for all WAW/WAR/RAW dependences (write/read access functions should be given) for their violation.
+PolCert now exposes two user-facing tools:
 
-Users should instantiate their own [Instr](./polygen/InstrTy.v), which merely demands the language's semantics implies permutability under [Bernstein’s Conditions](https://link.springer.com/referenceworkentry/10.1007/978-0-387-09766-4_521); this needs users to provide a verified checker function (like, basing on symbolic execution) for validity of read and write access functions regarding to the semantics. As an example, we provide CompCert's instruction (called [CInstr](./src/CInstr.v)) as its instantiation and parameterize the validator (see [CPolOpt.v](./driver/CPolOpt.v)). Note that, we wrap the Pluto compiler with the validator to achieve verified compilation. Nevertheless, there's still several challenges to (seamlessly) integrate polyhedral compilation into CompCert as an extension, like machanizing a verified extractor, dealing with assumptions (heavy static reasoning) of polyhedal compilation ([optimistic approach](https://dl.acm.org/doi/10.5555/3049832.3049864) seems possible, but at least need to change CompCert's semantics for overflow flag (see [this report](https://inria.hal.science/hal-00655485/file/polyproofs.pdf))), more complete scheduling supports, vectorization and parallemism... Also, we find PolyGen (see [this issue](https://github.com/Ekdohibs/PolyGen/issues/1)) need extra constraints to restrict the length of iteration vector (i.e., *depth*), which is not convenient and is not compatible to, like, Pluto's output format; we introduce additional field *depth* in the polyhedral model to simplify this, but this leads to a (small) semantics gap. Some efforts are needed to reuse PolyGen's proof, though it is now compiled together with ours. 
+1. `polcert`: the original validator-only executable. It reads two polyhedral models in [OpenScop format](https://github.com/periscop/openscop), converts them to the internal polyhedral representation with `from_openscop_complete`, and checks refinement/equivalence with the verified validator. This path is unchanged in purpose: it validates scheduler output, but does not run extraction or code generation.
+2. `polopt`: a loop-language frontend plus the verified optimization core. It parses a restricted structured loop fragment, extracts a polyhedral model, validates an external Pluto schedule, converts the scheduled polyhedron back to internal form, runs verified code generation, and finally runs verified cleanup passes on the generated loop.
 
-An executable `polcert` can be extracted and runs on two polyhedron models in [OpenScop format](https://github.com/periscop/openscop) (of course, there's conversion between OpenScop and our inner representation). Though, as Openscop format does not contain information like typing and can be complex eough, we can not give it valid semantics (like [CInstr](./src/CInstr.v)). Only the algorithms are reused. Access function's consistency to instruction's semantics is then lifted as assumption. With these in mind, the algorithm is tested on pluto's 62 test cases. See [TInstr](./src/TInstr.v) and [TPolValidator](./driver/TPolValidator.v) for this trivial instantiation. 
+The validator takes two polyhedral models (before and after auto-transformation like Pluto's core algorithm) and outputs their equivalence/refinement status. It only handles models with strictly equal instructions that differ by schedule (scattering) functions, so it validates affine instance reordering rather than more structural transforms such as tiling. The validation algorithm constructs dependence-checking polyhedra for all WAW/WAR/RAW pairs.
+
+Users instantiate their own [Instr](./polygen/InstrTy.v), which requires proving that the instruction semantics imply permutability under [Bernstein’s Conditions](https://link.springer.com/referenceworkentry/10.1007/978-0-387-09766-4_521), together with a verified checker for read/write access functions. We provide CompCert's instruction language ([CInstr](./src/CInstr.v)) as the main instantiation and a lighter syntax-oriented instruction language ([SInstr](./syntax/SInstr.v)) for the `polopt` frontend.
+
+The verified optimization core now lives in [driver/PolOpt.v](./driver/PolOpt.v). The final `Opt` definition is the prepared pipeline (`Opt_prepared`), and the main theorem is `Opt_correct`. The proved passes in that pipeline are:
+
+- `Extractor.extractor`: verified `Loop -> PolyLang` extraction ([src/Extractor.v](./src/Extractor.v))
+- `StrengthenDomain.strengthen_pprog`: conservative statement-domain strengthening by implied parameter guards ([src/StrengthenDomain.v](./src/StrengthenDomain.v))
+- `scheduler'`: external scheduler wrapped by verified validation ([driver/PolOpt.v](./driver/PolOpt.v))
+- `PrepareCodegen.prepare_codegen`: reconciles explicit-depth polyhedral semantics with the codegen-ready representation ([src/PrepareCodegen.v](./src/PrepareCodegen.v))
+- `CodeGen.codegen`: verified polyhedral code generation ([polygen/CodeGen.v](./polygen/CodeGen.v))
+- verified post-codegen cleanup passes:
+  - affine expression/test simplification ([polygen/LoopCleanup.v](./polygen/LoopCleanup.v))
+  - structural `Seq` / trivial `Guard` cleanup ([polygen/LoopCleanup.v](./polygen/LoopCleanup.v))
+  - singleton-loop elimination by substitution ([polygen/LoopSingletonCleanup.v](./polygen/LoopSingletonCleanup.v))
+
+What is *not* covered by the Coq correctness theorem: the textual `.loop` parser/elaborator, OpenScop I/O implementation details, Pluto itself, and the final pretty-printer. Those are engineering layers around the verified core.
+
+Current regression status:
+
+- `polcert` remains the original validator tool and is intentionally unaffected by the `polopt` work.
+- strict proved-path `polopt` runs the full generated benchmark suite (`62/62` cases succeed).
+- among these, `52` cases exhibit a real optimization/change in the emitted loop, and `10` are unchanged.
 
 ## Structure
 
@@ -92,19 +115,26 @@ Then you can run the project inside the docker:
 sudo docker run -p 80:80 -ti [--rm] [hughshine/]polcert:latest
 ```
 
-Inside the docker container, try the following command to build the project:
+Inside the docker container, the recommended build order is:
 
 ```
-make -j4  # compile coq proofs and extract an executable
-make install  # install the executable to PATH, invoke with 'polcert <pol1> <pol2>'
-make test # runs all unit tests & evaluation on pluto (output file `result.txt`)
-# cat result.txt
-## Test (just test name) ToP (time of pluto's auto-transformation, ms) ToB (time of backward refinement validation, ms) ToF (time of forward refinement validation, ms) Result (EQ/LT/GT/NE)
-## covcol 4.12 366.14 294.55 EQ
-## dsyr2k 2.96 103.09 79.98 EQ
-## ...
-# make clean && make camlclean # if your project break
+make clean
+opam exec -- make depend
+opam exec -- make proof
+opam exec -- make -s check-admitted
+opam exec -- make extraction
+opam exec -- make polopt
+opam exec -- make polcert.ini
+opam exec -- make polcert
+make test
 ```
+
+The extracted executables are:
+
+- `polcert <before.scop> <after.scop>`: validator-only CLI
+- `polopt <file.loop>`: loop-frontend optimizer CLI
+
+For the generated loop benchmark suite used by `polopt`, see [tests/polopt-generated/README.md](./tests/polopt-generated/README.md).
 
 You can run `make check-admitted` for unfinished proofs. No additional axioms are introduced (you have to manually check this). You can count lines of code of Coq with [cloc](https://github.com/AlDanial/cloc) with `make loc` (note that the satistics is not complete, but roughly accurate; we added some code to library files).
 
@@ -116,7 +146,11 @@ You can generate project's full documentation by `make documentation` (After run
 
 ### Try your own test case
 
-If your build and installation succeeds, there should be executable `polcert` in your PATH. `pluto` (see [here](https://github.com/verif-scop/pluto)) is already in your path. Now you can write your own test case (`vim` is provided in the image) like `test.c`,
+If your build and installation succeeds, there should be executable `polcert` in your PATH. `pluto` (see [here](https://github.com/verif-scop/pluto)) is already in your path. The `polcert` usage below is unchanged and remains the reference way to validate two OpenScop models.
+
+For the optimizer entrypoint, `polopt` accepts the structured `.loop` syntax described in [syntax/README.md](./syntax/README.md).
+
+Now you can write your own validator test case (`vim` is provided in the image) like `test.c`,
 
 ```
 #pragma scop
