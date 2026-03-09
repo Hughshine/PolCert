@@ -1,8 +1,8 @@
 context(N);
 
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, i1) {
+for i0 in range(0, ((N + -1) + 1)) {
+  for i1 in range(0, ((N + -1) + 1)) {
+    for i2 in range(0, ((i1 + -1) + 1)) {
       B[i1][i0] = (B[i1][i0] - (L[i1][i2] * B[i2][i0]));
     }
     B[i1][i0] = (B[i1][i0] / L[i1][i1]);

@@ -7,7 +7,9 @@ if (1 <= N) {
 }
 for i0 in range(1, N) {
   for i1 in range(0, N) {
-    B[(i0 + -1)][i1] = (2 * A[(i0 + -1)][i1]);
+    for i2 in range((i0 + -1), i0) {
+      B[i2][i1] = (2 * A[i2][i1]);
+    }
   }
   for i1 in range(0, N) {
     C[i0][i1] = (3 * B[(i0 - 1)][(N - i1)]);
@@ -15,6 +17,8 @@ for i0 in range(1, N) {
 }
 if (1 <= N) {
   for i0 in range(0, N) {
-    B[(N + -1)][i0] = (2 * A[(N + -1)][i0]);
+    for i1 in range((N + -1), N) {
+      B[i1][i0] = (2 * A[i1][i0]);
+    }
   }
 }

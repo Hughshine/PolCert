@@ -2,8 +2,14 @@ context(N);
 
 for i0 in range(0, (N + -1)) {
   for i1 in range(0, N) {
-    b[i1][i0] = (b[i1][i0] / a[i0][i0]);
-    b[i1][(i0 + 1)] = (b[i1][(i0 + 1)] - (a[i0][(i0 + 1)] * b[i1][i0]));
+    for i2 in range((i0 + 1), (i0 + 2)) {
+      for i3 in range((i0 + 1), (i0 + 2)) {
+        b[i1][i0] = (b[i1][i0] / a[i0][i0]);
+      }
+      for i3 in range((i0 + 1), (i0 + 2)) {
+        b[i1][i3] = (b[i1][i3] - (a[i0][i3] * b[i1][i0]));
+      }
+    }
     for i2 in range((i0 + 2), N) {
       b[i1][i2] = (b[i1][i2] - (a[i0][i2] * b[i1][i0]));
     }

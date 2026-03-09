@@ -1,6 +1,6 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,10 +1,14 @@
+@@ -1,10 +1,16 @@
  context(n);
  
 -for i0 in range(0, (2 * n)) {
@@ -17,7 +17,9 @@
 +if (1 <= n) {
 +  for i0 in range(0, n) {
 +    for i1 in range(i0, (n + i0)) {
-+      c[(i0 + (i1 + (-1 * i0)))] = (c[(i0 + (i1 + (-1 * i0)))] + (a[i0] * b[(i1 + (-1 * i0))]));
++      for i2 in range((i1 + (-1 * i0)), (i1 + ((-1 * i0) + 1))) {
++        c[(i0 + i2)] = (c[(i0 + i2)] + (a[i0] * b[i2]));
++      }
 +    }
 +  }
 +}

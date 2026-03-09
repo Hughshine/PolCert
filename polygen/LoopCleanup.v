@@ -1,4 +1,5 @@
 Require Import Bool.
+Require Import Lia.
 Require Import List.
 Require Import ZArith.
 Import ListNotations.
@@ -13,10 +14,42 @@ Module Instr := PolIRs.Instr.
 Module State := PolIRs.State.
 Module Loop := PolIRs.Loop.
 
+Fixpoint collect_sum_norm (e: Loop.expr) : list Loop.expr * Z :=
+  match e with
+  | Loop.Constant c => ([], c)
+  | Loop.Sum e1 e2 =>
+      let '(ts1, c1) := collect_sum_norm e1 in
+      let '(ts2, c2) := collect_sum_norm e2 in
+      (ts1 ++ ts2, c1 + c2)
+  | _ => ([e], 0)
+  end.
+
+Definition build_sum (terms: list Loop.expr) (c: Z) : Loop.expr :=
+  fold_right Loop.make_sum (Loop.Constant c) terms.
+
+Fixpoint zsum (zs: list Z) : Z :=
+  match zs with
+  | [] => 0
+  | z :: zs' => z + zsum zs'
+  end.
+
+Definition normalize_le (e1 e2: Loop.expr) : Loop.test :=
+  match e1, e2 with
+  | Loop.Mult k e, Loop.Constant c =>
+      if Z.eqb k (-1) then Loop.make_le (Loop.Constant (- c)) e else Loop.make_le e1 e2
+  | Loop.Constant c, Loop.Mult k e =>
+      if Z.eqb k (-1) then Loop.make_le e (Loop.Constant (- c)) else Loop.make_le e1 e2
+  | _, _ => Loop.make_le e1 e2
+  end.
+
 Fixpoint simpl_expr (e: Loop.expr) : Loop.expr :=
   match e with
   | Loop.Constant c => Loop.Constant c
-  | Loop.Sum e1 e2 => Loop.make_sum (simpl_expr e1) (simpl_expr e2)
+  | Loop.Sum e1 e2 =>
+      let e1' := simpl_expr e1 in
+      let e2' := simpl_expr e2 in
+      let '(terms, c) := collect_sum_norm (Loop.Sum e1' e2') in
+      build_sum terms c
   | Loop.Mult k e1 => Loop.make_mult k (simpl_expr e1)
   | Loop.Div e1 k => Loop.make_div (simpl_expr e1) k
   | Loop.Mod e1 k => Loop.make_mod (simpl_expr e1) k
@@ -27,7 +60,7 @@ Fixpoint simpl_expr (e: Loop.expr) : Loop.expr :=
 
 Fixpoint simpl_test (t: Loop.test) : Loop.test :=
   match t with
-  | Loop.LE e1 e2 => Loop.make_le (simpl_expr e1) (simpl_expr e2)
+  | Loop.LE e1 e2 => normalize_le (simpl_expr e1) (simpl_expr e2)
   | Loop.EQ e1 e2 => Loop.make_eq (simpl_expr e1) (simpl_expr e2)
   | Loop.And t1 t2 => Loop.make_and (simpl_test t1) (simpl_test t2)
   | Loop.Or t1 t2 => Loop.make_or (simpl_test t1) (simpl_test t2)
@@ -35,12 +68,139 @@ Fixpoint simpl_test (t: Loop.test) : Loop.test :=
   | Loop.TConstantTest b => Loop.TConstantTest b
   end.
 
+Lemma build_sum_correct :
+  forall env terms c,
+    Loop.eval_expr env (build_sum terms c) =
+    zsum (map (Loop.eval_expr env) terms) + c.
+Proof.
+  intros env terms c.
+  induction terms as [|t ts IH]; simpl.
+  - reflexivity.
+  - rewrite Loop.make_sum_correct, IH. lia.
+Qed.
+
+Lemma zsum_app :
+  forall zs1 zs2,
+    zsum (zs1 ++ zs2) = zsum zs1 + zsum zs2.
+Proof.
+  induction zs1 as [|z zs1 IH]; intros zs2; simpl.
+  - lia.
+  - rewrite IH. lia.
+Qed.
+
+Lemma collect_sum_norm_correct :
+  forall env e terms c,
+    collect_sum_norm e = (terms, c) ->
+    zsum (map (Loop.eval_expr env) terms) + c = Loop.eval_expr env e.
+Proof.
+  induction e; intros terms c Hcol; simpl in Hcol.
+  - inversion Hcol; subst. reflexivity.
+  - destruct (collect_sum_norm e1) as [ts1 c1] eqn:H1.
+    destruct (collect_sum_norm e2) as [ts2 c2] eqn:H2.
+    inversion Hcol; subst; clear Hcol.
+    rewrite map_app, zsum_app.
+    specialize (IHe1 ts1 c1 eq_refl).
+    specialize (IHe2 ts2 c2 eq_refl).
+    replace (zsum (map (Loop.eval_expr env) ts1) +
+             (zsum (map (Loop.eval_expr env) ts2) + (c1 + c2)))
+      with ((zsum (map (Loop.eval_expr env) ts1) + c1) +
+            (zsum (map (Loop.eval_expr env) ts2) + c2)) by lia.
+    assert (Hz1 :
+      zsum (map (Loop.eval_expr env) ts1) = Loop.eval_expr env e1 - c1) by lia.
+    assert (Hz2 :
+      zsum (map (Loop.eval_expr env) ts2) = Loop.eval_expr env e2 - c2) by lia.
+    rewrite Hz1, Hz2.
+    simpl.
+    lia.
+  - inversion Hcol; subst. simpl. lia.
+  - inversion Hcol; subst. simpl. lia.
+  - inversion Hcol; subst. simpl. lia.
+  - inversion Hcol; subst. simpl. lia.
+  - inversion Hcol; subst. simpl. lia.
+  - inversion Hcol; subst. simpl. lia.
+Qed.
+
+Lemma opp_leb_swap :
+  forall x c,
+    (- c <=? x) = (- x <=? c).
+Proof.
+  intros x c.
+  destruct (Z.leb_spec0 (- c) x);
+    destruct (Z.leb_spec0 (- x) c); simpl; lia.
+Qed.
+
+Lemma leb_neg_rhs_swap :
+  forall x c,
+    (x <=? - c) = (c <=? - x).
+Proof.
+  intros x c.
+  destruct (Z.leb_spec0 x (- c));
+    destruct (Z.leb_spec0 c (- x)); simpl; lia.
+Qed.
+
+Lemma opp_leb_mult_m1 :
+  forall x c,
+    (- c <=? x) = (((-1) * x) <=? c).
+Proof.
+  intros x c.
+  rewrite opp_leb_swap.
+  replace ((-1) * x) with (- x) by lia.
+  reflexivity.
+Qed.
+
+Lemma leb_neg_rhs_mult_m1 :
+  forall x c,
+    (x <=? - c) = (c <=? ((-1) * x)).
+Proof.
+  intros x c.
+  rewrite leb_neg_rhs_swap.
+  replace ((-1) * x) with (- x) by lia.
+  reflexivity.
+Qed.
+
+Lemma normalize_le_correct :
+  forall env e1 e2,
+    Loop.eval_test env (normalize_le e1 e2) = Loop.eval_test env (Loop.LE e1 e2).
+Proof.
+  intros env e1 e2.
+  unfold normalize_le.
+  destruct e1 as [c1|a1 b1|kleft eleft|dleft kdleft|mleft kmleft|n1|max1l max1r|min1l min1r].
+  - destruct e2 as [c2|a2 b2|kright eright|dright kdright|mright kmright|n2|max2l max2r|min2l min2r];
+      simpl; try reflexivity.
+    destruct (Z.eqb kright (-1)) eqn:Heq.
+    + apply Z.eqb_eq in Heq. subst.
+      destruct eright; simpl; rewrite leb_neg_rhs_mult_m1; reflexivity.
+    + unfold Loop.make_le. simpl. reflexivity.
+  - destruct e2; simpl; reflexivity.
+  - destruct e2 as [c2|a2 b2|kright eright|dright kdright|mright kmright|n2|max2l max2r|min2l min2r];
+      simpl; try reflexivity.
+    destruct (Z.eqb kleft (-1)) eqn:Heq.
+    + apply Z.eqb_eq in Heq. subst.
+      destruct eleft; simpl; rewrite opp_leb_mult_m1; reflexivity.
+    + unfold Loop.make_le. simpl. reflexivity.
+  - destruct e2; simpl; reflexivity.
+  - destruct e2; simpl; reflexivity.
+  - destruct e2; simpl; reflexivity.
+  - destruct e2; simpl; reflexivity.
+  - destruct e2; simpl; reflexivity.
+Qed.
+
 Lemma simpl_expr_correct :
   forall env e,
     Loop.eval_expr env (simpl_expr e) = Loop.eval_expr env e.
 Proof.
   induction e; simpl; intros; try reflexivity.
-  - rewrite Loop.make_sum_correct, IHe1, IHe2. reflexivity.
+  - destruct (collect_sum_norm (Loop.Sum (simpl_expr e1) (simpl_expr e2))) as [terms c] eqn:Hsc.
+    change (Loop.eval_expr env
+      (let '(terms0, c0) := collect_sum_norm (Loop.Sum (simpl_expr e1) (simpl_expr e2))
+       in build_sum terms0 c0) = Loop.eval_expr env (Loop.Sum e1 e2)).
+    rewrite Hsc. simpl.
+    pose proof (collect_sum_norm_correct env (Loop.Sum (simpl_expr e1) (simpl_expr e2)) terms c Hsc) as Hnorm.
+    simpl in Hnorm.
+    rewrite IHe1, IHe2 in Hnorm.
+    etransitivity.
+    + apply build_sum_correct.
+    + exact Hnorm.
   - rewrite Loop.make_mult_correct, IHe. reflexivity.
   - rewrite Loop.make_div_correct, IHe. reflexivity.
   - rewrite Loop.make_mod_correct, IHe. reflexivity.
@@ -64,8 +224,8 @@ Lemma simpl_test_correct :
     Loop.eval_test env (simpl_test t) = Loop.eval_test env t.
 Proof.
   induction t; simpl; intros; try reflexivity.
-  - rewrite Loop.make_le_correct, !simpl_expr_correct. reflexivity.
-  - rewrite Loop.make_eq_correct, !simpl_expr_correct. reflexivity.
+  - rewrite normalize_le_correct. simpl. rewrite !simpl_expr_correct. reflexivity.
+  - rewrite Loop.make_eq_correct. simpl. rewrite !simpl_expr_correct. reflexivity.
   - rewrite Loop.make_and_correct, IHt1, IHt2. reflexivity.
   - rewrite Loop.make_or_correct, IHt1, IHt2. reflexivity.
   - rewrite Loop.make_not_correct, IHt. reflexivity.
