@@ -8,6 +8,13 @@ PolCert provides two user-facing tools:
 If you care about the optimizer, start with [`POLOPT.md`](./POLOPT.md).
 If you already have OpenScop files and only want validation, start with [`POLCERT.md`](./POLCERT.md).
 
+## Environment and setup
+
+The standard environment for this repository is defined by [Dockerfile](./Dockerfile).
+If you want the supported setup, use Docker or a container built from that file.
+If you prefer to configure the environment manually, treat `Dockerfile` as the source of truth and mirror its dependencies.
+Detailed instructions are in [ENVIRONMENT.md](./ENVIRONMENT.md).
+
 ## Quick start
 
 Inside the project container, build with:
@@ -67,6 +74,7 @@ The CI job builds the image from [Dockerfile](./Dockerfile) and then runs [tools
 
 ## Documentation map
 
+- [`ENVIRONMENT.md`](./ENVIRONMENT.md): Docker setup, environment notes, and how to mirror the Dockerfile manually.
 - [`POLCERT.md`](./POLCERT.md): validator-only executable, user workflow, and examples.
 - [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
