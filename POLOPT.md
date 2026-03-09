@@ -33,7 +33,7 @@ pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
 ```
 
 This matters because the current verified path is aimed at **schedule validation and schedule-driven code generation**, not at the full Pluto transformation space.
-In particular, the current `polopt` path is aligned with the capabilities of Pluto under these flags:
+In particular, the current `polopt` path should be read as supporting the optimization capability that Pluto exposes **under exactly this flag set**:
 
 - affine scheduling / loop reordering
 - skewing / wavefront-style rescheduling
@@ -186,8 +186,9 @@ Interpretation:
 
 - scheduling decisions come from Pluto itself
 - the strict `polopt` path now succeeds on the full generated benchmark suite
-- across the suite, the resulting loop transformations follow the same optimization families as the corresponding C-path Pluto runs under the same Pluto flag set
-- the observed transformed loops therefore reflect Pluto's scheduling capability, but now inside a validated extractor/scheduler/codegen pipeline
+- across the suite, the resulting loop transformations follow the same optimization families as the corresponding C-path Pluto runs under the exact flag set shown above
+- in that sense, `polopt` currently covers Pluto's affine scheduling capability under those flags, with verified extraction / validation / code generation around it
+- this should not be read as support for the full Pluto transformation space: tiling and index-set splitting remain out of scope for the current verified path
 
 One practical exception is performance on `advect3d`:
 
