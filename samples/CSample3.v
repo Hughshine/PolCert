@@ -46,6 +46,7 @@ Require Import List.
 Import List.ListNotations.
 Require Import ZArith.
 Require Import CPolIRs.
+Require Import PointWitness.
 Open Scope Z_scope.
 
 (** Instruction 1: B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j]; *)
@@ -800,7 +801,9 @@ Definition sample_pi1 := {|
     CPolIRs.PolyLang.pi_depth := 2%nat;
     CPolIRs.PolyLang.pi_instr := sample_cinstr1; 
     CPolIRs.PolyLang.pi_poly := sample_domain1;
+    CPolIRs.PolyLang.pi_point_witness := PointWitness.PSWIdentity 2%nat;
     CPolIRs.PolyLang.pi_transformation := sample_transformation1;
+    CPolIRs.PolyLang.pi_access_transformation := sample_transformation1;
     CPolIRs.PolyLang.pi_schedule := sample_sctt1;
     CPolIRs.PolyLang.pi_waccess := sample_waccess1;
     CPolIRs.PolyLang.pi_raccess := sample_raccess1;
@@ -810,7 +813,9 @@ Definition sample_pi2 := {|
     CPolIRs.PolyLang.pi_depth := 2%nat;
     CPolIRs.PolyLang.pi_instr := sample_cinstr2;
     CPolIRs.PolyLang.pi_poly := sample_domain2;
+    CPolIRs.PolyLang.pi_point_witness := PointWitness.PSWIdentity 2%nat;
     CPolIRs.PolyLang.pi_transformation := sample_transformation2;
+    CPolIRs.PolyLang.pi_access_transformation := sample_transformation2;
     CPolIRs.PolyLang.pi_schedule := sample_sctt2;
     CPolIRs.PolyLang.pi_waccess := sample_waccess2;
     CPolIRs.PolyLang.pi_raccess := sample_raccess2;
@@ -820,7 +825,9 @@ Definition sample_pi3 := {|
     CPolIRs.PolyLang.pi_depth := 1%nat;
     CPolIRs.PolyLang.pi_instr := sample_cinstr3; 
     CPolIRs.PolyLang.pi_poly := sample_domain3;
+    CPolIRs.PolyLang.pi_point_witness := PointWitness.PSWIdentity 1%nat;
     CPolIRs.PolyLang.pi_transformation := sample_transformation3;
+    CPolIRs.PolyLang.pi_access_transformation := sample_transformation3;
     CPolIRs.PolyLang.pi_schedule := sample_sctt3;
     CPolIRs.PolyLang.pi_waccess := sample_waccess3;
     CPolIRs.PolyLang.pi_raccess := sample_raccess3;
@@ -830,7 +837,9 @@ Definition sample_pi4 := {|
     CPolIRs.PolyLang.pi_depth := 2%nat;
     CPolIRs.PolyLang.pi_instr := sample_cinstr4; 
     CPolIRs.PolyLang.pi_poly := sample_domain4;
+    CPolIRs.PolyLang.pi_point_witness := PointWitness.PSWIdentity 2%nat;
     CPolIRs.PolyLang.pi_transformation := sample_transformation4;
+    CPolIRs.PolyLang.pi_access_transformation := sample_transformation4;
     CPolIRs.PolyLang.pi_schedule := sample_sctt4;
     CPolIRs.PolyLang.pi_waccess := sample_waccess4;
     CPolIRs.PolyLang.pi_raccess := sample_raccess4;

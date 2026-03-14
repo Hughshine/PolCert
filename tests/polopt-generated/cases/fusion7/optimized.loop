@@ -1,12 +1,28 @@
 context(N, M);
 
-for i0 in range(0, min(M, N)) {
-  a[i0] = b[i0];
-  a[i0] = b[i0];
+if ((1 <= M && 1 <= N)) {
+  for i0 in range(0, min(((M + 31) / 32), ((N + 31) / 32))) {
+    for i1 in range(max(0, (32 * i0)), min(min(M, ((32 * i0) + 32)), N)) {
+      a[i1] = b[i1];
+      a[i1] = b[i1];
+    }
+    for i1 in range(N, min(M, ((32 * i0) + 32))) {
+      a[i1] = b[i1];
+    }
+    for i1 in range(M, min(((32 * i0) + 32), N)) {
+      a[i1] = b[i1];
+    }
+  }
 }
-for i0 in range(max(0, N), M) {
-  a[i0] = b[i0];
+for i0 in range(max(0, ((N + 31) / 32)), ((M + 31) / 32)) {
+  for i1 in range((32 * i0), min(((32 * i0) + 32), M)) {
+    a[i1] = b[i1];
+  }
 }
-for i0 in range(max(M, 0), N) {
-  a[i0] = b[i0];
+if (1 <= N) {
+  for i0 in range(max(((M + 31) / 32), 0), ((N + 31) / 32)) {
+    for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+      a[i1] = b[i1];
+    }
+  }
 }

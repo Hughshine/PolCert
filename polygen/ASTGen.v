@@ -20,6 +20,7 @@ Require Import Setoid Morphisms.
 Require Import Linalg.
 Require Import PolyLoop.
 Require Import PolyLang.
+Require Import PointWitness.
 Require Import Misc.
 Require Import IterSemantics.
 Require Import InstrTy.
@@ -48,7 +49,11 @@ Module Loop := PolIRs.Loop.
 
 Fixpoint generate_loop (d : nat) (n : nat) (pi : PolyLang.PolyInstr) : imp PolyLoop.poly_stmt :=
   match d with
-  | O => pure (PolyLoop.PInstr pi.(PolyLang.pi_instr) (map (fun t => (1%positive, t)) pi.(PolyLang.pi_transformation)))
+  | O => pure (PolyLoop.PInstr pi.(PolyLang.pi_instr)
+                  (map (fun t => (1%positive, t))
+                    (PolyLang.current_transformation_at
+                       (n - PointWitness.witness_current_point_dim pi.(PolyLang.pi_point_witness))%nat
+                       pi)))
   | S d1 =>
     BIND proj <- project ((n - d1)%nat, pi.(PolyLang.pi_poly)) -;
     BIND inner <- generate_loop d1 n pi -;
@@ -119,7 +124,10 @@ Proof.
   - intros n2 p2 Hcmp. apply not_true_iff_false; intros H'.
     apply env_scan_single in H'; [|rewrite rev_length; auto].
     rewrite H' in Hcmp. rewrite lex_compare_reflexive in Hcmp. congruence.
-  - unfold affine_product in *. rewrite map_map in H.
+  - unfold PolyLang.current_src_args_in_dim,
+      PolyLang.current_src_args_at in *.
+    unfold affine_product in *.
+    rewrite map_map in H.
     erewrite map_ext in H; [exact H|].
     intros; unfold PolyLoop.eval_affine_expr; simpl. apply Z.div_1_r.
   - intros n1 p1. unfold PolyLang.scanned.
@@ -263,7 +271,17 @@ Qed.
 
 
 Definition update_poly pi pol :=
-  {| PolyLang.pi_depth := pi.(PolyLang.pi_depth) ; PolyLang.pi_instr := pi.(PolyLang.pi_instr) ; PolyLang.pi_poly := pol ; PolyLang.pi_schedule := pi.(PolyLang.pi_schedule) ; PolyLang.pi_transformation := pi.(PolyLang.pi_transformation); PolyLang.pi_waccess := pi.(PolyLang.pi_waccess); PolyLang.pi_raccess := pi.(PolyLang.pi_raccess); |}.
+  {|
+    PolyLang.pi_depth := pi.(PolyLang.pi_depth);
+    PolyLang.pi_instr := pi.(PolyLang.pi_instr);
+    PolyLang.pi_poly := pol;
+    PolyLang.pi_schedule := pi.(PolyLang.pi_schedule);
+    PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
+    PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
+    PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
+    PolyLang.pi_waccess := pi.(PolyLang.pi_waccess);
+    PolyLang.pi_raccess := pi.(PolyLang.pi_raccess);
+  |}.
 
 
 Definition dummy_pi := PolyLang.dummy_pi.
@@ -282,6 +300,7 @@ Definition make_npis_simplify pis pol pl :=
 Definition pi_equiv pi1 pi2 :=
   (forall p, in_poly p pi1.(PolyLang.pi_poly) = in_poly p pi2.(PolyLang.pi_poly)) /\
   pi1.(PolyLang.pi_instr) = pi2.(PolyLang.pi_instr) /\
+  pi1.(PolyLang.pi_point_witness) = pi2.(PolyLang.pi_point_witness) /\
   pi1.(PolyLang.pi_transformation) = pi2.(PolyLang.pi_transformation).
 
 Lemma make_npis_simplify_equiv :
@@ -303,7 +322,14 @@ Qed.
 
 Fixpoint generate_loop_many (d : nat) (n : nat) (pis : list PolyLang.PolyInstr) : imp PolyLoop.poly_stmt :=
   match d with
-  | O => pure (PolyLoop.make_seq (map (fun pi => PolyLoop.PGuard pi.(PolyLang.pi_poly) (PolyLoop.PInstr pi.(PolyLang.pi_instr) (map (fun t => (1%positive, t)) pi.(PolyLang.pi_transformation)))) pis))
+  | O => pure (PolyLoop.make_seq
+                 (map (fun pi =>
+                         PolyLoop.PGuard pi.(PolyLang.pi_poly)
+                           (PolyLoop.PInstr pi.(PolyLang.pi_instr)
+                              (map (fun t => (1%positive, t))
+                                 (PolyLang.current_transformation_at
+                                    (n - PointWitness.witness_current_point_dim pi.(PolyLang.pi_point_witness))%nat
+                                    pi)))) pis))
   | S d1 =>
     BIND projs <- mapM (fun pi => project ((n - d1)%nat, pi.(PolyLang.pi_poly))) pis -;
     BIND projsep <- split_and_sort (n - d)%nat projs -;
@@ -365,16 +391,18 @@ Proof.
 Qed.
 
 Lemma poly_lex_semantics_subpis :
-  forall pis pl to_scan mem1 mem2,
+  forall dim pis pl to_scan mem1 mem2,
     (forall n p, to_scan n p = true -> In n pl) ->
     NoDup pl ->
     (forall n, In n pl -> (n < length pis)%nat) ->
-    PolyLang.poly_lex_semantics to_scan pis mem1 mem2 <->
-    PolyLang.poly_lex_semantics (fun n p => match nth_error pl n with Some m => to_scan m p | None => false end) (map (fun t => nth t pis dummy_pi) pl) mem1 mem2.
+    PolyLang.poly_lex_semantics dim to_scan pis mem1 mem2 <->
+    PolyLang.poly_lex_semantics dim
+      (fun n p => match nth_error pl n with Some m => to_scan m p | None => false end)
+      (map (fun t => nth t pis dummy_pi) pl) mem1 mem2.
 Proof.
-  intros pis pl to_scan mem1 mem2 Hscan Hdup Hpl.
+  intros dim pis pl to_scan mem1 mem2 Hscan Hdup Hpl.
   split.
-  - intros H; induction H as [to_scan prog mem Hdone|to_scan prog mem1 mem2 mem3 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
+  - intros H; induction H as [dim' to_scan prog mem Hdone|dim' to_scan prog mem1 mem2 mem3 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
     + apply PolyLang.PolyLexDone. intros n p; destruct (nth_error pl n); auto.
     + generalize (Hscan _ _ Hscanp); intros Hnpl. apply In_nth_error in Hnpl; destruct Hnpl as [k Hk].
       eapply PolyLang.PolyLexProgress; [| | |exact Hsem1|eapply PolyLang.poly_lex_semantics_extensionality; [apply IH|]].
@@ -391,11 +419,11 @@ Proof.
         apply eq_iff_eq_true; reflect.
         split; [|congruence]. intros Hn. rewrite NoDup_nth_error in Hdup. apply Hdup; [|congruence].
         rewrite <- nth_error_Some. congruence.
-  - match goal with [ |- PolyLang.poly_lex_semantics ?x ?y _ _ -> _] => remember x as to_scan1; remember y as pis1 end.
+  - match goal with [ |- PolyLang.poly_lex_semantics _ ?x ?y _ _ -> _] => remember x as to_scan1; remember y as pis1 end.
     generalize (refl_scan _ _ Heqto_scan1); clear Heqto_scan1; intros Heqto_scan1.
     intros H; generalize to_scan1 pis1 H to_scan Hscan Heqto_scan1 Heqpis1. clear Heqto_scan1 Heqpis1 Hscan to_scan H pis1 to_scan1.
     intros to_scan1 pis1 H.
-    induction H as [to_scan1 prog mem Hdone|to_scan1 prog mem1 mem2 mem3 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
+    induction H as [dim' to_scan1 prog mem Hdone|dim' to_scan1 prog mem1 mem2 mem3 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
     + intros; apply PolyLang.PolyLexDone.
       intros n p.
       apply not_true_is_false. intros Hscan2.
@@ -489,12 +517,12 @@ Lemma poly_lex_semantics_make_npis_subscan :
   forall pis pol pl n env mem1 mem2,
     NoDup pl ->
     (forall n, In n pl -> (n < length pis)%nat) ->
-    PolyLang.poly_lex_semantics (subscan pis pol pl (rev env) n) pis mem1 mem2 <->
+    PolyLang.poly_lex_semantics n (subscan pis pol pl (rev env) n) pis mem1 mem2 <->
     PolyLang.env_poly_lex_semantics (rev env) n (make_npis pis pol pl) mem1 mem2.
 Proof.
   intros pis pol pl n env mem1 mem2 Hdup Hind.
   unfold PolyLang.env_poly_lex_semantics, make_npis. 
-  rewrite poly_lex_semantics_subpis with (pl := pl).
+  rewrite poly_lex_semantics_subpis with (dim := n) (pl := pl).
   - erewrite PolyLang.poly_lex_semantics_pis_ext_iff; [apply PolyLang.poly_lex_semantics_ext_iff|].
     + intros m p. destruct (nth_error pl m) as [k|] eqn:Hk.
       * assert (Hkin : In k pl) by (eapply nth_error_In; eauto).
@@ -578,8 +606,10 @@ Proof.
         right. apply not_true_is_false; intros Hscan.
         apply env_scan_single in Hscan; [|rewrite rev_length; lia].
         rewrite Hscan in H. rewrite lex_compare_reflexive in H; congruence.
-      * rewrite map_map in Hloopseq. unfold affine_product.
-        erewrite map_ext; [exact Hloopseq|].
+      * unfold PolyLang.current_src_args_in_dim,
+          PolyLang.current_src_args_at in *.
+        rewrite map_map in Hloopseq. unfold affine_product.
+        erewrite map_ext in Hloopseq; [exact Hloopseq|].
         intros c; unfold PolyLoop.eval_affine_expr; simpl. rewrite Z.div_1_r. reflexivity.
       * intros m p. unfold PolyLang.scanned.
         apply not_true_is_false. intros H; reflect.

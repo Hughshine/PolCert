@@ -1,0 +1,24 @@
+--- input.pretty.loop
++++ optimized.loop
+@@ -1,9 +1,17 @@
+ context(NMAX);
+ 
+-for i0 in range(1, NMAX) {
+-  for i1 in range(0, NMAX) {
+-    for i2 in range(0, i0) {
+-      b[i1][i2] = (b[i1][i2] + (a[i0][i2] * b[i1][i0]));
++if (2 <= NMAX) {
++  for i0 in range(0, ((NMAX + 31) / 32)) {
++    for i1 in range(0, ((NMAX + 31) / 32)) {
++      for i2 in range(0, min((((32 * i0) + 62) / 32), ((NMAX + 30) / 32))) {
++        for i3 in range(max(max(1, ((32 * i2) + 1)), (32 * i0)), min(NMAX, ((32 * i0) + 32))) {
++          for i4 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {
++            for i5 in range(max(0, (32 * i2)), min(i3, ((32 * i2) + 32))) {
++              b[i4][i5] = (b[i4][i5] + (a[i3][i5] * b[i4][i3]));
++            }
++          }
++        }
++      }
+     }
+   }
+ }

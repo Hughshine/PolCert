@@ -31,7 +31,9 @@ Definition export_pi_for_openscop (varctxt : list AST.ident) (pi : SPolIRs.PolyL
     SPolIRs.PolyLang.pi_instr := SPolIRs.PolyLang.pi_instr pi;
     SPolIRs.PolyLang.pi_poly := SPolIRs.PolyLang.pi_poly pi;
     SPolIRs.PolyLang.pi_schedule := SPolIRs.PolyLang.pi_schedule pi;
+    SPolIRs.PolyLang.pi_point_witness := SPolIRs.PolyLang.pi_point_witness pi;
     SPolIRs.PolyLang.pi_transformation := SPolIRs.PolyLang.pi_transformation pi;
+    SPolIRs.PolyLang.pi_access_transformation := SPolIRs.PolyLang.pi_access_transformation pi;
     SPolIRs.PolyLang.pi_waccess := SPolIRs.PolyLang.pi_waccess pi;
     SPolIRs.PolyLang.pi_raccess :=
       SPolIRs.PolyLang.pi_raccess pi ++
@@ -64,8 +66,7 @@ Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_opt loop.
 
 Definition opt_poly (pol : SPolIRs.PolyLang.t) : imp SPolIRs.Loop.t :=
-  BIND pol' <- CoreOpt.scheduler' (CoreOpt.Strengthen.strengthen_pprog pol) -;
-  CoreOpt.Prepare.prepared_codegen pol'.
+  CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).
 
 Definition opt_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
   match SPolIRs.PolyLang.from_openscop_complete scop with

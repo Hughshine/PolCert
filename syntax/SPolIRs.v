@@ -6,6 +6,7 @@ Require Import Loop.
 Require Import Result.
 Require Import OpenScop.
 Require Import String.
+Require Import TilingWitness.
 
 Local Open Scope string_scope.
 
@@ -17,6 +18,9 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
   Module PolyLoop := PolyLoop SInstr.
   Module Loop := Loop SInstr.
   Parameter scop_scheduler : OpenScop -> result OpenScop.
+  Parameter phase_scop_scheduler : OpenScop -> result (OpenScop * OpenScop).
+  Parameter infer_tiling_witness_scops :
+    OpenScop -> OpenScop -> result (list statement_tiling_witness).
 
   Definition add_var_nodup (vars : list (Instr.ident * Ty.t)) (v : Instr.ident * Ty.t)
     : list (Instr.ident * Ty.t) :=
@@ -34,7 +38,9 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
       PolyLang.pi_instr := PolyLang.pi_instr pi;
       PolyLang.pi_poly := PolyLang.pi_poly pi;
       PolyLang.pi_schedule := PolyLang.pi_schedule pi;
+      PolyLang.pi_point_witness := PolyLang.pi_point_witness pi;
       PolyLang.pi_transformation := PolyLang.pi_transformation pi;
+      PolyLang.pi_access_transformation := PolyLang.pi_access_transformation pi;
       PolyLang.pi_waccess := PolyLang.pi_waccess pi;
       PolyLang.pi_raccess :=
         PolyLang.pi_raccess pi ++ Instr.export_scalar_reads names (PolyLang.pi_instr pi);
@@ -72,4 +78,7 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
         end
     | None => Err "Transform pol to openscop failed"
     end.
+
+  Definition to_phase_openscop (cpol: PolyLang.t) : option OpenScop :=
+    to_openscop_source cpol.
 End SPolIRs.

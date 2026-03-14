@@ -21,6 +21,7 @@ Require Import Misc.
 Require Import Validator.
 Require Import Permutation.
 Require Import Sorting.Sorted.
+Require Import PointWitness.
 
 Module Extractor (PolIRs: POLIRS).
 
@@ -1472,7 +1473,9 @@ Fixpoint extract_stmt
                     PolIRs.PolyLang.pi_instr := instr;
                     PolIRs.PolyLang.pi_poly := normalize_affine_list_rev cols constrs;
                     PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev cols sched_prefix;
+                    PolIRs.PolyLang.pi_point_witness := PSWIdentity iter_depth;
                     PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev cols tf;
+                    PolIRs.PolyLang.pi_access_transformation := normalize_affine_list_rev cols tf;
                     PolIRs.PolyLang.pi_waccess := normalize_access_list cols w;
                     PolIRs.PolyLang.pi_raccess := normalize_access_list cols r;
                 |}]
@@ -1535,7 +1538,9 @@ Lemma extract_stmt_instr_success_inv:
         PolIRs.PolyLang.pi_instr := instr;
         PolIRs.PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
         PolIRs.PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
+        PolIRs.PolyLang.pi_point_witness := PSWIdentity iter_depth;
         PolIRs.PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
+        PolIRs.PolyLang.pi_access_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
         PolIRs.PolyLang.pi_waccess := normalize_access_list (env_dim + iter_depth)%nat w;
         PolIRs.PolyLang.pi_raccess := normalize_access_list (env_dim + iter_depth)%nat r;
       |}].
@@ -1642,7 +1647,15 @@ Definition lower_pi_depth (pi: PolyLang.PolyInstr): PolyLang.PolyInstr :=
     PolyLang.pi_instr := PolyLang.pi_instr pi;
     PolyLang.pi_poly := PolyLang.pi_poly pi;
     PolyLang.pi_schedule := PolyLang.pi_schedule pi;
+	    PolyLang.pi_point_witness :=
+	      match PolyLang.pi_point_witness pi with
+	      | PSWIdentity point_dim => PSWIdentity (Nat.pred point_dim)
+	      | PSWTiling w => PSWTiling w
+	      | PSWInsertAfterEnv added inner => PSWInsertAfterEnv added inner
+	      | PSWInsertAtEnd added inner => PSWInsertAtEnd added inner
+	      end;
     PolyLang.pi_transformation := PolyLang.pi_transformation pi;
+    PolyLang.pi_access_transformation := PolyLang.pi_access_transformation pi;
     PolyLang.pi_waccess := PolyLang.pi_waccess pi;
     PolyLang.pi_raccess := PolyLang.pi_raccess pi;
   |}.
@@ -4965,13 +4978,22 @@ Qed.
 Lemma belongs_to_lower_pi_depth:
     forall ip pi,
     PolyLang.belongs_to ip pi ->
+    PolyLang.pi_point_witness pi = PSWIdentity (PolyLang.pi_depth pi) ->
     (0 < PolyLang.pi_depth pi)%nat ->
     PolyLang.belongs_to (lower_ip_depth ip) (lower_pi_depth pi).
 Proof.
-    intros ip pi Hbel Hpos.
+    intros ip pi Hbel Hwit Hpos.
     unfold PolyLang.belongs_to in *.
     destruct Hbel as (Hpoly & Htf & Hts & Hinstr & Hdepth).
+    subst.
     repeat split; simpl; auto.
+    unfold PolyLang.current_transformation_of,
+      PolyLang.current_transformation_at,
+      PolyLang.current_env_dim_of in *.
+    simpl in *.
+    rewrite Hwit in *.
+    simpl in *.
+    exact Htf.
 Qed.
 
 Lemma nodup_map_lower_ip_depth:
@@ -6713,7 +6735,7 @@ Lemma flatten_instr_nth_depth0_emptydom_singleton:
       ipl = [ip0] /\
       PolyLang.ip_nth ip0 = n /\
       PolyLang.ip_index ip0 = envv /\
-      PolyLang.ip_transformation ip0 = PolyLang.pi_transformation pi /\
+      PolyLang.ip_transformation ip0 = PolyLang.current_transformation_of pi envv /\
       PolyLang.ip_time_stamp ip0 = affine_product (PolyLang.pi_schedule pi) envv /\
       PolyLang.ip_instruction ip0 = PolyLang.pi_instr pi /\
       PolyLang.ip_depth ip0 = PolyLang.pi_depth pi.
@@ -6724,7 +6746,7 @@ Proof.
     set (ip0 := {|
       PolyLang.ip_nth := n;
       PolyLang.ip_index := envv;
-      PolyLang.ip_transformation := PolyLang.pi_transformation pi;
+      PolyLang.ip_transformation := PolyLang.current_transformation_of pi envv;
       PolyLang.ip_time_stamp := affine_product (PolyLang.pi_schedule pi) envv;
       PolyLang.ip_instruction := PolyLang.pi_instr pi;
       PolyLang.ip_depth := PolyLang.pi_depth pi;
@@ -6781,7 +6803,7 @@ Lemma flatten_instr_nth_depth0_singleton_if_in_poly:
       ipl = [ip0] /\
       PolyLang.ip_nth ip0 = n /\
       PolyLang.ip_index ip0 = envv /\
-      PolyLang.ip_transformation ip0 = PolyLang.pi_transformation pi /\
+      PolyLang.ip_transformation ip0 = PolyLang.current_transformation_of pi envv /\
       PolyLang.ip_time_stamp ip0 = affine_product (PolyLang.pi_schedule pi) envv /\
       PolyLang.ip_instruction ip0 = PolyLang.pi_instr pi /\
       PolyLang.ip_depth ip0 = PolyLang.pi_depth pi.
@@ -6791,7 +6813,7 @@ Proof.
     set (ip0 := {|
       PolyLang.ip_nth := n;
       PolyLang.ip_index := envv;
-      PolyLang.ip_transformation := PolyLang.pi_transformation pi;
+      PolyLang.ip_transformation := PolyLang.current_transformation_of pi envv;
       PolyLang.ip_time_stamp := affine_product (PolyLang.pi_schedule pi) envv;
       PolyLang.ip_instruction := PolyLang.pi_instr pi;
       PolyLang.ip_depth := PolyLang.pi_depth pi;
@@ -7019,7 +7041,9 @@ Lemma instr_branch_core:
         PolyLang.pi_instr := i;
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) [];
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) [];
+        PolyLang.pi_point_witness := PSWIdentity 0;
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
+        PolyLang.pi_access_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
         PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
         PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
@@ -7078,7 +7102,9 @@ Lemma instr_branch_core_with_constrs:
         PolyLang.pi_instr := i;
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
+        PolyLang.pi_point_witness := PSWIdentity 0;
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
+        PolyLang.pi_access_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
         PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
         PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
@@ -7161,7 +7187,9 @@ Lemma instr_branch_core_with_constrs_len:
         PolyLang.pi_instr := i;
         PolyLang.pi_poly := normalize_affine_list_rev (Datatypes.length varctxt) constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (Datatypes.length varctxt) sched_prefix;
+        PolyLang.pi_point_witness := PSWIdentity 0;
         PolyLang.pi_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
+        PolyLang.pi_access_transformation := normalize_affine_list_rev (Datatypes.length varctxt) tf;
         PolyLang.pi_waccess := normalize_access_list (Datatypes.length varctxt) w;
         PolyLang.pi_raccess := normalize_access_list (Datatypes.length varctxt) r;
       |}] ipl ->
@@ -7328,7 +7356,7 @@ Lemma flatten_instr_prefix_slice_singleton_if_in_poly:
       ipl = [ip0] /\
       PolyLang.ip_nth ip0 = 0%nat /\
       PolyLang.ip_index ip0 = envv ++ prefix /\
-      PolyLang.ip_transformation ip0 = PolyLang.pi_transformation pi /\
+      PolyLang.ip_transformation ip0 = PolyLang.current_transformation_of pi (envv ++ prefix) /\
       PolyLang.ip_time_stamp ip0 = affine_product (PolyLang.pi_schedule pi) (envv ++ prefix) /\
       PolyLang.ip_instruction ip0 = PolyLang.pi_instr pi /\
       PolyLang.ip_depth ip0 = PolyLang.pi_depth pi.
@@ -7338,7 +7366,8 @@ Proof.
     set (ip0 := {|
       PolyLang.ip_nth := 0%nat;
       PolyLang.ip_index := envv ++ prefix;
-      PolyLang.ip_transformation := PolyLang.pi_transformation pi;
+      PolyLang.ip_transformation :=
+        PolyLang.current_transformation_of pi (envv ++ prefix);
       PolyLang.ip_time_stamp := affine_product (PolyLang.pi_schedule pi) (envv ++ prefix);
       PolyLang.ip_instruction := PolyLang.pi_instr pi;
       PolyLang.ip_depth := PolyLang.pi_depth pi;
@@ -7407,7 +7436,9 @@ Lemma instr_branch_core_with_constrs_prefix_len:
         PolyLang.pi_instr := i;
         PolyLang.pi_poly := normalize_affine_list_rev (env_dim + iter_depth)%nat constrs;
         PolyLang.pi_schedule := normalize_affine_list_rev (env_dim + iter_depth)%nat sched_prefix;
+        PolyLang.pi_point_witness := PSWIdentity iter_depth;
         PolyLang.pi_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
+        PolyLang.pi_access_transformation := normalize_affine_list_rev (env_dim + iter_depth)%nat tf;
         PolyLang.pi_waccess := normalize_access_list (env_dim + iter_depth)%nat w;
         PolyLang.pi_raccess := normalize_access_list (env_dim + iter_depth)%nat r;
       |}] ipl ->

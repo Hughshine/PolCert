@@ -1,5 +1,9 @@
 context(M);
 
-for i0 in range(0, ((-1 * M) + 1)) {
-  s = (s + 1);
+if (M <= 0) {
+  for i0 in range(0, (((-1 * M) + 32) / 32)) {
+    for i1 in range(max(0, (32 * i0)), min(((-1 * M) + 1), ((32 * i0) + 32))) {
+      s = (s + 1);
+    }
+  }
 }

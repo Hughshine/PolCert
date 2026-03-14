@@ -8,6 +8,7 @@ Require Import Result.
 Require Import OpenScop.
 Require Import String.
 Require Import CTy.
+Require Import TilingWitness.
 Local Open Scope string_scope.
 
 Module CPolIRs <: POLIRS with Module Instr := CInstr.
@@ -18,6 +19,9 @@ Module CPolIRs <: POLIRS with Module Instr := CInstr.
    Module PolyLoop := PolyLoop CInstr.
    Module Loop := Loop CInstr.
    Parameter scop_scheduler: OpenScop -> result OpenScop.
+   Parameter phase_scop_scheduler: OpenScop -> result (OpenScop * OpenScop).
+   Parameter infer_tiling_witness_scops:
+     OpenScop -> OpenScop -> result (list statement_tiling_witness).
 
    Definition scheduler cpol := 
       match PolyLang.to_openscop cpol with
@@ -29,4 +33,7 @@ Module CPolIRs <: POLIRS with Module Instr := CInstr.
       | None => Err "Transform pol to openscop failed"
       end
    .
+
+   Definition to_phase_openscop (cpol: PolyLang.t) : option OpenScop :=
+      PolyLang.to_openscop cpol.
 End CPolIRs.

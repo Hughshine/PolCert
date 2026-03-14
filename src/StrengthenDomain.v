@@ -77,7 +77,9 @@ Definition strengthen_pi (env_dim: nat) (pi: PolyLang.PolyInstr)
     PolyLang.pi_instr := pi.(PolyLang.pi_instr);
     PolyLang.pi_poly := strengthen_domain pi.(PolyLang.pi_depth) env_dim pi.(PolyLang.pi_poly);
     PolyLang.pi_schedule := pi.(PolyLang.pi_schedule);
+    PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
     PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
+    PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
     PolyLang.pi_waccess := pi.(PolyLang.pi_waccess);
     PolyLang.pi_raccess := pi.(PolyLang.pi_raccess);
   |}.
@@ -273,8 +275,14 @@ Proof.
   unfold PolyLang.wf_pinstr in *.
   unfold strengthen_pi. simpl.
   destruct Hwf as
-      [Hcols_le [Hpoly_nrl [Hsched_nrl [Hpoly_exact [Htf_exact [Hsched_exact [Hw [Hr Htflen]]]]]]]].
-  set (prefix_len := strengthen_prefix_len (length env) (PolyLang.pi_depth pi)).
+      [Hwitdim
+       [Hcols_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hw Hr]]]]]]]]].
   assert (Hpoly_exact' :
     exact_listzzs_cols (length env + PolyLang.pi_depth pi)
       (strengthen_domain (PolyLang.pi_depth pi) (length env) (PolyLang.pi_poly pi))).
@@ -287,15 +295,37 @@ Proof.
       * exact Hpoly_exact.
       * eapply inferred_prefix_guards_exact_cols; eauto.
   }
-  split; [exact Hcols_le|].
+  repeat split.
+  - exact Hwitdim.
+  - unfold PolyLang.pinstr_current_dim.
+    apply Nat.le_max_l.
+  - unfold PolyLang.pinstr_current_dim.
+    eapply Nat.le_trans.
+    + eapply exact_listzzs_cols_implies_poly_nrl_le; exact Hpoly_exact'.
+    + apply Nat.le_max_l.
+  - unfold PolyLang.pinstr_current_dim.
+    eapply Nat.le_trans.
+    + eapply exact_listzzs_cols_implies_poly_nrl_le; exact Hsched_exact.
+    + apply Nat.le_max_l.
+  - exact Hpoly_exact'.
+  - exact Htf_exact.
+  - exact Hacc_tf_exact.
+  - exact Hsched_exact.
+  - exact Hw.
+  - exact Hr.
+Qed.
+
+Lemma strengthen_pi_wf_pinstr_affine:
+  forall env vars pi,
+    PolyLang.wf_pinstr_affine env vars pi ->
+    PolyLang.wf_pinstr_affine env vars (strengthen_pi (length env) pi).
+Proof.
+  intros env vars pi Hwf.
+  unfold PolyLang.wf_pinstr_affine in *.
+  destruct Hwf as [Hwf [Hw Heq]].
   split.
-  - eapply exact_listzzs_cols_implies_poly_nrl_le in Hpoly_exact'. lia.
-  - split; [exact Hsched_nrl|].
-    split; [exact Hpoly_exact'|].
-    split; [exact Htf_exact|].
-    split; [exact Hsched_exact|].
-    split; [exact Hw|].
-    split; [exact Hr|exact Htflen].
+  - eapply strengthen_pi_wf_pinstr; eauto.
+  - unfold strengthen_pi. simpl. repeat split; assumption.
 Qed.
 
 Theorem strengthen_pprog_wf:
@@ -313,6 +343,24 @@ Proof.
   destruct Hin as [pi [Heq Hin]].
   subst pi'.
   eapply strengthen_pi_wf_pinstr.
+  eapply Hpis; eauto.
+Qed.
+
+Theorem strengthen_pprog_wf_affine:
+  forall pp,
+    PolyLang.wf_pprog_affine pp ->
+    PolyLang.wf_pprog_affine (strengthen_pprog pp).
+Proof.
+  intros [[pis varctxt] vars] Hwf.
+  unfold PolyLang.wf_pprog_affine in *.
+  simpl in *.
+  destruct Hwf as [Hlen Hpis].
+  split; [exact Hlen|].
+  intros pi' Hin.
+  apply in_map_iff in Hin.
+  destruct Hin as [pi [Heq Hin]].
+  subst pi'.
+  eapply strengthen_pi_wf_pinstr_affine.
   eapply Hpis; eauto.
 Qed.
 

@@ -1,18 +1,28 @@
 context(M, N);
 
 if ((1 <= N && 1 <= M)) {
-  for i0 in range(1, (N + 1)) {
-    for i1 in range(1, (M + 1)) {
-      for i2 in range(i1, (M + 1)) {
-        symmat[i1][i2] = (symmat[i1][i2] + (data[i0][i1] * data[i0][i2]));
+  for i0 in range(0, ((N + 32) / 32)) {
+    for i1 in range(0, ((M + 32) / 32)) {
+      for i2 in range(max(((32 * i1) / 32), 0), ((M + 32) / 32)) {
+        for i3 in range(max(1, (32 * i0)), min((N + 1), ((32 * i0) + 32))) {
+          for i4 in range(max(1, (32 * i1)), min(min(((32 * i1) + 32), ((32 * i2) + 32)), (M + 1))) {
+            for i5 in range(max(i4, (32 * i2)), min((M + 1), ((32 * i2) + 32))) {
+              symmat[i4][i5] = (symmat[i4][i5] + (data[i3][i4] * data[i3][i5]));
+            }
+          }
+        }
       }
     }
   }
 }
 if (1 <= M) {
-  for i0 in range(1, (M + 1)) {
-    for i1 in range(i0, (M + 1)) {
-      symmat[i1][i0] = symmat[i0][i1];
+  for i0 in range(0, ((M + 32) / 32)) {
+    for i1 in range(max(((32 * i0) / 32), 0), ((M + 32) / 32)) {
+      for i2 in range(max((32 * i0), 1), min(min(((32 * i0) + 32), ((32 * i1) + 32)), (M + 1))) {
+        for i3 in range(max((32 * i1), i2), min(((32 * i1) + 32), (M + 1))) {
+          symmat[i3][i2] = symmat[i2][i3];
+        }
+      }
     }
   }
 }

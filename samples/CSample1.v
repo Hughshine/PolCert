@@ -63,6 +63,7 @@ Require Import List.
 Import List.ListNotations.
 Require Import ZArith.
 Require Import CPolIRs.
+Require Import PointWitness.
 Require Import CTy.
 Open Scope Z_scope.
 Definition sample_domain: Domain := [
@@ -302,7 +303,9 @@ Definition sample_pi := {|
     CPolIRs.PolyLang.pi_depth := 3%nat;
     CPolIRs.PolyLang.pi_instr := sample_cinstr; 
     CPolIRs.PolyLang.pi_poly := sample_domain;
+    CPolIRs.PolyLang.pi_point_witness := PointWitness.PSWIdentity 3%nat;
     CPolIRs.PolyLang.pi_transformation := sample_transformation;
+    CPolIRs.PolyLang.pi_access_transformation := sample_transformation;
     CPolIRs.PolyLang.pi_schedule := sample_sctt;
     CPolIRs.PolyLang.pi_waccess := sample_waccess;
     CPolIRs.PolyLang.pi_raccess := sample_raccess;

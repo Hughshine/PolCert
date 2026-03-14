@@ -39,7 +39,7 @@
 %type <OpenScop.coq_ArrayAccess> array_access
 %type < Camlcoq.P.t * char list> array_pair
 %type <OpenScop.coq_ArrayStmt> array_stmt
-%type <OpenScopAST.coq_GlbExtLoc> arrays_extension comment_extension coord_extension scatnames_extension global_extension
+%type <OpenScopAST.coq_GlbExtLoc> arrays_extension comment_extension coord_extension scatnames_extension loop_extension global_extension
 %type <OpenScop.coq_Atom> atom
 %type <Camlcoq.Z.t> int
 %type <char list> float
@@ -49,6 +49,7 @@
 %type <Camlcoq.Z.t list> int_list
 %type <Camlcoq.Z.t list list> int_list_list
 %type <unit> linebreaks
+%type <unit> loop_entries loop_entry loop_stmt_ids loop_private_vars loop_private_vars_tail
 %type <(string * OpenScopAST.location) list> list(IDENT)
 %type <OpenScopAST.location list> list(NEWLINE)
 %type <OpenScop.coq_AffineExpr list> list(array_bracket)
@@ -283,6 +284,7 @@ global_extension:
 | ae=arrays_extension; linebreaks  {ae}
 | ce=coord_extension; linebreaks  {ce}
 | ce=comment_extension ; linebreaks {ce}
+| le=loop_extension; linebreaks {le}
 ;;
 
 scatnames_extension: loc=SCATNAMES; linebreaks; sl=list(IDENT); linebreaks; SCATNAMESEND
@@ -330,6 +332,61 @@ coord_extension:
 comment_extension: 
 | loc=COMMENT; cmt=LINE; linebreaks; COMMENTEND {
     ( OpenScop.CommentExt (coqstring_of_camlstring cmt), loc) };; (** FIXME: useless *)
+
+loop_extension:
+| loc=LOOP; linebreaks; nb=int; linebreaks; entries=loop_entries; LOOPEND
+{
+    let _ = nb in
+    let _ = entries in
+    (OpenScop.CommentExt (coqstring_of_camlstring "__ignored_loop_extension__"), loc)
+};;
+
+loop_entries:
+| { () }
+| entry=loop_entry; linebreaks; rest=loop_entries {
+    let _ = entry in
+    let _ = rest in
+    ()
+};;
+
+loop_entry:
+| iterator=IDENT; linebreaks; stmt_nb=int; linebreaks;
+  stmt_ids=loop_stmt_ids; private_vars=loop_private_vars; directive=int; linebreaks
+{
+    let _ = iterator in
+    let _ = stmt_nb in
+    let _ = stmt_ids in
+    let _ = private_vars in
+    let _ = directive in
+    ()
+};;
+
+loop_stmt_ids:
+| stmt_id=int; linebreaks {
+    let _ = stmt_id in
+    ()
+}
+| stmt_id=int; linebreaks; rest=loop_stmt_ids {
+    let _ = stmt_id in
+    let _ = rest in
+    ()
+};;
+
+loop_private_vars:
+| NULLFILE; linebreaks { () }
+| id=IDENT; tail=loop_private_vars_tail; linebreaks {
+    let _ = id in
+    let _ = tail in
+    ()
+};;
+
+loop_private_vars_tail:
+| { () }
+| COMMA; id=IDENT; tail=loop_private_vars_tail {
+    let _ = id in
+    let _ = tail in
+    ()
+};;
 
 array_stmt: 
 | arr_acc=array_access; EQUAL; ae=array_expr; SEMI {OpenScop.ArrAssign (arr_acc, ae)}

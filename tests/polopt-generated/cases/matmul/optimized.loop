@@ -1,10 +1,16 @@
 context(M, N, K);
 
-if ((1 <= M && 1 <= N)) {
-  for i0 in range(0, K) {
-    for i1 in range(0, N) {
-      for i2 in range(0, M) {
-        C[i2][i1] = ((beta * C[i2][i1]) + ((alpha * A[i2][i0]) * B[i0][i1]));
+if ((1 <= M && (1 <= N && 1 <= K))) {
+  for i0 in range(0, ((K + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((M + 31) / 32)) {
+        for i3 in range(max(0, (32 * i0)), min(K, ((32 * i0) + 32))) {
+          for i4 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+            for i5 in range(max(0, (32 * i2)), min(M, ((32 * i2) + 32))) {
+              C[i5][i4] = ((beta * C[i5][i4]) + ((alpha * A[i5][i3]) * B[i3][i4]));
+            }
+          }
+        }
       }
     }
   }

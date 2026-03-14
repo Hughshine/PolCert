@@ -1,9 +1,13 @@
 context(N, M);
 
-if (1 <= M) {
-  for i0 in range(0, N) {
-    for i1 in range(0, M) {
-      a[i1][i0] = (a[i1][i0] + 1);
+if ((1 <= N && 1 <= M)) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), M)) {
+          a[i3][i2] = (a[i3][i2] + 1);
+        }
+      }
     }
   }
 }

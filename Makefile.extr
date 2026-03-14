@@ -95,8 +95,17 @@ GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 
 ifeq ($(wildcard .depend.extr),.depend.extr)
 
-CCOMP_OBJS:=$(shell $(MODORDER) driver/Entry.cmx)
-POLOPT_OBJS:=$(shell $(MODORDER) syntax/SLoopMain.cmx)
+CCOMP_OBJS:=$(shell $(MODORDER) \
+  extraction/TPolOpt.cmx \
+  syntax/PlutoTilingValidator.cmx \
+  driver/Entry.cmx)
+POLOPT_OBJS:=$(shell $(MODORDER) \
+  extraction/TPolIRs.cmx \
+  extraction/TPolValidator.cmx \
+  extraction/TPolOpt.cmx \
+  extraction/STilingOpt.cmx \
+  syntax/PlutoTilingValidator.cmx \
+  syntax/SLoopMain.cmx)
 
 ifeq ($(OCAML_NATIVE_COMP),true)
 polcert: $(CCOMP_OBJS)
@@ -143,6 +152,25 @@ clightgen.byte: $(CLIGHTGEN_OBJS:.cmx=.cmo)
 	@$(OCAMLC) -o $@ $(LIBS_BYTE) $+
 
 include .depend.extr
+
+driver/Entry.cmo driver/Entry.cmx: \
+    extraction/TPolOpt.cmi \
+    extraction/TilingWitness.cmi \
+    syntax/PlutoTilingValidator.cmi \
+    lib/Camlcoq.cmi
+
+driver/Scheduler.cmo driver/Scheduler.cmx: \
+    extraction/TilingWitness.cmi \
+    syntax/PlutoTilingValidator.cmi \
+    lib/Camlcoq.cmi
+
+syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
+    extraction/TPolValidator.cmi \
+    extraction/TPolOpt.cmi \
+    extraction/STilingOpt.cmi \
+    extraction/TilingWitness.cmi \
+    driver/Scheduler.cmi \
+    lib/Camlcoq.cmi
 
 endif
 

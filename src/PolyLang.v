@@ -14,6 +14,8 @@ Require Import StablePermut.
 Require Import Classical.
 Require Import ZArith.
 Require Import PolyBase.
+Require Import TilingWitness.
+Require Import PointWitness.
 Require Import Misc.
 Require Import Sorting.Sorted.
 Require Import Permutation.
@@ -48,7 +50,9 @@ Record PolyInstr := {
   pi_instr : Instr.t;                (** instruction *)
   pi_poly : Domain;                  (** domain *)
   pi_schedule : Schedule;            (** schedule function*)
-  pi_transformation: Transformation; (** transformation function *)
+  pi_point_witness: point_space_witness; (** current/base point-space relation *)
+  pi_transformation: Transformation; (** source/instruction transformation *)
+  pi_access_transformation: Transformation; (** validator/access transformation *)
   pi_waccess: list AccessFunction;        (** write accesses *)
   pi_raccess: list AccessFunction;   (** read accesses *)
 }.
@@ -57,7 +61,9 @@ Definition dummy_pi := {|
   pi_depth := 0;
   pi_instr := Instr.dummy_instr ;
   pi_poly := nil;
+  pi_point_witness := PSWIdentity 0;
   pi_transformation := nil;
+  pi_access_transformation := nil;
   pi_schedule := nil;
   pi_waccess := [aff_func_dummy];
   pi_raccess := [aff_func_dummy];
@@ -71,6 +77,75 @@ Definition dummy_pi := {|
 (** note: vars can be superset of actual free variables of the loop nests, and it is used for state's initialization *)
 (** note: nameless iterators are not recorded in `vars`, they do not touch the semantics of underlying Instr. *)
 Definition t := ((list PolyInstr) * (list ident) * (list (ident * Ty.t)))%type.
+
+Definition pinstr_current_dim (env : list ident) (pi : PolyInstr) : nat :=
+  let cols := (length env + pi.(pi_depth))%nat in
+  Nat.max cols
+    (Nat.max (poly_nrl pi.(pi_poly))
+       (poly_nrl pi.(pi_schedule))).
+
+Definition pprog_current_dim (pp : t) : nat :=
+  let '(pis, varctxt, vars) := pp in
+  List.fold_left Nat.max
+    (List.map (pinstr_current_dim varctxt) pis)
+    (length vars).
+
+Lemma fold_left_max_ge_init :
+  forall ds acc,
+    acc <= List.fold_left Nat.max ds acc.
+Proof.
+  induction ds as [|d ds IH]; intros acc; simpl.
+  - lia.
+  - eapply Nat.le_trans.
+    + apply Nat.le_max_l.
+    + apply IH.
+Qed.
+
+Lemma fold_left_max_mono_acc :
+  forall ds acc1 acc2,
+    acc1 <= acc2 ->
+    List.fold_left Nat.max ds acc1 <= List.fold_left Nat.max ds acc2.
+Proof.
+  induction ds as [|d ds IH]; intros acc1 acc2 Hle; simpl.
+  - exact Hle.
+  - eapply IH.
+    apply Nat.max_le_compat_r.
+    exact Hle.
+Qed.
+
+Lemma fold_left_max_ge_member :
+  forall ds acc x,
+    In x ds ->
+    x <= List.fold_left Nat.max ds acc.
+Proof.
+  induction ds as [|d ds IH]; intros acc x Hin; simpl in *.
+  - contradiction.
+  - destruct Hin as [<- | Hin].
+    + eapply Nat.le_trans.
+      * apply Nat.le_max_r.
+      * apply fold_left_max_ge_init.
+    + eapply Nat.le_trans.
+      * apply IH; exact Hin.
+      * apply fold_left_max_mono_acc.
+        apply Nat.le_max_l.
+Qed.
+
+Lemma pprog_current_dim_ge_pinstr :
+  forall pis varctxt vars pi,
+    In pi pis ->
+    pinstr_current_dim varctxt pi <= pprog_current_dim (pis, varctxt, vars).
+Proof.
+  intros pis varctxt vars pi Hin.
+  unfold pprog_current_dim.
+  assert (Hinmap :
+    In (pinstr_current_dim varctxt pi)
+       (List.map (pinstr_current_dim varctxt) pis)).
+  {
+    eapply List.in_map.
+    exact Hin.
+  }
+  eapply fold_left_max_ge_member; eauto.
+Qed.
 
 Definition dummy: t := (nil, nil, nil).
 
@@ -675,7 +750,9 @@ Definition source_like_schedule_pprog (pp : t) : t :=
       pi_instr := pi_instr pi;
       pi_poly := pi_poly pi;
       pi_schedule := source_like_pi_schedule env_dim pi;
+      pi_point_witness := pi_point_witness pi;
       pi_transformation := pi_transformation pi;
+      pi_access_transformation := pi_access_transformation pi;
       pi_waccess := pi_waccess pi;
       pi_raccess := pi_raccess pi;
     |} in
@@ -727,7 +804,9 @@ Definition canonicalize_schedule_pprog (pp : t) : t :=
       pi_instr := pi_instr pi;
       pi_poly := pi_poly pi;
       pi_schedule := sched;
+      pi_point_witness := pi_point_witness pi;
       pi_transformation := pi_transformation pi;
+      pi_access_transformation := pi_access_transformation pi;
       pi_waccess := pi_waccess pi;
       pi_raccess := pi_raccess pi;
     |} in
@@ -793,7 +872,9 @@ Definition from_openscop_schedule_only (pol: t) (scop: OpenScop): result t :=
       pi_schedule :=
         from_openscop_sctt_to_pol_schedule
           (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim;
+      pi_point_witness := pi.(pi_point_witness);
       pi_transformation := pi.(pi_transformation);
+      pi_access_transformation := pi.(pi_access_transformation);
       pi_waccess := pi.(pi_waccess);
       pi_raccess := pi.(pi_raccess);
     |}
@@ -831,7 +912,9 @@ Definition from_openscop_like_source (pol: t) (scop: OpenScop): result t :=
             (OpenScop.scattering stmt_scop)
             domain_dim iters_dim
             (length (OpenScop.constrs (OpenScop.scattering stmt_scop)));
+      pi_point_witness := pi.(pi_point_witness);
       pi_transformation := pi.(pi_transformation);
+      pi_access_transformation := pi.(pi_access_transformation);
       pi_waccess := pi.(pi_waccess);
       pi_raccess := pi.(pi_raccess);
     |}
@@ -957,7 +1040,9 @@ Definition from_openscop (pol: t) (scop: OpenScop): result t :=
         let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
         from_openscop_sctt_to_pol_schedule 
           (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim; 
+      pi_point_witness := pi.(pi_point_witness);
       pi_transformation := pi.(pi_transformation);
+      pi_access_transformation := pi.(pi_access_transformation);
       pi_waccess := from_openscop_waccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
       pi_raccess := from_openscop_raccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
     |}
@@ -990,7 +1075,9 @@ Definition from_openscop_complete (scop: OpenScop): result t :=
         let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
         from_openscop_sctt_to_pol_schedule 
           (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim; 
+      pi_point_witness := PSWIdentity iters_dim;
       pi_transformation := create_id_transformation (varctxt_dim + iters_dim);
+      pi_access_transformation := create_id_transformation (varctxt_dim + iters_dim);
       pi_waccess := from_openscop_waccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
       pi_raccess := from_openscop_raccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
     |}
@@ -1005,35 +1092,48 @@ Definition wf_pinstr (env: list ident) (vars: list (ident*Ty.t)) (pi: PolyInstr)
     (* have at least one constraint *)
     let domain_size := length (pi.(pi_poly)) in 
     let cols := env_dim + iters_dim in 
-    let vars_dim := length vars in
-    cols <= vars_dim /\ 
-    poly_nrl (pi_poly pi) <= length vars /\
-    poly_nrl (pi_schedule pi) <= length vars /\ 
+    let base_cols := env_dim + witness_base_point_dim (pi.(pi_point_witness)) in
+    let arg_cols := length (pi.(pi_transformation)) in
+    let current_dim := pinstr_current_dim env pi in
+    witness_current_point_dim (pi.(pi_point_witness)) = iters_dim /\
+    cols <= current_dim /\ 
+    poly_nrl (pi_poly pi) <= current_dim /\
+    poly_nrl (pi_schedule pi) <= current_dim /\ 
     (* domain cols *)
     exact_listzzs_cols cols (pi.(pi_poly)) /\ 
     (* transformation cols *)
-    exact_listzzs_cols cols (pi.(pi_transformation)) /\
+    exact_listzzs_cols base_cols (pi.(pi_transformation)) /\
+    exact_listzzs_cols base_cols (pi.(pi_access_transformation)) /\
     (* sched cols *)
     exact_listzzs_cols cols (pi.(pi_schedule)) /\ 
     (* write access function cols *)
     (
       Forall (fun (waccess:AccessFunction) => 
         let (arrid, waccess_func) := waccess in
-        exact_listzzs_cols cols waccess_func
+        exact_listzzs_cols arg_cols waccess_func
       ) (pi.(pi_waccess))
     )
     (* read access function cols *)
     /\ (
       Forall (fun (raccess:AccessFunction) => 
         let (arrid, raccess_func) := raccess in
-        exact_listzzs_cols cols raccess_func
+        exact_listzzs_cols arg_cols raccess_func
       ) (pi.(pi_raccess))
     )
-    (* transformation length *)
-    /\ (
-      length (pi.(pi_transformation)) = cols
-    )
   .  
+
+Definition wf_pinstr_affine (env: list ident) (vars: list (ident*Ty.t)) (pi: PolyInstr) :=
+  wf_pinstr env vars pi /\
+  pi.(pi_point_witness) = PSWIdentity pi.(pi_depth) /\
+  pi.(pi_transformation) = pi.(pi_access_transformation).
+
+(* General witness-aware well-formedness used by tiling and other non-affine
+   current-space views. *)
+Definition wf_pinstr_general (env: list ident) (vars: list (ident*Ty.t)) (pi: PolyInstr) :=
+  wf_pinstr env vars pi /\
+  pi.(pi_transformation) = pi.(pi_access_transformation).
+
+Definition wf_pinstr_tiling := wf_pinstr_general.
 
 Definition wf_pprog (pp: t) := 
   let '(pil, varctxt, vars) := pp in 
@@ -1045,11 +1145,316 @@ Definition wf_pprog (pp: t) :=
       In pi pil -> 
       wf_pinstr varctxt vars pi. 
 
+Definition wf_pprog_affine (pp: t) := 
+  let '(pil, varctxt, vars) := pp in 
+  let env_dim := length varctxt in
+  let var_dim := length vars in
+    env_dim <= var_dim /\
+    forall pi, 
+      In pi pil -> 
+      wf_pinstr_affine varctxt vars pi.
+
+(* General witness-aware program well-formedness.  The current main consumer is
+   tiling, so the historical [wf_pprog_tiling] name is kept as a compatibility
+   alias below. *)
+Definition wf_pprog_general (pp: t) :=
+  let '(pil, varctxt, vars) := pp in
+  let env_dim := length varctxt in
+  let var_dim := length vars in
+    env_dim <= var_dim /\
+    forall pi,
+      In pi pil ->
+      wf_pinstr_general varctxt vars pi.
+
+Definition wf_pprog_tiling := wf_pprog_general.
+
+Definition current_env_dim_of
+    (pw: point_space_witness) (current: list Z) : nat :=
+  (length current - witness_current_point_dim pw)%nat.
+
+Definition current_base_point_of
+    (pw: point_space_witness) (current: list Z) : list Z :=
+  projected_base_point_of_current
+    (firstn (current_env_dim_of pw current) current)
+    pw current.
+
+Definition current_insert_zeros_constraint
+    (d i: nat) (c: list Z * Z) : list Z * Z :=
+  (resize i (fst c) ++ repeat 0%Z d ++ skipn i (fst c), snd c).
+
+Fixpoint current_transformation_for_witness
+    (env_dim: nat) (pw: point_space_witness) (tf: Transformation) : Transformation :=
+  match pw with
+  | PSWIdentity _ => tf
+  | PSWTiling w =>
+      List.map
+        (current_insert_zeros_constraint
+           (witness_added_dims (PSWTiling w))
+           env_dim)
+        tf
+  | PSWInsertAfterEnv added_dim inner =>
+      List.map
+        (current_insert_zeros_constraint added_dim env_dim)
+        (current_transformation_for_witness env_dim inner tf)
+  | PSWInsertAtEnd added_dim inner =>
+      List.map
+        (fun '(coeffs, rhs) =>
+           (resize (length coeffs + added_dim) coeffs, rhs))
+        (current_transformation_for_witness env_dim inner tf)
+  end.
+
+Definition current_transformation_at
+    (env_dim: nat) (pi: PolyInstr) : Transformation :=
+  current_transformation_for_witness env_dim pi.(pi_point_witness) pi.(pi_transformation).
+
+Definition current_access_transformation_at
+    (env_dim: nat) (pi: PolyInstr) : Transformation :=
+  current_transformation_for_witness env_dim pi.(pi_point_witness) pi.(pi_access_transformation).
+
+Definition current_transformation_of
+    (pi: PolyInstr) (current: list Z) : Transformation :=
+  current_transformation_at
+    (current_env_dim_of pi.(pi_point_witness) current) pi.
+
+Definition current_access_transformation_of
+    (pi: PolyInstr) (current: list Z) : Transformation :=
+  current_access_transformation_at
+    (current_env_dim_of pi.(pi_point_witness) current) pi.
+
+Definition current_src_args_at
+    (env_dim: nat) (pi: PolyInstr) (current: list Z) : list Z :=
+  affine_product (current_transformation_at env_dim pi) current.
+
+Definition current_src_args_of
+    (pi: PolyInstr) (current: list Z) : list Z :=
+  current_src_args_at
+    (current_env_dim_of pi.(pi_point_witness) current) pi current.
+
+Definition current_env_dim_in_dim
+    (dim: nat) (pw: point_space_witness) : nat :=
+  (dim - witness_current_point_dim pw)%nat.
+
+Definition current_src_args_in_dim
+    (dim: nat) (pi: PolyInstr) (current: list Z) : list Z :=
+  current_src_args_at
+    (current_env_dim_in_dim dim pi.(pi_point_witness)) pi current.
+
+Definition current_view_pi
+    (env_dim: nat) (pi: PolyInstr) : PolyInstr :=
+  {|
+    pi_depth := pi.(pi_depth);
+    pi_instr := pi.(pi_instr);
+    pi_poly := pi.(pi_poly);
+    pi_schedule := pi.(pi_schedule);
+    pi_point_witness := PSWIdentity pi.(pi_depth);
+    pi_transformation := current_transformation_at env_dim pi;
+    pi_access_transformation := current_access_transformation_at env_dim pi;
+    pi_waccess := pi.(pi_waccess);
+    pi_raccess := pi.(pi_raccess);
+  |}.
+
+Definition current_view_pprog (pp: t) : t :=
+  let '(pis, varctxt, vars) := pp in
+  (List.map (current_view_pi (length varctxt)) pis, varctxt, vars).
+
+Lemma exact_listzzs_cols_current_insert_zeros_constraint :
+  forall cols added env_dim affs,
+    exact_listzzs_cols cols affs ->
+    (env_dim <= cols)%nat ->
+    exact_listzzs_cols (cols + added)%nat
+      (List.map (current_insert_zeros_constraint added env_dim) affs).
+Proof.
+  intros cols added env_dim affs Hcols Henv listz z listzz Hin Heq.
+  rewrite in_map_iff in Hin.
+  destruct Hin as [[v c] [Hmap Hin0]].
+  rewrite Heq in Hmap.
+  unfold current_insert_zeros_constraint in Hmap; simpl in Hmap.
+  inversion Hmap; subst listz z.
+  specialize (Hcols v c (v, c) Hin0 eq_refl).
+  unfold current_insert_zeros_constraint; simpl.
+  rewrite app_length, app_length.
+  rewrite repeat_length, resize_length, skipn_length.
+  rewrite Hcols.
+  lia.
+Qed.
+
+Lemma exact_listzzs_cols_current_transformation_for_witness :
+  forall (env: list ident) (pw: point_space_witness) tf,
+    exact_listzzs_cols
+      (length env + witness_base_point_dim pw)%nat
+      tf ->
+    exact_listzzs_cols
+      (length env + witness_current_point_dim pw)%nat
+      (current_transformation_for_witness (length env) pw tf).
+Proof.
+  intros env pw.
+  induction pw as [dim|w|added inner IH|added inner IH]; intros tf Htf; simpl in *.
+  - unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims in *.
+    simpl in *.
+    replace (length env + (dim + 0))%nat with (length env + dim)%nat by lia.
+    exact Htf.
+  - assert
+      (Hcurdim:
+         (length env + witness_current_point_dim (PSWTiling w))%nat =
+         (length env + witness_base_point_dim (PSWTiling w) + witness_added_dims (PSWTiling w))%nat).
+    { unfold witness_current_point_dim. lia. }
+    rewrite Hcurdim.
+    eapply exact_listzzs_cols_current_insert_zeros_constraint; [exact Htf|lia].
+  - assert
+      (Hinner:
+         exact_listzzs_cols
+           (length env + witness_current_point_dim inner)%nat
+           (current_transformation_for_witness (length env) inner tf)).
+    { apply IH. exact Htf. }
+    assert
+      (Hcurdim:
+         (length env + witness_current_point_dim (PSWInsertAfterEnv added inner))%nat =
+         (length env + witness_current_point_dim inner + added)%nat).
+    { unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims; simpl; lia. }
+    rewrite Hcurdim.
+    eapply exact_listzzs_cols_current_insert_zeros_constraint; [exact Hinner|lia].
+  - assert
+      (Hinner:
+         exact_listzzs_cols
+           (length env + witness_current_point_dim inner)%nat
+           (current_transformation_for_witness (length env) inner tf)).
+    { apply IH. exact Htf. }
+    assert
+      (Hcurdim:
+         (length env + witness_current_point_dim (PSWInsertAtEnd added inner))%nat =
+         (length env + witness_current_point_dim inner + added)%nat).
+    { unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims; simpl; lia. }
+    rewrite Hcurdim.
+    intros listz z listzz Hin Heq.
+    rewrite in_map_iff in Hin.
+    destruct Hin as [[coeffs rhs] [Hmap Hin0]].
+    rewrite Heq in Hmap.
+    simpl in Hmap.
+    inversion Hmap; subst listz z.
+    specialize (Hinner coeffs rhs (coeffs, rhs) Hin0 eq_refl).
+    simpl.
+    rewrite resize_length.
+    rewrite Hinner.
+    lia.
+Qed.
+
+Lemma exact_listzzs_cols_current_transformation_at :
+  forall (env: list ident) (pi: PolyInstr),
+    exact_listzzs_cols
+      (length env + witness_base_point_dim (pi_point_witness pi))%nat
+      (pi_transformation pi) ->
+    exact_listzzs_cols
+      (length env + witness_current_point_dim (pi_point_witness pi))%nat
+      (current_transformation_at (length env) pi).
+Proof.
+  intros env pi Htf.
+  unfold current_transformation_at.
+  apply exact_listzzs_cols_current_transformation_for_witness.
+  exact Htf.
+Qed.
+
+Lemma exact_listzzs_cols_current_access_transformation_at :
+  forall (env: list ident) (pi: PolyInstr),
+    exact_listzzs_cols
+      (length env + witness_base_point_dim (pi_point_witness pi))%nat
+      (pi_access_transformation pi) ->
+    exact_listzzs_cols
+      (length env + witness_current_point_dim (pi_point_witness pi))%nat
+      (current_access_transformation_at (length env) pi).
+Proof.
+  intros env pi Htf.
+  unfold current_access_transformation_at.
+  apply exact_listzzs_cols_current_transformation_for_witness.
+  exact Htf.
+Qed.
+
+Lemma current_transformation_for_witness_preserve_length :
+  forall env_dim pw tf,
+    length (current_transformation_for_witness env_dim pw tf) =
+    length tf.
+Proof.
+  intros env_dim pw.
+  induction pw as [dim|w|added inner IH|added inner IH]; intros tf; simpl; rewrite ?map_length, ?IH; reflexivity.
+Qed.
+
+Lemma current_transformation_at_preserve_length :
+  forall (env: list ident) (pi: PolyInstr),
+    length (current_transformation_at (length env) pi) =
+    length (pi_transformation pi).
+Proof.
+  intros env pi.
+  unfold current_transformation_at.
+  apply current_transformation_for_witness_preserve_length.
+Qed.
+
+Lemma current_access_transformation_at_preserve_length :
+  forall (env: list ident) (pi: PolyInstr),
+    length (current_access_transformation_at (length env) pi) =
+    length (pi_access_transformation pi).
+Proof.
+  intros env pi.
+  unfold current_access_transformation_at.
+  apply current_transformation_for_witness_preserve_length.
+Qed.
+
+Lemma current_transformation_of_current_view_pi :
+  forall env_dim pi current,
+    current_transformation_of (current_view_pi env_dim pi) current =
+    current_transformation_at env_dim pi.
+Proof.
+  intros env_dim pi current.
+  unfold current_transformation_of, current_view_pi.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma current_access_transformation_of_current_view_pi :
+  forall env_dim pi current,
+    current_access_transformation_of (current_view_pi env_dim pi) current =
+    current_access_transformation_at env_dim pi.
+Proof.
+  intros env_dim pi current.
+  unfold current_access_transformation_of, current_view_pi.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma current_src_args_of_current_view_pi :
+  forall env_dim pi current,
+    current_src_args_of (current_view_pi env_dim pi) current =
+    affine_product (current_transformation_at env_dim pi) current.
+Proof.
+  intros env_dim pi current.
+  unfold current_src_args_of, current_src_args_at.
+  unfold current_view_pi, current_transformation_at, current_env_dim_of.
+  unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma current_src_args_of_current_view_pi_eq :
+  forall env_dim pi current,
+    witness_current_point_dim (pi_point_witness pi) = pi_depth pi ->
+    length current = (env_dim + pi_depth pi)%nat ->
+    current_src_args_of (current_view_pi env_dim pi) current =
+    current_src_args_of pi current.
+Proof.
+  intros env_dim pi current Hwit Hlen.
+  rewrite current_src_args_of_current_view_pi.
+  unfold current_src_args_of, current_src_args_at, current_transformation_at, current_env_dim_of.
+  replace
+    (length current - witness_current_point_dim (pi_point_witness pi))%nat
+    with env_dim by lia.
+  reflexivity.
+Qed.
+
 Definition eqdom_pinstr (pi1 pi2: PolyLang.PolyInstr) := 
   pi1.(pi_depth) = pi2.(pi_depth) /\
   pi1.(pi_instr) = pi2.(pi_instr) /\ 
   pi1.(pi_poly) = pi2.(pi_poly) /\ 
+  pi1.(pi_point_witness) = pi2.(pi_point_witness) /\
   pi1.(pi_transformation) = pi2.(pi_transformation) /\
+  pi1.(pi_access_transformation) = pi2.(pi_access_transformation) /\
   pi1.(pi_waccess) = pi2.(pi_waccess) /\ 
   pi1.(pi_raccess) = pi2.(pi_raccess)
 .
@@ -1119,37 +1524,38 @@ Notation "'wf_scan'" := (Proper (eq ==> veq ==> eq)) (only parsing).
 (** Polyhedral model's semantics, with implicit instance point. Taken from POPL'21 *)
 (** G, E, p |- (P, Q, M) -> (P, Q\{p}, M') *)
 
-Inductive poly_semantics : (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> Prop :=
-| PolyDone : forall to_scan poly_instrs st, 
+Inductive poly_semantics : nat -> (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> Prop :=
+| PolyDone : forall env_dim to_scan poly_instrs st, 
     (forall n p, to_scan n p = false) -> 
-    poly_semantics to_scan poly_instrs st st
-| PolyProgress : forall to_scan poly_instrs st1 st2 st3 wcs rcs poly_instr n p,
+    poly_semantics env_dim to_scan poly_instrs st st
+| PolyProgress : forall env_dim to_scan poly_instrs st1 st2 st3 wcs rcs poly_instr n p,
     to_scan n p = true -> 
     nth_error poly_instrs n = Some poly_instr ->
     (forall n2 p2 poly_instr2, nth_error poly_instrs n2 = Some poly_instr2 ->
                           lex_compare (affine_product poly_instr2.(pi_schedule) p2) (affine_product poly_instr.(pi_schedule) p) = Lt ->
                           to_scan n2 p2 = false) ->
-    Instr.instr_semantics poly_instr.(pi_instr)  (affine_product poly_instr.(pi_transformation) p) wcs rcs st1 st2 ->
-    poly_semantics (scanned to_scan n p) poly_instrs st2 st3 ->
-    poly_semantics to_scan poly_instrs st1 st3.
+    Instr.instr_semantics poly_instr.(pi_instr) (current_src_args_in_dim env_dim poly_instr p) wcs rcs st1 st2 ->
+    poly_semantics env_dim (scanned to_scan n p) poly_instrs st2 st3 ->
+    poly_semantics env_dim to_scan poly_instrs st1 st3.
 
-Inductive poly_semantics_k : (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> nat -> Prop :=
-| PolyDoneK : forall to_scan poly_instrs st, 
+Inductive poly_semantics_k : nat -> (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> nat -> Prop :=
+| PolyDoneK : forall env_dim to_scan poly_instrs st, 
     (forall n p, to_scan n p = false) -> 
-    poly_semantics_k to_scan poly_instrs st st 0%nat
-| PolyProgressK : forall to_scan poly_instrs st1 st2 st3 poly_instr n p k wcs rcs,
+    poly_semantics_k env_dim to_scan poly_instrs st st 0%nat
+| PolyProgressK : forall env_dim to_scan poly_instrs st1 st2 st3 poly_instr n p k wcs rcs,
     to_scan n p = true -> 
     nth_error poly_instrs n = Some poly_instr ->
     (forall n2 p2 poly_instr2, nth_error poly_instrs n2 = Some poly_instr2 ->
                           lex_compare (affine_product poly_instr2.(pi_schedule) p2) (affine_product poly_instr.(pi_schedule) p) = Lt ->
                           to_scan n2 p2 = false) ->
-    Instr.instr_semantics poly_instr.(pi_instr)  (affine_product poly_instr.(pi_transformation) p) wcs rcs st1 st2 ->
-    poly_semantics_k (scanned to_scan n p) poly_instrs st2 st3 k ->
-    poly_semantics_k to_scan poly_instrs st1 st3 (S k).
+    Instr.instr_semantics poly_instr.(pi_instr) (current_src_args_in_dim env_dim poly_instr p) wcs rcs st1 st2 ->
+    poly_semantics_k env_dim (scanned to_scan n p) poly_instrs st2 st3 k ->
+    poly_semantics_k env_dim to_scan poly_instrs st1 st3 (S k).
 
 Lemma poly_sema_k_eq: 
-  forall to_scan poly_instrs st1 st2,
-    (exists k, poly_semantics_k to_scan poly_instrs st1 st2 k) <-> poly_semantics to_scan poly_instrs st1 st2.
+  forall env_dim to_scan poly_instrs st1 st2,
+    (exists k, poly_semantics_k env_dim to_scan poly_instrs st1 st2 k) <->
+    poly_semantics env_dim to_scan poly_instrs st1 st2.
 Proof.
   intros until st2. split.
     - intro Hsem.  
@@ -1164,7 +1570,7 @@ Qed.
 
 
 Definition env_poly_semantics (env : list Z) (dim : nat) (pis : list PolyInstr) (mem1 mem2 : State.t) :=
-  poly_semantics (env_scan pis env dim) pis mem1 mem2.
+  poly_semantics dim (env_scan pis env dim) pis mem1 mem2.
 
 (** Semantics wrapped with initialization *)
 Inductive semantics: t -> State.t -> State.t -> Prop :=
@@ -1173,17 +1579,30 @@ Inductive semantics: t -> State.t -> State.t -> Prop :=
     Instr.Compat vars st1 ->
     Instr.NonAlias st1 -> 
     Instr.InitEnv varctxt envv st1 ->
-    env_poly_semantics envv (length vars) pis st1 st2 ->
+    env_poly_semantics envv (pprog_current_dim pprog) pis st1 st2 ->
     semantics pprog st1 st2.
 
 Theorem poly_semantics_extensionality :
-  forall to_scan1 prog mem1 mem2,
-    poly_semantics to_scan1 prog mem1 mem2 -> forall to_scan2, (forall n p, to_scan1 n p = to_scan2 n p) -> poly_semantics to_scan2 prog mem1 mem2.
+  forall env_dim to_scan1 prog mem1 mem2,
+    poly_semantics env_dim to_scan1 prog mem1 mem2 ->
+    forall to_scan2,
+      (forall n p, to_scan1 n p = to_scan2 n p) ->
+      poly_semantics env_dim to_scan2 prog mem1 mem2.
 Proof.
-  intros to_scan1 prog mem1 mem2 Hsem.
-  induction Hsem as [to_scan3 prog1 mem4 Hdone|to_scan3 prog1 mem3 mem4 mem5 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros. constructor. intros. eauto.
-  - intros to_scan2 Heq. econstructor; eauto. apply IH. intros. autounfold. rewrite Heq. auto.
+  intros env_dim to_scan1 prog mem1 mem2 Hsem.
+  induction Hsem.
+  - intros to_scan2 Heq.
+    apply PolyDone.
+    intros n p.
+    rewrite <- Heq.
+    apply H.
+  - intros to_scan2 Heq.
+    eapply PolyProgress; eauto.
+    apply IHHsem.
+    intros n0 p0.
+    unfold scanned.
+    rewrite <- Heq.
+    reflexivity.
 Qed.
 
 
@@ -1194,8 +1613,8 @@ Proof.
 Qed.
 
 Theorem poly_semantics_concat :
-  forall to_scan1 prog mem1 mem2,
-    poly_semantics to_scan1 prog mem1 mem2 ->
+  forall env_dim to_scan1 prog mem1 mem2,
+    poly_semantics env_dim to_scan1 prog mem1 mem2 ->
     forall to_scan2 mem3,
     wf_scan to_scan1 ->
     (forall n p, to_scan1 n p = false \/ to_scan2 n p = false) ->
@@ -1203,28 +1622,69 @@ Theorem poly_semantics_concat :
                            lex_compare (affine_product pi2.(pi_schedule) p2) (affine_product pi1.(pi_schedule) p1) = Lt ->
                            to_scan1 n1 p1 = false \/ to_scan2 n2 p2 = false) ->
     
-    poly_semantics to_scan2 prog mem2 mem3 ->
-    poly_semantics (fun n p => to_scan1 n p || to_scan2 n p) prog mem1 mem3.
+    poly_semantics env_dim to_scan2 prog mem2 mem3 ->
+    poly_semantics env_dim (fun n p => to_scan1 n p || to_scan2 n p) prog mem1 mem3.
 Proof.
-  intros to_scan1 prog mem1 mem2 Hsem.
-  induction Hsem as [to_scan3 prog1 mem4 Hdone|to_scan3 prog1 mem4 mem5 mem6 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem1. eapply poly_semantics_extensionality; eauto. intros. rewrite Hdone. auto.
+  intros env_dim to_scan1 prog mem1 mem2 Hsem.
+  induction Hsem as
+      [env_dim to_scan3 prog1 mem4 Hdone
+      |env_dim to_scan3 prog1 mem4 mem5 mem6 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
+  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem1.
+    eapply poly_semantics_extensionality with (to_scan1 := to_scan2); [exact Hsem1|].
+    intros n0 p0.
+    destruct (to_scan2 n0 p0); simpl.
+    + rewrite (Hdone n0 p0). reflexivity.
+    + rewrite (Hdone n0 p0). reflexivity.
   - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3. eapply PolyProgress with (n := n) (p := p); eauto.
     + intros n2 p2 pi2 Heqpi2 Hts2.
       reflect; split.
       * apply (Hts n2 p2 pi2); auto.
       * destruct (Hcmp n p pi n2 p2 pi2) as [H | H]; auto; congruence.
-    + eapply poly_semantics_extensionality; [apply IH|]; eauto.
-      * apply scanned_wf_compat; auto.
-      * intros n2 p2. autounfold. destruct (Hdisj n2 p2) as [H | H]; rewrite H; auto.
-      * intros n1 p1 pi1 n2 p2 pi2 Heqpi1 Heqpi2 Hcmp1.
-        destruct (Hcmp n1 p1 pi1 n2 p2 pi2) as [H | H]; autounfold; auto. rewrite H. simpl.
-        destruct (is_eq p p1 && (n =? n1)%nat) eqn:Hd; simpl; auto.
+    + assert (Hrest :
+          poly_semantics env_dim
+            (fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0)
+            prog1 mem5 mem3).
+      {
+        assert (Hwf_scanned : wf_scan (scanned to_scan3 n p)).
+        { apply scanned_wf_compat; auto. }
+        assert (Hdisj_scanned :
+          forall n0 p0,
+            scanned to_scan3 n p n0 p0 = false \/ to_scan2 n0 p0 = false).
+        {
+          intros n0 p0. autounfold. simpl.
+          destruct (to_scan3 n0 p0) eqn:Hscan3; simpl.
+          - destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
+          - left. reflexivity.
+        }
+        assert (Hcmp_scanned :
+          forall n1 p1 pi1 n2 p2 pi2,
+            nth_error prog1 n1 = Some pi1 ->
+            nth_error prog1 n2 = Some pi2 ->
+            lex_compare (affine_product (pi_schedule pi2) p2)
+              (affine_product (pi_schedule pi1) p1) = Lt ->
+            scanned to_scan3 n p n1 p1 = false \/ to_scan2 n2 p2 = false).
+        {
+          intros n1 p1 pi1 n2 p2 pi2 Heqpi1 Heqpi2 Hcmp1.
+          destruct (Hcmp n1 p1 pi1 n2 p2 pi2 Heqpi1 Heqpi2 Hcmp1) as [H | H].
+          - left.
+            autounfold.
+            rewrite H.
+            destruct (is_eq p p1 && (n =? n1)%nat); reflexivity.
+          - right. exact H.
+        }
+        pose proof (IH to_scan2 mem3 Hwf_scanned Hdisj_scanned Hcmp_scanned Hsem3) as Hrest.
+        exact Hrest.
+      }
+      eapply poly_semantics_extensionality with
+          (to_scan1 := fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0).
+      * exact Hrest.
       * intros n0 p0. autounfold. simpl.
-        destruct (to_scan3 n0 p0) eqn:Hscan3; simpl; auto.
-        -- destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
-        -- destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl; auto using andb_true_r.
-           reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
+        destruct (Hdisj n0 p0) as [H | H].
+        -- rewrite H. simpl.
+           destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl.
+           ++ reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
+           ++ rewrite andb_true_r. reflexivity.
+        -- rewrite H. destruct (to_scan3 n0 p0); simpl; rewrite ?orb_false_r; auto.
 Qed.
 
 (** Part 2: Instruction Point Semantics *)
@@ -1249,6 +1709,7 @@ Record InstrPoint_ext := {
   ip_nth_ext: nat;  (** belongs to nth polyhedral instruction *)
   ip_index_ext: DomIndex;  (** index of the domain, i.e., iterator's value *)
   ip_transformation_ext: Transformation; (** transformation function *)
+  ip_access_transformation_ext: Transformation; (** validator/access transformation *)
   ip_time_stamp1_ext: TimeStamp;  (** old schedule *)
   ip_time_stamp2_ext: TimeStamp;  (** new schedule *)
   ip_instruction_ext: Instr.t;  (** basic instruction *)
@@ -1399,7 +1860,7 @@ Notation veq_instance_refl := ILSema.veq_instance_refl.
 
 Definition belongs_to (ip: InstrPoint) (pi: PolyInstr): Prop :=
   in_poly ip.(ip_index) pi.(pi_poly) 
-  /\ ip.(ip_transformation) = pi.(pi_transformation) 
+  /\ ip.(ip_transformation) = current_transformation_of pi ip.(ip_index)
   /\ ip.(ip_time_stamp) = affine_product (pi.(pi_schedule)) ip.(ip_index) 
   /\ ip.(ip_instruction) = pi.(pi_instr)
   /\ ip.(ip_depth) = pi.(pi_depth)
@@ -1560,6 +2021,88 @@ Definition flatten_instr_nth (envv: list Z) (nth: nat) (pi: PolyInstr) (ipl: lis
       Sorted np_lt ipl
   )
 .
+
+Lemma belongs_to_current_view_pi_iff :
+  forall (env_dim: nat) (pi: PolyInstr) (ip: InstrPoint),
+    witness_current_point_dim (pi_point_witness pi) = pi_depth pi ->
+    length (ip_index ip) = (env_dim + pi_depth pi)%nat ->
+    belongs_to ip (current_view_pi env_dim pi) <->
+    belongs_to ip pi.
+Proof.
+  intros env_dim pi ip Hwit Hlen.
+  unfold belongs_to.
+  split; intros Hbel;
+    destruct Hbel as [Hpoly [Htf [Hts [Hin Hdepth]]]];
+    repeat split; try assumption; simpl in *.
+  - rewrite current_transformation_of_current_view_pi in Htf.
+    unfold current_transformation_of, current_env_dim_of.
+    replace
+      (length (ip_index ip) - witness_current_point_dim (pi_point_witness pi))%nat
+      with env_dim by lia.
+    exact Htf.
+  - rewrite current_transformation_of_current_view_pi.
+    unfold current_transformation_of, current_env_dim_of in Htf.
+    replace
+      (length (ip_index ip) - witness_current_point_dim (pi_point_witness pi))%nat
+      with env_dim in Htf by lia.
+    exact Htf.
+Qed.
+
+Lemma flatten_instr_nth_current_view_iff :
+  forall (envv: list Z) (env_dim nth: nat) (pi: PolyInstr) (ipl: list InstrPoint),
+    length envv = env_dim ->
+    witness_current_point_dim (pi_point_witness pi) = pi_depth pi ->
+    flatten_instr_nth envv nth (current_view_pi env_dim pi) ipl <->
+    flatten_instr_nth envv nth pi ipl.
+Proof.
+  intros envv env_dim nth pi ipl Henvdim Hcur.
+  unfold flatten_instr_nth.
+  split; intro Hflat; destruct Hflat as [H1 [H2 [H3 H4]]].
+  - split; [exact H1|].
+    split; [|split; [exact H3|exact H4]].
+    intros ip; split; intro Hin.
+    + destruct (H2 ip) as [Hforw _].
+      destruct (Hforw Hin) as [Henv [Hbel [Hnth Hlen]]].
+      split; [exact Henv|].
+      split.
+      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
+        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
+        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
+        apply (proj1 Hbeliff). exact Hbel.
+      * split; assumption.
+    + destruct (H2 ip) as [_ Hback].
+      destruct Hin as [Henv [Hbel [Hnth Hlen]]].
+      apply Hback.
+      split; [exact Henv|].
+      split.
+      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
+        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
+        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
+        apply (proj2 Hbeliff). exact Hbel.
+      * split; assumption.
+  - split; [exact H1|].
+    split; [|split; [exact H3|exact H4]].
+    intros ip; split; intro Hin.
+    + destruct (H2 ip) as [Hforw _].
+      destruct (Hforw Hin) as [Henv [Hbel [Hnth Hlen]]].
+      split; [exact Henv|].
+      split.
+      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
+        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
+        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
+        apply (proj2 Hbeliff). exact Hbel.
+      * split; assumption.
+    + destruct (H2 ip) as [_ Hback].
+      destruct Hin as [Henv [Hbel [Hnth Hlen]]].
+      apply Hback.
+      split; [exact Henv|].
+      split.
+      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
+        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
+        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
+        apply (proj1 Hbeliff). exact Hbel.
+      * split; assumption.
+Qed.
 
 Lemma NoDup_app:
   forall A (l1 l2: list A),
@@ -2097,7 +2640,7 @@ Proof.
       ip_instruction := ip_instruction ip1;
       ip_depth := pi_depth pi2;
     |}) ipl1).
-  destruct Heq as (DEPTH & INSTR & DOM & TSF & W & R).
+  destruct Heq as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
   destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
   refine (conj _ (conj _ (conj _ _))).
   { intros ip Hin.
@@ -2124,7 +2667,9 @@ Proof.
           split.
           { rewrite <- DOM. exact HPOL. }
           split.
-          { rewrite <- TSF. exact HTRANS. }
+          { unfold current_transformation_of, current_transformation_at in *; simpl in *.
+            rewrite <- WIT, <- TSF.
+            exact HTRANS. }
           split.
           { reflexivity. }
           split.
@@ -2166,7 +2711,9 @@ Proof.
           split.
           { rewrite DOM. exact HPOL. }
           split.
-          { rewrite TSF. exact HTRANS. }
+          { unfold current_transformation_of, current_transformation_at in *; simpl in *.
+            rewrite WIT, TSF.
+            exact HTRANS. }
           split.
           { reflexivity. }
           split.
@@ -2180,6 +2727,266 @@ Proof.
     eapply NoDup_implies_NoDupA_np.
     eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto. }
   { eapply Sorted_ipl_map_np_sorted_np; eauto. }
+Qed.
+
+Definition retime_ip (sch: Schedule) (ip: InstrPoint) : InstrPoint :=
+  {|
+    ip_nth := ip.(ip_nth);
+    ip_index := ip.(ip_index);
+    ip_transformation := ip.(ip_transformation);
+    ip_time_stamp := affine_product sch ip.(ip_index);
+    ip_instruction := ip.(ip_instruction);
+    ip_depth := ip.(ip_depth);
+  |}.
+
+Lemma same_elem_lt_sorted_implies_same_list_pre:
+  forall A (l1 l2: list A) lt,
+    NoDup l1 ->
+    NoDup l2 ->
+    (forall i,
+      In i l1 <-> In i l2) ->
+    (forall i, ~lt i i) ->
+    (Relations_1.Transitive lt) ->
+    Sorted lt l1 ->
+    Sorted lt l2 ->
+    l1 = l2.
+Proof.
+  induction l1. 
+  - intros. simpls. destruct l2; trivial.
+    assert (In a (a::l2)). {eapply in_eq. }
+    eapply H1 in H6; tryfalse. 
+  - intros. simpls. destruct l2; trivial.
+    assert (In a (a::l1)). {eapply in_eq. }
+    eapply H1 in H6; tryfalse.
+  -- 
+    simpls. f_equal.
+    2: {
+      eapply IHl1; eauto. 
+      inv H; trivial. inv H0; trivial. 
+      {
+        intro. pose proof H1 i. destruct H6.
+        split. 
+        - intro.
+          assert (a = i \/ In i l1). {right; trivial. }
+          eapply H6 in H9. destruct H9; trivial.
+          (* a < i; and [i..a] in l2, exfalso *)
+          eapply Sorted_StronglySorted in H4; trivial.
+          inv H4.
+          assert (lt a i). {
+            clear - H8 H13.
+            eapply Forall_forall in H13; eauto.
+          }
+          assert (In a l2). {
+            clear - H1 H5 H4 H2.
+            pose proof H1 a.
+            assert (i = a \/ In a l2). eapply H; left; trivial.
+            destruct H0; trivial; subst.
+            eapply H2 in H4; tryfalse.
+          }
+          eapply Sorted_StronglySorted in H5; trivial.
+          inv H5; tryfalse.
+          assert (lt i a). {
+            clear - H15 H9.
+            eapply Forall_forall in H15; eauto.
+          }
+          clear - H2 H3 H4 H5.
+          assert (lt a a). {
+            eapply H3; eauto.
+          }
+          eapply H2 in H; tryfalse.
+        - intro.
+          assert (a0 = i \/ In i l2). {right; trivial. }
+          eapply H7 in H9. destruct H9; trivial.
+          eapply Sorted_StronglySorted in H5; trivial.
+          inv H5.
+          assert (lt a0 i). {
+            clear - H8 H13.
+            eapply Forall_forall in H13; eauto.
+          }
+          assert (In a0 l1). {
+            clear - H1 H5 H4 H2.
+            pose proof H1 a0.
+            assert (i = a0 \/ In a0 l1). eapply H; left; trivial.
+            destruct H0; trivial; subst.
+            eapply H2 in H5; tryfalse.
+          }
+          eapply Sorted_StronglySorted in H4; trivial.
+          inv H4; tryfalse.
+          assert (lt i a0). {
+            clear - H15 H9.
+            eapply Forall_forall in H15; eauto.
+          }
+          clear - H2 H3 H4 H5.
+          assert (lt a0 a0). {
+            eapply H3; eauto.
+          }
+          eapply H2 in H; tryfalse.
+      }
+      inv H4; trivial. inv H5; trivial.
+    }
+    pose proof (classic (a = a0)).
+    destruct H6; trivial.
+    pose proof (H1 a0).
+    assert (a = a0 \/ In a0 l1). {eapply H7; left; trivial. }
+    destruct H8; trivial.
+    eapply Sorted_StronglySorted in H4; trivial.
+    inv H4.
+    assert (lt a a0). {
+      clear - H8 H12.
+      eapply Forall_forall in H12; eauto.
+    }
+    assert (In a l2). {
+      clear - H1 H5 H4 H2.
+      pose proof H1 a.
+      assert (a0 = a \/ In a l2). eapply H; left; trivial.
+      destruct H0; trivial; subst.
+      eapply H2 in H4; tryfalse.
+    }
+    eapply Sorted_StronglySorted in H5; trivial.
+    inv H5.
+    assert (lt a0 a). {
+      clear - H15 H9.
+      eapply Forall_forall in H15; eauto.
+    }
+    assert (lt a a). {eapply H3; eauto. }
+    eapply H2 in H10; tryfalse.
+Qed.
+
+Lemma eqdom_pinstr_implies_flatten_instr_nth_retime:
+  forall ipl1 pi1 pi2 envv n,
+    eqdom_pinstr pi1 pi2 ->
+    flatten_instr_nth envv n pi1 ipl1 ->
+    flatten_instr_nth envv n pi2 (map (retime_ip (pi_schedule pi2)) ipl1).
+Proof.
+  intros ipl1 pi1 pi2 envv n Heq Hflat.
+  destruct Heq as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
+  destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
+  refine (conj _ (conj _ (conj _ _))).
+  - intros ip Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as (ip1 & Hip & Hin1).
+    subst ip. simpl.
+    apply Hprefix. exact Hin1.
+  - intros ip.
+    split.
+    + intro Hin.
+      rewrite in_map_iff in Hin.
+      destruct Hin as (ip1 & Hip & Hin1).
+      subst ip.
+      destruct (Hmem ip1) as [Hin1_to _].
+      specialize (Hin1_to Hin1).
+      destruct Hin1_to as (HPREF & HBEL & HNTH & HLEN).
+      destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+      split.
+      * exact HPREF.
+      * split.
+        { unfold belongs_to; simpl.
+          split.
+          - rewrite <- DOM. exact HPOL.
+          - split.
+            + unfold current_transformation_of, current_transformation_at in *; simpl in *.
+              rewrite <- WIT, <- TSF.
+              exact HTRANS.
+            + split.
+              * reflexivity.
+              * split.
+                { rewrite <- INSTR. exact HINSTR. }
+                { rewrite <- DEPTH. exact HDEPTH. } }
+        { split.
+          - exact HNTH.
+          - rewrite <- DEPTH. exact HLEN. }
+    + intro Hin.
+      destruct Hin as (HPREF & HBEL & HNTH & HLEN).
+      rewrite in_map_iff.
+      exists {|
+        ip_nth := ip.(ip_nth);
+        ip_index := ip.(ip_index);
+        ip_transformation := ip.(ip_transformation);
+        ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
+        ip_instruction := ip.(ip_instruction);
+        ip_depth := ip.(ip_depth);
+      |}.
+      split.
+      * destruct ip; simpl in *.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        simpl in *.
+        subst.
+        f_equal; auto.
+      * destruct (Hmem {|
+           ip_nth := ip_nth ip;
+           ip_index := ip_index ip;
+           ip_transformation := ip_transformation ip;
+           ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
+           ip_instruction := ip_instruction ip;
+           ip_depth := ip_depth ip;
+         |}) as [_ Hback].
+        apply Hback.
+        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
+        refine (conj HPREF _).
+        refine (conj _ _).
+        { unfold belongs_to; simpl in *.
+          split.
+          - rewrite DOM. exact HPOL.
+          - split.
+            + unfold current_transformation_of, current_transformation_at in *; simpl in *.
+              rewrite WIT, TSF.
+              exact HTRANS.
+            + split.
+              * reflexivity.
+              * split.
+                { rewrite INSTR. exact HINSTR. }
+                { rewrite DEPTH. exact HDEPTH. } }
+        { split.
+          - exact HNTH.
+          - rewrite DEPTH. exact HLEN. }
+  - pose proof (conj Hprefix (conj Hmem (conj Hnodup Hsorted))) as G0.
+    eapply flatten_instr_nth_NoDupA_np in G0.
+    eapply NoDup_implies_NoDupA_np.
+    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto.
+  - eapply Sorted_ipl_map_np_sorted_np; eauto.
+Qed.
+
+Lemma retime_ip_eq_except_sched:
+  forall sch ip,
+    eq_except_sched ip (retime_ip sch ip).
+Proof.
+  intros sch ip.
+  unfold eq_except_sched, retime_ip.
+  destruct ip; simpl.
+  repeat split; reflexivity.
+Qed.
+
+Lemma retime_ip_list_eq_except_sched:
+  forall sch ipl,
+    rel_list eq_except_sched ipl (map (retime_ip sch) ipl).
+Proof.
+  intros sch ipl.
+  induction ipl as [|ip ipl IH]; simpl.
+  - constructor.
+  - split.
+    + apply retime_ip_eq_except_sched.
+    + exact IH.
+Qed.
+
+Lemma flatten_instr_nth_det:
+  forall envv nth pi ipl1 ipl2,
+    flatten_instr_nth envv nth pi ipl1 ->
+    flatten_instr_nth envv nth pi ipl2 ->
+    ipl1 = ipl2.
+Proof.
+  intros envv nth pi ipl1 ipl2 Hflat1 Hflat2.
+  destruct Hflat1 as (Hprefix1 & Hmem1 & Hnodup1 & Hsorted1).
+  destruct Hflat2 as (Hprefix2 & Hmem2 & Hnodup2 & Hsorted2).
+  eapply same_elem_lt_sorted_implies_same_list_pre.
+  - exact Hnodup1.
+  - exact Hnodup2.
+  - intros ip; split; intro Hin.
+    + apply Hmem2. apply Hmem1 in Hin. exact Hin.
+    + apply Hmem1. apply Hmem2 in Hin. exact Hin.
+  - exact np_lt_irrefl.
+  - exact np_lt_trans.
+  - exact Hsorted1.
+  - exact Hsorted2.
 Qed.
 
 Lemma eqdom_pinstrs_implies_flatten_instrs_exists:
@@ -2273,14 +3080,15 @@ Proof.
     exists ip2. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
     subst ip2.
-    destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
+    destruct H as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
     eapply BEL'.
     split; [exact HPREF|].
     split.
     { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite <- DOM; subst; simpls; trivial.
-      rewrite <- TSF; subst; simpls; trivial.
+      unfold current_transformation_of, current_transformation_at in *; simpl in *.
+      rewrite <- WIT, <- TSF; subst; simpls; trivial.
       rewrite <- INSTR; subst; simpls; trivial. }
     split; [subst; simpls; trivial|].
     rewrite <- DEPTH; subst; simpls; trivial.
@@ -2300,14 +3108,15 @@ Proof.
     exists ip1. split; simpls.
     unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
     subst ip1.
-    destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
+    destruct H as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
     eapply BEL.
     split; [exact HPREF|].
     split.
     { destruct BEL1 as (POL & TS & T & I & D).
       splits; try solve [subst; simpls; trivial].
       rewrite DOM; subst; simpls; trivial.
-      rewrite TSF; subst; simpls; trivial.
+      unfold current_transformation_of, current_transformation_at in *; simpl in *.
+      rewrite WIT, TSF; subst; simpls; trivial.
       rewrite INSTR; subst; simpls; trivial. }
     split; [subst; simpls; trivial|].
     rewrite DEPTH; subst; simpls; trivial.
@@ -2875,61 +3684,12 @@ Lemma eqdom_pinstr_implies_flatten_instr_same_len:
     flatten_instr_nth envv n pi2 ipl2 ->
     length ipl1 = length ipl2.
 Proof.
-  intros.
-  pose proof H0 as G0. pose proof H1 as G1.
-  destruct H0 as (ENV & BEL & NODUP & SORTED).
-  destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    unfolds belongs_to.
-  pose proof H as G.
-  destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-  eapply eqdom_same_ipl_length 
-    with  
-      (envv:=envv)
-      (pol := (pi_poly pi1)) 
-      (tsf := pi_transformation pi1) 
-      (sch1 := pi_schedule pi1)
-      (sch2 := pi_schedule pi2)
-      (instr := pi_instr pi1)
-      (n:=n) (depth:=pi_depth pi1) (len:=length envv + pi_depth pi1); eauto.
-  - eapply flatten_instr_nth_NoDupA_np; eauto.
-  - eapply flatten_instr_nth_NoDupA_np; eauto.
-  - intros.
-    eapply same_np_set_sorted_NoDupA_nth with (ipl1:=ipl1) (ipl2:=ipl2); eauto.
-    eapply eqdom_pinstr_implies_flatten_same_np_set; eauto.
-    eapply flatten_instr_nth_NoDupA_np; eauto.
-    eapply flatten_instr_nth_NoDupA_np; eauto.
-  -
-    clear - BEL.
-    intros ip. split; intro Hin.
-    -- eapply BEL in Hin.
-       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
-       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
-       repeat split; eauto.
-    -- eapply BEL.
-       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
-       repeat split; eauto.
-  - intros ip.
-    split; intro Hin; trivial.
-    -- eapply BEL' in Hin.
-       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
-       destruct HBEL as (HPOL & HTSF & HTS & HINSTR & HDEPTH).
-       rewrite <- DOM in HPOL.
-       rewrite <- TSF in HTSF.
-       rewrite <- INSTR in HINSTR.
-       rewrite <- DEPTH in HDEPTH.
-       rewrite <- DEPTH in HLEN.
-       repeat split; eauto.
-    -- eapply BEL'.
-       destruct Hin as (HPREF & HPOL & HTSF & HTS & HINSTR & HDEPTH & HNTH & HLEN).
-       rewrite DOM in HPOL.
-       rewrite TSF in HTSF.
-       rewrite INSTR in HINSTR.
-       rewrite DEPTH in HDEPTH.
-       rewrite DEPTH in HLEN.
-       split; [exact HPREF|].
-       split.
-       ++ repeat split; eauto.
-       ++ split; [exact HNTH| exact HLEN].
+  intros pi1 pi2 envv ipl1 ipl2 n Heq Hflat1 Hflat2.
+  pose proof (eqdom_pinstr_implies_flatten_instr_nth_retime ipl1 pi1 pi2 envv n Heq Hflat1) as Hflat2'.
+  pose proof (flatten_instr_nth_det envv n pi2 (map (retime_ip (pi_schedule pi2)) ipl1) ipl2 Hflat2' Hflat2) as Heqipl.
+  rewrite <- Heqipl.
+  rewrite map_length.
+  reflexivity.
 Qed.
 
 Lemma eqdom_pinstr_implies_flatten_instr_nth_rel':
@@ -2939,40 +3699,11 @@ Lemma eqdom_pinstr_implies_flatten_instr_nth_rel':
     flatten_instr_nth envv n pi2 ipl2 -> 
     rel_list eq_except_sched ipl1 ipl2.
 Proof.
-  intros.
-  eapply forall_n_R_implies_rel_list; eauto.
-  eapply eqdom_pinstr_implies_flatten_instr_same_len; eauto.
-  intros.
-  assert (np_eq e1 e2). {
-    eapply same_np_set_sorted_NoDupA_nth with (ipl1:=ipl1) (ipl2:=ipl2); eauto.
-    - eapply eqdom_pinstr_implies_flatten_same_np_set; eauto.
-    - clear - H0; firstorder.
-    - clear - H1; firstorder.
-    - eapply flatten_instr_nth_NoDupA_np; eauto.
-    - eapply flatten_instr_nth_NoDupA_np; eauto.
-  }
-  unfolds eq_except_sched.
-  assert (In e1 ipl1). {
-    eapply nth_error_In; eauto.
-  }
-  assert (In e2 ipl2). {
-    eapply nth_error_In; eauto.
-  }
-  destruct H0 as (ENV & BEL & NODUP & SORTED).
-  destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-  eapply BEL in H5. eapply BEL' in H6.
-  destruct H5 as (HPREF1 & BEL1 & NTH1 & LEN1).
-  destruct H6 as (HPREF2 & BEL2 & NTH2 & LEN2).
-  destruct BEL1 as (POL1 & TS1 & T1 & I1 & D1).
-  destruct BEL2 as (POL2 & TS2 & T2 & I2 & D2).
-  destruct H as (DEPTH & INSTR & DOM & TSF & W & R).
-  destruct e1 eqn:He1; destruct e2 eqn:He2; simpls.
-  splits. 
-  all: try solve [subst; trivial].
-  - clear - H4 LEN1 LEN2 D1 D2 DEPTH. unfold np_eq in H4. simpls.
-    destruct H4. 
-    eapply is_eq_iff_cmp_eq in H0.
-    eapply same_length_eq; try lia; eauto.
+  intros ipl1 pi1 pi2 envv n ipl2 Heq Hflat1 Hflat2.
+  pose proof (eqdom_pinstr_implies_flatten_instr_nth_retime ipl1 pi1 pi2 envv n Heq Hflat1) as Hflat2'.
+  pose proof (flatten_instr_nth_det envv n pi2 (map (retime_ip (pi_schedule pi2)) ipl1) ipl2 Hflat2' Hflat2) as Heqipl.
+  rewrite <- Heqipl.
+  apply retime_ip_list_eq_except_sched.
 Qed.
 
 
@@ -3153,6 +3884,52 @@ Proof.
   - eapply np_lt_trans.
 Qed.
 
+Lemma flatten_instrs_current_view_iff :
+  forall (envv: list Z) (env_dim: nat) (pis: list PolyInstr) (ipl: list InstrPoint),
+    length envv = env_dim ->
+    Forall
+      (fun pi =>
+         witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
+      pis ->
+    flatten_instrs envv (List.map (current_view_pi env_dim) pis) ipl <->
+    flatten_instrs envv pis ipl.
+Proof.
+  intros envv env_dim pis.
+  induction pis using rev_ind; intros ipl Henvdim Hcur.
+  - simpl. split; trivial.
+  - rewrite map_app. simpl.
+    rewrite Forall_app in Hcur.
+    destruct Hcur as [Hcur_init Hcur_last].
+    assert
+      (Hcur_x:
+         witness_current_point_dim (pi_point_witness x) = pi_depth x).
+    { remember [x] as xs eqn:Hxs.
+      revert x Hxs.
+      induction Hcur_last; intros x0 Hxs.
+      - discriminate.
+      - destruct l as [|y l'].
+        + inversion Hxs; subst. exact H.
+        + discriminate.
+    }
+    split; intro Hflat.
+    + eapply flatten_instrs_app_singleton_inv in Hflat.
+      destruct Hflat as [ipl_init [ipl_last [Hflat_init [Hflat_last Heq]]]].
+      subst ipl.
+      eapply flatten_instrs_app_singleton.
+      * apply (proj1 (IHpis ipl_init Henvdim Hcur_init)); exact Hflat_init.
+      * rewrite map_length in Hflat_last.
+        apply (proj1 (flatten_instr_nth_current_view_iff envv env_dim (length pis) x ipl_last Henvdim Hcur_x)).
+        exact Hflat_last.
+    + eapply flatten_instrs_app_singleton_inv in Hflat.
+      destruct Hflat as [ipl_init [ipl_last [Hflat_init [Hflat_last Heq]]]].
+      subst ipl.
+      eapply flatten_instrs_app_singleton.
+      * apply (proj2 (IHpis ipl_init Henvdim Hcur_init)); exact Hflat_init.
+      * rewrite map_length.
+        apply (proj2 (flatten_instr_nth_current_view_iff envv env_dim (length pis) x ipl_last Henvdim Hcur_x)).
+        exact Hflat_last.
+Qed.
+
 Inductive poly_instance_list_semantics: list Z -> PolyLang.t -> State.t -> State.t -> Prop := 
 | PolyPointListSema: forall envv pprog pis varctxt vars st1 st2 ipl sorted_ipl,
     pprog = (pis, varctxt, vars) ->
@@ -3171,12 +3948,101 @@ Inductive instance_list_semantics: t -> State.t -> State.t -> Prop :=
     poly_instance_list_semantics envv pprog st1 st2 ->
     instance_list_semantics pprog st1 st2.
 
+Lemma instance_list_semantics_current_view_iff :
+  forall (pprog: t) (st1 st2: State.t),
+    wf_pprog_tiling pprog ->
+    instance_list_semantics (current_view_pprog pprog) st1 st2 <->
+    instance_list_semantics pprog st1 st2.
+Proof.
+  intros [[pis varctxt] vars] st1 st2 Hwf.
+  unfold wf_pprog_tiling in Hwf; simpl in Hwf.
+  destruct Hwf as [_ Hwfpis].
+  assert
+    (Hcurpis:
+       Forall
+         (fun pi =>
+            witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
+         pis).
+  { eapply Forall_forall.
+    intros pi Hin.
+    pose proof (Hwfpis pi Hin) as Hwfpi.
+    unfold wf_pinstr_tiling, wf_pinstr_general, wf_pinstr in Hwfpi.
+    destruct Hwfpi as [Hwfpi _].
+    destruct Hwfpi as [Hcur _].
+    exact Hcur. }
+  split; intro Hsem;
+    inversion Hsem as
+        [pprog' pis' varctxt' vars' envv st1' st2'
+           Hpprog Hcompat Hna Hinit Hpoly];
+    subst;
+    simpl in Hpprog;
+    inversion Hpprog; subst; clear Hpprog.
+  - eapply PIPSemaIntro with (envv := envv); simpl.
+    + reflexivity.
+    + exact Hcompat.
+    + exact Hna.
+    + exact Hinit.
+    + inversion Hpoly as
+        [envv' pprog'' pis'' varctxt'' vars'' st1'' st2'' ipl sorted_ipl
+           Hpprog'' Hflat Hperm Hsorted Hiplsem];
+        subst.
+      simpl in Hpprog''.
+      inversion Hpprog''; subst; clear Hpprog''.
+      eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
+        simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
+      pose proof (Instr.init_env_samelen _ _ _ Hinit) as Henvdim.
+      replace (length varctxt'') with (length envv) in Hflat by exact Henvdim.
+      pose proof
+        (flatten_instrs_current_view_iff
+           envv (length envv) pis ipl eq_refl Hcurpis) as Hflatiff.
+      apply (proj1 Hflatiff).
+      exact Hflat.
+  - eapply PIPSemaIntro with (envv := envv); simpl.
+    + reflexivity.
+    + exact Hcompat.
+    + exact Hna.
+    + exact Hinit.
+    + inversion Hpoly as
+        [envv' pprog'' pis'' varctxt'' vars'' st1'' st2'' ipl sorted_ipl
+           Hpprog'' Hflat Hperm Hsorted Hiplsem];
+        subst.
+      simpl in Hpprog''.
+      inversion Hpprog''; subst; clear Hpprog''.
+      eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
+        simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
+      lazymatch type of Hwfpis with
+      | forall pi, In pi ?Q -> _ => set (PIS := Q) in *
+      end;
+      assert
+        (HcurPIS:
+           Forall
+             (fun pi =>
+                witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
+             PIS).
+      { eapply Forall_forall.
+        intros pi Hin.
+        pose proof (Hwfpis pi Hin) as Hwfpi.
+        unfold wf_pinstr_tiling, wf_pinstr_general, wf_pinstr in Hwfpi.
+        destruct Hwfpi as [Hwfpi _].
+        destruct Hwfpi as [Hcur _].
+        exact Hcur. }
+      pose proof
+        (flatten_instrs_current_view_iff
+           envv (length envv) PIS ipl eq_refl HcurPIS) as Hflatiff.
+      replace (length varctxt'') with (length envv).
+      2:{ symmetry. eapply Instr.init_env_samelen; eauto. }
+      apply (proj2 Hflatiff).
+      exact Hflat.
+Qed.
+
 
 Record PolyInstr_ext := {
   pi_depth_ext: nat;
   pi_instr_ext: Instr.t;
   pi_poly_ext: Domain; 
+  pi_point_witness_ext: point_space_witness;
   pi_transformation_ext: Transformation;
+  pi_access_transformation_ext: Transformation;
   pi_schedule1_ext: Schedule; 
   pi_schedule2_ext: Schedule; 
   pi_waccess_ext: list AccessFunction;   
@@ -3187,7 +4053,9 @@ Definition dummy_pi_ext := {|
   pi_depth_ext := 0;
   pi_instr_ext := Instr.dummy_instr ;
   pi_poly_ext := nil;
+  pi_point_witness_ext := PSWIdentity 0;
   pi_transformation_ext := nil;
+  pi_access_transformation_ext := nil;
   pi_schedule1_ext := nil;
   pi_schedule2_ext := nil;
   pi_waccess_ext := [aff_func_dummy];
@@ -3199,10 +4067,13 @@ Definition wf_pinstr_ext (env: list ident) (pi_ext: PolyInstr_ext) :=
     let iters_dim := pi_ext.(pi_depth_ext) in 
     let domain_size := length (pi_ext.(pi_poly_ext)) in 
     let cols := env_dim + iters_dim in 
+    let arg_cols := length (pi_ext.(pi_transformation_ext)) in
+    witness_current_point_dim (pi_ext.(pi_point_witness_ext)) = iters_dim /\
     (* domain cols *)
     exact_listzzs_cols cols (pi_ext.(pi_poly_ext)) /\ 
     (* transformation cols *)
     exact_listzzs_cols cols (pi_ext.(pi_transformation_ext)) /\
+    exact_listzzs_cols cols (pi_ext.(pi_access_transformation_ext)) /\
     (* sched cols *)
     exact_listzzs_cols cols (pi_ext.(pi_schedule1_ext)) /\ 
     exact_listzzs_cols cols (pi_ext.(pi_schedule2_ext)) /\ 
@@ -3211,7 +4082,7 @@ Definition wf_pinstr_ext (env: list ident) (pi_ext: PolyInstr_ext) :=
       Forall (
         fun (waccess:AccessFunction) => 
         let (arrid, waccess_func) := waccess in 
-        exact_listzzs_cols cols waccess_func 
+        exact_listzzs_cols arg_cols waccess_func 
       ) pi_ext.(pi_waccess_ext)
     )
     (* read access function cols *)
@@ -3219,20 +4090,290 @@ Definition wf_pinstr_ext (env: list ident) (pi_ext: PolyInstr_ext) :=
       Forall (
         fun (raccess:AccessFunction) => 
         let (arrid, raccess_func) := raccess in 
-        exact_listzzs_cols cols raccess_func 
+        exact_listzzs_cols arg_cols raccess_func 
       ) pi_ext.(pi_raccess_ext)
     )
-    (* transformation length *)
-    /\ (
-      length (pi_ext.(pi_transformation_ext)) = cols
-    )
   .
+
+Definition wf_pinstr_ext_affine (env: list ident) (pi_ext: PolyInstr_ext) :=
+  wf_pinstr_ext env pi_ext /\
+  pi_ext.(pi_point_witness_ext) = PSWIdentity pi_ext.(pi_depth_ext) /\
+  pi_ext.(pi_transformation_ext) = pi_ext.(pi_access_transformation_ext).
+
+Definition wf_pinstr_ext_tiling (env: list ident) (pi_ext: PolyInstr_ext) :=
+  wf_pinstr_ext env pi_ext /\
+  pi_ext.(pi_transformation_ext) = pi_ext.(pi_access_transformation_ext).
+
+Lemma wf_pinstr_affine_implies_wf_pinstr :
+  forall env vars pi,
+    wf_pinstr_affine env vars pi ->
+    wf_pinstr env vars pi.
+Proof.
+  intros env vars pi Hwf.
+  unfold wf_pinstr_affine in Hwf.
+  destruct Hwf as [Hwf _].
+  exact Hwf.
+Qed.
+
+Lemma wf_pinstr_tiling_implies_wf_pinstr :
+  forall env vars pi,
+    wf_pinstr_tiling env vars pi ->
+    wf_pinstr env vars pi.
+Proof.
+  intros env vars pi Hwf.
+  unfold wf_pinstr_tiling, wf_pinstr_general in Hwf.
+  destruct Hwf as [Hwf _].
+  exact Hwf.
+Qed.
+
+Lemma wf_pinstr_general_implies_wf_pinstr :
+  forall env vars pi,
+    wf_pinstr_general env vars pi ->
+    wf_pinstr env vars pi.
+Proof.
+  exact wf_pinstr_tiling_implies_wf_pinstr.
+Qed.
+
+Lemma wf_pinstr_affine_implies_wf_pinstr_tiling :
+  forall env vars pi,
+    wf_pinstr_affine env vars pi ->
+    wf_pinstr_tiling env vars pi.
+Proof.
+  intros env vars pi Hwf.
+  unfold wf_pinstr_affine, wf_pinstr_tiling, wf_pinstr_general in *.
+  destruct Hwf as [Hwf [_ Htf]].
+  split; auto.
+Qed.
+
+Lemma wf_pinstr_affine_implies_wf_pinstr_general :
+  forall env vars pi,
+    wf_pinstr_affine env vars pi ->
+    wf_pinstr_general env vars pi.
+Proof.
+  exact wf_pinstr_affine_implies_wf_pinstr_tiling.
+Qed.
+
+Lemma wf_pprog_affine_implies_wf_pprog :
+  forall pp,
+    wf_pprog_affine pp ->
+    wf_pprog pp.
+Proof.
+  intros [[pil varctxt] vars] Hwf.
+  unfold wf_pprog_affine, wf_pprog in *; simpl in *.
+  destruct Hwf as [Hctxt Hpis].
+  split; [exact Hctxt|].
+  intros pi Hin.
+  eapply wf_pinstr_affine_implies_wf_pinstr.
+  eapply Hpis; eauto.
+Qed.
+
+Lemma wf_pprog_tiling_implies_wf_pprog :
+  forall pp,
+    wf_pprog_tiling pp ->
+    wf_pprog pp.
+Proof.
+  intros [[pil varctxt] vars] Hwf.
+  unfold wf_pprog_tiling, wf_pprog in *; simpl in *.
+  destruct Hwf as [Hctxt Hpis].
+  split; [exact Hctxt|].
+  intros pi Hin.
+  eapply wf_pinstr_tiling_implies_wf_pinstr.
+  eapply Hpis; eauto.
+Qed.
+
+Lemma wf_pprog_general_implies_wf_pprog :
+  forall pp,
+    wf_pprog_general pp ->
+    wf_pprog pp.
+Proof.
+  exact wf_pprog_tiling_implies_wf_pprog.
+Qed.
+
+Lemma wf_pprog_affine_implies_wf_pprog_tiling :
+  forall pp,
+    wf_pprog_affine pp ->
+    wf_pprog_tiling pp.
+Proof.
+  intros [[pil varctxt] vars] Hwf.
+  unfold wf_pprog_affine, wf_pprog_tiling in *; simpl in *.
+  destruct Hwf as [Hctxt Hpis].
+  split; [exact Hctxt|].
+  intros pi Hin.
+  eapply wf_pinstr_affine_implies_wf_pinstr_tiling.
+  eapply Hpis; eauto.
+Qed.
+
+Lemma wf_pprog_affine_implies_wf_pprog_general :
+  forall pp,
+    wf_pprog_affine pp ->
+    wf_pprog_general pp.
+Proof.
+  exact wf_pprog_affine_implies_wf_pprog_tiling.
+Qed.
+
+Lemma wf_pinstr_tiling_current_view_affine :
+  forall env vars pi,
+    wf_pinstr_tiling env vars pi ->
+    wf_pinstr_affine env vars (current_view_pi (length env) pi).
+Proof.
+  intros env vars pi Hwf.
+  unfold wf_pinstr_tiling in Hwf.
+  destruct Hwf as [Hwf Htf_eq].
+  unfold wf_pinstr_affine.
+  split.
+  - unfold wf_pinstr in *.
+    destruct Hwf as
+        (Hcur & Hcols_le & Hpoly_nrl & Hsched_nrl &
+         Hpoly & Htf & Hacc_tf & Hsched & Hw & Hr).
+    repeat split.
+    + unfold current_view_pi.
+      assert
+        (Hwcur:
+           witness_current_point_dim (PSWIdentity (pi_depth pi)) =
+           pi_depth pi).
+      { unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims.
+        simpl.
+        lia. }
+      exact Hwcur.
+    + exact Hcols_le.
+    + exact Hpoly_nrl.
+    + exact Hsched_nrl.
+    + exact Hpoly.
+    + replace
+        (length env +
+         witness_base_point_dim (pi_point_witness (current_view_pi (length env) pi)))%nat
+        with
+          (length env + witness_current_point_dim (pi_point_witness pi))%nat.
+      * exact (exact_listzzs_cols_current_transformation_at env pi Htf).
+      * unfold current_view_pi.
+        simpl.
+        rewrite Hcur.
+        reflexivity.
+    + replace
+        (length env +
+         witness_base_point_dim (pi_point_witness (current_view_pi (length env) pi)))%nat
+        with
+          (length env + witness_current_point_dim (pi_point_witness pi))%nat.
+      * exact (exact_listzzs_cols_current_access_transformation_at env pi Hacc_tf).
+      * unfold current_view_pi.
+        simpl.
+        rewrite Hcur.
+        reflexivity.
+    + exact Hsched.
+    + assert
+        (Hlen_cur:
+           length (current_transformation_at (length env) pi) =
+           length (pi_transformation pi)).
+      { simpl.
+        rewrite current_transformation_at_preserve_length.
+        reflexivity. }
+      unfold current_view_pi; simpl.
+      revert Hlen_cur.
+      induction Hw; intros Hlen_cur.
+      * constructor.
+      * constructor.
+        -- simpl in *.
+           rewrite Hlen_cur.
+           exact H.
+        -- exact (IHHw Hlen_cur).
+    + assert
+        (Hlen_cur:
+           length (current_transformation_at (length env) pi) =
+           length (pi_transformation pi)).
+      { simpl.
+        rewrite current_transformation_at_preserve_length.
+        reflexivity. }
+      unfold current_view_pi; simpl.
+      revert Hlen_cur.
+      induction Hr; intros Hlen_cur.
+      * constructor.
+      * constructor.
+        -- simpl in *.
+           rewrite Hlen_cur.
+           exact H.
+        -- exact (IHHr Hlen_cur).
+  - split.
+    + reflexivity.
+    + unfold current_view_pi.
+      simpl.
+      unfold current_transformation_at, current_access_transformation_at.
+      destruct (pi_point_witness pi); simpl;
+        rewrite Htf_eq; reflexivity.
+Qed.
+
+Lemma wf_pinstr_general_current_view_affine :
+  forall env vars pi,
+    wf_pinstr_general env vars pi ->
+    wf_pinstr_affine env vars (current_view_pi (length env) pi).
+Proof.
+  exact wf_pinstr_tiling_current_view_affine.
+Qed.
+
+Lemma wf_pprog_tiling_current_view_affine :
+  forall pp,
+    wf_pprog_tiling pp ->
+    wf_pprog_affine (current_view_pprog pp).
+Proof.
+  intros [[pil varctxt] vars] Hwf.
+  unfold wf_pprog_tiling, wf_pprog_affine, current_view_pprog in *; simpl in *.
+  destruct Hwf as [Hctxt Hpis].
+  split; [exact Hctxt|].
+  intros pi' Hin.
+  apply in_map_iff in Hin.
+  destruct Hin as [pi [Hpi Hin0]].
+  subst pi'.
+  eapply wf_pinstr_tiling_current_view_affine.
+  eapply Hpis; eauto.
+Qed.
+
+Lemma wf_pprog_general_current_view_affine :
+  forall pp,
+    wf_pprog_general pp ->
+    wf_pprog_affine (current_view_pprog pp).
+Proof.
+  exact wf_pprog_tiling_current_view_affine.
+Qed.
+
+Lemma wf_pinstr_ext_affine_implies_wf_pinstr_ext :
+  forall env pi_ext,
+    wf_pinstr_ext_affine env pi_ext ->
+    wf_pinstr_ext env pi_ext.
+Proof.
+  intros env pi_ext Hwf.
+  unfold wf_pinstr_ext_affine in Hwf.
+  destruct Hwf as [Hwf _].
+  exact Hwf.
+Qed.
+
+Lemma wf_pinstr_ext_tiling_implies_wf_pinstr_ext :
+  forall env pi_ext,
+    wf_pinstr_ext_tiling env pi_ext ->
+    wf_pinstr_ext env pi_ext.
+Proof.
+  intros env pi_ext Hwf.
+  unfold wf_pinstr_ext_tiling in Hwf.
+  destruct Hwf as [Hwf _].
+  exact Hwf.
+Qed.
+
+Lemma wf_pinstr_ext_affine_implies_wf_pinstr_ext_tiling :
+  forall env pi_ext,
+    wf_pinstr_ext_affine env pi_ext ->
+    wf_pinstr_ext_tiling env pi_ext.
+Proof.
+  intros env pi_ext Hwf.
+  unfold wf_pinstr_ext_affine, wf_pinstr_ext_tiling in *.
+  destruct Hwf as [Hwf [_ Htf]].
+  split; auto.
+Qed.
 
 Definition compose_pinstr_ext (pi1 pi2: PolyLang.PolyInstr): PolyInstr_ext := {|
   pi_depth_ext := pi1.(pi_depth);
   pi_instr_ext := pi1.(pi_instr) ;
   pi_poly_ext := pi1.(pi_poly) ;
+  pi_point_witness_ext := pi1.(pi_point_witness) ;
   pi_transformation_ext := pi1.(pi_transformation) ;
+  pi_access_transformation_ext := pi1.(pi_access_transformation) ;
   pi_schedule1_ext := pi1.(pi_schedule) ;
   pi_schedule2_ext := pi2.(pi_schedule) ;
   pi_waccess_ext := pi1.(pi_waccess) ;
@@ -3243,28 +4384,55 @@ Lemma wf_pinstr_implies_wf_pinstr_ext:
   forall env vars pi pi', 
     wf_pinstr env vars pi -> wf_pinstr env vars pi' -> 
     eqdom_pinstr pi pi' ->
+    witness_base_point_dim (pi.(pi_point_witness)) = pi.(pi_depth) ->
     wf_pinstr_ext env (compose_pinstr_ext pi pi').
 Proof.
-  intros env vars pi pi' Hwf1 Hwf2 Heqdom.
-  unfolds wf_pinstr;
-  unfolds wf_pinstr_ext; 
-  unfolds compose_pinstr_ext; simpls.
-  intros. 
-  destruct Hwf1 as (LEN & DOM & TRANSF & SCHED & DC & SC & WC & RC & TS).
-  splits; trivial.
-  destruct Hwf2 as (LEN' & DOM' & TRANSF' & SCHED' & DC' & SC' & WC' & RC' & TS').
-  {
-    clear - Heqdom SC'.
-    unfold eqdom_pinstr in Heqdom. 
-    destruct Heqdom as (I & _ & _ & _).
-    rewrite I; trivial. 
-  }
+  intros env vars pi pi' Hwf1 Hwf2 Heq Hbase.
+  unfold wf_pinstr_ext, compose_pinstr_ext.
+  unfold wf_pinstr in Hwf1, Hwf2.
+  destruct Hwf1 as
+    (Hcur1 & Hcols1 & Hpoly_nrl1 & Hsched_nrl1 &
+     Hpoly1 & Htf1 & Hacc_tf1 & Hsched1 & Hw1 & Hr1).
+  destruct Hwf2 as
+    (Hcur2 & Hcols2 & Hpoly_nrl2 & Hsched_nrl2 &
+     Hpoly2 & Htf2 & Hacc_tf2 & Hsched2 & Hw2 & Hr2).
+  destruct Heq as
+    (Hdepth & Hinstr & Hpoly_eq & Hwit_eq &
+     Htf_eq & Hacc_tf_eq & Hw_eq & Hr_eq).
+  repeat split.
+  - exact Hcur1.
+  - exact Hpoly1.
+  - rewrite <- Hbase. exact Htf1.
+  - rewrite <- Hbase. exact Hacc_tf1.
+  - exact Hsched1.
+  - rewrite Hdepth. exact Hsched2.
+  - exact Hw1.
+  - exact Hr1.
+Qed.
+
+Lemma wf_pinstr_affine_implies_wf_pinstr_ext_affine :
+  forall env vars pi pi', 
+  wf_pinstr_affine env vars pi -> wf_pinstr_affine env vars pi' -> 
+  eqdom_pinstr pi pi' ->
+  witness_base_point_dim (pi.(pi_point_witness)) = pi.(pi_depth) ->
+  wf_pinstr_ext_affine env (compose_pinstr_ext pi pi').
+Proof.
+  intros env vars pi pi' Hwf1 Hwf2 Heqdom Hbase.
+  unfold wf_pinstr_ext_affine.
+  split.
+  - eapply wf_pinstr_implies_wf_pinstr_ext; eauto.
+    eapply wf_pinstr_affine_implies_wf_pinstr; eauto.
+    eapply wf_pinstr_affine_implies_wf_pinstr; eauto.
+  - unfold wf_pinstr_affine in Hwf1.
+    destruct Hwf1 as [_ [Hw Heq]].
+    repeat split; assumption.
 Qed.
 
 Definition veq_instance_ext (ip1 ip2: InstrPoint_ext): Prop :=
   ip1.(ip_nth_ext) = ip2.(ip_nth_ext) 
   /\ veq ip1.(ip_index_ext) ip2.(ip_index_ext) 
   /\ ip1.(ip_transformation_ext) = ip2.(ip_transformation_ext)
+  /\ ip1.(ip_access_transformation_ext) = ip2.(ip_access_transformation_ext)
   /\ ip1.(ip_time_stamp1_ext) = ip2.(ip_time_stamp1_ext)
   /\ ip1.(ip_time_stamp2_ext) = ip2.(ip_time_stamp2_ext)
   /\ ip1.(ip_instruction_ext) = ip2.(ip_instruction_ext)
@@ -3274,6 +4442,7 @@ Definition veq_instance_ext (ip1 ip2: InstrPoint_ext): Prop :=
 Definition belongs_to_ext (ip: InstrPoint_ext) (pi: PolyInstr_ext): Prop :=
   in_poly ip.(ip_index_ext) pi.(pi_poly_ext) 
   /\ ip.(ip_transformation_ext) = pi.(pi_transformation_ext) 
+  /\ ip.(ip_access_transformation_ext) = pi.(pi_access_transformation_ext) 
   /\ ip.(ip_time_stamp1_ext) = affine_product (pi.(pi_schedule1_ext)) ip.(ip_index_ext) 
   /\ ip.(ip_time_stamp2_ext) = affine_product (pi.(pi_schedule2_ext)) ip.(ip_index_ext) 
   /\ ip.(ip_instruction_ext) = pi.(pi_instr_ext)
@@ -3734,6 +4903,7 @@ Fixpoint compose_pinstrs_ext (pil1 pil2: list PolyLang.PolyInstr): list PolyInst
 Lemma wf_pil_implies_wf_pil_ext: 
   forall pil pil' env vars, 
     Forall (wf_pinstr env vars) pil -> Forall (wf_pinstr env vars) pil' -> 
+    Forall (fun pi => witness_base_point_dim (pi.(pi_point_witness)) = pi.(pi_depth)) pil ->
     rel_list eqdom_pinstr pil pil' ->
     Forall (wf_pinstr_ext env) (compose_pinstrs_ext pil pil').
 Proof.
@@ -3750,10 +4920,39 @@ Proof.
       econs.
     }
     {
-      econs; inv H0.
-      eapply wf_pinstr_implies_wf_pinstr_ext; eauto. 
-      destruct H1; trivial.
-      destruct H1; eapply IHpil; eauto.
+      econs; inv H0; inv H1.
+      eapply wf_pinstr_implies_wf_pinstr_ext; eauto.
+      destruct H2; trivial.
+      destruct H2; eapply IHpil; eauto.
+    }
+  }
+Qed.
+
+Lemma wf_pil_affine_implies_wf_pil_ext_affine: 
+  forall pil pil' env vars, 
+    Forall (wf_pinstr_affine env vars) pil ->
+    Forall (wf_pinstr_affine env vars) pil' -> 
+    Forall (fun pi => witness_base_point_dim (pi.(pi_point_witness)) = pi.(pi_depth)) pil ->
+    rel_list eqdom_pinstr pil pil' ->
+    Forall (wf_pinstr_ext_affine env) (compose_pinstrs_ext pil pil').
+Proof.
+  induction pil.
+  {
+    intros; simpls.
+    destruct pil'; econs.
+  }
+  {
+    intros; simpls.
+    inv H.
+    destruct pil'; simpls.
+    {
+      econs.
+    }
+    {
+      econs; inv H0; inv H1.
+      eapply wf_pinstr_affine_implies_wf_pinstr_ext_affine; eauto.
+      destruct H2; trivial.
+      destruct H2; eapply IHpil; eauto.
     }
   }
 Qed.
@@ -3782,7 +4981,7 @@ Proof.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
   destruct H0 as (HPREF & BEL & NTH & LEN).
-  destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
 
@@ -3797,7 +4996,21 @@ Proof.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
   destruct H0 as (HPREF & BEL & NTH & LEN).
-  destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
+  subst; simpls; trivial.
+Qed.
+
+Lemma expand_ip_instr_eq_pi_access_tf_ext: 
+  forall pi ipl ip envv nth,
+    flatten_instr_nth_ext envv nth pi ipl -> 
+    In ip ipl -> 
+    ip_access_transformation_ext ip = pi_access_transformation_ext pi.
+Proof. 
+  intros.
+  destruct H as (ENV & BELONG & NODUP & SORTED).
+  eapply BELONG in H0. 
+  destruct H0 as (HPREF & BEL & NTH & LEN).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
 
@@ -3811,7 +5024,7 @@ Proof.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
   destruct H0 as (HPREF & BEL & NTH & LEN).
-  destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
 
@@ -3868,7 +5081,7 @@ Proof.
     with (envv:=envv) (nth:=nth2) (pi:=pi2) in Hin2; trivial.
   eapply poly_product_correct; eauto.
   {
-    destruct Hwf1 as (D & _).
+    destruct Hwf1 as (_ & D & _).
     rewrite Hlen in D.
     rewrite <- Hin1 in D.
     trivial. 
@@ -3886,7 +5099,7 @@ Proof.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
   destruct H0 as (HPREF & BEL & NTH & LEN).
-  destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
 
@@ -3901,7 +5114,7 @@ Proof.
   destruct H as (ENV & BELONG & NODUP & SORTED).
   eapply BELONG in H0. 
   destruct H0 as (HPREF & BEL & NTH & LEN).
-  destruct BEL as (DOM & TSF & TS1 & TS2 & I & D).
+  destruct BEL as (DOM & TSF & ATSF & TS1 & TS2 & I & D).
   subst; simpls; trivial.
 Qed.
 
@@ -3935,7 +5148,7 @@ Proof.
   eapply ip_index_size_eq_pi_dom_size_ext; eauto.
   clear - Hwf1 Hlen. 
   unfold wf_pinstr_ext in Hwf1. 
-  destruct Hwf1 as (_ & _ & S & _).
+  destruct Hwf1 as (_ & _ & _ & _ & S & _ & _ & _).
   rewrite Hlen in S. trivial.
 Qed.
 
@@ -3967,7 +5180,7 @@ Proof.
   eapply ip_index_size_eq_pi_dom_size_ext; eauto.
   clear - Hwf1 Hlen. 
   unfold wf_pinstr_ext in Hwf1. 
-  destruct Hwf1 as (_ & _ & _ & S & _).
+  destruct Hwf1 as (_ & _ & _ & _ & _ & S & _ & _).
   rewrite Hlen in S. trivial.
 Qed.
 
@@ -5623,18 +6836,20 @@ Qed.
 
 (** Part 3: PolyLex semantics, for codegen *)
 
-Inductive poly_lex_semantics : (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> Prop :=
-| PolyLexDone : forall to_scan prog mem, (forall n p, to_scan n p = false) -> poly_lex_semantics to_scan prog mem mem
-| PolyLexProgress : forall to_scan prog st1 st2 st3 poly_instr n p wcs rcs,
+Inductive poly_lex_semantics : nat -> (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> Prop :=
+| PolyLexDone : forall env_dim to_scan prog mem,
+    (forall n p, to_scan n p = false) ->
+    poly_lex_semantics env_dim to_scan prog mem mem
+| PolyLexProgress : forall env_dim to_scan prog st1 st2 st3 poly_instr n p wcs rcs,
     to_scan n p = true -> nth_error prog n = Some poly_instr ->
     (forall n2 p2, lex_compare p2 p = Lt -> to_scan n2 p2 = false) ->
-    Instr.instr_semantics poly_instr.(pi_instr) (affine_product poly_instr.(pi_transformation) p) wcs rcs st1 st2 ->
-    poly_lex_semantics (scanned to_scan n p) prog st2 st3 ->
-    poly_lex_semantics to_scan prog st1 st3.
+    Instr.instr_semantics poly_instr.(pi_instr) (current_src_args_in_dim env_dim poly_instr p) wcs rcs st1 st2 ->
+    poly_lex_semantics env_dim (scanned to_scan n p) prog st2 st3 ->
+    poly_lex_semantics env_dim to_scan prog st1 st3.
 
 
 Definition env_poly_lex_semantics (env : list Z) (dim : nat) (pis : list PolyInstr) (mem1 mem2 : State.t) :=
-  poly_lex_semantics (env_scan pis env dim) pis mem1 mem2.
+  poly_lex_semantics dim (env_scan pis env dim) pis mem1 mem2.
     
 Inductive lex_semantics: t -> State.t -> State.t -> Prop :=
 | PLexSemaIntro: forall pprog pis varctxt vars env st1 st2,
@@ -5642,51 +6857,87 @@ Inductive lex_semantics: t -> State.t -> State.t -> Prop :=
     Instr.Compat vars st1 ->
     Instr.NonAlias st1 -> 
     Instr.InitEnv varctxt env st1 ->
-    env_poly_lex_semantics env (length vars) pis st1 st2 ->
+    env_poly_lex_semantics env (pprog_current_dim pprog) pis st1 st2 ->
     lex_semantics pprog st1 st2.
 
 Theorem poly_lex_semantics_extensionality :
-  forall to_scan1 prog mem1 mem2,
-    poly_lex_semantics to_scan1 prog mem1 mem2 -> forall to_scan2, (forall n p, to_scan1 n p = to_scan2 n p) -> poly_lex_semantics to_scan2 prog mem1 mem2.
+  forall env_dim to_scan1 prog mem1 mem2,
+    poly_lex_semantics env_dim to_scan1 prog mem1 mem2 ->
+    forall to_scan2,
+      (forall n p, to_scan1 n p = to_scan2 n p) ->
+      poly_lex_semantics env_dim to_scan2 prog mem1 mem2.
 Proof.
-  intros to_scan1 prog mem1 mem2 Hsem.
-  induction Hsem as [to_scan3 prog1 mem4 Hdone|to_scan3 prog1 mem3 mem4 mem5 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros. constructor. intros. eauto.
-  - intros to_scan2 Heq. econstructor; eauto. apply IH. intros. autounfold. rewrite Heq. auto.
+  intros env_dim to_scan1 prog mem1 mem2 Hsem.
+  induction Hsem.
+  - intros to_scan2 Heq.
+    apply PolyLexDone.
+    intros n p.
+    rewrite <- Heq.
+    apply H.
+  - intros to_scan2 Heq.
+    eapply PolyLexProgress; eauto.
+    apply IHHsem.
+    intros n0 p0.
+    unfold scanned.
+    rewrite <- Heq.
+    reflexivity.
 Qed.
   
 Lemma poly_lex_semantics_pis_ext_single :
-  forall pis1 pis2 to_scan mem1 mem2,
-    Forall2 (fun pi1 pi2 => pi1.(pi_instr) = pi2.(pi_instr) /\ pi1.(pi_transformation) = pi2.(pi_transformation)) pis1 pis2 ->
-    poly_lex_semantics to_scan pis1 mem1 mem2 -> poly_lex_semantics to_scan pis2 mem1 mem2.
+  forall env_dim pis1 pis2 to_scan mem1 mem2,
+    Forall2
+      (fun pi1 pi2 =>
+         pi1.(pi_instr) = pi2.(pi_instr) /\
+         pi1.(pi_point_witness) = pi2.(pi_point_witness) /\
+         pi1.(pi_transformation) = pi2.(pi_transformation))
+      pis1 pis2 ->
+    poly_lex_semantics env_dim to_scan pis1 mem1 mem2 ->
+    poly_lex_semantics env_dim to_scan pis2 mem1 mem2.
 Proof.
-  intros pis1 pis2 to_scan mem1 mem2 Hsame Hsem.
-  induction Hsem as [to_scan1 prog mem Hdone|to_scan1 prog mem1 mem2 mem3 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
+  intros env_dim pis1 pis2 to_scan mem1 mem2 Hsame Hsem.
+  induction Hsem as
+      [env_dim to_scan1 prog mem Hdone
+      |env_dim to_scan1 prog mem1 mem2 mem3 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
   - apply PolyLexDone; auto.
-  - destruct (Forall2_nth_error _ _ _ _ _ _ _ Hsame Heqpi) as [pi2 [Hpi2 [H1 H2]]].
+  - destruct (Forall2_nth_error _ _ _ _ _ _ _ Hsame Heqpi) as [pi2 [Hpi2 [H1 [Hw H2]]]].
     eapply PolyLexProgress; [exact Hscanp|exact Hpi2|exact Hts| |apply IH; auto].
-    rewrite H1, H2 in *; eauto.
+    rewrite <- H1.
+    unfold current_src_args_in_dim, current_src_args_at, current_env_dim_in_dim,
+      current_transformation_at.
+    rewrite <- Hw, <- H2.
+    exact Hsem1.
 Qed.
 
 Lemma poly_lex_semantics_pis_ext_iff :
-  forall pis1 pis2 to_scan mem1 mem2,
-    Forall2 (fun pi1 pi2 => pi1.(pi_instr) = pi2.(pi_instr) /\ pi1.(pi_transformation) = pi2.(pi_transformation)) pis1 pis2 ->
-    poly_lex_semantics to_scan pis1 mem1 mem2 <-> poly_lex_semantics to_scan pis2 mem1 mem2.
+  forall env_dim pis1 pis2 to_scan mem1 mem2,
+    Forall2
+      (fun pi1 pi2 =>
+         pi1.(pi_instr) = pi2.(pi_instr) /\
+         pi1.(pi_point_witness) = pi2.(pi_point_witness) /\
+         pi1.(pi_transformation) = pi2.(pi_transformation))
+      pis1 pis2 ->
+    poly_lex_semantics env_dim to_scan pis1 mem1 mem2 <->
+    poly_lex_semantics env_dim to_scan pis2 mem1 mem2.
 Proof.
-  intros pis1 pis2 to_scan mem1 mem2 Hsame.
+  intros env_dim pis1 pis2 to_scan mem1 mem2 Hsame.
   split.
   - apply poly_lex_semantics_pis_ext_single; auto.
   - apply poly_lex_semantics_pis_ext_single.
     eapply Forall2_imp; [|apply Forall2_sym; exact Hsame].
-    intros x y H; simpl in *; destruct H; auto.
+    intros x y H; simpl in *.
+    destruct H as [HI [HW HT]].
+    split; [symmetry; exact HI|].
+    split; [symmetry; exact HW|].
+    symmetry; exact HT.
 Qed.
 
 Lemma poly_lex_semantics_ext_iff :
-  forall pis to_scan1 to_scan2 mem1 mem2,
+  forall env_dim pis to_scan1 to_scan2 mem1 mem2,
     (forall n p, to_scan1 n p = to_scan2 n p) ->
-    poly_lex_semantics to_scan1 pis mem1 mem2 <-> poly_lex_semantics to_scan2 pis mem1 mem2.
+    poly_lex_semantics env_dim to_scan1 pis mem1 mem2 <->
+    poly_lex_semantics env_dim to_scan2 pis mem1 mem2.
 Proof.
-  intros pis to_scan1 to_scan2 mem1 mem2 Hsame.
+  intros env_dim pis to_scan1 to_scan2 mem1 mem2 Hsame.
   split; intros H.
   - eapply poly_lex_semantics_extensionality; [exact H|]. auto.
   - eapply poly_lex_semantics_extensionality; [exact H|]. auto.
@@ -5694,45 +6945,83 @@ Qed.
 
 
 Theorem poly_lex_concat :
-  forall to_scan1 prog mem1 mem2,
-    poly_lex_semantics to_scan1 prog mem1 mem2 ->
+  forall env_dim to_scan1 prog mem1 mem2,
+    poly_lex_semantics env_dim to_scan1 prog mem1 mem2 ->
     forall to_scan2 mem3,
     wf_scan to_scan1 ->
     (forall n p, to_scan1 n p = false \/ to_scan2 n p = false) ->
     (forall n1 p1 n2 p2, lex_compare p2 p1 = Lt -> to_scan1 n1 p1 = false \/ to_scan2 n2 p2 = false) ->
-    poly_lex_semantics to_scan2 prog mem2 mem3 ->
-    poly_lex_semantics (fun n p => to_scan1 n p || to_scan2 n p) prog mem1 mem3.
+    poly_lex_semantics env_dim to_scan2 prog mem2 mem3 ->
+    poly_lex_semantics env_dim (fun n p => to_scan1 n p || to_scan2 n p) prog mem1 mem3.
 Proof.
-  intros to_scan1 prog mem1 mem2 Hsem.
-  induction Hsem as [to_scan3 prog1 mem4 Hdone|to_scan3 prog1 mem4 mem5 mem6 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem1. eapply poly_lex_semantics_extensionality; eauto. intros. rewrite Hdone. auto.
+  intros env_dim to_scan1 prog mem1 mem2 Hsem.
+  induction Hsem as
+      [env_dim to_scan3 prog1 mem4 Hdone
+      |env_dim to_scan3 prog1 mem4 mem5 mem6 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
+  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem1.
+    eapply poly_lex_semantics_extensionality with (to_scan1 := to_scan2); [exact Hsem1|].
+    intros n0 p0.
+    destruct (to_scan2 n0 p0); simpl.
+    + rewrite (Hdone n0 p0). reflexivity.
+    + rewrite (Hdone n0 p0). reflexivity.
   - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3. eapply PolyLexProgress with (n := n) (p := p) (wcs:=wcs) (rcs:=rcs) (poly_instr:=pi) (st2:=mem5); trivial. eauto.
     + intros n2 p2 Hts2.
       reflect. split.
       * apply (Hts n2 p2); auto.
       * destruct (Hcmp n p n2 p2) as [H | H]; auto; congruence.
-    + eapply poly_lex_semantics_extensionality; [apply IH|]; eauto.
-      * apply scanned_wf_compat; auto.
-      * intros n2 p2. autounfold. destruct (Hdisj n2 p2) as [H | H]; rewrite H; auto.
-      * intros n1 p1 n2 p2 Hcmp1.
-        destruct (Hcmp n1 p1 n2 p2) as [H | H]; autounfold; auto. rewrite H. simpl.
-        destruct (is_eq p p1 && (n =? n1)%nat) eqn:Hd; simpl; auto.
+    + assert (Hrest :
+          poly_lex_semantics env_dim
+            (fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0)
+            prog1 mem5 mem3).
+      {
+        assert (Hwf_scanned : wf_scan (scanned to_scan3 n p)).
+        { apply scanned_wf_compat; auto. }
+        assert (Hdisj_scanned :
+          forall n0 p0,
+            scanned to_scan3 n p n0 p0 = false \/ to_scan2 n0 p0 = false).
+        {
+          intros n0 p0. autounfold. simpl.
+          destruct (to_scan3 n0 p0) eqn:Hscan3; simpl.
+          - destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
+          - left. reflexivity.
+        }
+        assert (Hcmp_scanned :
+          forall n1 p1 n2 p2,
+            lex_compare p2 p1 = Lt ->
+            scanned to_scan3 n p n1 p1 = false \/ to_scan2 n2 p2 = false).
+        {
+          intros n1 p1 n2 p2 Hcmp1.
+          destruct (Hcmp n1 p1 n2 p2 Hcmp1) as [H | H].
+          - left.
+            autounfold.
+            rewrite H.
+            destruct (is_eq p p1 && (n =? n1)%nat); reflexivity.
+          - right. exact H.
+        }
+        pose proof (IH to_scan2 mem3 Hwf_scanned Hdisj_scanned Hcmp_scanned Hsem3) as Hrest.
+        exact Hrest.
+      }
+      eapply poly_lex_semantics_extensionality with
+          (to_scan1 := fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0).
+      * exact Hrest.
       * intros n0 p0. autounfold. simpl.
-        destruct (to_scan3 n0 p0) eqn:Hscan3; simpl; auto.
-        -- destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
-        -- destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl; auto using andb_true_r.
-           reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
+        destruct (Hdisj n0 p0) as [H | H].
+        -- rewrite H. simpl.
+           destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl.
+           ++ reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
+           ++ rewrite andb_true_r. reflexivity.
+        -- rewrite H. destruct (to_scan3 n0 p0); simpl; rewrite ?orb_false_r; auto.
 Qed.
 
 Theorem poly_lex_concat_seq :
-  forall A to_scans (l : list A) prog mem1 mem2,
-  Instr.IterSem.iter_semantics (fun x => poly_lex_semantics (to_scans x) prog) l mem1 mem2 ->
+  forall env_dim A to_scans (l : list A) prog mem1 mem2,
+  Instr.IterSem.iter_semantics (fun x => poly_lex_semantics env_dim (to_scans x) prog) l mem1 mem2 ->
     (forall x, wf_scan (to_scans x)) ->
     (forall x1 k1 x2 k2 n p, to_scans x1 n p = true -> to_scans x2 n p = true -> nth_error l k1 = Some x1 -> nth_error l k2 = Some x2 -> k1 = k2) ->
     (forall x1 n1 p1 k1 x2 n2 p2 k2, lex_compare p2 p1 = Lt -> to_scans x1 n1 p1 = true -> to_scans x2 n2 p2 = true -> nth_error l k1 = Some x1 -> nth_error l k2 = Some x2 -> (k2 <= k1)%nat) ->
-    poly_lex_semantics (fun n p => existsb (fun x => to_scans x n p) l) prog mem1 mem2.
+    poly_lex_semantics env_dim (fun n p => existsb (fun x => to_scans x n p) l) prog mem1 mem2.
 Proof.
-  intros A to_scans l1 prog mem1 mem3 Hsem.
+  intros env_dim A to_scans l1 prog mem1 mem3 Hsem.
   induction Hsem as [mem|x l mem1 mem2 mem3 Hsem1 Hsem2 IH].
   - intros Hwf Hscans Hcmp.
     simpl.
@@ -5822,11 +7111,15 @@ Proof.
     { rewrite <- app_assoc. auto. }
     rewrite He. rewrite IHl; [|lia|auto|rewrite app_length;simpl;lia|lia].
     rewrite andb_assoc. f_equal.
-    assert (Hde : dot_product v (p ++ s) = dot_product p (resize es v) + dot_product s (skipn es v)).
-    { rewrite <- dot_product_app by (rewrite resize_length; lia).
-      rewrite dot_product_commutative. rewrite resize_skipn_eq. reflexivity.
-    }
-    destruct (x =? dot_product v (p ++ s) + c) eqn:Hx; reflect; lia.
+    assert (Hde : Linalg.dot_product v (p ++ s) =
+                  Linalg.dot_product p (resize es v) +
+                  Linalg.dot_product s (skipn es v)).
+    { pose proof (dot_product_app_right v p s) as Htmp.
+      rewrite dot_product_commutative with (xs := resize (length p) v) (ys := p) in Htmp.
+      rewrite dot_product_commutative with (xs := skipn (length p) v) (ys := s) in Htmp.
+      rewrite Hlp in Htmp.
+      exact Htmp. }
+    destruct (x =? Linalg.dot_product v (p ++ s) + c) eqn:Hx; reflect; lia.
 Qed.
 
 Theorem make_sched_poly_correct :
@@ -5899,7 +7192,9 @@ Definition pi_elim_schedule (d : nat) (env_size : nat) (pi : PolyInstr) :=
     pi_depth:= pi.(pi_depth);
     pi_instr := pi.(pi_instr) ;
     pi_schedule := nil ;
-    pi_transformation := map (insert_zeros_constraint d env_size) pi.(pi_transformation) ;
+    pi_point_witness := PSWInsertAfterEnv d pi.(pi_point_witness) ;
+    pi_transformation := pi.(pi_transformation) ;
+    pi_access_transformation := pi.(pi_access_transformation) ;
     pi_poly := make_sched_poly d 0%nat env_size pi.(pi_schedule) ++
                 map (insert_zeros_constraint d env_size) pi.(pi_poly) ;
     pi_waccess := pi.(pi_waccess);
@@ -5936,7 +7231,9 @@ Proof.
 Qed.
 
 Lemma insert_zeros_product_skipn :
-  forall d i l1 l2, dot_product (insert_zeros d i l1) l2 = dot_product l1 (resize i l2 ++ skipn (d + i)%nat l2).
+  forall d i l1 l2,
+    Linalg.dot_product (insert_zeros d i l1) l2 =
+    Linalg.dot_product l1 (resize i l2 ++ skipn (d + i)%nat l2).
 Proof.
   intros.
   unfold insert_zeros.
@@ -5954,128 +7251,420 @@ Proof.
   rewrite insert_zeros_product_skipn. auto.
 Qed.
 
+Lemma insert_zeros_commute_after_env :
+  forall added d i l,
+    insert_zeros added (i + d)%nat (insert_zeros d i l) =
+    insert_zeros d i (insert_zeros added i l).
+Proof.
+  intros added d i l.
+  unfold insert_zeros.
+  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
+  rewrite Linalg.resize_length.
+  replace (i + d - i)%nat with d by lia.
+  rewrite List.skipn_app by lia.
+  replace (d - d)%nat with 0%nat by lia.
+  simpl.
+  rewrite Linalg.resize_app_le by (rewrite List.repeat_length; lia).
+  rewrite Linalg.resize_length.
+  rewrite List.skipn_app by lia.
+  replace (d - d)%nat with 0%nat by lia.
+  replace (0 - added)%nat with 0%nat by lia.
+  simpl.
+  replace (i + d - i)%nat with d by lia.
+  replace (d - length (repeat 0%Z d))%nat with 0%nat by (rewrite List.repeat_length; lia).
+  simpl.
+  replace (skipn (i + d) (Linalg.resize i l)) with ([] : list Z).
+  2:{
+    rewrite List.skipn_all2.
+    - reflexivity.
+    - rewrite Linalg.resize_length. lia.
+  }
+  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
+  2:{
+    rewrite List.skipn_all2.
+    - reflexivity.
+    - rewrite List.repeat_length. lia.
+  }
+  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
+  rewrite Linalg.resize_length.
+  rewrite List.skipn_app by lia.
+  replace (i - i)%nat with 0%nat by lia.
+  replace (0 - added)%nat with 0%nat by lia.
+  simpl.
+  replace (skipn i (Linalg.resize i l)) with ([] : list Z).
+  2:{
+    rewrite List.skipn_all2.
+    - reflexivity.
+    - rewrite Linalg.resize_length. lia.
+  }
+  replace (i - length (Linalg.resize i l))%nat with 0%nat by (rewrite Linalg.resize_length; lia).
+  replace (i + d - i)%nat with d by lia.
+  replace (d - length (repeat 0%Z d))%nat with 0%nat by (rewrite List.repeat_length; lia).
+  simpl.
+  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
+  2:{
+    rewrite List.skipn_all2.
+    - reflexivity.
+    - rewrite List.repeat_length. lia.
+  }
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+Lemma current_transformation_at_pi_elim_schedule :
+  forall d env_dim es pi,
+    current_transformation_at env_dim (pi_elim_schedule d es pi) =
+    map (insert_zeros_constraint d env_dim) (current_transformation_at env_dim pi).
+Proof.
+  intros d env_dim es pi.
+  unfold current_transformation_at, pi_elim_schedule.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma current_src_args_at_pi_elim_schedule :
+  forall d env_dim es pi current,
+    (env_dim <= length current)%nat ->
+    current_src_args_at env_dim (pi_elim_schedule d es pi) current =
+    current_src_args_at env_dim pi
+      (firstn env_dim current ++ skipn (d + env_dim)%nat current).
+Proof.
+  intros d env_dim es pi current Henv.
+  unfold current_src_args_at.
+  rewrite current_transformation_at_pi_elim_schedule.
+  rewrite affine_product_skipn.
+  eapply affine_product_proper; [reflexivity|].
+  rewrite <- is_eq_veq.
+  rewrite is_eq_app by (rewrite resize_length, firstn_length; lia).
+  assert (Hresize : is_eq (resize env_dim current) (firstn env_dim current) = true).
+  {
+    assert (Heq_rf : resize env_dim current = firstn env_dim current).
+    {
+      revert current Henv.
+      induction env_dim as [|env_dim IH]; intros current Henv.
+      - destruct current; reflexivity.
+      - destruct current as [|x xs].
+        { exfalso. simpl in Henv. lia. }
+        simpl in Henv.
+        simpl. f_equal. apply IH. lia.
+    }
+    rewrite Heq_rf.
+    apply is_eq_reflexive.
+  }
+  rewrite Hresize.
+  rewrite is_eq_reflexive.
+  simpl. reflexivity.
+Qed.
+
+Lemma current_env_dim_of_pi_elim_schedule_drop :
+  forall d pw current,
+    (witness_current_point_dim (PSWInsertAfterEnv d pw) <= length current)%nat ->
+    current_env_dim_of pw
+      (firstn (current_env_dim_of (PSWInsertAfterEnv d pw) current) current ++
+       skipn (d + current_env_dim_of (PSWInsertAfterEnv d pw) current)%nat current) =
+    current_env_dim_of (PSWInsertAfterEnv d pw) current.
+Proof.
+  intros d pw current Hlen.
+  unfold current_env_dim_of.
+  unfold witness_current_point_dim in Hlen |- *.
+  cbn [witness_added_dims witness_base_point_dim] in Hlen |- *.
+  set (wd := witness_current_point_dim pw).
+  set (lc := length current).
+  set (env_dim := (lc - (d + wd))%nat).
+  assert (Henv : (env_dim <= length current)%nat).
+  { unfold env_dim, lc. lia. }
+  rewrite app_length.
+  rewrite firstn_length_le by (unfold env_dim, wd, lc; simpl; lia).
+  rewrite skipn_length.
+  unfold env_dim, lc, wd.
+  replace
+    (length current -
+     (d +
+      (length current -
+       (witness_base_point_dim pw + (d + witness_added_dims pw)))))%nat
+    with (witness_base_point_dim pw + witness_added_dims pw)%nat by lia.
+  replace
+    ((length current - (witness_base_point_dim pw + (d + witness_added_dims pw))) +
+     (witness_base_point_dim pw + witness_added_dims pw) -
+     (witness_base_point_dim pw + witness_added_dims pw))%nat
+    with (length current -
+          (witness_base_point_dim pw + (d + witness_added_dims pw)))%nat by lia.
+  reflexivity.
+Qed.
+
+Lemma current_src_args_of_pi_elim_schedule :
+  forall d es pi current,
+    (witness_current_point_dim (pi_elim_schedule d es pi).(pi_point_witness) <= length current)%nat ->
+    current_src_args_of (pi_elim_schedule d es pi) current =
+    current_src_args_of pi
+      (firstn (current_env_dim_of (pi_elim_schedule d es pi).(pi_point_witness) current) current ++
+       skipn
+         (d + current_env_dim_of (pi_elim_schedule d es pi).(pi_point_witness) current)%nat
+         current).
+Proof.
+  intros d es pi current Hlen.
+  unfold current_src_args_of.
+  rewrite current_src_args_at_pi_elim_schedule.
+  2: {
+    unfold current_env_dim_of in *.
+    simpl in Hlen.
+    lia.
+  }
+  unfold current_src_args_of.
+  f_equal.
+  symmetry.
+  apply current_env_dim_of_pi_elim_schedule_drop.
+  exact Hlen.
+Qed.
+
+Lemma current_src_args_at_pi_elim_schedule_resize :
+  forall d env_dim es pi current,
+    current_src_args_at env_dim (pi_elim_schedule d es pi) current =
+    current_src_args_at env_dim pi
+      (resize env_dim current ++ skipn (d + env_dim)%nat current).
+Proof.
+  intros d env_dim es pi current.
+  unfold current_src_args_at.
+  rewrite current_transformation_at_pi_elim_schedule.
+  apply affine_product_skipn.
+Qed.
+
+Lemma current_env_dim_in_dim_pi_elim_schedule :
+  forall d es dim pi,
+    current_env_dim_in_dim (dim + d) (pi_elim_schedule d es pi).(pi_point_witness) =
+    current_env_dim_in_dim dim pi.(pi_point_witness).
+Proof.
+  intros d es dim pi.
+  unfold current_env_dim_in_dim.
+  simpl.
+  unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims.
+  simpl.
+  lia.
+Qed.
+
+Lemma current_src_args_in_dim_pi_elim_schedule_resize :
+  forall d es dim pi current,
+    current_src_args_in_dim (dim + d) (pi_elim_schedule d es pi) current =
+    current_src_args_in_dim dim pi
+      (resize (current_env_dim_in_dim dim pi.(pi_point_witness)) current ++
+       skipn (d + current_env_dim_in_dim dim pi.(pi_point_witness))%nat current).
+Proof.
+  intros d es dim pi current.
+  unfold current_src_args_in_dim.
+  rewrite current_env_dim_in_dim_pi_elim_schedule.
+  apply current_src_args_at_pi_elim_schedule_resize.
+Qed.
+
 Theorem poly_elim_schedule_semantics_preserve :
-  forall d es env to_scan_lex prog_lex mem1 mem2,
-    poly_lex_semantics to_scan_lex prog_lex mem1 mem2 ->
+  forall d es scan_dim env to_scan_lex prog_lex mem1 mem2,
+    (d <= scan_dim)%nat ->
+    poly_lex_semantics scan_dim to_scan_lex prog_lex mem1 mem2 ->
     forall to_scan prog,
       prog_lex = elim_schedule d es prog ->
       wf_scan to_scan -> wf_scan to_scan_lex ->
       (forall n pi, nth_error prog n = Some pi -> (length pi.(pi_schedule) <= d)%nat) ->
+      (forall n pi, nth_error prog n = Some pi ->
+         current_env_dim_in_dim (scan_dim - d) pi.(pi_point_witness) = es) ->
       (forall n p q ts pi, nth_error prog n = Some pi -> length p = es -> length ts = d ->
                       to_scan_lex n (p ++ ts ++ q) = is_eq ts (affine_product pi.(pi_schedule) (p ++ q)) && to_scan n (p ++ q)) ->
       (forall n p q, length p = es -> to_scan n (p ++ q) = true -> p =v= env) ->
       (forall n p, nth_error prog n = None -> to_scan n p = false) ->
-      poly_semantics to_scan prog mem1 mem2.
+      poly_semantics (scan_dim - d) to_scan prog mem1 mem2.
 Proof.
-  intros d es env to_scan_lex prog mem1 mem2 Hsem.
-  induction Hsem as [to_scan_l1 prog_l1 mem3 Hdone|to_scan_l1 prog_l1 mem3 mem4 mem5 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros to_scan prog Hprogeq Hwf Hwflex Hsched_length Hcompat Hscanenv Hout.
+  intros d es scan_dim env to_scan_lex prog_lex mem1 mem2 Hdscan Hsem.
+  remember scan_dim as scan_dim0 eqn:Hscan_dim in Hsem.
+  revert scan_dim Hdscan Hscan_dim.
+  induction Hsem as
+      [env_dim to_scan_l1 prog_l1 mem3 Hdone
+      |env_dim to_scan_l1 prog_l1 mem3 mem4 mem5 pi n p wcs rcs Hscanp Heqpi Hts Hsem1 Hsem2 IH];
+    intros scan_dim Hdscan Hscan_dim.
+  - subst env_dim.
+    intros to_scan prog Hprogeq Hwf Hwflex Hsched_length Henvdim Hcompat Hscanenv Hout.
     apply PolyDone. intros n p.
     destruct (nth_error prog n) as [pi|] eqn:Heq.
-    + specialize (Hcompat n (resize es p) (skipn es p) (resize d (affine_product pi.(pi_schedule) p)) pi).
+    + specialize (Hcompat n (resize es p) (skipn es p) (resize d (affine_product pi.(pi_schedule) p)) pi Heq).
+      assert (Hlenp : length (resize es p) = es) by apply resize_length.
+      assert (Hlents : length (resize d (affine_product (pi_schedule pi) p)) = d) by apply resize_length.
+      specialize (Hcompat Hlenp Hlents).
       rewrite Hdone in Hcompat.
-      rewrite resize_skipn_eq in Hcompat. rewrite resize_eq in Hcompat.
-      * simpl in Hcompat. symmetry; apply Hcompat; auto.
-      * unfold affine_product. rewrite map_length. eauto.
+      rewrite resize_skipn_eq in Hcompat.
+      rewrite resize_eq in Hcompat by (unfold affine_product; rewrite map_length; eauto).
+      rewrite is_eq_reflexive in Hcompat.
+      simpl in Hcompat.
+      symmetry. exact Hcompat.
     + auto.
-  - intros to_scan prog Hprogeq Hwf Hwflex Hsched_length Hcompat Hscanenv Hout.
+  - subst env_dim.
+    intros to_scan prog Hprogeq Hwf Hwflex Hsched_length Henvdim Hcompat Hscanenv Hout.
     rewrite <- split3_eq with (d := d) (i := es) in Hscanp.
     rewrite Hprogeq in *; unfold elim_schedule in Heqpi.
-    destruct (nth_error prog n) as [pi1|] eqn:Hpi1; [| rewrite map_nth_error_none in Heqpi; congruence ].
-    erewrite map_nth_error in Heqpi; eauto; inversion Heqpi as [Heqpi1].
+    destruct (nth_error prog n) as [pi1|] eqn:Hpi1;
+      [| rewrite map_nth_error_none in Heqpi; congruence].
+    erewrite map_nth_error in Heqpi; eauto.
+    inversion Heqpi; subst pi; clear Heqpi.
+    pose proof Hscanp as Hscanp_lex.
     rewrite Hcompat with (pi := pi1) in Hscanp; auto.
     reflect; destruct Hscanp as [Heqp Hscan].
-    eapply PolyProgress with (n := n) (p := resize es p ++ skipn (d + es)%nat p); eauto.
+    eapply PolyProgress with
+        (n := n)
+        (p := resize es p ++ skipn (d + es)%nat p); eauto.
     + intros n2 p2 pi2 Heqpi2 Hcmp.
-      specialize (Hts n2 (resize es p2 ++ (resize d (affine_product pi2.(pi_schedule) p2)) ++ skipn es p2)).
+      specialize
+        (Hts n2
+           (resize es p2 ++ resize d (affine_product pi2.(pi_schedule) p2) ++ skipn es p2)).
       rewrite Hcompat with (pi := pi2) in Hts; auto.
       rewrite resize_skipn_eq in Hts.
-      rewrite resize_eq in Hts by (unfold affine_product; rewrite map_length; eauto). simpl in Hts.
-      destruct (to_scan n2 p2) eqn:Hscan2; auto. apply Hts.
+      rewrite resize_eq in Hts by (unfold affine_product; rewrite map_length; eauto).
+      simpl in Hts.
+      destruct (to_scan n2 p2) eqn:Hscan2; auto.
+      apply Hts.
       rewrite <- split3_eq with (l := p) (d := d) (i := es).
       rewrite !lex_compare_app by (rewrite !resize_length; reflexivity).
       rewrite Hscanenv with (p := resize es p2) by (apply resize_length || rewrite resize_skipn_eq; apply Hscan2).
       rewrite Hscanenv with (p := resize es p) by (apply resize_length || apply Hscan).
       rewrite lex_compare_reflexive. simpl.
-      rewrite Heqp. rewrite resize_eq by (unfold affine_product; rewrite map_length; eauto).
-      rewrite Hcmp. reflexivity.
-    + rewrite <- Heqpi1 in Hsem1; unfold pi_elim_schedule in Hsem1; simpl in *.
-      rewrite affine_product_skipn in Hsem1. apply Hsem1.
+      rewrite Heqp.
+      rewrite resize_eq by (unfold affine_product; rewrite map_length; eauto).
+      rewrite Hcmp.
+      reflexivity.
+    + simpl in Hsem1.
+      replace scan_dim with ((scan_dim - d) + d)%nat in Hsem1 by lia.
+      rewrite
+        (current_src_args_in_dim_pi_elim_schedule_resize
+           d es (scan_dim - d) pi1 p)
+        in Hsem1.
+      rewrite (Henvdim n pi1 Hpi1) in Hsem1.
+      apply Hsem1.
     + apply IH; auto.
       * apply scanned_wf_compat; auto.
       * apply scanned_wf_compat; auto.
       * intros n0 p0 q0 ts pi0 Hpi0 Hlp0 Hlts.
-        unfold scanned. rewrite Hcompat with (pi := pi0); auto.
+        unfold scanned.
+        rewrite Hcompat with (pi := pi0); auto.
         destruct (is_eq ts (affine_product (pi_schedule pi0) (p0 ++ q0))) eqn:Htseq; auto.
         simpl.
         f_equal; f_equal.
-        destruct (n =? n0)%nat eqn:Heqn; [|rewrite !andb_false_r; auto]. rewrite !andb_true_r.
+        destruct (n =? n0)%nat eqn:Heqn; [|rewrite !andb_false_r; auto].
+        rewrite !andb_true_r.
         rewrite <- split3_eq with (l := p) (d := d) (i := es) at 1.
         rewrite !is_eq_app by (rewrite resize_length; auto).
         destruct (is_eq (resize es p) p0) eqn:Heqp0; simpl; auto.
         destruct (is_eq (skipn (d + es)%nat p) q0) eqn:Heqq0; simpl; auto using andb_false_r.
         rewrite andb_true_r.
-        reflect. rewrite Heqn in *.
-        assert (Heqpi0 : pi0 = pi1) by congruence. rewrite Heqpi0 in *.
-        rewrite Heqp. rewrite Htseq. f_equal.
-        assert (H : p0 ++ q0 =v= resize es p ++ skipn (d + es) p); [|rewrite H; reflexivity].
-        rewrite <- is_eq_veq. rewrite is_eq_app by (rewrite resize_length; auto).
-        reflect; split; symmetry; assumption.
-      * intros n0 p0 q0 H. unfold scanned. reflect. intros [H1 H2]. eapply Hscanenv; eauto.
-      * intros n0 p0 H. unfold scanned. rewrite Hout; auto.
+        reflect.
+        rewrite Heqn in *.
+        assert (Heqpi0 : pi0 = pi1) by congruence.
+        subst pi0.
+        rewrite Heqp.
+        rewrite Htseq.
+        f_equal.
+        assert (Hveq : p0 ++ q0 =v= resize es p ++ skipn (d + es) p).
+        {
+          rewrite <- is_eq_veq.
+          rewrite is_eq_app by (rewrite resize_length; auto).
+          reflect; split; symmetry; assumption.
+        }
+        rewrite Hveq.
+        reflexivity.
+      * intros n0 p0 q0 Hlp0 Hscan0.
+        unfold scanned in Hscan0.
+        apply andb_prop in Hscan0 as [Hscan0 _].
+        eapply Hscanenv; eauto.
+      * intros n0 p0 Hnone.
+        unfold scanned.
+        rewrite Hout; auto.
 Qed.
 
-Definition elim_schedule_prog (pprog: t): t := 
-    let '(pis, varctxt, vars) := pprog in 
-    let pis' := elim_schedule (length vars) (length varctxt) pis in 
-    (pis', varctxt, vars).
-
-(** Need to investigate the dim passed in is correct or not *)
 Theorem poly_elim_schedule_semantics_env_preserve :
   forall d es env dim prog mem1 mem2,
     es = length env ->
     (es <= dim)%nat ->
     env_poly_lex_semantics env (dim + d) (elim_schedule d es prog) mem1 mem2 ->
     (forall n pi, nth_error prog n = Some pi -> (length pi.(pi_schedule) <= d)%nat) ->
+    (forall n pi, nth_error prog n = Some pi ->
+         current_env_dim_in_dim dim pi.(pi_point_witness) = es) ->
     env_poly_semantics env dim prog mem1 mem2.
 Proof.
-  intros d es env dim prog mem1 mem2 Hlength Hdim Hsem Hsched_length.
-  unfold env_poly_semantics. unfold env_poly_lex_semantics in Hsem.
-  eapply poly_elim_schedule_semantics_preserve.
+  intros d es env dim prog mem1 mem2 Hlength Hdim Hsem Hsched_length Henvdim.
+  subst es.
+  unfold env_poly_semantics.
+  unfold env_poly_lex_semantics in Hsem.
+  replace dim with (dim + d - d)%nat by lia.
+  eapply (poly_elim_schedule_semantics_preserve
+            d (length env) (dim + d) env
+            (env_scan (elim_schedule d (length env) prog) env (dim + d))
+            (elim_schedule d (length env) prog) mem1 mem2); simpl.
+  - lia.
   - exact Hsem.
   - reflexivity.
   - apply env_scan_proper.
   - apply env_scan_proper.
   - exact Hsched_length.
+  - intros n pi Hpi.
+    replace (dim + d - d)%nat with dim by lia.
+    exact (Henvdim n pi Hpi).
   - intros n p q ts pi Heqpi Hlp Hlts.
-    unfold env_scan. unfold elim_schedule. rewrite map_nth_error with (d := pi); auto. rewrite Heqpi.
-    rewrite <- Hlength. unfold pi_elim_schedule; simpl.
-    rewrite !resize_app with (n := es) by apply Hlp.
+    unfold env_scan.
+    unfold elim_schedule.
+    rewrite map_nth_error with (d := pi); auto.
+    rewrite Heqpi.
+    unfold pi_elim_schedule; simpl.
+    rewrite !resize_app with (n := length env) by apply Hlp.
     destruct (is_eq env p); simpl; auto using andb_false_r.
-    rewrite in_poly_app. rewrite andb_comm. rewrite <- andb_assoc. f_equal.
+    rewrite in_poly_app.
+    rewrite andb_comm.
+    rewrite <- andb_assoc.
+    f_equal.
     + apply make_sched_poly_correct; eauto.
-    + rewrite andb_comm. f_equal.
+    + rewrite andb_comm.
+      f_equal.
       * rewrite !resize_app_le by lia.
-        rewrite !is_eq_app by lia. rewrite !is_eq_reflexive. simpl.
-        f_equal. f_equal. lia.
-      * unfold in_poly. rewrite forallb_map. apply forallb_ext.
-        intros c. unfold satisfies_constraint. unfold insert_zeros_constraint. simpl.
-        f_equal. rewrite dot_product_commutative. rewrite insert_zeros_product_skipn.
-        rewrite resize_app by apply Hlp.
-        rewrite app_assoc. 
-        rewrite skipn_app. rewrite app_length. 
-        rewrite <- Hlp. rewrite <- Hlts. 
+        rewrite !is_eq_app by lia.
+        rewrite !is_eq_reflexive.
+        simpl.
+        f_equal.
+        f_equal.
+        lia.
+      * unfold in_poly.
+        rewrite forallb_map.
+        apply forallb_ext.
+        intros c.
+        unfold satisfies_constraint, insert_zeros_constraint.
+        simpl.
+        f_equal.
         rewrite dot_product_commutative.
-        rewrite skipn_app. 
-        rewrite skipn_all2; try lia. simpls.
-        rewrite skipn_all2; try lia. simpls.
-        replace (Datatypes.length ts + Datatypes.length p - (Datatypes.length p + Datatypes.length ts))%nat with 0%nat; try lia.
-        rewrite skipn_O. trivial. 
-  - intros n p q Hlp Hscan. unfold env_scan in Hscan.
+        rewrite insert_zeros_product_skipn.
+        rewrite resize_app by apply Hlp.
+        rewrite app_assoc.
+        rewrite skipn_app.
+        rewrite app_length.
+        rewrite <- Hlp.
+        rewrite <- Hlts.
+        rewrite dot_product_commutative.
+        rewrite skipn_app.
+        rewrite skipn_all2; try lia.
+        simpl.
+        rewrite skipn_all2; try lia.
+        simpl.
+        replace (Datatypes.length ts + Datatypes.length p - (Datatypes.length p + Datatypes.length ts))%nat with 0%nat by lia.
+        rewrite skipn_O.
+        trivial.
+  - intros n p q Hlp Hscanp.
+    unfold env_scan in Hscanp.
     destruct (nth_error prog n) as [pi|]; [|congruence].
-    reflect. destruct Hscan as [[He Hr] Hp].
-    rewrite resize_app in He by congruence. symmetry. exact He.
-  - intros n p Hout. unfold env_scan. rewrite Hout. auto.
+    reflect.
+    destruct Hscanp as [[He _] _].
+    rewrite resize_app in He by congruence.
+    symmetry.
+    exact He.
+  - intros n p Hnone.
+    unfold env_scan.
+    rewrite Hnone.
+    auto.
 Qed.
+
+Definition elim_schedule_prog (pprog: t): t := 
+    let '(pis, varctxt, vars) := pprog in 
+    let pis' := elim_schedule (pprog_current_dim pprog) (length varctxt) pis in 
+    (pis', varctxt, vars).
 
 End PolyLang.

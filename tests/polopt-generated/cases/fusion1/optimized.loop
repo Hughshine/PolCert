@@ -1,11 +1,22 @@
 context(N);
 
-for i0 in range(1, min(3, (N + -2))) {
-  A[i0] = (0.33 * ((In[(i0 - 1)] + In[i0]) + In[(i0 + 1)]));
+if (6 <= N) {
+  for i0 in range(0, ((N + 29) / 32)) {
+    for i1 in range(max((32 * i0), 1), 3) {
+      A[i1] = (0.33 * ((In[(i1 - 1)] + In[i1]) + In[(i1 + 1)]));
+    }
+    for i1 in range(max(3, (32 * i0)), min((N + -2), ((32 * i0) + 32))) {
+      A[i1] = (0.33 * ((In[(i1 - 1)] + In[i1]) + In[(i1 + 1)]));
+      for i2 in range((i1 + -1), i1) {
+        Out[i2] = (0.33 * ((A[(i2 - 1)] + A[i2]) + A[(i2 + 1)]));
+      }
+    }
+  }
 }
-for i0 in range(3, (N + -2)) {
-  A[i0] = (0.33 * ((In[(i0 - 1)] + In[i0]) + In[(i0 + 1)]));
-  for i1 in range((i0 + -1), i0) {
-    Out[i1] = (0.33 * ((A[(i1 - 1)] + A[i1]) + A[(i1 + 1)]));
+if ((N <= 5 && 4 <= N)) {
+  for i0 in range(0, ((N + 29) / 32)) {
+    for i1 in range(max((32 * i0), 1), (N + -2)) {
+      A[i1] = (0.33 * ((In[(i1 - 1)] + In[i1]) + In[(i1 + 1)]));
+    }
   }
 }

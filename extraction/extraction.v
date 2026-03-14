@@ -56,6 +56,21 @@ Extract Inlined Constant Datatypes.snd => "snd".
 
 Load extractionMachdep.
 
+(* Keep BinInt.Z extraction compatible with other extracted stdlib modules
+   such as Zbits/Initializers/IEEE754_extra that rely on these APIs. *)
+Extract Constant Z.pred =>
+  "fun x -> add x (Zneg Coq_xH)".
+Extract Constant Z.iter =>
+  "fun n f x -> match n with | Zpos p -> Pos.iter f x p | _ -> x".
+Extract Constant Z.odd =>
+  "function | Z0 -> false | Zpos (Coq_xO _) -> false | Zneg (Coq_xO _) -> false | _ -> true".
+Extract Constant Z.div2 =>
+  "function | Z0 -> Z0 | Zpos Coq_xH -> Z0 | Zpos p -> Zpos (Pos.div2 p) | Zneg p -> Zneg (Pos.div2_up p)".
+Extract Constant Z.log2 =>
+  "function | Zpos (Coq_xI p) -> Zpos (Pos.size p) | Zpos (Coq_xO p) -> Zpos (Pos.size p) | _ -> Z0".
+Extract Constant Z.log2_up =>
+  "fun a -> match compare (Zpos Coq_xH) a with | Lt -> succ (log2 (pred a)) | _ -> Z0".
+
 Extract Inlined Constant Debugging.failwith =>
   "(fun st mesg _ -> raise (CertcheckerConfig.CertCheckerFailure (st, (CoqPr.charListTr mesg))))".
 
@@ -159,8 +174,14 @@ Extraction Inline CoreAlarmed.Base.pure CoreAlarmed.Base.imp.
 Extract Constant PolOpt.time  => "Timing.time_coq".
 Extract Constant print_CompCertC_stmt => "PrintCsyntax.print_if".
 Extract Constant CPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
+Extract Constant CPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant CPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant TPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
+Extract Constant TPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant TPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant SPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
+Extract Constant SPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant SPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant PolOpt.print => "fun (f: 'a -> unit) (x: 'a) -> f x; x".
 Extract Constant AST.ident_to_varname => "Camlcoq.extern_atom'".
 Extract Constant AST.iterator_to_varname => "Camlcoq.iterator_to_varname".
@@ -177,10 +198,11 @@ Require Import Ctyping.
 Require Import CPolOpt.
 Require Import TPolOpt.
 Require Import SPolOpt.
+Require Import STilingOpt.
 Require Import TPolValidator.
 
 
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)
 
-Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt TPolValidator.
+Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt STilingOpt TPolValidator.

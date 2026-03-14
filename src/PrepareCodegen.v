@@ -52,7 +52,7 @@ Definition source_cols (varctxt: list Instr.ident) (pi: PolyLang.PolyInstr) : na
 
 Definition codegen_target_dim (pp: PolyLang.t) : nat :=
   let '(_, _, vars) := pp in
-  length vars.
+  Nat.max (length vars) (PolyLang.pprog_current_dim pp).
 
 Definition depth_tail_zero (env_dim cols: nat) (pi: PolyLang.PolyInstr) : Prop :=
   forall p,
@@ -66,21 +66,24 @@ Definition codegen_ready_pi (env_dim cols: nat) (pi: PolyLang.PolyInstr) : Prop 
   exact_listzzs_cols cols pi.(PolyLang.pi_transformation) /\
   Forall (fun acc => let '(_, affs) := acc in exact_listzzs_cols cols affs) pi.(PolyLang.pi_waccess) /\
   Forall (fun acc => let '(_, affs) := acc in exact_listzzs_cols cols affs) pi.(PolyLang.pi_raccess) /\
-  length pi.(PolyLang.pi_transformation) = env_dim + pi.(PolyLang.pi_depth) /\
   depth_tail_zero env_dim cols pi.
 
-Definition codegen_ready_pprog (pp: PolyLang.t) : Prop :=
+Definition codegen_ready_pprog_at (cols: nat) (pp: PolyLang.t) : Prop :=
   let '(pis, varctxt, vars) := pp in
-  let cols := codegen_target_dim pp in
   length varctxt <= cols /\
   forall pi, In pi pis -> codegen_ready_pi (length varctxt) cols pi.
 
-Definition codegen_wf_pprog (pp: PolyLang.t) : Prop :=
+Definition codegen_ready_pprog (pp: PolyLang.t) : Prop :=
+  codegen_ready_pprog_at (codegen_target_dim pp) pp.
+
+Definition codegen_wf_pprog_at (cols: nat) (pp: PolyLang.t) : Prop :=
   let '(pis, varctxt, vars) := pp in
-  let cols := codegen_target_dim pp in
   length varctxt <= cols /\
   ASTGen.pis_have_dimension pis cols /\
   (forall pi, In pi pis -> (poly_nrl pi.(PolyLang.pi_schedule) <= cols)%nat).
+
+Definition codegen_wf_pprog (pp: PolyLang.t) : Prop :=
+  codegen_wf_pprog_at (codegen_target_dim pp) pp.
 
 Definition encode_depth_in_domain (env_dim cols: nat) (pi: PolyLang.PolyInstr) : Domain :=
   let src_cols := env_dim + pi.(PolyLang.pi_depth) in
@@ -93,7 +96,13 @@ Definition prepare_pi (env_dim cols: nat) (pi: PolyLang.PolyInstr) : PolyLang.Po
     PolyLang.pi_instr := pi.(PolyLang.pi_instr);
     PolyLang.pi_poly := encode_depth_in_domain env_dim cols pi;
     PolyLang.pi_schedule := resize_affine_list cols pi.(PolyLang.pi_schedule);
+    PolyLang.pi_point_witness :=
+      PointWitness.PSWInsertAtEnd
+        (cols - (env_dim + pi.(PolyLang.pi_depth)))%nat
+        pi.(PolyLang.pi_point_witness);
     PolyLang.pi_transformation := resize_affine_list cols pi.(PolyLang.pi_transformation);
+    PolyLang.pi_access_transformation :=
+      resize_affine_list cols pi.(PolyLang.pi_access_transformation);
     PolyLang.pi_waccess := resize_access_list cols pi.(PolyLang.pi_waccess);
     PolyLang.pi_raccess := resize_access_list cols pi.(PolyLang.pi_raccess);
   |}.
@@ -105,13 +114,14 @@ Definition prepare_codegen (pp: PolyLang.t) : PolyLang.t :=
 
 Definition source_ip_of (env_dim n: nat) (pi: PolyLang.PolyInstr) (p: list Z)
   : PolyLang.InstrPoint :=
+  let idx := resize (env_dim + pi.(PolyLang.pi_depth)) p in
   {|
     PolyLang.ip_nth := n;
-    PolyLang.ip_index := resize (env_dim + pi.(PolyLang.pi_depth)) p;
-    PolyLang.ip_transformation := pi.(PolyLang.pi_transformation);
+    PolyLang.ip_index := idx;
+    PolyLang.ip_transformation := PolyLang.current_transformation_of pi idx;
     PolyLang.ip_time_stamp :=
       affine_product pi.(PolyLang.pi_schedule)
-                     (resize (env_dim + pi.(PolyLang.pi_depth)) p);
+                     idx;
     PolyLang.ip_instruction := pi.(PolyLang.pi_instr);
     PolyLang.ip_depth := pi.(PolyLang.pi_depth);
   |}.
@@ -343,6 +353,58 @@ Proof.
   eapply resize_affine_affine_product; eauto.
 Qed.
 
+Lemma wf_pprog_affine_implies_source_cols_le :
+  forall pis varctxt vars cols pi,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
+    In pi pis ->
+    (length varctxt + pi.(PolyLang.pi_depth) <= cols)%nat.
+Proof.
+  intros pis varctxt vars cols pi Hwf Hdim_cols Hin.
+  unfold PolyLang.wf_pprog_affine in Hwf.
+  destruct Hwf as [_ Hwfpis].
+  pose proof (Hwfpis pi Hin) as Hwfpi.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [_ _].
+  assert (Hpin :
+    PolyLang.pinstr_current_dim varctxt pi <= cols).
+  {
+    eapply Nat.le_trans.
+    - eapply PolyLang.pprog_current_dim_ge_pinstr; eauto.
+    - exact Hdim_cols.
+  }
+  unfold PolyLang.pinstr_current_dim in Hpin.
+  eapply Nat.le_trans.
+  - apply Nat.le_max_l.
+  - exact Hpin.
+Qed.
+
+Lemma fold_left_max_le_bound :
+  forall ds init bound,
+    init <= bound ->
+    Forall (fun d => d <= bound)%nat ds ->
+    List.fold_left Nat.max ds init <= bound.
+Proof.
+  induction ds as [|d ds IH]; intros init bound Hinit Hforall; simpl.
+  - exact Hinit.
+  - inversion Hforall; subst.
+    eapply IH.
+    + apply Nat.max_lub; assumption.
+    + exact H2.
+Qed.
+
+Lemma wf_pprog_affine_implies_pprog_current_dim_le_target :
+  forall pis varctxt vars,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars)
+     <= codegen_target_dim (pis, varctxt, vars))%nat.
+Proof.
+  intros pis varctxt vars _.
+  unfold codegen_target_dim.
+  simpl.
+  apply Nat.le_max_r.
+Qed.
+
 Lemma prepare_pi_transformation_eval:
   forall env_dim cols pi p,
     exact_listzzs_cols (env_dim + pi.(PolyLang.pi_depth)) pi.(PolyLang.pi_transformation) ->
@@ -355,24 +417,91 @@ Proof.
   eapply resize_affine_affine_product; eauto.
 Qed.
 
+Lemma prepare_pi_current_env_dim_in_dim_affine:
+  forall env_dim cols pi,
+    (env_dim + pi.(PolyLang.pi_depth) <= cols)%nat ->
+    pi.(PolyLang.pi_point_witness) = PointWitness.PSWIdentity pi.(PolyLang.pi_depth) ->
+    PolyLang.current_env_dim_in_dim cols (prepare_pi env_dim cols pi).(PolyLang.pi_point_witness) = env_dim.
+Proof.
+  intros env_dim cols pi Hcols Hwit.
+  unfold PolyLang.current_env_dim_in_dim.
+  unfold prepare_pi; simpl.
+  rewrite Hwit.
+  unfold PointWitness.witness_current_point_dim,
+    PointWitness.witness_base_point_dim,
+    PointWitness.witness_added_dims.
+  simpl.
+  lia.
+Qed.
+
+Lemma prepare_pi_current_src_args_in_dim_affine:
+  forall env_dim cols pi p,
+    (env_dim + pi.(PolyLang.pi_depth) <= cols)%nat ->
+    pi.(PolyLang.pi_point_witness) = PointWitness.PSWIdentity pi.(PolyLang.pi_depth) ->
+    p =v= resize cols p ->
+    PolyLang.current_src_args_in_dim cols (prepare_pi env_dim cols pi) p =
+    affine_product (prepare_pi env_dim cols pi).(PolyLang.pi_transformation) p.
+Proof.
+  intros env_dim cols pi p Hcols Hwit Hp.
+  unfold PolyLang.current_src_args_in_dim, PolyLang.current_src_args_at.
+  rewrite (prepare_pi_current_env_dim_in_dim_affine env_dim cols pi Hcols Hwit).
+  unfold PolyLang.current_transformation_at, PolyLang.current_transformation_for_witness.
+  unfold prepare_pi; simpl.
+  rewrite Hwit.
+  simpl.
+  set (added := (cols - (env_dim + PolyLang.pi_depth pi))%nat).
+  assert
+    (Heq_affs :
+      map
+        (fun '(coeffs, rhs) =>
+           (resize (length coeffs + added) coeffs, rhs))
+        (resize_affine_list cols (PolyLang.pi_transformation pi)) =
+      resize_affine_list (cols + added)
+        (resize_affine_list cols (PolyLang.pi_transformation pi))).
+  {
+    unfold resize_affine_list.
+    apply map_ext_in.
+    intros [coeffs rhs] Hin.
+    simpl.
+    assert (Hcoeffs : length coeffs = cols).
+    {
+      eapply resize_affine_list_exact_cols; eauto.
+    }
+    rewrite Hcoeffs.
+    reflexivity.
+  }
+  rewrite Heq_affs.
+  rewrite (resize_affine_affine_product cols (cols + added)).
+  - eapply affine_product_proper; [reflexivity|].
+    apply veq_sym. exact Hp.
+  - apply resize_affine_list_exact_cols.
+  - lia.
+Qed.
+
 Lemma prepare_env_scan_true_implies_source_ip_props:
-  forall pis varctxt vars envv n p pi,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols envv n p pi,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     length envv = length varctxt ->
     nth_error pis n = Some pi ->
     PolyLang.env_scan
-      (map (prepare_pi (length varctxt) (length vars)) pis)
-      envv (length vars) n p = true ->
+      (map (prepare_pi (length varctxt) cols) pis)
+      envv cols n p = true ->
     let env_dim := length varctxt in
     let src_cols := env_dim + pi.(PolyLang.pi_depth) in
     let ip := source_ip_of env_dim n pi p in
     firstn env_dim ip.(PolyLang.ip_index) = envv /\
     PolyLang.belongs_to ip pi /\
     length ip.(PolyLang.ip_index) = src_cols /\
-    is_eq p (resize (length vars) p) = true /\
-    is_null (skipn src_cols (resize (length vars) p)) = true.
+    is_eq p (resize cols p) = true /\
+    is_null (skipn src_cols (resize cols p)) = true.
 Proof.
-  intros pis varctxt vars envv n p pi Hwf Henvlen Hnth.
+  intros pis varctxt vars cols envv n p pi Hwf Hdim_cols Henvlen Hnth.
+  pose proof (nth_error_In _ _ Hnth) as Hpi_in.
+  assert (Hsrc_cols_le : (length varctxt + pi.(PolyLang.pi_depth) <= cols)%nat).
+  {
+    eapply wf_pprog_affine_implies_source_cols_le; eauto.
+  }
   unfold PolyLang.env_scan.
   rewrite map_nth_error with (d := pi); auto.
   simpl.
@@ -381,15 +510,19 @@ Proof.
   destruct Hscan as [Henv Hdom].
   apply andb_prop in Henv.
   destruct Henv as [Henv Hplen].
-  unfold PolyLang.wf_pprog in Hwf.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [_ Hwfpis].
-  pose proof (Hwfpis pi (nth_error_In _ _ Hnth)) as Hwfpi.
+  pose proof (Hwfpis pi Hpi_in) as Hwfpi.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [Hwfpi [_ _]].
   unfold PolyLang.wf_pinstr in Hwfpi.
   destruct Hwfpi as
-      [Hcols_le [_ [_ [Hpoly_exact [Htf_exact [Hsched_exact [_ [_ Htflen]]]]]]]].
+      [_ [_ [_ [_ [Hpoly_exact [Htf_exact [_ [Hsched_exact [_ _]]]]]]]]].
   pose proof
     (encode_depth_in_domain_in_poly
-       (length varctxt) (length vars) pi p Hpoly_exact Hcols_le Hdom)
+       (length varctxt) cols pi p Hpoly_exact
+       Hsrc_cols_le
+       Hdom)
     as Hprepared_dom.
   destruct Hprepared_dom as [Hsrcdom Htail].
   repeat split.
@@ -410,26 +543,75 @@ Proof.
 Qed.
 
 Lemma prepare_step_semantics_to_source_ip_sema:
-  forall pis varctxt vars n p pi st1 st2 wcs rcs,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols n p pi st1 st2 wcs rcs,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     nth_error pis n = Some pi ->
+    p =v= resize cols p ->
     Instr.instr_semantics
-      (prepare_pi (length varctxt) (length vars) pi).(PolyLang.pi_instr)
-      (affine_product
-        (prepare_pi (length varctxt) (length vars) pi).(PolyLang.pi_transformation) p)
+      (prepare_pi (length varctxt) cols pi).(PolyLang.pi_instr)
+      (PolyLang.current_src_args_in_dim cols (prepare_pi (length varctxt) cols pi) p)
       wcs rcs st1 st2 ->
     PolyLang.instr_point_sema (source_ip_of (length varctxt) n pi p) st1 st2.
 Proof.
-  intros pis varctxt vars n p pi st1 st2 wcs rcs Hwf Hnth Hsem.
-  unfold PolyLang.wf_pprog in Hwf.
+  intros pis varctxt vars cols n p pi st1 st2 wcs rcs Hwf Hdim_cols Hnth Hp Hsem.
+  pose proof Hwf as Hwf_all.
+  pose proof (nth_error_In _ _ Hnth) as Hpi_in.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [_ Hwfpis].
-  pose proof (Hwfpis pi (nth_error_In _ _ Hnth)) as Hwfpi.
+  pose proof (Hwfpis pi Hpi_in) as Hwfpi.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [Hwfpi [Hwit_eq _]].
   unfold PolyLang.wf_pinstr in Hwfpi.
   destruct Hwfpi as
-      [Hcols_le [_ [_ [_ [Htf_exact [_ [_ [_ _]]]]]]]].
+      [Hwit_cur
+       [Hcur_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hwacc Hracc]]]]]]]]].
+  rewrite Hwit_eq in Htf_exact.
+  simpl in Htf_exact.
+  pose proof
+    (wf_pprog_affine_implies_source_cols_le
+       pis varctxt vars cols pi Hwf_all Hdim_cols Hpi_in)
+    as Hcols_le_cols.
+  rewrite prepare_pi_current_src_args_in_dim_affine in Hsem.
+  2: exact Hcols_le_cols.
+  2: exact Hwit_eq.
+  2: exact Hp.
+  rewrite (prepare_pi_transformation_eval (length varctxt) cols pi p) in Hsem.
+  2: exact Htf_exact.
+  2: lia.
+  assert (Htf_cur :
+    PolyLang.current_transformation_of pi
+      (resize (length varctxt + PolyLang.pi_depth pi) p) =
+    PolyLang.pi_transformation pi).
+  {
+    unfold PolyLang.current_transformation_of, PolyLang.current_transformation_at,
+      PolyLang.current_env_dim_of.
+    rewrite Hwit_eq.
+    simpl.
+    replace
+      (length varctxt + PolyLang.pi_depth pi - PolyLang.pi_depth pi)%nat
+      with (length varctxt) by lia.
+    reflexivity.
+  }
   econstructor.
   simpl.
-  rewrite <- (prepare_pi_transformation_eval (length varctxt) (length vars) pi p); eauto.
+  replace
+    (affine_product
+       (PolyLang.current_transformation_of pi
+          (resize (length varctxt + PolyLang.pi_depth pi) p))
+       (resize (length varctxt + PolyLang.pi_depth pi) p))
+    with
+      (affine_product
+         (PolyLang.pi_transformation pi)
+         (resize (length varctxt + PolyLang.pi_depth pi) p)).
+  - exact Hsem.
+  - rewrite Htf_cur. reflexivity.
 Qed.
 
 Lemma source_ip_of_nth :
@@ -658,7 +840,7 @@ Lemma source_ip_of_eq_from_is_eq :
     is_eq p q = true ->
     source_ip_of env_dim n pi p = source_ip_of env_dim n pi q.
 Proof.
-  intros env_dim n [depth instr poly tf sched wacc racc] p q Heq.
+  intros env_dim n [depth instr poly sched pw tf acc_tf wacc racc] p q Heq.
   unfold source_ip_of. simpl.
   assert (Hresize :
     resize (env_dim + depth) p = resize (env_dim + depth) q).
@@ -666,8 +848,9 @@ Proof.
     apply resize_eq_compat. exact Heq.
   }
   f_equal; try reflexivity.
-  exact Hresize.
-  rewrite Hresize. reflexivity.
+  - exact Hresize.
+  - rewrite Hresize. reflexivity.
+  - rewrite Hresize. reflexivity.
 Qed.
 
 Lemma source_resize_eq_implies_prepare_eq :
@@ -729,23 +912,25 @@ Proof.
 Qed.
 
 Lemma prepare_env_scan_true_source_ip_eq_implies_same_scan_key :
-  forall pis varctxt vars envv n1 n2 p1 p2 pi1 pi2,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols envv n1 n2 p1 p2 pi1 pi2,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     length envv = length varctxt ->
     nth_error pis n1 = Some pi1 ->
     nth_error pis n2 = Some pi2 ->
     PolyLang.env_scan
-      (map (prepare_pi (length varctxt) (length vars)) pis)
-      envv (length vars) n1 p1 = true ->
+      (map (prepare_pi (length varctxt) cols) pis)
+      envv cols n1 p1 = true ->
     PolyLang.env_scan
-      (map (prepare_pi (length varctxt) (length vars)) pis)
-      envv (length vars) n2 p2 = true ->
+      (map (prepare_pi (length varctxt) cols) pis)
+      envv cols n2 p2 = true ->
     source_ip_of (length varctxt) n1 pi1 p1 =
     source_ip_of (length varctxt) n2 pi2 p2 ->
     n1 = n2 /\ pi1 = pi2 /\ is_eq p1 p2 = true.
 Proof.
-  intros pis varctxt vars envv n1 n2 p1 p2 pi1 pi2
-         Hwf Henvlen Hnth1 Hnth2 Hscan1 Hscan2 Heqip.
+  intros pis varctxt vars cols envv n1 n2 p1 p2 pi1 pi2
+         Hwf Hdim_cols Henvlen Hnth1 Hnth2 Hscan1 Hscan2 Heqip.
+  pose proof Hwf as Hwf_all.
   assert (Hn : n1 = n2).
   {
     pose proof (f_equal PolyLang.ip_nth Heqip) as Hnth.
@@ -756,43 +941,65 @@ Proof.
   subst pi2.
   pose proof
     (prepare_env_scan_true_implies_source_ip_props
-       pis varctxt vars envv n1 p1 pi1
-       Hwf Henvlen Hnth1 Hscan1) as Hprops1.
+       pis varctxt vars cols envv n1 p1 pi1
+       Hwf Hdim_cols Henvlen Hnth1 Hscan1) as Hprops1.
   pose proof
     (prepare_env_scan_true_implies_source_ip_props
-       pis varctxt vars envv n1 p2 pi1
-       Hwf Henvlen Hnth1 Hscan2) as Hprops2.
-  unfold PolyLang.wf_pprog in Hwf.
+       pis varctxt vars cols envv n1 p2 pi1
+       Hwf Hdim_cols Henvlen Hnth1 Hscan2) as Hprops2.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [_ Hwfpis].
   pose proof (Hwfpis pi1 (nth_error_In _ _ Hnth1)) as Hwfpi1.
-  unfold PolyLang.wf_pinstr in Hwfpi1.
-  destruct Hwfpi1 as [Hcols_le _].
   destruct Hprops1 as [_ [_ [_ [Hp1 Htail1]]]].
   destruct Hprops2 as [_ [_ [_ [Hp2 Htail2]]]].
   pose proof (f_equal PolyLang.ip_index Heqip) as Hidx.
   simpl in Hidx.
+  pose proof (nth_error_In _ _ Hnth1) as Hpi1_in.
   split; [reflexivity|].
   split; [reflexivity|].
-  eapply source_resize_eq_implies_prepare_eq; eauto.
+  eapply source_resize_eq_implies_prepare_eq
+    with (cols := cols) (src_cols := length varctxt + pi1.(PolyLang.pi_depth)).
+  - exact (wf_pprog_affine_implies_source_cols_le
+             pis varctxt vars cols pi1 Hwf_all Hdim_cols Hpi1_in).
+  - exact Hp1.
+  - exact Hp2.
+  - exact Htail1.
+  - exact Htail2.
+  - exact Hidx.
 Qed.
 
 Lemma source_ip_of_timestamp_prepare :
-  forall pis varctxt vars n pi p,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols n pi p,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     nth_error pis n = Some pi ->
     PolyLang.ip_time_stamp (source_ip_of (length varctxt) n pi p) =
-    affine_product (prepare_pi (length varctxt) (length vars) pi).(PolyLang.pi_schedule) p.
+    affine_product (prepare_pi (length varctxt) cols pi).(PolyLang.pi_schedule) p.
 Proof.
-  intros pis varctxt vars n pi p Hwf Hnth.
-  unfold PolyLang.wf_pprog in Hwf.
+  intros pis varctxt vars cols n pi p Hwf Hdim_cols Hnth.
+  pose proof Hwf as Hwf_all.
+  pose proof (nth_error_In _ _ Hnth) as Hpi_in.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [_ Hwfpis].
-  pose proof (Hwfpis pi (nth_error_In _ _ Hnth)) as Hwfpi.
+  pose proof (Hwfpis pi Hpi_in) as Hwfpi.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [Hwfpi _].
   unfold PolyLang.wf_pinstr in Hwfpi.
   destruct Hwfpi as
-      [Hcols_le [_ [_ [_ [_ [Hsched_exact [_ [_ _]]]]]]]].
+      [Hwit_cur
+       [Hcur_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hwacc Hracc]]]]]]]]].
   unfold source_ip_of. simpl.
   symmetry.
-  eapply prepare_pi_schedule_eval; eauto.
+  eapply prepare_pi_schedule_eval.
+  - exact Hsched_exact.
+  - exact (wf_pprog_affine_implies_source_cols_le
+             pis varctxt vars cols pi Hwf_all Hdim_cols Hpi_in).
 Qed.
 
 Lemma selection_sort_np_is_correct:
@@ -848,18 +1055,20 @@ Proof.
 Qed.
 
 Lemma prepare_poly_semantics_collect :
-  forall pis varctxt vars envv to_scan st1 st2,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols envv to_scan st1 st2,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     length envv = length varctxt ->
     PolyLang.poly_semantics
+      cols
       to_scan
-      (map (prepare_pi (length varctxt) (length vars)) pis)
+      (map (prepare_pi (length varctxt) cols) pis)
       st1 st2 ->
     (forall n p,
       to_scan n p = true ->
       PolyLang.env_scan
-        (map (prepare_pi (length varctxt) (length vars)) pis)
-        envv (length vars) n p = true) ->
+        (map (prepare_pi (length varctxt) cols) pis)
+        envv cols n p = true) ->
     exists exec_ipl,
       PolyLang.instr_point_list_semantics exec_ipl st1 st2 /\
       Sorted PolyLang.instr_point_sched_le exec_ipl /\
@@ -871,17 +1080,17 @@ Lemma prepare_poly_semantics_collect :
           to_scan n p = true /\
           ip = source_ip_of (length varctxt) n pi p).
 Proof.
-  intros pis varctxt vars envv to_scan st1 st2 Hwf Henvlen Hsem.
+  intros pis varctxt vars cols envv to_scan st1 st2 Hwf Hdim_cols Henvlen Hsem.
   intros Hsound.
-  set (prep_pis := map (prepare_pi (length varctxt) (length vars)) pis) in *.
-  change (PolyLang.poly_semantics to_scan prep_pis st1 st2) in Hsem.
+  set (prep_pis := map (prepare_pi (length varctxt) cols) pis) in *.
+  change (PolyLang.poly_semantics cols to_scan prep_pis st1 st2) in Hsem.
   change (forall n p, to_scan n p = true ->
-            PolyLang.env_scan prep_pis envv (length vars) n p = true) in Hsound.
+            PolyLang.env_scan prep_pis envv cols n p = true) in Hsound.
   remember prep_pis as prep_pis0 eqn:Hprep_eq in Hsem.
   revert Hprep_eq.
   induction Hsem as
-      [to_scan0 poly_instrs0 st0 Hdone
-      | to_scan0 poly_instrs0 st1' st2' st3' wcs rcs poly_instr n p
+      [dim to_scan0 poly_instrs0 st0 Hdone
+      | dim to_scan0 poly_instrs0 st1' st2' st3' wcs rcs poly_instr n p
           Hscanp Hnthprep Hmin Hstep Hrest IH];
     intros Hprep_eq.
   - exists (@nil PolyLang.InstrPoint).
@@ -904,7 +1113,7 @@ Proof.
       rewrite map_nth_error_none in Hnthprep; congruence.
     }
     assert (Hprep_pi :
-      poly_instr = prepare_pi (length varctxt) (length vars) p0).
+      poly_instr = prepare_pi (length varctxt) dim p0).
     {
       rewrite map_nth_error with (d := p0) in Hnthprep; auto.
       inversion Hnthprep. reflexivity.
@@ -912,17 +1121,25 @@ Proof.
     subst poly_instr.
     assert (Hscan_init :
       PolyLang.env_scan
-        (map (prepare_pi (length varctxt) (length vars)) pis)
-        envv (length vars) n p = true).
+        (map (prepare_pi (length varctxt) dim) pis)
+        envv dim n p = true).
     {
       eapply Hsound. exact Hscanp.
+    }
+    assert (Hscan_vec : p =v= resize dim p).
+    {
+      unfold PolyLang.env_scan in Hscan_init.
+      rewrite Hnthprep in Hscan_init.
+      reflect.
+      destruct Hscan_init as [[_ Hveq] _].
+      exact Hveq.
     }
     assert (Hsound_scanned :
       forall n0 p1,
         PolyLang.scanned to_scan0 n p n0 p1 = true ->
         PolyLang.env_scan
-          (map (prepare_pi (length varctxt) (length vars)) pis)
-          envv (length vars) n0 p1 = true).
+          (map (prepare_pi (length varctxt) dim) pis)
+          envv dim n0 p1 = true).
     {
       intros n0 p1 Hsc.
       unfold PolyLang.scanned in Hsc.
@@ -930,12 +1147,17 @@ Proof.
       destruct Hsc as [Hto _].
       eapply Hsound. exact Hto.
     }
-    destruct (IH Hsound_scanned eq_refl)
+    destruct (IH Hdim_cols Hsound_scanned eq_refl)
       as [tail [Htailsem [Htailsorted [Htailnodup Htailin]]]].
     exists (source_ip_of (length varctxt) n p0 p :: tail).
     split.
     + econstructor.
-      * eapply prepare_step_semantics_to_source_ip_sema; eauto.
+      * eapply prepare_step_semantics_to_source_ip_sema.
+        -- exact Hwf.
+        -- exact Hdim_cols.
+        -- exact Hsrcnth.
+        -- exact Hscan_vec.
+        -- exact Hstep.
       * exact Htailsem.
     + split.
       * econstructor.
@@ -958,30 +1180,30 @@ Proof.
              - exfalso.
                assert (Hnthprep2 :
                  nth_error
-                   (map (prepare_pi (length varctxt) (length vars)) pis) n2 =
-                 Some (prepare_pi (length varctxt) (length vars) pi2)).
+                   (map (prepare_pi (length varctxt) dim) pis) n2 =
+                 Some (prepare_pi (length varctxt) dim pi2)).
                {
                  rewrite map_nth_error with (d := pi2); auto.
                }
                assert (Hltprep :
                  lex_compare
                    (affine_product
-                      (prepare_pi (length varctxt) (length vars) pi2).(PolyLang.pi_schedule) p2)
+                      (prepare_pi (length varctxt) dim pi2).(PolyLang.pi_schedule) p2)
                    (affine_product
-                      (prepare_pi (length varctxt) (length vars) p0).(PolyLang.pi_schedule) p)
+                      (prepare_pi (length varctxt) dim p0).(PolyLang.pi_schedule) p)
                  = Lt).
                {
                  unfold PolyLang.instr_point_sched_ltb in Hgt.
                  apply comparison_eqb_iff_eq in Hgt.
-                 rewrite <- (source_ip_of_timestamp_prepare pis varctxt vars n2 pi2 p2 Hwf Hnth2).
-                 rewrite <- (source_ip_of_timestamp_prepare pis varctxt vars n p0 p Hwf Hsrcnth).
+                 rewrite <- (source_ip_of_timestamp_prepare pis varctxt vars dim n2 pi2 p2 Hwf Hdim_cols Hnth2).
+                 rewrite <- (source_ip_of_timestamp_prepare pis varctxt vars dim n p0 p Hwf Hdim_cols Hsrcnth).
                  exact Hgt.
                }
                unfold PolyLang.scanned in Hscan2.
                apply andb_prop in Hscan2.
                destruct Hscan2 as [Hto2 _].
-               specialize (Hmin n2 p2 (prepare_pi (length varctxt) (length vars) pi2)
-                               Hnthprep2 Hltprep).
+               specialize (Hmin n2 p2 (prepare_pi (length varctxt) dim pi2)
+                             Hnthprep2 Hltprep).
                rewrite Hto2 in Hmin. discriminate.
              - right.
                unfold PolyLang.instr_point_sched_eqb in Heq.
@@ -996,8 +1218,8 @@ Proof.
               as [n2 [p2 [pi2 [Hnth2 [Hscan2 Heqip]]]]].
             pose proof
               (prepare_env_scan_true_source_ip_eq_implies_same_scan_key
-                 pis varctxt vars envv n n2 p p2 p0 pi2
-                 Hwf Henvlen Hsrcnth Hnth2 Hscan_init (Hsound_scanned _ _ Hscan2) Heqip)
+                 pis varctxt vars dim envv n n2 p p2 p0 pi2
+                 Hwf Hdim_cols Henvlen Hsrcnth Hnth2 Hscan_init (Hsound_scanned _ _ Hscan2) Heqip)
               as [Hn [Hpi Heqp]].
             subst n2 pi2.
             unfold PolyLang.scanned in Hscan2.
@@ -1061,54 +1283,208 @@ Proof.
         }
 Qed.
 
-Theorem prepare_codegen_preserves_ready:
+Theorem prepare_codegen_preserves_ready_at:
   forall pol,
-    PolyLang.wf_pprog pol ->
-    codegen_ready_pprog (prepare_codegen pol).
+    PolyLang.wf_pprog_affine pol ->
+    codegen_ready_pprog_at (codegen_target_dim pol) (prepare_codegen pol).
 Proof.
   intros [[pis varctxt] vars] Hwf.
-  unfold PolyLang.wf_pprog in Hwf.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [Hctxt Hwfpis].
-  unfold codegen_ready_pprog, prepare_codegen, codegen_target_dim; simpl.
-  split; [exact Hctxt|].
-  intros pi Hin.
-  apply in_map_iff in Hin.
-  destruct Hin as [pi0 [Hpi Hin0]].
-  subst pi.
-  pose proof (Hwfpis pi0 Hin0) as Hwfpi.
-  unfold PolyLang.wf_pinstr in Hwfpi.
-  destruct Hwfpi as
-      [Hcols_le [Hpoly_nrl [Hsched_nrl [Hpoly_exact [Htf_exact [Hsched_exact [Hwacc [Hracc Htflen]]]]]]]].
-  unfold codegen_ready_pi, prepare_pi, encode_depth_in_domain, depth_tail_zero; simpl.
-  repeat split.
-  - exact Hcols_le.
-  - apply exact_listzzs_cols_app.
+  unfold codegen_ready_pprog_at, prepare_codegen, codegen_target_dim; simpl.
+  split.
+  - eapply Nat.le_trans.
+    + exact Hctxt.
+    + apply Nat.le_max_l.
+  - intros pi Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as [pi0 [Hpi Hin0]].
+    subst pi.
+    pose proof (Hwfpis pi0 Hin0) as Hwfpi.
+    unfold PolyLang.wf_pinstr_affine in Hwfpi.
+    destruct Hwfpi as [Hwfpi _].
+    unfold PolyLang.wf_pinstr in Hwfpi.
+    destruct Hwfpi as
+        [Hwit_cur
+         [Hcur_le
+          [Hpoly_nrl
+           [Hsched_nrl
+            [Hpoly_exact
+             [Htf_exact
+              [Hacc_tf_exact
+               [Hsched_exact [Hwacc Hracc]]]]]]]]].
+    unfold codegen_ready_pi, prepare_pi, encode_depth_in_domain, depth_tail_zero; simpl.
+    repeat split.
+    + eapply Nat.le_trans.
+      * exact Hcur_le.
+      * eapply Nat.le_trans.
+        -- eapply PolyLang.pprog_current_dim_ge_pinstr; exact Hin0.
+        -- apply Nat.le_max_r.
+    + eapply exact_listzzs_cols_app;
+        [apply resize_affine_list_exact_cols | apply resize_affine_list_exact_cols].
     + apply resize_affine_list_exact_cols.
     + apply resize_affine_list_exact_cols.
-  - apply resize_affine_list_exact_cols.
-  - apply resize_affine_list_exact_cols.
-  - apply resize_access_list_exact_cols.
-  - apply resize_access_list_exact_cols.
-  - unfold resize_affine_list.
-    rewrite map_length.
-    exact Htflen.
-  - intros p Hinpoly.
-    pose proof
-      (encode_depth_in_domain_in_poly
-         (length varctxt) (length vars) pi0 p Hpoly_exact Hcols_le Hinpoly)
-      as [_ Htail].
-    exact Htail.
+    + apply resize_access_list_exact_cols.
+    + apply resize_access_list_exact_cols.
+    + intros p Hinpoly.
+      assert (Hsrc_cols_le :
+                (length varctxt + PolyLang.pi_depth pi0
+                 <= Nat.max (length vars)
+                      (PolyLang.pprog_current_dim (pis, varctxt, vars)))%nat).
+      {
+        eapply Nat.le_trans.
+        - exact Hcur_le.
+        - eapply Nat.le_trans.
+          + eapply PolyLang.pprog_current_dim_ge_pinstr; exact Hin0.
+          + apply Nat.le_max_r.
+      }
+      pose proof
+        (encode_depth_in_domain_in_poly
+           (length varctxt)
+           (Nat.max (length vars)
+              (PolyLang.pprog_current_dim (pis, varctxt, vars)))
+           pi0 p Hpoly_exact Hsrc_cols_le Hinpoly)
+        as [_ Htail].
+      exact Htail.
 Qed.
 
-Theorem prepare_codegen_preserves_wf:
+Lemma codegen_ready_pprog_implies_pprog_current_dim_eq_target :
+  forall pp,
+    codegen_ready_pprog pp ->
+    PolyLang.pprog_current_dim pp = codegen_target_dim pp.
+Proof.
+  intros [[pis varctxt] vars] _.
+  unfold codegen_ready_pprog, codegen_target_dim, PolyLang.pprog_current_dim.
+  symmetry.
+  apply Nat.max_r.
+  apply PolyLang.fold_left_max_ge_init.
+Qed.
+
+Lemma wf_pinstr_affine_implies_pinstr_current_dim_eq_source_cols :
+  forall env vars pi,
+    PolyLang.wf_pinstr_affine env vars pi ->
+    PolyLang.pinstr_current_dim env pi = source_cols env pi.
+Proof.
+  intros env vars pi Hwf.
+  unfold PolyLang.wf_pinstr_affine in Hwf.
+  destruct Hwf as [Hwf _].
+  unfold PolyLang.wf_pinstr in Hwf.
+  destruct Hwf as
+      [Hwit_cur
+       [Hcols_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hwacc Hracc]]]]]]]]].
+  pose proof (exact_listzzs_cols_implies_poly_nrl_le _ _ Hpoly_exact) as Hpoly_src.
+  pose proof (exact_listzzs_cols_implies_poly_nrl_le _ _ Hsched_exact) as Hsched_src.
+  unfold PolyLang.pinstr_current_dim, source_cols.
+  simpl in *.
+  rewrite Nat.max_l.
+  - reflexivity.
+  - apply Nat.max_lub; assumption.
+Qed.
+
+Lemma prepare_pi_pinstr_current_dim_ge_source_cols :
+  forall env cols pi,
+    source_cols env pi <= PolyLang.pinstr_current_dim env (prepare_pi (length env) cols pi).
+Proof.
+  intros env cols pi.
+  unfold PolyLang.pinstr_current_dim, source_cols, prepare_pi.
+  simpl.
+  apply Nat.le_max_l.
+Qed.
+
+Lemma prepare_codegen_current_dim_ge_original :
   forall pol,
-    PolyLang.wf_pprog pol ->
-    codegen_wf_pprog (prepare_codegen pol).
+    PolyLang.wf_pprog_affine pol ->
+    PolyLang.pprog_current_dim pol <= PolyLang.pprog_current_dim (prepare_codegen pol).
+Proof.
+  intros [[pis varctxt] vars] Hwf.
+  unfold PolyLang.pprog_current_dim, prepare_codegen, codegen_target_dim.
+  simpl.
+  apply fold_left_max_le_bound.
+  - apply PolyLang.fold_left_max_ge_init.
+  - apply Forall_forall.
+    intros d Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as [pi [Hd Hinpi]].
+    subst d.
+    unfold PolyLang.wf_pprog_affine in Hwf.
+    destruct Hwf as [_ Hwfpis].
+    pose proof (Hwfpis pi Hinpi) as Hwfpi.
+    rewrite (wf_pinstr_affine_implies_pinstr_current_dim_eq_source_cols _ _ _ Hwfpi).
+    eapply Nat.le_trans.
+    + apply prepare_pi_pinstr_current_dim_ge_source_cols.
+    + eapply PolyLang.pprog_current_dim_ge_pinstr.
+      apply in_map.
+      exact Hinpi.
+Qed.
+
+Lemma prepare_codegen_current_dim_le_target :
+  forall pol,
+    PolyLang.wf_pprog_affine pol ->
+    PolyLang.pprog_current_dim (prepare_codegen pol) <= codegen_target_dim pol.
+Proof.
+  intros [[pis varctxt] vars] Hwf.
+  pose proof (prepare_codegen_preserves_ready_at ((pis, varctxt), vars) Hwf) as Hready.
+  unfold PolyLang.pprog_current_dim, prepare_codegen, codegen_target_dim in *.
+  simpl in *.
+  destruct Hready as [_ Hready].
+  apply fold_left_max_le_bound.
+  - apply Nat.le_max_l.
+  - apply Forall_forall.
+    intros d Hin.
+    apply in_map_iff in Hin.
+    destruct Hin as [pi [Hd Hinpi]].
+    subst d.
+    specialize (Hready pi Hinpi).
+    destruct Hready as
+        [Hsrc_cols_le
+         [Hpoly_exact
+          [Hsched_exact
+           [_ [_ [_ _]]]]]].
+    unfold PolyLang.pinstr_current_dim, prepare_pi.
+    simpl.
+    pose proof (exact_listzzs_cols_implies_poly_nrl_le _ _ Hpoly_exact) as Hpoly_nrl.
+    pose proof (exact_listzzs_cols_implies_poly_nrl_le _ _ Hsched_exact) as Hsched_nrl.
+    apply Nat.max_lub.
+    + exact Hsrc_cols_le.
+    + apply Nat.max_lub; assumption.
+Qed.
+
+Lemma prepare_codegen_target_dim_preserved :
+  forall pol,
+    PolyLang.wf_pprog_affine pol ->
+    codegen_target_dim (prepare_codegen pol) = codegen_target_dim pol.
+Proof.
+  intros [[pis varctxt] vars] Hwf.
+  unfold codegen_target_dim.
+  simpl.
+  pose proof (prepare_codegen_current_dim_ge_original ((pis, varctxt), vars) Hwf) as Hge.
+  pose proof (prepare_codegen_current_dim_le_target ((pis, varctxt), vars) Hwf) as Hle.
+  apply Nat.le_antisymm.
+  - apply Nat.max_lub.
+    + apply Nat.le_max_l.
+    + exact Hle.
+  - apply Nat.max_lub.
+    + apply Nat.le_max_l.
+    + eapply Nat.le_trans.
+      * exact Hge.
+      * apply Nat.le_max_r.
+Qed.
+
+Theorem prepare_codegen_preserves_wf_at:
+  forall pol,
+    PolyLang.wf_pprog_affine pol ->
+    codegen_wf_pprog_at (codegen_target_dim pol) (prepare_codegen pol).
 Proof.
   intros pol Hwf.
-  pose proof (prepare_codegen_preserves_ready pol Hwf) as Hready.
+  pose proof (prepare_codegen_preserves_ready_at pol Hwf) as Hready.
   destruct pol as [[pis varctxt] vars].
-  unfold codegen_ready_pprog, codegen_wf_pprog, prepare_codegen, codegen_target_dim in *.
+  unfold codegen_ready_pprog_at, codegen_wf_pprog_at, prepare_codegen, codegen_target_dim in *.
   simpl in *.
   destruct Hready as [Hctxt Hready].
   repeat split.
@@ -1187,33 +1563,50 @@ Proof.
 Qed.
 
 Lemma source_ip_props_imply_prepare_env_scan_true:
-  forall pis varctxt vars envv n pi ip,
-    PolyLang.wf_pprog (pis, varctxt, vars) ->
+  forall pis varctxt vars cols envv n pi ip,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat ->
     length envv = length varctxt ->
     nth_error pis n = Some pi ->
     firstn (length varctxt) (PolyLang.ip_index ip) = envv ->
     PolyLang.belongs_to ip pi ->
     length (PolyLang.ip_index ip) = length varctxt + pi.(PolyLang.pi_depth) ->
     PolyLang.env_scan
-      (map (prepare_pi (length varctxt) (length vars)) pis)
-      envv (length vars) n (PolyLang.ip_index ip) = true.
+      (map (prepare_pi (length varctxt) cols) pis)
+      envv cols n (PolyLang.ip_index ip) = true.
 Proof.
-  intros pis varctxt vars envv n pi ip Hwf Henvlen Hnth Hpref Hbel Hlen.
+  intros pis varctxt vars cols envv n pi ip Hwf Hdim_cols Henvlen Hnth Hpref Hbel Hlen.
+  pose proof Hwf as Hwf_affine.
   unfold PolyLang.env_scan.
-  rewrite map_nth_error with (d := pi); auto.
+  rewrite map_nth_error with (d := pi); [| exact Hnth].
   simpl.
-  unfold PolyLang.wf_pprog in Hwf.
+  unfold PolyLang.wf_pprog_affine in Hwf.
   destruct Hwf as [_ Hwfpis].
   pose proof (Hwfpis pi (nth_error_In _ _ Hnth)) as Hwfpi.
+  pose proof
+    (wf_pprog_affine_implies_source_cols_le
+       pis varctxt vars cols pi Hwf_affine Hdim_cols (nth_error_In _ _ Hnth))
+    as Hsrc_cols_le.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [Hwfpi _].
   unfold PolyLang.wf_pinstr in Hwfpi.
   destruct Hwfpi as
-      [Hcols_le [_ [_ [Hpoly_exact [_ [_ [_ [_ _]]]]]]]].
+      [Hwit_cur
+       [Hcur_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hwacc Hracc]]]]]]]]].
   destruct Hbel as [Hpoly _].
   apply andb_true_intro.
   split.
-  - apply andb_true_intro.
+  {
+    apply andb_true_intro.
     split.
-    + assert (Hresize_pref :
+    {
+      assert (Hresize_pref :
         resize (length varctxt) (PolyLang.ip_index ip) = envv).
       {
         rewrite <- Hpref.
@@ -1227,11 +1620,18 @@ Proof.
       rewrite is_eq_commutative.
       rewrite Hresize_pref.
       apply is_eq_reflexive.
-    + rewrite is_eq_commutative.
+    }
+    {
+      rewrite is_eq_commutative.
       rewrite is_eq_veq.
       apply resize_eq.
-      lia.
-  - eapply encode_depth_in_domain_from_source; eauto.
+      rewrite Hlen.
+      exact Hsrc_cols_le.
+    }
+  }
+  {
+    eapply encode_depth_in_domain_from_source; eauto.
+  }
 Qed.
 
 Lemma source_ip_of_self :
@@ -1245,10 +1645,12 @@ Proof.
   unfold PolyLang.belongs_to in Hbel.
   simpl in *.
   destruct Hbel as [Hpoly [Htf [Hts [Hinstr Hdepth]]]].
-  subst nth tf instr depth.
+  subst nth instr depth.
   unfold source_ip_of. simpl.
   f_equal.
   - apply resize_length_eq. exact Hlen.
+  - rewrite resize_length_eq by exact Hlen.
+    symmetry. exact Htf.
   - rewrite resize_length_eq by exact Hlen.
     symmetry. exact Hts.
 Qed.
@@ -1315,27 +1717,54 @@ Qed.
 
 Theorem prepare_codegen_semantics_correct:
   forall pol st st',
-    PolyLang.wf_pprog pol ->
+    PolyLang.wf_pprog_affine pol ->
     PolyLang.semantics (prepare_codegen pol) st st' ->
     PolyLang.instance_list_semantics pol st st'.
 Proof.
   intros [[pis varctxt] vars] st st' Hwf Hsem.
+  pose proof (prepare_codegen_preserves_ready_at (pis, varctxt, vars) Hwf) as Hready.
+  pose proof
+    (prepare_codegen_target_dim_preserved ((pis, varctxt), vars) Hwf)
+    as Hprepdim.
+  assert (Hready' : codegen_ready_pprog (prepare_codegen (pis, varctxt, vars))).
+  {
+    unfold codegen_ready_pprog.
+    rewrite Hprepdim.
+    exact Hready.
+  }
+  pose proof
+    (codegen_ready_pprog_implies_pprog_current_dim_eq_target
+       (prepare_codegen (pis, varctxt, vars)) Hready')
+    as Hprepcurdim.
   inversion Hsem as
       [pprog prep_pis varctxt' vars' envv st1 st2
          Hpprog Hcompat Hnalias Hinit Henvsem];
     subst.
   simpl in Hpprog.
   inversion Hpprog; subst prep_pis varctxt' vars'; clear Hpprog.
+  rewrite Hprepcurdim in Henvsem.
+  rewrite Hprepdim in Henvsem.
   pose proof (Instr.init_env_samelen varctxt envv st Hinit) as Henvlen.
   unfold PolyLang.env_poly_semantics in Henvsem.
+  pose proof
+    (wf_pprog_affine_implies_pprog_current_dim_le_target
+       pis varctxt vars Hwf)
+    as Hcurdim.
+  set (cols := codegen_target_dim (pis, varctxt, vars)).
+  assert (Hdim_cols :
+            (PolyLang.pprog_current_dim (pis, varctxt, vars) <= cols)%nat).
+  {
+    exact Hcurdim.
+  }
   destruct
     (prepare_poly_semantics_collect
-       pis varctxt vars envv
+       pis varctxt vars cols envv
        (PolyLang.env_scan
-          (map (prepare_pi (length varctxt) (length vars)) pis)
-          envv (length vars))
+          (map (prepare_pi (length varctxt) cols) pis)
+          envv cols)
        st st'
-       Hwf (eq_sym Henvlen) Henvsem (fun _ _ H => H))
+       Hwf Hdim_cols
+       (eq_sym Henvlen) Henvsem (fun _ _ H => H))
     as [exec_ipl [Hexec_sem [Hexec_sched [Hexec_nodup Hexec_char]]]].
   set (ipl := SelectionSort np_ltb np_eqb exec_ipl).
   assert (Hsort :
@@ -1369,14 +1798,29 @@ Proof.
       - exact Hin.
     }
     destruct (Hexec_char ip) as [Hchar_forw _].
-    destruct (Hchar_forw Hin_exec) as [n [p [pi [Hnth [Hscan Hip]]]]].
+    destruct (Hchar_forw Hin_exec) as [n0 [p [pi [Hnth [Hscan Hip]]]]].
     subst ip.
-    pose proof
-      (prepare_env_scan_true_implies_source_ip_props
-         pis varctxt vars envv n p pi Hwf (eq_sym Henvlen) Hnth Hscan)
-      as Hprops.
+    assert (Hprops :
+      let env_dim := length varctxt in
+      let src_cols := env_dim + pi.(PolyLang.pi_depth) in
+      let ip0 := source_ip_of env_dim n0 pi p in
+      firstn env_dim ip0.(PolyLang.ip_index) = envv /\
+      PolyLang.belongs_to ip0 pi /\
+      length ip0.(PolyLang.ip_index) = src_cols /\
+      is_eq p (resize cols p) = true /\
+      is_null (skipn src_cols (resize cols p)) = true).
+    {
+      refine
+        (prepare_env_scan_true_implies_source_ip_props
+           pis varctxt vars cols envv n0 p pi _ _ _ _ _).
+      - exact Hwf.
+      - exact Hdim_cols.
+      - exact (eq_sym Henvlen).
+      - exact Hnth.
+      - exact Hscan.
+    }
     destruct Hprops as [Hpref [Hbel [Hlen [_ _]]]].
-    exists n.
+    exists n0.
     exists pi.
     split; [exact Hnth|].
     split; [exact Hpref|].
@@ -1420,8 +1864,8 @@ Proof.
           rewrite <- Henvlen in Hlen.
           assert (Hscan :
             PolyLang.env_scan
-              (map (prepare_pi (length varctxt) (length vars)) pis)
-              envv (length vars) (PolyLang.ip_nth ip) (PolyLang.ip_index ip) = true).
+              (map (prepare_pi (length varctxt) cols) pis)
+              envv cols (PolyLang.ip_nth ip) (PolyLang.ip_index ip) = true).
           {
             eapply source_ip_props_imply_prepare_env_scan_true; eauto.
           }
@@ -1460,15 +1904,29 @@ Definition prepared_codegen (pol: PolyLang.t) : imp Loop.t :=
 Theorem prepared_codegen_correct:
   forall pol st st',
     WHEN loop <- prepared_codegen pol THEN
-    PolyLang.wf_pprog pol ->
+    PolyLang.wf_pprog_affine pol ->
     Loop.semantics loop st st' ->
     PolyLang.instance_list_semantics pol st st'.
 Proof.
   intros [[pis varctxt] vars] st st' loop Hcodegen Hwf Hloop.
-  pose proof (prepare_codegen_preserves_wf ((pis, varctxt), vars) Hwf) as Hcgwf.
+  pose proof (prepare_codegen_preserves_ready_at (pis, varctxt, vars) Hwf) as Hready.
+  pose proof
+    (prepare_codegen_target_dim_preserved ((pis, varctxt), vars) Hwf)
+    as Hprepdim.
+  assert (Hready' : codegen_ready_pprog (prepare_codegen (pis, varctxt, vars))).
+  {
+    unfold codegen_ready_pprog.
+    rewrite Hprepdim.
+    exact Hready.
+  }
+  pose proof
+    (codegen_ready_pprog_implies_pprog_current_dim_eq_target
+       (prepare_codegen (pis, varctxt, vars)) Hready')
+    as Hprepcurdim.
+  pose proof (prepare_codegen_preserves_wf_at ((pis, varctxt), vars) Hwf) as Hcgwf.
   destruct Hcgwf as [Hctxt [Hdim Hsched]].
   set (es := length varctxt).
-  set (n := length vars).
+  set (n := codegen_target_dim (pis, varctxt, vars)).
   set (prep_pis := map (prepare_pi es n) pis).
   unfold prepared_codegen in Hcodegen.
   bind_imp_destruct Hcodegen loop_raw Hcodegen_raw.
@@ -1485,8 +1943,63 @@ Proof.
   { subst prep_pis es n. exact Hdim. }
   assert (Hsched' : forall pi, In pi prep_pis -> (poly_nrl pi.(PolyLang.pi_schedule) <= n)%nat).
   { subst prep_pis es n. exact Hsched. }
+  assert (Henvdim' :
+    forall pi, In pi prep_pis ->
+      PolyLang.current_env_dim_in_dim n pi.(PolyLang.pi_point_witness) = es).
+  {
+    intros pi Hin.
+    pose proof Hwf as Hwf_affine.
+    unfold prep_pis, es, n in *.
+    apply in_map_iff in Hin.
+    destruct Hin as [pi0 [Hpi Hin0]].
+    subst pi.
+    unfold PolyLang.wf_pprog_affine in Hwf_affine.
+    destruct Hwf_affine as [_ Hwfpis].
+    pose proof (Hwfpis pi0 Hin0) as Hwfpi.
+    unfold PolyLang.wf_pinstr_affine in Hwfpi.
+    destruct Hwfpi as [Hwfpi [Hwit _]].
+    unfold PolyLang.wf_pinstr in Hwfpi.
+    destruct Hwfpi as
+      [Hwit_cur
+       [Hcur_le
+        [Hpoly_nrl
+         [Hsched_nrl
+          [Hpoly_exact
+           [Htf_exact
+            [Hacc_tf_exact
+             [Hsched_exact [Hwacc Hracc]]]]]]]]].
+    pose proof
+      (wf_pprog_affine_implies_source_cols_le
+         _ _ _ _ _
+         Hwf
+         (wf_pprog_affine_implies_pprog_current_dim_le_target _ _ _ Hwf)
+         Hin0)
+      as Hsrc_cols_le.
+    apply prepare_pi_current_env_dim_in_dim_affine.
+    exact Hsrc_cols_le.
+    exact Hwit.
+  }
+  change
+    (mayReturn
+       (CodeGen.complete_generate_many
+          es
+          (codegen_target_dim (prepare_codegen (pis, ctxt, vars0)))
+          prep_pis) loop) in Hgen.
+  pose proof Hctxt' as Hctxt_gen.
+  unfold n in Hctxt_gen.
+  rewrite <- Hprepdim in Hctxt_gen.
+  pose proof Hdim' as Hdim_gen.
+  unfold n in Hdim_gen.
+  rewrite <- Hprepdim in Hdim_gen.
+  pose proof Hsched' as Hsched_gen.
+  unfold n in Hsched_gen.
+  rewrite <- Hprepdim in Hsched_gen.
+  pose proof Henvdim' as Henvdim_gen.
+  unfold n in Henvdim_gen.
+  rewrite <- Hprepdim in Henvdim_gen.
   pose proof (CodeGen.complete_generate_many_preserve_sem
-        es n prep_pis envv st st' Hctxt' loop Hgen H3) as Hpoly.
+ 	        es (codegen_target_dim (prepare_codegen (pis, ctxt, vars0)))
+                prep_pis envv st st' Hctxt_gen loop Hgen H3) as Hpoly.
   eapply prepare_codegen_semantics_correct.
   - exact Hwf.
   - econstructor.
@@ -1494,12 +2007,46 @@ Proof.
     + exact H0.
     + exact H1.
     + exact H2.
-    + eapply Hpoly.
+    + rewrite Hprepcurdim.
+      unfold prepare_codegen, prep_pis, es, n.
+      simpl.
+      change
+        (CodeGen.PolyLang.env_poly_semantics
+           (rev envv)
+           (codegen_target_dim (prepare_codegen (pis, ctxt, vars0)))
+           (map
+              (prepare_pi (length ctxt)
+                 (codegen_target_dim (pis, ctxt, vars0))) pis) st st').
+      eapply Hpoly.
       * symmetry.
         eapply Instr.init_env_samelen with (envv := rev envv) in H2.
         rewrite rev_length in H2. exact H2.
-      * exact Hdim'.
-      * exact Hsched'.
+      * exact Hdim_gen.
+      * exact Henvdim_gen.
+      * exact Hsched_gen.
+Qed.
+
+Theorem prepared_codegen_correct_general:
+  forall pol st st',
+    WHEN loop <- prepared_codegen (PolyLang.current_view_pprog pol) THEN
+    PolyLang.wf_pprog_general pol ->
+    Loop.semantics loop st st' ->
+    PolyLang.instance_list_semantics pol st st'.
+Proof.
+  intros pol st st' loop Hcodegen Hwf Hloop.
+  pose proof
+    (PolyLang.wf_pprog_general_current_view_affine pol Hwf)
+    as Hwf_cur.
+  pose proof
+    (prepared_codegen_correct
+       (PolyLang.current_view_pprog pol) st st' loop
+       Hcodegen Hwf_cur Hloop)
+    as Hsem_cur.
+  pose proof
+    (PolyLang.instance_list_semantics_current_view_iff pol st st' Hwf)
+    as Hview.
+  apply (proj1 Hview).
+  exact Hsem_cur.
 Qed.
 
 End PrepareCodegen.

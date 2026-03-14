@@ -4,6 +4,8 @@ Import ListNotations.
 Require Import Base.
 Require Import PolyBase.  
 Require Import PolyLang.
+Require Import PointWitness.
+Require Import TilingWitness.
 Require Import AST.
 Require Import BinPos.
 Require Import PolyTest.
@@ -32,42 +34,201 @@ Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
 Definition ident := Instr.ident.
 
+Fixpoint list_Z_eqb (xs ys: list Z) : bool :=
+  match xs, ys with
+  | [], [] => true
+  | x :: xs', y :: ys' => Z.eqb x y && list_Z_eqb xs' ys'
+  | _, _ => false
+  end.
+
+Definition affine_expr_eqb (e1 e2: affine_expr) : bool :=
+  list_Z_eqb e1.(ae_var_coeffs) e2.(ae_var_coeffs) &&
+  list_Z_eqb e1.(ae_param_coeffs) e2.(ae_param_coeffs) &&
+  Z.eqb e1.(ae_const) e2.(ae_const).
+
+Definition tile_link_eqb (l1 l2: tile_link) : bool :=
+  affine_expr_eqb l1.(tl_expr) l2.(tl_expr) &&
+  Z.eqb l1.(tl_tile_size) l2.(tl_tile_size).
+
+Fixpoint tile_link_list_eqb (ls1 ls2: list tile_link) : bool :=
+  match ls1, ls2 with
+  | [], [] => true
+  | l1 :: ls1', l2 :: ls2' => tile_link_eqb l1 l2 && tile_link_list_eqb ls1' ls2'
+  | _, _ => false
+  end.
+
+Definition statement_tiling_witness_eqb
+    (w1 w2: statement_tiling_witness) : bool :=
+  Nat.eqb w1.(stw_point_dim) w2.(stw_point_dim) &&
+  tile_link_list_eqb w1.(stw_links) w2.(stw_links).
+
+Definition point_space_witness_eqb
+    (pw1 pw2: point_space_witness) : bool :=
+  match pw1, pw2 with
+  | PSWIdentity d1, PSWIdentity d2 => Nat.eqb d1 d2
+  | PSWTiling w1, PSWTiling w2 => statement_tiling_witness_eqb w1 w2
+  | PSWInsertAfterEnv d1 pw1', PSWInsertAfterEnv d2 pw2' =>
+      Nat.eqb d1 d2 && point_space_witness_eqb pw1' pw2'
+  | PSWInsertAtEnd d1 pw1', PSWInsertAtEnd d2 pw2' =>
+      Nat.eqb d1 d2 && point_space_witness_eqb pw1' pw2'
+  | _, _ => false
+  end.
+
+Lemma list_Z_eqb_eq :
+  forall xs ys,
+    list_Z_eqb xs ys = true ->
+    xs = ys.
+Proof.
+  induction xs as [|x xs IH]; intros ys H.
+  - destruct ys; simpl in *; congruence.
+  - destruct ys as [|y ys]; simpl in *; try discriminate.
+    apply andb_true_iff in H.
+    destruct H as [Hxy Htl].
+    apply Z.eqb_eq in Hxy.
+    apply IH in Htl.
+    subst. reflexivity.
+Qed.
+
+Lemma affine_expr_eqb_eq :
+  forall e1 e2,
+    affine_expr_eqb e1 e2 = true ->
+    e1 = e2.
+Proof.
+  intros [v1 p1 c1] [v2 p2 c2] H.
+  unfold affine_expr_eqb in H.
+  simpl in H.
+  repeat rewrite andb_true_iff in H.
+  destruct H as [[Hv Hp] Hc].
+  apply list_Z_eqb_eq in Hv.
+  apply list_Z_eqb_eq in Hp.
+  apply Z.eqb_eq in Hc.
+  subst. reflexivity.
+Qed.
+
+Lemma tile_link_eqb_eq :
+  forall l1 l2,
+    tile_link_eqb l1 l2 = true ->
+    l1 = l2.
+Proof.
+  intros [e1 t1] [e2 t2] H.
+  unfold tile_link_eqb in H.
+  simpl in H.
+  apply andb_true_iff in H.
+  destruct H as [He Ht].
+  apply affine_expr_eqb_eq in He.
+  apply Z.eqb_eq in Ht.
+  subst. reflexivity.
+Qed.
+
+Lemma tile_link_list_eqb_eq :
+  forall ls1 ls2,
+    tile_link_list_eqb ls1 ls2 = true ->
+    ls1 = ls2.
+Proof.
+  induction ls1 as [|l1 ls1 IH]; intros ls2 H.
+  - destruct ls2; simpl in *; congruence.
+  - destruct ls2 as [|l2 ls2]; simpl in *; try discriminate.
+    apply andb_true_iff in H.
+    destruct H as [Hhd Htl].
+    apply tile_link_eqb_eq in Hhd.
+    apply IH in Htl.
+    subst. reflexivity.
+Qed.
+
+Lemma statement_tiling_witness_eqb_eq :
+  forall w1 w2,
+    statement_tiling_witness_eqb w1 w2 = true ->
+    w1 = w2.
+Proof.
+  intros [d1 ls1] [d2 ls2] H.
+  unfold statement_tiling_witness_eqb in H.
+  simpl in H.
+  apply andb_true_iff in H.
+  destruct H as [Hd Hls].
+  apply Nat.eqb_eq in Hd.
+  apply tile_link_list_eqb_eq in Hls.
+  subst. reflexivity.
+Qed.
+
+Lemma point_space_witness_eqb_eq :
+  forall pw1 pw2,
+    point_space_witness_eqb pw1 pw2 = true ->
+    pw1 = pw2.
+Proof.
+  induction pw1 as [d1|w1|added1 inner1 IH|added1 inner1 IH]; intros pw2 H;
+    destruct pw2; simpl in H; try discriminate.
+  - apply Nat.eqb_eq in H. subst. reflexivity.
+  - apply statement_tiling_witness_eqb_eq in H. subst. reflexivity.
+  - apply andb_true_iff in H.
+    destruct H as [Hd Hinner].
+    apply Nat.eqb_eq in Hd.
+    apply PointWitness.point_space_witness_eqb_eq in Hinner.
+    subst. reflexivity.
+  - apply andb_true_iff in H.
+    destruct H as [Hd Hinner].
+    apply Nat.eqb_eq in Hd.
+    apply PointWitness.point_space_witness_eqb_eq in Hinner.
+    subst. reflexivity.
+Qed.
+
+Lemma existsb_bool_eta :
+  forall (A : Type) (f : A -> bool) xs,
+    existsb (fun x => if f x then true else false) xs = existsb f xs.
+Proof.
+  intros A f xs.
+  induction xs as [|x xs IH]; simpl; [reflexivity|].
+  rewrite IH.
+  destruct (f x); reflexivity.
+Qed.
+
 Definition check_wf_polyinstr (pi: PolyLang.PolyInstr) (env: list ident) (vars: list (ident * Ty.t)) := 
   let env_dim := length env in 
   let iter_dim := (pi.(PolyLang.pi_depth)) in
   let domain := pi.(PolyLang.pi_poly) in
   let domain_len := length domain in 
-  let vars_dim := length vars in
+  let current_dim := PolyLang.pinstr_current_dim env pi in
+  let base_dim := env_dim + witness_base_point_dim (pi.(PolyLang.pi_point_witness)) in
+  let arg_dim := length (pi.(PolyLang.pi_transformation)) in
+  let witness_dim_ok := Nat.eqb
+    (witness_current_point_dim (pi.(PolyLang.pi_point_witness)))
+    iter_dim in
   if negb (Instr.check_never_written env pi.(PolyLang.pi_instr)) then false else
-  if negb (env_dim + iter_dim <=? vars_dim) then false else 
+  if negb witness_dim_ok then false else
+  if negb (env_dim + iter_dim <=? current_dim) then false else 
   (** schedule iterators *)
-  if negb (poly_nrl (PolyLang.pi_poly pi) <=? length vars) then false else  
-  if negb (poly_nrl (PolyLang.pi_schedule pi) <=? length vars) then false else 
+  if negb (poly_nrl (PolyLang.pi_poly pi) <=? current_dim) then false else  
+  if negb (poly_nrl (PolyLang.pi_schedule pi) <=? current_dim) then false else 
   (* domain cols = env_dim + iter_dim *)
   if negb (check_listzzs_cols domain (env_dim + iter_dim))
   then false else 
-  (* transformation cols = env_dim + iter_dim *)
-  if negb (check_listzzs_cols (pi.(PolyLang.pi_transformation)) (env_dim + iter_dim))
+  (* transformation cols = env_dim + base_point_dim *)
+  if negb (check_listzzs_cols (pi.(PolyLang.pi_transformation)) base_dim)
+    then false else 
+  if negb (check_listzzs_cols (pi.(PolyLang.pi_access_transformation)) base_dim)
     then false else 
   (* schedule cols = env_dim + iter_dim *)
   if negb (check_listzzs_cols pi.(PolyLang.pi_schedule) (env_dim + iter_dim)) 
   then false 
-  (* waccess/raccess cols = env_dim + iter_dim *)
+  (* waccess/raccess cols = source-argument dimension *)
   else 
   if existsb (fun (waccess: AccessFunction) => 
     let (arrid, waccess_aff_func) := waccess in 
-      if negb (check_listzzs_cols waccess_aff_func (env_dim + iter_dim)) 
+      if negb (check_listzzs_cols waccess_aff_func arg_dim) 
       then true else false 
     ) pi.(PolyLang.pi_waccess)  
   then false else
   if existsb (fun (raccess: AccessFunction) => 
       let (arrid, raccess_aff_func) := raccess in 
-        if negb (check_listzzs_cols raccess_aff_func (env_dim + iter_dim)) 
+        if negb (check_listzzs_cols raccess_aff_func arg_dim) 
         then true else false 
     ) pi.(PolyLang.pi_raccess) 
   then false else 
-  let tf_len_ok := ((length (pi.(PolyLang.pi_transformation))) =? (env_dim + iter_dim))%nat in 
-  tf_len_ok.
+  let witness_id_ok :=
+    point_space_witness_eqb
+      pi.(PolyLang.pi_point_witness)
+      (PSWIdentity iter_dim) in
+  let tf_eq_ok := listzzs_strict_eqb pi.(PolyLang.pi_transformation) pi.(PolyLang.pi_access_transformation) in
+  witness_id_ok && tf_eq_ok.
 
 Definition check_wf_polyprog (pp: PolyLang.t) := 
   let '(pil, varctxt, vars) := pp in   
@@ -76,14 +237,66 @@ Definition check_wf_polyprog (pp: PolyLang.t) :=
   let vars_dim := length vars in 
   pure (Nat.leb varctxt_dim vars_dim && Nat.ltb 0 pil_dim && forallb (fun pi => check_wf_polyinstr pi varctxt vars) pil).
 
+Definition check_wf_polyinstr_tiling
+    (pi: PolyLang.PolyInstr) (env: list ident) (vars: list (ident * Ty.t)) :=
+  let env_dim := length env in
+  let iter_dim := pi.(PolyLang.pi_depth) in
+  let current_dim := PolyLang.pinstr_current_dim env pi in
+  let vars_dim := length vars in
+  let base_dim := env_dim + witness_base_point_dim (pi.(PolyLang.pi_point_witness)) in
+  let arg_dim := length (pi.(PolyLang.pi_transformation)) in
+  let witness_dim_ok := Nat.eqb
+    (witness_current_point_dim (pi.(PolyLang.pi_point_witness)))
+    iter_dim in
+  if negb (Instr.check_never_written env pi.(PolyLang.pi_instr)) then false else
+  if negb witness_dim_ok then false else
+  if negb ((env_dim + iter_dim) <=? current_dim) then false else
+  if negb (poly_nrl (PolyLang.pi_poly pi) <=? current_dim) then false else
+  if negb (poly_nrl (PolyLang.pi_schedule pi) <=? current_dim) then false else
+  if negb (check_listzzs_cols (PolyLang.pi_poly pi) (env_dim + iter_dim))
+  then false else
+  if negb (check_listzzs_cols (PolyLang.pi_transformation pi) base_dim)
+  then false else
+  if negb (check_listzzs_cols (PolyLang.pi_access_transformation pi) base_dim)
+  then false else
+  if negb (check_listzzs_cols (PolyLang.pi_schedule pi) (env_dim + iter_dim))
+  then false else
+  if existsb
+      (fun (waccess: AccessFunction) =>
+         let (_, waccess_aff_func) := waccess in
+         negb (check_listzzs_cols waccess_aff_func arg_dim))
+      pi.(PolyLang.pi_waccess)
+  then false else
+  if existsb
+      (fun (raccess: AccessFunction) =>
+         let (_, raccess_aff_func) := raccess in
+         negb (check_listzzs_cols raccess_aff_func arg_dim))
+      pi.(PolyLang.pi_raccess)
+  then false else
+  listzzs_strict_eqb
+    pi.(PolyLang.pi_transformation)
+    pi.(PolyLang.pi_access_transformation).
+
+Definition check_wf_polyprog_tiling (pp: PolyLang.t) :=
+  let '(pil, varctxt, vars) := pp in
+  let pil_dim := length pil in
+  let varctxt_dim := length varctxt in
+  let vars_dim := length vars in
+  pure
+    (Nat.leb varctxt_dim vars_dim &&
+     Nat.ltb 0 pil_dim &&
+     forallb (fun pi => check_wf_polyinstr_tiling pi varctxt vars) pil).
+
 Definition EqDomInstr (pi1 pi2: PolyLang.PolyInstr) := 
   let iters_eq := Nat.eqb pi1.(PolyLang.pi_depth) pi2.(PolyLang.pi_depth) in 
   let inst_eq := Instr.eqb pi1.(PolyLang.pi_instr) pi2.(PolyLang.pi_instr) in 
   let dom_eq := listzzs_strict_eqb pi1.(PolyLang.pi_poly) pi2.(PolyLang.pi_poly) in 
+  let witness_eq := point_space_witness_eqb pi1.(PolyLang.pi_point_witness) pi2.(PolyLang.pi_point_witness) in
   let trans_eq := listzzs_strict_eqb pi1.(PolyLang.pi_transformation) pi2.(PolyLang.pi_transformation) in
+  let access_trans_eq := listzzs_strict_eqb pi1.(PolyLang.pi_access_transformation) pi2.(PolyLang.pi_access_transformation) in
   let raccess_eq := access_list_strict_eqb pi1.(PolyLang.pi_raccess) pi2.(PolyLang.pi_raccess) in 
   let waccess_eq := access_list_strict_eqb pi1.(PolyLang.pi_waccess) pi2.(PolyLang.pi_waccess) in 
-  iters_eq && inst_eq && dom_eq && trans_eq && raccess_eq && waccess_eq.
+  iters_eq && inst_eq && dom_eq && witness_eq && trans_eq && access_trans_eq && raccess_eq && waccess_eq.
 
   Fixpoint ctxt_ty_eqb (vs1 vs2: list (ident * Ty.t)) :=
   match vs1, vs2 with 
@@ -206,13 +419,89 @@ Definition validate_two_accesses_helper (old_sched_lt_polys new_sched_ge_polys: 
     new_sched_ge_polys
   ) old_sched_lt_polys.
 
+Definition access_matches_tf (tf: AffineFunction) (a: AccessFunction) : Prop :=
+  let '(_, loc) := a in
+  exact_listzzs_cols (length tf) loc.
+
+Definition compose_access_function_at
+    (dom_dim: nat) (a: AccessFunction) (tf: AffineFunction) : AccessFunction :=
+  let '(id, loc) := a in
+  let loc' :=
+    if (length tf =? 0)%nat
+    then List.map (fun '(_, c) => (repeat 0%Z dom_dim, c)) loc
+    else matrix_product loc tf in
+  (id, loc').
+
+Lemma affine_product_zero_padded_access :
+  forall dom_dim p loc,
+    length p = dom_dim ->
+    exact_listzzs_cols 0 loc ->
+    affine_product
+      (List.map (fun '(_, c) => (repeat 0%Z dom_dim, c)) loc) p =
+    affine_product loc [].
+Proof.
+  intros dom_dim p loc Hlen Hloc.
+  induction loc as [|[v c] loc IH]; simpl.
+  - reflexivity.
+  - assert (Hv : length v = 0).
+    { eapply Hloc; [left; reflexivity|reflexivity]. }
+    assert (Htail : exact_listzzs_cols 0 loc).
+    { intros listz z listzz Hin Heq.
+      eapply Hloc; [right; exact Hin|exact Heq]. }
+    rewrite dot_product_repeat_zero_left by exact Hlen.
+    destruct v as [|x xs].
+    + simpl. f_equal. eapply IH; eauto.
+    + simpl in Hv. discriminate.
+Qed.
+
+Lemma compose_access_function_at_exact_cols :
+  forall dom_dim a tf,
+    exact_listzzs_cols dom_dim tf ->
+    access_matches_tf tf a ->
+    exact_listzzs_cols dom_dim (snd (compose_access_function_at dom_dim a tf)).
+Proof.
+  intros dom_dim [id loc] tf Htf Hloc.
+  unfold compose_access_function_at, access_matches_tf in *; simpl in *.
+  destruct (length tf =? 0)%nat eqn:Htf0.
+  - intros listz z listzz Hin Heq.
+    rewrite in_map_iff in Hin.
+    destruct Hin as [[v c] [Hmap Hin0]].
+    rewrite Heq in Hmap.
+    inversion Hmap; subst listzz listz z.
+    rewrite repeat_length. reflexivity.
+  - eapply matrix_product_cols.
+    + eapply Nat.eqb_neq in Htf0. lia.
+    + exact Htf.
+Qed.
+
+Lemma compose_access_function_at_correct :
+  forall dom_dim a tf p,
+    length p = dom_dim ->
+    exact_listzzs_cols dom_dim tf ->
+    access_matches_tf tf a ->
+    affine_product (snd (compose_access_function_at dom_dim a tf)) p =
+    affine_product (snd a) (affine_product tf p).
+Proof.
+  intros dom_dim [id loc] tf p Hlen Htf Hloc.
+  unfold compose_access_function_at, access_matches_tf in *; simpl in *.
+  destruct (length tf =? 0)%nat eqn:Htf0.
+  - apply Nat.eqb_eq in Htf0.
+    destruct tf as [|row tf']; simpl in *; [|discriminate].
+    rewrite affine_product_zero_padded_access with (p:=p) (dom_dim:=dom_dim); auto.
+  - eapply matrix_product_assoc; eauto.
+Qed.
+
 Definition validate_two_accesses (a1 a2: AccessFunction) (tf1 tf2: AffineFunction) (env_eq_in_dom_poly: polyhedron) (old_sched_lt_polys new_sched_ge_polys: list polyhedron)
 (dim1 dim2: nat):= 
   let (id1, loc1) := a1 in 
   let (id2, loc2) := a2 in 
   if negb (Pos.eqb id1 id2) then pure true else
   (* construct polyhedron for same array-access subscripts *)
-  let sameloc := make_poly_eq (matrix_product loc1 tf1) (matrix_product loc2 tf2) dim1 dim2 [] in 
+  let sameloc :=
+    make_poly_eq
+      (snd (compose_access_function_at dim1 a1 tf1))
+      (snd (compose_access_function_at dim2 a2 tf2))
+      dim1 dim2 [] in 
   BIND sameloc_enveq_indom_pol <- poly_inter sameloc env_eq_in_dom_poly -;  
   (* check if lexicographic order is violated for dependent accesses *)
   validate_two_accesses_helper old_sched_lt_polys new_sched_ge_polys sameloc_enveq_indom_pol.
@@ -236,19 +525,19 @@ Definition validate_two_instrs (pi1 pi2: PolyLang.PolyInstr_ext) (env_dim: nat) 
 
   BIND res1 <- forallb_imp (
     fun waccess1 => forallb_imp (fun waccess2 =>
-      validate_two_accesses waccess1 waccess2 pi1.(PolyLang.pi_transformation_ext) pi2.(PolyLang.pi_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
+      validate_two_accesses waccess1 waccess2 pi1.(PolyLang.pi_access_transformation_ext) pi2.(PolyLang.pi_access_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
     ) pi2.(PolyLang.pi_waccess_ext)
   ) pi1.(PolyLang.pi_waccess_ext) -;
   
   BIND res2 <- forallb_imp (
     fun waccess1 => forallb_imp (fun raccess2 =>
-      validate_two_accesses waccess1 raccess2 pi1.(PolyLang.pi_transformation_ext) pi2.(PolyLang.pi_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
+      validate_two_accesses waccess1 raccess2 pi1.(PolyLang.pi_access_transformation_ext) pi2.(PolyLang.pi_access_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
     ) pi2.(PolyLang.pi_raccess_ext) 
   ) pi1.(PolyLang.pi_waccess_ext) -;
 
   BIND res3 <- forallb_imp (
     fun raccess1 => forallb_imp (fun waccess2 =>
-      validate_two_accesses raccess1 waccess2 pi1.(PolyLang.pi_transformation_ext) pi2.(PolyLang.pi_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
+      validate_two_accesses raccess1 waccess2 pi1.(PolyLang.pi_access_transformation_ext) pi2.(PolyLang.pi_access_transformation_ext) pol old_sched_lt_polys new_sched_ge_polys dom_dim1 dom_dim2
     ) pi2.(PolyLang.pi_waccess_ext)
   ) pi1.(PolyLang.pi_raccess_ext) -;
 
@@ -284,6 +573,34 @@ Definition check_valid_access (pil: list PolyLang.PolyInstr_ext): bool :=
       pi.(PolyLang.pi_instr_ext) 
   ) pil.
 
+Definition compose_pinstr_ext_at
+    (env_dim: nat)
+    (pi1 pi2: PolyLang.PolyInstr) : PolyLang.PolyInstr_ext := {|
+  PolyLang.pi_depth_ext := pi1.(PolyLang.pi_depth);
+  PolyLang.pi_instr_ext := pi1.(PolyLang.pi_instr);
+  PolyLang.pi_poly_ext := pi1.(PolyLang.pi_poly);
+  PolyLang.pi_point_witness_ext := pi1.(PolyLang.pi_point_witness);
+  PolyLang.pi_transformation_ext :=
+    PolyLang.current_transformation_at env_dim pi1;
+  PolyLang.pi_access_transformation_ext :=
+    PolyLang.current_access_transformation_at env_dim pi1;
+  PolyLang.pi_schedule1_ext := pi1.(PolyLang.pi_schedule);
+  PolyLang.pi_schedule2_ext := pi2.(PolyLang.pi_schedule);
+  PolyLang.pi_waccess_ext := pi1.(PolyLang.pi_waccess);
+  PolyLang.pi_raccess_ext := pi1.(PolyLang.pi_raccess);
+|}.
+
+Fixpoint compose_pinstrs_ext_at
+    (env_dim: nat)
+    (pil1 pil2: list PolyLang.PolyInstr) : list PolyLang.PolyInstr_ext :=
+  match pil1, pil2 with
+  | pi1 :: pil1', pi2 :: pil2' =>
+      compose_pinstr_ext_at env_dim pi1 pi2 ::
+      compose_pinstrs_ext_at env_dim pil1' pil2'
+  | [], [] => []
+  | _, _ => []
+  end.
+
 Definition validate (pp1 pp2: PolyLang.t) := 
   let '(pil1, varctxt1, vars1) := pp1 in 
   let '(pil2, varctxt2, vars2) := pp2 in 
@@ -291,7 +608,19 @@ Definition validate (pp1 pp2: PolyLang.t) :=
   BIND wf_pil2 <- check_wf_polyprog pp2 -;
   BIND eqdom <- EqDom pp1 pp2 -;
   let env_dim := length varctxt1 in
-  let pil_ext := PolyLang.compose_pinstrs_ext pil1 pil2 in
+  let pil_ext := compose_pinstrs_ext_at env_dim pil1 pil2 in
+  let valid_access := check_valid_access pil_ext in
+  BIND res <- validate_instr_list (rev pil_ext) env_dim -;
+  pure (wf_pil1 && wf_pil2 && eqdom && res && valid_access).
+
+Definition validate_tiling (pp1 pp2: PolyLang.t) :=
+  let '(pil1, varctxt1, vars1) := pp1 in
+  let '(pil2, varctxt2, vars2) := pp2 in
+  BIND wf_pil1 <- check_wf_polyprog_tiling pp1 -;
+  BIND wf_pil2 <- check_wf_polyprog_tiling pp2 -;
+  BIND eqdom <- EqDom pp1 pp2 -;
+  let env_dim := length varctxt1 in
+  let pil_ext := compose_pinstrs_ext_at env_dim pil1 pil2 in
   let valid_access := check_valid_access pil_ext in
   BIND res <- validate_instr_list (rev pil_ext) env_dim -;
   pure (wf_pil1 && wf_pil2 && eqdom && res && valid_access).
@@ -311,135 +640,198 @@ Proof.
   eapply Instr.access_function_checker_correct; eauto.
 Qed.
 
+Lemma check_wf_polyinstr_affine_correct: 
+  forall pi env vars,
+    check_wf_polyinstr pi env vars = true -> 
+    PolyLang.wf_pinstr_affine env vars pi.
+Proof.
+  intros pi env vars H.
+  unfold check_wf_polyinstr in H.
+  destruct (negb (Instr.check_never_written env (PolyLang.pi_instr pi))) eqn:Hnw; tryfalse.
+  destruct (negb
+              (witness_current_point_dim (PolyLang.pi_point_witness pi) =?
+               PolyLang.pi_depth pi)) eqn:Hwitness_dim; tryfalse.
+  destruct
+    ((length env + PolyLang.pi_depth pi <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Henvlen; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_poly pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hdom; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_schedule pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hsched; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_poly pi)
+                  (length env + PolyLang.pi_depth pi))) eqn:Hcheckdom; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_transformation pi)
+                  (length env +
+                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hchecktf; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_access_transformation pi)
+                  (length env +
+                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hcheckacc_tf; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_schedule pi)
+                  (length env + PolyLang.pi_depth pi))) eqn:Hchecksched; tryfalse.
+  destruct (existsb
+      (fun waccess : AccessFunction =>
+         let (_, waccess_aff_func) := waccess in
+         if negb (check_listzzs_cols waccess_aff_func
+                    (length (PolyLang.pi_transformation pi)))
+         then true else false)
+      (PolyLang.pi_waccess pi)) eqn:Hcheckw; tryfalse.
+  destruct (existsb
+      (fun raccess : AccessFunction =>
+         let (_, raccess_aff_func) := raccess in
+         if negb (check_listzzs_cols raccess_aff_func
+                    (length (PolyLang.pi_transformation pi)))
+        then true else false)
+      (PolyLang.pi_raccess pi)) eqn:Hcheckr; tryfalse.
+  apply andb_true_iff in H.
+  destruct H as [Hwitness_id Htf_eq].
+  unfold PolyLang.wf_pinstr_affine.
+  split.
+  - unfold PolyLang.wf_pinstr.
+    repeat split.
+    + eapply Nat.eqb_eq.
+      eapply negb_false_iff in Hwitness_dim.
+      exact Hwitness_dim.
+    + eapply Nat.leb_le; eauto.
+    + eapply Nat.leb_le; eauto.
+    + eapply Nat.leb_le; eauto.
+    + eapply negb_false_iff in Hcheckdom.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hchecktf.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hcheckacc_tf.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hchecksched.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply Forall_forall. intros waccess Hin.
+      rewrite Misc.existsb_forall in Hcheckw.
+      specialize (Hcheckw waccess Hin).
+      destruct waccess as [warrid waccess_func].
+      destruct (if negb (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))) then true else false)
+        eqn:Hcheckw'; tryfalse.
+      simpl in Hcheckw'.
+      destruct (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))) eqn:Hcols; tryfalse.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply Forall_forall. intros raccess Hin.
+      rewrite Misc.existsb_forall in Hcheckr.
+      specialize (Hcheckr raccess Hin).
+      destruct raccess as [rarrid raccess_func].
+      destruct (if negb (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))) then true else false)
+        eqn:Hcheckr'; tryfalse.
+      simpl in Hcheckr'.
+      destruct (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))) eqn:Hcols; tryfalse.
+      eapply check_listzzs_cols_correct; eauto.
+  - split.
+    + eapply point_space_witness_eqb_eq; exact Hwitness_id.
+    + eapply listzzs_strict_eqb_eq; exact Htf_eq.
+Qed.
+
 Lemma check_wf_polyinstr_correct: 
   forall pi env vars,
     check_wf_polyinstr pi env vars = true -> 
     PolyLang.wf_pinstr env vars pi.
 Proof.
-  intros.
-  unfold check_wf_polyinstr in H.
-  unfold PolyLang.wf_pinstr.
-  intros.
-  folds PolyLang.pi_poly; subst.
-  destruct (negb (Instr.check_never_written env (PolyLang.pi_instr pi))); tryfalse.
-  destruct (length env + ((PolyLang.pi_depth pi)) <=? length vars) eqn:Henvlen in H; tryfalse.
-  split.
-  {
-    eapply Nat.leb_le; eauto.
-  }
-  destruct (poly_nrl (PolyLang.pi_poly pi) <=? length vars)%nat eqn:Hdom in H; tryfalse.
-  split.
-  {
-    eapply Nat.leb_le; trivial.
-  }
-  destruct (poly_nrl (PolyLang.pi_schedule pi) <=? length vars) eqn:Hsched in H; tryfalse.
-  split.
-  {
-    eapply Nat.leb_le; trivial.
-  }
-
-  destruct (negb
-  (check_listzzs_cols (PolyLang.pi_poly pi)
-     (Datatypes.length env + ((PolyLang.pi_depth pi))))) eqn:Hcheckdom; tryfalse.
-  split.
-  {
-    (* dom cols *)
-    clear H.
-    eapply negb_false_iff in Hcheckdom.
-    unfolds check_listzzs_cols.
-    unfolds check_listzzs_cols.
-
-    subst.
-    eapply check_listzzs_cols_correct; eauto.
-  }
-  clear Hcheckdom.
-
-  destruct (negb
-  (check_listzzs_cols (PolyLang.pi_transformation pi)
-     (length env + (PolyLang.pi_depth pi)))) eqn:Hchecktf; tryfalse.
-  split.
-  {
-    (* tf cols *)
-    clear H.
-    eapply negb_false_iff in Hchecktf.
-    unfolds check_listzzs_cols.
-    unfolds check_listzzs_cols.
-
-    subst.
-    eapply check_listzzs_cols_correct; eauto.
-  }
-  clear Hchecktf.
-  destruct (negb
-  (check_listzzs_cols (PolyLang.pi_schedule pi)
-     (Datatypes.length env + (PolyLang.pi_depth pi)))) eqn:Hcheckschde; tryfalse.
-  split.
-  {
-    clear H.
-    eapply negb_false_iff in Hcheckschde.
-    subst.
-    eapply check_listzzs_cols_correct; eauto.
-  }
-  clear Hcheckschde.
-  destruct (existsb
-  (fun waccess : AccessFunction =>
-  let (_, waccess_aff_func) := waccess in
-  if
-    negb
-      (check_listzzs_cols waccess_aff_func
-        (Datatypes.length env + (PolyLang.pi_depth pi)))
-  then true
-  else false) (PolyLang.pi_waccess pi)) eqn:Hcheckw; tryfalse.
-  split.
-  {
-      eapply Forall_forall. intros waccess H1.
-      rewrite Misc.existsb_forall in Hcheckw.
-      pose proof (Hcheckw waccess H1).
-      destruct waccess as (warrid, waccess_func).
-      destruct (negb
-      (check_listzzs_cols waccess_func
-        (Datatypes.length env + (PolyLang.pi_depth pi)))) eqn:Hcheckw'; tryfalse.
-      eapply negb_false_iff in Hcheckw'.
-      subst.
-      eapply check_listzzs_cols_correct; eauto.
-  }
-  destruct (existsb
-  (fun raccess : AccessFunction =>
-  let (_, raccess_aff_func) := raccess in
-  if
-    negb
-      (check_listzzs_cols raccess_aff_func
-        (Datatypes.length env + (PolyLang.pi_depth pi)))
-  then true
-  else false) (PolyLang.pi_raccess pi)) eqn:Hcheckr; tryfalse.
-  split.
-  {
-    clear Hcheckw.
-    {
-      eapply Forall_forall. intros raccess H1.
-      rewrite Misc.existsb_forall in Hcheckr.
-      pose proof (Hcheckr raccess H1).
-      destruct raccess as (rarrid, raccess_func).
-      destruct (negb
-      (check_listzzs_cols raccess_func
-        (Datatypes.length env + (PolyLang.pi_depth pi)))) eqn:Hcheckr'; tryfalse.
-      eapply negb_false_iff in Hcheckr'.
-      subst.
-      eapply check_listzzs_cols_correct; eauto.
-    }
-  }
-  simpl in H.
-  rename H into TS.
-  eapply Nat.eqb_eq in TS; eauto.
+  intros pi env vars Hwf.
+  eapply PolyLang.wf_pinstr_affine_implies_wf_pinstr.
+  eapply check_wf_polyinstr_affine_correct; eauto.
 Qed.
 
-Lemma check_wf_polyprog_correct: 
+Lemma check_wf_polyinstr_tiling_correct :
+  forall pi env vars,
+    check_wf_polyinstr_tiling pi env vars = true ->
+    PolyLang.wf_pinstr_tiling env vars pi.
+Proof.
+  intros pi env vars H.
+  unfold check_wf_polyinstr_tiling in H.
+  unfold PolyLang.wf_pinstr_tiling.
+  destruct (negb (Instr.check_never_written env (PolyLang.pi_instr pi))) eqn:Hnw; tryfalse.
+  destruct (negb
+              (witness_current_point_dim (PolyLang.pi_point_witness pi) =?
+               PolyLang.pi_depth pi)) eqn:Hwitness_dim; tryfalse.
+  destruct
+    ((length env + PolyLang.pi_depth pi <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Henvlen; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_poly pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hdom; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_schedule pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hsched; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_poly pi)
+                  (length env + PolyLang.pi_depth pi))) eqn:Hcheckdom; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_transformation pi)
+                  (length env +
+                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hchecktf; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_access_transformation pi)
+                  (length env +
+                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hcheckacc_tf; tryfalse.
+  destruct (negb (check_listzzs_cols (PolyLang.pi_schedule pi)
+                  (length env + PolyLang.pi_depth pi))) eqn:Hchecksched; tryfalse.
+  destruct (existsb
+      (fun waccess : AccessFunction =>
+         let (_, waccess_aff_func) := waccess in
+         negb
+           (check_listzzs_cols waccess_aff_func
+              (length (PolyLang.pi_transformation pi))))
+      (PolyLang.pi_waccess pi)) eqn:Hcheckw; tryfalse.
+  destruct (existsb
+      (fun raccess : AccessFunction =>
+         let (_, raccess_aff_func) := raccess in
+         negb
+           (check_listzzs_cols raccess_aff_func
+              (length (PolyLang.pi_transformation pi))))
+      (PolyLang.pi_raccess pi)) eqn:Hcheckr; tryfalse.
+  split.
+  - unfold PolyLang.wf_pinstr.
+    repeat split.
+    + eapply Nat.eqb_eq.
+      eapply negb_false_iff in Hwitness_dim.
+      exact Hwitness_dim.
+    + eapply Nat.leb_le; eauto.
+    + eapply Nat.leb_le; eauto.
+    + eapply Nat.leb_le; eauto.
+    + eapply negb_false_iff in Hcheckdom.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hchecktf.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hcheckacc_tf.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply negb_false_iff in Hchecksched.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply Forall_forall. intros waccess Hin.
+      rewrite Misc.existsb_forall in Hcheckw.
+      specialize (Hcheckw waccess Hin).
+      destruct waccess as [warrid waccess_func].
+      destruct (negb
+          (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))))
+        eqn:Hcheckw'; tryfalse.
+      eapply negb_false_iff in Hcheckw'.
+      eapply check_listzzs_cols_correct; eauto.
+    + eapply Forall_forall. intros raccess Hin.
+      rewrite Misc.existsb_forall in Hcheckr.
+      specialize (Hcheckr raccess Hin).
+      destruct raccess as [rarrid raccess_func].
+      destruct (negb
+          (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))))
+        eqn:Hcheckr'; tryfalse.
+      eapply negb_false_iff in Hcheckr'.
+      eapply check_listzzs_cols_correct; eauto.
+  - eapply listzzs_strict_eqb_eq; eauto.
+Qed.
+
+Lemma check_wf_polyprog_affine_correct: 
   forall pp, 
     WHEN res <- check_wf_polyprog pp THEN 
     res = true ->
-    PolyLang.wf_pprog pp.
+    PolyLang.wf_pprog_affine pp.
 Proof.
   intros. intros res Hcheckwf Htrue.
-  unfold PolyLang.wf_pprog.
+  unfold PolyLang.wf_pprog_affine.
   intros.
   rewrite Htrue in Hcheckwf.
   unfold check_wf_polyprog in Hcheckwf.
@@ -456,30 +848,68 @@ Proof.
     clear Hlen.
     intros.
     eapply forallb_forall with (x:=pi) in Hcheckwf; eauto.
-    eapply check_wf_polyinstr_correct; eauto.
+    eapply check_wf_polyinstr_affine_correct; eauto.
   }
 Qed. 
+
+Lemma check_wf_polyprog_correct: 
+  forall pp, 
+    WHEN res <- check_wf_polyprog pp THEN 
+    res = true ->
+    PolyLang.wf_pprog pp.
+Proof.
+  intros pp res Hcheck Htrue.
+  eapply PolyLang.wf_pprog_affine_implies_wf_pprog.
+  eapply check_wf_polyprog_affine_correct; eauto.
+Qed. 
+
+Lemma check_wf_polyprog_tiling_correct :
+  forall pp,
+    WHEN res <- check_wf_polyprog_tiling pp THEN
+    res = true ->
+    PolyLang.wf_pprog_tiling pp.
+Proof.
+  intros pp res Hcheckwf Htrue.
+  unfold PolyLang.wf_pprog_tiling.
+  intros.
+  rewrite Htrue in Hcheckwf.
+  unfold check_wf_polyprog_tiling in Hcheckwf.
+  destruct pp as (p & vars).
+  destruct p as (pil, varctxt).
+  eapply mayReturn_pure in Hcheckwf.
+  do 2 rewrite andb_true_iff in Hcheckwf.
+  destruct Hcheckwf as ((Hvars & Hlen) & Hcheckwf).
+  split.
+  - eapply Nat.leb_le in Hvars; try lia.
+  - intros pi Hin.
+    eapply forallb_forall with (x:=pi) in Hcheckwf; eauto.
+    eapply check_wf_polyinstr_tiling_correct; eauto.
+Qed.
 
 Lemma check_eqdom_pinstr_correct: 
   forall pi1 pi2, 
   EqDomInstr pi1 pi2 ->
   PolyLang.eqdom_pinstr pi1 pi2.
 Proof.
-  intros.
+  intros pi1 pi2 H.
   unfold PolyLang.eqdom_pinstr.
   unfold EqDomInstr in H.
-  eapply andb_true_iff in H; destruct H. 
-  eapply andb_true_iff in H; destruct H. 
-  eapply andb_true_iff in H; destruct H. 
-  eapply andb_true_iff in H; destruct H. 
-  eapply andb_true_iff in H; destruct H. 
-  eapply Instr.eqb_eq in H4. 
-  eapply listzzs_strict_eqb_eq in H3.
-  eapply listzzs_strict_eqb_eq in H2.
-  eapply access_list_strict_eqb_eq in H1.
-  eapply access_list_strict_eqb_eq in H0.
-  eapply Nat.eqb_eq in H.
-  splits; trivial.
+  apply andb_true_iff in H. destruct H as [H Hwaccess].
+  apply andb_true_iff in H. destruct H as [H Hraccess].
+  apply andb_true_iff in H. destruct H as [H Haccess_tf].
+  apply andb_true_iff in H. destruct H as [H Htf].
+  apply andb_true_iff in H. destruct H as [H Hwitness].
+  apply andb_true_iff in H. destruct H as [H Hdom].
+  apply andb_true_iff in H. destruct H as [Hiters Hinst].
+  apply Nat.eqb_eq in Hiters.
+  apply Instr.eqb_eq in Hinst.
+  apply listzzs_strict_eqb_eq in Hdom.
+  apply point_space_witness_eqb_eq in Hwitness.
+  apply listzzs_strict_eqb_eq in Htf.
+  apply listzzs_strict_eqb_eq in Haccess_tf.
+  apply access_list_strict_eqb_eq in Hraccess.
+  apply access_list_strict_eqb_eq in Hwaccess.
+  repeat split; assumption.
 Qed.
 
 Lemma check_eqdom_pinstrs_correct:
@@ -538,10 +968,25 @@ Definition compose_ip_ext (ip1 ip2: PolyLang.InstrPoint): PolyLang.InstrPoint_ex
       PolyLang.ip_nth_ext := ip1.(PolyLang.ip_nth);
       PolyLang.ip_index_ext := ip1.(PolyLang.ip_index);  
       PolyLang.ip_transformation_ext := ip1.(PolyLang.ip_transformation);
+      PolyLang.ip_access_transformation_ext := ip1.(PolyLang.ip_transformation);
       PolyLang.ip_time_stamp1_ext := ip1.(PolyLang.ip_time_stamp);  
       PolyLang.ip_time_stamp2_ext := ip2.(PolyLang.ip_time_stamp);
       PolyLang.ip_instruction_ext := ip1.(PolyLang.ip_instruction);  
       PolyLang.ip_depth_ext := ip1.(PolyLang.ip_depth);  
+    |}.
+
+Definition compose_ip_ext_at
+  (access_tf: Transformation)
+  (ip1 ip2: PolyLang.InstrPoint): PolyLang.InstrPoint_ext :=
+    {|
+      PolyLang.ip_nth_ext := ip1.(PolyLang.ip_nth);
+      PolyLang.ip_index_ext := ip1.(PolyLang.ip_index);
+      PolyLang.ip_transformation_ext := ip1.(PolyLang.ip_transformation);
+      PolyLang.ip_access_transformation_ext := access_tf;
+      PolyLang.ip_time_stamp1_ext := ip1.(PolyLang.ip_time_stamp);
+      PolyLang.ip_time_stamp2_ext := ip2.(PolyLang.ip_time_stamp);
+      PolyLang.ip_instruction_ext := ip1.(PolyLang.ip_instruction);
+      PolyLang.ip_depth_ext := ip1.(PolyLang.ip_depth);
     |}.
 
 Lemma old_of_compose_ok: 
@@ -551,6 +996,18 @@ Lemma old_of_compose_ok:
 Proof.
   intros.
   unfold compose_ip_ext in H.
+  unfold PolyLang.old_of_ext.
+  destruct ip_ext; simpls.
+  inv H. destruct ip1; trivial.
+Qed.
+
+Lemma old_of_compose_at_ok:
+  forall access_tf ip1 ip2 ip_ext,
+    compose_ip_ext_at access_tf ip1 ip2 = ip_ext ->
+    PolyLang.old_of_ext ip_ext = ip1.
+Proof.
+  intros.
+  unfold compose_ip_ext_at in H.
   unfold PolyLang.old_of_ext.
   destruct ip_ext; simpls.
   inv H. destruct ip1; trivial.
@@ -573,14 +1030,487 @@ Proof.
   destruct ip1; destruct ip2; simpls; subst; trivial.
 Qed.
 
+Lemma new_of_compose_at_ok:
+  forall access_tf ip1 ip2 ip_ext,
+    ip1.(PolyLang.ip_nth) = ip2.(PolyLang.ip_nth) ->
+    ip1.(PolyLang.ip_index) = ip2.(PolyLang.ip_index) ->
+    ip1.(PolyLang.ip_transformation) = ip2.(PolyLang.ip_transformation) ->
+    ip1.(PolyLang.ip_instruction) = ip2.(PolyLang.ip_instruction) ->
+    ip1.(PolyLang.ip_depth) = ip2.(PolyLang.ip_depth) ->
+    compose_ip_ext_at access_tf ip1 ip2 = ip_ext ->
+    PolyLang.new_of_ext ip_ext = ip2.
+Proof.
+  intros.
+  unfold compose_ip_ext_at in H4.
+  unfold PolyLang.new_of_ext.
+  destruct ip_ext; simpls. inv H4.
+  destruct ip1; destruct ip2; simpls; subst; trivial.
+Qed.
+
 Fixpoint compose_ipl_ext (ipl1 ipl2: list PolyLang.InstrPoint): list PolyLang.InstrPoint_ext := 
   match ipl1, ipl2 with 
   | ip1::ipl1', ip2::ipl2' =>
       compose_ip_ext ip1 ip2 :: compose_ipl_ext ipl1' ipl2'   
   | [], [] => []
   | _, _ => []
-  end
+    end
 .
+
+Fixpoint compose_ipl_ext_at
+  (access_tf: Transformation)
+  (ipl1 ipl2: list PolyLang.InstrPoint): list PolyLang.InstrPoint_ext :=
+  match ipl1, ipl2 with
+  | ip1 :: ipl1', ip2 :: ipl2' =>
+      compose_ip_ext_at access_tf ip1 ip2 :: compose_ipl_ext_at access_tf ipl1' ipl2'
+  | [], [] => []
+  | _, _ => []
+  end.
+
+Lemma current_env_dim_of_eq:
+  forall pw current env_dim,
+    length current = (env_dim + witness_current_point_dim pw)%nat ->
+    PolyLang.current_env_dim_of pw current = env_dim.
+Proof.
+  intros pw current env_dim Hlen.
+  unfold PolyLang.current_env_dim_of.
+  lia.
+Qed.
+
+Lemma current_transformation_of_eq_at:
+  forall pi current env_dim,
+    witness_current_point_dim (PolyLang.pi_point_witness pi) =
+      PolyLang.pi_depth pi ->
+    length current = (env_dim + PolyLang.pi_depth pi)%nat ->
+    PolyLang.current_transformation_of pi current =
+    PolyLang.current_transformation_at env_dim pi.
+Proof.
+  intros pi current env_dim Hwitness Hlen.
+  unfold PolyLang.current_transformation_of.
+  rewrite (current_env_dim_of_eq (PolyLang.pi_point_witness pi) current env_dim).
+  - reflexivity.
+  - rewrite Hwitness. exact Hlen.
+Qed.
+
+Lemma current_access_transformation_of_eq_at:
+  forall pi current env_dim,
+    witness_current_point_dim (PolyLang.pi_point_witness pi) =
+      PolyLang.pi_depth pi ->
+    length current = (env_dim + PolyLang.pi_depth pi)%nat ->
+    PolyLang.current_access_transformation_of pi current =
+    PolyLang.current_access_transformation_at env_dim pi.
+Proof.
+  intros pi current env_dim Hwitness Hlen.
+  unfold PolyLang.current_access_transformation_of.
+  rewrite (current_env_dim_of_eq (PolyLang.pi_point_witness pi) current env_dim).
+  - reflexivity.
+  - rewrite Hwitness. exact Hlen.
+Qed.
+
+Lemma eqdom_pinstr_implies_current_transformation_at_eq:
+  forall env_dim pi1 pi2,
+    PolyLang.eqdom_pinstr pi1 pi2 ->
+    PolyLang.current_transformation_at env_dim pi1 =
+    PolyLang.current_transformation_at env_dim pi2.
+Proof.
+  intros env_dim pi1 pi2 Heq.
+  destruct Heq as (_ & _ & _ & Hwit & Htf & _ & _ & _).
+  unfold PolyLang.current_transformation_at.
+  rewrite Hwit, Htf.
+  reflexivity.
+Qed.
+
+Lemma eqdom_pinstr_implies_current_access_transformation_at_eq:
+  forall env_dim pi1 pi2,
+    PolyLang.eqdom_pinstr pi1 pi2 ->
+    PolyLang.current_access_transformation_at env_dim pi1 =
+    PolyLang.current_access_transformation_at env_dim pi2.
+Proof.
+  intros env_dim pi1 pi2 Heq.
+  destruct Heq as (_ & _ & _ & Hwit & _ & Htf & _ & _).
+  unfold PolyLang.current_access_transformation_at.
+  rewrite Hwit, Htf.
+  reflexivity.
+Qed.
+
+Lemma insert_zeros_length_exact :
+  forall d i l,
+    (i <= length l)%nat ->
+    length (PolyLang.insert_zeros d i l) = (d + length l)%nat.
+Proof.
+  intros d i l Hle.
+  unfold PolyLang.insert_zeros.
+  rewrite app_length, app_length.
+  rewrite repeat_length.
+  rewrite resize_length.
+  rewrite skipn_length.
+  lia.
+Qed.
+
+Lemma exact_listzzs_cols_insert_zeros_constraint :
+  forall cols added env_dim affs,
+    exact_listzzs_cols cols affs ->
+    (env_dim <= cols)%nat ->
+    exact_listzzs_cols (added + cols)%nat
+      (List.map (PolyLang.insert_zeros_constraint added env_dim) affs).
+Proof.
+  intros cols added env_dim affs Hcols Henv listz z listzz Hin Heq.
+  rewrite in_map_iff in Hin.
+  destruct Hin as [[v c] [Hmap Hin0]].
+  rewrite Heq in Hmap.
+  unfold PolyLang.insert_zeros_constraint in Hmap; simpl in Hmap.
+  inversion Hmap; subst listz z.
+  specialize (Hcols v c (v, c) Hin0 eq_refl).
+  unfold PolyLang.insert_zeros_constraint; simpl.
+  rewrite insert_zeros_length_exact.
+  - rewrite Hcols. reflexivity.
+  - rewrite Hcols. exact Henv.
+Qed.
+
+Lemma exact_listzzs_cols_current_insert_zeros_constraint :
+  forall cols added env_dim affs,
+    exact_listzzs_cols cols affs ->
+    (env_dim <= cols)%nat ->
+    exact_listzzs_cols (added + cols)%nat
+      (List.map (PolyLang.current_insert_zeros_constraint added env_dim) affs).
+Proof.
+  intros cols added env_dim affs Hcols Henv listz z listzz Hin Heq.
+  rewrite in_map_iff in Hin.
+  destruct Hin as [[v c] [Hmap Hin0]].
+  rewrite Heq in Hmap.
+  unfold PolyLang.current_insert_zeros_constraint in Hmap; simpl in Hmap.
+  inversion Hmap; subst listz z.
+  specialize (Hcols v c (v, c) Hin0 eq_refl).
+  unfold PolyLang.current_insert_zeros_constraint; simpl.
+  rewrite app_length, app_length.
+  rewrite repeat_length, resize_length, skipn_length.
+  rewrite Hcols.
+  lia.
+Qed.
+
+Lemma exact_listzzs_cols_current_transformation_at :
+  forall (env: list ident) (pi: PolyLang.PolyInstr),
+    exact_listzzs_cols
+      (length env + witness_base_point_dim (PolyLang.pi_point_witness pi))%nat
+      (PolyLang.pi_transformation pi) ->
+    exact_listzzs_cols
+      (length env + witness_current_point_dim (PolyLang.pi_point_witness pi))%nat
+      (PolyLang.current_transformation_at (length env) pi).
+Proof.
+  intros env pi Htf.
+  eapply PolyLang.exact_listzzs_cols_current_transformation_at.
+  exact Htf.
+Qed.
+
+Lemma exact_listzzs_cols_current_access_transformation_at :
+  forall (env: list ident) (pi: PolyLang.PolyInstr),
+    exact_listzzs_cols
+      (length env + witness_base_point_dim (PolyLang.pi_point_witness pi))%nat
+      (PolyLang.pi_access_transformation pi) ->
+    exact_listzzs_cols
+      (length env + witness_current_point_dim (PolyLang.pi_point_witness pi))%nat
+      (PolyLang.current_access_transformation_at (length env) pi).
+Proof.
+  intros env pi Htf.
+  eapply PolyLang.exact_listzzs_cols_current_access_transformation_at.
+  exact Htf.
+Qed.
+
+Lemma current_transformation_at_preserve_length :
+  forall (env: list ident) (pi: PolyLang.PolyInstr),
+    length (PolyLang.current_transformation_at (length env) pi) =
+    length (PolyLang.pi_transformation pi).
+Proof.
+  intros env pi.
+  eapply PolyLang.current_transformation_at_preserve_length.
+Qed.
+
+Lemma current_access_transformation_at_preserve_length :
+  forall (env: list ident) (pi: PolyLang.PolyInstr),
+    length (PolyLang.current_access_transformation_at (length env) pi) =
+    length (PolyLang.pi_access_transformation pi).
+Proof.
+  intros env pi.
+  eapply PolyLang.current_access_transformation_at_preserve_length.
+Qed.
+
+Lemma wf_pinstr_tiling_implies_wf_pinstr_ext_tiling_at :
+  forall env vars pi pi',
+    PolyLang.wf_pinstr_tiling env vars pi ->
+    PolyLang.wf_pinstr_tiling env vars pi' ->
+    PolyLang.eqdom_pinstr pi pi' ->
+    PolyLang.wf_pinstr_ext_tiling env
+      (compose_pinstr_ext_at (length env) pi pi').
+Proof.
+  intros env vars pi pi' Hwf1 Hwf2 Heqdom.
+  unfold PolyLang.wf_pinstr_tiling in *.
+  destruct Hwf1 as [Hwf1 Heq1].
+  destruct Hwf2 as [Hwf2 Heq2].
+  unfold PolyLang.wf_pinstr_ext_tiling.
+  split.
+  - unfold PolyLang.wf_pinstr_ext.
+    unfold compose_pinstr_ext_at; simpl.
+    destruct Hwf1 as [Hwitness1 Hwf1].
+    destruct Hwf1 as [Hcols_le Hwf1].
+    destruct Hwf1 as [Hpoly_nrl Hwf1].
+    destruct Hwf1 as [Hsched_nrl Hwf1].
+    destruct Hwf1 as [Hpoly_exact Hwf1].
+    destruct Hwf1 as [Htf_exact Hwf1].
+    destruct Hwf1 as [Hacc_tf_exact Hwf1].
+    destruct Hwf1 as [Hsched1_exact Hwf1].
+    destruct Hwf1 as [Hw1 Hr1].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [_ Hwf2].
+    destruct Hwf2 as [Hsched2_exact _].
+    destruct Heqdom as [Hdepth _].
+    rewrite <- Hdepth in Hsched2_exact.
+    repeat split.
+    + exact Hwitness1.
+    + exact Hpoly_exact.
+    + rewrite <- Hwitness1.
+      exact (exact_listzzs_cols_current_transformation_at env pi Htf_exact).
+    + rewrite <- Hwitness1.
+      exact (exact_listzzs_cols_current_access_transformation_at env pi Hacc_tf_exact).
+    + exact Hsched1_exact.
+    + exact Hsched2_exact.
+    + induction Hw1 as [|[arrid waccess_func] rest Hcols HForall IH]; constructor.
+      * simpl in *.
+        rewrite current_transformation_at_preserve_length.
+        exact Hcols.
+      * exact IH.
+    + induction Hr1 as [|[arrid raccess_func] rest Hcols HForall IH]; constructor.
+      * simpl in *.
+        rewrite current_transformation_at_preserve_length.
+        exact Hcols.
+      * exact IH.
+  - unfold compose_pinstr_ext_at; simpl.
+    unfold PolyLang.current_transformation_at, PolyLang.current_access_transformation_at.
+    rewrite Heq1.
+    reflexivity.
+Qed.
+
+Lemma wf_pinstr_ext_tiling_implies_waccess_matches :
+  forall env pi_ext,
+    PolyLang.wf_pinstr_ext_tiling env pi_ext ->
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi_ext))
+      (PolyLang.pi_waccess_ext pi_ext).
+Proof.
+  intros env pi_ext Hwf.
+  destruct Hwf as [Hwf Heq].
+  unfold PolyLang.wf_pinstr_ext in Hwf.
+  destruct Hwf as [_ [_ [_ [_ [_ [_ [Hw _]]]]]]].
+  unfold access_matches_tf.
+  rewrite <- Heq.
+  exact Hw.
+Qed.
+
+Lemma wf_pinstr_ext_tiling_implies_raccess_matches :
+  forall env pi_ext,
+    PolyLang.wf_pinstr_ext_tiling env pi_ext ->
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi_ext))
+      (PolyLang.pi_raccess_ext pi_ext).
+Proof.
+  intros env pi_ext Hwf.
+  destruct Hwf as [Hwf Heq].
+  unfold PolyLang.wf_pinstr_ext in Hwf.
+  destruct Hwf as [_ [_ [_ [_ [_ [_ [_ Hr]]]]]]].
+  unfold access_matches_tf.
+  rewrite <- Heq.
+  exact Hr.
+Qed.
+
+Lemma expand_ip_instr_eq_current_tf_at:
+  forall env vars envv nth pi ipl ip,
+    PolyLang.wf_pinstr env vars pi ->
+    length env = length envv ->
+    PolyLang.flatten_instr_nth envv nth pi ipl ->
+    In ip ipl ->
+    PolyLang.ip_transformation ip =
+      PolyLang.current_transformation_at (length env) pi.
+Proof.
+  intros env vars envv nth pi ipl ip Hwf Henvlen Hflat Hin.
+  destruct Hwf as [Hwitness _].
+  destruct Hflat as [_ [HBEL _]].
+  destruct (HBEL ip) as [Hfwd _].
+  destruct (Hfwd Hin) as [_ [Hbel [_ Hlen]]].
+  destruct Hbel as [_ [Htf _]].
+  rewrite Htf.
+  rewrite Henvlen.
+  eapply current_transformation_of_eq_at; eauto.
+Qed.
+
+Lemma expand_ip_instr_eq_current_access_tf_at:
+  forall env vars envv nth pi ipl ip,
+    PolyLang.wf_pinstr env vars pi ->
+    length env = length envv ->
+    PolyLang.flatten_instr_nth envv nth pi ipl ->
+    In ip ipl ->
+    PolyLang.current_access_transformation_of pi (PolyLang.ip_index ip) =
+      PolyLang.current_access_transformation_at (length env) pi.
+Proof.
+  intros env vars envv nth pi ipl ip Hwf Henvlen Hflat Hin.
+  destruct Hwf as [Hwitness _].
+  destruct Hflat as [_ [HBEL _]].
+  destruct (HBEL ip) as [Hfwd _].
+  destruct (Hfwd Hin) as [_ [_ [_ Hlen]]].
+  rewrite Henvlen.
+  eapply current_access_transformation_of_eq_at; eauto.
+Qed.
+
+Lemma wf_pinstr_tiling_implies_current_tf_eq_current_access_tf_at:
+  forall env vars pi,
+    PolyLang.wf_pinstr_tiling env vars pi ->
+    PolyLang.current_transformation_at (length env) pi =
+    PolyLang.current_access_transformation_at (length env) pi.
+Proof.
+  intros env vars pi Hwf.
+  destruct Hwf as [_ Heq].
+  unfold PolyLang.current_transformation_at, PolyLang.current_access_transformation_at.
+  destruct (PolyLang.pi_point_witness pi); simpl; now rewrite Heq.
+Qed.
+
+Lemma in_compose_ipl_ext_inv:
+  forall ip_ext ipl1 ipl2,
+    In ip_ext (compose_ipl_ext ipl1 ipl2) ->
+    exists ip1 ip2,
+      In ip1 ipl1 /\
+      In ip2 ipl2 /\
+      ip_ext = compose_ip_ext ip1 ip2.
+Proof.
+  induction ipl1 as [|ip1 ipl1 IH]; intros ipl2 Hip.
+  - destruct ipl2; simpl in Hip; contradiction.
+  - destruct ipl2 as [|ip2 ipl2].
+    * simpl in Hip. contradiction.
+    * simpl in Hip.
+      refine (
+        match Hip with
+        | or_introl Heq =>
+            ex_intro _ ip1
+              (ex_intro _ ip2
+                (conj (or_introl eq_refl)
+                  (conj (or_introl eq_refl) (eq_sym Heq))))
+        | or_intror Hin =>
+            match IH ipl2 Hin with
+            | ex_intro _ ip1'
+                (ex_intro _ ip2' (conj Hin1 (conj Hin2 Heq'))) =>
+                ex_intro _ ip1'
+                  (ex_intro _ ip2'
+                    (conj (or_intror Hin1) (conj (or_intror Hin2) Heq')))
+            end
+        end).
+Qed.
+
+Lemma in_compose_ipl_ext_at_inv:
+  forall access_tf ip_ext ipl1 ipl2,
+    In ip_ext (compose_ipl_ext_at access_tf ipl1 ipl2) ->
+    exists ip1 ip2,
+      In ip1 ipl1 /\
+      In ip2 ipl2 /\
+      ip_ext = compose_ip_ext_at access_tf ip1 ip2.
+Proof.
+  intros access_tf ip_ext ipl1.
+  revert access_tf ip_ext.
+  induction ipl1 as [|ip1 ipl1 IH]; intros acc_tf ip_ext ipl2 Hip.
+  - destruct ipl2; simpl in Hip; contradiction.
+  - destruct ipl2 as [|ip2 ipl2].
+    * simpl in Hip. contradiction.
+    * simpl in Hip.
+      refine (
+        match Hip with
+        | or_introl Heq =>
+            ex_intro _ ip1
+              (ex_intro _ ip2
+                (conj (or_introl eq_refl)
+                  (conj (or_introl eq_refl) (eq_sym Heq))))
+        | or_intror Hin =>
+            match IH acc_tf ip_ext ipl2 Hin with
+            | ex_intro _ ip1'
+                (ex_intro _ ip2' (conj Hin1 (conj Hin2 Heq'))) =>
+                ex_intro _ ip1'
+                  (ex_intro _ ip2'
+                    (conj (or_intror Hin1) (conj (or_intror Hin2) Heq')))
+            end
+        end).
+Qed.
+
+Lemma nth_error_compose_ipl_ext_inv_local:
+  forall n ipl1 ipl2 ip_ext,
+    nth_error (compose_ipl_ext ipl1 ipl2) n = Some ip_ext ->
+    exists ip1 ip2,
+      nth_error ipl1 n = Some ip1 /\
+      nth_error ipl2 n = Some ip2 /\
+      ip_ext = compose_ip_ext ip1 ip2.
+Proof.
+  induction n; intros ipl1 ipl2 ip_ext Hnth.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    inversion Hnth; subst.
+    exists ip1. exists ip2. repeat split; reflexivity.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    eapply IHn in Hnth.
+    destruct Hnth as (ip1' & ip2' & Hnth1 & Hnth2 & Heq).
+    exists ip1'. exists ip2'. repeat split; eauto.
+Qed.
+
+Lemma nth_error_compose_ipl_ext_at_inv_local:
+  forall n access_tf ipl1 ipl2 ip_ext,
+    nth_error (compose_ipl_ext_at access_tf ipl1 ipl2) n = Some ip_ext ->
+    exists ip1 ip2,
+      nth_error ipl1 n = Some ip1 /\
+      nth_error ipl2 n = Some ip2 /\
+      ip_ext = compose_ip_ext_at access_tf ip1 ip2.
+Proof.
+  induction n; intros acc_tf ipl1 ipl2 ip_ext Hnth.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    inversion Hnth; subst.
+    exists ip1. exists ip2. repeat split; reflexivity.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    eapply IHn in Hnth.
+    destruct Hnth as (ip1' & ip2' & Hnth1 & Hnth2 & Heq).
+    exists ip1'. exists ip2'. repeat split; eauto.
+Qed.
+
+Lemma nth_error_compose_ipl_ext:
+  forall n ipl1 ipl2 ip1 ip2,
+    nth_error ipl1 n = Some ip1 ->
+    nth_error ipl2 n = Some ip2 ->
+    nth_error (compose_ipl_ext ipl1 ipl2) n = Some (compose_ip_ext ip1 ip2).
+Proof.
+  induction n; intros ipl1 ipl2 ip1 ip2 Hnth1 Hnth2.
+  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
+      simpl in *; try discriminate.
+    inversion Hnth1; inversion Hnth2; subst.
+    reflexivity.
+  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
+      simpl in *; try discriminate.
+    eapply IHn; eauto.
+Qed.
+
+Lemma nth_error_compose_ipl_ext_at:
+  forall n access_tf ipl1 ipl2 ip1 ip2,
+    nth_error ipl1 n = Some ip1 ->
+    nth_error ipl2 n = Some ip2 ->
+    nth_error (compose_ipl_ext_at access_tf ipl1 ipl2) n =
+      Some (compose_ip_ext_at access_tf ip1 ip2).
+Proof.
+  induction n; intros acc_tf ipl1 ipl2 ip1 ip2 Hnth1 Hnth2.
+  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
+      simpl in *; try discriminate.
+    inversion Hnth1; inversion Hnth2; subst.
+    reflexivity.
+  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
+      simpl in *; try discriminate.
+    eapply IHn; eauto.
+Qed.
 
 Lemma old_of_compose_list_ok: 
   forall ipl1 ipl2 ipl_ext,
@@ -612,6 +1542,35 @@ Proof.
   }
 Qed.
 
+Lemma old_of_compose_list_at_ok:
+  forall access_tf ipl1 ipl2 ipl_ext,
+  length ipl1 = length ipl2 ->
+  compose_ipl_ext_at access_tf ipl1 ipl2 = ipl_ext ->
+  PolyLang.old_of_ext_list ipl_ext = ipl1.
+Proof.
+  induction ipl1.
+  {
+    intros; simpls.
+    destruct ipl2; tryfalse.
+    subst; simpls; trivial.
+  }
+  {
+    intros; simpls.
+    destruct ipl2; tryfalse.
+    simpls.
+    inv H.
+    unfold PolyLang.old_of_ext_list.
+    rewrite map_cons.
+    f_equal.
+    {
+      eapply old_of_compose_at_ok; trivial.
+    }
+    {
+      eapply IHipl1; eauto.
+    }
+  }
+Qed.
+
 Lemma new_of_compose_list_ok: 
   forall ipl1 ipl2 ipl_ext,
   rel_list PolyLang.eq_except_sched ipl1 ipl2 ->
@@ -635,6 +1594,36 @@ Proof.
     {
       unfold PolyLang.eq_except_sched in H1.
       eapply new_of_compose_ok with (ip1:=a); firstorder.
+    }
+    {
+      eapply IHipl1; eauto.
+    }
+  }
+Qed.
+
+Lemma new_of_compose_list_at_ok:
+  forall access_tf ipl1 ipl2 ipl_ext,
+  rel_list PolyLang.eq_except_sched ipl1 ipl2 ->
+  compose_ipl_ext_at access_tf ipl1 ipl2 = ipl_ext ->
+  PolyLang.new_of_ext_list ipl_ext = ipl2.
+Proof.
+  induction ipl1.
+  {
+    intros; simpls.
+    destruct ipl2; tryfalse.
+    subst; simpls; trivial.
+  }
+  {
+    intros; simpls.
+    destruct ipl2; tryfalse.
+    simpls.
+    inv H.
+    unfold PolyLang.new_of_ext_list.
+    rewrite map_cons.
+    f_equal.
+    {
+      unfold PolyLang.eq_except_sched in H1.
+      eapply new_of_compose_at_ok with (ip1:=a); firstorder.
     }
     {
       eapply IHipl1; eauto.
@@ -698,6 +1687,25 @@ Proof.
   induction pil1.
   {
     intros; simpls. symmetry in H. rewrite length_zero_iff_nil in H. subst; trivial.
+  }
+  {
+    intros; simpls.
+    destruct pil2 eqn:Hpil2; tryfalse. simpls. inv H.
+    rewrite IHpil1; eauto.
+  }
+Qed.
+
+Lemma compose_pinstrs_ext_at_app_singleton:
+  forall env_dim pil1 pil2 pi1 pi2,
+    length pil1 = length pil2 ->
+    compose_pinstrs_ext_at env_dim (pil1 ++ [pi1]) (pil2 ++ [pi2]) =
+    compose_pinstrs_ext_at env_dim pil1 pil2 ++
+    [compose_pinstr_ext_at env_dim pi1 pi2].
+Proof.
+  induction pil1.
+  {
+    intros; simpls.
+    symmetry in H. rewrite length_zero_iff_nil in H. subst; trivial.
   }
   {
     intros; simpls.
@@ -1149,19 +2157,20 @@ Definition validate_two_accesses_implies_permut_no_collision:
     res = true ->  
     length p1 = dom_dim1 -> 
     length p2 = dom_dim2 ->
-    length tf1 = dom_dim1 ->
     (
       exact_listzzs_cols dom_dim1 tf1
     ) ->
     (
       exact_listzzs_cols dom_dim2 tf2
     ) ->
+    access_matches_tf tf1 a1 ->
+    access_matches_tf tf2 a2 ->
     in_poly (p1 ++ p2) pol_dom = true ->
     Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_old_lt -> 
     Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_new_ge ->
     cell_neq (exact_cell a1 (affine_product tf1 p1)) (exact_cell a2 (affine_product tf2 p2)).
 Proof.
-  intros. intros res Hval Hres Hlen1 Hlen2 Hlentf Hwf1 Hwf2 Hin Hlt Hge.
+  intros. intros res Hval Hres Hlen1 Hlen2 Hwf1 Hwf2 Hacc1 Hacc2 Hin Hlt Hge.
   unfold validate_two_accesses in Hval.
   destruct a1 as (id1, func1) eqn:Ha1.
   destruct a2 as (id2, func2) eqn:Ha2.
@@ -1182,18 +2191,25 @@ Proof.
     rewrite poly_inter_pure_def.
     eapply andb_true_iff. split; trivial.
     eapply make_poly_eq_correct_true; eauto.
-    assert (length p1 > 0 \/ length p1 = 0). { lia. }
-    destruct H0.
-    {
-      eapply matrix_product_cols; eauto. rewrite Hlentf. trivial.
-    }
-    {
-      rewrite length_zero_iff_nil in H0. subst. simpls. 
-      rewrite length_zero_iff_nil in Hlentf. subst. simpls.
-      eapply matrix_product_cols_0; trivial.
-    }
-    rewrite matrix_product_assoc with (k2:=length p1); trivial.
-    rewrite matrix_product_assoc with (k2:=length p2); trivial.
+    - change
+        (exact_listzzs_cols
+           (length p1)
+           (snd (compose_access_function_at (length p1) (id2, func1) tf1))).
+      eapply compose_access_function_at_exact_cols; eauto.
+    - change
+        ((affine_product
+            (snd (compose_access_function_at (length p1) (id2, func1) tf1))
+            p1)
+         =v=
+         (affine_product
+            (snd (compose_access_function_at (length p2) (id2, func2) tf2))
+            p2)).
+      rewrite
+        (compose_access_function_at_correct
+           (length p1) (id2, func1) tf1 p1); eauto.
+      rewrite
+        (compose_access_function_at_correct
+           (length p2) (id2, func2) tf2 p2); eauto.
     }
   {
     (* id1 <> id2 *)
@@ -1211,13 +2227,14 @@ Definition validate_access_accesslist_implies_permut_no_collision1:
     res = true -> 
     length p1 = dom_dim1 -> 
     length p2 = dom_dim2 ->
-    length tf1 = dom_dim1 ->
     (
       exact_listzzs_cols dom_dim1 tf1
     ) ->
     (
       exact_listzzs_cols dom_dim2 tf2
     ) ->
+    access_matches_tf tf1 wa ->
+    Forall (access_matches_tf tf2) ral ->
     in_poly (p1 ++ p2) pol_dom = true ->
     Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_old_lt -> 
     Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_new_ge ->
@@ -1225,12 +2242,13 @@ Definition validate_access_accesslist_implies_permut_no_collision1:
 Proof.
   induction ral.
   {
-    intros. intros res Hval Hres Hlen1 Hlen2 Hlentf Hwf1 Hwf2 Hin Hlt Hge.
+    intros. intros res Hval Hres Hlen1 Hlen2 Hwf1 Hwf2 Hacc1 Haccs Hin Hlt Hge.
     eapply Forall_nil; trivial.
   }
   {
-    intros. intros res Hval Hres Hlen1 Hlen2 Hlentf Hwf1 Hwf2 Hin Hlt Hge.
+    intros. intros res Hval Hres Hlen1 Hlen2 Hwf1 Hwf2 Hacc1 Haccs Hin Hlt Hge.
     simpls.
+    inversion Haccs; subst.
     bind_imp_destruct Hval b Hval1. 
     destruct b; subst.
     { 
@@ -1260,13 +2278,14 @@ forall al1 al2 p1 p2 tf1 tf2 pol_dom pols_old_lt pols_new_ge dom_dim1 dom_dim2,
   res = true -> 
   length p1 = dom_dim1 -> 
   length p2 = dom_dim2 ->
-  length tf1 = dom_dim1 ->
   (
     exact_listzzs_cols dom_dim1 tf1
   ) ->
   (
     exact_listzzs_cols dom_dim2 tf2
   ) ->
+  Forall (access_matches_tf tf1) al1 ->
+  Forall (access_matches_tf tf2) al2 ->
   in_poly (p1 ++ p2) pol_dom = true ->
   Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_old_lt -> 
   Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_new_ge ->
@@ -1277,12 +2296,13 @@ forall al1 al2 p1 p2 tf1 tf2 pol_dom pols_old_lt pols_new_ge dom_dim1 dom_dim2,
 Proof.
   induction al1.
   {
-    intros. intros res Hval Hres Hlen1 Hlen2 Hlentf Hwf1 Hwf2 Hin Hlt Hge.
+    intros. intros res Hval Hres Hlen1 Hlen2 Hwf1 Hwf2 Hacc1 Hacc2 Hin Hlt Hge.
     eapply Forall_nil; trivial.
   }
   {
-    intros. intros res Hval Hres Hlen1 Hlen2 Hlentf Hwf1 Hwf2 Hin Hlt Hge.
+    intros. intros res Hval Hres Hlen1 Hlen2 Hwf1 Hwf2 Hacc1 Hacc2 Hin Hlt Hge.
     simpls.
+    inversion Hacc1; subst.
     bind_imp_destruct Hval b Hval1. 
     destruct b; subst.
     { 
@@ -1304,8 +2324,8 @@ Definition no_ww_collision (wl1 wl2: list AccessFunction) (ip1 ip2: PolyLang.Ins
   Forall (fun w1 =>
     Forall (fun w2 =>
     cell_neq 
-      (exact_cell w1 (affine_product (PolyLang.ip_transformation_ext ip1) (PolyLang.ip_index_ext ip1))) 
-      (exact_cell w2 (affine_product (PolyLang.ip_transformation_ext ip2) (PolyLang.ip_index_ext ip2)))
+      (exact_cell w1 (affine_product (PolyLang.ip_access_transformation_ext ip1) (PolyLang.ip_index_ext ip1))) 
+      (exact_cell w2 (affine_product (PolyLang.ip_access_transformation_ext ip2) (PolyLang.ip_index_ext ip2)))
     ) wl2
   ) wl1.
 
@@ -1313,8 +2333,8 @@ Definition no_wr_collision (wl1 rl2: list AccessFunction) (ip1 ip2: PolyLang.Ins
   Forall ( fun r2 => 
     Forall (
       fun w1 =>
-      cell_neq (exact_cell w1 (affine_product (PolyLang.ip_transformation_ext ip1) (PolyLang.ip_index_ext ip1)))
-               (exact_cell r2 (affine_product (PolyLang.ip_transformation_ext ip2) (PolyLang.ip_index_ext ip2)))
+      cell_neq (exact_cell w1 (affine_product (PolyLang.ip_access_transformation_ext ip1) (PolyLang.ip_index_ext ip1)))
+               (exact_cell r2 (affine_product (PolyLang.ip_access_transformation_ext ip2) (PolyLang.ip_index_ext ip2)))
     ) wl1 
   ) rl2.
 
@@ -1416,11 +2436,13 @@ Lemma no_w_collision_implies_permutability:
 Lemma no_write_collision_implies_permutable:
   forall ip1 ip2 wl1 wl2 rl1 rl2,
     no_write_collision wl1 wl2 rl1 rl2 ip1 ip2 ->
+    PolyLang.ip_access_transformation_ext ip1 = PolyLang.ip_transformation_ext ip1 ->
+    PolyLang.ip_access_transformation_ext ip2 = PolyLang.ip_transformation_ext ip2 ->
     Instr.valid_access_function wl1 rl1 (ip1.(PolyLang.ip_instruction_ext)) ->
     Instr.valid_access_function wl2 rl2 (ip2.(PolyLang.ip_instruction_ext)) ->
     PolyLang.Permutable_ext ip1 ip2.
 Proof.
-  intros until rl2. intros H Hwf1 Hwf2.
+  intros until rl2. intros H Htf1eq Htf2eq Hwf1 Hwf2.
   destruct ip1 eqn:Hip1; destruct ip2 eqn:Hip2. 
   unfold no_write_collision in H.
   unfold no_wr_collision in H.
@@ -1428,6 +2450,8 @@ Proof.
   unfold PolyLang.Permutable_ext. unfold PolyLang.Permutable. 
   unfold PolyLang.old_of_ext.
   simpls. 
+  rewrite Htf1eq in H.
+  rewrite Htf2eq in H.
 
   intros st1 Halias. split; intros.
   - rename H0 into Hsem1; rename H1 into Hsem2.
@@ -1443,20 +2467,47 @@ Proof.
         ).
     {
       destruct H as (WW & WR & RW).
-      eapply no_w_collision_implies_permutability with (wl1:=wl1) (rl1:=rl1); eauto.
-      splits; trivial. 
-
-      - (* WW *)
+      eapply (no_w_collision_implies_permutability
+                ip_instruction_ext ip_instruction_ext0
+                (affine_product ip_transformation_ext ip_index_ext)
+                (affine_product ip_transformation_ext0 ip_index_ext0)
+                st1 _ _ wl1 wl2 rl1 rl2 wcs1 rcs1 wcs2 rcs2); eauto.
+      assert (HWW' :
+        Forall
+          (fun w2 : AccessFunction =>
+             Forall
+               (fun w1 : AccessFunction =>
+                  cell_neq
+                    (exact_cell w1 (affine_product ip_transformation_ext ip_index_ext))
+                    (exact_cell w2 (affine_product ip_transformation_ext0 ip_index_ext0)))
+               wl1)
+          wl2).
+      {
         clear - WW.
-        eapply Forall_forall. intros w2 Hw2. eapply Forall_forall. intros w1 Hw1.
+        eapply Forall_forall. intros w2 Hw2.
+        eapply Forall_forall. intros w1 Hw1.
         eapply Forall_forall in WW; eauto.
         eapply Forall_forall in WW; eauto.
-      - (* WR *)      
+      }
+      assert (HRW' :
+        Forall
+          (fun w2 : AccessFunction =>
+             Forall
+               (fun r1 : AccessFunction =>
+                  cell_neq
+                    (exact_cell r1 (affine_product ip_transformation_ext ip_index_ext))
+                    (exact_cell w2 (affine_product ip_transformation_ext0 ip_index_ext0)))
+               rl1)
+          wl2).
+      {
         clear - RW.
-        eapply Forall_forall. intros w2 Hw2. eapply Forall_forall. intros r1 Hr1.
+        eapply Forall_forall. intros w2 Hw2.
+        eapply Forall_forall. intros r1 Hr1.
         eapply Forall_forall in RW; eauto.
         eapply Forall_forall in RW; eauto.
-        eapply cell_neq_symm; trivial.
+        eapply cell_neq_symm; exact RW.
+      }
+      exact (conj HWW' (conj WR HRW')).
     } 
     destruct H2 as (st2'' & st3' & Hsem1 & Hsem2 & Heq).
     exists st2'' st3'. splits; try econs; eauto. 
@@ -1471,22 +2522,49 @@ Proof.
       Instr.instr_semantics ip_instruction_ext0 
         (affine_product ip_transformation_ext0 ip_index_ext0) wcs1 rcs1 st2'' st3' /\ Instr.State.eq st3 st3').
     {
-      eapply no_w_collision_implies_permutability; eauto.
       destruct H as (WW & WR & RW).
-      splits; trivial. 
-
-      - (* WW *)
+      eapply (no_w_collision_implies_permutability
+                ip_instruction_ext0 ip_instruction_ext
+                (affine_product ip_transformation_ext0 ip_index_ext0)
+                (affine_product ip_transformation_ext ip_index_ext)
+                st1 _ _ wl2 wl1 rl2 rl1 wcs1 rcs1 wcs2 rcs2); eauto.
+      assert (HWW' :
+        Forall
+          (fun w2 : AccessFunction =>
+             Forall
+               (fun w1 : AccessFunction =>
+                  cell_neq
+                    (exact_cell w1 (affine_product ip_transformation_ext0 ip_index_ext0))
+                    (exact_cell w2 (affine_product ip_transformation_ext ip_index_ext)))
+               wl2)
+          wl1).
+      {
         clear - WW.
-        eapply Forall_forall. intros w2 Hw2. eapply Forall_forall. intros w1 Hw1.
+        eapply Forall_forall. intros w2 Hw2.
+        eapply Forall_forall. intros w1 Hw1.
         eapply Forall_forall in WW; eauto.
         eapply Forall_forall in WW; eauto.
-        eapply cell_neq_symm; trivial.
-      - (* WR *)      
+        eapply cell_neq_symm; exact WW.
+      }
+      assert (HWR' :
+        Forall
+          (fun w2 : AccessFunction =>
+             Forall
+               (fun r1 : AccessFunction =>
+                  cell_neq
+                    (exact_cell r1 (affine_product ip_transformation_ext0 ip_index_ext0))
+                    (exact_cell w2 (affine_product ip_transformation_ext ip_index_ext)))
+               rl2)
+          wl1).
+      {
         clear - WR.
-        eapply Forall_forall. intros w2 Hw2. eapply Forall_forall. intros r1 Hr1.
+        eapply Forall_forall. intros w2 Hw2.
+        eapply Forall_forall. intros r1 Hr1.
         eapply Forall_forall in WR; eauto.
         eapply Forall_forall in WR; eauto.
-        eapply cell_neq_symm; trivial.
+        eapply cell_neq_symm; exact WR.
+      }
+      exact (conj HWW' (conj RW HWR')).
     } 
     destruct H2 as (st2'' & st3' & Hsem1 & Hsem2 & Heq).
     exists st2'' st3'. splits; try econs; eauto.
@@ -1497,8 +2575,8 @@ Lemma validate_two_instrs_implies_no_write_collision:
   forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext,
     WHEN res <- validate_two_instrs pi1_ext pi2_ext (length env) THEN 
     res = true ->
-    PolyLang.wf_pinstr_ext env pi1_ext ->
-    PolyLang.wf_pinstr_ext env pi2_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi2_ext ->
     length env = length envv ->
     PolyLang.flatten_instr_nth_ext envv nth1 pi1_ext ipl1_ext ->
     PolyLang.flatten_instr_nth_ext envv nth2 pi2_ext ipl2_ext ->
@@ -1535,52 +2613,63 @@ Proof.
     unfold no_ww_collision.
     intros.
     subst.
-    assert (PolyLang.ip_transformation_ext ip1 = PolyLang.pi_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
-    assert (PolyLang.ip_transformation_ext ip2 = PolyLang.pi_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
+    assert (HTF1 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi1_ext)
+        (PolyLang.pi_access_transformation_ext pi1_ext)).
+    { clear - Hwf1. firstorder. }
+    assert (HTF2 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi2_ext)
+        (PolyLang.pi_access_transformation_ext pi2_ext)).
+    { clear - Hwf2. firstorder. }
+    assert (HACC1 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
+        (PolyLang.pi_waccess_ext pi1_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
+    assert (HACC2 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
+        (PolyLang.pi_waccess_ext pi2_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
     rewrite TF1, TF2.
-    eapply Hww; trivial.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    {
-      clear - Hwf1. firstorder.
-    }
-    {
-      clear - Hwf1. firstorder.
-    }
-    {
-      clear - Hwf2. firstorder.
-    }
-    { 
+    eapply Hww.
+    - reflexivity.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - exact HTF1.
+    - exact HTF2.
+    - exact HACC1.
+    - exact HACC2.
+    - 
       (* two instances in env_eq & in_domain poly *)
       clear - Hdomain Henv Henvlen Hext1 Hext2 Hip1 Hip2 Hwf1 Hwf2.
       eapply poly_inter_def 
         with (p := (PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)) in Henv.
       rewrite poly_inter_pure_def in Henv. 
       rewrite Henv.
-      eapply andb_true_iff; split.
-      {
-        (* in env_eq *)
-        rewrite Henvlen.
-        eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto.
-      }
-      {
-        (* in domain *)
-        eapply PolyLang.expand_same_env_implies_in_domain_product_pol 
-          with (env:=env) (envv:=envv) (nth1:=nth1) (nth2:=nth2) (ipl1:=ipl1_ext) (ipl2:=ipl2_ext) (pi1:=pi1_ext) (pi2:=pi2_ext); trivial.
-        rewrite <- Henvlen; trivial.
-      }
-    }
-    {
+      apply andb_true_intro; split.
+      { rewrite Henvlen.
+        eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto. }
+      { rewrite Henvlen in Hdomain.
+        eapply PolyLang.expand_same_env_implies_in_domain_product_pol
+          with (env:=env) (envv:=envv) (nth1:=nth1) (nth2:=nth2)
+               (ipl1:=ipl1_ext) (ipl2:=ipl2_ext) (pi1:=pi1_ext) (pi2:=pi2_ext);
+          eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext. }
+    - 
       (* old_sched_lt implies in make_poly_lt ... *)
-      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol; eauto.
-    }
-    {
-      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol; eauto.
-    }
+      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
+    - 
+      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
 
   assert (NO_WR: no_wr_collision 
@@ -1590,12 +2679,32 @@ Proof.
     eapply validate_two_accesslist_implies_permut_no_collision1 with (p1 := (PolyLang.ip_index_ext ip1)) (p2 := (PolyLang.ip_index_ext ip2)) in Hwr; eauto.
     unfold no_wr_collision. intros.
     subst.
-    assert (PolyLang.ip_transformation_ext ip1 = PolyLang.pi_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
-    assert (PolyLang.ip_transformation_ext ip2 = PolyLang.pi_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
+    assert (HTF1 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi1_ext)
+        (PolyLang.pi_access_transformation_ext pi1_ext)).
+    { clear - Hwf1. firstorder. }
+    assert (HTF2 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi2_ext)
+        (PolyLang.pi_access_transformation_ext pi2_ext)).
+    { clear - Hwf2. firstorder. }
+    assert (HACC1 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
+        (PolyLang.pi_waccess_ext pi1_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
+    assert (HACC2 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
+        (PolyLang.pi_raccess_ext pi2_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
     rewrite TF1, TF2.
     cut (Forall
     (fun a1 : AccessFunction =>
@@ -1603,54 +2712,42 @@ Proof.
        (fun a2 : AccessFunction =>
         cell_neq
           (exact_cell a1
-             (affine_product (PolyLang.pi_transformation_ext pi1_ext) (PolyLang.ip_index_ext ip1)))
+             (affine_product (PolyLang.pi_access_transformation_ext pi1_ext) (PolyLang.ip_index_ext ip1)))
           (exact_cell a2
-             (affine_product (PolyLang.pi_transformation_ext pi2_ext) (PolyLang.ip_index_ext ip2))))
+             (affine_product (PolyLang.pi_access_transformation_ext pi2_ext) (PolyLang.ip_index_ext ip2))))
        (PolyLang.pi_raccess_ext pi2_ext)) (PolyLang.pi_waccess_ext pi1_ext)). {
         clear. intro.
         eapply Forall_forall. intros. eapply Forall_forall. intros.
-        eapply Forall_forall in H; eauto. 
-        eapply Forall_forall in H; eauto.
+       eapply Forall_forall in H; eauto. 
+       eapply Forall_forall in H; eauto.
        }
-    eapply Hwr; trivial.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    {
-      clear - Hwf1.
-      firstorder.
-    }
-    {
-      clear - Hwf1.
-      firstorder.
-    }
-    {
-      clear - Hwf2. firstorder.
-    }
-    { 
+    eapply Hwr.
+    - reflexivity.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - exact HTF1.
+    - exact HTF2.
+    - exact HACC1.
+    - exact HACC2.
+    - 
       (* two instances in env_eq & in_domain poly *)
       clear - Hdomain Henv Henvlen Hext1 Hext2 Hip1 Hip2 Hwf1 Hwf2.
       eapply poly_inter_def 
         with (p := (PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)) in Henv.
       rewrite poly_inter_pure_def in Henv. 
       rewrite Henv.
-      eapply andb_true_iff; split.
-      {
-        (* in env_eq *)
-        rewrite Henvlen; eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto.
-      }
-      {
-        (* in domain *)
-        rewrite Henvlen in Hdomain; eapply PolyLang.expand_same_env_implies_in_domain_product_pol; eauto.
-      }
-    }
-    {
+      apply andb_true_intro; split.
+      { rewrite Henvlen; eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto. }
+      { rewrite Henvlen in Hdomain.
+        eapply PolyLang.expand_same_env_implies_in_domain_product_pol;
+          eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext. }
+    - 
       (* old_sched_lt implies in make_poly_lt ... *)
-      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol; eauto.
-
-    }
-    {
-      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol; eauto.
-    }
+      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
+    - 
+      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
 
   assert (NO_RW: no_wr_collision       
@@ -1660,12 +2757,32 @@ Proof.
     eapply validate_two_accesslist_implies_permut_no_collision1 with (p1 := (PolyLang.ip_index_ext ip1)) (p2 := (PolyLang.ip_index_ext ip2)) in Hrw; eauto.
     unfold no_wr_collision. intros.
     subst.
-    assert (PolyLang.ip_transformation_ext ip1 = PolyLang.pi_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
-    assert (PolyLang.ip_transformation_ext ip2 = PolyLang.pi_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
     }
+    assert (HTF1 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi1_ext)
+        (PolyLang.pi_access_transformation_ext pi1_ext)).
+    { clear - Hwf1. firstorder. }
+    assert (HTF2 :
+      exact_listzzs_cols
+        (length env + PolyLang.pi_depth_ext pi2_ext)
+        (PolyLang.pi_access_transformation_ext pi2_ext)).
+    { clear - Hwf2. firstorder. }
+    assert (HACC1 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
+        (PolyLang.pi_waccess_ext pi2_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
+    assert (HACC2 :
+      Forall
+        (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
+        (PolyLang.pi_raccess_ext pi1_ext)).
+    { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
 
     rewrite TF1, TF2.
     cut (Forall
@@ -1674,57 +2791,45 @@ Proof.
        (fun a2 : AccessFunction =>
         cell_neq
           (exact_cell a1
-             (affine_product (PolyLang.pi_transformation_ext pi1_ext) (PolyLang.ip_index_ext ip1)))
+             (affine_product (PolyLang.pi_access_transformation_ext pi1_ext) (PolyLang.ip_index_ext ip1)))
           (exact_cell a2
-             (affine_product (PolyLang.pi_transformation_ext pi2_ext) (PolyLang.ip_index_ext ip2))))
+             (affine_product (PolyLang.pi_access_transformation_ext pi2_ext) (PolyLang.ip_index_ext ip2))))
        (PolyLang.pi_waccess_ext pi2_ext)) (PolyLang.pi_raccess_ext pi1_ext)).
        {
         clear. intro.
         eapply Forall_forall. intros. eapply Forall_forall. intros.
-        eapply Forall_forall in H; eauto. 
-        eapply Forall_forall in H; eauto.
-        eapply cell_neq_symm; trivial.
+       eapply Forall_forall in H; eauto. 
+       eapply Forall_forall in H; eauto.
+       eapply cell_neq_symm; trivial.
        }
-    
-    eapply Hrw; trivial.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-    {
-      clear - Hwf1.
-      firstorder.
-    }
-    {
-      clear - Hwf1.
-      firstorder.
-    }
-    {
-      clear - Hwf2. firstorder.
-    }
-    { 
+
+    eapply Hrw.
+    - reflexivity.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - rewrite Henvlen; eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+    - exact HTF1.
+    - exact HTF2.
+    - exact HACC2.
+    - exact HACC1.
+    - 
       (* two instances in env_eq & in_domain poly *)
       clear - Hdomain Henv Henvlen Hext1 Hext2 Hip1 Hip2 Hwf1 Hwf2.
       eapply poly_inter_def 
         with (p := (PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)) in Henv.
       rewrite poly_inter_pure_def in Henv. 
       rewrite Henv.
-      eapply andb_true_iff; split.
-      {
-        (* in env_eq *)
-        rewrite Henvlen; eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto.
-      }
-      {
-        (* in domain *)
-        rewrite Henvlen in Hdomain; eapply PolyLang.expand_same_env_implies_in_domain_product_pol; eauto.
-      }
-    }
-    {
+      apply andb_true_intro; split.
+      { rewrite Henvlen; eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto. }
+      { rewrite Henvlen in Hdomain.
+        eapply PolyLang.expand_same_env_implies_in_domain_product_pol;
+          eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext. }
+    - 
       (* old_sched_lt implies in make_poly_lt ... *)
-      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol; eauto.
-
-    }
-    {
-      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol; eauto.
-    }
+      eapply PolyLang.ip_old_sched_lt_implies_in_pi_old_sched_lt_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
+    - 
+      eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
   clear - NO_WW NO_WR NO_RW. firstorder.
 Qed.
@@ -1734,8 +2839,8 @@ Lemma validate_pinstr_implies_permutability1:
   forall  env pi1_ext pi2_ext envv nth1 nth2 ipl1_ext ipl2_ext,
     WHEN res <- validate_two_instrs pi1_ext pi2_ext (length env) THEN 
     res = true ->
-    PolyLang.wf_pinstr_ext env pi1_ext ->
-    PolyLang.wf_pinstr_ext env pi2_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi2_ext ->
     length env = length envv ->
     PolyLang.flatten_instr_nth_ext envv nth1 pi1_ext ipl1_ext ->
     PolyLang.flatten_instr_nth_ext envv nth2 pi2_ext ipl2_ext ->
@@ -1758,6 +2863,26 @@ intros. intros res Hval Hres Hwf1 Hwf2 Henvlen Hext1 Hext2 Ha1 Ha2 ip1 ip2 Hip1 
   }
   assert (PolyLang.ip_instruction_ext ip2 = PolyLang.pi_instr_ext pi2_ext). {
     eapply PolyLang.expand_ip_instr_eq_pi_instr_ext; eauto.
+  }
+  assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.ip_transformation_ext ip1) as HTF1EQ. {
+    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as HACC1. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
+    }
+    assert (PolyLang.ip_transformation_ext ip1 = PolyLang.pi_transformation_ext pi1_ext) as HTF1. {
+      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    }
+    destruct Hwf1 as [_ HPIEQ].
+    rewrite HACC1, HTF1, HPIEQ; reflexivity.
+  }
+  assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.ip_transformation_ext ip2) as HTF2EQ. {
+    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as HACC2. {
+      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
+    }
+    assert (PolyLang.ip_transformation_ext ip2 = PolyLang.pi_transformation_ext pi2_ext) as HTF2. {
+      eapply PolyLang.expand_ip_instr_eq_pi_tf_ext; eauto.
+    }
+    destruct Hwf2 as [_ HPIEQ].
+    rewrite HACC2, HTF2, HPIEQ; reflexivity.
   }
   
   eapply no_write_collision_implies_permutable; eauto.
@@ -1861,18 +2986,53 @@ Proof.
     inv H4. unfold PolyLang.np_lt in H0. simpls. trivial.
 Qed.
 
+Lemma ipl_sorted_implies_compose_sorted_at:
+  forall access_tf ipl1 ipl2,
+    Sorted PolyLang.np_lt ipl1 ->
+    Sorted PolyLang.np_lt ipl2 ->
+    Sorted PolyLang.np_lt_ext (compose_ipl_ext_at access_tf ipl1 ipl2).
+Proof.
+  induction ipl1.
+  - intros. simpls. destruct ipl2; simpls; econs.
+  - intros. simpls. destruct ipl2; simpls; econs.
+    inv H. inv H0.
+    eapply IHipl1; eauto.
+    inv H; inv H0.
+    unfold compose_ip_ext_at.
+    destruct ipl1; destruct ipl2; try solve [econs].
+    simpls.
+    destruct a; destruct i; subst; simpls.
+    econs. unfold PolyLang.np_lt_ext; simpls.
+    inv H4. unfold PolyLang.np_lt in H0. simpls. trivial.
+Qed.
+
 Lemma old_new_compose:
   forall ip1 ip2 ip,
     ip1 = PolyLang.old_of_ext ip ->
     ip2 = PolyLang.new_of_ext ip ->
+    PolyLang.ip_access_transformation_ext ip =
+      PolyLang.ip_transformation_ext ip ->
     ip = compose_ip_ext ip1 ip2.
 Proof.
-  intros.
-  unfold compose_ip_ext. 
-  unfolds PolyLang.old_of_ext.
-  unfolds PolyLang.new_of_ext.
-  destruct ip; destruct ip1; destruct ip2; simpls. 
-  inv H. inv H0. simpls; trivial.
+  intros ip1 ip2 ip Hold Hnew Hacc.
+  subst ip1 ip2.
+  destruct ip; simpl in *.
+  subst.
+  reflexivity.
+Qed.
+
+Lemma old_new_compose_at:
+  forall access_tf ip1 ip2 ip,
+    ip1 = PolyLang.old_of_ext ip ->
+    ip2 = PolyLang.new_of_ext ip ->
+    PolyLang.ip_access_transformation_ext ip = access_tf ->
+    ip = compose_ip_ext_at access_tf ip1 ip2.
+Proof.
+  intros access_tf ip1 ip2 ip Hold Hnew Hacc.
+  subst ip1 ip2.
+  destruct ip; simpl in *.
+  subst.
+  reflexivity.
 Qed.
 
 Lemma ipl_in_implies_compose_in:
@@ -1889,277 +3049,6 @@ Proof.
     destruct ipl1; destruct ipl2; simpls; tryfalse.
     right.
     eapply IHn; eauto.
-Qed.
-
-Lemma expand_pinstr_implies_expand_pinstr_ext: 
-  forall envv nth pi1 pi2 ipl1 ipl2 pi_ext ipl_ext,
-    PolyLang.eqdom_pinstr pi1 pi2 ->
-    PolyLang.flatten_instr_nth envv nth pi1 ipl1 -> 
-    PolyLang.flatten_instr_nth envv nth pi2 ipl2 -> 
-    PolyLang.compose_pinstr_ext pi1 pi2 = pi_ext ->
-    compose_ipl_ext ipl1 ipl2 = ipl_ext ->
-    PolyLang.flatten_instr_nth_ext envv nth pi_ext ipl_ext.
-Proof.
-  intros.
-  pose proof H0 as G0. pose proof H1 as G1.
-  assert (PolyLang.pi_poly pi1 = PolyLang.pi_poly pi2). {firstorder. }
-  assert (PolyLang.pi_depth pi1 = PolyLang.pi_depth pi2) as I. {firstorder. }
-  assert (PolyLang.pi_poly_ext pi_ext = PolyLang.pi_poly pi1). {
-    unfold PolyLang.compose_pinstr_ext in H2. 
-    destruct pi1 eqn:Hpi; subst; eauto.
-  }
-  assert (PolyLang.pi_depth_ext pi_ext = PolyLang.pi_depth pi1) as SAMEI. {
-    unfold PolyLang.compose_pinstr_ext in H2. 
-    destruct pi1 eqn:Hpi; subst; eauto.
-  }
-  assert (PolyLang.new_of_ext_list ipl_ext = ipl2 /\
-  PolyLang.old_of_ext_list ipl_ext = ipl1). {
-    eapply eqdom_pinstr_implies_ext_compose in H3; eauto.
-  }
-  destruct H6 as (Hipl2 & Hipl1).
-  destruct H0 as (ENV1 & BEL1 & NODUP1 & SORTED1).
-  destruct H1 as (ENV2 & BEL2 & NODUP2 & SORTED2).
-  splits; eauto.
-  - intros.
-    remember (PolyLang.old_of_ext ip) as ip1.
-    assert (PolyLang.ip_index_ext ip = PolyLang.ip_index ip1). {
-      clear - Heqip1.
-      unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-    }
-    rewrite H1. eapply ENV1.
-    rewrite <- Hipl1. rewrite Heqip1.
-    eapply in_map. trivial.
-  - intros. 
-    remember (PolyLang.old_of_ext ip) as ip1.
-    remember (PolyLang.new_of_ext ip) as ip2.
-
-    split; intro.
-    --
-      assert (In ip1 ipl1). {
-        rewrite <- Hipl1. rewrite Heqip1.
-        eapply in_map.
-        subst. trivial.
-      }
-
-      assert (PolyLang.ip_nth_ext ip = PolyLang.ip_nth ip1). {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert (PolyLang.ip_index_ext ip = PolyLang.ip_index ip1) as HINDEX1. {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert ((PolyLang.pi_poly_ext pi_ext) = (PolyLang.pi_poly pi1)) as HPOLYEXT. {
-        clear - H2.
-        unfold PolyLang.compose_pinstr_ext in H2.
-        destruct pi1 eqn:Hpi; subst; eauto.
-      }
-      assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
-        clear - H2.
-        unfold PolyLang.compose_pinstr_ext in H2.
-        destruct pi1 eqn:Hpi; subst; eauto.
-      }
-      assert ((PolyLang.pi_schedule1_ext pi_ext) = (PolyLang.pi_schedule pi1)) as PSCHED1. {
-        clear - H2.
-        unfold PolyLang.compose_pinstr_ext in H2.
-        destruct pi1 eqn:Hpi; subst; eauto.
-      }
-      assert ((PolyLang.pi_schedule2_ext pi_ext) = (PolyLang.pi_schedule pi2)) as PSCHED2. {
-        clear - H2.
-        unfold PolyLang.compose_pinstr_ext in H2.
-        destruct pi1 eqn:Hpi; subst; eauto.
-      }
-      assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
-        clear - H2.
-        unfold PolyLang.compose_pinstr_ext in H2.
-        destruct pi1 eqn:Hpi; subst; eauto.
-      }
-      assert (
-        firstn (length envv) (PolyLang.ip_index ip1) = envv /\
-        PolyLang.belongs_to ip1 pi1 /\
-        PolyLang.ip_nth ip1 = nth /\
-        Datatypes.length (PolyLang.ip_index ip1) = Datatypes.length envv + PolyLang.pi_depth pi1
-      ) as HBEL1PACK. {
-        eapply BEL1; eauto.
-      }
-      destruct HBEL1PACK as (HPREF1 & HBEL1 & HNTH1 & HLEN1).
-      destruct HBEL1 as (POL1 & TSF1 & TS1 & INSTR1 & D1).
-      assert (PolyLang.ip_transformation_ext ip = PolyLang.ip_transformation ip1) as HTSFEXT1. {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert (PolyLang.ip_time_stamp1_ext ip = PolyLang.ip_time_stamp ip1) as HTS1EXT. {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert (PolyLang.ip_instruction_ext ip = PolyLang.ip_instruction ip1) as HINSTEXT1. {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert (PolyLang.ip_depth_ext ip = PolyLang.ip_depth ip1) as HDEPTHEXT1. {
-        clear - Heqip1.
-        unfold PolyLang.old_of_ext in Heqip1; subst; trivial.
-      }
-      assert (In ip2 ipl2) as HIN2. {
-        rewrite <- Hipl2. rewrite Heqip2.
-        eapply in_map.
-        subst. trivial.
-      }
-      assert (
-        firstn (length envv) (PolyLang.ip_index ip2) = envv /\
-        PolyLang.belongs_to ip2 pi2 /\
-        PolyLang.ip_nth ip2 = nth /\
-        Datatypes.length (PolyLang.ip_index ip2) = Datatypes.length envv + PolyLang.pi_depth pi2
-      ) as HBEL2PACK. {
-        eapply BEL2; eauto.
-      }
-      destruct HBEL2PACK as (HPREF2 & HBEL2 & HNTH2 & HLEN2).
-      destruct HBEL2 as (POL2 & TSF2 & TS2 & INSTR2 & D2).
-      assert (PolyLang.ip_time_stamp2_ext ip = PolyLang.ip_time_stamp ip2) as HTS2EXT. {
-        clear - Heqip2.
-        unfold PolyLang.new_of_ext in Heqip2; subst; trivial.
-      }
-      assert (PolyLang.ip_index ip2 = PolyLang.ip_index_ext ip) as HINDEX2. {
-        clear - Heqip2.
-        unfold PolyLang.new_of_ext in Heqip2; subst; trivial.
-      }
-      split.
-      + rewrite HINDEX1. exact HPREF1.
-      + split.
-        * unfold PolyLang.belongs_to_ext.
-          repeat split.
-          { rewrite HPOLYEXT, HINDEX1. exact POL1. }
-          { rewrite HTSFEXT1, PTSF. exact TSF1. }
-          { rewrite HTS1EXT, PSCHED1, HINDEX1. exact TS1. }
-          { rewrite HTS2EXT, PSCHED2, <- HINDEX2. exact TS2. }
-          { rewrite HINSTEXT1, PINSTR. exact INSTR1. }
-          { rewrite HDEPTHEXT1, SAMEI. exact D1. }
-        * split.
-          { rewrite H6. exact HNTH1. }
-          { rewrite HINDEX1, SAMEI. exact HLEN1. }
-    --
-      destruct H0 as (HPREF & BEL & HNTHEXT & LEN).
-      assert (exists n, nth_error ipl1 n = Some ip1 /\ nth_error ipl2 n = Some ip2). {
-        assert (In ip1 ipl1). {
-          destruct H as (DEPTH & INSTR & DOM & TSF & F & R).
-          destruct BEL as (POL & TS & T1 & T2 & Instr & D).
-          assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert ((PolyLang.pi_schedule1_ext pi_ext) = (PolyLang.pi_schedule pi1)) as PSCHED1. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert (HBEL1OLD : PolyLang.belongs_to ip1 pi1). {
-            unfold PolyLang.belongs_to.
-            repeat split.
-            - clear - POL H5 Heqip1.
-              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-              rewrite H5 in POL. exact POL.
-            - clear - TS PTSF Heqip1.
-              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-              rewrite PTSF in TS. exact TS.
-            - clear - T1 PSCHED1 Heqip1.
-              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-              rewrite PSCHED1 in T1. exact T1.
-            - clear - Instr PINSTR Heqip1.
-              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-              rewrite PINSTR in Instr. exact Instr.
-            - clear - D SAMEI Heqip1.
-              unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-              rewrite SAMEI in D. exact D.
-          }
-          eapply BEL1.
-          refine (conj _ (conj _ (conj _ _))).
-          - clear - HPREF Heqip1.
-            unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *. exact HPREF.
-          - exact HBEL1OLD.
-          - unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-            reflexivity.
-          - unfold PolyLang.old_of_ext in Heqip1. subst. simpl in *.
-            exact LEN.
-        }
-        assert (In ip2 ipl2). {
-          destruct H as (DEPTH & INSTR & DOM & TSF & F & R).
-          destruct BEL as (POL & TS & T1 & T2 & Instr & D).
-          assert ((PolyLang.pi_instr_ext pi_ext) = (PolyLang.pi_instr pi1)) as PINSTR. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert ((PolyLang.pi_schedule2_ext pi_ext) = (PolyLang.pi_schedule pi2)) as PSCHED2. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert ((PolyLang.pi_transformation_ext pi_ext) = (PolyLang.pi_transformation pi1)) as PTSF. {
-            clear - H2.
-            unfold PolyLang.compose_pinstr_ext in H2.
-            destruct pi1 eqn:Hpi; subst; eauto.
-          }
-          assert (HBEL2NEW : PolyLang.belongs_to ip2 pi2). {
-            unfold PolyLang.belongs_to.
-            repeat split.
-            - clear - POL H5 DOM Heqip2.
-              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-              rewrite H5 in POL. rewrite DOM in POL. exact POL.
-            - clear - TS PTSF TSF Heqip2.
-              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-              rewrite PTSF in TS. rewrite TSF in TS. exact TS.
-            - clear - T2 PSCHED2 Heqip2.
-              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-              rewrite PSCHED2 in T2. exact T2.
-            - clear - Instr PINSTR INSTR Heqip2.
-              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-              rewrite PINSTR in Instr. rewrite INSTR in Instr. exact Instr.
-            - clear - D SAMEI DEPTH Heqip2.
-              unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-              rewrite SAMEI in D. rewrite DEPTH in D. exact D.
-          }
-          eapply BEL2.
-          refine (conj _ (conj _ (conj _ _))).
-          - clear - HPREF Heqip2.
-            unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *. exact HPREF.
-          - exact HBEL2NEW.
-          - unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-            reflexivity.
-          - unfold PolyLang.new_of_ext in Heqip2. subst. simpl in *.
-            rewrite <- DEPTH. exact LEN.
-        }
-
-        pose proof H as G.
-        eapply PolyLang.eqdom_pinstr_implies_flatten_same_np_set 
-          with (ipl1:=ipl1) (ipl2:=ipl2) in H; eauto.
-        eapply PolyLang.ip_ipl_same_np_same_pos; eauto.
-        eapply PolyLang.eqdom_pinstr_implies_flatten_instr_same_len; eauto.
-        eapply PolyLang.flatten_instr_nth_NoDupA_np; eauto.
-        eapply PolyLang.flatten_instr_nth_NoDupA_np; eauto.
-        clear - Heqip1 Heqip2.
-        unfolds PolyLang.old_of_ext; unfolds PolyLang.new_of_ext. unfold PolyLang.np_eq.
-        destruct ip; destruct ip1; destruct ip2; simpls. 
-        inv Heqip1. inv Heqip2. split; trivial. eapply lex_compare_reflexive.
-      }
-      destruct H0 as (n & NTH1 & NTH2).
-      rewrite <- H3.
-      assert (ip = compose_ip_ext ip1 ip2). {
-        eapply old_new_compose; eauto.
-      }
-      rewrite H0.
-      eapply ipl_in_implies_compose_in; eauto.
-  -
-    rewrite <- H3.
-    eapply ipl_NoDup_implies_compose_NoDup; eauto.
-  - 
-    rewrite <- H3.
-    eapply ipl_sorted_implies_compose_sorted; eauto.
 Qed.
 
 Lemma rel_pil_implies_rel_ipl: 
@@ -2216,40 +3105,36 @@ Proof.
       }
       rewrite H; trivial.
     }
-  }
+}
 Qed.
 
-Lemma old_and_new_implies_compose: 
-  forall ipl_ext ipl1 ipl2, 
-  PolyLang.old_of_ext_list ipl_ext = ipl1 -> 
-  PolyLang.new_of_ext_list ipl_ext = ipl2 -> 
-    compose_ipl_ext ipl1 ipl2 = ipl_ext.
+Lemma flatten_instrs_ext_ip_access_eq:
+  forall env envv pil_ext ipl_ext ip,
+    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
+    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
+    In ip ipl_ext ->
+    PolyLang.ip_access_transformation_ext ip =
+      PolyLang.ip_transformation_ext ip.
 Proof.
-  induction ipl_ext.
-  {
-    intros; simpls.
-    subst; simpls; trivial.
-  }
-  {
-    intros; simpls.
-    rewrite <- H; rewrite <- H0.
-    simpls.
-    f_equal.
-    {
-      unfold compose_ip_ext. destruct a eqn:Ha; trivial.
-    }
-    {
-      eapply IHipl_ext; eauto.
-    }
-  }
+  intros env envv pil_ext ipl_ext ip Hwf Hflat Hin.
+  destruct Hflat as (_ & Hmem & _ & _).
+  specialize (Hmem ip).
+  destruct Hmem as [Hfwd _].
+  destruct (Hfwd Hin) as (pi & Hnth & _ & Hbel & _).
+  apply nth_error_In in Hnth.
+  eapply Forall_forall in Hwf; eauto.
+  destruct Hwf as [_ Heqtf].
+  destruct Hbel as (_ & Htf & Hacc_tf & _ & _ & _ & _).
+  rewrite Htf, Hacc_tf, Heqtf.
+  reflexivity.
 Qed.
 
 Lemma validate_instr_and_list_implies_permutability1: 
   forall pil_ext pi1_ext env envv nth ipl1_ext ipl_ext,
     WHEN res <- validate_instr_and_list pi1_ext (rev pil_ext) (length env) THEN
     res = true ->
-    PolyLang.wf_pinstr_ext env pi1_ext -> 
-    Forall (PolyLang.wf_pinstr_ext env) pil_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext -> 
+    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
     length env = length envv ->
     PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext -> 
     PolyLang.flatten_instrs_ext envv pil_ext ipl_ext -> 
@@ -2322,12 +3207,613 @@ Proof.
   }
 Qed.
 
+Lemma nth_error_compose_ipl_ext_inv:
+  forall n ipl1 ipl2 ip_ext,
+    nth_error (compose_ipl_ext ipl1 ipl2) n = Some ip_ext ->
+    exists ip1 ip2,
+      nth_error ipl1 n = Some ip1 /\
+      nth_error ipl2 n = Some ip2 /\
+      ip_ext = compose_ip_ext ip1 ip2.
+Proof.
+  induction n; intros ipl1 ipl2 ip_ext Hnth.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    inversion Hnth; subst.
+    exists ip1. exists ip2. repeat split; reflexivity.
+  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
+      simpl in Hnth; try discriminate.
+    eapply IHn in Hnth.
+    destruct Hnth as (ip1' & ip2' & Hnth1 & Hnth2 & Heq).
+    exists ip1'. exists ip2'. repeat split; eauto.
+Qed.
+
+Lemma compose_ipl_ext_nodup:
+  forall ipl1 ipl2,
+    NoDup ipl1 ->
+    length ipl1 = length ipl2 ->
+    NoDup (compose_ipl_ext ipl1 ipl2).
+Proof.
+  induction ipl1 as [|ip1 ipl1 IH]; intros ipl2 Hnd Hlen.
+  - destruct ipl2; simpl in *; constructor.
+  - destruct ipl2 as [|ip2 ipl2]; simpl in Hlen; try discriminate.
+    inversion Hnd as [|? ? Hnin Hnd']; subst.
+    constructor.
+    + intro Hin.
+      eapply in_compose_ipl_ext_inv in Hin.
+      destruct Hin as (ip1' & ip2' & Hin1 & _ & Heq).
+      apply (f_equal PolyLang.old_of_ext) in Heq.
+      revert Hnin Hin1 Heq.
+      destruct ip1 as [n1 idx1 tf1 ts1 ins1 d1].
+      destruct ip1' as [n1' idx1' tf1' ts1' ins1' d1'].
+      simpl.
+      intros Hnin Hin1 Heq.
+      inversion Heq; subst.
+      exact (Hnin Hin1).
+    + eapply IH.
+      * exact Hnd'.
+      * lia.
+Qed.
+
+Lemma compose_ipl_ext_at_nodup:
+  forall access_tf ipl1 ipl2,
+    NoDup ipl1 ->
+    length ipl1 = length ipl2 ->
+    NoDup (compose_ipl_ext_at access_tf ipl1 ipl2).
+Proof.
+  intros access_tf ipl1.
+  revert access_tf.
+  induction ipl1 as [|ip1 ipl1 IH]; intros acc_tf ipl2 Hnd Hlen.
+  - destruct ipl2; simpl in *; constructor.
+  - destruct ipl2 as [|ip2 ipl2]; simpl in Hlen; try discriminate.
+    inversion Hnd as [|? ? Hnin Hnd']; subst.
+    constructor.
+    + intro Hin.
+      eapply in_compose_ipl_ext_at_inv in Hin.
+      destruct Hin as (ip1' & ip2' & Hin1 & _ & Heq).
+      apply (f_equal PolyLang.old_of_ext) in Heq.
+      revert Hnin Hin1 Heq.
+      destruct ip1 as [n1 idx1 tf1 ts1 ins1 d1].
+      destruct ip1' as [n1' idx1' tf1' ts1' ins1' d1'].
+      simpl.
+      intros Hnin Hin1 Heq.
+      inversion Heq; subst.
+      exact (Hnin Hin1).
+    + eapply IH.
+      * exact Hnd'.
+      * lia.
+Qed.
+
+Lemma eq_except_sched_refl :
+  forall ip,
+    PolyLang.eq_except_sched ip ip.
+Proof.
+  intros ip.
+  unfold PolyLang.eq_except_sched.
+  repeat split; reflexivity.
+Qed.
+
+Lemma eq_except_sched_trans :
+  forall ip1 ip2 ip3,
+    PolyLang.eq_except_sched ip1 ip2 ->
+    PolyLang.eq_except_sched ip2 ip3 ->
+    PolyLang.eq_except_sched ip1 ip3.
+Proof.
+  intros ip1 ip2 ip3 Heq12 Heq23.
+  unfold PolyLang.eq_except_sched in *.
+  destruct Heq12 as (Hnth12 & Hidx12 & Htf12 & Hins12 & Hdepth12).
+  destruct Heq23 as (Hnth23 & Hidx23 & Htf23 & Hins23 & Hdepth23).
+  repeat split; congruence.
+Qed.
+
+Lemma new_of_ext_eq_except_old_of_ext :
+  forall ip_ext,
+    PolyLang.eq_except_sched
+      (PolyLang.old_of_ext ip_ext)
+      (PolyLang.new_of_ext ip_ext).
+Proof.
+  intros ip_ext.
+  unfold PolyLang.eq_except_sched.
+  destruct ip_ext; simpl.
+  repeat split; reflexivity.
+Qed.
+
+Lemma eq_except_sched_in_flatten_instr_nth_implies_eq :
+  forall envv nth pi ipl ip1 ip2,
+    PolyLang.flatten_instr_nth envv nth pi ipl ->
+    In ip1 ipl ->
+    In ip2 ipl ->
+    PolyLang.eq_except_sched ip1 ip2 ->
+    ip1 = ip2.
+Proof.
+  intros envv nth pi ipl ip1 ip2 Hflat Hin1 Hin2 Heq.
+  destruct Hflat as [_ [HBEL _]].
+  destruct (HBEL ip1) as [Hfwd1 _].
+  destruct (HBEL ip2) as [Hfwd2 _].
+  destruct (Hfwd1 Hin1) as [_ [Hbel1 [_ _]]].
+  destruct (Hfwd2 Hin2) as [_ [Hbel2 [_ _]]].
+  destruct Hbel1 as [_ [Htf1 [Hts1 [Hins1 Hdepth1]]]].
+  destruct Hbel2 as [_ [Htf2 [Hts2 [Hins2 Hdepth2]]]].
+  unfold PolyLang.eq_except_sched in Heq.
+  destruct Heq as (Hnth & Hidx & Htf & Hins & Hdepth).
+  destruct ip1 as [nth1 idx1 tf1 ts1 ins1 d1].
+  destruct ip2 as [nth2 idx2 tf2 ts2 ins2 d2].
+  simpl in *.
+  subst nth2 idx2 tf2 ins2 d2.
+  rewrite Hts1.
+  f_equal.
+  symmetry.
+  exact Hts2.
+Qed.
+
+Lemma wf_pil_tiling_implies_wf_pil_ext_tiling_at:
+  forall pil pil' env vars,
+    Forall (PolyLang.wf_pinstr_tiling env vars) pil ->
+    Forall (PolyLang.wf_pinstr_tiling env vars) pil' ->
+    rel_list PolyLang.eqdom_pinstr pil pil' ->
+    Forall (PolyLang.wf_pinstr_ext_tiling env)
+      (compose_pinstrs_ext_at (length env) pil pil').
+Proof.
+  induction pil.
+  - intros; simpls. destruct pil'; econs.
+  - intros; simpls. destruct pil'; simpls; [econs|].
+    inv H. inv H0.
+    econs.
+    + eapply wf_pinstr_tiling_implies_wf_pinstr_ext_tiling_at; eauto.
+      destruct H1; trivial.
+    + destruct H1. eapply IHpil; eauto.
+Qed.
+
+Lemma expand_pinstr_implies_expand_pinstr_ext_at:
+  forall env vars envv nth pi1 pi2 ipl1 ipl2 pi_ext ipl_ext,
+    PolyLang.wf_pinstr_tiling env vars pi1 ->
+    PolyLang.wf_pinstr_tiling env vars pi2 ->
+    PolyLang.eqdom_pinstr pi1 pi2 ->
+    length env = length envv ->
+    PolyLang.flatten_instr_nth envv nth pi1 ipl1 ->
+    PolyLang.flatten_instr_nth envv nth pi2 ipl2 ->
+    compose_pinstr_ext_at (length env) pi1 pi2 = pi_ext ->
+    compose_ipl_ext_at
+      (PolyLang.current_access_transformation_at (length env) pi1)
+      ipl1 ipl2 = ipl_ext ->
+    PolyLang.flatten_instr_nth_ext envv nth pi_ext ipl_ext.
+Proof.
+  intros env vars envv nth pi1 pi2 ipl1 ipl2 pi_ext ipl_ext
+    Hwf1 Hwf2 Heq Henvlen Hflat1 Hflat2 Hpiext Hiplex.
+  symmetry in Hpiext; subst pi_ext.
+  symmetry in Hiplex; subst ipl_ext.
+  assert (Hwfext :
+    PolyLang.wf_pinstr_ext_tiling env
+      (compose_pinstr_ext_at (length env) pi1 pi2)).
+  {
+    eapply wf_pinstr_tiling_implies_wf_pinstr_ext_tiling_at; eauto.
+  }
+  assert (Hwf1_base : PolyLang.wf_pinstr env vars pi1)
+    by (exact (proj1 Hwf1)).
+  assert (Hwf2_base : PolyLang.wf_pinstr env vars pi2)
+    by (exact (proj1 Hwf2)).
+  assert (Hwitdim1 :
+    witness_current_point_dim (PolyLang.pi_point_witness pi1) =
+    PolyLang.pi_depth pi1)
+    by (exact (proj1 Hwf1_base)).
+  assert (Hwitdim2 :
+    witness_current_point_dim (PolyLang.pi_point_witness pi2) =
+    PolyLang.pi_depth pi2)
+    by (exact (proj1 Hwf2_base)).
+  assert (Hrel :
+    rel_list PolyLang.eq_except_sched ipl1 ipl2).
+  {
+    eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel'; eauto.
+  }
+  pose proof Heq as Heqdom_full.
+  pose proof Hflat1 as Hflat1_full.
+  pose proof Hflat2 as Hflat2_full.
+  destruct Heq as
+    (Hdepth_eq & Hinstr_eq & Hpoly_eq & Hwit_eq &
+     Htf_eqdom & Hacc_tf_eqdom & Hw_eqdom & Hr_eqdom).
+  destruct Hflat1 as [Henv1 [Hbel1 [Hnd1 Hsorted1]]].
+  destruct Hflat2 as [Henv2 [Hbel2 [Hnd2 Hsorted2]]].
+  split.
+  - intros ip_ext Hinext.
+    eapply in_compose_ipl_ext_at_inv in Hinext.
+    destruct Hinext as (ip1 & ip2 & Hin1 & Hin2 & Heqip).
+    subst ip_ext.
+    simpl.
+    eapply Henv1; eauto.
+  - split.
+    + intros ip_ext.
+      split.
+      * intros Hinext.
+        eapply In_nth_error in Hinext.
+        destruct Hinext as [k Hnth_ext].
+        eapply nth_error_compose_ipl_ext_at_inv_local in Hnth_ext.
+        destruct Hnth_ext as (ip1 & ip2 & Hnth1 & Hnth2 & Heqip).
+        assert (Hin1 : In ip1 ipl1) by (apply nth_error_In in Hnth1; exact Hnth1).
+        assert (Hin2 : In ip2 ipl2) by (apply nth_error_In in Hnth2; exact Hnth2).
+        assert (Heqip12 : PolyLang.eq_except_sched ip1 ip2)
+          by (eapply rel_list_implies_rel_nth; eauto).
+        destruct Heqip12 as (_ & Hidx_eq & _ & _ & _).
+        destruct (Hbel1 ip1) as [Hfwd1 _].
+        destruct (Hbel2 ip2) as [Hfwd2 _].
+        destruct (Hfwd1 Hin1) as [Hpref1 [Hbelongs1 [Hnth_eq1 Hlen1]]].
+        destruct (Hfwd2 Hin2) as [Hpref2 [Hbelongs2 [Hnth_eq2 Hlen2]]].
+        subst ip_ext.
+        assert (Hbel_ext_compose :
+          PolyLang.belongs_to_ext
+            (compose_ip_ext_at
+               (PolyLang.current_access_transformation_at (length env) pi1)
+               ip1 ip2)
+            (compose_pinstr_ext_at (length env) pi1 pi2)).
+        {
+          unfold PolyLang.belongs_to_ext, compose_ip_ext_at, compose_pinstr_ext_at; simpl.
+          destruct Hbelongs1 as [Hdom1 [_ [Hts1 [Hins1 Hdepth1]]]].
+          destruct Hbelongs2 as [_ [_ [Hts2 [_ _]]]].
+          pose proof
+            (expand_ip_instr_eq_current_tf_at
+               env vars envv nth pi1 ipl1 ip1
+               Hwf1_base Henvlen Hflat1_full Hin1)
+            as Hcur_tf1.
+          split; [exact Hdom1|].
+          split.
+          - exact Hcur_tf1.
+          - split.
+            + reflexivity.
+            + split.
+              * exact Hts1.
+              * split.
+                -- rewrite Hidx_eq. exact Hts2.
+                -- split; [exact Hins1 | exact Hdepth1].
+        }
+        split.
+        -- exact Hpref1.
+        -- split.
+           ++ exact Hbel_ext_compose.
+           ++ split; [exact Hnth_eq1 | exact Hlen1].
+      * intros [Hpref [Hbel_ext [Hnth_eq Hlen]]].
+      pose (ip_old := PolyLang.old_of_ext ip_ext).
+      pose (ip_new := PolyLang.new_of_ext ip_ext).
+      assert (Hold_in : In ip_old ipl1).
+      {
+        destruct (Hbel1 ip_old) as [_ Hbwd1].
+        apply Hbwd1.
+        split; [exact Hpref|].
+        split.
+        {
+          destruct Hbel_ext as
+              [Hdom_ext [Htf_ext [_ [Hts1_ext [_ [Hins_ext Hdepth_ext]]]]]].
+          unfold ip_old, PolyLang.old_of_ext; simpl.
+          assert (Hcur_old_tf :
+            PolyLang.current_transformation_of pi1
+              (PolyLang.ILSema.ip_index
+                 (PolyLang.old_of_ext ip_ext)) =
+            PolyLang.current_transformation_at (length env) pi1).
+          {
+            unfold ip_old, PolyLang.old_of_ext; simpl.
+            eapply current_transformation_of_eq_at.
+            - exact Hwitdim1.
+            - cbn in Hlen.
+              rewrite Henvlen.
+              exact Hlen.
+          }
+          split; [exact Hdom_ext|].
+          split; [rewrite Htf_ext; symmetry; exact Hcur_old_tf|].
+          split; [exact Hts1_ext|].
+          split; [exact Hins_ext| exact Hdepth_ext].
+        }
+        {
+          split; assumption.
+        }
+      }
+      assert (Hnew_in : In ip_new ipl2).
+      {
+        destruct (Hbel2 ip_new) as [_ Hbwd2].
+        apply Hbwd2.
+        split; [exact Hpref|].
+        split.
+        {
+          destruct Hbel_ext as
+              [Hdom_ext [Htf_ext [_ [_ [Hts2_ext [Hins_ext Hdepth_ext]]]]]].
+          unfold ip_new, PolyLang.new_of_ext; simpl.
+          assert (Hcur_new_tf :
+            PolyLang.current_transformation_of pi2
+              (PolyLang.ILSema.ip_index
+                 (PolyLang.new_of_ext ip_ext)) =
+            PolyLang.current_transformation_at (length env) pi2).
+          {
+            unfold ip_new, PolyLang.new_of_ext; simpl.
+            cbn in Hlen.
+            rewrite Hdepth_eq in Hlen.
+            eapply current_transformation_of_eq_at.
+            - exact Hwitdim2.
+            - rewrite Henvlen.
+              exact Hlen.
+          }
+          split.
+          {
+            rewrite <- Hpoly_eq.
+            exact Hdom_ext.
+          }
+          split.
+          {
+            rewrite Htf_ext.
+            cbn.
+            rewrite
+              (eqdom_pinstr_implies_current_transformation_at_eq
+                 (length env) pi1 pi2 Heqdom_full).
+            symmetry. exact Hcur_new_tf.
+          }
+          split; [exact Hts2_ext|].
+          split.
+          {
+            rewrite Hins_ext.
+            exact Hinstr_eq.
+          }
+          {
+            rewrite Hdepth_ext.
+            exact Hdepth_eq.
+          }
+        }
+        {
+          split; [exact Hnth_eq | rewrite <- Hdepth_eq; exact Hlen].
+        }
+      }
+      apply In_nth_error in Hold_in.
+      destruct Hold_in as [k Hnth_old].
+      assert (exists ip2',
+        nth_error ipl2 k = Some ip2' /\
+        PolyLang.eq_except_sched ip_old ip2').
+      {
+        assert (Hlen12 : length ipl1 = length ipl2).
+        {
+          eapply PolyLang.eqdom_pinstr_implies_flatten_instr_same_len; eauto.
+        }
+        assert (k < length ipl2)%nat.
+        {
+          rewrite <- Hlen12.
+          eapply PolyLang.nth_error_Some'; eauto.
+        }
+        destruct (nth_error ipl2 k) eqn:Hnth2k.
+        2: {
+          eapply nth_error_None in Hnth2k.
+          lia.
+        }
+        exists i.
+        split.
+        - reflexivity.
+        - eapply rel_list_implies_rel_nth; eauto.
+      }
+      destruct H as [ip2' [Hnth_new_eq Heq_old_new']].
+      assert (Heq_new : PolyLang.eq_except_sched ip_new ip2').
+      {
+        eapply eq_except_sched_trans.
+        - apply new_of_ext_eq_except_old_of_ext.
+        - exact Heq_old_new'.
+      }
+      assert (Hin_new_eq : In ip2' ipl2).
+      {
+        eapply nth_error_In.
+        exact Hnth_new_eq.
+      }
+      eapply eq_except_sched_in_flatten_instr_nth_implies_eq in Heq_new; eauto.
+      subst ip2'.
+      assert (Hnth_compose :
+        nth_error
+          (compose_ipl_ext_at
+             (PolyLang.current_access_transformation_at (length env) pi1)
+             ipl1 ipl2) k = Some ip_ext).
+      {
+        rewrite
+          (nth_error_compose_ipl_ext_at
+             k
+             (PolyLang.current_access_transformation_at (length env) pi1)
+             ipl1 ipl2 ip_old ip_new); eauto.
+        f_equal.
+        unfold ip_old, ip_new.
+        destruct Hbel_ext as [_ [_ [Hacc_tf_ext [_ [_ [_ _]]]]]].
+        assert (Hacc_eq :
+          PolyLang.ip_access_transformation_ext ip_ext =
+          PolyLang.current_access_transformation_at (length env) pi1).
+        {
+          rewrite Hacc_tf_ext. reflexivity.
+        }
+        exact
+          (eq_sym
+             (old_new_compose_at
+                (PolyLang.current_access_transformation_at (length env) pi1)
+                (PolyLang.old_of_ext ip_ext)
+                (PolyLang.new_of_ext ip_ext)
+                ip_ext eq_refl eq_refl Hacc_eq)).
+      }
+      eapply nth_error_In; exact Hnth_compose.
+    + split.
+      * eapply compose_ipl_ext_at_nodup.
+        -- exact Hnd1.
+        -- eapply PolyLang.eqdom_pinstr_implies_flatten_instr_same_len; eauto.
+      * eapply ipl_sorted_implies_compose_sorted_at; eauto.
+Qed.
+
+Lemma flatten_instrs_implies_flatten_instrs_ext_at:
+  forall env vars envv pil1 pil2 pil_ext ipl1 ipl2,
+    Forall (PolyLang.wf_pinstr_tiling env vars) pil1 ->
+    Forall (PolyLang.wf_pinstr_tiling env vars) pil2 ->
+    rel_list PolyLang.eqdom_pinstr pil1 pil2 ->
+    length env = length envv ->
+    PolyLang.flatten_instrs envv pil1 ipl1 ->
+    PolyLang.flatten_instrs envv pil2 ipl2 ->
+    compose_pinstrs_ext_at (length env) pil1 pil2 = pil_ext ->
+    exists ipl_ext,
+      PolyLang.flatten_instrs_ext envv pil_ext ipl_ext /\
+      PolyLang.old_of_ext_list ipl_ext = ipl1 /\
+      PolyLang.new_of_ext_list ipl_ext = ipl2.
+Proof.
+  intros env vars envv pil1.
+  induction pil1 using rev_ind;
+    intros pil2 pil_ext ipl1 ipl2 Hwf1 Hwf2 Hrel Henvlen Hflat1 Hflat2 Hpil_ext.
+  - 
+    destruct pil2; simpls; tryfalse.
+    eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat1.
+    eapply PolyLang.flatten_instrs_nil_implies_nil in Hflat2.
+    subst.
+    exists ([] : list PolyLang.InstrPoint_ext).
+    split.
+    + subst. apply PolyLang.flatten_instrs_ext_nil.
+    + split; reflexivity.
+  - 
+    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hpil2.
+    {
+      clear - Hrel.
+      eapply rel_list_implies_eq_length in Hrel.
+      destruct pil2.
+      - rewrite app_length in Hrel; simpls; lia.
+      - assert (length (p :: pil2) > 0)%nat by (rewrite app_length in Hrel; simpls; lia).
+        exists (last (p :: pil2) p).
+        exists (removelast (p :: pil2)).
+        eapply app_removelast_last. intro; tryfalse.
+    }
+    destruct Hpil2 as (pi2 & pil2' & Hpil2).
+    rename x into pi1.
+    rename pil1 into pil1'.
+    assert (Hwf_pi1 : PolyLang.wf_pinstr_tiling env vars pi1).
+    {
+      eapply Forall_forall; [exact Hwf1 |].
+      apply in_or_app. right. simpl. auto.
+    }
+    rewrite Hpil2 in Hwf2.
+    assert (Hwf_pi2 : PolyLang.wf_pinstr_tiling env vars pi2).
+    {
+      eapply Forall_forall; [exact Hwf2 |].
+      apply in_or_app. right. simpl. auto.
+    }
+    rewrite Hpil2 in Hrel.
+    rewrite Hpil2 in Hpil_ext.
+    eapply rel_list_app_singleton in Hrel.
+    destruct Hrel as (Hrel_head & Heq_last).
+    rewrite Hpil2 in Hflat2.
+    eapply PolyLang.flatten_instrs_app_singleton_inv in Hflat1.
+    eapply PolyLang.flatten_instrs_app_singleton_inv in Hflat2.
+    destruct Hflat1 as (iplh1 & iplt1 & Hflat_h1 & Hflat_t1 & Happ1).
+    destruct Hflat2 as (iplh2 & iplt2 & Hflat_h2 & Hflat_t2 & Happ2).
+    rewrite Forall_app in Hwf1.
+    rewrite Forall_app in Hwf2.
+    destruct Hwf1 as (Hwf1_head & Hwf1_last).
+    destruct Hwf2 as (Hwf2_head & Hwf2_last).
+    assert (Hlen_heads : length pil1' = length pil2').
+    {
+      eapply rel_list_implies_eq_length; eauto.
+    }
+    assert (Hflat_t2_eq :
+      PolyLang.flatten_instr_nth envv (length pil1') pi2 iplt2).
+    {
+      rewrite Hlen_heads.
+      exact Hflat_t2.
+    }
+    assert (Hpilext_head :
+      compose_pinstrs_ext_at (length env) pil1' pil2' =
+      firstn (length pil1') pil_ext).
+    {
+      rewrite <- Hpil_ext.
+      rewrite compose_pinstrs_ext_at_app_singleton.
+      - assert (Hlen_ext :
+            length pil1' =
+            length (compose_pinstrs_ext_at (length env) pil1' pil2')).
+        {
+          assert (Hlen_rel : length pil1' = length pil2').
+          { eapply rel_list_implies_eq_length; eauto. }
+          clear - Hlen_rel.
+          revert pil2' Hlen_rel.
+          induction pil1'; intros [|pi2h pil2t] Hlen_rel; simpl in *; try lia.
+          inversion Hlen_rel. simpl. f_equal. eauto.
+        }
+        rewrite firstn_app.
+        rewrite Hlen_ext.
+        rewrite firstn_all.
+        rewrite Nat.sub_diag.
+        simpl.
+        rewrite app_nil_r.
+        reflexivity.
+      - eapply rel_list_implies_eq_length; eauto.
+    }
+    destruct (IHpil1 pil2' (firstn (length pil1') pil_ext) iplh1 iplh2
+                Hwf1_head Hwf2_head Hrel_head Henvlen Hflat_h1 Hflat_h2 Hpilext_head)
+      as (iplh_ext & Hflat_h_ext & Hold_h_ext & Hnew_h_ext).
+    set (pi_ext_t :=
+      compose_pinstr_ext_at (length env) pi1 pi2).
+    set (iplt_ext :=
+      compose_ipl_ext_at
+        (PolyLang.current_access_transformation_at (length env) pi1)
+        iplt1 iplt2).
+    assert (Hflat_t_ext :
+      PolyLang.flatten_instr_nth_ext envv (length pil1') pi_ext_t iplt_ext).
+    {
+      unfold pi_ext_t, iplt_ext.
+      eapply
+        (expand_pinstr_implies_expand_pinstr_ext_at
+           env vars envv (length pil1') pi1 pi2 iplt1 iplt2 pi_ext_t iplt_ext).
+      - exact Hwf_pi1.
+      - exact Hwf_pi2.
+      - exact Heq_last.
+      - exact Henvlen.
+      - exact Hflat_t1.
+      - exact Hflat_t2_eq.
+      - reflexivity.
+      - reflexivity.
+    }
+    exists (iplh_ext ++ iplt_ext).
+    split.
+    + rewrite <- Hpil_ext.
+      assert (Hlen_ext_head :
+        length (compose_pinstrs_ext_at (length env) pil1' pil2') = length pil1').
+      {
+        clear - Hlen_heads.
+        revert pil2' Hlen_heads.
+        induction pil1'; intros [|pi2h pil2t] Hlen_heads; simpl in *; try lia.
+        inversion Hlen_heads. simpl. f_equal. eauto.
+      }
+      rewrite compose_pinstrs_ext_at_app_singleton.
+      * eapply PolyLang.flatten_instrs_ext_app_singleton.
+        -- rewrite <- Hpilext_head in Hflat_h_ext. exact Hflat_h_ext.
+        -- rewrite <- Hlen_ext_head in Hflat_t_ext. exact Hflat_t_ext.
+      * eapply rel_list_implies_eq_length; eauto.
+    + split.
+      * subst iplt_ext.
+        unfold PolyLang.old_of_ext_list.
+        rewrite List.map_app.
+        unfold PolyLang.old_of_ext_list in Hold_h_ext.
+        rewrite Hold_h_ext.
+        rewrite Happ1.
+        f_equal.
+        assert (Hlen_tail : length iplt1 = length iplt2).
+        {
+          eapply (PolyLang.eqdom_pinstr_implies_flatten_instr_same_len
+                    pi1 pi2 envv iplt1 iplt2 (length pil1')).
+          - exact Heq_last.
+          - exact Hflat_t1.
+          - exact Hflat_t2_eq.
+        }
+        eapply old_of_compose_list_at_ok; [exact Hlen_tail | reflexivity].
+      * subst iplt_ext.
+        unfold PolyLang.new_of_ext_list.
+        rewrite List.map_app.
+        unfold PolyLang.new_of_ext_list in Hnew_h_ext.
+        rewrite Hnew_h_ext.
+        rewrite Happ2.
+        f_equal.
+        assert (Hrel_tail : rel_list PolyLang.eq_except_sched iplt1 iplt2).
+        {
+          eapply (PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel'
+                    iplt1 pi1 pi2 envv (length pil1') iplt2).
+          - exact Heq_last.
+          - exact Hflat_t1.
+          - exact Hflat_t2_eq.
+        }
+        eapply new_of_compose_list_at_ok; [exact Hrel_tail | reflexivity].
+Qed.
+
 Lemma validate_instr_and_list_implies_permutability2: 
   forall pi1_ext pil_ext env envv nth ipl1_ext ipl_ext,
     WHEN res <- validate_instr_and_list pi1_ext (rev pil_ext) (length env) THEN
     res = true ->
-    PolyLang.wf_pinstr_ext env pi1_ext -> 
-    Forall (PolyLang.wf_pinstr_ext env) pil_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext -> 
+    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
     length env = length envv ->
     PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext -> 
     PolyLang.flatten_instrs_ext envv pil_ext ipl_ext -> 
@@ -2488,356 +3974,365 @@ Proof.
   }
 Qed.
 
-
-Lemma flatten_instrs_implies_flatten_instrs_ext: 
-  forall pil1 pil2 pil_ext ipl1 ipl2 envv,
-  rel_list PolyLang.eqdom_pinstr pil1 pil2 ->
-  PolyLang.flatten_instrs envv pil1 ipl1 ->
-  PolyLang.flatten_instrs envv pil2 ipl2 ->
-  PolyLang.compose_pinstrs_ext pil1 pil2 = pil_ext ->
-  PolyLang.flatten_instrs_ext envv pil_ext (compose_ipl_ext ipl1 ipl2).
+Lemma compose_pinstrs_ext_at_preserve_length: 
+  forall env_dim pil1 pil2 pil_ext, 
+    length pil1 = length pil2 -> 
+    compose_pinstrs_ext_at env_dim pil1 pil2 = pil_ext -> 
+    length pil1 = length pil_ext.
 Proof.
-  induction pil1 using rev_ind.
+  induction pil1.
   {
     intros; simpls.
-    destruct pil2; tryfalse. 
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H0.
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H1.
-    subst; simpls; trivial.
-    eapply PolyLang.flatten_instrs_ext_nil; eauto.
+    destruct pil2; tryfalse. subst; simpls; reflexivity.
   }
   {
     intros; simpls.
-
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hipl2. {
-      clear - H.
-      eapply rel_list_implies_eq_length in H.
-      destruct pil2.
-      - rewrite app_length in H; simpls; try lia.
-      - assert (length (p::pil2) > 0). {rewrite app_length in H; simpls; try lia. }
-        exists (last (p::pil2) (p)) (removelast (p::pil2)).
-        eapply app_removelast_last. intro; tryfalse.
-    }
-    destruct Hipl2 as (pi2 & pil2' & Hipl2).  
-
-    rename x into pi1; rename pil1 into pil1'.
-    rewrite Hipl2 in H.
-    
-    eapply rel_list_app_singleton in H.
-    destruct H as (Hrell & Hrel). 
-    pose proof Hrel as Grel. pose proof Hrell as Grell.
-
-    rewrite <- H2.
-    rewrite Hipl2.
-    rewrite compose_pinstrs_ext_app_singleton. 2: {eapply rel_list_implies_eq_length; eauto. }
-    assert (length pil1' = length pil2'). {eapply rel_list_implies_eq_length; eauto. }
-    rewrite Hipl2 in H1.
-
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H0.
-    destruct H0 as (iplh1 & iplt1 & FLT1 & FLT1' & CONCAT1).
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H1.
-    destruct H1 as (iplh2 & iplt2 & FLT2 & FLT2' & CONCAT2).
-
-    rewrite CONCAT1. rewrite CONCAT2.
-
-    assert ((compose_ipl_ext (iplh1 ++ iplt1) (iplh2 ++ iplt2)) = compose_ipl_ext iplh1 iplh2 ++ compose_ipl_ext iplt1 iplt2 ). {
-      eapply ext_compose_same_length_app; eauto.
-      eapply PolyLang.eqdom_pinstrs_implies_flatten_instr_nth_rel' with (ipl1:=iplh1) in FLT2; eauto.
-      eapply rel_list_implies_eq_length in FLT2; trivial.
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel' with (ipl1:=iplt1) in FLT2'; eauto.
-      eapply rel_list_implies_eq_length in FLT2'; trivial.
-      rewrite <- H. trivial.
-    }
-
-    rewrite H0.
-    eapply PolyLang.flatten_instrs_ext_app_singleton; eauto.
-    assert (length (PolyLang.compose_pinstrs_ext pil1' pil2') = length pil1'). {
-      eapply compose_pinstrs_ext_preserve_length in H; eauto.
-    }
-    rewrite H1.
-    eapply expand_pinstr_implies_expand_pinstr_ext; eauto.
-    
-    assert (length pil1' = length pil2'). {
-      eapply rel_list_implies_eq_length in Hrell; trivial.
-    }
-    rewrite H3; trivial.
+    destruct pil2 eqn:Hpil2; tryfalse. simpls.
+    inv H. simpls.
+    f_equal.
+    eapply IHpil1; eauto.
   }
 Qed.
 
-Lemma validate_pinstrs_implies_permutability:
-  forall pil_ext pil1 pil2  env envv ipl1 ipl2 ipl_ext,   
-    WHEN res <- (validate_instr_list (rev pil_ext) (length env)) THEN 
-    res = true -> 
-    Forall (PolyLang.wf_pinstr_ext env) pil_ext ->
+
+Lemma validate_pinstrs_ext_implies_permutability:
+  forall pil_ext env envv ipl_ext,
+    WHEN res <- (validate_instr_list (rev pil_ext) (length env)) THEN
+    res = true ->
+    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
     length env = length envv ->
-    Forall (fun pi2_ext => 
-      Instr.valid_access_function 
-        (PolyLang.pi_waccess_ext pi2_ext) 
-        (PolyLang.pi_raccess_ext pi2_ext) (PolyLang.pi_instr_ext pi2_ext)  
-    ) pil_ext ->
-    rel_list PolyLang.eqdom_pinstr pil1 pil2 ->
-    PolyLang.compose_pinstrs_ext pil1 pil2 = pil_ext ->
-    PolyLang.flatten_instrs envv pil1 ipl1 -> 
-    PolyLang.flatten_instrs envv pil2 ipl2 ->  
-    PolyLang.old_of_ext_list ipl_ext = ipl1 -> 
-    PolyLang.new_of_ext_list ipl_ext = ipl2 -> 
-    (
-      forall ip1_ext ip2_ext, 
-            In ip1_ext ipl_ext -> 
-            In ip2_ext ipl_ext -> 
-            PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext -> 
-            PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext -> 
-            PolyLang.Permutable_ext ip1_ext ip2_ext 
-    ).
+    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
+    Forall (fun pi_ext =>
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi_ext)
+        (PolyLang.pi_raccess_ext pi_ext)
+        (PolyLang.pi_instr_ext pi_ext)) pil_ext ->
+    forall ip1_ext ip2_ext,
+      In ip1_ext ipl_ext ->
+      In ip2_ext ipl_ext ->
+      PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext ->
+      PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext ->
+      PolyLang.Permutable_ext ip1_ext ip2_ext.
 Proof.
   induction pil_ext using rev_ind.
-  {
-    intros. intros res Hval Htrue Hwf Henvlen Ha. intros.
-    eapply rel_list_implies_eq_length in H.
-
-    eapply compose_pinstrs_ext_nil in H0; trivial.
-    destruct H0.
-    subst.
-
-    assert (PolyLang.old_of_ext_list ipl_ext = nil) as H3. {  
-      eapply (PolyLang.flatten_instrs_nil_implies_nil envv); trivial.
+  - intros env envv ipl_ext res Hval Htrue Hwf Henvlen Hflat Hacc ip1_ext ip2_ext Hin1.
+    eapply PolyLang.flatten_instrs_ext_nil_implies_nil in Hflat.
+    subst. intros Hin2. inversion Hin1.
+  - intros env envv ipl_ext res Hval Htrue Hwf Henvlen Hflat Hacc ip1_ext ip2_ext Hin1 Hin2 Hold Hnew.
+    rename x into pi_tail.
+    rename pil_ext into pil_head.
+    assert (Hwf_tail : PolyLang.wf_pinstr_ext_tiling env pi_tail).
+    {
+      eapply Forall_forall; [exact Hwf |].
+      apply in_or_app. right. simpl. auto.
     }
+    rewrite Forall_app in Hwf.
+    rewrite Forall_app in Hacc.
+    destruct Hwf as (Hwf_head & Hwf_last).
+    destruct Hacc as (Hacc_head & Hacc_last).
+    assert (Hacc_tail :
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi_tail)
+        (PolyLang.pi_raccess_ext pi_tail)
+        (PolyLang.pi_instr_ext pi_tail)).
+    {
+      inversion Hacc_last as [|? ? Hacc_tail0 Hacc_nil]; subst.
+      inversion Hacc_nil; subst.
+      exact Hacc_tail0.
+    }
+    rewrite rev_app_distr in Hval.
+    simpl in Hval.
+    rewrite Htrue in Hval.
+    bind_imp_destruct Hval res1 Hval1.
+    bind_imp_destruct Hval res2 Hval2.
+    bind_imp_destruct Hval res3 Hval3.
+    eapply mayReturn_pure in Hval.
+    repeat rewrite andb_true_iff in Hval.
+    destruct Hval as ((Hres1T & Hres2T) & Hres3T).
+    eapply PolyLang.flatten_instrs_ext_app_singleton_inv in Hflat.
+    destruct Hflat as (ipl_head & ipl_tail & Hflat_head & Hflat_tail & Hipl_app).
+    rewrite Hipl_app in Hin1.
+    rewrite Hipl_app in Hin2.
+    eapply in_app_or in Hin1.
+    eapply in_app_or in Hin2.
+    destruct Hin1 as [Hin1_head | Hin1_tail];
+    destruct Hin2 as [Hin2_head | Hin2_tail].
+    + eapply IHpil_ext; eauto.
+    + eapply PolyLang.Permutable_ext_symm.
+      eapply validate_instr_and_list_implies_permutability2
+        with (pi1_ext:=pi_tail) (pil_ext:=pil_head)
+             (env:=env) (envv:=envv)
+             (nth:=length pil_head) (ipl1_ext:=ipl_tail) (ipl_ext:=ipl_head); eauto.
+    + eapply validate_instr_and_list_implies_permutability1
+        with (pi1_ext:=pi_tail) (pil_ext:=pil_head)
+             (env:=env) (envv:=envv)
+             (nth:=length pil_head) (ipl1_ext:=ipl_tail) (ipl_ext:=ipl_head); eauto.
+    + eapply validate_pinstr_implies_permutability1
+        with (env:=env) (envv:=envv)
+             (pi1_ext:=pi_tail) (pi2_ext:=pi_tail)
+             (nth1:=length pil_head) (nth2:=length pil_head)
+             (ipl1_ext:=ipl_tail) (ipl2_ext:=ipl_tail); eauto.
+Qed.
 
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H2.
-
-    inv H1; inv H2. 
-    unfold PolyLang.old_of_ext_list in H3.
-    eapply map_eq_nil in H3.
+Lemma validate_tiling_implies_correspondence:
+  forall pp1 pp2 env1 env2 vars1 vars2 poly_instrs1 poly_instrs2,
+    WHEN res <- validate_tiling pp1 pp2 THEN
+    pp1 = (poly_instrs1, env1, vars1) ->
+    pp2 = (poly_instrs2, env2, vars2) ->
+    res = true ->
+    PolyLang.eqdom_pprog pp1 pp2.
+Proof.
+  intros. intros res Hval Hpp1 Hpp2 Hres.
+  eapply check_eqdom_pprog_correct; eauto.
+  unfold validate_tiling in Hval.
+  rewrite Hpp1 in Hval.
+  rewrite Hpp2 in Hval.
+  bind_imp_destruct Hval wfpil1 Hwfpil1.
+  bind_imp_destruct Hval wfpil2 Hwfpil2.
+  bind_imp_destruct Hval eqdom Heqdom.
+  bind_imp_destruct Hval resL HresL.
+  assert (eqdom = true).
+  {
+    eapply mayReturn_pure in Hval.
     subst.
-    tryfalse.
+    do 4 rewrite andb_true_iff in Hres.
+    clear - Hres. firstorder.
+  }
+  subst; eauto.
+Qed.
+
+Lemma validate_tiling_preserve_finite:
+  forall pis1 env1 vars1 pis2 env2 vars2 envv,
+    WHEN res <- validate_tiling (pis1, env1, vars1) (pis2, env2, vars2) THEN
+    res = true ->
+    ((exists ipl1, PolyLang.flatten_instrs envv pis1 ipl1) <->
+     (exists ipl2, PolyLang.flatten_instrs envv pis2 ipl2)).
+Proof.
+  intros. intros res Hval Htrue.
+  unfold validate_tiling in Hval.
+  bind_imp_destruct Hval wfpil1 Hwfpil1.
+  bind_imp_destruct Hval wfpil2 Hwfpil2.
+  bind_imp_destruct Hval eqdom Heqdom.
+  bind_imp_destruct Hval resL HresL.
+  eapply mayReturn_pure in Hval.
+  rewrite Htrue in Hval.
+  do 4 rewrite andb_true_iff in Hval.
+  destruct Hval as ((((Hwfpil1T & Hwfpil2T) & HeqdomT) & HresLT) & HvaT).
+  clear - Heqdom HeqdomT.
+  eapply eqdom_perserve_finite; eauto.
+Qed.
+
+Lemma validate_tiling_implies_permutability:
+  forall pp1 pp2 env1 env2 envv vars1 vars2 poly_instrs1 poly_instrs2 ipl1 ipl2,
+    WHEN res <- validate_tiling pp1 pp2 THEN
+    pp1 = (poly_instrs1, env1, vars1) ->
+    pp2 = (poly_instrs2, env2, vars2) ->
+    res = true ->
+    length env1 = length envv ->
+    PolyLang.flatten_instrs envv poly_instrs1 ipl1 ->
+    PolyLang.flatten_instrs envv poly_instrs2 ipl2 ->
+    exists ipl_ext,
+      PolyLang.new_of_ext_list ipl_ext = ipl2 /\
+      PolyLang.old_of_ext_list ipl_ext = ipl1 /\
+      (forall ip1_ext ip2_ext,
+        In ip1_ext ipl_ext ->
+        In ip2_ext ipl_ext ->
+        PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext ->
+        PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext ->
+        PolyLang.Permutable_ext ip1_ext ip2_ext).
+Proof.
+  intros. intros res Hval Hpp1 Hpp2 Hres Henvlen Hflt1 Hflt2.
+  rewrite Hres in Hval.
+  unfold validate_tiling in Hval.
+  rewrite Hpp1 in Hval.
+  rewrite Hpp2 in Hval.
+  bind_imp_destruct Hval wfpil1 Hwfpil1.
+  bind_imp_destruct Hval wfpil2 Hwfpil2.
+  bind_imp_destruct Hval eqdom Heqdom.
+  bind_imp_destruct Hval resL HresL.
+  eapply mayReturn_pure in Hval.
+  do 4 rewrite andb_true_iff in Hval.
+  destruct Hval as ((((Hwfpil1T & Hwfpil2T) & HeqdomT) & HresLT) & HvaT).
+  eapply check_eqdom_pprog_correct in Heqdom.
+  eapply Heqdom in HeqdomT.
+  pose proof HeqdomT as Geqdom.
+  destruct (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2 eq_refl eq_refl)
+    as (Henv_eq0 & Hvars_eq0 & _ & Hrel_pil).
+  destruct
+    (flatten_instrs_implies_flatten_instrs_ext_at
+       env1 vars1 envv poly_instrs1 poly_instrs2
+       (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)
+       ipl1 ipl2)
+    as (ipl_ext & Hflat_ext & Hold_ext & Hnew_ext).
+  {
+    pose proof (check_wf_polyprog_tiling_correct _ _ Hwfpil1 Hwfpil1T) as Hwfpp1.
+    unfold PolyLang.wf_pprog_tiling in Hwfpp1.
+    destruct Hwfpp1 as [_ Hwfpp1].
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply Hwfpp1; eauto.
   }
   {
-    intros. intros res Hval Htrue Hwf Henvlen Ha. intros. 
-    rename x into pih_ext; rename pil_ext into pil'_ext.
-    rewrite rev_app_distr in Hval; simpl in Hval.
-    bind_imp_destruct Hval res1 Hres1.
-    bind_imp_destruct Hval res2 Hres2.
-    bind_imp_destruct Hval res3 Hres3.
-
-    assert (exists pi1 pil1', pil1 = pil1' ++ [pi1]) as Hpil1. {
-      clear - H0 H.
-      eapply rel_list_implies_eq_length in H.
-      assert (length (pil1) > 0). {
-        eapply compose_pinstrs_ext_preserve_length in H0; trivial.
-        rewrite app_length in H0. simpls. try lia.
-      }
-      exists (last (pil1) (PolyLang.dummy_pi)) (removelast (pil1)).
-      eapply app_removelast_last. intro; subst; simpls; try lia.
-    }
-
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hpil2. {
-      clear - H0 H.
-      eapply rel_list_implies_eq_length in H.
-      assert (length (pil2) > 0). {
-        eapply compose_pinstrs_ext_preserve_length in H0; trivial.
-        rewrite app_length in H0. simpls. try lia.
-      }
-      exists (last (pil2) (PolyLang.dummy_pi)) (removelast (pil2)).
-      eapply app_removelast_last. intro; subst; simpls; try lia.
-    }
-
-    destruct Hpil1 as (pi1 & pil1' & Gpil1).
-    destruct Hpil2 as (pi2 & pil2' & Gpil2).
-
-    rewrite Gpil1 in H1.
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H1.
-    destruct H1 as (iplh1 & ipl1' & Hfltpil1' & Hfltpih1 & Hipl1).
-    rewrite Gpil2 in H2.
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H2.
-    destruct H2 as (iplh2 & ipl2' & Hfltpil2' & Hfltpih2 & Hipl2).
-
-    assert (length ipl1' = length ipl2') as G4. {
-      eapply rel_list_implies_eq_length; eauto.
-      rewrite Gpil1 in H; rewrite Gpil2 in H. eapply rel_list_app_singleton in H.
-      destruct H as (Hrell & Hrel).
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel' with (ipl1:=ipl1') (ipl2:=ipl2') in Hrel; eauto.
-      eapply rel_list_implies_eq_length in Hrell.
-      rewrite Hrell; trivial.
-    }
-    assert (length iplh1 = length iplh2) as G5. {
-      rewrite Gpil1 in H; rewrite Gpil2 in H. eapply rel_list_app_singleton in H.
-      destruct H as (Hrell & Hrel); trivial.
-      eapply rel_pil_implies_rel_ipl 
-      with (ipl1:=iplh1) (ipl2:=iplh2) in Hrell; eauto.
-      eapply rel_list_implies_eq_length in Hrell; rewrite Hrell; trivial.
-    }
-
-    assert (length pil1' = length pil2') as Gpillen. {
-      eapply rel_list_implies_eq_length; eauto.
-      rewrite Gpil1 in H; rewrite Gpil2 in H. eapply rel_list_app_singleton in H.
-      destruct H as (Hrell & Hrel); eauto.
-    }
-
-    remember (compose_ipl_ext iplh1 iplh2) as iplh_ext; symmetry in Heqiplh_ext.
-    remember (compose_ipl_ext ipl1' ipl2') as ipl'_ext; symmetry in Heqipl'_ext.
-    assert (ipl_ext = iplh_ext ++ ipl'_ext). {
-      assert (compose_ipl_ext ipl1 ipl2 = ipl_ext). {
-        eapply old_and_new_implies_compose; eauto.
-      }
-      rewrite Hipl1 in H1.
-      rewrite Hipl2 in H1.
-      rewrite <- H1.
-      eapply ext_compose_same_length_app 
-        with (iplh1:=iplh1) (iplh2:=iplh2) 
-             (iplt1:=ipl1') (iplt2:=ipl2')
-             (iplh_ext:=iplh_ext) (iplt_ext:=ipl'_ext); eauto.
-    }
-
-    rewrite H1 in H5; rewrite H1 in H6.
-    eapply in_app_or in H5. 
-    eapply in_app_or in H6.
-
-    assert (PolyLang.compose_pinstr_ext pi1 pi2 = pih_ext). {
-      rewrite Gpil1 in H0; rewrite Gpil2 in H0.
-      rewrite compose_pinstrs_ext_app_singleton in H0; eauto.
-      eapply app_inv_singleton in H0. destruct H0; trivial.
-    }
-    assert (PolyLang.compose_pinstrs_ext pil1' pil2' = pil'_ext). {
-      rewrite Gpil1 in H0; rewrite Gpil2 in H0.
-      rewrite compose_pinstrs_ext_app_singleton in H0; eauto.
-      eapply app_inv_singleton in H0. destruct H0; trivial.
-    }
-
-    assert (res1 = true) as G1. { 
-      clear - Hval Htrue.
-      eapply mayReturn_pure in Hval. 
-      rewrite Htrue in Hval.
-      do 2 rewrite andb_true_iff in Hval; firstorder.  
-    }
-
-    assert (res2 = true) as G2. { 
-      clear - Hval Htrue.
-      eapply mayReturn_pure in Hval. 
-      rewrite Htrue in Hval.
-      do 2 rewrite andb_true_iff in Hval; firstorder.  
-    }
-
-    assert (res3 = true) as G3. { 
-      clear - Hval Htrue.
-      eapply mayReturn_pure in Hval. 
-      rewrite Htrue in Hval.
-      do 2 rewrite andb_true_iff in Hval; firstorder.  
-    }
-
-    rewrite Gpil1 in H; rewrite Gpil2 in H. 
-    eapply rel_list_app_singleton in H.
-    destruct H as (Hrell & Hrel).
-    (* ipl = iplt ++ iplh *)
-    destruct H5; destruct H6.
-    {
-      (* 1. ip1, ip2 in iplt *)
-      eapply IHpil_ext with (pil1:=pil1') (pil2:=pil2'); eauto.
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      } 
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-      }
-      eapply old_of_compose_list_ok with (ipl2:=iplh2); eauto.
-      eapply new_of_compose_list_ok with (ipl2:=iplh2); eauto.
-      eapply rel_pil_implies_rel_ipl; eauto.
-    }
-    
-    {
-      (* 2. ip1 in iplt, ip2 in iplh *)
-      eapply PolyLang.Permutable_ext_symm.
-      eapply validate_instr_and_list_implies_permutability2; eauto.
-      { 
-        clear - Hwf. 
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      }
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      } 
-      eapply expand_pinstr_implies_expand_pinstr_ext 
-        with (pi1:=pi1) (pi2:=pi2) (ipl1:=ipl1') (ipl2:=ipl2'); eauto.
-      rewrite Gpillen; trivial.
-      rewrite <- Heqiplh_ext.
-      rewrite <- H9.
-      eapply flatten_instrs_implies_flatten_instrs_ext; eauto.
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-        inv H0. trivial.
-      }
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-      }
-    }
-    {
-      (* 3. ip1 in iplh, ip2 in iplt *)
-      eapply validate_instr_and_list_implies_permutability1; eauto.
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      }
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      } 
-      eapply expand_pinstr_implies_expand_pinstr_ext 
-        with (pi1:=pi1) (pi2:=pi2) (ipl1:=ipl1') (ipl2:=ipl2'); eauto.
-      rewrite Gpillen; trivial.
-      rewrite <- Heqiplh_ext.
-      rewrite <- H9.
-      eapply flatten_instrs_implies_flatten_instrs_ext; eauto.
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-        inv H0. trivial.
-      }
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-      }
-    }
-    { 
-      (* 4. ip1, ip2 in iplh *)
-      eapply validate_pinstr_implies_permutability1; eauto.
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.
-      } 
-      { 
-        clear - Hwf.
-        eapply Forall_app in Hwf; eauto. destruct Hwf.
-        eapply Forall_inv in H0; trivial.      
-      } 
-      eapply expand_pinstr_implies_expand_pinstr_ext 
-        with (pi1:=pi1) (pi2:=pi2) (ipl1:=ipl1') (ipl2:=ipl2'); eauto.
-      rewrite Gpillen; trivial.
-      rewrite <- Heqiplh_ext.
-      rewrite <- H9.
-      eapply expand_pinstr_implies_expand_pinstr_ext 
-        with (pi1:=pi1) (pi2:=pi2) (ipl1:=ipl1') (ipl2:=ipl2'); eauto.
-      rewrite Gpillen; trivial.
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-        inv H0. trivial.
-      }
-      {
-        clear - Ha.
-        eapply Forall_app in Ha; eauto. destruct Ha; trivial.
-        inv H0; trivial.
-      }
-    }
+    pose proof (check_wf_polyprog_tiling_correct _ _ Hwfpil2 Hwfpil2T) as Hwfpp2.
+    unfold PolyLang.wf_pprog_tiling in Hwfpp2.
+    destruct Hwfpp2 as [_ Hwfpp2].
+    rewrite Henv_eq0, Hvars_eq0.
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply Hwfpp2; eauto.
   }
+  {
+    exact Hrel_pil.
+  }
+  {
+    exact Henvlen.
+  }
+  {
+    exact Hflt1.
+  }
+  {
+    exact Hflt2.
+  }
+  {
+    reflexivity.
+  }
+  exists ipl_ext.
+  split.
+  - exact Hnew_ext.
+  - split.
+    + exact Hold_ext.
+    + clear Hnew_ext Hold_ext.
+      assert (Hwf_ext :
+        Forall (PolyLang.wf_pinstr_ext_tiling env1)
+          (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)).
+      {
+        pose proof (check_wf_polyprog_tiling_correct _ _ Hwfpil1 Hwfpil1T) as Hwfpp1.
+        pose proof (check_wf_polyprog_tiling_correct _ _ Hwfpil2 Hwfpil2T) as Hwfpp2.
+        clear - Hwfpp1 Hwfpp2 Geqdom.
+        unfold PolyLang.wf_pprog_tiling in *.
+        destruct Hwfpp1 as [_ Hwfpp1].
+        destruct Hwfpp2 as [_ Hwfpp2].
+        destruct (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2 eq_refl eq_refl)
+          as (Henv_eq & Hvars_eq & _ & Hrel).
+        assert (Hwf1_forall : Forall (PolyLang.wf_pinstr_tiling env1 vars1) poly_instrs1).
+        {
+          eapply Forall_forall.
+          intros pi Hin.
+          eapply Hwfpp1; eauto.
+        }
+        assert (Hwf2_forall : Forall (PolyLang.wf_pinstr_tiling env1 vars1) poly_instrs2).
+        {
+          rewrite Henv_eq, Hvars_eq.
+          eapply Forall_forall.
+          intros pi Hin.
+          eapply Hwfpp2; eauto.
+        }
+        eapply wf_pil_tiling_implies_wf_pil_ext_tiling_at.
+        -- exact Hwf1_forall.
+        -- exact Hwf2_forall.
+        -- exact Hrel.
+      }
+      assert (Hvalid_ext :
+        Forall (fun pi_ext =>
+          Instr.valid_access_function
+            (PolyLang.pi_waccess_ext pi_ext)
+            (PolyLang.pi_raccess_ext pi_ext)
+            (PolyLang.pi_instr_ext pi_ext))
+          (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)).
+      {
+        eapply check_valid_access_correct.
+        exact HvaT.
+      }
+      eapply (validate_pinstrs_ext_implies_permutability
+                (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)
+                env1 envv ipl_ext); eauto.
+Qed.
+
+Theorem validate_tiling_correct':
+  forall pp1 pp2 env1 env2 poly_instrs1 poly_instrs2 vars1 vars2 envv st1 st2,
+    WHEN res <- validate_tiling pp1 pp2 THEN
+    pp1 = (poly_instrs1, env1, vars1) ->
+    pp2 = (poly_instrs2, env2, vars2) ->
+    res = true ->
+    length env1 = length envv ->
+    PolyLang.NonAlias st1 ->
+    PolyLang.poly_instance_list_semantics envv pp2 st1 st2 ->
+    exists st2',
+      PolyLang.poly_instance_list_semantics envv pp1 st1 st2' /\ Instr.State.eq st2 st2'.
+Proof.
+  intros. intros res Hval Hpp1 Hpp2 Htrue Henvlen Halias Hsem.
+  inversion Hsem.
+  rename ipl into ipl2.
+  rename sorted_ipl into sorted_ipl2.
+  pose proof Hval as G.
+  rewrite Hpp1 in G. rewrite Hpp2 in G.
+  assert (pis = poly_instrs2) as Hpis.
+  { rewrite Hpp2 in H. inversion H. reflexivity. }
+  rewrite Hpis in H0.
+  pose proof
+    (validate_tiling_preserve_finite
+       poly_instrs1 env1 vars1 poly_instrs2 env2 vars2 envv res G Htrue)
+    as Hfinite.
+  destruct Hfinite as [_ Hfinite].
+  specialize (Hfinite (ex_intro _ ipl2 H0)).
+  destruct Hfinite as (ipl1 & Heqipl1).
+  pose proof
+    (validate_tiling_implies_permutability
+       pp1 pp2 env1 env2 envv vars1 vars2 poly_instrs1 poly_instrs2
+       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 H0)
+    as Hperm.
+  destruct Hperm as (ipl_ext & Hipl2 & Hipl1 & Hpermut).
+  eapply PolyLang.permut_implies_ext_permut_new with (ipl_ext:=ipl_ext) in H1; eauto.
+  destruct H1 as (sorted_new_ipl_ext & Hpermut_ext & Hnew_ext).
+  remember (SelectionSort PolyLang.instr_point_ext_old_sched_ltb PolyLang.instr_point_ext_old_sched_eqb sorted_new_ipl_ext) as sorted_old_ipl_ext.
+  remember (PolyLang.old_of_ext_list sorted_old_ipl_ext) as sorted_ipl1.
+  symmetry in Heqsorted_old_ipl_ext.
+  pose proof Heqsorted_old_ipl_ext.
+  assert (Sorted_b PolyLang.instr_point_ext_new_sched_leb sorted_new_ipl_ext) as Hsorted_new_ext.
+  {
+    rewrite <- Hnew_ext in H2.
+    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
+  }
+  eapply PolyLang.selection_sort_instance_list_ext_implies_old_normal in H1.
+  eapply PolyLang.selection_sort_instance_list_is_correct in H1.
+  destruct H1 as (Hpermut_old_ext & Hsort_old_ext); eauto.
+  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut in Heqsorted_old_ipl_ext; eauto.
+  assert (forall tau1 tau2 : PolyLang.InstrPoint_ext,
+    In tau1 sorted_new_ipl_ext ->
+    In tau2 sorted_new_ipl_ext ->
+    PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
+    PolyLang.instr_point_ext_new_sched_ge tau1 tau2 ->
+    PolyLang.Permutable_ext tau1 tau2) as Hpermut'.
+  {
+    clear - Hpermut Hpermut_ext.
+    eapply Permutation_sym in Hpermut_ext.
+    intros; eapply Hpermut; eauto;
+      eapply Permutation_in; eauto.
+  }
+  pose proof PolyLang.stable_permut_ext_lists_are_equivalent
+    sorted_new_ipl_ext sorted_old_ipl_ext Hpermut' Heqsorted_old_ipl_ext st1 Halias.
+  destruct H1 as (F & B).
+  rewrite <- Hnew_ext in H3.
+  rewrite <- PolyLang.list_ext_old_new_equivalence in H3.
+  pose proof F st2 H3.
+  destruct H1 as (st2' & Hsem' & EQ).
+  exists st2'. split; trivial.
+  rewrite Hpp1.
+  eapply PolyLang.PolyPointListSema with (sorted_ipl:=sorted_ipl1) (ipl:=ipl1).
+  - reflexivity.
+  - exact Heqipl1.
+  - rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
+    remember (PolyLang.old_of_ext_list sorted_new_ipl_ext) as sorted_new_old_ipl1.
+    eapply Permutation_trans in Hpermut_old_ext; eauto.
+    clear - Hpermut_ext Hipl1 Heqsorted_new_old_ipl1.
+    rewrite <- Hipl1.
+    rewrite Heqsorted_new_old_ipl1.
+    eapply PolyLang.ext_permut_implies_permut_old; eauto.
+  - rewrite Heqsorted_ipl1.
+    clear - Hsort_old_ext.
+    eapply PolyLang.sortedb_lexorder_implies_sorted_lexorder; eauto.
+  - rewrite Heqsorted_ipl1.
+    exact Hsem'.
 Qed.
 
 Lemma validate_implies_correspondence: 
@@ -2893,7 +4388,6 @@ Lemma validate_implies_permutability:
 .
 Proof.
   intros. intros res Hval Hpp1 Hpp2 Hres Henvlen Hflt1 Hflt2.
-  
   rewrite Hres in Hval.
   unfold validate in Hval.
   rewrite Hpp1 in Hval.
@@ -2908,55 +4402,101 @@ Proof.
   eapply check_eqdom_pprog_correct in Heqdom.
   eapply Heqdom in HeqdomT.
   pose proof HeqdomT as Geqdom.
-  eapply eqdom_implies_ext_compose with (ipl1:=ipl1) (ipl2:=ipl2) in HeqdomT; subst; eauto.
-  destruct HeqdomT as (ipl_ext & NEW & OLD) .
-  
-  assert (env1 = env2).
+  destruct (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2 eq_refl eq_refl)
+    as (Henv_eq0 & Hvars_eq0 & _ & Hrel_pil).
+  destruct
+    (flatten_instrs_implies_flatten_instrs_ext_at
+       env1 vars1 envv poly_instrs1 poly_instrs2
+       (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)
+       ipl1 ipl2)
+    as (ipl_ext & Hflat_ext & Hold_ext & Hnew_ext).
   {
-    unfold PolyLang.eqdom_pprog in Geqdom.
-    pose proof (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2).
-    eapply H; trivial.
-  }
-
-  assert (vars1 = vars2) as EQVARS. {
-    unfold PolyLang.eqdom_pprog in Geqdom.
-    pose proof (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2).
-    eapply H0; trivial.
-  }
-
-  eexists; splits; subst; eauto.
-  eapply validate_pinstrs_implies_permutability with (pil1:=poly_instrs1) (pil2:=poly_instrs2); eauto.
-  {
-    eapply check_wf_polyprog_correct in Hwfpil1.
-    eapply check_wf_polyprog_correct in Hwfpil2.
-    clear - Hwfpil1 Hwfpil2 Geqdom. firstorder.
-
-    assert (forall pis env vars, 
-      PolyLang.wf_pprog (pis, env, vars) -> 
-      Forall (PolyLang.wf_pinstr env vars) pis
-    ) as WF.
-    {
-      clear.
-      intros. unfold PolyLang.wf_pprog in H.
-      eapply Forall_forall.
-      eapply H; eauto.
-    }
-    eapply PolyLang.wf_pil_implies_wf_pil_ext; eauto.
-    eapply Forall_forall; eauto. 
-    eapply Forall_forall; eauto.
-    eapply Geqdom; eauto.
+    pose proof (check_wf_polyprog_affine_correct _ _ Hwfpil1 Hwfpil1T) as Hwfpp1.
+    unfold PolyLang.wf_pprog_affine in Hwfpp1.
+    destruct Hwfpp1 as [_ Hwfpp1].
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply PolyLang.wf_pinstr_affine_implies_wf_pinstr_tiling.
+    eapply Hwfpp1; eauto.
   }
   {
-    clear - HvaT.
-    eapply check_valid_access_correct; trivial.
+    pose proof (check_wf_polyprog_affine_correct _ _ Hwfpil2 Hwfpil2T) as Hwfpp2.
+    unfold PolyLang.wf_pprog_affine in Hwfpp2.
+    destruct Hwfpp2 as [_ Hwfpp2].
+    rewrite Henv_eq0, Hvars_eq0.
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply PolyLang.wf_pinstr_affine_implies_wf_pinstr_tiling.
+    eapply Hwfpp2; eauto.
   }
   {
-    unfold PolyLang.eqdom_pprog in Geqdom.
-    pose proof (Geqdom poly_instrs1 poly_instrs2 env2 env2 vars2 vars2).
-    eapply H; trivial.
+    exact Hrel_pil.
   }
+  {
+    exact Henvlen.
+  }
+  {
+    exact Hflt1.
+  }
+  {
+    exact Hflt2.
+  }
+  {
+    reflexivity.
+  }
+  exists ipl_ext.
+  split.
+  - exact Hnew_ext.
+  - split.
+    + exact Hold_ext.
+    + clear Hnew_ext Hold_ext.
+      assert (Hwf_ext :
+        Forall (PolyLang.wf_pinstr_ext_tiling env1)
+          (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)).
+      {
+        pose proof (check_wf_polyprog_affine_correct _ _ Hwfpil1 Hwfpil1T) as Hwfpp1.
+        pose proof (check_wf_polyprog_affine_correct _ _ Hwfpil2 Hwfpil2T) as Hwfpp2.
+        clear - Hwfpp1 Hwfpp2 Geqdom.
+        unfold PolyLang.wf_pprog_affine in *.
+        destruct Hwfpp1 as [_ Hwfpp1].
+        destruct Hwfpp2 as [_ Hwfpp2].
+        destruct (Geqdom poly_instrs1 poly_instrs2 env1 env2 vars1 vars2 eq_refl eq_refl)
+          as (Henv_eq & Hvars_eq & _ & Hrel).
+        assert (Hwf1_forall : Forall (PolyLang.wf_pinstr_tiling env1 vars1) poly_instrs1).
+        {
+          eapply Forall_forall.
+          intros pi Hin.
+          eapply PolyLang.wf_pinstr_affine_implies_wf_pinstr_tiling.
+          eapply Hwfpp1; eauto.
+        }
+        assert (Hwf2_forall : Forall (PolyLang.wf_pinstr_tiling env1 vars1) poly_instrs2).
+        {
+          rewrite Henv_eq, Hvars_eq.
+          eapply Forall_forall.
+          intros pi Hin.
+          eapply PolyLang.wf_pinstr_affine_implies_wf_pinstr_tiling.
+          eapply Hwfpp2; eauto.
+        }
+        eapply wf_pil_tiling_implies_wf_pil_ext_tiling_at.
+        -- exact Hwf1_forall.
+        -- exact Hwf2_forall.
+        -- exact Hrel.
+      }
+      assert (Hvalid_ext :
+        Forall (fun pi_ext =>
+          Instr.valid_access_function
+            (PolyLang.pi_waccess_ext pi_ext)
+            (PolyLang.pi_raccess_ext pi_ext)
+            (PolyLang.pi_instr_ext pi_ext))
+          (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)).
+      {
+        eapply check_valid_access_correct.
+        exact HvaT.
+      }
+      eapply (validate_pinstrs_ext_implies_permutability
+                (compose_pinstrs_ext_at (length env1) poly_instrs1 poly_instrs2)
+                env1 envv ipl_ext); eauto.
 Qed.
-
 
 Theorem validate_correct':
   forall pp1 pp2 env1 env2 poly_instrs1 poly_instrs2 vars1 vars2 envv st1 st2, 
@@ -2976,91 +4516,80 @@ Proof.
   rename sorted_ipl into sorted_ipl2.
   pose proof Hval as G.
   rewrite Hpp1 in G. rewrite Hpp2 in G.
-
-  eapply validate_preserve_finite with (envv:=envv) in G. 
-  assert (exists ipl1, PolyLang.flatten_instrs envv poly_instrs1 ipl1). {
-    subst. inv H.
-    eapply G; eexists; eauto.
-  } 
-  clear G.
-  destruct H8 as (ipl1 & Heqipl1).
-  eapply validate_implies_permutability with (ipl1:=ipl1) in Hval.
-  eapply Hval in Htrue; eauto.
-  destruct Htrue as (ipl_ext & Hipl2 & Hipl1 & Hpermut); clear Hval.
-  
-  eapply PolyLang.permut_implies_ext_permut_new with (ipl_ext := ipl_ext) in H1; eauto.
+  assert (pis = poly_instrs2) as Hpis.
+  { rewrite Hpp2 in H. inversion H. reflexivity. }
+  rewrite Hpis in H0.
+  pose proof
+    (validate_preserve_finite
+       poly_instrs1 env1 vars1 poly_instrs2 env2 vars2 envv res G Htrue)
+    as Hfinite.
+  destruct Hfinite as [_ Hfinite].
+  specialize (Hfinite (ex_intro _ ipl2 H0)).
+  destruct Hfinite as (ipl1 & Heqipl1).
+  pose proof
+    (validate_implies_permutability
+       pp1 pp2 env1 env2 envv vars1 vars2 poly_instrs1 poly_instrs2
+       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 H0)
+    as Hperm.
+  destruct Hperm as (ipl_ext & Hipl2 & Hipl1 & Hpermut).
+  eapply PolyLang.permut_implies_ext_permut_new with (ipl_ext:=ipl_ext) in H1; eauto.
   destruct H1 as (sorted_new_ipl_ext & Hpermut_ext & Hnew_ext).
-
-  (*
-    pp2 -> ipl2 -> sorted_ipl2     (Permutation, Sorted, Sema)
-            ||          ||
-            \/          \/
-          ipl_ext sorted_new_(sched)_ipl_ext
-            /\          ||
-            ||  SelectionSort & map to old 
-            ||          \/
-    pp1 -> ipl1 -> sorted_ipl1 (Permutation_trans, SelectionSort ,StablePermut)
-  *)
-
   remember (SelectionSort PolyLang.instr_point_ext_old_sched_ltb PolyLang.instr_point_ext_old_sched_eqb sorted_new_ipl_ext) as sorted_old_ipl_ext.
   remember (PolyLang.old_of_ext_list sorted_old_ipl_ext) as sorted_ipl1.
   symmetry in Heqsorted_old_ipl_ext.
   pose proof Heqsorted_old_ipl_ext.
+  assert (Sorted_b PolyLang.instr_point_ext_new_sched_leb sorted_new_ipl_ext) as Hsorted_new_ext.
+  {
+    rewrite <- Hnew_ext in H2.
+    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
+  }
   eapply PolyLang.selection_sort_instance_list_ext_implies_old_normal in H1.
   eapply PolyLang.selection_sort_instance_list_is_correct in H1.
   destruct H1 as (Hpermut_old_ext & Hsort_old_ext); eauto.
-  
-  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut in Heqsorted_old_ipl_ext.
-
-  assert ((forall tau1 tau2 : PolyLang.InstrPoint_ext,
-  In tau1 sorted_new_ipl_ext ->
-  In tau2 sorted_new_ipl_ext ->
-  PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
-  PolyLang.instr_point_ext_new_sched_ge tau1 tau2 -> PolyLang.Permutable_ext tau1 tau2)) as Hpermut'. {
+  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut in Heqsorted_old_ipl_ext; eauto.
+  assert (forall tau1 tau2 : PolyLang.InstrPoint_ext,
+    In tau1 sorted_new_ipl_ext ->
+    In tau2 sorted_new_ipl_ext ->
+    PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
+    PolyLang.instr_point_ext_new_sched_ge tau1 tau2 ->
+    PolyLang.Permutable_ext tau1 tau2) as Hpermut'.
+  {
     clear - Hpermut Hpermut_ext.
     eapply Permutation_sym in Hpermut_ext.
-    intros; eapply Hpermut; eauto. 
-    eapply Permutation_in; eauto.
-    eapply Permutation_in; eauto.
+    intros; eapply Hpermut; eauto;
+      eapply Permutation_in; eauto.
   }
-
-  pose proof PolyLang.stable_permut_ext_lists_are_equivalent sorted_new_ipl_ext sorted_old_ipl_ext Hpermut' Heqsorted_old_ipl_ext st1 Halias.
-  
+  pose proof PolyLang.stable_permut_ext_lists_are_equivalent
+    sorted_new_ipl_ext sorted_old_ipl_ext Hpermut' Heqsorted_old_ipl_ext st1 Halias.
   destruct H1 as (F & B).
   rewrite <- Hnew_ext in H3.
   rewrite <- PolyLang.list_ext_old_new_equivalence in H3.
   pose proof F st2 H3.
-
   destruct H1 as (st2' & Hsem' & EQ).
-  exists st2'.
-  split; trivial.
-  eapply PolyLang.PolyPointListSema with (sorted_ipl := sorted_ipl1) (ipl := ipl1); try solve [subst; eauto].
-  { 
-    (* permut list for old schedule *)
-    rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
+  exists st2'. split; trivial.
+  rewrite Hpp1.
+  eapply PolyLang.PolyPointListSema with (sorted_ipl:=sorted_ipl1) (ipl:=ipl1).
+  - reflexivity.
+  - exact Heqipl1.
+  - rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
     remember (PolyLang.old_of_ext_list sorted_new_ipl_ext) as sorted_new_old_ipl1.
     eapply Permutation_trans in Hpermut_old_ext; eauto.
     clear - Hpermut_ext Hipl1 Heqsorted_new_old_ipl1.
     rewrite <- Hipl1.
     rewrite Heqsorted_new_old_ipl1.
     eapply PolyLang.ext_permut_implies_permut_old; eauto.
-  }
-  { (* sorted instance list for old schedule *)
-    rewrite Heqsorted_ipl1.
+  - rewrite Heqsorted_ipl1.
     clear - Hsort_old_ext.
     eapply PolyLang.sortedb_lexorder_implies_sorted_lexorder; eauto.
-  }
-  {
-    rewrite <- Hnew_ext in H2.
-    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
-  }
+  - rewrite Heqsorted_ipl1.
+    exact Hsem'.
 Qed.
 
 Lemma validate_preserve_wf_pprog: 
   forall pp1 pp2,
     WHEN res <- validate pp1 pp2 THEN 
     res = true ->
-    PolyLang.wf_pprog pp1 /\ PolyLang.wf_pprog pp2. 
+    PolyLang.wf_pprog_affine pp1 /\ PolyLang.wf_pprog_affine pp2. 
 Proof.
   intros pp1 pp2 res Hval Hres.
   unfold validate in Hval.
@@ -3079,7 +4608,7 @@ Proof.
     clear - Hres.
     firstorder.
   }
-  split; eapply check_wf_polyprog_correct; eauto.
+  split; eapply check_wf_polyprog_affine_correct; eauto.
 Qed.
 
 Theorem validate_correct: 
@@ -3091,13 +4620,12 @@ Theorem validate_correct:
     PolyLang.instance_list_semantics pp1 st1 st2' /\ State.eq st2 st2'.
 Proof.
   intros. intros res Hval Htrue Hsem.
-
   inv Hsem.
-  rename pis into poly_instr2; rename varctxt into env2; rename vars into vars2. 
+  rename pis into poly_instr2; rename varctxt into env2; rename vars into vars2.
   destruct pp1 as ((poly_instr1, env1), vars1) eqn:Hpp1.
 
   assert (PolIRs.Instr.NonAlias st1). {
-    subst; eauto. 
+    subst; eauto.
   }
   assert (env1 = env2). {
     eapply validate_implies_correspondence in Hval.
@@ -3119,7 +4647,48 @@ Proof.
     eapply PolIRs.Instr.init_env_samelen; eauto.
   }
   eapply validate_correct' with (env1:=env1) (poly_instrs1:=poly_instr1) in H3; eauto.
-  destruct H3 as (st2' & Hsem & EQ). exists st2'.
+  destruct H3 as (st2' & Hsem' & EQ). exists st2'.
+  split; trivial. econs; eauto. subst; eauto.
+  Unshelve.
+Qed.
+
+Theorem validate_tiling_correct:
+  forall pp1 pp2 st1 st2,
+    WHEN res <- validate_tiling pp1 pp2 THEN
+    res = true ->
+    PolyLang.instance_list_semantics pp2 st1 st2 ->
+    exists st2',
+      PolyLang.instance_list_semantics pp1 st1 st2' /\ State.eq st2 st2'.
+Proof.
+  intros. intros res Hval Htrue Hsem.
+  inv Hsem.
+  rename pis into poly_instr2; rename varctxt into env2; rename vars into vars2.
+  destruct pp1 as ((poly_instr1, env1), vars1) eqn:Hpp1.
+
+  assert (PolIRs.Instr.NonAlias st1). {
+    subst; eauto.
+  }
+  assert (env1 = env2). {
+    eapply validate_tiling_implies_correspondence in Hval.
+    firstorder.
+    eapply H4 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
+  }
+
+  assert (vars1 = vars2) as VARS. {
+    eapply validate_tiling_implies_correspondence in Hval.
+    firstorder.
+    eapply H5 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
+  }
+
+  assert (PolIRs.Instr.InitEnv env1 envv st1). {
+    subst; eauto.
+  }
+
+  assert (length env1 = length envv) as Henvlen. {
+    eapply PolIRs.Instr.init_env_samelen; eauto.
+  }
+  eapply validate_tiling_correct' with (env1:=env1) (poly_instrs1:=poly_instr1) in H3; eauto.
+  destruct H3 as (st2' & Hsem' & EQ). exists st2'.
   split; trivial. econs; eauto. subst; eauto.
   Unshelve.
 Qed.
