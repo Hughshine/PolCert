@@ -63,8 +63,10 @@ verified post-codegen cleanup.
 - The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
   - total inputs: `62`
   - succeeded: `62`
-  - changed: `52`
-  - unchanged: `10`
+  - changed: `60`
+  - unchanged: `2`
+  - nontrivially changed: `60`
+  - automatically detected tiled outputs: `38`
 
 ## CI
 

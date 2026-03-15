@@ -111,6 +111,63 @@ What changed:
 
 In the previous evaluation for this kernel, with `M = N = 1500`, this transformation achieved about **4x speed-up** on our machine.
 
+## Main tiling example: matrix multiply initialization (`matmul-init`)
+
+Input `.loop`:
+
+```text
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    C[i0][i1] = 0;
+    for i2 in range(0, N) {
+      C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
+    }
+  }
+}
+```
+
+Current optimized output:
+
+```text
+context(N);
+
+if (1 <= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+          C[i2][i3] = 0;
+        }
+      }
+    }
+  }
+}
+if (1 <= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+          for i4 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+            for i5 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+              C[i3][i4] = (C[i3][i4] + (A[i3][i5] * B[i5][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+What changed:
+
+- the output now contains explicit tile loops with tile size `32`
+- the point-within-tile loops use `max/min` strip-mined bounds
+- the initialization and accumulation phases are both tiled, not just rescheduled
+- this is the visible shape that the strict suite now classifies as a detected tiled output
+
 ## What is proved
 
 The final optimizer definition and theorem are in [driver/PolOpt.v](./driver/PolOpt.v):
@@ -199,13 +256,19 @@ Current strict proved-path status:
 
 - total inputs: `62`
 - succeeded: `62`
-- changed: `52`
-- unchanged: `10`
+- changed: `60`
+- unchanged: `2`
+- nontrivially changed: `60`
+- automatically detected tiled outputs: `38`
 
 Interpretation:
 
 - scheduling decisions come from Pluto itself
 - the strict `polopt` path now succeeds on the full generated benchmark suite
+- the stronger `nontrivial_changed` metric ignores only trivial loop-variable
+  alpha-renaming and whole-program outer guard wrappers
+- the `detected_tiled` metric is intentionally narrower than `changed`; it
+  only counts outputs with explicit strip-mined tile structure
 - across the suite, the resulting loop transformations follow the same optimization families as the corresponding C-path Pluto runs under the exact flag set shown above
 - in that sense, `polopt` currently covers the checked affine route and the
   checked phase-aligned tiling route under the supported Pluto setup, with
@@ -269,12 +332,16 @@ opam exec -- make polopt
 opam exec -- make polcert.ini
 opam exec -- make polcert
 make test
-python3 tests/polopt-generated/tools/materialize_polopt_cases.py --timeout-seconds 120
+opam exec -- make test-polopt-loop-suite
 ```
 
 The generated per-case results live under:
 
 - [tests/polopt-generated/cases](./tests/polopt-generated/cases)
+
+The strict suite now reports progress case by case and uses a `300s` per-case
+timeout instead of a suite-wide timeout, so slow kernels such as `advect3d` are
+visible during the run instead of appearing to hang silently.
 
 ## Key source files
 

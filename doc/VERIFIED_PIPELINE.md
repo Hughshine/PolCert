@@ -63,6 +63,20 @@ The main stages are:
 If the tiling-specific route fails at any stage, the optimizer falls back to
 the already-validated affine result instead of failing the whole pipeline.
 
+Current strict-suite snapshot:
+
+- total generated inputs: `62`
+- successful runs: `62`
+- changed outputs: `60`
+- nontrivially changed outputs: `60`
+- automatically detected tiled outputs: `38`
+
+Representative visible outcomes:
+
+- `covcol` remains the standard affine-scheduling example
+- `matmul-init` is now a compact explicit tiling example with extra tile loops,
+  `max/min` strip-mined bounds, and visible `/ 32` tile-size arithmetic
+
 ## `polcert`
 
 `polcert` now exposes three practically important validation modes:
