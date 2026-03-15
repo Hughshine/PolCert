@@ -28,17 +28,37 @@ def check_case_dir(case_dir: pathlib.Path) -> tuple[bool, bool]:
     return True, changed
 
 
+def loop_count(text: str) -> int:
+    return text.count("for ")
+
+
+def detect_tiled(case_dir: pathlib.Path) -> bool:
+    input_path = case_dir / "input.pretty.loop"
+    opt_path = case_dir / "optimized.loop"
+    if not input_path.exists() or not opt_path.exists():
+        raise SystemExit(f"missing loop dump(s) for case {case_dir.name}")
+    input_text = input_path.read_text()
+    opt_text = opt_path.read_text()
+    return (
+        loop_count(opt_text) >= loop_count(input_text) + 2
+        and "max(" in opt_text
+        and "min(" in opt_text
+        and ("/ 32" in opt_text or "/32" in opt_text)
+    )
+
+
 def require_tiled(case_dir: pathlib.Path) -> None:
     opt_path = case_dir / "optimized.loop"
     if not opt_path.exists():
         raise SystemExit(f"missing optimized.loop for tiled case {case_dir.name}")
-    text = opt_path.read_text()
-    if "max(" not in text or "min(" not in text:
-        raise SystemExit(f"case {case_dir.name} does not contain tiled max/min bounds")
-    if "/ 32" not in text and "/32" not in text:
-        raise SystemExit(f"case {case_dir.name} does not contain visible tile-size divisions")
-    if text.count("for ") < 4:
-        raise SystemExit(f"case {case_dir.name} does not look tiled enough ({text.count('for ')} loops)")
+    if not detect_tiled(case_dir):
+        input_text = (case_dir / "input.pretty.loop").read_text()
+        opt_text = opt_path.read_text()
+        raise SystemExit(
+            "case "
+            f"{case_dir.name} is not detected as tiled "
+            f"(input_loops={loop_count(input_text)}, optimized_loops={loop_count(opt_text)})"
+        )
 
 
 def main() -> None:
@@ -77,6 +97,7 @@ def main() -> None:
     ok = 0
     changed = 0
     failed: list[str] = []
+    detected_tiled: list[str] = []
 
     for case_dir in case_dirs:
         case_ok, case_changed = check_case_dir(case_dir)
@@ -84,6 +105,8 @@ def main() -> None:
             ok += 1
             if case_changed:
                 changed += 1
+            if detect_tiled(case_dir):
+                detected_tiled.append(case_dir.name)
         else:
             failed.append(case_dir.name)
 
@@ -101,8 +124,11 @@ def main() -> None:
     print(f"ok={ok}")
     print(f"fail={len(failed)}")
     print(f"changed={changed}")
+    print(f"detected_tiled={len(detected_tiled)}")
+    if detected_tiled:
+        print(f"detected_tiled_cases={','.join(detected_tiled)}")
     if args.require_tiled:
-        print(f"tiled_cases={','.join(args.require_tiled)}")
+        print(f"required_tiled_cases={','.join(args.require_tiled)}")
 
 
 if __name__ == "__main__":

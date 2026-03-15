@@ -24,8 +24,15 @@ That target:
 4. checks:
    - all `62` cases succeed
    - at least `50` cases change structurally
+   - the checker reports the automatically detected tiled cases
    - representative cases such as `matmul`, `matmul-init`, and `wavefront`
-     show explicit tiled bounds (`max/min`, `/ 32`, extra tiled loops)
+     are required to satisfy the tiling heuristic
+
+Current reporting:
+- `changed` means the optimized pretty-printed loop differs from the input.
+- `detected_tiled_cases` means the optimized loop both:
+  - increases the loop nesting depth by at least `2`, and
+  - contains explicit tiled strip-mining markers (`max/min` bounds and `/ 32`)
 
 How to inspect one case:
 
