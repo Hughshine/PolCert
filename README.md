@@ -7,6 +7,8 @@ PolCert provides two user-facing tools:
 
 If you care about the optimizer, start with [`POLOPT.md`](./POLOPT.md).
 If you already have OpenScop files and only want validation, start with [`POLCERT.md`](./POLCERT.md).
+For a concise note on the current verified affine+tiling route, see
+[`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md).
 
 ## Environment and setup
 
@@ -46,14 +48,18 @@ It checks whether the schedule change preserves the polyhedral dependence semant
 ### 2. I have a loop nest and want the optimizer to do the full pipeline
 
 Use [`polopt`](./POLOPT.md).
-It parses a `.loop` file, extracts a polyhedral model, validates the Pluto schedule, generates optimized loop code, and applies verified post-codegen cleanup.
+It parses a `.loop` file, extracts a polyhedral model, runs the verified
+affine+tiling optimization pipeline, generates optimized loop code, and applies
+verified post-codegen cleanup.
 
 ## Status
 
 - The verified optimization core lives in [driver/PolOpt.v](./driver/PolOpt.v).
 - The final optimizer definition is `Opt = Opt_prepared`.
 - The final end-to-end theorem is `Opt_correct`.
-- `polcert` remains the original validator-only executable and is intentionally unaffected by the `polopt` work.
+- `polopt` now includes the checked tiling route in its main verified pipeline.
+- `polcert` now supports both direct affine validation and the phase-aligned
+  tiling validation route.
 - The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
   - total inputs: `62`
   - succeeded: `62`
@@ -77,6 +83,7 @@ The CI job builds the image from [Dockerfile](./Dockerfile) and then runs [tools
 - [`ENVIRONMENT.md`](./ENVIRONMENT.md): Docker setup, environment notes, and how to mirror the Dockerfile manually.
 - [`POLCERT.md`](./POLCERT.md): validator-only executable, user workflow, and examples.
 - [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
+- [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the current verified affine+tiling pipeline, fallback behavior, and the main normalization stages.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
 - [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.
 - [`doc/`](./doc): additional design notes and analysis.
@@ -85,7 +92,7 @@ The CI job builds the image from [Dockerfile](./Dockerfile) and then runs [tools
 
 Main mechanized development is in:
 
-- [`src`](./src): extractor, validator, polyhedral semantics, strengthening, prepare-codegen bridge
+- [`src`](./src): extractor, validator stack, polyhedral semantics, strengthening, point-witness layer, prepare-codegen bridge
 - [`polygen`](./polygen): verified code generation and verified cleanup passes
 - [`driver`](./driver): top-level optimizer definitions and wrappers
 - [`syntax`](./syntax): loop frontend used by `polopt`

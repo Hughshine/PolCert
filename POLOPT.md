@@ -6,7 +6,9 @@ It is the closest thing in this repository to a Pluto counterpart: Pluto is stil
 ## What it does
 
 `polopt` takes a structured loop fragment, runs the verified polyhedral optimization core, and prints an optimized loop.
-The scheduler is Pluto itself, so the optimization decisions come from Pluto; the difference is that extraction, schedule validation, code generation, and cleanup are integrated into a proved pipeline.
+The scheduler is Pluto itself, so the optimization decisions come from Pluto;
+the difference is that extraction, affine validation, checked tiling
+validation, code generation, and cleanup are integrated into a proved pipeline.
 
 At a high level:
 
@@ -16,12 +18,22 @@ At a high level:
 -> Loop IR
 -> Extractor.extractor
 -> StrengthenDomain.strengthen_pprog
--> scheduler' (Pluto + verified validation)
+-> affine Pluto route with verified affine validation
+-> if the phase-aligned tiling route succeeds:
+   -> checked tiling validation
+   -> current_view_pprog
+-> otherwise:
+   -> verified affine-only fallback
 -> PrepareCodegen.prepare_codegen
 -> CodeGen.codegen
 -> verified cleanup passes
 -> Loop IR
 ```
+
+For a concise summary of the current verified pipeline shape and the role of
+`current_view_pprog`, see:
+
+- [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md)
 
 ## Pluto configuration used by `polopt`
 
@@ -32,7 +44,9 @@ pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
       --smartfuse --nounrolljam --noparallel --notile --rar
 ```
 
-This matters because the current verified path is aimed at **schedule validation and schedule-driven code generation**, not at the full Pluto transformation space.
+This matters because the current verified path is aimed at **checked
+schedule/domain transformation and schedule-driven code generation**, not at the
+full Pluto transformation space.
 In particular, the current `polopt` path should be read as supporting the optimization capability that Pluto exposes **under exactly this flag set**:
 
 - affine scheduling / loop reordering
@@ -40,11 +54,14 @@ In particular, the current `polopt` path should be read as supporting the optimi
 - statement reordering, fission, and related schedule effects
 - schedule changes that stay within the validated affine-scheduling story
 
-The current path does **not** claim support for more structural Pluto transformations such as:
+The current path does **not** claim support for the full Pluto transformation
+space. It now includes the checked phase-aligned tiling route, but still does
+not claim support for transformations such as:
 
-- tiling
 - index-set splitting
-- transformations whose correctness would require a stronger structural validator than the current schedule-only validation path
+- transformations whose correctness would require a stronger structural
+  validator than the current checked affine+tiling path
+- parallel code generation
 
 ## Main example: covariance (`covcol`)
 
@@ -110,11 +127,13 @@ The proved passes used by `Opt` are:
    - `strengthen_pprog`
    - conservative strengthening of statement domains by implied parameter guards
 3. [driver/PolOpt.v](./driver/PolOpt.v)
-   - `scheduler'`
-   - external scheduler wrapped by the verified validator
+   - `checked_affine_schedule`
+   - `phase_pipeline_opt_prepared_from_poly`
+   - the final verified optimizer route, including checked affine scheduling,
+     checked tiling validation, and verified fallback
 4. [src/PrepareCodegen.v](./src/PrepareCodegen.v)
    - `prepare_codegen`
-   - reconciles explicit-depth semantics with the codegen-ready representation
+   - regularizes the validated program into the codegen-ready representation
 5. [polygen/CodeGen.v](./polygen/CodeGen.v)
    - verified polyhedral code generation
 6. verified post-codegen cleanup passes:
@@ -134,6 +153,7 @@ The following remain engineering layers around the proved core:
 - the textual `.loop` parser / elaborator
 - OpenScop textual parsing / printing implementation details
 - Pluto itself
+- witness inference from Pluto phase outputs
 - the final OCaml pretty-printer
 
 ## What inputs it supports
@@ -187,8 +207,11 @@ Interpretation:
 - scheduling decisions come from Pluto itself
 - the strict `polopt` path now succeeds on the full generated benchmark suite
 - across the suite, the resulting loop transformations follow the same optimization families as the corresponding C-path Pluto runs under the exact flag set shown above
-- in that sense, `polopt` currently covers Pluto's affine scheduling capability under those flags, with verified extraction / validation / code generation around it
-- this should not be read as support for the full Pluto transformation space: tiling and index-set splitting remain out of scope for the current verified path
+- in that sense, `polopt` currently covers the checked affine route and the
+  checked phase-aligned tiling route under the supported Pluto setup, with
+  verified extraction / validation / code generation around them
+- this should still not be read as support for the full Pluto transformation
+  space: index-set splitting and parallel code generation remain out of scope
 
 One practical exception is performance on `advect3d`:
 
