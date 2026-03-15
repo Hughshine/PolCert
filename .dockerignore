@@ -1,3 +1,5 @@
+.git
+.github
 **/.*.aux
 **/.*.d
 **/*.a
@@ -157,6 +159,8 @@ doc/html/
 **/*.pluto.c
 **/*.cloog
 **/result.txt
+tests/polopt-generated/cases
+tests/polopt-regression/cases
 
 **/PolyLexer.ml
 **/PolyLexer.mli
