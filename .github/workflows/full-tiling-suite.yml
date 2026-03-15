@@ -12,12 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: hughshine/polcert:latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Build polopt
+        shell: bash
         run: |
+          eval "$(opam env)"
           opam exec -- make depend
           opam exec -- make -j1 polopt
       - name: Run full generated suite through final polopt
+        shell: bash
         run: |
+          eval "$(opam env)"
           opam exec -- make test-polopt-loop-suite
