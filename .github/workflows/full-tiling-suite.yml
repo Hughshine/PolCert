@@ -10,19 +10,17 @@ on:
 jobs:
   polopt-loop-suite:
     runs-on: ubuntu-latest
-    container:
-      image: hughshine/polcert:latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
-      - name: Build polopt
-        shell: bash
-        run: |
-          eval "$(opam env)"
-          opam exec -- make depend
-          opam exec -- make -j1 polopt
-      - name: Run full generated suite through final polopt
-        shell: bash
-        run: |
-          eval "$(opam env)"
-          opam exec -- make test-polopt-loop-suite
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build suite image from the repository Dockerfile
+        run: docker build -t polcert-tiling-ci .
+      - name: Build polopt and run the strict loop suite
+        run: >-
+          docker run --rm --entrypoint bash polcert-tiling-ci
+          -lc 'cd /polcert &&
+               eval "$(opam env)" &&
+               opam exec -- make depend &&
+               opam exec -- make -j1 polopt &&
+               opam exec -- make test-polopt-loop-suite'
