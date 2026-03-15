@@ -7,7 +7,6 @@ open Driveraux
 open Camlcoq
 open Filename
 open Str  (* Required for regular expressions *)
-open TilingWitness
 
 (** scop to scop *)
 
@@ -64,7 +63,7 @@ let affine_only_scop_scheduler inscop =
 let tile_only_scop_scheduler inscop =
   run_pluto_scop tile_only_flags inscop
 
-let phase_scop_scheduler inscop =
+let run_pluto_phase_pipeline inscop =
   match affine_only_scop_scheduler inscop with
   | Err msg -> Err msg
   | Okk midscop ->
@@ -74,46 +73,7 @@ let phase_scop_scheduler inscop =
         | Okk outscop -> Okk (midscop, outscop)
       end
 
-let coeff_of_assoc assoc name =
-  match List.assoc_opt name assoc with
-  | Some coeff -> coeff
-  | None -> Z.zero
-
-let convert_affine_expr names params
-    (expr : PlutoTilingValidator.affine_expr) =
-  {
-    ae_var_coeffs =
-      List.map (coeff_of_assoc expr.PlutoTilingValidator.var_coeffs) names;
-    ae_param_coeffs =
-      List.map (coeff_of_assoc expr.PlutoTilingValidator.param_coeffs) params;
-    ae_const = expr.PlutoTilingValidator.const;
-  }
-
-let convert_statement_witness params
-    (stmt : PlutoTilingValidator.statement_witness) =
-  let rec convert_links prefix = function
-    | [] -> []
-    | link :: tl ->
-        let names = prefix @ stmt.PlutoTilingValidator.original_iterators in
-        let expr = convert_affine_expr names params link.PlutoTilingValidator.expr in
-        let link' =
-          {
-            tl_expr = expr;
-            tl_tile_size = link.PlutoTilingValidator.tile_size;
-          }
-        in
-        link' :: convert_links (prefix @ [link.PlutoTilingValidator.parent]) tl
-  in
-  {
-    stw_point_dim =
-      Camlcoq.Nat.of_int
-        (List.length stmt.PlutoTilingValidator.original_iterators);
-    stw_links = convert_links [] stmt.PlutoTilingValidator.links;
-  }
-
-let convert_witness (witness : PlutoTilingValidator.witness) =
-  List.map (convert_statement_witness witness.PlutoTilingValidator.params)
-    witness.PlutoTilingValidator.statements
+let phase_scop_scheduler = run_pluto_phase_pipeline
 
 let infer_tiling_witness_scops before_scop after_scop =
   try
@@ -124,7 +84,7 @@ let infer_tiling_witness_scops before_scop after_scop =
         before_scop
         after_scop
     in
-    Okk (convert_witness witness)
+    Okk (PhaseTiling.convert_witness witness)
   with
   | PlutoTilingValidator.ValidationError msg ->
       Err (coqstring_of_camlstring msg)

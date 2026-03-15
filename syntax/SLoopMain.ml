@@ -173,13 +173,13 @@ let poly_to_openscop pol =
 let validate_components pp1 pp2 =
   let ((pil1, varctxt1), _) = pp1 in
   let ((pil2, _), _) = pp2 in
-  let (wf1, wf1_ok) = SPolOpt.SVal.check_wf_polyprog pp1 in
-  let (wf2, wf2_ok) = SPolOpt.SVal.check_wf_polyprog pp2 in
-  let (eqdom, eqdom_ok) = SPolOpt.SVal.coq_EqDom pp1 pp2 in
+  let (wf1, wf1_ok) = SPolOpt.CoreOpt.check_wf_polyprog pp1 in
+  let (wf2, wf2_ok) = SPolOpt.CoreOpt.check_wf_polyprog pp2 in
+  let (eqdom, eqdom_ok) = SPolOpt.CoreOpt.coq_EqDom pp1 pp2 in
   let env_dim = nat_of_int (List.length varctxt1) in
   let pil_ext = SPolIRs.SPolIRs.PolyLang.compose_pinstrs_ext pil1 pil2 in
-  let valid_access = SPolOpt.SVal.check_valid_access pil_ext in
-  let (res, res_ok) = SPolOpt.SVal.validate_instr_list (List.rev pil_ext) env_dim in
+  let valid_access = SPolOpt.CoreOpt.check_valid_access pil_ext in
+  let (res, res_ok) = SPolOpt.CoreOpt.validate_instr_list (List.rev pil_ext) env_dim in
   ((wf1, wf1_ok), (wf2, wf2_ok), (eqdom, eqdom_ok), (valid_access, true), (res, res_ok))
 
 let print_validate_components label pp1 pp2 =
@@ -209,7 +209,7 @@ let debug_scheduler loop =
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   dump_poly_payload "strengthened" pol;
   let inscop = poly_to_openscop pol in
-  let (self_valid, self_ok) = SPolOpt.SVal.validate pol pol in
+  let (self_valid, self_ok) = SPolOpt.CoreOpt.validate pol pol in
   print_validate_components "validate(strengthened, strengthened)" pol pol;
   Printf.eprintf
     "[debug] validate(strengthened, strengthened) = %b (ok=%b, alarm=%b)\n"
@@ -226,9 +226,9 @@ let debug_scheduler loop =
   in
   dump_poly_payload "roundtrip-before" pol_roundtrip;
   dump_poly_payload "complete-before" pol_complete_before;
-  let (roundtrip_valid, roundtrip_ok) = SPolOpt.SVal.validate pol pol_roundtrip in
+  let (roundtrip_valid, roundtrip_ok) = SPolOpt.CoreOpt.validate pol pol_roundtrip in
   print_validate_components "validate(strengthened, roundtrip-before)" pol pol_roundtrip;
-  let (complete_before_valid, complete_before_ok) = SPolOpt.SVal.validate pol pol_complete_before in
+  let (complete_before_valid, complete_before_ok) = SPolOpt.CoreOpt.validate pol pol_complete_before in
   print_validate_components "validate(strengthened, complete-before)" pol pol_complete_before;
   print_endline "== Debug Extracted OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout inscop;
@@ -251,13 +251,13 @@ let debug_scheduler loop =
     | Err _ -> SPolIRs.SPolIRs.PolyLang.dummy
   in
   dump_poly_payload "complete-after" pol_complete_after;
-  let (sched_valid, sched_ok) = SPolOpt.SVal.validate pol pol_sched in
+  let (sched_valid, sched_ok) = SPolOpt.CoreOpt.validate pol pol_sched in
   print_validate_components "validate(strengthened, scheduled)" pol pol_sched;
-  let (old_complete_sched_valid, old_complete_sched_ok) = SPolOpt.SVal.validate pol_complete_before pol_sched in
+  let (old_complete_sched_valid, old_complete_sched_ok) = SPolOpt.CoreOpt.validate pol_complete_before pol_sched in
   print_validate_components "validate(complete-before, scheduled)" pol_complete_before pol_sched;
-  let (new_complete_sched_valid, new_complete_sched_ok) = SPolOpt.SVal.validate pol pol_complete_after in
+  let (new_complete_sched_valid, new_complete_sched_ok) = SPolOpt.CoreOpt.validate pol pol_complete_after in
   print_validate_components "validate(strengthened, complete-after)" pol pol_complete_after;
-  let (complete_sched_valid, complete_sched_ok) = SPolOpt.SVal.validate pol_complete_before pol_complete_after in
+  let (complete_sched_valid, complete_sched_ok) = SPolOpt.CoreOpt.validate pol_complete_before pol_complete_after in
   print_validate_components "validate(complete-before, complete-after)" pol_complete_before pol_complete_after;
   print_endline "== Debug Scheduled OpenScop ==";
   OpenScopPrinter.openscop_printer' stdout (poly_to_openscop pol_sched);
@@ -306,45 +306,6 @@ let import_complete_tiling_or_fail label scop =
         "cannot import %s into tiling validator IR: %s"
         label
         (string_of_coq_err msg)
-
-let coeff_of_assoc assoc name =
-  match List.assoc_opt name assoc with
-  | Some coeff -> coeff
-  | None -> Camlcoq.Z.zero
-
-let convert_tiling_affine_expr
-    names
-    params
-    (expr : PlutoTilingValidator.affine_expr) =
-  let open TilingWitness in
-  {
-    ae_var_coeffs = List.map (coeff_of_assoc expr.PlutoTilingValidator.var_coeffs) names;
-    ae_param_coeffs =
-      List.map (coeff_of_assoc expr.PlutoTilingValidator.param_coeffs) params;
-    ae_const = expr.PlutoTilingValidator.const;
-  }
-
-let convert_tiling_statement_witness
-    params
-    (stmt : PlutoTilingValidator.statement_witness) =
-  let open TilingWitness in
-  let rec convert_links prefix = function
-    | [] -> []
-    | link :: tl ->
-        let names = prefix @ stmt.PlutoTilingValidator.original_iterators in
-        let expr = convert_tiling_affine_expr names params link.PlutoTilingValidator.expr in
-        let link' = { tl_expr = expr; tl_tile_size = link.PlutoTilingValidator.tile_size } in
-        link' :: convert_links (prefix @ [link.PlutoTilingValidator.parent]) tl
-  in
-  {
-    stw_point_dim =
-      Camlcoq.Nat.of_int (List.length stmt.PlutoTilingValidator.original_iterators);
-    stw_links = convert_links [] stmt.PlutoTilingValidator.links;
-  }
-
-let convert_tiling_witness (witness : PlutoTilingValidator.witness) =
-  List.map (convert_tiling_statement_witness witness.PlutoTilingValidator.params)
-    witness.PlutoTilingValidator.statements
 
 let required_vars_for_tiling_pinstr env_size pi =
   max_int
@@ -540,7 +501,7 @@ let canonicalize_tiled_after before_label after_label before_pol after_scop ws =
 let affine_forward_scops before_label after_label before_scop after_scop =
   let before_pol = import_complete_tpol_or_fail before_label before_scop in
   let after_pol = import_complete_tpol_or_fail after_label after_scop in
-  TPolValidator.TVal.validate before_pol after_pol
+  TPolValidator.validate before_pol after_pol
 
 let tiling_forward_scops ~before_label ~after_label before_scop after_scop =
   let before_pol = import_complete_spol_or_fail before_label before_scop in
@@ -551,7 +512,7 @@ let tiling_forward_scops ~before_label ~after_label before_scop after_scop =
       before_scop
       after_scop
   in
-  let ws = convert_tiling_witness witness in
+  let ws = PhaseTiling.convert_witness witness in
   let after_pol =
     let canonical_after = build_canonical_tiled_after_spol before_pol ws in
     match SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only canonical_after after_scop with
@@ -572,7 +533,7 @@ let pluto_phase_scops loop =
   let pol0 = extract_poly loop in
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   let before_scop = poly_to_openscop pol in
-  match Scheduler.phase_scop_scheduler before_scop with
+  match Scheduler.run_pluto_phase_pipeline before_scop with
   | Err msg ->
       frontend_failf "phase-aligned Pluto pipeline failed: %s" (string_of_coq_err msg)
   | Okk (mid_scop, after_scop) -> (before_scop, mid_scop, after_scop)
@@ -582,7 +543,7 @@ let debug_generic_tiling_runtime loop =
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   let before_scop = poly_to_openscop pol in
   let (mid_scop, after_scop) =
-    match Scheduler.phase_scop_scheduler before_scop with
+    match Scheduler.run_pluto_phase_pipeline before_scop with
     | Err msg ->
         frontend_failf "phase-aligned Pluto pipeline failed: %s" (string_of_coq_err msg)
     | Okk (mid_scop, after_scop) -> (mid_scop, after_scop)
@@ -593,7 +554,7 @@ let debug_generic_tiling_runtime loop =
     | Err msg ->
         frontend_failf "cannot import mid_affine like_source: %s" (string_of_coq_err msg)
   in
-  let (aff_res, aff_ok) = SPolOpt.SVal.validate pol pol_mid in
+  let (aff_res, aff_ok) = SPolOpt.CoreOpt.validate pol pol_mid in
   let witness : PlutoTilingValidator.witness =
     PlutoTilingValidator.extract_witness_from_scops
       ~before_path:"mid_affine"
@@ -601,7 +562,7 @@ let debug_generic_tiling_runtime loop =
       mid_scop
       after_scop
   in
-  let ws = convert_tiling_witness witness in
+  let ws = PhaseTiling.convert_witness witness in
   let pol_after =
     let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
     match SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only canonical_after after_scop with
@@ -610,19 +571,27 @@ let debug_generic_tiling_runtime loop =
         frontend_failf "cannot import after_tiled over canonical skeleton: %s"
           (string_of_coq_err msg)
   in
-  let before_t = SPolOpt.CoreOpt.CheckedTiling.outer_to_tiling_pprog pol_mid in
-  let after_t = SPolOpt.CoreOpt.CheckedTiling.outer_to_tiling_pprog pol_after in
+  let before_t = SPolOpt.CoreOpt.outer_to_tiling_pprog pol_mid in
+  let after_t = SPolOpt.CoreOpt.outer_to_tiling_pprog pol_after in
   let struct_ok =
-    SPolOpt.CoreOpt.CheckedTiling.TilingCheck.check_pprog_tiling_sourceb before_t after_t ws
+    SPolOpt.CoreOpt.check_pprog_tiling_sourceb before_t after_t ws
   in
   let (checked_res, checked_ok) =
     SPolOpt.CoreOpt.checked_tiling_validate pol_mid pol_after ws
   in
+  let (pol_mid_norm, pol_after_norm) =
+    normalize_stiling_validator_inputs pol_mid pol_after
+  in
+  let (checked_norm_res, checked_norm_ok) =
+    SPolOpt.CoreOpt.checked_tiling_validate pol_mid_norm pol_after_norm ws
+  in
   Printf.eprintf
-    "[debug-generic-tiling] affine=%b(ok=%b) struct=%b checked=%b(ok=%b)\n"
-    aff_res aff_ok struct_ok checked_res checked_ok;
+    "[debug-generic-tiling] affine=%b(ok=%b) struct=%b checked=%b(ok=%b) checked_norm=%b(ok=%b)\n"
+    aff_res aff_ok struct_ok checked_res checked_ok checked_norm_res checked_norm_ok;
   dump_poly_payload "generic-mid(like-source)" pol_mid;
-  dump_poly_payload "generic-after(canonical-schedule-only)" pol_after
+  dump_poly_payload "generic-after(canonical-schedule-only)" pol_after;
+  dump_poly_payload "generic-mid(normalized)" pol_mid_norm;
+  dump_poly_payload "generic-after(normalized)" pol_after_norm
 
 let dump_scheduled_openscop loop =
   let (_, _, after_scop) = pluto_phase_scops loop in
@@ -635,7 +604,7 @@ let optimize_with_phase_aligned_pluto loop =
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   let before_scop = poly_to_openscop pol in
   let (mid_scop, after_scop) =
-    match Scheduler.phase_scop_scheduler before_scop with
+    match Scheduler.run_pluto_phase_pipeline before_scop with
     | Err msg ->
         frontend_failf "phase-aligned Pluto pipeline failed: %s" (string_of_coq_err msg)
     | Okk (mid_scop, after_scop) -> (mid_scop, after_scop)
@@ -665,7 +634,7 @@ let optimize_with_phase_aligned_pluto loop =
           mid_scop
           after_scop
       in
-      let ws = convert_tiling_witness witness in
+      let ws = PhaseTiling.convert_witness witness in
       let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
       dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "canonical-after" canonical_after;
       let pol_after_sched =

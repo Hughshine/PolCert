@@ -7,13 +7,10 @@ Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
 Module CoreOpt := PolOpt CPolIRs.
-Module TilingCheck := CoreOpt.TilingCheck.
-Module Tiling := CoreOpt.CheckedTiling.Tiling.
-Module TilingPolIRs := CoreOpt.CheckedTiling.TilingPolIRs.
-Module TilingVal := CoreOpt.CheckedTiling.TilingVal.
-Module TPrepare := CoreOpt.CheckedTiling.TPrepare.
 
 Definition opt : CPolIRs.Loop.t -> imp CPolIRs.Loop.t := CoreOpt.Opt.
+
+Definition validate := CoreOpt.ValidatorCore.validate.
 
 Definition opt_poly (pol : CPolIRs.PolyLang.t) : imp CPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).

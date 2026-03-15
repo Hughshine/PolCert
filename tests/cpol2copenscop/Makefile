@@ -41,7 +41,7 @@
 ROOT_REL=../../
 
 DIRS=. $(ROOT_REL)extraction \
-  $(ROOT_REL)lib $(ROOT_REL)common $(ROOT_REL)$(ARCH) $(ROOT_REL)cfrontend $(ROOT_REL)cparser $(ROOT_REL)driver  $(shell find $(ROOT_REL)VPL/ocaml/src -type d ! -name extracted ! -name smt)
+  $(ROOT_REL)lib $(ROOT_REL)common $(ROOT_REL)$(ARCH) $(ROOT_REL)cfrontend $(ROOT_REL)cparser $(ROOT_REL)driver $(ROOT_REL)syntax $(shell find $(ROOT_REL)VPL/ocaml/src -type d ! -name extracted ! -name smt)
 
 
 # DIRS_REL=()
@@ -84,7 +84,7 @@ LEXERS=cparser/Lexer.mll lib/Tokenize.mll \
 	     lib/Readconfig.mll lib/Responsefile.mll lib/OpenScopLexer.mll \
 
 # FIXME: menhirLib.cmxa or menhirLib.cmx
-LIBS=str.cmxa unix.cmxa zarith.cmxa menhirLib.cmxa 
+LIBS=str.cmxa unix.cmxa zarith.cmxa menhirLib.cmxa
 LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 
 EXECUTABLES=test
@@ -101,7 +101,8 @@ all:
 
 ifeq ($(wildcard .depend.extr.test),.depend.extr.test)
 
-CCOMP_OBJS:=$(shell $(MODORDER) ./test.cmx)
+ifneq ($(filter clean,$(MAKECMDGOALS)),clean)
+CCOMP_OBJS=$(shell $(MODORDER) ./test.cmx)
 
 test: $(CCOMP_OBJS)
 	@$(OCAMLOPT) -o $@ $(LIBS) $(LINK_OPT) $+
@@ -109,6 +110,7 @@ test: $(CCOMP_OBJS)
 	
 
 include .depend.extr.test
+endif
 
 endif
 
@@ -130,7 +132,7 @@ endif
 clean:
 	@rm -f $(EXECUTABLES)
 	@rm -f .depend.extr.test
-	@rm -f test.cmi test.cmx test.o 
+	@rm -f test.cmi test.cmx test.o
 	@rm -f *.output
 
 # Generation of .depend.extr.test

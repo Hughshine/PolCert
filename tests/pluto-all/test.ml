@@ -68,10 +68,10 @@ let test_single idx test_name =
             );
             (Printf.printf "\027[90mInfo\027[0m: poly transformation success\n";
             let t0 = Sys.time() in
-            let (res1, ok1) = TVal.validate inpol outpol in
+            let (res1, ok1) = validate inpol outpol in
             let tv1 = Sys.time() -. t0 in
             let t0 = Sys.time() in
-            let (res2, ok2) = TVal.validate outpol inpol in
+            let (res2, ok2) = validate outpol inpol in
             let tv2 = Sys.time() -. t0 in
             (if ok1 && res1 then
               Printf.printf "\027[32mSUCCEED\027[0m: (orig -> opt). Running time %fs.\n" tv1

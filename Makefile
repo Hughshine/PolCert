@@ -118,7 +118,7 @@ CFRONTEND=Ctypes.v Cop.v Csyntax.v Csem.v Ctyping.v Cstrategy.v Initializers.v I
 BACKEND=
 # Machregs.v Conventions1.v Locations.v Op.v
 
-POLYGEN=ASTGen.v Canonizer.v CodeGen.v StateTy.v InstrTy.v Loop.v LoopGen.v \
+POLYGEN=ASTGen.v Canonizer.v CodeGen.v TyTy.v StateTy.v InstrTy.v Loop.v LoopGen.v \
   PolyLang.v PolyLoop.v PolyLoopSimpl.v PolyOperations.v PolyTest.v \
   Projection.v Result.v IterSemantics.v PolIRs.v CPolIRs.v TPolIRs.v InstanceListSema.v \
   LoopCleanup.v LoopSingletonCleanup.v
@@ -155,10 +155,10 @@ endif
 POLCERT_SRC = Base.v Convert.v \
   Extractor.v PrepareCodegen.v StrengthenDomain.v \
   OpenScop.v OpenScopAST.v PolyBase.v PolyLang.v \
-  SelectionSort.v StablePermut.v CState.v Validator.v \
+  SelectionSort.v StablePermut.v CState.v AffineValidator.v \
   PointWitness.v TilingWitness.v TilingList.v TilingRelation.v \
-  TilingBoolChecker.v TilingValidator.v \
-  CInstr.v TInstr.v TyTy.v CTy.v
+  TilingBoolChecker.v TilingValidator.v Validator.v \
+  CInstr.v TInstr.v CTy.v
 
 # Putting everything together (in driver/)
 
@@ -231,10 +231,23 @@ polopt: .depend.extr driver/Version.ml FORCE
 
 FORCE:
 
-.PHONY: proof extraction FORCE test
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
+
+test-polopt-loop-suite: polopt
+	rm -rf tests/polopt-generated/cases
+	python3 tests/polopt-generated/tools/materialize_polopt_cases.py \
+		--polopt ./polopt \
+		--timeout-seconds 300
+
+test-polopt-generated: test-polopt-loop-suite
+	python3 tests/polopt-generated/tools/check_polopt_cases.py \
+		--cases-dir tests/polopt-generated/cases \
+		--expect-total 62 \
+		--min-changed 50 \
+		--require-tiled matmul matmul-init wavefront
 
 test-clean: 
 	$(MAKE) -f Makefile.test clean

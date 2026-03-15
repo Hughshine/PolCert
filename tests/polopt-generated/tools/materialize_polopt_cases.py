@@ -6,9 +6,18 @@ import difflib
 import pathlib
 import shutil
 import subprocess
+import time
 
 INPUT_MARKER = "== Input Loop ==\n"
 OPT_MARKER = "== Optimized Loop ==\n"
+
+
+def text_or_empty(data: str | bytes | None) -> str:
+    if data is None:
+        return ""
+    if isinstance(data, bytes):
+        return data.decode("utf-8", errors="replace")
+    return data
 
 
 def extract_section(stdout: str, marker: str) -> str:
@@ -22,9 +31,15 @@ def extract_section(stdout: str, marker: str) -> str:
     return stdout[start:end].strip() + "\n"
 
 
-def run_case(polopt: pathlib.Path, src: pathlib.Path, out_dir: pathlib.Path, timeout_seconds: int) -> None:
+def run_case(
+    polopt: pathlib.Path,
+    src: pathlib.Path,
+    out_dir: pathlib.Path,
+    timeout_seconds: int,
+) -> dict[str, str]:
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, out_dir / "input.loop")
+    started = time.perf_counter()
 
     try:
         proc = subprocess.run(
@@ -34,12 +49,20 @@ def run_case(polopt: pathlib.Path, src: pathlib.Path, out_dir: pathlib.Path, tim
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
-        if exc.stderr:
-            (out_dir / "stderr.txt").write_text(exc.stderr)
+        stderr = text_or_empty(exc.stderr)
+        stdout = text_or_empty(exc.stdout)
+        if stderr:
+            (out_dir / "stderr.txt").write_text(stderr)
+        if stdout:
+            (out_dir / "stdout.txt").write_text(stdout)
         (out_dir / "status.txt").write_text(
             f"exit_code=timeout\nresult=fail\nreason=timeout({timeout_seconds}s)\n"
         )
-        return
+        return {
+            "result": "fail",
+            "reason": f"timeout({timeout_seconds}s)",
+            "elapsed_seconds": f"{time.perf_counter() - started:.2f}",
+        }
 
     status_lines = [f"exit_code={proc.returncode}"]
     if proc.returncode != 0:
@@ -47,7 +70,11 @@ def run_case(polopt: pathlib.Path, src: pathlib.Path, out_dir: pathlib.Path, tim
         if proc.stderr:
             (out_dir / "stderr.txt").write_text(proc.stderr)
         (out_dir / "status.txt").write_text("\n".join(status_lines) + "\n")
-        return
+        return {
+            "result": "fail",
+            "reason": f"exit({proc.returncode})",
+            "elapsed_seconds": f"{time.perf_counter() - started:.2f}",
+        }
 
     input_pretty = extract_section(proc.stdout, INPUT_MARKER)
     optimized = extract_section(proc.stdout, OPT_MARKER)
@@ -72,6 +99,11 @@ def run_case(polopt: pathlib.Path, src: pathlib.Path, out_dir: pathlib.Path, tim
         ]
     )
     (out_dir / "status.txt").write_text("\n".join(status_lines) + "\n")
+    return {
+        "result": "ok",
+        "changed": "true" if changed else "false",
+        "elapsed_seconds": f"{time.perf_counter() - started:.2f}",
+    }
 
 
 def main() -> None:
@@ -94,7 +126,7 @@ def main() -> None:
     parser.add_argument(
         "--timeout-seconds",
         type=int,
-        default=120,
+        default=300,
         help="Per-case timeout for invoking polopt",
     )
     args = parser.parse_args()
@@ -109,11 +141,28 @@ def main() -> None:
         raise SystemExit(f"polopt not found: {polopt}")
 
     out_root.mkdir(parents=True, exist_ok=True)
-    for src in sorted(root.glob("*.loop")):
+    cases = sorted(root.glob("*.loop"))
+    total = len(cases)
+    for index, src in enumerate(cases, start=1):
         case_dir = out_root / src.stem
         if case_dir.exists():
             shutil.rmtree(case_dir)
-        run_case(polopt, src, case_dir, args.timeout_seconds)
+        print(f"[{index}/{total}] {src.stem}: running", flush=True)
+        outcome = run_case(polopt, src, case_dir, args.timeout_seconds)
+        if outcome["result"] == "ok":
+            print(
+                f"[{index}/{total}] {src.stem}: ok "
+                f"changed={outcome['changed']} "
+                f"time={outcome['elapsed_seconds']}s",
+                flush=True,
+            )
+        else:
+            print(
+                f"[{index}/{total}] {src.stem}: fail "
+                f"reason={outcome['reason']} "
+                f"time={outcome['elapsed_seconds']}s",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":

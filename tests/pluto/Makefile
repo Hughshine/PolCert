@@ -41,7 +41,7 @@
 ROOT_REL=../../
 
 DIRS=. $(ROOT_REL)extraction \
-  $(ROOT_REL)lib $(ROOT_REL)common $(ROOT_REL)$(ARCH) $(ROOT_REL)cfrontend $(ROOT_REL)cparser $(ROOT_REL)driver  $(shell find $(ROOT_REL)VPL/ocaml/src -type d ! -name extracted ! -name smt)
+  $(ROOT_REL)lib $(ROOT_REL)common $(ROOT_REL)$(ARCH) $(ROOT_REL)cfrontend $(ROOT_REL)cparser $(ROOT_REL)driver $(ROOT_REL)syntax $(shell find $(ROOT_REL)VPL/ocaml/src -type d ! -name extracted ! -name smt)
 
 
 # DIRS_REL=()
@@ -101,7 +101,8 @@ all:
 
 ifeq ($(wildcard .depend.extr.test),.depend.extr.test)
 
-CCOMP_OBJS:=$(shell $(MODORDER) ./test.cmx)
+ifneq ($(filter clean,$(MAKECMDGOALS)),clean)
+CCOMP_OBJS=$(shell $(MODORDER) ./test.cmx)
 
 test: $(CCOMP_OBJS)
 # @echo "Linking $@, $(CCOMP_OBJS)"
@@ -110,6 +111,7 @@ test: $(CCOMP_OBJS)
 
 
 include .depend.extr.test
+endif
 
 endif
 

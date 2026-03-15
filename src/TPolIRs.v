@@ -32,7 +32,11 @@ Module TPolIRs <: POLIRS with Module Instr := TInstr.
       | None => Err "Transform pol to openscop failed"
       end
    .
+   Definition affine_scheduler := scheduler.
 
-   Definition to_phase_openscop (cpol: PolyLang.t) : option OpenScop :=
+   Definition export_for_phase_scheduler (cpol: PolyLang.t) : option OpenScop :=
       PolyLang.to_openscop cpol.
+   Definition export_for_pluto_phase_pipeline := export_for_phase_scheduler.
+   Definition to_phase_openscop := export_for_phase_scheduler.
+   Definition run_pluto_phase_pipeline := phase_scop_scheduler.
 End TPolIRs.

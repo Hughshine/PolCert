@@ -1,0 +1,23 @@
+name: full-tiling-suite
+
+on:
+  push:
+    branches:
+      - main
+      - extractor
+  pull_request:
+
+jobs:
+  polopt-loop-suite:
+    runs-on: ubuntu-latest
+    container:
+      image: hughshine/polcert:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build polopt
+        run: |
+          opam exec -- make depend
+          opam exec -- make -j1 polopt
+      - name: Run full generated suite through final polopt
+        run: |
+          opam exec -- make test-polopt-loop-suite

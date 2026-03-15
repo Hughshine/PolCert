@@ -2,18 +2,17 @@ Require Import TPolIRs.
 Require Import OpenScop.
 Require Import Result.
 Require Import PolOpt.
+Require Import TilingRelation.
 Require Import TilingWitness.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
 Module CoreOpt := PolOpt TPolIRs.
-Module TilingCheck := CoreOpt.TilingCheck.
-Module Tiling := CoreOpt.CheckedTiling.Tiling.
-Module TilingPolIRs := CoreOpt.CheckedTiling.TilingPolIRs.
-Module TilingVal := CoreOpt.CheckedTiling.TilingVal.
-Module TPrepare := CoreOpt.CheckedTiling.TPrepare.
+Module Tiling := TilingRelation TPolIRs.Instr.
 
 Definition opt : TPolIRs.Loop.t -> imp TPolIRs.Loop.t := CoreOpt.Opt.
+
+Definition validate := CoreOpt.ValidatorCore.validate.
 
 Definition opt_poly (pol : TPolIRs.PolyLang.t) : imp TPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).
