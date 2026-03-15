@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import re
 import sys
 
 
@@ -30,6 +31,52 @@ def check_case_dir(case_dir: pathlib.Path) -> tuple[bool, bool]:
 
 def loop_count(text: str) -> int:
     return text.count("for ")
+
+
+def strip_outer_if(text: str) -> str:
+    stripped = text.strip()
+    while stripped.startswith("if "):
+        start = stripped.find("{")
+        if start < 0:
+            break
+        depth = 0
+        end = None
+        for index, ch in enumerate(stripped[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = index
+                    break
+        if end is None or end != len(stripped) - 1:
+            break
+        stripped = stripped[start + 1:end].strip()
+    return stripped + "\n"
+
+
+def alpha_normalize_loop_vars(text: str) -> str:
+    loop_vars: list[str] = []
+    for match in re.finditer(r"\bfor\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\(", text):
+        loop_var = match.group(1)
+        if loop_var not in loop_vars:
+            loop_vars.append(loop_var)
+    normalized = text
+    for index, loop_var in enumerate(loop_vars):
+        normalized = re.sub(
+            rf"\b{re.escape(loop_var)}\b",
+            f"__iv{index}__",
+            normalized,
+        )
+    return normalized
+
+
+def is_nontrivially_changed(case_dir: pathlib.Path) -> bool:
+    input_text = (case_dir / "input.pretty.loop").read_text()
+    opt_text = (case_dir / "optimized.loop").read_text()
+    normalized_input = alpha_normalize_loop_vars(strip_outer_if(input_text))
+    normalized_opt = alpha_normalize_loop_vars(strip_outer_if(opt_text))
+    return normalized_input != normalized_opt
 
 
 def detect_tiled(case_dir: pathlib.Path) -> bool:
@@ -81,6 +128,12 @@ def main() -> None:
         help="Minimum number of successful cases that must differ from input",
     )
     parser.add_argument(
+        "--min-nontrivial-changed",
+        type=int,
+        default=0,
+        help="Minimum number of successful cases that must differ after alpha-normalization and outer-guard stripping",
+    )
+    parser.add_argument(
         "--require-tiled",
         nargs="*",
         default=[],
@@ -96,6 +149,7 @@ def main() -> None:
     total = len(case_dirs)
     ok = 0
     changed = 0
+    nontrivial_changed = 0
     failed: list[str] = []
     detected_tiled: list[str] = []
 
@@ -105,6 +159,8 @@ def main() -> None:
             ok += 1
             if case_changed:
                 changed += 1
+                if is_nontrivially_changed(case_dir):
+                    nontrivial_changed += 1
             if detect_tiled(case_dir):
                 detected_tiled.append(case_dir.name)
         else:
@@ -116,6 +172,12 @@ def main() -> None:
         raise SystemExit(f"failed cases: {', '.join(failed)}")
     if changed < args.min_changed:
         raise SystemExit(f"expected at least {args.min_changed} changed cases, saw {changed}")
+    if nontrivial_changed < args.min_nontrivial_changed:
+        raise SystemExit(
+            "expected at least "
+            f"{args.min_nontrivial_changed} nontrivially changed cases, "
+            f"saw {nontrivial_changed}"
+        )
 
     for case in args.require_tiled:
         require_tiled(cases_root / case)
@@ -124,6 +186,7 @@ def main() -> None:
     print(f"ok={ok}")
     print(f"fail={len(failed)}")
     print(f"changed={changed}")
+    print(f"nontrivial_changed={nontrivial_changed}")
     print(f"detected_tiled={len(detected_tiled)}")
     if detected_tiled:
         print(f"detected_tiled_cases={','.join(detected_tiled)}")

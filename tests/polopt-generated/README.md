@@ -24,12 +24,17 @@ That target:
 4. checks:
    - all `62` cases succeed
    - at least `50` cases change structurally
+   - at least `50` cases change nontrivially after ignoring alpha-renaming
+     of loop variables and whole-program outer guard wrappers
    - the checker reports the automatically detected tiled cases
    - representative cases such as `matmul`, `matmul-init`, and `wavefront`
      are required to satisfy the tiling heuristic
 
 Current reporting:
 - `changed` means the optimized pretty-printed loop differs from the input.
+- `nontrivial_changed` means the loop still differs after:
+  - alpha-normalizing loop induction variable names, and
+  - stripping whole-program outer `if (...) { ... }` wrappers
 - `detected_tiled_cases` means the optimized loop both:
   - increases the loop nesting depth by at least `2`, and
   - contains explicit tiled strip-mining markers (`max/min` bounds and `/ 32`)

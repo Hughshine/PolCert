@@ -247,6 +247,7 @@ test-polopt-generated: test-polopt-loop-suite
 		--cases-dir tests/polopt-generated/cases \
 		--expect-total 62 \
 		--min-changed 50 \
+		--min-nontrivial-changed 50 \
 		--require-tiled matmul matmul-init wavefront
 
 test-clean: 
