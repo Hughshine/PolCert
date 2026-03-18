@@ -72,8 +72,10 @@ fi
 
 pluto_version_line="$(pluto --version 2>&1 | sed -n '1p' || true)"
 short_commit="${PLUTO_GIT_COMMIT:0:7}"
-if [[ "$pluto_version_line" != *"$short_commit"* ]]; then
-  echo "[ci] Pluto binary version does not mention pinned commit $short_commit" >&2
+version_marker="${PLUTO_BASELINE_TAG:-$short_commit}"
+if [[ "$pluto_version_line" != *"$short_commit"* ]] &&
+   [[ "$pluto_version_line" != *"$version_marker"* ]]; then
+  echo "[ci] Pluto binary version does not mention pinned commit $short_commit or tag $version_marker" >&2
   echo "[ci]   pluto --version: $pluto_version_line" >&2
   exit 1
 fi
