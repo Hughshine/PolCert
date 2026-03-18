@@ -1,7 +1,7 @@
 # Keep these defaults aligned with tools/ci/pluto-baseline.env.
-ARG PLUTO_IMAGE=hughshine/pluto-verif:polcert-pluto-baseline-7cb0892
+ARG PLUTO_IMAGE=hughshine/pluto-verif:polcert-pluto-iss-bridge-ac5ea83
 ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
-ARG PLUTO_GIT_COMMIT=255c1c14c4589369bdbb6e98b49c893db9d28e69
+ARG PLUTO_GIT_COMMIT=ac5ea8323129655afb283b77684f4d71066c6e79
 
 FROM ${PLUTO_IMAGE}
 

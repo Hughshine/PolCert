@@ -46,16 +46,16 @@ compiler-source drift.
 
 1. Make the desired Pluto source commit clean and stable in the Pluto repo.
 2. Tag it in `verif-scop/pluto`:
-   - Example: `polcert-pluto-baseline-7cb0892`
+   - Example: `polcert-pluto-iss-bridge-ac5ea83`
 3. Build and publish the Pluto base image from the Pluto checkout:
 
 ```sh
 docker build \
   --build-arg PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git \
-  --build-arg PLUTO_GIT_COMMIT=7cb0892d42dd65fb083601750cad1a325688a366 \
-  -t hughshine/pluto-verif:polcert-pluto-baseline-7cb0892 \
+  --build-arg PLUTO_GIT_COMMIT=ac5ea8323129655afb283b77684f4d71066c6e79 \
+  -t hughshine/pluto-verif:polcert-pluto-iss-bridge-ac5ea83 \
   /path/to/pluto
-docker push hughshine/pluto-verif:polcert-pluto-baseline-7cb0892
+docker push hughshine/pluto-verif:polcert-pluto-iss-bridge-ac5ea83
 ```
 
 4. Update `tools/ci/pluto-baseline.env`:
