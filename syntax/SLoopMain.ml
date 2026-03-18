@@ -3,13 +3,37 @@ open Result
 
 let tool_name = "Syntax-Frontend Polyhedral Optimizer"
 
+module ParallelValidatorCore = Validator.Validator(SPolIRs.SPolIRs)
+module ParallelCodegenCore = ParallelCodegen.ParallelCodegen(SPolIRs.SPolIRs)
+module ParallelLoopIR = ParallelCodegenCore.ParallelLoop
+module ParallelBaseLoop = ParallelLoopIR.BaseLoop
+module ParallelInstr = SPolIRs.SPolIRs.Instr
+
 exception FrontendFailure of string
 
 let frontend_failf fmt = Printf.ksprintf (fun s -> raise (FrontendFailure s)) fmt
 
+let pluto_tiling_mode second_level =
+  if second_level
+  then PlutoTilingValidator.SecondLevel
+  else PlutoTilingValidator.Ordinary
+
 let usage prog =
   Printf.sprintf
-    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] <file.loop>\n       %s --extract-tiling-witness-openscop <before.scop> <after.scop>\n       %s --validate-tiling-openscop <before.scop> <after.scop>\n\nDefault optimization path:\n  phase-aligned Pluto pipeline with two external calls\n  1. affine-only Pluto scheduling\n  2. tile-only Pluto transformation\n  followed by affine validation(before, mid) and tiling validation(mid, after)\n"
+    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--identity] [--notile] [--iss] [--second-level-tile] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n       %s [--second-level-tile] --extract-tiling-witness-openscop <before.scop> <after.scop>\n       %s [--second-level-tile] --validate-tiling-openscop <before.scop> <after.scop>\n       %s --validate-iss-debug-dumps <before.txt> <after.txt>\n       %s --validate-iss-bridge <bridge.txt>\n       %s --validate-iss-pluto-suite\n       %s --validate-iss-pluto-live-suite\n\nDefault optimization path:\n  extracted theorem-aligned affine+tiling pipeline (`SPolOpt.opt`)\n\nExplicit phase controls:\n  --identity        : no Pluto phase, just checked extraction/strengthen/codegen\n  --notile          : stop after affine scheduling validation\n  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n  --second-level-tile : experimental verified second-level tiling path; only valid on\n                        full tiled optimization/validation routes\n  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n                       loop hints; supported on both the default and `--iss` pipelines,\n                       with or without `--notile`\n  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n  --parallel-current d : manual verified `parallel for` on current dimension d;\n                         supported on identity, affine-only, and full tiled paths,\n                         including their `--iss` variants\n\nExamples:\n  %s file.loop                        # default theorem-aligned affine+tiling path\n  %s --second-level-tile file.loop    # full tiled checked path with second-level tiling enabled\n  %s --parallel file.loop             # Pluto-hinted verified parallel path\n  %s --parallel --parallel-strict file.loop\n  %s --notile file.loop               # affine-only checked path\n  %s --identity file.loop             # identity/no-schedule path\n  %s --validate-tiling-openscop mid.scop after.scop\n  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n  %s --iss --identity file.loop       # ISS-only checked split path\n"
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
+    prog
     prog
     prog
     prog
@@ -20,8 +44,19 @@ type config = {
   mutable dump_scheduled_openscop : bool;
   mutable debug_scheduler : bool;
   mutable extract_only : bool;
+  mutable force_identity : bool;
+  mutable force_notile : bool;
+  mutable force_iss : bool;
+  mutable force_second_level_tile : bool;
+  mutable force_parallel : bool;
+  mutable force_parallel_strict : bool;
+  mutable parallel_current_dim : int option;
   mutable extract_tiling_witness_openscop : (string * string) option;
   mutable validate_tiling_openscop : (string * string) option;
+  mutable validate_iss_debug_dumps : (string * string) option;
+  mutable validate_iss_bridge : string option;
+  mutable validate_iss_pluto_suite : bool;
+  mutable validate_iss_pluto_live_suite : bool;
   mutable input : string option;
 }
 
@@ -33,8 +68,19 @@ let parse_args () =
       dump_scheduled_openscop = false;
       debug_scheduler = false;
       extract_only = false;
+      force_identity = false;
+      force_notile = false;
+      force_iss = false;
+      force_second_level_tile = false;
+      force_parallel = false;
+      force_parallel_strict = false;
+      parallel_current_dim = None;
       extract_tiling_witness_openscop = None;
       validate_tiling_openscop = None;
+      validate_iss_debug_dumps = None;
+      validate_iss_bridge = None;
+      validate_iss_pluto_suite = false;
+      validate_iss_pluto_live_suite = false;
       input = None;
     }
   in
@@ -47,6 +93,32 @@ let parse_args () =
       | "--dump-scheduled-openscop" -> cfg.dump_scheduled_openscop <- true; go (i + 1)
       | "--debug-scheduler" -> cfg.debug_scheduler <- true; go (i + 1)
       | "--extract-only" -> cfg.extract_only <- true; go (i + 1)
+      | "--identity" -> cfg.force_identity <- true; go (i + 1)
+      | "--notile" | "--affine-only" -> cfg.force_notile <- true; go (i + 1)
+      | "--iss" -> cfg.force_iss <- true; go (i + 1)
+      | "--second-level-tile" -> cfg.force_second_level_tile <- true; go (i + 1)
+      | "--parallel" -> cfg.force_parallel <- true; go (i + 1)
+      | "--parallel-strict" -> cfg.force_parallel_strict <- true; go (i + 1)
+      | "--parallel-current" ->
+          if i + 1 >= Array.length Sys.argv then begin
+            prerr_endline "option --parallel-current expects a non-negative integer";
+            prerr_endline (usage Sys.argv.(0));
+            exit 2
+          end;
+          let dim =
+            try int_of_string Sys.argv.(i + 1)
+            with Failure _ ->
+              prerr_endline "option --parallel-current expects a non-negative integer";
+              prerr_endline (usage Sys.argv.(0));
+              exit 2
+          in
+          if dim < 0 then begin
+            prerr_endline "option --parallel-current expects a non-negative integer";
+            prerr_endline (usage Sys.argv.(0));
+            exit 2
+          end;
+          cfg.parallel_current_dim <- Some dim;
+          go (i + 2)
       | "--help" | "-h" ->
           print_endline (usage Sys.argv.(0));
           exit 0
@@ -66,6 +138,28 @@ let parse_args () =
           end;
           cfg.validate_tiling_openscop <- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
           go (i + 3)
+      | "--validate-iss-debug-dumps" ->
+          if i + 2 >= Array.length Sys.argv then begin
+            prerr_endline "option --validate-iss-debug-dumps expects two file paths";
+            prerr_endline (usage Sys.argv.(0));
+            exit 2
+          end;
+          cfg.validate_iss_debug_dumps <- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
+          go (i + 3)
+      | "--validate-iss-bridge" ->
+          if i + 1 >= Array.length Sys.argv then begin
+            prerr_endline "option --validate-iss-bridge expects one file path";
+            prerr_endline (usage Sys.argv.(0));
+            exit 2
+          end;
+          cfg.validate_iss_bridge <- Some Sys.argv.(i + 1);
+          go (i + 2)
+      | "--validate-iss-pluto-suite" ->
+          cfg.validate_iss_pluto_suite <- true;
+          go (i + 1)
+      | "--validate-iss-pluto-live-suite" ->
+          cfg.validate_iss_pluto_live_suite <- true;
+          go (i + 1)
       | s when String.length s > 0 && s.[0] = '-' ->
           prerr_endline ("unknown option: " ^ s);
           prerr_endline (usage Sys.argv.(0));
@@ -114,6 +208,164 @@ let string_of_access acc =
 
 let string_of_access_list accs =
   "[" ^ String.concat "; " (List.map string_of_access accs) ^ "]"
+
+let nth_or xs n default =
+  try List.nth xs n with _ -> default
+
+let name_of_ident id = Camlcoq.extern_atom id
+let name_of_nat n = string_of_int (Camlcoq.Nat.to_int n)
+
+let rec string_of_parallel_loop_expr_raw env = function
+  | ParallelBaseLoop.Constant z -> string_of_z z
+  | ParallelBaseLoop.Var n -> nth_or env (Camlcoq.Nat.to_int n) ("v" ^ name_of_nat n)
+  | ParallelBaseLoop.Sum (a, b) ->
+      Printf.sprintf "(%s + %s)"
+        (string_of_parallel_loop_expr_raw env a)
+        (string_of_parallel_loop_expr_raw env b)
+  | ParallelBaseLoop.Mult (k, e) ->
+      Printf.sprintf "(%s * %s)" (string_of_z k) (string_of_parallel_loop_expr_raw env e)
+  | ParallelBaseLoop.Div (e, k) ->
+      Printf.sprintf "(%s / %s)" (string_of_parallel_loop_expr_raw env e) (string_of_z k)
+  | ParallelBaseLoop.Mod (e, k) ->
+      Printf.sprintf "(%s %% %s)" (string_of_parallel_loop_expr_raw env e) (string_of_z k)
+  | ParallelBaseLoop.Max (a, b) ->
+      Printf.sprintf "max(%s, %s)"
+        (string_of_parallel_loop_expr_raw env a)
+        (string_of_parallel_loop_expr_raw env b)
+  | ParallelBaseLoop.Min (a, b) ->
+      Printf.sprintf "min(%s, %s)"
+        (string_of_parallel_loop_expr_raw env a)
+        (string_of_parallel_loop_expr_raw env b)
+
+let string_of_parallel_loop_expr env e =
+  string_of_parallel_loop_expr_raw env e
+
+let parallel_slot_expr slots n =
+  nth_or slots (Camlcoq.Nat.to_int n) (ParallelBaseLoop.Constant (Camlcoq.Z.of_sint 0))
+
+let string_of_parallel_affine env slots aff =
+  let rec go = function
+    | ParallelInstr.AeConst z -> string_of_z z
+    | ParallelInstr.AeVar n -> string_of_parallel_loop_expr env (parallel_slot_expr slots n)
+    | ParallelInstr.AeAdd (a, b) -> Printf.sprintf "(%s + %s)" (go a) (go b)
+    | ParallelInstr.AeSub (a, b) -> Printf.sprintf "(%s - %s)" (go a) (go b)
+    | ParallelInstr.AeMul (k, e) ->
+        if Camlcoq.Z.eq k Camlcoq.Z.zero then "0"
+        else if Camlcoq.Z.eq k Camlcoq.Z.one then go e
+        else Printf.sprintf "(%s * %s)" (string_of_z k) (go e)
+  in
+  go aff
+
+let string_of_parallel_access env slots = function
+  | ParallelInstr.AcVar id -> name_of_ident id
+  | ParallelInstr.AcArr (id, idxs) ->
+      let base = name_of_ident id in
+      List.fold_left
+        (fun acc idx -> acc ^ "[" ^ string_of_parallel_affine env slots idx ^ "]")
+        base idxs
+
+let string_of_parallel_instr_expr env slots expr =
+  let rec go = function
+    | ParallelInstr.ExConst z -> string_of_z z
+    | ParallelInstr.ExFloat lit -> Camlcoq.camlstring_of_coqstring lit
+    | ParallelInstr.ExVar n -> string_of_parallel_loop_expr env (parallel_slot_expr slots n)
+    | ParallelInstr.ExAccess a -> string_of_parallel_access env slots a
+    | ParallelInstr.ExAdd (a, b) -> Printf.sprintf "(%s + %s)" (go a) (go b)
+    | ParallelInstr.ExSub (a, b) -> Printf.sprintf "(%s - %s)" (go a) (go b)
+    | ParallelInstr.ExMul (a, b) -> Printf.sprintf "(%s * %s)" (go a) (go b)
+    | ParallelInstr.ExDiv (a, b) -> Printf.sprintf "(%s / %s)" (go a) (go b)
+    | ParallelInstr.ExLe (a, b) -> Printf.sprintf "(%s <= %s)" (go a) (go b)
+    | ParallelInstr.ExEq (a, b) -> Printf.sprintf "(%s == %s)" (go a) (go b)
+    | ParallelInstr.ExAnd (a, b) -> Printf.sprintf "(%s && %s)" (go a) (go b)
+    | ParallelInstr.ExCall (fn, args) ->
+        let fn = Camlcoq.camlstring_of_coqstring fn in
+        let args =
+          match List.map go args with
+          | [] -> ""
+          | hd :: tl -> List.fold_left (fun acc s -> acc ^ ", " ^ s) hd tl
+        in
+        Printf.sprintf "%s(%s)" fn args
+    | ParallelInstr.ExCond (c, t, f) ->
+        Printf.sprintf "(%s ? %s : %s)" (go c) (go t) (go f)
+  in
+  go expr
+
+let string_of_parallel_test env tst =
+  let rec go = function
+    | ParallelBaseLoop.LE (a, b) ->
+        Printf.sprintf "%s <= %s"
+          (string_of_parallel_loop_expr env a)
+          (string_of_parallel_loop_expr env b)
+    | ParallelBaseLoop.EQ (a, b) ->
+        Printf.sprintf "%s == %s"
+          (string_of_parallel_loop_expr env a)
+          (string_of_parallel_loop_expr env b)
+    | ParallelBaseLoop.And (a, b) -> Printf.sprintf "(%s && %s)" (go a) (go b)
+    | ParallelBaseLoop.Or (a, b) -> Printf.sprintf "(%s || %s)" (go a) (go b)
+    | ParallelBaseLoop.Not t -> Printf.sprintf "!(%s)" (go t)
+    | ParallelBaseLoop.TConstantTest true -> "true"
+    | ParallelBaseLoop.TConstantTest false -> "false"
+  in
+  go tst
+
+let rec parallel_stmt_list_to_list = function
+  | ParallelLoopIR.SNil -> []
+  | ParallelLoopIR.SCons (st, tl) -> st :: parallel_stmt_list_to_list tl
+
+let parallel_indent n = String.make (2 * n) ' '
+
+let fresh_parallel_loop_name env depth =
+  let rec pick n =
+    let cand = Printf.sprintf "i%d" (depth + n) in
+    if List.mem cand env then pick (n + 1) else cand
+  in
+  pick 0
+
+let rec lines_of_parallel_stmt env depth lvl = function
+  | ParallelLoopIR.Loop (mode, _, lb, ub, body) ->
+      let v = fresh_parallel_loop_name env depth in
+      let loop_kw =
+        match mode with
+        | ParallelLoopIR.SeqMode -> "for"
+        | ParallelLoopIR.ParMode -> "parallel for"
+      in
+      let header =
+        Printf.sprintf "%s%s %s in range(%s, %s) {"
+          (parallel_indent lvl)
+          loop_kw
+          v
+          (string_of_parallel_loop_expr env lb)
+          (string_of_parallel_loop_expr env ub)
+      in
+      let body_lines = lines_of_parallel_stmt (v :: env) (depth + 1) (lvl + 1) body in
+      header :: body_lines @ [parallel_indent lvl ^ "}"]
+  | ParallelLoopIR.Instr (instr, slots) ->
+      begin match instr with
+      | ParallelInstr.SSkip -> [parallel_indent lvl ^ "skip;"]
+      | ParallelInstr.SAssign (lhs, rhs) ->
+          [parallel_indent lvl
+           ^ string_of_parallel_access env slots lhs
+           ^ " = "
+           ^ string_of_parallel_instr_expr env slots rhs
+           ^ ";"]
+      end
+  | ParallelLoopIR.Seq stmts ->
+      List.concat (List.map (lines_of_parallel_stmt env depth lvl) (parallel_stmt_list_to_list stmts))
+  | ParallelLoopIR.Guard (tst, body) ->
+      let header =
+        Printf.sprintf "%sif (%s) {" (parallel_indent lvl) (string_of_parallel_test env tst)
+      in
+      let body_lines = lines_of_parallel_stmt env depth (lvl + 1) body in
+      header :: body_lines @ [parallel_indent lvl ^ "}"]
+
+let string_of_parallel_loop (((stmt, varctxt), _vars) : ParallelLoopIR.t) =
+  let ctxt_names = List.map name_of_ident varctxt in
+  let header =
+    match ctxt_names with
+    | [] -> []
+    | _ -> ["context(" ^ String.concat ", " ctxt_names ^ ");"; ""]
+  in
+  String.concat "\n" (header @ lines_of_parallel_stmt (List.rev ctxt_names) 0 0 stmt) ^ "\n"
 
 let dump_poly_payload label pp =
   let module PL = SPolIRs.SPolIRs.PolyLang in
@@ -487,6 +739,28 @@ let normalize_stiling_validator_inputs before_pol after_pol =
   in
   (pad_spol_vars_to required before_pol, pad_spol_vars_to required after_pol)
 
+let tiling_artifact_from_scops_or_fail
+    ~second_level
+    ~before_label
+    ~after_label
+    before_scop
+    after_scop =
+  let tiling_mode = pluto_tiling_mode second_level in
+  try
+    PlutoTilingValidator.extract_phase_artifact_from_scops
+      ~tiling_mode
+      ~before_path:before_label
+      ~after_path:after_label
+      before_scop
+      after_scop
+  with
+  | PlutoTilingValidator.ValidationError msg ->
+      frontend_failf
+        "cannot extract tiling witness/artifact for %s -> %s: %s"
+        before_label
+        after_label
+        msg
+
 let canonicalize_tiled_after before_label after_label before_pol after_scop ws =
   let canonical_after = build_canonical_tiled_after before_pol ws in
   match TPolOpt.Tiling.PL.from_openscop_schedule_only canonical_after after_scop with
@@ -503,19 +777,20 @@ let affine_forward_scops before_label after_label before_scop after_scop =
   let after_pol = import_complete_tpol_or_fail after_label after_scop in
   TPolValidator.validate before_pol after_pol
 
-let tiling_forward_scops ~before_label ~after_label before_scop after_scop =
+let tiling_forward_scops ~second_level ~before_label ~after_label before_scop after_scop =
   let before_pol = import_complete_spol_or_fail before_label before_scop in
-  let witness : PlutoTilingValidator.witness =
-    PlutoTilingValidator.extract_witness_from_scops
-      ~before_path:before_label
-      ~after_path:after_label
+  let artifact =
+    tiling_artifact_from_scops_or_fail
+      ~second_level
+      ~before_label
+      ~after_label
       before_scop
       after_scop
   in
-  let ws = PhaseTiling.convert_witness witness in
+  let ws = PhaseTiling.convert_witness artifact.artifact_witness in
   let after_pol =
     let canonical_after = build_canonical_tiled_after_spol before_pol ws in
-    match SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only canonical_after after_scop with
+    match SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only canonical_after artifact.artifact_after_scop with
     | Okk pol -> pol
     | Err msg ->
         frontend_failf
@@ -529,6 +804,184 @@ let tiling_forward_scops ~before_label ~after_label before_scop after_scop =
   in
   SPolOpt.CoreOpt.checked_tiling_validate before_pol after_pol ws
 
+let extract_strengthened_poly loop =
+  let pol0 = extract_poly loop in
+  SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0
+
+let checked_parallel_current_codegen_or_fail label pol dim =
+  let plan = nat_of_int dim in
+  let pol = normalize_spol_codegen_input pol in
+  let (cert_res, cert_ok) =
+    ParallelValidatorCore.checked_parallelize_current
+      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol)
+      plan
+  in
+  if not cert_ok then
+    frontend_failf "%s: extracted parallel validator raised an alarm" label;
+  match cert_res with
+  | Err msg ->
+      frontend_failf
+        "%s: checked parallelization failed: %s"
+        label
+        (string_of_coq_err msg)
+  | Okk cert ->
+      let (codegen_res, codegen_ok) =
+        ParallelCodegenCore.checked_annotated_codegen
+          (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol)
+          cert
+      in
+      if not codegen_ok then
+        frontend_failf "%s: extracted parallel codegen raised an alarm" label;
+      match codegen_res with
+      | Okk pl -> pl
+      | Err msg ->
+          frontend_failf
+            "%s: checked parallel codegen failed: %s"
+            label
+            (string_of_coq_err msg)
+
+let try_checked_parallel_current_codegen pol dim =
+  let plan = nat_of_int dim in
+  let pol = normalize_spol_codegen_input pol in
+  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
+  let (cert_res, cert_ok) =
+    ParallelValidatorCore.checked_parallelize_current current plan
+  in
+  if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+    begin match cert_res with
+    | Okk _ ->
+        Printf.eprintf
+          "[debug-parallel] checked_parallelize_current dim=%d => accepted(ok=%b)\n"
+          dim cert_ok
+    | Err msg ->
+        Printf.eprintf
+          "[debug-parallel] checked_parallelize_current dim=%d => rejected(ok=%b,msg=%s)\n"
+          dim cert_ok (string_of_coq_err msg)
+    end;
+  if not cert_ok then
+    None
+  else
+    match cert_res with
+    | Err _ -> None
+    | Okk cert ->
+        let (codegen_res, codegen_ok) =
+          ParallelCodegenCore.checked_annotated_codegen current cert
+        in
+        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+          begin match codegen_res with
+          | Okk _ ->
+              Printf.eprintf
+                "[debug-parallel] checked_annotated_codegen dim=%d => accepted(ok=%b)\n"
+                dim codegen_ok
+          | Err msg ->
+              Printf.eprintf
+                "[debug-parallel] checked_annotated_codegen dim=%d => rejected(ok=%b,msg=%s)\n"
+                dim codegen_ok (string_of_coq_err msg)
+          end;
+        if not codegen_ok then
+          None
+        else
+          match codegen_res with
+          | Okk pl -> Some pl
+          | Err _ -> None
+
+let tag_loop_for_parallel_pretty loop =
+  ParallelCodegenCore.tag_loop loop
+
+let tagged_prepared_codegen pol =
+  let (loop, ok) =
+    SPolOpt.CoreOpt.Prepare.prepared_codegen (normalize_spol_codegen_input pol)
+  in
+  (tag_loop_for_parallel_pretty loop, ok)
+
+let debug_parallel_hint_if name hint =
+  if debug_env_enabled name then
+    match hint with
+    | None ->
+        Printf.eprintf "[debug-parallel] no Pluto loop hint found\n"
+    | Some hint ->
+        Printf.eprintf
+          "[debug-parallel] Pluto hint iterator=%s current_dim=%d\n"
+          hint.Scheduler.hint_iterator
+          hint.Scheduler.hint_current_dim
+
+let debug_parallel_dim_scan_if name pol =
+  if debug_env_enabled name then
+    let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
+    let rec scan dim failures_left =
+      if failures_left <= 0 then ()
+      else
+        let (res, ok) =
+          ParallelValidatorCore.checked_parallelize_current current (nat_of_int dim)
+        in
+        begin match res with
+        | Okk _ ->
+            Printf.eprintf
+              "[debug-parallel] current-dim %d: accepted(ok=%b)\n"
+              dim ok
+        | Err msg ->
+            Printf.eprintf
+              "[debug-parallel] current-dim %d: rejected(ok=%b,msg=%s)\n"
+              dim ok (string_of_coq_err msg)
+        end;
+        scan (dim + 1) (failures_left - 1)
+    in
+    scan 0 8
+
+let max_current_depth_spol_pprog pp =
+  let ((pis, _ctxt), _vars) = pp in
+  List.fold_left
+    (fun acc pi -> max_int acc (int_of_nat (SPolIRs.SPolIRs.PolyLang.pi_depth pi)))
+    0
+    pis
+
+let rec int_range lo hi =
+  if lo >= hi then [] else lo :: int_range (lo + 1) hi
+
+let parallel_candidate_dims pol hint_dim =
+  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
+  let depth = max_current_depth_spol_pprog current in
+  let all = int_range 0 depth in
+  match hint_dim with
+  | None -> all
+  | Some d -> d :: List.filter (fun x -> x <> d) all
+
+let try_pluto_hint_preferred_parallel_codegen pol hint_dim =
+  let dims = parallel_candidate_dims pol hint_dim in
+  let rec go = function
+    | [] -> None
+    | dim :: rest ->
+        begin match try_checked_parallel_current_codegen pol dim with
+        | Some pl ->
+            let used_hint =
+              match hint_dim with
+              | Some hinted -> hinted = dim
+              | None -> false
+            in
+            Some (pl, used_hint)
+        | None -> go rest
+        end
+  in
+  go dims
+
+let try_pluto_parallel_codegen pol hint_dim strict =
+  match hint_dim with
+  | Some dim when strict ->
+      begin match try_checked_parallel_current_codegen pol dim with
+      | Some pl -> Some (pl, true)
+      | None -> None
+      end
+  | None when strict ->
+      None
+  | _ ->
+      try_pluto_hint_preferred_parallel_codegen pol hint_dim
+
+let checked_affine_schedule_or_fail pol =
+  let (pol', ok) = SPolOpt.CoreOpt.checked_affine_schedule pol in
+  if not ok then
+    frontend_failf "affine scheduling raised an extracted alarm before parallel codegen";
+  pol'
+
 let pluto_phase_scops loop =
   let pol0 = extract_poly loop in
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
@@ -537,6 +990,29 @@ let pluto_phase_scops loop =
   | Err msg ->
       frontend_failf "phase-aligned Pluto pipeline failed: %s" (string_of_coq_err msg)
   | Okk (mid_scop, after_scop) -> (before_scop, mid_scop, after_scop)
+
+let pluto_phase_scops_with_iss loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.run_pluto_phase_pipeline_with_iss before_scop with
+  | Err _ -> None
+  | Okk (mid_scop, after_scop) -> Some (pol, before_scop, mid_scop, after_scop)
+
+let pluto_phase_scops_with_iss_and_parallel_hint loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.run_pluto_phase_pipeline_with_iss_with_parallel_hint before_scop with
+  | Err _ -> None
+  | Okk (mid_scop, after_scop, hint) ->
+      Some (pol, before_scop, mid_scop, after_scop, hint)
+
+let pluto_phase_scops_with_parallel_hint loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.run_pluto_phase_pipeline_with_parallel_hint before_scop with
+  | Err _ -> None
+  | Okk (mid_scop, after_scop, hint) ->
+      Some (pol, before_scop, mid_scop, after_scop, hint)
 
 let debug_generic_tiling_runtime loop =
   let pol0 = extract_poly loop in
@@ -555,17 +1031,22 @@ let debug_generic_tiling_runtime loop =
         frontend_failf "cannot import mid_affine like_source: %s" (string_of_coq_err msg)
   in
   let (aff_res, aff_ok) = SPolOpt.CoreOpt.validate pol pol_mid in
-  let witness : PlutoTilingValidator.witness =
-    PlutoTilingValidator.extract_witness_from_scops
-      ~before_path:"mid_affine"
-      ~after_path:"after_tiled"
+  let artifact =
+    tiling_artifact_from_scops_or_fail
+      ~second_level:(Scheduler.second_level_tiling_enabled ())
+      ~before_label:"mid_affine"
+      ~after_label:"after_tiled"
       mid_scop
       after_scop
   in
-  let ws = PhaseTiling.convert_witness witness in
+  let ws = PhaseTiling.convert_witness artifact.artifact_witness in
   let pol_after =
     let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-    match SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only canonical_after after_scop with
+    match
+      SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only
+        canonical_after
+        artifact.artifact_after_scop
+    with
     | Okk pol' -> pol'
     | Err msg ->
         frontend_failf "cannot import after_tiled over canonical skeleton: %s"
@@ -599,6 +1080,52 @@ let dump_scheduled_openscop loop =
   OpenScopPrinter.openscop_printer' stdout after_scop;
   print_newline ()
 
+let dump_scheduled_openscop_with_parallel cfg loop =
+  if cfg.force_iss && cfg.force_notile then
+    let pol = extract_strengthened_poly loop in
+    let before_scop = poly_to_openscop pol in
+    begin
+      match Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint before_scop with
+      | Err msg ->
+          frontend_failf
+            "parallel ISS affine Pluto scheduling failed: %s"
+            (string_of_coq_err msg)
+      | Okk (mid_scop, _hint) ->
+          print_endline "== Scheduled OpenScop ==";
+          OpenScopPrinter.openscop_printer' stdout mid_scop;
+          print_newline ()
+    end
+  else if cfg.force_iss then
+    match pluto_phase_scops_with_iss_and_parallel_hint loop with
+    | None ->
+        frontend_failf "parallel ISS Pluto phase pipeline failed"
+    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
+        print_endline "== Scheduled OpenScop ==";
+        OpenScopPrinter.openscop_printer' stdout after_scop;
+        print_newline ()
+  else if cfg.force_notile then
+    let pol = extract_strengthened_poly loop in
+    let before_scop = poly_to_openscop pol in
+    begin
+      match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
+      | Err msg ->
+          frontend_failf
+            "parallel affine Pluto scheduling failed: %s"
+            (string_of_coq_err msg)
+      | Okk (mid_scop, _hint) ->
+          print_endline "== Scheduled OpenScop ==";
+          OpenScopPrinter.openscop_printer' stdout mid_scop;
+          print_newline ()
+    end
+  else
+    match pluto_phase_scops_with_parallel_hint loop with
+    | None ->
+        frontend_failf "parallel Pluto phase pipeline failed"
+    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
+        print_endline "== Scheduled OpenScop ==";
+        OpenScopPrinter.openscop_printer' stdout after_scop;
+        print_newline ()
+
 let optimize_with_phase_aligned_pluto loop =
   let pol0 = extract_poly loop in
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
@@ -617,6 +1144,7 @@ let optimize_with_phase_aligned_pluto loop =
   else
     let (tiling_res, tiling_ok) =
       tiling_forward_scops
+        ~second_level:(Scheduler.second_level_tiling_enabled ())
         ~before_label:"mid_affine"
         ~after_label:"after_tiled"
         mid_scop
@@ -627,29 +1155,37 @@ let optimize_with_phase_aligned_pluto loop =
     else
       let pol_mid = import_schedule_only_spol_or_fail "mid_affine" pol mid_scop in
       dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "mid-affine(schedule-only)" pol_mid;
-      let witness : PlutoTilingValidator.witness =
-        PlutoTilingValidator.extract_witness_from_scops
-          ~before_path:"mid_affine"
-          ~after_path:"after_tiled"
+      let artifact =
+        tiling_artifact_from_scops_or_fail
+          ~second_level:(Scheduler.second_level_tiling_enabled ())
+          ~before_label:"mid_affine"
+          ~after_label:"after_tiled"
           mid_scop
           after_scop
       in
-      let ws = PhaseTiling.convert_witness witness in
+      let ws = PhaseTiling.convert_witness artifact.artifact_witness in
       let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
       dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "canonical-after" canonical_after;
       let pol_after_sched =
-        import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+        import_schedule_only_spol_or_fail
+          "after_tiled"
+          canonical_after
+          artifact.artifact_after_scop
       in
       dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "after-tiled(schedule-only)" pol_after_sched;
       if debug_env_enabled "POLCERT_DEBUG_TILING_CODEGEN" then begin
-        let raw_after = import_complete_spol_or_fail "after_tiled(raw)" after_scop in
+        let raw_after =
+          import_complete_spol_or_fail "after_tiled(raw)" artifact.artifact_after_scop
+        in
         dump_poly_payload "after-tiled(raw)" raw_after
       end;
-      let pol_after = pol_after_sched in
-      let pol_after = normalize_spol_codegen_input pol_after in
+      let (pol_mid_val, pol_after_val) =
+        normalize_stiling_validator_inputs pol_mid pol_after_sched
+      in
+      let pol_after = normalize_spol_codegen_input pol_after_val in
       dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "after-tiled(used-for-codegen)" pol_after;
       let (res, ok) =
-        SPolOpt.CoreOpt.checked_tiling_validate pol_mid pol_after ws
+        SPolOpt.CoreOpt.checked_tiling_validate pol_mid_val pol_after_val ws
       in
       if ok && res then
         SPolOpt.CoreOpt.Prepare.prepared_codegen
@@ -657,15 +1193,893 @@ let optimize_with_phase_aligned_pluto loop =
       else
         (loop, false)
 
-let run_tiling_validator before_file after_file =
-  let report = PlutoTilingValidator.validate_files before_file after_file in
+let run_tiling_validator ~second_level before_file after_file =
+  let report =
+    PlutoTilingValidator.validate_files
+      ~tiling_mode:(pluto_tiling_mode second_level)
+      before_file
+      after_file
+  in
   print_endline (PlutoTilingValidator.render_report report);
   if report.ok then 0 else 2
 
-let run_tiling_witness_extractor before_file after_file =
-  let witness = PlutoTilingValidator.extract_witness_from_files before_file after_file in
+let run_tiling_witness_extractor ~second_level before_file after_file =
+  let witness =
+    PlutoTilingValidator.extract_witness_from_files
+      ~tiling_mode:(pluto_tiling_mode second_level)
+      before_file
+      after_file
+  in
   print_endline (PlutoTilingValidator.render_witness witness);
   0
+
+let resolve_repo_file rel =
+  let candidates =
+    [ rel;
+      Filename.concat (Sys.getcwd ()) rel;
+      Filename.concat "/polcert" rel ]
+  in
+  match List.find_opt Sys.file_exists candidates with
+  | Some path -> path
+  | None -> frontend_failf "cannot locate repository file %s" rel
+
+let run_python_tool args =
+  let cmd =
+    String.concat " "
+      ("python3" :: List.map Filename.quote args)
+  in
+  Sys.command cmd
+
+let read_all ic =
+  let buf = Buffer.create 4096 in
+  (try
+     while true do
+       Buffer.add_string buf (input_line ic);
+       Buffer.add_char buf '\n'
+     done
+   with End_of_file -> ());
+  Buffer.contents buf
+
+let run_python_tool_capture args =
+  let cmd =
+    String.concat " "
+      ("python3" :: List.map Filename.quote args)
+  in
+  let ic = Unix.open_process_in cmd in
+  let output = read_all ic in
+  let code =
+    match Unix.close_process_in ic with
+    | Unix.WEXITED n -> n
+    | Unix.WSIGNALED n -> 128 + n
+    | Unix.WSTOPPED n -> 128 + n
+  in
+  (code, output)
+
+let split_on_char ch s =
+  let rec go i j acc =
+    if j = String.length s then
+      List.rev (String.sub s i (j - i) :: acc)
+    else if s.[j] = ch then
+      go (j + 1) (j + 1) (String.sub s i (j - i) :: acc)
+    else
+      go i (j + 1) acc
+  in
+  go 0 0 []
+
+let int_of_string_or_fail ctx s =
+  try int_of_string s
+  with Failure _ -> frontend_failf "cannot parse integer in %s: %S" ctx s
+
+let z_of_string s =
+  Camlcoq.Z.of_sint (int_of_string_or_fail "ISS bridge" s)
+
+let parse_row_line line =
+  match String.split_on_char ' ' line with
+  | ["ROW"; payload] ->
+      begin match split_on_char '|' payload with
+      | [coeffs_s; const_s] ->
+          let coeffs =
+            if coeffs_s = "" then []
+            else List.map z_of_string (split_on_char ',' coeffs_s)
+          in
+          (coeffs, z_of_string const_s)
+      | _ ->
+          frontend_failf "bad ISS bridge ROW payload: %S" payload
+      end
+  | _ ->
+      frontend_failf "bad ISS bridge ROW line: %S" line
+
+let iss_sign_of_string = function
+  | "ge" -> ISSWitness.ISSCutGeZero
+  | "lt" -> ISSWitness.ISSCutLtZero
+  | s -> frontend_failf "unknown ISS halfspace sign %S in bridge JSON" s
+
+type parsed_iss_bridge = {
+  pib_var_order : string list;
+  pib_before_domains : (Camlcoq.Z.t list * Camlcoq.Z.t) list list;
+  pib_after_domains : (Camlcoq.Z.t list * Camlcoq.Z.t) list list;
+  pib_witness : ISSWitness.iss_witness;
+}
+
+let build_iss_debug_pprog var_order stmt_domains =
+  let module PL = SPolIRs.SPolIRs.PolyLang in
+  let ctxt = List.map Camlcoq.intern_string var_order in
+  let mk_pi domain =
+    {
+      PL.pi_depth = Datatypes.O;
+      pi_instr = SPolIRs.SPolIRs.Instr.dummy_instr;
+      pi_poly = domain;
+      pi_schedule = [];
+      pi_point_witness = PointWitness.PSWIdentity Datatypes.O;
+      pi_transformation = [];
+      pi_access_transformation = [];
+      pi_waccess = [];
+      pi_raccess = [];
+    }
+  in
+  ((List.map mk_pi stmt_domains, ctxt), [])
+
+let iss_bridge_text_present text =
+  String.split_on_char '\n' text
+  |> List.exists
+       (fun line ->
+         let line = String.trim line in
+         String.length line >= 9 && String.sub line 0 9 = "VAR_ORDER")
+
+let parse_iss_bridge_text text =
+  let lines0 =
+    String.split_on_char '\n' text
+    |> List.filter (fun s -> String.trim s <> "")
+  in
+  let rec drop_preamble = function
+    | [] -> frontend_failf "missing ISS bridge VAR_ORDER"
+    | line :: rest as lines ->
+        if String.length line >= 9 && String.sub line 0 9 = "VAR_ORDER"
+        then lines
+        else drop_preamble rest
+  in
+  let lines = drop_preamble lines0 in
+  let rec take_rows n acc = function
+    | [] -> frontend_failf "unexpected end of ISS bridge while reading %d rows" n
+    | line :: rest ->
+        if n = 0 then (List.rev acc, line :: rest)
+        else take_rows (n - 1) (parse_row_line line :: acc) rest
+  in
+  let rec take_vars n acc = function
+    | [] -> frontend_failf "unexpected end of ISS bridge while reading %d vars" n
+    | line :: rest ->
+        if n = 0 then (List.rev acc, line :: rest)
+        else
+          begin match String.split_on_char ' ' line with
+          | ["VAR"; name] -> take_vars (n - 1) (name :: acc) rest
+          | _ -> frontend_failf "bad ISS bridge VAR line: %S" line
+          end
+  in
+  let rec take_domains tag n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -> frontend_failf "unexpected end of ISS bridge while reading %s domains" tag
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | [hdr; row_count_s] when hdr = tag ->
+            let row_count = int_of_string_or_fail "ISS bridge domain row count" row_count_s in
+            let (rows, rest') = take_rows row_count [] rest in
+            take_domains tag (n - 1) (rows :: acc) rest'
+        | _ ->
+            frontend_failf "bad ISS bridge %s line: %S" tag line
+        end
+  in
+  let rec take_cuts n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -> frontend_failf "unexpected end of ISS bridge while reading cuts"
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["CUT"; payload] ->
+            let row = parse_row_line ("ROW " ^ payload) in
+            take_cuts (n - 1) (row :: acc) rest
+        | _ -> frontend_failf "bad ISS bridge CUT line: %S" line
+        end
+  in
+  let rec take_stmt_witnesses n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -> frontend_failf "unexpected end of ISS bridge while reading stmt witnesses"
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["STMT_WITNESS"; parent_s; signs_s] ->
+            let signs =
+              if signs_s = "" then []
+              else List.map iss_sign_of_string (split_on_char ',' signs_s)
+            in
+            let w =
+              {
+                ISSWitness.isw_parent_stmt = nat_of_int (int_of_string_or_fail "ISS bridge parent" parent_s);
+                isw_piece_signs = signs;
+              }
+            in
+            take_stmt_witnesses (n - 1) (w :: acc) rest
+        | _ -> frontend_failf "bad ISS bridge STMT_WITNESS line: %S" line
+        end
+  in
+  let var_order, rest1 =
+    match lines with
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["VAR_ORDER"; n_s] ->
+            take_vars (int_of_string_or_fail "ISS bridge var count" n_s) [] rest
+        | _ -> frontend_failf "bad ISS bridge header: %S" line
+        end
+    | [] -> frontend_failf "empty ISS bridge output"
+  in
+  let before_domains, rest2 =
+    match rest1 with
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["BEFORE_STMTS"; n_s] ->
+            take_domains "BEFORE_DOMAIN" (int_of_string_or_fail "ISS bridge before stmt count" n_s) [] rest
+        | _ -> frontend_failf "bad ISS bridge BEFORE_STMTS line: %S" line
+        end
+    | [] -> frontend_failf "missing ISS bridge BEFORE_STMTS"
+  in
+  let after_domains, rest3 =
+    match rest2 with
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["AFTER_STMTS"; n_s] ->
+            take_domains "AFTER_DOMAIN" (int_of_string_or_fail "ISS bridge after stmt count" n_s) [] rest
+        | _ -> frontend_failf "bad ISS bridge AFTER_STMTS line: %S" line
+        end
+    | [] -> frontend_failf "missing ISS bridge AFTER_STMTS"
+  in
+  let cuts, rest4 =
+    match rest3 with
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["CUTS"; n_s] ->
+            take_cuts (int_of_string_or_fail "ISS bridge cut count" n_s) [] rest
+        | _ -> frontend_failf "bad ISS bridge CUTS line: %S" line
+        end
+    | [] -> frontend_failf "missing ISS bridge CUTS"
+  in
+  let stmt_witnesses, rest5 =
+    match rest4 with
+    | line :: rest ->
+        begin match String.split_on_char ' ' line with
+        | ["STMT_WITNESSES"; n_s] ->
+            take_stmt_witnesses (int_of_string_or_fail "ISS bridge stmt witness count" n_s) [] rest
+        | _ -> frontend_failf "bad ISS bridge STMT_WITNESSES line: %S" line
+        end
+    | [] -> frontend_failf "missing ISS bridge STMT_WITNESSES"
+  in
+  begin match rest5 with
+  | ["END"] -> ()
+  | line :: _ -> frontend_failf "unexpected trailing ISS bridge line: %S" line
+  | [] -> frontend_failf "missing ISS bridge END"
+  end;
+  let witness =
+    {
+      ISSWitness.iw_cuts = cuts;
+      iw_stmt_witnesses = stmt_witnesses;
+    }
+  in
+  {
+    pib_var_order = var_order;
+    pib_before_domains = before_domains;
+    pib_after_domains = after_domains;
+    pib_witness = witness;
+  }
+
+let parse_iss_bridge_text_opt text =
+  if iss_bridge_text_present text then
+    Some (parse_iss_bridge_text text)
+  else
+    None
+
+let parsed_iss_bridge_to_dummy_pprogs bridge =
+  ( build_iss_debug_pprog bridge.pib_var_order bridge.pib_before_domains,
+    build_iss_debug_pprog bridge.pib_var_order bridge.pib_after_domains,
+    bridge.pib_witness )
+
+let nth_or_fail ctx xs n =
+  try List.nth xs n
+  with Failure _ ->
+    frontend_failf "%s index %d is out of bounds" ctx n
+
+let import_like_source_spol_or_fail label base scop =
+  match SPolIRs.SPolIRs.PolyLang.from_openscop_like_source base scop with
+  | Okk pol -> pol
+  | Err msg ->
+      frontend_failf
+        "cannot import %s like_source into syntax IR: %s"
+        label
+        (string_of_coq_err msg)
+
+let apply_iss_bridge_to_spol_or_fail label before_pol bridge =
+  let module PL = SPolIRs.SPolIRs.PolyLang in
+  let ((before_pis, ctxt), vars) = before_pol in
+  let stmt_ws = bridge.pib_witness.ISSWitness.iw_stmt_witnesses in
+  if List.length before_pis <> List.length bridge.pib_before_domains then
+    frontend_failf
+      "%s: before stmt count mismatch between source polyhedral model (%d) and ISS bridge (%d)"
+      label
+      (List.length before_pis)
+      (List.length bridge.pib_before_domains);
+  if List.length stmt_ws <> List.length bridge.pib_after_domains then
+    frontend_failf
+      "%s: after stmt count mismatch between ISS witness (%d) and ISS bridge domains (%d)"
+      label
+      (List.length stmt_ws)
+      (List.length bridge.pib_after_domains);
+  let after_pis =
+    List.map2
+      (fun domain w ->
+        let parent = int_of_nat w.ISSWitness.isw_parent_stmt in
+        let source = nth_or_fail "ISS parent stmt" before_pis parent in
+        { source with PL.pi_poly = domain })
+      bridge.pib_after_domains
+      stmt_ws
+  in
+  let after_pol = ((after_pis, ctxt), vars) in
+  let ok =
+    SPolOpt.CoreOpt.ValidatorCore.checked_iss_complete_cut_shape_validate
+      before_pol
+      after_pol
+      bridge.pib_witness
+  in
+  if ok then
+    after_pol
+  else
+    frontend_failf
+      "%s: extracted ISS complete-cut-shape checker rejected reconstructed split program"
+      label
+
+let read_text_file path =
+  let ic = open_in path in
+  Fun.protect
+    ~finally:(fun () -> close_in ic)
+    (fun () -> read_all ic)
+
+let iss_bridge_from_scop_opt before_scop =
+  match Scheduler.iss_identity_bridge_from_scop before_scop with
+  | Okk text -> parse_iss_bridge_text_opt text
+  | Err msg ->
+      frontend_failf "ISS bridge export failed: %s" (string_of_coq_err msg)
+
+let run_iss_bridge_validator bridge_file =
+  let bridge = parse_iss_bridge_text (read_text_file bridge_file) in
+  let (before_pol, after_pol, witness) =
+    parsed_iss_bridge_to_dummy_pprogs bridge
+  in
+  let module ISS = ISSValidator.ISSValidator (SPolIRs.SPolIRs) in
+  let ok =
+    ISS.checked_iss_complete_cut_shape_validate before_pol after_pol witness
+  in
+  if ok then begin
+    print_endline "validation: OK (coq complete-cut-shape)";
+    0
+  end else begin
+    print_endline "validation: FAIL: extracted ISS complete-cut-shape checker rejected bridge witness";
+    1
+  end
+
+let run_iss_dump_validator before_file after_file =
+  let tool = resolve_repo_file "tools/iss/pluto_iss_check.py" in
+  let (code, output) =
+    run_python_tool_capture [tool; "--emit-bridge"; before_file; after_file]
+  in
+  if code <> 0 then begin
+    print_string output;
+    code
+  end else
+    let tmp = Filename.temp_file "iss-bridge-" ".txt" in
+    let oc = open_out tmp in
+    output_string oc output;
+    close_out oc;
+    let rc =
+      Fun.protect
+        ~finally:(fun () -> Sys.remove tmp)
+        (fun () -> run_iss_bridge_validator tmp)
+    in
+    rc
+
+let run_iss_pluto_suite () =
+  let tool = resolve_repo_file "tools/iss/run_pluto_iss_suite.py" in
+  run_python_tool [tool]
+
+let run_iss_pluto_live_suite () =
+  let tool = resolve_repo_file "tools/iss/run_pluto_iss_live_suite.py" in
+  run_python_tool [tool]
+
+let optimize_identity_only loop =
+  let pol = extract_strengthened_poly loop in
+  SPolOpt.CoreOpt.Prepare.prepared_codegen (normalize_spol_codegen_input pol)
+
+let optimize_affine_only loop =
+  let pol = extract_strengthened_poly loop in
+  SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
+
+let optimize_parallel_identity_only loop dim =
+  let pol = extract_strengthened_poly loop in
+  checked_parallel_current_codegen_or_fail "identity-parallel" pol dim
+
+let optimize_parallel_affine_only loop dim =
+  let pol = extract_strengthened_poly loop in
+  let pol_mid = checked_affine_schedule_or_fail pol in
+  checked_parallel_current_codegen_or_fail "affine-parallel" pol_mid dim
+
+let optimize_parallel_iss_identity_only loop dim =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let pol_iss =
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> pol
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail "iss-identity-parallel" pol bridge
+  in
+  checked_parallel_current_codegen_or_fail "iss-identity-parallel" pol_iss dim
+
+let optimize_parallel_iss_affine_only loop dim =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let pol_iss =
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> pol
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail "iss-affine-parallel" pol bridge
+  in
+  match Scheduler.affine_only_scop_scheduler_with_iss before_scop with
+  | Err msg ->
+      frontend_failf
+        "iss-affine-parallel: Pluto affine scheduling failed: %s"
+        (string_of_coq_err msg)
+  | Okk mid_scop ->
+      let pol_mid =
+        import_like_source_spol_or_fail "mid_affine_iss_parallel" pol_iss mid_scop
+      in
+      let (affine_res, affine_ok) =
+        SPolOpt.CoreOpt.validate pol_iss pol_mid
+      in
+      if not (affine_ok && affine_res) then
+        frontend_failf
+          "iss-affine-parallel: affine validation failed before manual parallel codegen";
+      checked_parallel_current_codegen_or_fail "iss-affine-parallel" pol_mid dim
+
+let optimize_parallel_phase_aligned loop dim =
+  let pol = extract_strengthened_poly loop in
+  let (before_scop, mid_scop, after_scop) = pluto_phase_scops loop in
+  let (affine_res, affine_ok) =
+    affine_forward_scops "before" "mid_affine" before_scop mid_scop
+  in
+  if not (affine_ok && affine_res) then
+    frontend_failf
+      "phase-parallel: affine validation failed before manual parallel codegen";
+      let (tiling_res, tiling_ok) =
+        tiling_forward_scops
+          ~second_level:(Scheduler.second_level_tiling_enabled ())
+          ~before_label:"mid_affine"
+          ~after_label:"after_tiled"
+          mid_scop
+          after_scop
+  in
+  if not (tiling_ok && tiling_res) then
+    frontend_failf
+      "phase-parallel: tiling validation failed before manual parallel codegen";
+  let pol_mid = import_schedule_only_spol_or_fail "mid_affine" pol mid_scop in
+  let witness : PlutoTilingValidator.witness =
+    PlutoTilingValidator.extract_witness_from_scops
+      ~before_path:"mid_affine"
+      ~after_path:"after_tiled"
+      mid_scop
+      after_scop
+  in
+  let ws = PhaseTiling.convert_witness witness in
+  let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
+  let pol_after_sched =
+    import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+  in
+  let (pol_mid_val, pol_after_val) =
+    normalize_stiling_validator_inputs pol_mid pol_after_sched
+  in
+  let pol_after = normalize_spol_codegen_input pol_after_val in
+  let (res, ok) =
+    SPolOpt.CoreOpt.checked_tiling_validate pol_mid_val pol_after_val ws
+  in
+  if not (ok && res) then
+    frontend_failf
+      "phase-parallel: checked tiling validation failed before manual parallel codegen";
+  checked_parallel_current_codegen_or_fail "phase-parallel" pol_after dim
+
+let optimize_parallel_iss_phase_aligned loop dim =
+  match pluto_phase_scops_with_iss loop with
+  | None ->
+      frontend_failf "iss-phase-parallel: phase-aligned ISS Pluto pipeline failed"
+  | Some (pol, before_scop, mid_scop, after_scop) ->
+      let pol_iss =
+        match iss_bridge_from_scop_opt before_scop with
+        | None -> pol
+        | Some bridge ->
+            apply_iss_bridge_to_spol_or_fail "iss-phase-parallel" pol bridge
+      in
+      let (affine_res, affine_ok) =
+        affine_forward_scops "before" "mid_affine_iss" before_scop mid_scop
+      in
+      if not (affine_ok && affine_res) then
+        frontend_failf
+          "iss-phase-parallel: affine validation failed before manual parallel codegen";
+	      let (tiling_res, tiling_ok) =
+	        tiling_forward_scops
+	          ~second_level:(Scheduler.second_level_tiling_enabled ())
+	          ~before_label:"mid_affine_iss"
+	          ~after_label:"after_tiled"
+	          mid_scop
+	          after_scop
+      in
+      if not (tiling_ok && tiling_res) then
+        frontend_failf
+          "iss-phase-parallel: tiling validation failed before manual parallel codegen";
+      let pol_mid =
+        import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
+      in
+      let witness : PlutoTilingValidator.witness =
+        PlutoTilingValidator.extract_witness_from_scops
+          ~before_path:"mid_affine_iss"
+          ~after_path:"after_tiled"
+          mid_scop
+          after_scop
+      in
+      let ws = PhaseTiling.convert_witness witness in
+      let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
+      let pol_after_sched =
+        import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+      in
+      let (pol_mid_val, pol_after_val) =
+        normalize_stiling_validator_inputs pol_mid pol_after_sched
+      in
+      let pol_after = normalize_spol_codegen_input pol_after_val in
+      let (res, ok) =
+        SPolOpt.CoreOpt.checked_tiling_validate pol_mid_val pol_after_val ws
+      in
+      if not (ok && res) then
+        frontend_failf
+          "iss-phase-parallel: checked tiling validation failed before manual parallel codegen";
+      checked_parallel_current_codegen_or_fail "iss-phase-parallel" pol_after dim
+
+let optimize_affine_only_with_pluto_parallel_hint cfg loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
+  | Err _ ->
+      (tag_loop_for_parallel_pretty loop, false)
+  | Okk (mid_scop, hint) ->
+      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+      let pol_mid =
+        import_like_source_spol_or_fail "mid_affine_parallel" pol mid_scop
+      in
+      let (affine_res, affine_ok) =
+        SPolOpt.CoreOpt.validate pol pol_mid
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        Printf.eprintf
+          "[debug-parallel] affine-only validate=%b(ok=%b)\n"
+          affine_res affine_ok;
+      debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_mid;
+      if not (affine_ok && affine_res) then
+        (tag_loop_for_parallel_pretty loop, false)
+      else
+        let hinted_dim =
+          Option.map (fun hint -> hint.Scheduler.hint_current_dim) hint
+        in
+        begin match try_pluto_parallel_codegen pol_mid hinted_dim cfg.force_parallel_strict with
+        | Some (pl, used_hint) -> (pl, used_hint)
+        | None ->
+            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
+            (fallback, false)
+        end
+
+let optimize_with_iss_affine_parallel_hint cfg loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let pol_iss =
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> pol
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail "iss-affine-parallel" pol bridge
+  in
+  match Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint before_scop with
+  | Err _ ->
+      (tag_loop_for_parallel_pretty loop, false)
+  | Okk (mid_scop, hint) ->
+      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+      let pol_mid =
+        import_like_source_spol_or_fail "mid_affine_iss_parallel" pol_iss mid_scop
+      in
+      let (affine_res, affine_ok) =
+        SPolOpt.CoreOpt.validate pol_iss pol_mid
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        Printf.eprintf
+          "[debug-parallel] iss affine-only validate=%b(ok=%b)\n"
+          affine_res affine_ok;
+      debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_mid;
+      if not (affine_ok && affine_res) then
+        (tag_loop_for_parallel_pretty loop, false)
+      else
+        let hinted_dim =
+          Option.map (fun h -> h.Scheduler.hint_current_dim) hint
+        in
+        begin match try_pluto_parallel_codegen pol_mid hinted_dim cfg.force_parallel_strict with
+        | Some (pl, used_hint) -> (pl, used_hint)
+        | None ->
+            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
+            (fallback, false)
+        end
+
+let optimize_with_iss_identity loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let pol_iss =
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> pol
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail "iss-identity" pol bridge
+  in
+  SPolOpt.CoreOpt.Prepare.prepared_codegen
+    (normalize_spol_codegen_input pol_iss)
+
+let optimize_with_iss_affine loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let pol_iss =
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> pol
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail "iss-affine" pol bridge
+  in
+  match Scheduler.affine_only_scop_scheduler_with_iss before_scop with
+  | Err _ -> (loop, false)
+  | Okk mid_scop ->
+      let pol_mid = import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop in
+      let (affine_res, affine_ok) =
+        SPolOpt.CoreOpt.validate pol_iss pol_mid
+      in
+      if affine_ok && affine_res then
+        SPolOpt.CoreOpt.Prepare.prepared_codegen
+          (normalize_spol_codegen_input pol_mid)
+      else
+        (loop, false)
+
+let optimize_with_iss_phase_aligned_pluto loop =
+  match pluto_phase_scops_with_iss loop with
+  | None -> (loop, false)
+  | Some (pol, before_scop, mid_scop, after_scop) ->
+      let pol_iss =
+        match iss_bridge_from_scop_opt before_scop with
+        | None -> pol
+        | Some bridge ->
+            apply_iss_bridge_to_spol_or_fail "iss-phase" pol bridge
+      in
+      let pol_mid = import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop in
+      let (affine_res, affine_ok) =
+        SPolOpt.CoreOpt.validate pol_iss pol_mid
+      in
+      if not (affine_ok && affine_res) then
+        (loop, false)
+      else
+	        let (tiling_res, tiling_ok) =
+	          tiling_forward_scops
+	            ~second_level:(Scheduler.second_level_tiling_enabled ())
+	            ~before_label:"mid_affine_iss"
+	            ~after_label:"after_tiled"
+	            mid_scop
+	            after_scop
+        in
+        if not (tiling_ok && tiling_res) then
+          (loop, false)
+	        else
+	          let artifact =
+	            tiling_artifact_from_scops_or_fail
+	              ~second_level:(Scheduler.second_level_tiling_enabled ())
+	              ~before_label:"mid_affine_iss"
+	              ~after_label:"after_tiled"
+	              mid_scop
+	              after_scop
+	          in
+	          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
+	          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
+	          let pol_after_sched =
+	            import_schedule_only_spol_or_fail
+	              "after_tiled"
+	              canonical_after
+	              artifact.artifact_after_scop
+	          in
+          let pol_after = normalize_spol_codegen_input pol_after_sched in
+          let (res, ok) =
+            SPolOpt.CoreOpt.checked_tiling_validate pol_mid pol_after ws
+          in
+          if ok && res then
+            SPolOpt.CoreOpt.Prepare.prepared_codegen
+              (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
+          else
+            (loop, false)
+
+let optimize_with_phase_aligned_pluto_parallel_hint cfg loop =
+  match pluto_phase_scops_with_parallel_hint loop with
+  | None -> (tag_loop_for_parallel_pretty loop, false)
+  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
+      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+      let (affine_res, affine_ok) =
+        affine_forward_scops "before" "mid_affine" before_scop mid_scop
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        Printf.eprintf
+          "[debug-parallel] phase affine validate=%b(ok=%b)\n"
+          affine_res affine_ok;
+      if not (affine_ok && affine_res) then
+        (tag_loop_for_parallel_pretty loop, false)
+      else
+      let (tiling_res, tiling_ok) =
+        tiling_forward_scops
+          ~second_level:cfg.force_second_level_tile
+          ~before_label:"mid_affine"
+          ~after_label:"after_tiled"
+          mid_scop
+          after_scop
+        in
+        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+          Printf.eprintf
+            "[debug-parallel] phase tiling validate=%b(ok=%b)\n"
+            tiling_res tiling_ok;
+        if not (tiling_ok && tiling_res) then
+          (tag_loop_for_parallel_pretty loop, false)
+        else
+          let pol_mid = import_schedule_only_spol_or_fail "mid_affine" pol mid_scop in
+          let witness : PlutoTilingValidator.witness =
+            PlutoTilingValidator.extract_witness_from_scops
+              ~before_path:"mid_affine"
+              ~after_path:"after_tiled"
+              mid_scop
+              after_scop
+          in
+          let ws = PhaseTiling.convert_witness witness in
+          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
+          let pol_after_sched =
+            import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+          in
+          let (pol_mid_val, pol_after_val) =
+            normalize_stiling_validator_inputs pol_mid pol_after_sched
+          in
+          let pol_after = normalize_spol_codegen_input pol_after_val in
+          let (res, ok) =
+            SPolOpt.CoreOpt.checked_tiling_validate pol_mid_val pol_after_val ws
+          in
+          if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+            Printf.eprintf
+              "[debug-parallel] checked_tiling_validate=%b(ok=%b)\n"
+              res ok;
+          debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
+          if not (ok && res) then
+            (tag_loop_for_parallel_pretty loop, false)
+          else
+            let hinted_dim =
+              Option.map (fun hint -> hint.Scheduler.hint_current_dim) hint
+            in
+            begin
+              match try_pluto_parallel_codegen pol_after hinted_dim cfg.force_parallel_strict with
+              | Some (pl, used_hint) -> (pl, used_hint)
+              | None ->
+                  let (fallback, _ok) =
+                    tagged_prepared_codegen
+                      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
+                  in
+                  (fallback, false)
+            end
+
+let optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop =
+  match pluto_phase_scops_with_iss_and_parallel_hint loop with
+  | None -> (tag_loop_for_parallel_pretty loop, false)
+  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
+      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+      let pol_iss =
+        match iss_bridge_from_scop_opt before_scop with
+        | None -> pol
+        | Some bridge ->
+            apply_iss_bridge_to_spol_or_fail "iss-phase-parallel" pol bridge
+      in
+      let (affine_res, affine_ok) =
+        affine_forward_scops "before" "mid_affine_iss" before_scop mid_scop
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        Printf.eprintf
+          "[debug-parallel] iss phase affine validate=%b(ok=%b)\n"
+          affine_res affine_ok;
+      if not (affine_ok && affine_res) then
+        (tag_loop_for_parallel_pretty loop, false)
+      else
+      let (tiling_res, tiling_ok) =
+        tiling_forward_scops
+          ~second_level:cfg.force_second_level_tile
+          ~before_label:"mid_affine_iss"
+          ~after_label:"after_tiled"
+          mid_scop
+          after_scop
+        in
+        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+          Printf.eprintf
+            "[debug-parallel] iss phase tiling validate=%b(ok=%b)\n"
+            tiling_res tiling_ok;
+        if not (tiling_ok && tiling_res) then
+          (tag_loop_for_parallel_pretty loop, false)
+        else
+          let pol_mid =
+            import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
+          in
+          let witness : PlutoTilingValidator.witness =
+            PlutoTilingValidator.extract_witness_from_scops
+              ~before_path:"mid_affine_iss"
+              ~after_path:"after_tiled"
+              mid_scop
+              after_scop
+          in
+          let ws = PhaseTiling.convert_witness witness in
+          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
+          let pol_after_sched =
+            import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+          in
+          let (pol_mid_val, pol_after_val) =
+            normalize_stiling_validator_inputs pol_mid pol_after_sched
+          in
+          let pol_after = normalize_spol_codegen_input pol_after_val in
+          let (res, ok) =
+            SPolOpt.CoreOpt.checked_tiling_validate pol_mid_val pol_after_val ws
+          in
+          if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+            Printf.eprintf
+              "[debug-parallel] iss checked_tiling_validate=%b(ok=%b)\n"
+              res ok;
+          debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
+          if not (ok && res) then
+            (tag_loop_for_parallel_pretty loop, false)
+          else
+            let hinted_dim =
+              Option.map (fun h -> h.Scheduler.hint_current_dim) hint
+            in
+            begin
+              match try_pluto_parallel_codegen pol_after hinted_dim cfg.force_parallel_strict with
+              | Some (pl, used_hint) -> (pl, used_hint)
+              | None ->
+                  let (fallback, _ok) =
+                    tagged_prepared_codegen
+                      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
+                  in
+                  (fallback, false)
+            end
+
+let run_selected_optimization cfg loop =
+  if cfg.force_iss then
+    if cfg.force_identity then
+      optimize_with_iss_identity loop
+    else if cfg.force_notile then
+      optimize_with_iss_affine loop
+    else
+      SPolOpt.opt_with_iss loop
+  else if cfg.force_identity then
+    optimize_identity_only loop
+  else if cfg.force_notile then
+    optimize_affine_only loop
+  else
+    SPolOpt.opt loop
+
+let run_selected_parallel_optimization cfg loop =
+  if cfg.force_iss then
+    if cfg.force_notile then
+      optimize_with_iss_affine_parallel_hint cfg loop
+    else
+      optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop
+  else if cfg.force_notile then
+    optimize_affine_only_with_pluto_parallel_hint cfg loop
+  else
+    optimize_with_phase_aligned_pluto_parallel_hint cfg loop
 
 let () =
   try
@@ -673,16 +2087,110 @@ let () =
                Gc.minor_heap_size = 524288;
                Gc.major_heap_increment = 4194304 };
     let cfg = parse_args () in
-    match cfg.extract_tiling_witness_openscop, cfg.validate_tiling_openscop with
-    | Some _, Some _ ->
-        prerr_endline "only one tiling OpenScop action may be selected";
+    let selected_actions =
+      List.length
+        (List.filter
+           (fun x -> x)
+           [ Option.is_some cfg.extract_tiling_witness_openscop;
+             Option.is_some cfg.validate_tiling_openscop;
+             Option.is_some cfg.validate_iss_debug_dumps;
+             Option.is_some cfg.validate_iss_bridge;
+             cfg.validate_iss_pluto_suite;
+             cfg.validate_iss_pluto_live_suite ])
+    in
+    let has_explicit_phase_control =
+      cfg.force_identity || cfg.force_notile || cfg.force_iss || cfg.force_parallel
+    in
+    if selected_actions > 1 then begin
+        prerr_endline "only one experimental validation action may be selected";
         prerr_endline (usage Sys.argv.(0));
         exit 2
-    | Some (before_file, after_file), None ->
-        exit (run_tiling_witness_extractor before_file after_file)
-    | None, Some (before_file, after_file) ->
-        exit (run_tiling_validator before_file after_file)
-    | None, None ->
+    end;
+    if selected_actions > 0 && has_explicit_phase_control then begin
+        prerr_endline "phase-control flags (--identity/--notile/--iss) cannot be combined with standalone validation actions";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if Option.is_some cfg.parallel_current_dim && selected_actions > 0 then begin
+        prerr_endline "--parallel-current cannot be combined with standalone validation actions";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if Option.is_some cfg.parallel_current_dim && cfg.extract_only then begin
+        prerr_endline "--parallel-current cannot be combined with --extract-only";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_parallel_strict && not cfg.force_parallel then begin
+        prerr_endline "--parallel-strict requires --parallel";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_parallel && cfg.force_identity then begin
+        prerr_endline "--parallel requires a Pluto scheduling phase and cannot be combined with --identity";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_parallel && Option.is_some cfg.parallel_current_dim then begin
+        prerr_endline "--parallel cannot be combined with --parallel-current";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_second_level_tile && cfg.force_identity then begin
+        prerr_endline "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_second_level_tile && cfg.force_notile then begin
+        prerr_endline "--second-level-tile requires tiling and cannot be combined with --notile";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_second_level_tile && cfg.force_parallel then begin
+        prerr_endline "--second-level-tile is not yet supported with --parallel";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_second_level_tile && Option.is_some cfg.parallel_current_dim then begin
+        prerr_endline "--second-level-tile is not yet supported with --parallel-current";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    if cfg.force_second_level_tile &&
+         (Option.is_some cfg.validate_iss_debug_dumps ||
+          Option.is_some cfg.validate_iss_bridge ||
+          cfg.validate_iss_pluto_suite ||
+          cfg.validate_iss_pluto_live_suite) then begin
+        prerr_endline "--second-level-tile only applies to tiled optimization or tiling witness/validation actions";
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
+    end;
+    Scheduler.set_tiling_mode
+      (if cfg.force_second_level_tile
+       then Scheduler.SecondLevelTiling
+       else Scheduler.OrdinaryTiling);
+    match cfg.extract_tiling_witness_openscop, cfg.validate_tiling_openscop,
+          cfg.validate_iss_debug_dumps, cfg.validate_iss_bridge,
+          cfg.validate_iss_pluto_suite, cfg.validate_iss_pluto_live_suite with
+    | Some (before_file, after_file), None, None, None, false, false ->
+        exit (run_tiling_witness_extractor
+                ~second_level:cfg.force_second_level_tile
+                before_file
+                after_file)
+    | None, Some (before_file, after_file), None, None, false, false ->
+        exit (run_tiling_validator
+                ~second_level:cfg.force_second_level_tile
+                before_file
+                after_file)
+    | None, None, Some (before_file, after_file), None, false, false ->
+        exit (run_iss_dump_validator before_file after_file)
+    | None, None, None, Some bridge_file, false, false ->
+        exit (run_iss_bridge_validator bridge_file)
+    | None, None, None, None, true, false ->
+        exit (run_iss_pluto_suite ())
+    | None, None, None, None, false, true ->
+        exit (run_iss_pluto_live_suite ())
+    | None, None, None, None, false, false ->
       begin match cfg.input with
       | None ->
         print_endline (usage Sys.argv.(0));
@@ -697,14 +2205,46 @@ let () =
           exit 0
         end;
         if cfg.dump_extracted_openscop then dump_extracted_openscop loop;
-        if cfg.dump_scheduled_openscop then dump_scheduled_openscop loop;
+        if cfg.dump_scheduled_openscop then
+          if cfg.force_parallel then
+            dump_scheduled_openscop_with_parallel cfg loop
+          else
+            dump_scheduled_openscop loop;
         if cfg.debug_scheduler then debug_scheduler loop;
         if debug_env_enabled "POLCERT_DEBUG_GENERIC_TILING" then
           debug_generic_tiling_runtime loop;
-        let (optimized, ok) = SPolOpt.opt loop in
-        if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
-        print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
+        begin match cfg.parallel_current_dim with
+        | Some dim ->
+            let optimized =
+              if cfg.force_iss then
+                if cfg.force_identity then
+                  optimize_parallel_iss_identity_only loop dim
+                else if cfg.force_notile then
+                  optimize_parallel_iss_affine_only loop dim
+                else
+                  optimize_parallel_iss_phase_aligned loop dim
+              else if cfg.force_identity then
+                optimize_parallel_identity_only loop dim
+              else if cfg.force_notile then
+                optimize_parallel_affine_only loop dim
+              else
+                optimize_parallel_phase_aligned loop dim
+            in
+            print_section "Optimized Loop" (string_of_parallel_loop optimized)
+        | None ->
+            if cfg.force_parallel then
+              let (optimized, ok) = run_selected_parallel_optimization cfg loop in
+              if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
+              print_section "Optimized Loop" (string_of_parallel_loop optimized)
+            else
+              let (optimized, ok) = run_selected_optimization cfg loop in
+              if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
+              print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
+        end
       end
+    | _ ->
+        prerr_endline (usage Sys.argv.(0));
+        exit 2
   with
   | Sys_error msg -> error no_loc "%s" msg; exit 2
   | SLoopParse.Error (pos, msg) -> error no_loc "parse error at byte %d: %s" pos msg; exit 2
