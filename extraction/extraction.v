@@ -21,6 +21,8 @@ Require Import Memdata.
 (* Require Import Machregs. *)
 
 Require Import PolOpt.
+Require Import ParallelLoop.
+Require Import ParallelCodegen.
 
 Require Import CSample1.
 Require Import CSample2.
@@ -175,12 +177,18 @@ Extract Constant PolOpt.time  => "Timing.time_coq".
 Extract Constant print_CompCertC_stmt => "PrintCsyntax.print_if".
 Extract Constant CPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
 Extract Constant CPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant CPolIRs.phase_scop_scheduler_with_iss => "Scheduler.run_pluto_phase_pipeline_with_iss".
+Extract Constant CPolIRs.infer_iss_from_source_scop => "PhaseISS.cpol_infer_iss_from_source_scop".
 Extract Constant CPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant TPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
 Extract Constant TPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant TPolIRs.phase_scop_scheduler_with_iss => "Scheduler.run_pluto_phase_pipeline_with_iss".
+Extract Constant TPolIRs.infer_iss_from_source_scop => "PhaseISS.tpol_infer_iss_from_source_scop".
 Extract Constant TPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant SPolIRs.scop_scheduler => "Scheduler.scop_scheduler".
 Extract Constant SPolIRs.phase_scop_scheduler => "Scheduler.phase_scop_scheduler".
+Extract Constant SPolIRs.phase_scop_scheduler_with_iss => "Scheduler.run_pluto_phase_pipeline_with_iss".
+Extract Constant SPolIRs.infer_iss_from_source_scop => "PhaseISS.spol_infer_iss_from_source_scop".
 Extract Constant SPolIRs.infer_tiling_witness_scops => "Scheduler.infer_tiling_witness_scops".
 Extract Constant PolOpt.print => "fun (f: 'a -> unit) (x: 'a) -> f x; x".
 Extract Constant AST.ident_to_varname => "Camlcoq.extern_atom'".
@@ -205,4 +213,4 @@ Require Import TPolValidator.
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)
 
-Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt STilingOpt TPolValidator.
+Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn ParallelLoop ParallelCodegen CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt STilingOpt TPolValidator.

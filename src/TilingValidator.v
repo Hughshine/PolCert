@@ -14,6 +14,7 @@ Require Import TilingRelation.
 Require Import TilingBoolChecker.
 Require Import TilingWitness.
 Require Import PointWitness.
+Require Import ISSWitness.
 Require Import AffineValidator.
 Require Import PrepareCodegen.
 Require Import PolIRs.
@@ -43,6 +44,15 @@ Module TilingPolIRs <: POLIRS with Module Instr := Instr.
   Definition phase_scop_scheduler (_: OpenScop) : result (OpenScop * OpenScop) :=
     Err EmptyString.
   Definition run_pluto_phase_pipeline := phase_scop_scheduler.
+  Definition phase_scop_scheduler_with_iss
+      (_: OpenScop) : result (OpenScop * OpenScop) :=
+    Err EmptyString.
+  Definition run_pluto_phase_pipeline_with_iss :=
+    phase_scop_scheduler_with_iss.
+  Definition infer_iss_from_source_scop
+      (_: PolyLang.t) (_: OpenScop)
+      : result (option (PolyLang.t * iss_witness)) :=
+    Err EmptyString.
   Definition infer_tiling_witness_scops
       (_ _ : OpenScop) : result (list statement_tiling_witness) :=
     Err EmptyString.

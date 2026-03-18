@@ -1,5 +1,22 @@
-FROM hughshine/pluto-verif:latest
-LABEL com.polcert.version="0.9"
+# Keep these defaults aligned with tools/ci/pluto-baseline.env.
+ARG PLUTO_IMAGE=hughshine/pluto-verif:latest
+ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
+ARG PLUTO_GIT_COMMIT=7cb0892d42dd65fb083601750cad1a325688a366
+
+FROM ${PLUTO_IMAGE}
+
+ARG PLUTO_IMAGE
+ARG PLUTO_GIT_REMOTE
+ARG PLUTO_GIT_COMMIT
+
+LABEL com.polcert.version="0.9" \
+      com.polcert.pluto.image="${PLUTO_IMAGE}" \
+      com.polcert.pluto.remote="${PLUTO_GIT_REMOTE}" \
+      com.polcert.pluto.commit="${PLUTO_GIT_COMMIT}"
+
+ENV POLCERT_PLUTO_IMAGE="${PLUTO_IMAGE}" \
+    POLCERT_PLUTO_GIT_REMOTE="${PLUTO_GIT_REMOTE}" \
+    POLCERT_PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}"
 
 ENV TZ=Europe/Minsk
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

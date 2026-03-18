@@ -4,6 +4,7 @@ Require Import PolyLoop.
 Require Import Loop.
 Require Import Result.
 Require Import OpenScop.
+Require Import ISSWitness.
 Require Import TilingWitness.
 
 Module Type POLIRS.
@@ -31,6 +32,15 @@ Parameter phase_scop_scheduler: OpenScop -> result (OpenScop * OpenScop).
 (** Clear alias: run the external two-stage Pluto phase pipeline and return the
     affine mid-point and the final tiled OpenScop. *)
 Definition run_pluto_phase_pipeline := phase_scop_scheduler.
+
+Parameter phase_scop_scheduler_with_iss:
+  OpenScop -> result (OpenScop * OpenScop).
+(** Variant of the external Pluto phase pipeline that enables ISS before the
+    affine scheduling and tiling stages. *)
+Definition run_pluto_phase_pipeline_with_iss := phase_scop_scheduler_with_iss.
+
+Parameter infer_iss_from_source_scop:
+  PolyLang.t -> OpenScop -> result (option (PolyLang.t * iss_witness)).
 
 Parameter infer_tiling_witness_scops:
   OpenScop -> OpenScop -> result (list statement_tiling_witness).

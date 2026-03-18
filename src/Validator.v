@@ -1,10 +1,14 @@
 Require Import AffineValidator.
+Require Import ISSValidator.
+Require Import ParallelValidator.
 Require Import TilingValidator.
 Require Import PolIRs.
 
 Module Validator (PolIRs: POLIRS).
 
 Module AffineCore := AffineValidator PolIRs.
+Module ISSCore := ISSValidator PolIRs.
+Module ParallelCore := ParallelValidator PolIRs.
 Module TilingCore := TilingValidator PolIRs.
 
 Module TilingCheck := TilingCore.TilingCheck.
@@ -35,6 +39,55 @@ Definition validate_correct := AffineCore.validate_correct.
 Definition validate_general_correct := AffineCore.validate_tiling_correct.
 Definition validate_tiling_correct := AffineCore.validate_tiling_correct.
 Definition validate_preserve_wf_pprog := AffineCore.validate_preserve_wf_pprog.
+
+(** ISS structure validator API. *)
+Definition check_domain_partition_shapeb :=
+  ISSCore.check_domain_partition_shapeb.
+Definition checked_iss_shape_validate :=
+  ISSCore.checked_iss_shape_validate.
+Definition check_domain_partition_cut_shapeb :=
+  ISSCore.check_domain_partition_cut_shapeb.
+Definition checked_iss_cut_shape_validate :=
+  ISSCore.checked_iss_cut_shape_validate.
+Definition check_domain_partition_complete_cut_shapeb :=
+  ISSCore.check_domain_partition_complete_cut_shapeb.
+Definition checked_iss_complete_cut_shape_validate :=
+  ISSCore.checked_iss_complete_cut_shape_validate.
+Definition domain_partition_shape :=
+  ISSCore.domain_partition_shape.
+Definition domain_partition_shape_with_witness :=
+  ISSCore.domain_partition_shape_with_witness.
+Definition domain_partition_cut_shape :=
+  ISSCore.domain_partition_cut_shape.
+Definition domain_partition_complete_cut_shape :=
+  ISSCore.domain_partition_complete_cut_shape.
+Definition checked_iss_shape_validate_correct :=
+  ISSCore.checked_iss_shape_validate_correct.
+Definition checked_iss_cut_shape_validate_correct :=
+  ISSCore.checked_iss_cut_shape_validate_correct.
+Definition checked_iss_complete_cut_shape_validate_correct :=
+  ISSCore.checked_iss_complete_cut_shape_validate_correct.
+
+(** Parallel certification API. *)
+Definition parallel_plan := ParallelCore.parallel_plan.
+Definition parallel_cert := ParallelCore.parallel_cert.
+Definition current_coords_of := ParallelCore.current_coords_of.
+Definition same_env_of := ParallelCore.same_env_of.
+Definition same_prefix_before := ParallelCore.same_prefix_before.
+Definition different_dim_at := ParallelCore.different_dim_at.
+Definition same_parallel_slice := ParallelCore.same_parallel_slice.
+Definition parallel_safe_dim := ParallelCore.parallel_safe_dim.
+Definition parallel_cert_sound := ParallelCore.parallel_cert_sound.
+Definition check_pprog_parallel_currentb :=
+  ParallelCore.check_pprog_parallel_currentb.
+Definition checked_parallelize_current :=
+  ParallelCore.checked_parallelize_current.
+Definition check_pprog_parallel_currentb_sound :=
+  ParallelCore.check_pprog_parallel_currentb_sound.
+Definition checked_parallelize_current_sound :=
+  ParallelCore.checked_parallelize_current_sound.
+Definition checked_parallelize_current_implies_dim_in_range :=
+  ParallelCore.checked_parallelize_current_implies_dim_in_range.
 
 (** Checked tiling validator API on the generic outer PolyLang type. *)
 Definition to_tiling_pprog := TilingCore.to_tiling_pprog.
