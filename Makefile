@@ -255,10 +255,10 @@ test-polopt-generated: test-polopt-loop-suite
 		--min-nontrivial-changed 50 \
 		--require-tiled matmul matmul-init wavefront
 
-test-iss-pluto-suite: polopt
+test-iss-pluto-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-suite
 
-test-iss-pluto-live-suite: polopt
+test-iss-pluto-live-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-live-suite
 
 test-clean: 
