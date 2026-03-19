@@ -1,32 +1,47 @@
 # polcert
 
 `polcert` is the validator-only executable.
-It reads two polyhedral models in OpenScop format, converts both to the internal polyhedral representation with `from_openscop_complete`, and runs the verified validator.
+It reads polyhedral models, converts them to the internal representation, and
+runs the verified validator stack.
 
 This tool does **not** run extraction or code generation.
-It is the direct CLI for the PolCert validation story, which now includes both
-the original affine validation route and the phase-aligned checked tiling route.
+It is the direct CLI for the PolCert validation story, which now includes:
+
+- the original affine validation route
+- the phase-aligned checked tiling route
+- ISS structural validation through Pluto bridge / debug-dump inputs
 
 ## When to use it
 
-Use `polcert` when you already have two OpenScop files, typically:
+Use `polcert` when you already have transformation results and want to validate
+them without running the optimizer frontend.
 
-- `before.scop`: the source schedule emitted by Pluto/Clan
-- `after.scop`: the optimized schedule emitted by Pluto
+There are now four common validation modes:
 
-and you want to check whether the schedule transformation is dependence-safe.
-
-There are now two common validation modes:
-
-1. direct validation of a single `before.scop -> after.scop` schedule change
+1. direct affine validation of a single `before.scop -> after.scop`
 2. phase-aligned validation of
    - `before -> mid` using the affine validator
    - `mid -> after` using the checked tiling validator
+3. tiling-only validation of `mid.scop -> after.scop`
+4. ISS structural validation through:
+   - `--iss-bridge`
+   - `--iss-debug-dumps`
 
-There is also a tiling-only CLI mode:
+## CLI shapes
+
+OpenScop modes:
 
 ```sh
+./polcert before.scop after.scop
 ./polcert --kind tiling mid.scop after.scop
+./polcert before.scop mid.scop after.scop
+```
+
+ISS modes:
+
+```sh
+./polcert --iss-bridge bridge.txt
+./polcert --iss-debug-dumps before.txt after.txt
 ```
 
 ## Typical user workflow: C fragment -> Pluto -> polcert
@@ -47,7 +62,7 @@ for (j1 = 1; j1 <= M; j1++) {
 #pragma endscop
 ```
 
-Run Pluto with the repository's standard flags:
+Run Pluto with the repository's standard affine-scheduling flags:
 
 ```sh
 pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
@@ -81,6 +96,13 @@ For the phase-aligned tiling route, the common workflow is instead:
    - only `mid -> after` with `--kind tiling`
    - or the full `before, mid, after` phase-aligned route
 
+ISS is different:
+
+- it is not currently validated through OpenScop
+- it uses a Pluto-derived bridge / dump interface instead
+- this matches the fact that Pluto ISS is implemented over Pluto's internal
+  program representation rather than the old OpenScop-only path
+
 ## What it validates
 
 For the affine route, `polcert` checks schedule-preserving
@@ -93,12 +115,17 @@ For the tiling route, it checks:
 2. a canonical imported tiled program
 3. the generic schedule/dependence validator on that imported program
 
-The top-level validation entrypoint is built from:
+For the ISS route, it checks a structural split relation centered on Pluto ISS
+bridge / dump inputs rather than OpenScop.
+
+The top-level validation entrypoints are built from:
 
 - [driver/TPolValidator.v](./driver/TPolValidator.v)
 - [src/Validator.v](./src/Validator.v)
 - [src/TilingValidator.v](./src/TilingValidator.v)
 - [src/PolyLang.v](./src/PolyLang.v)
+- [src/ISSValidator.v](./src/ISSValidator.v)
+- [src/ISSValidatorCorrect.v](./src/ISSValidatorCorrect.v)
 
 ## Result meanings
 
@@ -106,14 +133,19 @@ The top-level validation entrypoint is built from:
 - `LT` / `GT`: one model refines the other in only one direction
 - `NE`: the validator cannot prove a refinement relation
 
+For ISS CLI modes, success/failure is reported directly as bridge/dump
+validation output rather than `EQ/LT/GT/NE`.
+
 ## Proof boundary
 
 The verified part covers:
 
-- the validator algorithm itself
-- the polyhedral semantics it reasons about
-- the soundness theorem relating successful validation to semantic refinement/equivalence
-- the checked tiling validator route used for phase-aligned tiling validation
+- the validator algorithms themselves
+- the polyhedral semantics they reason about
+- the soundness theorems relating successful validation to semantic
+  refinement/equivalence
+- the checked tiling validator route
+- the checked ISS structural validator route
 
 It does **not** prove correctness of:
 
@@ -122,9 +154,15 @@ It does **not** prove correctness of:
 - witness inference heuristics
 - any frontend from source code to OpenScop
 
+It also does not currently expose a user-facing parallel validation mode; the
+parallel story currently lives on the `polopt` side.
+
 ## Notes
 
-- `polcert` still serves as the direct validator for OpenScop models.
-- It now also exposes the checked tiling route used by the verified optimizer.
-- For a concise overview of how the affine and tiling validation routes fit
-  together, see [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md).
+- `polcert` still serves as the direct validator for OpenScop affine / tiling
+  models.
+- It now also exposes ISS structural validation modes, but those use Pluto
+  bridge / debug-dump inputs rather than OpenScop.
+- For a concise overview of how the affine, tiling, and ISS validation routes
+  fit together, see [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md) and
+  [doc/FEATURE_STATUS.md](./doc/FEATURE_STATUS.md).

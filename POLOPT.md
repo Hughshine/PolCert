@@ -5,12 +5,19 @@ It is the closest thing in this repository to a Pluto counterpart: Pluto is stil
 
 ## What it does
 
-`polopt` takes a structured loop fragment, runs the verified polyhedral optimization core, and prints an optimized loop.
-The scheduler is Pluto itself, so the optimization decisions come from Pluto;
-the difference is that extraction, affine validation, checked tiling
-validation, code generation, and cleanup are integrated into a proved pipeline.
+`polopt` takes a structured loop fragment, runs the verified polyhedral
+optimization core, and prints an optimized loop. The scheduler is Pluto itself,
+so the optimization decisions come from Pluto; the difference is that
+extraction, validation, code generation, and cleanup are integrated into proved
+pipelines.
 
-At a high level:
+There are currently three practically important `polopt` families:
+
+- default theorem-aligned affine+tiling pipeline
+- optional theorem-aligned ISS+affine+tiling pipeline (`--iss`)
+- experimental verified parallel routes layered on top of either pipeline
+
+At a high level, the default pipeline is:
 
 ```text
 .loop text
@@ -34,6 +41,7 @@ For a concise summary of the current verified pipeline shape and the role of
 `current_view_pprog`, see:
 
 - [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md)
+- [doc/FEATURE_STATUS.md](./doc/FEATURE_STATUS.md)
 
 ## Pluto configuration used by `polopt`
 
@@ -44,24 +52,35 @@ pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
       --smartfuse --nounrolljam --noparallel --notile --rar
 ```
 
-This matters because the current verified path is aimed at **checked
-schedule/domain transformation and schedule-driven code generation**, not at the
-full Pluto transformation space.
-In particular, the current `polopt` path should be read as supporting the optimization capability that Pluto exposes **under exactly this flag set**:
+This matters because the default verified path is aimed at **checked
+schedule/domain transformation and schedule-driven code generation**, not at
+the full Pluto transformation space. In particular, the default `polopt` path
+should be read as supporting the optimization capability that Pluto exposes
+**under exactly this flag set**:
 
 - affine scheduling / loop reordering
 - skewing / wavefront-style rescheduling
 - statement reordering, fission, and related schedule effects
 - schedule changes that stay within the validated affine-scheduling story
 
-The current path does **not** claim support for the full Pluto transformation
-space. It now includes the checked phase-aligned tiling route, but still does
-not claim support for transformations such as:
+The default path does **not** claim support for the full Pluto transformation
+space. It includes the checked phase-aligned tiling route, but it does not by
+itself cover transformations such as:
 
 - index-set splitting
 - transformations whose correctness would require a stronger structural
   validator than the current checked affine+tiling path
-- parallel code generation
+- CLI-driven parallel code generation routes
+
+Two important extensions now sit beside that default path:
+
+- `--iss`
+  - switches to the separate theorem-aligned ISS+affine+tiling route
+  - this route is proved by `Opt_with_iss_correct`
+- `--parallel`, `--parallel-strict`, `--parallel-current`
+  - expose experimental verified parallel certification / code generation routes
+  - these are proof-backed at the component level, but they are not the
+    default end-to-end optimizer theorem path
 
 ## Main example: covariance (`covcol`)
 
@@ -170,10 +189,14 @@ What changed:
 
 ## What is proved
 
-The final optimizer definition and theorem are in [driver/PolOpt.v](./driver/PolOpt.v):
+The final optimizer definitions and theorems are in
+[driver/PolOpt.v](./driver/PolOpt.v) and
+[driver/PolOptCorrect.v](./driver/PolOptCorrect.v):
 
-- final optimizer: `Opt = Opt_prepared`
-- final theorem: `Opt_correct`
+- default optimizer: `Opt = Opt_prepared`
+- default theorem: `Opt_correct`
+- optional ISS optimizer: `Opt_with_iss`
+- optional ISS theorem: `Opt_with_iss_correct`
 
 The proved passes used by `Opt` are:
 
@@ -197,11 +220,63 @@ The proved passes used by `Opt` are:
    - [polygen/LoopCleanup.v](./polygen/LoopCleanup.v)
    - [polygen/LoopSingletonCleanup.v](./polygen/LoopSingletonCleanup.v)
 
-At a high level, `Opt_correct` states:
+At a high level:
 
-- if the verified optimizer returns an optimized loop
-- and that optimized loop runs to a final state
-- then the original input loop can also run to an equivalent final state
+- `Opt_correct` states:
+  - if the default verified optimizer returns an optimized loop
+  - and that optimized loop runs to a final state
+  - then the original input loop can also run to an equivalent final state
+- `Opt_with_iss_correct` states the analogous result for the ISS-enabled
+  theorem-aligned pipeline
+
+The repository also contains verified parallel components:
+
+- [src/ParallelValidator.v](./src/ParallelValidator.v)
+- [src/ParallelCodegen.v](./src/ParallelCodegen.v)
+- [driver/ParallelPolOpt.v](./driver/ParallelPolOpt.v)
+
+These support the CLI experimental parallel routes, but they are not the
+default `Opt_correct` theorem object.
+
+## Operational modes
+
+Important user-facing modes are:
+
+```sh
+./polopt file.loop
+./polopt --iss file.loop
+./polopt --iss --identity file.loop
+./polopt --notile file.loop
+./polopt --identity file.loop
+./polopt --parallel file.loop
+./polopt --parallel --parallel-strict file.loop
+./polopt --parallel-current 0 file.loop
+./polopt --second-level-tile file.loop
+```
+
+Interpretation:
+
+- default: theorem-aligned affine+tiling pipeline
+- `--iss`: theorem-aligned ISS+affine+tiling pipeline
+- `--iss --identity`: checked ISS-only split path
+- `--notile`: affine-only checked path
+- `--identity`: no Pluto scheduling phase
+- `--parallel*`: experimental verified parallel routes layered on top of the
+  selected optimization path
+- `--second-level-tile`: experimental second-level tiling extension for the
+  tiled validation path
+
+## What the default theorem does not cover
+
+`Opt_correct` does not by itself say anything about:
+
+- the optional `--iss` pipeline
+- the experimental parallel CLI routes
+- textual `.loop` parsing / elaboration
+- Pluto itself
+- OpenScop textual parsing / printing details
+- witness inference from Pluto phase outputs
+- the final OCaml pretty-printer
 
 ## What is not proved
 
@@ -245,7 +320,8 @@ That means:
 
 So the right reading is:
 
-- the optimizer uses **Pluto's optimization choices** under the flag set above
+- the optimizer uses **Pluto's optimization choices** under the relevant flag
+  set for the selected mode
 - the surrounding extraction / validation / code generation path has a formal correctness argument in the current loop-language model
 - users should read current floating-point and overflow behavior under the current simplified model assumptions
 
@@ -274,7 +350,8 @@ Interpretation:
   checked phase-aligned tiling route under the supported Pluto setup, with
   verified extraction / validation / code generation around them
 - this should still not be read as support for the full Pluto transformation
-  space: index-set splitting and parallel code generation remain out of scope
+  space: the default theorem path is narrower than Pluto's full feature set, and
+  ISS / parallel are handled by separate routes
 
 One practical exception is performance on `advect3d`:
 
@@ -295,6 +372,9 @@ Useful modes:
 ```sh
 ./polopt --extract-only file.loop
 ./polopt --debug-scheduler file.loop
+./polopt --iss file.loop
+./polopt --parallel file.loop
+./polopt --parallel-current 0 file.loop
 ```
 
 ## How to write your own example
@@ -332,6 +412,8 @@ opam exec -- make polopt
 opam exec -- make polcert.ini
 opam exec -- make polcert
 make test
+opam exec -- make test-iss-pluto-suite
+opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-polopt-loop-suite
 ```
 
@@ -357,7 +439,11 @@ Final optimizer definition and theorem:
 Key passes:
 - [src/Extractor.v](./src/Extractor.v)
 - [src/StrengthenDomain.v](./src/StrengthenDomain.v)
+- [src/ISSValidator.v](./src/ISSValidator.v)
+- [src/ISSValidatorCorrect.v](./src/ISSValidatorCorrect.v)
 - [src/PrepareCodegen.v](./src/PrepareCodegen.v)
+- [src/ParallelValidator.v](./src/ParallelValidator.v)
+- [src/ParallelCodegen.v](./src/ParallelCodegen.v)
 - [polygen/CodeGen.v](./polygen/CodeGen.v)
 - [polygen/LoopCleanup.v](./polygen/LoopCleanup.v)
 - [polygen/LoopSingletonCleanup.v](./polygen/LoopSingletonCleanup.v)

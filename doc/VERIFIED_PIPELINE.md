@@ -6,19 +6,30 @@ be confusing after the tiling extension.
 
 ## Main idea
 
-The repository now has one verified optimizer pipeline with two validated
-optimization routes:
+The repository now has:
 
-- an affine scheduling route
-- a phase-aligned tiling route layered on top of affine scheduling
+- a default theorem-aligned affine+tiling optimizer route
+- an optional theorem-aligned ISS+affine+tiling optimizer route
+- experimental verified parallel routes layered on top of those optimizer paths
 
-The affine route remains the stable baseline. The tiling route is used when the
-external two-phase Pluto pipeline succeeds and its outputs can be imported and
-checked.
+The default no-ISS route remains the stable baseline. The tiling route is used
+when the external two-phase Pluto pipeline succeeds and its outputs can be
+imported and checked. The ISS route is separate and opt-in.
 
 ## `polopt`
 
-The optimizer pipeline is:
+There are two theorem-aligned optimizer modes:
+
+- default: `./polopt file.loop`
+- ISS-enabled: `./polopt --iss file.loop`
+
+And there are experimental CLI-only parallel extensions:
+
+- `./polopt --parallel ...`
+- `./polopt --parallel-strict ...`
+- `./polopt --parallel-current d ...`
+
+The default optimizer pipeline is:
 
 ```text
 .loop
@@ -63,6 +74,27 @@ The main stages are:
 If the tiling-specific route fails at any stage, the optimizer falls back to
 the already-validated affine result instead of failing the whole pipeline.
 
+The ISS-enabled pipeline has the same later stages, but inserts a checked ISS
+structural-validation stage before later scheduling / tiling:
+
+```text
+.loop
+-> extract
+-> strengthen
+-> checked ISS structural validation
+-> checked affine schedule with ISS enabled
+-> optional checked tiling phase
+-> current_view_pprog
+-> prepare_codegen
+-> codegen
+-> cleanup
+```
+
+In theorem terms:
+
+- default route: `Opt_correct`
+- ISS route: `Opt_with_iss_correct`
+
 Current strict-suite snapshot:
 
 - total generated inputs: `62`
@@ -76,19 +108,33 @@ Representative visible outcomes:
 - `covcol` remains the standard affine-scheduling example
 - `matmul-init` is now a compact explicit tiling example with extra tile loops,
   `max/min` strip-mined bounds, and visible `/ 32` tile-size arithmetic
+- the dedicated ISS suites use Pluto periodic/reversal examples through the
+  bridge/debug-dump validation path
+
+Parallel status:
+
+- verified parallel certification / code generation components exist
+- they are exposed by the `polopt` CLI
+- they are still experimental and are not the default theorem-aligned path
 
 ## `polcert`
 
-`polcert` now exposes three practically important validation modes:
+`polcert` now exposes four practically important validation modes:
 
 - direct affine validation of `before.scop -> after.scop`
 - tiling-only validation of `mid.scop -> after.scop` with `--kind tiling`
 - phase-aligned validation of `before -> mid -> after`
+- ISS validation through `--iss-bridge` / `--iss-debug-dumps`
 
 The phase-aligned route checks:
 
 1. `before -> mid` with the affine validator
 2. `mid -> after` with the checked tiling validator
+
+The ISS route is separate:
+
+- it validates Pluto ISS bridge / dump inputs
+- it does not currently use OpenScop as its external interface
 
 ## Why there are several normalization stages
 
@@ -113,6 +159,12 @@ Because of that, the pipeline needs several distinct "format-fixing" stages:
 
 These stages are not duplicates; they solve different representation problems.
 
+The ISS extension introduces another structural layer:
+
+- statement/domain partition refinement
+- cut families and piece witnesses
+- a dedicated structural validator before later schedule/codegen phases
+
 ## Proof boundary
 
 The proved core includes:
@@ -120,10 +172,15 @@ The proved core includes:
 - extraction into the internal polyhedral model
 - affine validation
 - checked tiling validation
+- checked ISS structural validation
 - current-view conversion
 - prepare-codegen
 - code generation
 - cleanup
+
+There are also proved parallel certification / code generation components, but
+they are currently documented as experimental CLI routes rather than the stable
+default theorem path.
 
 The unproved parts remain:
 
