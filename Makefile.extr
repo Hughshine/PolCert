@@ -106,6 +106,7 @@ POLOPT_OBJS:=$(shell $(MODORDER) \
   extraction/ParallelLoop.cmx \
   extraction/ParallelCodegen.cmx \
   extraction/STilingOpt.cmx \
+  extraction/SParallelPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
   syntax/SLoopMain.cmx)
 
@@ -169,6 +170,7 @@ driver/Scheduler.cmo driver/Scheduler.cmx: \
 syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/ParallelLoop.cmi \
     extraction/ParallelCodegen.cmi \
+    extraction/SParallelPolOpt.cmi \
     extraction/Validator.cmi \
     extraction/TPolValidator.cmi \
     extraction/TPolOpt.cmi \

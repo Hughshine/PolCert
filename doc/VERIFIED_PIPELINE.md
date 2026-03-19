@@ -10,7 +10,8 @@ The repository now has:
 
 - a default theorem-aligned affine+tiling optimizer route
 - an optional theorem-aligned ISS+affine+tiling optimizer route
-- experimental verified parallel routes layered on top of those optimizer paths
+- theorem-aligned explicit-dimension parallel routes
+- experimental Pluto-hinted parallel routes layered on top of those optimizer paths
 
 The default no-ISS route remains the stable baseline. The tiling route is used
 when the external two-phase Pluto pipeline succeeds and its outputs can be
@@ -23,11 +24,14 @@ There are two theorem-aligned optimizer modes:
 - default: `./polopt file.loop`
 - ISS-enabled: `./polopt --iss file.loop`
 
+There is one theorem-aligned parallel family:
+
+- `./polopt --parallel-current d ...`
+
 And there are experimental CLI-only parallel extensions:
 
 - `./polopt --parallel ...`
 - `./polopt --parallel-strict ...`
-- `./polopt --parallel-current d ...`
 
 The default optimizer pipeline is:
 
@@ -114,8 +118,10 @@ Representative visible outcomes:
 Parallel status:
 
 - verified parallel certification / code generation components exist
-- they are exposed by the `polopt` CLI
-- they are still experimental and are not the default theorem-aligned path
+- the explicit-dimension route `--parallel-current d` is theorem-aligned and
+  has dedicated correctness theorems in `ParallelPolOptCorrect.v`
+- the Pluto-hinted routes `--parallel` / `--parallel-strict` are still
+  experimental CLI routes
 
 ## `polcert`
 

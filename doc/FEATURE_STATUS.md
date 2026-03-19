@@ -65,7 +65,6 @@ Commands:
 ```sh
 ./polopt --parallel file.loop
 ./polopt --parallel --parallel-strict file.loop
-./polopt --parallel-current 0 file.loop
 ```
 
 Status:
@@ -74,6 +73,27 @@ Status:
 - backed by verified parallel certification / code generation components
 - still experimental
 - not the default theorem-aligned optimizer path
+
+### Explicit-dimension parallel mode
+
+Command:
+
+```sh
+./polopt --parallel-current 0 file.loop
+```
+
+Status:
+
+- theorem-aligned verified optimizer route for an explicit current dimension
+- supported on identity, affine-only, and full tiled paths
+- also available with `--iss`
+
+Proof objects:
+
+- `driver/ParallelPolOpt.v`
+- `driver/ParallelPolOptCorrect.v`
+- `Opt_parallel_current_correct`
+- `Opt_parallel_current_with_iss_correct`
 
 Relevant components:
 

@@ -63,8 +63,9 @@ By default it runs the theorem-aligned affine+tiling optimization pipeline.
 It also exposes:
 
 - an optional theorem-aligned ISS path via `--iss`
-- experimental verified parallel routes via `--parallel`,
-  `--parallel-strict`, and `--parallel-current`
+- a theorem-aligned explicit-dimension parallel path via `--parallel-current`
+- experimental Pluto-hinted parallel routes via `--parallel` and
+  `--parallel-strict`
 
 ## Status
 
@@ -73,10 +74,14 @@ It also exposes:
 - The default end-to-end theorem is `Opt_correct`.
 - The ISS-enabled optimizer definition is `Opt_with_iss`.
 - The ISS-enabled end-to-end theorem is `Opt_with_iss_correct`.
+- The explicit-dimension parallel optimizer theorems live in
+  [driver/ParallelPolOptCorrect.v](./driver/ParallelPolOptCorrect.v).
 - `polopt` now supports:
   - the default verified affine+tiling route
   - the optional verified ISS+affine+tiling route (`--iss`)
-  - experimental verified parallel routes layered on top of those pipelines
+  - a theorem-aligned explicit-dimension parallel route (`--parallel-current`)
+  - experimental Pluto-hinted parallel routes (`--parallel`,
+    `--parallel-strict`)
 - `polcert` now supports:
   - direct affine validation
   - phase-aligned tiling validation

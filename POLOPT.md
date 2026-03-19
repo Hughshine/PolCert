@@ -11,11 +11,12 @@ so the optimization decisions come from Pluto; the difference is that
 extraction, validation, code generation, and cleanup are integrated into proved
 pipelines.
 
-There are currently three practically important `polopt` families:
+There are currently four practically important `polopt` families:
 
 - default theorem-aligned affine+tiling pipeline
 - optional theorem-aligned ISS+affine+tiling pipeline (`--iss`)
-- experimental verified parallel routes layered on top of either pipeline
+- theorem-aligned explicit-dimension parallel pipelines (`--parallel-current`)
+- experimental Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`)
 
 At a high level, the default pipeline is:
 
@@ -72,15 +73,17 @@ itself cover transformations such as:
   validator than the current checked affine+tiling path
 - CLI-driven parallel code generation routes
 
-Two important extensions now sit beside that default path:
+Three important extensions now sit beside that default path:
 
 - `--iss`
   - switches to the separate theorem-aligned ISS+affine+tiling route
   - this route is proved by `Opt_with_iss_correct`
-- `--parallel`, `--parallel-strict`, `--parallel-current`
-  - expose experimental verified parallel certification / code generation routes
-  - these are proof-backed at the component level, but they are not the
-    default end-to-end optimizer theorem path
+- `--parallel-current`
+  - switches to theorem-aligned explicit-dimension parallel routes
+  - these routes are proved in `ParallelPolOptCorrect.v`
+- `--parallel`, `--parallel-strict`
+  - expose Pluto-hinted verified parallel certification / code generation routes
+  - these remain experimental CLI routes
 
 ## Main example: covariance (`covcol`)
 
@@ -187,6 +190,135 @@ What changed:
 - the initialization and accumulation phases are both tiled, not just rescheduled
 - this is the visible shape that the strict suite now classifies as a detected tiled output
 
+## Second-level tiling example: matrix multiply initialization (`matmul-init --second-level-tile`)
+
+Input `.loop`:
+
+```text
+context(N);
+
+for i in range(0, N) {
+  for j in range(0, N) {
+    C[i][j] = 0;
+    for k in range(0, N) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+    }
+  }
+}
+```
+
+Current optimized output with `./polopt --second-level-tile`:
+
+```text
+context(N);
+
+if (1 <= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {
+        for i3 in range(max(0, (8 * i1)), min(((N + 31) / 32), ((8 * i1) + 8))) {
+          for i4 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+            for i5 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+              C[i4][i5] = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+if (1 <= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(0, ((N + 255) / 256)) {
+        for i3 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+          for i4 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+            for i5 in range(max((8 * i2), 0), min(((8 * i2) + 8), ((N + 31) / 32))) {
+              for i6 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                  for i8 in range(max(0, (32 * i5)), min(N, ((32 * i5) + 32))) {
+                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+What changed:
+
+- the outer tile loops now step in `256`-sized blocks, while the inner tiles remain `32`
+- the generated nest is visibly hierarchical instead of single-level strip-mined
+- this is the checked second-level tiling route; it is separate from the ordinary tiling example above
+
+## ISS example: reversal split (`--iss`)
+
+Input `.loop`:
+
+```text
+for i in range(0, 100) {
+  A[i] = (2 * A[(99 - i)]);
+}
+```
+
+Current optimized output with `./polopt --iss`:
+
+```text
+for i0 in range(1, 50) {
+  for i1 in range((i0 + -1), i0) {
+    A[i1] = (2 * A[(99 - i1)]);
+  }
+}
+for i0 in range(49, 50) {
+  A[i0] = (2 * A[(99 - i0)]);
+}
+A[50] = (2 * A[(99 - 50)]);
+for i0 in range(51, 100) {
+  A[i0] = (2 * A[(99 - i0)]);
+}
+```
+
+What changed:
+
+- the original single interval is split around the reversal midpoint
+- the body is unchanged; the visible change is iteration-space partitioning
+- this is the characteristic shape of the theorem-aligned ISS route before later scheduling/codegen cleanup
+
+## Parallel example: explicit current dimension (`--parallel-current 0`)
+
+Input `.loop`:
+
+```text
+for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
+  }
+}
+```
+
+Current optimized output with `./polopt --parallel-current 0`:
+
+```text
+parallel for i0 in range(0, 4) {
+  for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), 100)) {
+    for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
+  }
+}
+```
+
+What changed:
+
+- the optimized current-space outer dimension is certified parallel and emitted as `parallel for`
+- this route is theorem-aligned for explicit dimensions: the optimizer theorem is not inferred from Pluto hints
+- the `--parallel` / `--parallel-strict` routes remain separate hint-driven experimental frontends
+
 ## What is proved
 
 The final optimizer definitions and theorems are in
@@ -197,6 +329,20 @@ The final optimizer definitions and theorems are in
 - default theorem: `Opt_correct`
 - optional ISS optimizer: `Opt_with_iss`
 - optional ISS theorem: `Opt_with_iss_correct`
+
+The explicit-dimension parallel optimizer definitions and theorems are in
+[driver/ParallelPolOpt.v](./driver/ParallelPolOpt.v) and
+[driver/ParallelPolOptCorrect.v](./driver/ParallelPolOptCorrect.v):
+
+- full parallel route: `Opt_parallel_current`
+- full parallel theorem: `Opt_parallel_current_correct`
+- ISS-enabled full parallel route: `Opt_parallel_current_with_iss`
+- ISS-enabled full parallel theorem: `Opt_parallel_current_with_iss_correct`
+- identity / affine-only variants are also proved:
+  - `Opt_parallel_current_identity_correct`
+  - `Opt_parallel_current_affine_correct`
+  - `Opt_parallel_current_identity_with_iss_correct`
+  - `Opt_parallel_current_affine_with_iss_correct`
 
 The proved passes used by `Opt` are:
 
@@ -234,9 +380,13 @@ The repository also contains verified parallel components:
 - [src/ParallelValidator.v](./src/ParallelValidator.v)
 - [src/ParallelCodegen.v](./src/ParallelCodegen.v)
 - [driver/ParallelPolOpt.v](./driver/ParallelPolOpt.v)
+- [driver/ParallelPolOptCorrect.v](./driver/ParallelPolOptCorrect.v)
 
-These support the CLI experimental parallel routes, but they are not the
-default `Opt_correct` theorem object.
+Interpretation:
+
+- `--parallel-current d` is theorem-aligned and uses the proved explicit-dimension parallel pipeline
+- `--parallel` / `--parallel-strict` are still the experimental Pluto-hinted parallel routes
+- none of the parallel routes change the default `Opt_correct` theorem object; they have their own proof objects
 
 ## Operational modes
 
@@ -261,8 +411,8 @@ Interpretation:
 - `--iss --identity`: checked ISS-only split path
 - `--notile`: affine-only checked path
 - `--identity`: no Pluto scheduling phase
-- `--parallel*`: experimental verified parallel routes layered on top of the
-  selected optimization path
+- `--parallel-current d`: theorem-aligned explicit-dimension parallel route
+- `--parallel`, `--parallel-strict`: Pluto-hinted experimental verified parallel routes
 - `--second-level-tile`: experimental second-level tiling extension for the
   tiled validation path
 
@@ -271,7 +421,8 @@ Interpretation:
 `Opt_correct` does not by itself say anything about:
 
 - the optional `--iss` pipeline
-- the experimental parallel CLI routes
+- the explicit-dimension parallel theorem objects
+- the experimental Pluto-hinted parallel CLI routes
 - textual `.loop` parsing / elaboration
 - Pluto itself
 - OpenScop textual parsing / printing details
@@ -375,6 +526,8 @@ Useful modes:
 ./polopt --iss file.loop
 ./polopt --parallel file.loop
 ./polopt --parallel-current 0 file.loop
+./polopt --iss --parallel-current 0 file.loop
+./polopt --second-level-tile file.loop
 ```
 
 ## How to write your own example

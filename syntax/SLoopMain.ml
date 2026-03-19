@@ -20,7 +20,9 @@ let pluto_tiling_mode second_level =
 
 let usage prog =
   Printf.sprintf
-    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--identity] [--notile] [--iss] [--second-level-tile] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n       %s [--second-level-tile] --extract-tiling-witness-openscop <before.scop> <after.scop>\n       %s [--second-level-tile] --validate-tiling-openscop <before.scop> <after.scop>\n       %s --validate-iss-debug-dumps <before.txt> <after.txt>\n       %s --validate-iss-bridge <bridge.txt>\n       %s --validate-iss-pluto-suite\n       %s --validate-iss-pluto-live-suite\n\nDefault optimization path:\n  extracted theorem-aligned affine+tiling pipeline (`SPolOpt.opt`)\n\nExplicit phase controls:\n  --identity        : no Pluto phase, just checked extraction/strengthen/codegen\n  --notile          : stop after affine scheduling validation\n  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n  --second-level-tile : experimental verified second-level tiling path; only valid on\n                        full tiled optimization/validation routes\n  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n                       loop hints; supported on both the default and `--iss` pipelines,\n                       with or without `--notile`\n  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n  --parallel-current d : manual verified `parallel for` on current dimension d;\n                         supported on identity, affine-only, and full tiled paths,\n                         including their `--iss` variants\n\nExamples:\n  %s file.loop                        # default theorem-aligned affine+tiling path\n  %s --second-level-tile file.loop    # full tiled checked path with second-level tiling enabled\n  %s --parallel file.loop             # Pluto-hinted verified parallel path\n  %s --parallel --parallel-strict file.loop\n  %s --notile file.loop               # affine-only checked path\n  %s --identity file.loop             # identity/no-schedule path\n  %s --validate-tiling-openscop mid.scop after.scop\n  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n  %s --iss --identity file.loop       # ISS-only checked split path\n"
+    "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--identity] [--notile] [--iss] [--second-level-tile] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n       %s [--second-level-tile] --extract-tiling-witness-openscop <before.scop> <after.scop>\n       %s [--second-level-tile] --validate-tiling-openscop <before.scop> <after.scop>\n       %s --validate-iss-debug-dumps <before.txt> <after.txt>\n       %s --validate-iss-bridge <bridge.txt>\n       %s --validate-iss-pluto-suite\n       %s --validate-iss-pluto-live-suite\n\nDefault optimization path:\n  extracted theorem-aligned affine+tiling pipeline (`SPolOpt.opt`)\n\nExplicit phase controls:\n  --identity        : no Pluto phase, just checked extraction/strengthen/codegen\n  --notile          : stop after affine scheduling validation\n  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n  --second-level-tile : experimental verified second-level tiling path; only valid on\n                        full tiled optimization/validation routes\n  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n                       loop hints; supported on both the default and `--iss` pipelines,\n                       with or without `--notile`\n  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n                         dimension d; supported on identity, affine-only, and full\n                         tiled paths, including their `--iss` variants\n\nExamples:\n  %s file.loop                        # default theorem-aligned affine+tiling path\n  %s --second-level-tile file.loop    # full tiled checked path with second-level tiling enabled\n  %s --parallel file.loop             # Pluto-hinted verified parallel path\n  %s --parallel --parallel-strict file.loop\n  %s --parallel-current 0 file.loop   # theorem-aligned explicit-dimension parallel path\n  %s --iss --parallel-current 0 file.loop\n  %s --notile file.loop               # affine-only checked path\n  %s --identity file.loop             # identity/no-schedule path\n  %s --validate-tiling-openscop mid.scop after.scop\n  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n  %s --iss --identity file.loop       # ISS-only checked split path\n"
+    prog
+    prog
     prog
     prog
     prog
@@ -2081,6 +2083,22 @@ let run_selected_parallel_optimization cfg loop =
   else
     optimize_with_phase_aligned_pluto_parallel_hint cfg loop
 
+let run_selected_parallel_current_optimization cfg loop dim =
+  let dim = nat_of_int dim in
+  if cfg.force_iss then
+    if cfg.force_identity then
+      SParallelPolOpt.opt_parallel_current_identity_with_iss loop dim
+    else if cfg.force_notile then
+      SParallelPolOpt.opt_parallel_current_affine_with_iss loop dim
+    else
+      SParallelPolOpt.opt_parallel_current_with_iss loop dim
+  else if cfg.force_identity then
+    SParallelPolOpt.opt_parallel_current_identity loop dim
+  else if cfg.force_notile then
+    SParallelPolOpt.opt_parallel_current_affine loop dim
+  else
+    SParallelPolOpt.opt_parallel_current loop dim
+
 let () =
   try
     Gc.set { (Gc.get()) with
@@ -2215,21 +2233,10 @@ let () =
           debug_generic_tiling_runtime loop;
         begin match cfg.parallel_current_dim with
         | Some dim ->
-            let optimized =
-              if cfg.force_iss then
-                if cfg.force_identity then
-                  optimize_parallel_iss_identity_only loop dim
-                else if cfg.force_notile then
-                  optimize_parallel_iss_affine_only loop dim
-                else
-                  optimize_parallel_iss_phase_aligned loop dim
-              else if cfg.force_identity then
-                optimize_parallel_identity_only loop dim
-              else if cfg.force_notile then
-                optimize_parallel_affine_only loop dim
-              else
-                optimize_parallel_phase_aligned loop dim
+            let (optimized, ok) =
+              run_selected_parallel_current_optimization cfg loop dim
             in
+            if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
         | None ->
             if cfg.force_parallel then
