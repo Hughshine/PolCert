@@ -335,7 +335,10 @@ Fixpoint generate_loop_many (d : nat) (n : nat) (pis : list PolyLang.PolyInstr) 
     BIND projsep <- split_and_sort (n - d)%nat projs -;
     BIND inner <- mapM (fun '(pol, pl) =>
          BIND npis <- make_npis_simplify pis pol pl -;
-         BIND inside <- generate_loop_many d1 n npis -;
+         BIND inside <- match npis with
+                        | pi :: nil => generate d1 n pi
+                        | _ => generate_loop_many d1 n npis
+                        end -;
          pure (PolyLoop.PLoop pol inside)) projsep -;
     pure (PolyLoop.make_seq inner)
   end.
@@ -343,6 +346,19 @@ Fixpoint generate_loop_many (d : nat) (n : nat) (pis : list PolyLang.PolyInstr) 
 (* Forall instance's, its index length <= n. (>n bit not contribute to semantics )*)
 Definition pis_have_dimension pis n :=
   forallb (fun pi => (poly_nrl (pi.(PolyLang.pi_poly)) <=? n)%nat) pis = true.
+
+Lemma pis_have_dimension_singleton :
+  forall pi n,
+    pis_have_dimension (pi :: nil) n ->
+    (poly_nrl pi.(PolyLang.pi_poly) <= n)%nat.
+Proof.
+  intros pi n Hdim.
+  unfold pis_have_dimension in Hdim. simpl in Hdim.
+  apply andb_prop in Hdim.
+  destruct Hdim as [Hdim _].
+  apply Nat.leb_le in Hdim.
+  exact Hdim.
+Qed.
 
 Lemma make_npis_simplify_have_dimension :
   forall pis pol pl n,
@@ -669,18 +685,30 @@ Proof.
       eapply PolyLang.poly_lex_semantics_extensionality.
       apply PolyLang.poly_lex_concat_seq with (to_scans := fun x => PolyLang.env_scan npis (rev (x :: env)) n).
       * eapply Instr.IterSem.iter_semantics_map; [|apply Hsem].
-        intros x mem5 mem6 Hbounds Hloop. eapply IHd with (env := x :: env); simpl; eauto; try lia.
-        -- eapply make_npis_simplify_have_dimension; eauto.
+        intros x mem5 mem6 Hbounds Hloop.
+        destruct npis as [|npi npis'].
+        -- simpl in Hinside.
+           eapply IHd with (env := x :: env); simpl; eauto; try lia.
+           eapply make_npis_simplify_have_dimension; eauto.
            specialize (Hprojnrl _ Hins). simpl in Hprojnrl; lia.
-        (* no longer needed: generate_invariant is [True] now.
-        -- unfold generate_invariant in *. (* generate_invariant preservation *)
-           intros npi Hnpi. eapply mapM_in_iff in Hnpi; [|eauto].
-           destruct Hnpi as [t [Hnpi Ht]]. remember (nth t pis dummy_pi) as pi. simpl in Hnpi.
-           assert (Hpi : In pi pis). {
-             rewrite Heqpi; apply nth_In. erewrite mapM_length; eauto.
-             eapply split_and_sort_index_correct; eauto.
-           }
-         *)
+        -- destruct npis' as [|npi2 npis''].
+           ++ assert (Hnpisdim : pis_have_dimension (npi :: nil) n).
+              {
+                eapply make_npis_simplify_have_dimension; eauto.
+                specialize (Hprojnrl _ Hins). simpl in Hprojnrl; lia.
+              }
+              simpl in Hinside.
+              eapply (generate_preserves_sem d n npi (x :: env) mem5 mem6).
+              ** lia.
+              ** exact Hinside.
+              ** exact Hloop.
+              ** simpl. lia.
+              ** apply (proj2 (poly_nrl_def n npi.(PolyLang.pi_poly))).
+                 eapply pis_have_dimension_singleton; eauto.
+           ++ simpl in Hinside.
+              eapply IHd with (env := x :: env); simpl; eauto; try lia.
+              eapply make_npis_simplify_have_dimension; eauto.
+              specialize (Hprojnrl _ Hins). simpl in Hprojnrl; lia.
       * intros x; apply PolyLang.env_scan_proper.
       * intros x1 k1 x2 k2 m p H1 H2 H3 H4. rewrite Zrange_nth_error in *.
         enough (lb + Z.of_nat k1 = lb + Z.of_nat k2) by lia.
