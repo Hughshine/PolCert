@@ -236,7 +236,7 @@ polopt: .depend.extr driver/Version.ml FORCE
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -260,6 +260,18 @@ test-iss-pluto-suite: polopt polcert.ini
 
 test-iss-pluto-live-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-live-suite
+
+test-end-to-end-c-smoke: polopt
+	python3 tools/end_to_end_c/run_suite.py \
+		--polopt ./polopt \
+		--exclude-suffix _perf
+
+test-end-to-end-c-perf: polopt
+	python3 tools/end_to_end_c/run_suite.py \
+		--polopt ./polopt \
+		--output-root tests/end-to-end-c/out-perf \
+		--benchmark-repeats 3 \
+		--name-suffix _perf
 
 test-clean: 
 	$(MAKE) -f Makefile.test clean
