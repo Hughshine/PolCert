@@ -236,7 +236,7 @@ polopt: .depend.extr driver/Version.ml FORCE
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated test-end-to-end-all
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -272,6 +272,14 @@ test-end-to-end-c-perf: polopt
 		--output-root tests/end-to-end-c/out-perf \
 		--benchmark-repeats 3 \
 		--name-suffix _perf
+
+test-end-to-end-generated: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--output-root tests/end-to-end-generated/out \
+		--benchmark-repeats 1
+
+test-end-to-end-all: test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated
 
 test-clean: 
 	$(MAKE) -f Makefile.test clean

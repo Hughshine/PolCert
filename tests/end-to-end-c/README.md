@@ -27,6 +27,12 @@ There is also a heavier perf-oriented slice using the same kernels:
 These cases are not yet in default CI. They are a strengthening track for the
 artifact rather than part of the minimal regression gate.
 
+There is now also a generated-suite extension that operates over the
+materialized `tests/polopt-generated/cases/*` corpus. It synthesizes a complete
+C harness from each `.loop` pair (`input.loop`, `optimized.loop`) instead of
+relying on handwritten wrappers. This is the path intended to scale beyond the
+handwritten examples.
+
 ## Layout
 
 - `cases/<name>/meta.json`
@@ -53,6 +59,13 @@ For the heavier perf-oriented pair, run:
 opam exec -- make test-end-to-end-c-perf
 ```
 
+For the generated 62-case suite, first materialize the `polopt` outputs and
+then run:
+
+```bash
+opam exec -- make test-end-to-end-generated
+```
+
 Or run a single case manually:
 
 ```bash
@@ -76,3 +89,19 @@ It now records both:
 
 So if a future case uses tolerances, the numeric difference will still be
 reported instead of being silently hidden.
+
+## Generated suite boundary
+
+The generated suite under `tests/polopt-generated/cases/*` does not reuse the
+original benchmark C sources. Some of those sources are whole programs, but
+others are only `#pragma scop` fragments. To cover the entire generated corpus,
+the suite instead:
+
+- parses each `.loop`
+- synthesizes declarations and deterministic initialization
+- emits a checksum-based whole-program summary
+- compares baseline and optimized executables on that synthesized wrapper
+
+This makes it possible to cover the full generated corpus with a uniform
+end-to-end benchmark path, at the cost of using generated wrappers rather than
+the original benchmark driver code.
