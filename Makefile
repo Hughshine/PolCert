@@ -234,9 +234,11 @@ polcert: .depend.extr polcert.ini driver/Version.ml FORCE
 polopt: .depend.extr driver/Version.ml FORCE
 	$(MAKE) -f Makefile.extr polopt
 
+GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-imper lu matmul-seq matmul-seq3 mxv-seq mxv-seq3 polynomial tce
+
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated tune-end-to-end-generated test-end-to-end-all
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel tune-end-to-end-generated test-end-to-end-all
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -293,6 +295,27 @@ test-end-to-end-generated-heavy: test-polopt-loop-suite
 		--output-root tests/end-to-end-generated/out-heavy \
 		--tier heavy \
 		--benchmark-repeats 1
+
+test-end-to-end-generated-perf-parallel: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--polopt ./polopt \
+		--polopt-arg --parallel \
+		--output-root tests/end-to-end-generated/out-perf-parallel \
+		--tier perf \
+		--omp-threads 4 \
+		--benchmark-repeats 1
+
+test-end-to-end-generated-slow-perf-parallel: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--polopt ./polopt \
+		--polopt-arg --parallel \
+		--output-root tests/end-to-end-generated/out-perf-parallel-slow \
+		--tier perf \
+		--omp-threads 4 \
+		--benchmark-repeats 1 \
+		$(GENERATED_SLOW_CASES)
 
 test-end-to-end-generated: test-end-to-end-generated-perf
 

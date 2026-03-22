@@ -15,8 +15,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cases-root", default="tests/polopt-generated/cases")
+    ap.add_argument("--polopt")
+    ap.add_argument("--polopt-arg", action="append", default=[])
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
     ap.add_argument("--benchmark-repeats", type=int, default=1)
+    ap.add_argument("--timeout-seconds", type=int, default=300)
+    ap.add_argument("--omp-threads", type=int, default=1)
+    ap.add_argument("--require-parallelized", action="store_true")
     ap.add_argument("--tier", default=DEFAULT_TIER)
     ap.add_argument(
         "--param-config",
@@ -34,20 +39,31 @@ def main() -> int:
 
     failed: list[str] = []
     for case_dir in case_dirs:
+        cmd = [
+            sys.executable,
+            str(runner),
+            str(case_dir),
+            "--output-root",
+            args.output_root,
+            "--benchmark-repeats",
+            str(args.benchmark_repeats),
+            "--timeout-seconds",
+            str(args.timeout_seconds),
+            "--omp-threads",
+            str(args.omp_threads),
+            "--tier",
+            args.tier,
+            "--param-config",
+            args.param_config,
+        ]
+        if args.polopt:
+            cmd.extend(["--polopt", args.polopt])
+            for arg in args.polopt_arg:
+                cmd.append(f"--polopt-arg={arg}")
+            if args.require_parallelized:
+                cmd.append("--require-parallelized")
         proc = subprocess.run(
-            [
-                sys.executable,
-                str(runner),
-                str(case_dir),
-                "--output-root",
-                args.output_root,
-                "--benchmark-repeats",
-                str(args.benchmark_repeats),
-                "--tier",
-                args.tier,
-                "--param-config",
-                args.param_config,
-            ],
+            cmd,
             cwd=str(ROOT),
             text=True,
         )
