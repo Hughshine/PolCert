@@ -4,6 +4,8 @@ from __future__ import annotations
 import ast
 import dataclasses
 import hashlib
+import json
+import pathlib
 import re
 from typing import Iterable
 
@@ -23,6 +25,7 @@ CASE_VALUE_OVERRIDES: dict[str, dict[str, int]] = {
     "doitgen": {"N": 12},
     "pca": {"m": 32, "n": 64},
 }
+DEFAULT_TIER = "smoke"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -61,6 +64,18 @@ def default_param_value(max_rank: int) -> int:
     if max_rank == 2:
         return 96
     return 4096
+
+
+def load_param_tiers(path: pathlib.Path) -> dict[str, dict[str, dict[str, int]]]:
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    result: dict[str, dict[str, dict[str, int]]] = {}
+    for case_name, tier_map in data.items():
+        result[case_name] = {}
+        for tier, params in tier_map.items():
+            result[case_name][tier] = {name: int(value) for name, value in params.items()}
+    return result
 
 
 def parse_context_params(loop_text: str) -> list[str]:
@@ -233,6 +248,20 @@ def choose_params(case_name: str, params: list[str], max_rank: int) -> dict[str,
     base = default_param_value(max_rank)
     values = {name: base for name in params}
     values.update(CASE_VALUE_OVERRIDES.get(case_name, {}))
+    return values
+
+
+def choose_params_for_tier(
+    case_name: str,
+    params: list[str],
+    max_rank: int,
+    *,
+    tier: str = DEFAULT_TIER,
+    tier_overrides: dict[str, dict[str, dict[str, int]]] | None = None,
+) -> dict[str, int]:
+    values = choose_params(case_name, params, max_rank)
+    if tier_overrides is not None:
+        values.update(tier_overrides.get(case_name, {}).get(tier, {}))
     return values
 
 
@@ -417,11 +446,24 @@ def render_program_source(info: HarnessInfo, *, optimized: bool) -> str:
     return "\n".join(part for part in lines if part != "\n") + "\n"
 
 
-def build_harness(case_name: str, input_loop: str, optimized_loop: str) -> HarnessInfo:
+def build_harness(
+    case_name: str,
+    input_loop: str,
+    optimized_loop: str,
+    *,
+    tier: str = DEFAULT_TIER,
+    tier_overrides: dict[str, dict[str, dict[str, int]]] | None = None,
+) -> HarnessInfo:
     accesses = scan_array_accesses(input_loop)
     max_rank = max((len(access.exprs) for access in accesses), default=0)
     params_list = parse_context_params(input_loop)
-    params = choose_params(case_name, params_list, max_rank)
+    params = choose_params_for_tier(
+        case_name,
+        params_list,
+        max_rank,
+        tier=tier,
+        tier_overrides=tier_overrides,
+    )
     env = collect_var_ranges([input_loop], params)
     arrays = build_array_shapes([input_loop], env)
     loop_vars = collect_loop_vars([input_loop])

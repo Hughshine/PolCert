@@ -7,7 +7,7 @@ import pathlib
 import shutil
 import sys
 
-from generated_harness import build_harness, render_program_source
+from generated_harness import DEFAULT_TIER, build_harness, load_param_tiers, render_program_source
 from run_case import compare_numeric_outputs, compile_c, timed_run, write_text
 
 
@@ -19,6 +19,11 @@ def main() -> int:
     ap.add_argument("case_dir")
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
     ap.add_argument("--benchmark-repeats", type=int, default=1)
+    ap.add_argument("--tier", default=DEFAULT_TIER)
+    ap.add_argument(
+        "--param-config",
+        default="tests/end-to-end-generated/param_tiers.json",
+    )
     args = ap.parse_args()
 
     case_dir = pathlib.Path(args.case_dir).resolve()
@@ -30,7 +35,14 @@ def main() -> int:
 
     input_loop = (case_dir / "input.loop").read_text()
     optimized_loop = (case_dir / "optimized.loop").read_text()
-    info = build_harness(case_name, input_loop, optimized_loop)
+    tier_overrides = load_param_tiers((ROOT / args.param_config).resolve())
+    info = build_harness(
+        case_name,
+        input_loop,
+        optimized_loop,
+        tier=args.tier,
+        tier_overrides=tier_overrides,
+    )
 
     write_text(out_dir / "input.loop", input_loop)
     write_text(out_dir / "optimized.loop", optimized_loop)
@@ -84,6 +96,7 @@ def main() -> int:
         "speedup": speedup,
         "params": info.params,
         "openmp": info.openmp,
+        "tier": args.tier,
     }
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(

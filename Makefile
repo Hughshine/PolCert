@@ -236,7 +236,7 @@ polopt: .depend.extr driver/Version.ml FORCE
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated test-end-to-end-all
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated tune-end-to-end-generated test-end-to-end-all
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -273,13 +273,38 @@ test-end-to-end-c-perf: polopt
 		--benchmark-repeats 3 \
 		--name-suffix _perf
 
-test-end-to-end-generated: test-polopt-loop-suite
+test-end-to-end-generated-smoke: test-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--output-root tests/end-to-end-generated/out \
+		--tier smoke \
 		--benchmark-repeats 1
 
-test-end-to-end-all: test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated
+test-end-to-end-generated-perf: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--output-root tests/end-to-end-generated/out-perf \
+		--tier perf \
+		--benchmark-repeats 1
+
+test-end-to-end-generated-heavy: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--output-root tests/end-to-end-generated/out-heavy \
+		--tier heavy \
+		--benchmark-repeats 1
+
+test-end-to-end-generated: test-end-to-end-generated-perf
+
+tune-end-to-end-generated:
+	python3 tools/end_to_end_c/tune_generated_params.py \
+		--cases-root tests/polopt-generated/cases \
+		--param-config tests/end-to-end-generated/param_tiers.json \
+		--target-seconds 1.0 \
+		--max-seconds 12.0 \
+		--trial-timeout-seconds 8.0
+
+test-end-to-end-all: test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-perf
 
 test-clean: 
 	$(MAKE) -f Makefile.test clean
