@@ -238,7 +238,7 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel tune-end-to-end-generated test-end-to-end-all
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -282,10 +282,19 @@ test-end-to-end-generated-smoke: test-polopt-loop-suite
 		--tier smoke \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-perf: test-polopt-loop-suite
+test-end-to-end-generated-perf-default: test-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--output-root tests/end-to-end-generated/out-perf \
+		--tier perf \
+		--benchmark-repeats 1
+
+test-end-to-end-generated-perf: test-polopt-loop-suite
+	python3 tools/end_to_end_c/run_generated_suite.py \
+		--cases-root tests/polopt-generated/cases \
+		--polopt ./polopt \
+		--pipeline-config tests/end-to-end-generated/best_pipelines.json \
+		--output-root tests/end-to-end-generated/out-perf-best \
 		--tier perf \
 		--benchmark-repeats 1
 
@@ -316,6 +325,25 @@ test-end-to-end-generated-slow-perf-parallel: test-polopt-loop-suite
 		--omp-threads 4 \
 		--benchmark-repeats 1 \
 		$(GENERATED_SLOW_CASES)
+
+search-end-to-end-generated-best: test-polopt-loop-suite
+	python3 tools/end_to_end_c/search_best_generated_pipelines.py \
+		--cases-root tests/polopt-generated/cases \
+		--polopt ./polopt \
+		--pipeline-config tests/end-to-end-generated/pipeline_candidates.json \
+		--output-root tests/end-to-end-generated/search \
+		--summary-out tests/end-to-end-generated/best_pipelines.json \
+		--report-out tests/end-to-end-generated/best_pipeline_report.json \
+		--tier perf \
+		--benchmark-repeats 1
+
+report-end-to-end-generated-best:
+	python3 tools/end_to_end_c/generate_best_pipeline_table.py \
+		--summary-in tests/end-to-end-generated/best_pipelines.json \
+		--report-in tests/end-to-end-generated/best_pipeline_report.json \
+		--output tests/end-to-end-generated/BEST_PIPELINES.md
+
+test-end-to-end-generated-perf-refresh: search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf
 
 test-end-to-end-generated: test-end-to-end-generated-perf
 

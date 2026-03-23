@@ -114,6 +114,13 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - `make test-iss-pluto-live-suite`
 - the strict `polopt` benchmark suite
 
+The heavier generated end-to-end perf campaign is intentionally **not** part of
+default CI. Run it locally with:
+
+```sh
+opam exec -- make test-end-to-end-generated-perf-refresh
+```
+
 ## Documentation map
 
 - [`ENVIRONMENT.md`](./ENVIRONMENT.md): Docker setup, environment notes, and how to mirror the Dockerfile manually.
@@ -123,6 +130,8 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - [`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md): current user-facing mode matrix, including ISS and parallel status.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
 - [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.
+- [`tests/end-to-end-generated/README.md`](./tests/end-to-end-generated/README.md): wrapper-based end-to-end generated perf harness, best-pipeline search, and one-command local perf refresh.
+- [`tests/end-to-end-generated/BEST_PIPELINES.md`](./tests/end-to-end-generated/BEST_PIPELINES.md): 62-case best-pipeline table with speedups, flags, and brief explanations.
 - [`doc/`](./doc): additional design notes and analysis.
 
 ## Project structure

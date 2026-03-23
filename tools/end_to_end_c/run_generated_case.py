@@ -20,6 +20,8 @@ def main() -> int:
     ap.add_argument("case_dir")
     ap.add_argument("--polopt")
     ap.add_argument("--polopt-arg", action="append", default=[])
+    ap.add_argument("--pipeline-name", default="")
+    ap.add_argument("--use-input-loop-as-optimized", action="store_true")
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
     ap.add_argument("--benchmark-repeats", type=int, default=1)
     ap.add_argument("--timeout-seconds", type=int, default=300)
@@ -40,11 +42,13 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     input_loop = (case_dir / "input.loop").read_text()
-    if args.polopt:
+    if args.use_input_loop_as_optimized:
+        optimized_loop = input_loop
+    elif args.polopt:
         polopt = pathlib.Path(args.polopt).resolve()
         proc = run(
             [str(polopt), *args.polopt_arg, str(case_dir / "input.loop")],
-            cwd=ROOT,
+            cwd=polopt.parent,
             timeout=args.timeout_seconds,
         )
         write_text(out_dir / "polopt.stdout.txt", proc.stdout)
@@ -117,6 +121,8 @@ def main() -> int:
     )
     speedup = (baseline_best / optimized_best) if optimized_best > 0 else 0.0
     summary = {
+        "case": case_name,
+        "pipeline_name": args.pipeline_name,
         "result": "ok" if outputs_match else "fail",
         "outputs_match": outputs_match,
         "exact_match": exact_match,
@@ -131,14 +137,25 @@ def main() -> int:
         "openmp": info.openmp,
         "omp_threads": args.omp_threads,
         "parallelized_loop": parallelized_loop,
+        "optimized_loop_source": (
+            "input"
+            if args.use_input_loop_as_optimized
+            else ("polopt" if args.polopt else "cached_default_no_iss_affine_tiling")
+        ),
         "polopt_args": args.polopt_arg,
         "tier": args.tier,
     }
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
+            args.pipeline_name,
+            (
+                "input"
+                if args.use_input_loop_as_optimized
+                else ("polopt" if args.polopt else "cached_default_no_iss_affine_tiling")
+            ),
             str(outputs_match).lower(),
             str(exact_match).lower(),
             str(bool(numeric_summary["numeric_comparable"])).lower(),
@@ -163,7 +180,8 @@ def main() -> int:
     print(
         f"[E2E-GEN] {case_name}: ok "
         f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s "
-        f"speedup={speedup:.3f}x parallelized_loop={str(parallelized_loop).lower()} "
+        f"speedup={speedup:.3f}x pipeline={args.pipeline_name or 'adhoc'} "
+        f"parallelized_loop={str(parallelized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
         f"max_abs_diff={numeric_summary['max_abs_diff']} "
         f"max_rel_diff={numeric_summary['max_rel_diff']}"
