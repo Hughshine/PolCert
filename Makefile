@@ -267,14 +267,14 @@ test-iss-pluto-live-suite: polopt polcert.ini
 test-end-to-end-c-smoke: polopt
 	python3 tools/end_to_end_c/run_suite.py \
 		--polopt ./polopt \
-		matmul reverse_iss
+		--exclude-suffix _perf
 
 test-end-to-end-c-perf: polopt
 	python3 tools/end_to_end_c/run_suite.py \
 		--polopt ./polopt \
 		--output-root tests/end-to-end-c/out-perf \
 		--benchmark-repeats 3 \
-		matmul_perf reverse_iss_perf
+		--name-suffix _perf
 
 test-end-to-end-generated-smoke: test-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \

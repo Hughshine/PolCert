@@ -17,6 +17,8 @@ def main() -> int:
     ap.add_argument("--polopt", default="./polopt")
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--benchmark-repeats", type=int, default=3)
+    ap.add_argument("--name-suffix", default=None)
+    ap.add_argument("--exclude-suffix", default=None)
     ap.add_argument("cases", nargs="*")
     args = ap.parse_args()
 
@@ -26,6 +28,10 @@ def main() -> int:
         case_dirs = [cases_root / name for name in args.cases]
     else:
         case_dirs = sorted(path for path in cases_root.iterdir() if path.is_dir())
+        if args.name_suffix is not None:
+            case_dirs = [path for path in case_dirs if path.name.endswith(args.name_suffix)]
+        if args.exclude_suffix is not None:
+            case_dirs = [path for path in case_dirs if not path.name.endswith(args.exclude_suffix)]
 
     failed: list[str] = []
     for case_dir in case_dirs:

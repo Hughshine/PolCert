@@ -97,6 +97,62 @@ def list_from_meta(meta: dict[str, object], key: str) -> list[str]:
     return list(value)
 
 
+def float_from_meta(meta: dict[str, object], key: str, default: float = 0.0) -> float:
+    value = meta.get(key, default)
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{key} must be numeric")
+    return float(value)
+
+
+def try_parse_float_lines(text: str) -> list[float] | None:
+    vals: list[float] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            vals.append(float(stripped))
+        except ValueError:
+            return None
+    return vals
+
+
+def compare_numeric_outputs(
+    baseline_stdout: str,
+    optimized_stdout: str,
+) -> dict[str, object]:
+    baseline_vals = try_parse_float_lines(baseline_stdout)
+    optimized_vals = try_parse_float_lines(optimized_stdout)
+    if baseline_vals is None or optimized_vals is None:
+        return {
+            "numeric_comparable": False,
+            "value_count_match": False,
+            "max_abs_diff": None,
+            "max_rel_diff": None,
+        }
+    if len(baseline_vals) != len(optimized_vals):
+        return {
+            "numeric_comparable": True,
+            "value_count_match": False,
+            "max_abs_diff": None,
+            "max_rel_diff": None,
+        }
+    max_abs_diff = 0.0
+    max_rel_diff = 0.0
+    for b, o in zip(baseline_vals, optimized_vals):
+        abs_diff = abs(b - o)
+        scale = max(abs(b), abs(o), 1.0)
+        rel_diff = abs_diff / scale
+        max_abs_diff = max(max_abs_diff, abs_diff)
+        max_rel_diff = max(max_rel_diff, rel_diff)
+    return {
+        "numeric_comparable": True,
+        "value_count_match": True,
+        "max_abs_diff": max_abs_diff,
+        "max_rel_diff": max_rel_diff,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -121,6 +177,8 @@ def main() -> int:
     polopt_args = list_from_meta(meta, "polopt_args")
     benchmark = bool_from_meta(meta, "benchmark", default=True)
     openmp = bool_from_meta(meta, "openmp", default=False)
+    abs_tolerance = float_from_meta(meta, "abs_tolerance", default=0.0)
+    rel_tolerance = float_from_meta(meta, "rel_tolerance", default=0.0)
 
     template = template_path.read_text()
     input_loop = loop_path.read_text()
@@ -183,11 +241,27 @@ def main() -> int:
     )
     write_text(out_dir / "baseline.stdout.txt", baseline_stdout)
     write_text(out_dir / "optimized.stdout.txt", optimized_stdout)
-    outputs_match = baseline_stdout == optimized_stdout
+    exact_match = baseline_stdout == optimized_stdout
+    numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
+    numeric_within_tolerance = (
+        bool(numeric_summary["numeric_comparable"])
+        and bool(numeric_summary["value_count_match"])
+        and float(numeric_summary["max_abs_diff"]) <= abs_tolerance
+        and float(numeric_summary["max_rel_diff"]) <= rel_tolerance
+    )
+    outputs_match = exact_match or numeric_within_tolerance
     speedup = (baseline_best / optimized_best) if optimized_best > 0 else 0.0
     summary = {
         "result": "ok" if outputs_match else "fail",
         "outputs_match": outputs_match,
+        "exact_match": exact_match,
+        "numeric_comparable": numeric_summary["numeric_comparable"],
+        "value_count_match": numeric_summary["value_count_match"],
+        "max_abs_diff": numeric_summary["max_abs_diff"],
+        "max_rel_diff": numeric_summary["max_rel_diff"],
+        "abs_tolerance": abs_tolerance,
+        "rel_tolerance": rel_tolerance,
+        "numeric_within_tolerance": numeric_within_tolerance,
         "baseline_best_seconds": baseline_best,
         "optimized_best_seconds": optimized_best,
         "speedup": speedup,
@@ -196,9 +270,17 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             str(outputs_match).lower(),
+            str(exact_match).lower(),
+            str(bool(numeric_summary["numeric_comparable"])).lower(),
+            str(bool(numeric_summary["value_count_match"])).lower(),
+            numeric_summary["max_abs_diff"],
+            numeric_summary["max_rel_diff"],
+            abs_tolerance,
+            rel_tolerance,
+            str(numeric_within_tolerance).lower(),
             baseline_best,
             optimized_best,
             speedup,
@@ -211,7 +293,10 @@ def main() -> int:
 
     print(
         f"[E2E] {case_name}: ok "
-        f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x"
+        f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x "
+        f"exact_match={str(exact_match).lower()} "
+        f"max_abs_diff={numeric_summary['max_abs_diff']} "
+        f"max_rel_diff={numeric_summary['max_rel_diff']}"
     )
     return 0
 
