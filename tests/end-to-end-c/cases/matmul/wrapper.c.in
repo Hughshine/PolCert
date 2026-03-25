@@ -1,0 +1,49 @@
+#include <math.h>
+#include <stdio.h>
+
+#define M 96
+#define N 96
+#define K 96
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+static double A[M][K + 13];
+static double B[K][N + 13];
+static double C[M][N + 13];
+static const double alpha = 1.25;
+static const double beta = 0.75;
+
+static void init_data(void) {
+  for (int i = 0; i < M; ++i) {
+    for (int k = 0; k < K + 13; ++k) {
+      A[i][k] = ((double)((i + 3) * (k + 5) % 17) / 17.0);
+    }
+  }
+  for (int k = 0; k < K; ++k) {
+    for (int j = 0; j < N + 13; ++j) {
+      B[k][j] = ((double)((k + 7) * (j + 2) % 19) / 19.0);
+    }
+  }
+  for (int i = 0; i < M; ++i) {
+    for (int j = 0; j < N + 13; ++j) {
+      C[i][j] = ((double)((i + j + 11) % 23) / 23.0);
+    }
+  }
+}
+
+static double checksum(void) {
+  double sum = 0.0;
+  for (int i = 0; i < M; ++i) {
+    for (int j = 0; j < N; ++j) {
+      sum += C[i][j];
+    }
+  }
+  return sum;
+}
+
+int main(void) {
+  init_data();
+  /* POLCERT_KERNEL */
+  printf("%.17g\n", checksum());
+  return 0;
+}
