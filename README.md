@@ -49,6 +49,13 @@ opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-polopt-loop-suite
 ```
 
+The heavier generated end-to-end perf campaign is intentionally **not** part of
+default CI. Run it locally with:
+
+```sh
+opam exec -- make test-end-to-end-generated-perf-refresh
+```
+
 ## Two usage stories
 
 ### 1. I already have Pluto `before.scop` / `after.scop`
@@ -121,8 +128,12 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
 - [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the default and optional verified pipelines, fallback behavior, and the main normalization stages.
 - [`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md): current user-facing mode matrix, including ISS and parallel status.
+- [`doc/ARTIFACT_STRENGTHENING_PLAN.md`](./doc/ARTIFACT_STRENGTHENING_PLAN.md): next-step roadmap for whole-C benchmarking, `advect3d` codegen performance, Pluto bug studies, and diamond tiling.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
 - [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.
+- [`tests/end-to-end-c/README.md`](./tests/end-to-end-c/README.md): handwritten whole-C harness cases and smoke/perf commands.
+- [`tests/end-to-end-generated/README.md`](./tests/end-to-end-generated/README.md): generated whole-C perf harness, best-pipeline search, and one-command perf refresh.
+- [`tests/end-to-end-generated/BEST_PIPELINES.md`](./tests/end-to-end-generated/BEST_PIPELINES.md): 62-case best-pipeline table with flags, speedups, and per-case explanations.
 - [`doc/`](./doc): additional design notes and analysis.
 
 ## Project structure

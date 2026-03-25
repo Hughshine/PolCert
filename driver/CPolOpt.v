@@ -10,8 +10,6 @@ Module CoreOpt := PolOpt CPolIRs.
 
 Definition opt : CPolIRs.Loop.t -> imp CPolIRs.Loop.t := CoreOpt.Opt.
 
-Definition validate := CoreOpt.ValidatorCore.validate.
-
 Definition opt_poly (pol : CPolIRs.PolyLang.t) : imp CPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).
 

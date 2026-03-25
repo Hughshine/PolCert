@@ -159,8 +159,24 @@ Additional workflow:
 - `.github/workflows/full-tiling-suite.yml`
 - runs the strict `polopt` loop suite plus both ISS suites
 
+Not in default CI:
+
+- handwritten whole-C perf harness: `tests/end-to-end-c`
+- generated whole-C perf harness: `tests/end-to-end-generated`
+- one-command local refresh:
+  - `opam exec -- make test-end-to-end-generated-perf-refresh`
+
 ## Interface summary
 
 - affine / tiling validation: OpenScop
 - ISS validation: Pluto bridge / debug-dump inputs
 - parallel route: `polopt` CLI only, not `polcert`
+- generated whole-C perf harness:
+  - wrapper-based C benchmarking, not part of the default regression gate
+  - best-pipeline search currently chooses among:
+    - default no-ISS affine+tiling pipeline
+    - affine-only
+    - ISS
+    - parallel (`4` threads)
+    - ISS+parallel (`4` threads)
+    - identity fallback
