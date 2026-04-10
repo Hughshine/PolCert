@@ -30,6 +30,8 @@ In the normalized flag model, a user-visible run is built from:
   - `--iss`
 - an optional tiling-family selector on full tiled routes:
   - default band-aware ordinary tiling
+  - `--band-tiling-experiment` (compatibility alias for the default band-aware
+    ordinary tiling route)
   - `--legacy-generic-tiling`
   - `--second-level-tile`
   - `--diamond-tile`

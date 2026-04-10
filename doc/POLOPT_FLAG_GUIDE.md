@@ -377,8 +377,10 @@ The following cleanup plan would make the current model easier to maintain.
 ### 7.1 Keep route normalization as the single source of truth
 
 That refactor is already mostly done. The current route-spec style selection in
-[syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml) should remain the only place
-that decides:
+[syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml) already owns legality checking
+and normalized family selection, while CLI-side setup still performs some
+downstream mode wiring. The cleanup goal is to keep normalized selection in
+`SLoopRoute` as the single source of truth for:
 
 - optimize vs standalone validation
 - base route / structural extension
@@ -388,6 +390,8 @@ that decides:
 The next cleanup step is not "invent a route-spec", but rather:
 
 - keep parser/help text synchronized with the normalized selection
+- drive scheduler/setup helpers from the normalized selection instead of raw
+  booleans where practical
 - avoid duplicating legality rules in ad hoc command handlers
 - continue making rejection messages describe route-family conflicts directly
 

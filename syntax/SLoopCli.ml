@@ -55,7 +55,8 @@ let usage prog =
       "  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n";
       "                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n";
       "  --second-level-tile : experimental verified second-level tiling path; only valid on\n";
-      "                        full tiled optimization/validation routes\n";
+      "                        full tiled optimization routes and tiling witness/validation\n";
+      "                        actions\n";
       "  --diamond-tile    : experimental sequential checked diamond midpoint + tiling route;\n";
       "                      currently only supported on the default non-ISS full tiled path\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
