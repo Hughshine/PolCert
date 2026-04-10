@@ -5,15 +5,22 @@ import argparse
 import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 
 from generated_harness import DEFAULT_TIER, build_harness, load_param_tiers, render_program_source
-from run_case import compare_numeric_outputs, compile_c, extract_optimized_loop, fail_run, run, timed_run, write_text
+from runner_common import (
+    ROOT,
+    compile_c,
+    evaluate_outputs,
+    extract_optimized_loop,
+    fail_run,
+    recreate_dir,
+    run,
+    timed_run,
+    write_text,
+)
 
-
-ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEFAULT_ABS_TOLERANCE = 1e-9
 DEFAULT_REL_TOLERANCE = 1e-9
 
@@ -42,9 +49,7 @@ def main() -> int:
     case_dir = pathlib.Path(args.case_dir).resolve()
     case_name = case_dir.name
     out_dir = (ROOT / args.output_root / case_name).resolve()
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    recreate_dir(out_dir)
 
     input_loop = (case_dir / "input.loop").read_text()
     if args.use_input_loop_as_optimized:
@@ -173,15 +178,15 @@ def main() -> int:
     write_text(out_dir / "baseline.stdout.txt", baseline_stdout)
     write_text(out_dir / "optimized.stdout.txt", optimized_stdout)
 
-    exact_match = baseline_stdout == optimized_stdout
-    numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
-    numeric_within_tolerance = (
-        bool(numeric_summary["numeric_comparable"])
-        and bool(numeric_summary["value_count_match"])
-        and float(numeric_summary["max_abs_diff"]) <= args.abs_tolerance
-        and float(numeric_summary["max_rel_diff"]) <= args.rel_tolerance
+    comparison = evaluate_outputs(
+        baseline_stdout,
+        optimized_stdout,
+        abs_tolerance=args.abs_tolerance,
+        rel_tolerance=args.rel_tolerance,
     )
-    outputs_match = exact_match or numeric_within_tolerance
+    exact_match = bool(comparison["exact_match"])
+    numeric_within_tolerance = bool(comparison["numeric_within_tolerance"])
+    outputs_match = bool(comparison["outputs_match"])
     speedup = (baseline_best / optimized_best) if optimized_best > 0 else 0.0
     summary = {
         "case": case_name,
@@ -189,10 +194,10 @@ def main() -> int:
         "result": "ok" if outputs_match else "fail",
         "outputs_match": outputs_match,
         "exact_match": exact_match,
-        "numeric_comparable": numeric_summary["numeric_comparable"],
-        "value_count_match": numeric_summary["value_count_match"],
-        "max_abs_diff": numeric_summary["max_abs_diff"],
-        "max_rel_diff": numeric_summary["max_rel_diff"],
+        "numeric_comparable": comparison["numeric_comparable"],
+        "value_count_match": comparison["value_count_match"],
+        "max_abs_diff": comparison["max_abs_diff"],
+        "max_rel_diff": comparison["max_rel_diff"],
         "abs_tolerance": args.abs_tolerance,
         "rel_tolerance": args.rel_tolerance,
         "numeric_within_tolerance": numeric_within_tolerance,
@@ -224,12 +229,12 @@ def main() -> int:
             ),
             str(outputs_match).lower(),
             str(exact_match).lower(),
-            str(bool(numeric_summary["numeric_comparable"])).lower(),
-            str(bool(numeric_summary["value_count_match"])).lower(),
+            str(bool(comparison["numeric_comparable"])).lower(),
+            str(bool(comparison["value_count_match"])).lower(),
             str(parallelized_loop).lower(),
             args.omp_threads,
-            numeric_summary["max_abs_diff"],
-            numeric_summary["max_rel_diff"],
+            comparison["max_abs_diff"],
+            comparison["max_rel_diff"],
             args.abs_tolerance,
             args.rel_tolerance,
             str(numeric_within_tolerance).lower(),
@@ -241,8 +246,8 @@ def main() -> int:
     if not outputs_match:
         print(
             f"[E2E-GEN] {case_name}: output mismatch "
-            f"max_abs_diff={numeric_summary['max_abs_diff']} "
-            f"max_rel_diff={numeric_summary['max_rel_diff']}"
+            f"max_abs_diff={comparison['max_abs_diff']} "
+            f"max_rel_diff={comparison['max_rel_diff']}"
         )
         return 1
 
@@ -253,8 +258,8 @@ def main() -> int:
         f"parallelized_loop={str(parallelized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
         f"numeric_within_tolerance={str(numeric_within_tolerance).lower()} "
-        f"max_abs_diff={numeric_summary['max_abs_diff']} "
-        f"max_rel_diff={numeric_summary['max_rel_diff']}"
+        f"max_abs_diff={comparison['max_abs_diff']} "
+        f"max_rel_diff={comparison['max_rel_diff']}"
     )
     return 0
 

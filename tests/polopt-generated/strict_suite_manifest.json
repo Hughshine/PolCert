@@ -1,0 +1,11 @@
+{
+  "cases_dir": "tests/polopt-generated/cases",
+  "expect_total": 62,
+  "min_changed": 50,
+  "min_nontrivial_changed": 50,
+  "require_tiled": [
+    "matmul",
+    "matmul-init",
+    "wavefront"
+  ]
+}

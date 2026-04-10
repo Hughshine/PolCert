@@ -2,9 +2,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
+
+
+def load_manifest(path: pathlib.Path) -> dict[str, object]:
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise SystemExit(f"manifest must be a JSON object: {path}")
+    return data
 
 
 def parse_status(path: pathlib.Path) -> dict[str, str]:
@@ -111,6 +119,11 @@ def require_tiled(case_dir: pathlib.Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--manifest",
+        default=None,
+        help="JSON manifest with suite thresholds and required tiled cases",
+    )
+    parser.add_argument(
         "--cases-dir",
         default="tests/polopt-generated/cases",
         help="Directory containing materialized per-case outputs",
@@ -141,7 +154,35 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    cases_root = pathlib.Path(args.cases_dir)
+    manifest: dict[str, object] = {}
+    if args.manifest is not None:
+        manifest = load_manifest(pathlib.Path(args.manifest))
+
+    cases_dir = pathlib.Path(str(manifest.get("cases_dir", args.cases_dir)))
+    if args.cases_dir != parser.get_default("cases_dir"):
+        cases_dir = pathlib.Path(args.cases_dir)
+    expect_total = manifest.get("expect_total", args.expect_total)
+    if args.expect_total is not None:
+        expect_total = args.expect_total
+    min_changed = int(manifest.get("min_changed", args.min_changed))
+    if args.min_changed != parser.get_default("min_changed"):
+        min_changed = args.min_changed
+    min_nontrivial_changed = int(
+        manifest.get("min_nontrivial_changed", args.min_nontrivial_changed)
+    )
+    if args.min_nontrivial_changed != parser.get_default("min_nontrivial_changed"):
+        min_nontrivial_changed = args.min_nontrivial_changed
+    require_tiled_cases = manifest.get("require_tiled", args.require_tiled)
+    if args.require_tiled != parser.get_default("require_tiled"):
+        require_tiled_cases = args.require_tiled
+    if not isinstance(require_tiled_cases, list) or not all(
+        isinstance(case, str) for case in require_tiled_cases
+    ):
+        raise SystemExit("require_tiled must be a list of case names")
+    if expect_total is not None:
+        expect_total = int(expect_total)
+
+    cases_root = cases_dir
     if not cases_root.is_dir():
         raise SystemExit(f"cases dir not found: {cases_root}")
 
@@ -166,20 +207,20 @@ def main() -> None:
         else:
             failed.append(case_dir.name)
 
-    if args.expect_total is not None and total != args.expect_total:
-        raise SystemExit(f"expected {args.expect_total} cases, saw {total}")
+    if expect_total is not None and total != expect_total:
+        raise SystemExit(f"expected {expect_total} cases, saw {total}")
     if failed:
         raise SystemExit(f"failed cases: {', '.join(failed)}")
-    if changed < args.min_changed:
-        raise SystemExit(f"expected at least {args.min_changed} changed cases, saw {changed}")
-    if nontrivial_changed < args.min_nontrivial_changed:
+    if changed < min_changed:
+        raise SystemExit(f"expected at least {min_changed} changed cases, saw {changed}")
+    if nontrivial_changed < min_nontrivial_changed:
         raise SystemExit(
             "expected at least "
-            f"{args.min_nontrivial_changed} nontrivially changed cases, "
+            f"{min_nontrivial_changed} nontrivially changed cases, "
             f"saw {nontrivial_changed}"
         )
 
-    for case in args.require_tiled:
+    for case in require_tiled_cases:
         require_tiled(cases_root / case)
 
     print(f"total={total}")
@@ -190,8 +231,8 @@ def main() -> None:
     print(f"detected_tiled={len(detected_tiled)}")
     if detected_tiled:
         print(f"detected_tiled_cases={','.join(detected_tiled)}")
-    if args.require_tiled:
-        print(f"required_tiled_cases={','.join(args.require_tiled)}")
+    if require_tiled_cases:
+        print(f"required_tiled_cases={','.join(require_tiled_cases)}")
 
 
 if __name__ == "__main__":

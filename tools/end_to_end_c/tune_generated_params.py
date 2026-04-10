@@ -5,16 +5,14 @@ import argparse
 import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import time
 
 from generated_harness import DEFAULT_TIER, build_harness, load_param_tiers, render_program_source
-from run_case import compile_c, write_text
+from runner_common import ROOT, compile_c, recreate_dir, run, write_text
 
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
 FACTOR_CANDIDATES = {
     1: [1, 2, 4, 8, 16, 32, 64],
     2: [1, 2, 4, 8, 16, 32, 64, 128, 256],
@@ -71,9 +69,7 @@ def measure_case(
 ) -> tuple[float, bool]:
     input_loop, optimized_loop = load_case(case_dir)
     scratch = (ROOT / "tests/end-to-end-generated/out-tuning" / case_dir.name).resolve()
-    if scratch.exists():
-        shutil.rmtree(scratch)
-    scratch.mkdir(parents=True, exist_ok=True)
+    recreate_dir(scratch)
     overrides = dict(tier_overrides)
     case_entry = dict(overrides.get(case_dir.name, {}))
     case_entry[DEFAULT_TIER] = params
@@ -95,13 +91,10 @@ def measure_case(
     env.setdefault("OMP_NUM_THREADS", "1")
     started = time.perf_counter()
     try:
-        proc = subprocess.run(
+        proc = run(
             [str(exe)],
-            text=True,
-            capture_output=True,
             env=env,
             timeout=trial_timeout_seconds,
-            check=False,
         )
     except subprocess.TimeoutExpired:
         return 0.0, False

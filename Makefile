@@ -252,11 +252,7 @@ materialize-polopt-loop-suite: polopt
 
 test-polopt-loop-suite: materialize-polopt-loop-suite
 	python3 tests/polopt-generated/tools/check_polopt_cases.py \
-		--cases-dir tests/polopt-generated/cases \
-		--expect-total 62 \
-		--min-changed 50 \
-		--min-nontrivial-changed 50 \
-		--require-tiled matmul matmul-init wavefront
+		--manifest tests/polopt-generated/strict_suite_manifest.json
 
 test-polopt-generated: test-polopt-loop-suite
 

@@ -5,78 +5,23 @@ import argparse
 import json
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
-import time
 
 from loop_to_c import transpile_loop_text
+from runner_common import (
+    ROOT,
+    compile_c,
+    evaluate_outputs,
+    extract_optimized_loop,
+    fail_run,
+    recreate_dir,
+    run,
+    timed_run,
+    write_text,
+)
 
-
-ROOT = pathlib.Path(__file__).resolve().parents[2]
 KERNEL_MARKER = "/* POLCERT_KERNEL */"
-OPT_MARKER = "== Optimized Loop ==\n"
-
-
-def run(cmd: list[str], *, cwd: pathlib.Path | None = None, timeout: int | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd is not None else None,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        env=env,
-        check=False,
-    )
-
-
-def write_text(path: pathlib.Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
-
-
-def extract_optimized_loop(stdout: str) -> str:
-    start = stdout.find(OPT_MARKER)
-    if start < 0:
-        return stdout
-    start += len(OPT_MARKER)
-    end = stdout.find("\n== ", start)
-    if end < 0:
-        end = len(stdout)
-    return stdout[start:end].strip() + "\n"
-
-
-def compile_c(src: pathlib.Path, exe: pathlib.Path, *, openmp: bool) -> subprocess.CompletedProcess[str]:
-    cmd = ["cc", "-O3", "-std=c99", str(src), "-lm", "-o", str(exe)]
-    if openmp:
-        cmd.insert(1, "-fopenmp")
-    return run(cmd)
-
-
-def timed_run(
-    exe: pathlib.Path,
-    *,
-    repeats: int,
-    env: dict[str, str],
-    timeout_seconds: int | None = None,
-) -> tuple[str, float]:
-    best = None
-    stdout_ref = None
-    for _ in range(repeats):
-        started = time.perf_counter()
-        proc = run([str(exe)], env=env, timeout=timeout_seconds)
-        elapsed = time.perf_counter() - started
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"program failed: {exe}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-            )
-        if stdout_ref is None:
-            stdout_ref = proc.stdout
-        elif proc.stdout != stdout_ref:
-            raise RuntimeError(f"nondeterministic stdout for {exe}")
-        best = elapsed if best is None else min(best, elapsed)
-    assert stdout_ref is not None and best is not None
-    return stdout_ref, best
 
 
 def render_source(template: str, kernel_c: str) -> str:
@@ -110,76 +55,6 @@ def float_from_meta(meta: dict[str, object], key: str, default: float = 0.0) -> 
     return float(value)
 
 
-def try_parse_float_lines(text: str) -> list[float] | None:
-    vals: list[float] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            vals.append(float(stripped))
-        except ValueError:
-            return None
-    return vals
-
-
-def compare_numeric_outputs(
-    baseline_stdout: str,
-    optimized_stdout: str,
-) -> dict[str, object]:
-    baseline_vals = try_parse_float_lines(baseline_stdout)
-    optimized_vals = try_parse_float_lines(optimized_stdout)
-    if baseline_vals is None or optimized_vals is None:
-        return {
-            "numeric_comparable": False,
-            "value_count_match": False,
-            "max_abs_diff": None,
-            "max_rel_diff": None,
-        }
-    if len(baseline_vals) != len(optimized_vals):
-        return {
-            "numeric_comparable": True,
-            "value_count_match": False,
-            "max_abs_diff": None,
-            "max_rel_diff": None,
-        }
-    max_abs_diff = 0.0
-    max_rel_diff = 0.0
-    for b, o in zip(baseline_vals, optimized_vals):
-        abs_diff = abs(b - o)
-        scale = max(abs(b), abs(o), 1.0)
-        rel_diff = abs_diff / scale
-        max_abs_diff = max(max_abs_diff, abs_diff)
-        max_rel_diff = max(max_rel_diff, rel_diff)
-    return {
-        "numeric_comparable": True,
-        "value_count_match": True,
-        "max_abs_diff": max_abs_diff,
-        "max_rel_diff": max_rel_diff,
-    }
-
-
-def fail_run(
-    out_dir: pathlib.Path,
-    *,
-    which: str,
-    reason: str,
-    timeout_seconds: int | None = None,
-    message: str | None = None,
-) -> None:
-    lines = [
-        "result=fail",
-        "stage=run",
-        f"which={which}",
-        f"reason={reason}",
-    ]
-    if timeout_seconds is not None:
-        lines.append(f"timeout_seconds={timeout_seconds}")
-    if message is not None:
-        lines.append(f"message={message}")
-    write_text(out_dir / "status.txt", "\n".join(lines) + "\n")
-
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -196,9 +71,7 @@ def main() -> int:
     meta = load_meta(case_dir)
     case_name = case_dir.name
     out_dir = (ROOT / args.output_root / case_name).resolve()
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    recreate_dir(out_dir)
 
     loop_path = (case_dir / meta["loop"]).resolve()
     template_path = (case_dir / "wrapper.c.in").resolve()
@@ -334,25 +207,25 @@ def main() -> int:
         raise SystemExit(f"[{case_name}] optimized executable failed")
     write_text(out_dir / "baseline.stdout.txt", baseline_stdout)
     write_text(out_dir / "optimized.stdout.txt", optimized_stdout)
-    exact_match = baseline_stdout == optimized_stdout
-    numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
-    numeric_within_tolerance = (
-        bool(numeric_summary["numeric_comparable"])
-        and bool(numeric_summary["value_count_match"])
-        and float(numeric_summary["max_abs_diff"]) <= abs_tolerance
-        and float(numeric_summary["max_rel_diff"]) <= rel_tolerance
+    comparison = evaluate_outputs(
+        baseline_stdout,
+        optimized_stdout,
+        abs_tolerance=abs_tolerance,
+        rel_tolerance=rel_tolerance,
     )
-    outputs_match = exact_match or numeric_within_tolerance
+    exact_match = bool(comparison["exact_match"])
+    numeric_within_tolerance = bool(comparison["numeric_within_tolerance"])
+    outputs_match = bool(comparison["outputs_match"])
     speedup = (baseline_best / optimized_best) if optimized_best > 0 else 0.0
     summary = {
         "result": "ok" if outputs_match else "fail",
         "outputs_match": outputs_match,
         "exact_match": exact_match,
         "parallelized_loop": parallelized_loop,
-        "numeric_comparable": numeric_summary["numeric_comparable"],
-        "value_count_match": numeric_summary["value_count_match"],
-        "max_abs_diff": numeric_summary["max_abs_diff"],
-        "max_rel_diff": numeric_summary["max_rel_diff"],
+        "numeric_comparable": comparison["numeric_comparable"],
+        "value_count_match": comparison["value_count_match"],
+        "max_abs_diff": comparison["max_abs_diff"],
+        "max_rel_diff": comparison["max_rel_diff"],
         "abs_tolerance": abs_tolerance,
         "rel_tolerance": rel_tolerance,
         "numeric_within_tolerance": numeric_within_tolerance,
@@ -369,10 +242,10 @@ def main() -> int:
             str(outputs_match).lower(),
             str(exact_match).lower(),
             str(parallelized_loop).lower(),
-            str(bool(numeric_summary["numeric_comparable"])).lower(),
-            str(bool(numeric_summary["value_count_match"])).lower(),
-            numeric_summary["max_abs_diff"],
-            numeric_summary["max_rel_diff"],
+            str(bool(comparison["numeric_comparable"])).lower(),
+            str(bool(comparison["value_count_match"])).lower(),
+            comparison["max_abs_diff"],
+            comparison["max_rel_diff"],
             abs_tolerance,
             rel_tolerance,
             str(numeric_within_tolerance).lower(),
@@ -391,8 +264,8 @@ def main() -> int:
         f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x "
         f"parallelized_loop={str(parallelized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
-        f"max_abs_diff={numeric_summary['max_abs_diff']} "
-        f"max_rel_diff={numeric_summary['max_rel_diff']}"
+        f"max_abs_diff={comparison['max_abs_diff']} "
+        f"max_rel_diff={comparison['max_rel_diff']}"
     )
     return 0
 
