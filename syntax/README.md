@@ -112,5 +112,12 @@ Current strict proved-path status:
 
 - total generated inputs: `62`
 - succeeded: `62`
-- changed: `52`
-- unchanged: `10`
+- changed: `59`
+- unchanged: `3`
+- nontrivially changed: `59`
+- automatically detected tiled outputs: `39`
+
+These are the same strict-suite numbers reported in [../README.md](../README.md)
+and [../POLOPT.md](../POLOPT.md). The CI gate itself is driven by
+`tests/polopt-generated/strict_suite_manifest.json`; the prose here is just the
+current observed result on that manifest-gated corpus.

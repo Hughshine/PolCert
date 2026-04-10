@@ -11,7 +11,9 @@ If you already have OpenScop files and only want validation, start with [`POLCER
 For a concise note on the current verified pipeline family, see
 [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md). For the current
 feature matrix, including ISS and parallel status, see
-[`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md).
+[`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md). For the user-facing flag
+model and why some combinations are rejected, see
+[`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md).
 
 ## Environment and setup
 
@@ -102,7 +104,8 @@ It also exposes:
   - direct affine validation
   - phase-aligned tiling validation
   - ISS bridge / debug-dump validation modes
-- The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
+- The strict proved-path `polopt` regression suite is manifest-gated in CI and
+  currently succeeds on all generated benchmark inputs:
   - total inputs: `62`
   - succeeded: `62`
   - changed: `59`
@@ -139,6 +142,7 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
 - [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the default and optional verified pipelines, fallback behavior, and the main normalization stages.
 - [`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md): current user-facing mode matrix, including ISS and parallel status.
+- [`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md): route-family flag model, legal combinations, and why rejected combinations are rejected.
 - [`doc/ARTIFACT_STRENGTHENING_PLAN.md`](./doc/ARTIFACT_STRENGTHENING_PLAN.md): next-step roadmap for whole-C benchmarking, `advect3d` codegen performance, Pluto bug studies, and diamond tiling.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
 - [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.

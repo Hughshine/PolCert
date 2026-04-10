@@ -47,6 +47,10 @@ validated pipeline found so far among the currently tracked candidates:
 Search prefers a non-`identity` pipeline whenever it yields a real positive
 speedup. `identity` is only kept as a last-resort fallback.
 
+The `parallel_4` and `iss_parallel_4` candidates are only eligible when the
+generated route emits a real verified `parallel for`. A sequential fallback on
+those command lines is not allowed to win the "parallel" slots.
+
 The generated end-to-end perf flow is intentionally **not** part of default CI.
 It is heavier than the normal regression suite and is meant for local artifact
 evaluation.

@@ -168,6 +168,10 @@ Not in default CI:
 - one-command local refresh:
   - `opam exec -- make test-end-to-end-generated-perf-refresh`
 
+The strict `.loop -> .loop` gate is CI-enforced. The whole-C harnesses are
+artifact-strengthening workflows and local perf campaigns, not default
+correctness gates.
+
 ## Interface summary
 
 - affine / tiling validation: OpenScop
@@ -182,3 +186,5 @@ Not in default CI:
     - parallel (`4` threads)
     - ISS+parallel (`4` threads)
     - identity fallback
+  - the `parallel` candidates are only eligible when they emit a real verified
+    `parallel for`; sequential fallbacks are not allowed to win those slots

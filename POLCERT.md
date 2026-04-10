@@ -27,6 +27,10 @@ There are now four common validation modes:
    - `--iss-bridge`
    - `--iss-debug-dumps`
 
+This CLI surface is about the affine / ordinary-tiling OpenScop story plus the
+ISS bridge story. The newer diamond pipeline and parallel codegen routes live
+on the `polopt` side; they are not exposed as separate `polcert` user modes.
+
 ## CLI shapes
 
 OpenScop modes:
@@ -95,6 +99,10 @@ For the phase-aligned tiling route, the common workflow is instead:
 3. validate either:
    - only `mid -> after` with `--kind tiling`
    - or the full `before, mid, after` phase-aligned route
+
+In other words, `polcert` still validates the OpenScop-facing affine/tiling
+artifacts directly. It does not currently expose the internal post-tile/final
+affine split that the diamond `polopt` harness reasons about.
 
 ISS is different:
 

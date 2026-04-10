@@ -43,6 +43,7 @@ For a concise summary of the current verified pipeline shape and the role of
 
 - [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md)
 - [doc/FEATURE_STATUS.md](./doc/FEATURE_STATUS.md)
+- [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
 
 ## Pluto configuration used by `polopt`
 
@@ -387,6 +388,8 @@ Interpretation:
 - `--parallel-current d` is theorem-aligned and uses the proved explicit-dimension parallel pipeline
 - `--parallel` / `--parallel-strict` are still the experimental Pluto-hinted parallel routes
 - none of the parallel routes change the default `Opt_correct` theorem object; they have their own proof objects
+- the route-family flag model itself is documented in
+  [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
 
 ## Operational modes
 
@@ -614,20 +617,17 @@ Current generated `perf` snapshot:
 
 - cases: `62`
 - selected-best results with `exact_match=true`: `62 / 62`
-- best-pipeline distribution:
-  - `parallel_4`: `20`
-  - `iss_parallel_4`: `9`
-  - `affine_only`: `9`
-  - `identity`: `9`
-  - `default no-ISS affine+tiling pipeline`: `8`
-  - `iss`: `7`
+- the concrete current distribution is reported in:
+  - [tests/end-to-end-generated/BEST_PIPELINES.md](./tests/end-to-end-generated/BEST_PIPELINES.md)
+  - `tests/end-to-end-generated/best_pipeline_report.json`
 
 Interpretation:
 
 - `parallelized_loop=true` in the report means the chosen route emitted a real
   verified `parallel for`
-- `parallelized_loop=false` on a `parallel_*` route means that route still won,
-  but only as a better sequential schedule
+- `parallel_4` / `iss_parallel_4` are only eligible best-pipeline candidates
+  when they emit a real `parallel for`; purely sequential fallbacks are not
+  allowed to win the "parallel" slots anymore
 - `iss` / `iss_parallel_4` means the `--iss` route measured best; it does
   **not** by itself prove that Pluto actually performed ISS statement splitting
   on that generated case
@@ -644,6 +644,10 @@ visible during the run instead of appearing to hang silently.
 
 Compiler / CLI entry:
 - [syntax/SLoopMain.ml](./syntax/SLoopMain.ml)
+- [syntax/SLoopCli.ml](./syntax/SLoopCli.ml)
+- [syntax/SLoopRoute.ml](./syntax/SLoopRoute.ml)
+- [syntax/SLoopDispatch.ml](./syntax/SLoopDispatch.ml)
+- [syntax/SLoopProfile.ml](./syntax/SLoopProfile.ml)
 
 Frontend bridge to the verified optimizer:
 - [syntax/SPolOpt.v](./syntax/SPolOpt.v)
