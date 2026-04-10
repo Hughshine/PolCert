@@ -50,6 +50,16 @@ let pluto_executable () =
       else
         "pluto"
 
+let resolve_repo_file rel =
+  let candidates =
+    [ rel;
+      Filename.concat (Sys.getcwd ()) rel;
+      Filename.concat "/polcert" rel ]
+  in
+  match List.find_opt Sys.file_exists candidates with
+  | Some path -> path
+  | None -> failwith ("cannot locate repository file " ^ rel)
+
 let read_file path =
   let ic = open_in path in
   let buf = Buffer.create 4096 in
@@ -94,6 +104,10 @@ let run_pluto_scop flags inscop =
              (Printf.sprintf "scheduler failed with exit code %d" exc))
       ) else
         Err (coqstring_of_camlstring ("scheduler failed"))
+
+let text_has_line tag text =
+  String.split_on_char '\n' text
+  |> List.exists (fun line -> String.trim line = tag)
 
 let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
   let inscop_file = tmp_file ".scop" in
@@ -284,12 +298,34 @@ let run_pluto_bridge flags inscop =
   in
   let exc = command ?stdout:(Some stdout_file) cmd in
   let output = read_file stdout_file in
-  if exc = 0 then
-    Okk output
-  else
+  if exc <> 0 then
     Err
       (coqstring_of_camlstring
-         (Printf.sprintf "ISS bridge export failed with exit code %d" exc))
+         (Printf.sprintf "ISS debug dump export failed with exit code %d" exc))
+  else if not (text_has_line "After ISS" output) then
+    Okk output
+  else
+    try
+      let bridge_tool = resolve_repo_file "tools/iss/pluto_iss_check.py" in
+      let bridge_stdout = tmp_file ".bridge.stdout" in
+      let bridge_cmd =
+        [ "python3";
+          bridge_tool;
+          "--emit-bridge-from-combined";
+          stdout_file ]
+      in
+      let bridge_exc = command ?stdout:(Some bridge_stdout) bridge_cmd in
+      let bridge_output = read_file bridge_stdout in
+      if bridge_exc = 0 then
+        Okk bridge_output
+      else
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf
+                "ISS bridge recovery from Pluto debug dump failed with exit code %d"
+                bridge_exc))
+    with Failure msg ->
+      Err (coqstring_of_camlstring msg)
 
 let affine_only_flags =
   [
@@ -374,7 +410,7 @@ let iss_identity_bridge_flags =
   [
     "--iss";
     "--identity";
-    "--dump-iss-bridge";
+    "--moredebug";
     "--silent";
   ]
 
