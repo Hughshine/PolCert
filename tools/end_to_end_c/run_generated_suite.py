@@ -35,6 +35,12 @@ def resolve_pipeline_name(case_name: str, cfg: dict | None, explicit_default: st
     return cfg.get("default_pipeline")
 
 
+def pipeline_requires_parallelized(spec: dict) -> bool:
+    if spec.get("require_parallelized", False):
+        return True
+    return "--parallel" in spec.get("polopt_args", [])
+
+
 def append_pipeline_args(cmd: list[str], spec: dict, polopt: str | None, require_parallelized: bool) -> None:
     source = spec.get("source", "cached_default_no_iss_affine_tiling")
     if source == "input":
@@ -45,7 +51,7 @@ def append_pipeline_args(cmd: list[str], spec: dict, polopt: str | None, require
         cmd.extend(["--polopt", polopt])
         for arg in spec.get("polopt_args", []):
             cmd.append(f"--polopt-arg={arg}")
-        if require_parallelized or spec.get("require_parallelized", False):
+        if require_parallelized or pipeline_requires_parallelized(spec):
             cmd.append("--require-parallelized")
 
 

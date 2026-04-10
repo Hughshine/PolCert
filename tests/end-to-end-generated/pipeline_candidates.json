@@ -36,6 +36,7 @@
       "polopt_args": [
         "--parallel"
       ],
+      "require_parallelized": true,
       "source": "polopt"
     },
     {
@@ -45,6 +46,7 @@
         "--iss",
         "--parallel"
       ],
+      "require_parallelized": true,
       "source": "polopt"
     }
   ]

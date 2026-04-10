@@ -15,6 +15,12 @@ def load_json(path: pathlib.Path) -> dict:
     return json.loads(path.read_text())
 
 
+def pipeline_requires_parallelized(spec: dict) -> bool:
+    if spec.get("require_parallelized", False):
+        return True
+    return "--parallel" in spec.get("polopt_args", [])
+
+
 def run_candidate(
     runner: pathlib.Path,
     case_dir: pathlib.Path,
@@ -55,7 +61,7 @@ def run_candidate(
         cmd.extend(["--polopt", polopt])
         for arg in spec.get("polopt_args", []):
             cmd.append(f"--polopt-arg={arg}")
-        if spec.get("require_parallelized", False):
+        if pipeline_requires_parallelized(spec):
             cmd.append("--require-parallelized")
 
     subprocess.run(cmd, cwd=str(ROOT), check=False, text=True)
@@ -112,8 +118,11 @@ def main() -> int:
             else:
                 data = {"result": "missing_summary"}
             data["pipeline_name"] = pipeline_name
+            data["requires_parallelized"] = pipeline_requires_parallelized(spec)
             entries.append(data)
-            if data.get("result") == "ok":
+            if data.get("result") == "ok" and (
+                not data["requires_parallelized"] or bool(data.get("parallelized_loop"))
+            ):
                 successful.append(data)
         preferred = [
             data

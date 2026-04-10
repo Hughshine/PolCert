@@ -26,6 +26,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1242630871745174,
         "tier": "perf",
@@ -51,6 +52,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0745669001401723,
         "tier": "perf",
@@ -78,6 +80,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9638678799764718,
         "tier": "perf",
@@ -105,6 +108,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9518380459830169,
         "tier": "perf",
@@ -132,6 +136,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0864928020373605,
         "tier": "perf",
@@ -160,6 +165,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9582875072146742,
         "tier": "perf",
@@ -193,6 +199,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9748893329852262,
         "tier": "perf",
@@ -217,6 +224,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.38761090989246594,
         "tier": "perf",
@@ -243,6 +251,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.39991703573296433,
         "tier": "perf",
@@ -269,6 +278,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.3984117662272108,
         "tier": "perf",
@@ -295,6 +305,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.4058866197780221,
         "tier": "perf",
@@ -322,6 +333,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.4165643445938581,
         "tier": "perf",
@@ -330,9 +342,9 @@
     ]
   },
   "advect3d": {
-    "best_optimized_best_seconds": 1.3073142529901816,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.2247571816305218,
+    "best_optimized_best_seconds": 1.3325571219902486,
+    "best_pipeline": "iss",
+    "best_speedup": 1.1971874973884664,
     "candidates": [
       {
         "baseline_best_seconds": 1.5617627540050307,
@@ -356,6 +368,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1335893398806047,
         "tier": "perf",
@@ -381,6 +394,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6479720678493626,
         "tier": "perf",
@@ -408,6 +422,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.554649106526908,
         "tier": "perf",
@@ -435,6 +450,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1971874973884664,
         "tier": "perf",
@@ -462,6 +478,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.2247571816305218,
         "tier": "perf",
@@ -490,6 +507,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.2177688835429505,
         "tier": "perf",
@@ -523,6 +541,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0207702689588645,
         "tier": "perf",
@@ -547,6 +566,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.2956739653064395,
         "tier": "perf",
@@ -573,6 +593,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 4.0321343922571335,
         "tier": "perf",
@@ -599,6 +620,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.463164651058473,
         "tier": "perf",
@@ -625,6 +647,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.492652468578723,
         "tier": "perf",
@@ -652,6 +675,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.32616801510504,
         "tier": "perf",
@@ -685,6 +709,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.244869746348316,
         "tier": "perf",
@@ -709,6 +734,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 2.079936132519139,
         "tier": "perf",
@@ -735,6 +761,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3386277896900434,
         "tier": "perf",
@@ -761,6 +788,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 2.3655564706270424,
         "tier": "perf",
@@ -787,6 +815,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.886281028523951,
         "tier": "perf",
@@ -814,6 +843,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.6974373260496485,
         "tier": "perf",
@@ -846,6 +876,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.976832380188742,
         "tier": "perf",
@@ -869,6 +900,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4662180679956824,
         "tier": "perf",
@@ -894,6 +926,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9040928807622308,
         "tier": "perf",
@@ -919,6 +952,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4259186121811935,
         "tier": "perf",
@@ -944,6 +978,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.3482774169344076,
         "tier": "perf",
@@ -970,6 +1005,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.361110280240365,
         "tier": "perf",
@@ -1003,6 +1039,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9972749368456005,
         "tier": "perf",
@@ -1027,6 +1064,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.4933271792454614,
         "tier": "perf",
@@ -1053,6 +1091,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 4.274307491899075,
         "tier": "perf",
@@ -1079,6 +1118,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.4590939025950744,
         "tier": "perf",
@@ -1105,6 +1145,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.5310185996089727,
         "tier": "perf",
@@ -1132,6 +1173,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.394420532315744,
         "tier": "perf",
@@ -1140,9 +1182,9 @@
     ]
   },
   "dct": {
-    "best_optimized_best_seconds": 3.619212891004281,
-    "best_pipeline": "iss_parallel_4",
-    "best_speedup": 1.0150226385211325,
+    "best_optimized_best_seconds": 3.7102897420118097,
+    "best_pipeline": "identity",
+    "best_speedup": 0.9943664989881048,
     "candidates": [
       {
         "baseline_best_seconds": 3.689387820995762,
@@ -1164,6 +1206,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9943664989881048,
         "tier": "perf",
@@ -1187,6 +1230,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5646930140880013,
         "tier": "perf",
@@ -1212,6 +1256,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5881149412962434,
         "tier": "perf",
@@ -1237,6 +1282,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5990336120480736,
         "tier": "perf",
@@ -1262,6 +1308,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.015646841688979,
         "tier": "perf",
@@ -1288,6 +1335,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0150226385211325,
         "tier": "perf",
@@ -1320,6 +1368,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0295059011263246,
         "tier": "perf",
@@ -1343,6 +1392,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.237221937343367,
         "tier": "perf",
@@ -1368,6 +1418,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0293900899466513,
         "tier": "perf",
@@ -1393,6 +1444,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2783915046664556,
         "tier": "perf",
@@ -1418,6 +1470,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.967912483570437,
         "tier": "perf",
@@ -1444,6 +1497,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.327220658324429,
         "tier": "perf",
@@ -1476,6 +1530,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0520779343395903,
         "tier": "perf",
@@ -1499,6 +1554,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0550399131482109,
         "tier": "perf",
@@ -1524,6 +1580,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0203240698153764,
         "tier": "perf",
@@ -1549,6 +1606,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1114403742797325,
         "tier": "perf",
@@ -1574,6 +1632,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.442837661892843,
         "tier": "perf",
@@ -1581,6 +1640,7 @@
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
@@ -1610,6 +1670,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0571876109493763,
         "tier": "perf",
@@ -1633,6 +1694,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2095742907956513,
         "tier": "perf",
@@ -1658,6 +1720,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0339567837932788,
         "tier": "perf",
@@ -1683,6 +1746,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9408003203652195,
         "tier": "perf",
@@ -1708,6 +1772,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.082022816843718,
         "tier": "perf",
@@ -1715,6 +1780,7 @@
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
@@ -1745,6 +1811,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0513483749519346,
         "tier": "perf",
@@ -1769,6 +1836,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.4710548797198323,
         "tier": "perf",
@@ -1795,6 +1863,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.44454215841346956,
         "tier": "perf",
@@ -1821,6 +1890,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.46193748576145044,
         "tier": "perf",
@@ -1847,6 +1917,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.4601233255096031,
         "tier": "perf",
@@ -1874,6 +1945,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.46143519008173595,
         "tier": "perf",
@@ -1908,6 +1980,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0213271493922138,
         "tier": "perf",
@@ -1933,6 +2006,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.10496800366316242,
         "tier": "perf",
@@ -1960,6 +2034,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.07689806652422046,
         "tier": "perf",
@@ -1987,6 +2062,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.0963337755993158,
         "tier": "perf",
@@ -2014,6 +2090,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.09766584464033141,
         "tier": "perf",
@@ -2042,6 +2119,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.105936115024537,
         "tier": "perf",
@@ -2050,9 +2128,9 @@
     ]
   },
   "floyd": {
-    "best_optimized_best_seconds": 1.7515556670114165,
-    "best_pipeline": "iss_parallel_4",
-    "best_speedup": 1.0734162027575251,
+    "best_optimized_best_seconds": 1.8158717720070854,
+    "best_pipeline": "iss",
+    "best_speedup": 1.0423391630344443,
     "candidates": [
       {
         "baseline_best_seconds": 1.7976749850058695,
@@ -2074,6 +2152,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9913602592189181,
         "tier": "perf",
@@ -2097,6 +2176,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9998364435180913,
         "tier": "perf",
@@ -2122,6 +2202,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.974632415305207,
         "tier": "perf",
@@ -2147,6 +2228,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0423391630344443,
         "tier": "perf",
@@ -2172,6 +2254,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0116717960275696,
         "tier": "perf",
@@ -2198,6 +2281,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0734162027575251,
         "tier": "perf",
@@ -2230,6 +2314,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0722505948043124,
         "tier": "perf",
@@ -2253,6 +2338,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9253219499851595,
         "tier": "perf",
@@ -2278,6 +2364,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7732558876345724,
         "tier": "perf",
@@ -2303,6 +2390,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7615250908567793,
         "tier": "perf",
@@ -2328,6 +2416,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8829484718844864,
         "tier": "perf",
@@ -2354,6 +2443,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8296740846913283,
         "tier": "perf",
@@ -2384,6 +2474,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0545534494237998,
         "tier": "perf",
@@ -2405,6 +2496,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.988307228206838,
         "tier": "perf",
@@ -2428,6 +2520,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9900283129153116,
         "tier": "perf",
@@ -2451,6 +2544,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1583309837442344,
         "tier": "perf",
@@ -2474,6 +2568,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7694238039672149,
         "tier": "perf",
@@ -2498,6 +2593,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8231933470878349,
         "tier": "perf",
@@ -2528,6 +2624,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9178598414518353,
         "tier": "perf",
@@ -2549,6 +2646,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.129043826647209,
         "tier": "perf",
@@ -2572,6 +2670,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3431740986261118,
         "tier": "perf",
@@ -2595,6 +2694,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1431437699045055,
         "tier": "perf",
@@ -2618,6 +2718,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8276576809178718,
         "tier": "perf",
@@ -2642,6 +2743,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8961919593444091,
         "tier": "perf",
@@ -2672,6 +2774,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.855591836262065,
         "tier": "perf",
@@ -2693,6 +2796,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9539763812883236,
         "tier": "perf",
@@ -2716,6 +2820,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.6364297890793633,
         "tier": "perf",
@@ -2739,6 +2844,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.549001248760413,
         "tier": "perf",
@@ -2762,6 +2868,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.6959986925733759,
         "tier": "perf",
@@ -2786,6 +2893,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9608519410180497,
         "tier": "perf",
@@ -2794,9 +2902,9 @@
     ]
   },
   "fusion4": {
-    "best_optimized_best_seconds": 0.6529817910050042,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.5584742101835605,
+    "best_optimized_best_seconds": 0.6807749760046136,
+    "best_pipeline": "default_no_iss_affine_tiling",
+    "best_speedup": 1.3148987368208787,
     "candidates": [
       {
         "baseline_best_seconds": 1.0276049270032672,
@@ -2816,6 +2924,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.749133591527617,
         "tier": "perf",
@@ -2837,6 +2946,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3148987368208787,
         "tier": "perf",
@@ -2860,6 +2970,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.8972419627219219,
         "tier": "perf",
@@ -2883,6 +2994,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9894162740562669,
         "tier": "perf",
@@ -2906,6 +3018,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.5584742101835605,
         "tier": "perf",
@@ -2930,6 +3043,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8893674550471479,
         "tier": "perf",
@@ -2962,6 +3076,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9925737633724708,
         "tier": "perf",
@@ -2985,6 +3100,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0336717828811985,
         "tier": "perf",
@@ -3010,6 +3126,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4258597120166572,
         "tier": "perf",
@@ -3035,6 +3152,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9366880749433686,
         "tier": "perf",
@@ -3060,6 +3178,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9356357644340972,
         "tier": "perf",
@@ -3086,6 +3205,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.4266328717998724,
         "tier": "perf",
@@ -3118,6 +3238,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0254171784217885,
         "tier": "perf",
@@ -3141,6 +3262,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0718269294561913,
         "tier": "perf",
@@ -3166,6 +3288,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1253453189122267,
         "tier": "perf",
@@ -3191,6 +3314,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0598406782814518,
         "tier": "perf",
@@ -3198,10 +3322,12 @@
       },
       {
         "pipeline_name": "parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
@@ -3232,6 +3358,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0895857604839316,
         "tier": "perf",
@@ -3256,6 +3383,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1143445577237643,
         "tier": "perf",
@@ -3282,6 +3410,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0087172256711823,
         "tier": "perf",
@@ -3308,6 +3437,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0754936154188484,
         "tier": "perf",
@@ -3334,6 +3464,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8918485150413001,
         "tier": "perf",
@@ -3361,6 +3492,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.1463825695072605,
         "tier": "perf",
@@ -3391,6 +3523,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.38314933565481,
         "tier": "perf",
@@ -3412,6 +3545,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1627314176298684,
         "tier": "perf",
@@ -3435,6 +3569,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.131348809884725,
         "tier": "perf",
@@ -3458,6 +3593,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1747258084594219,
         "tier": "perf",
@@ -3481,6 +3617,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9374777938531593,
         "tier": "perf",
@@ -3505,6 +3642,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7763806250272866,
         "tier": "perf",
@@ -3537,6 +3675,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0038528460524982,
         "tier": "perf",
@@ -3560,6 +3699,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 4.039554209965526,
         "tier": "perf",
@@ -3585,6 +3725,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.995197448476546,
         "tier": "perf",
@@ -3610,6 +3751,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.908595872635596,
         "tier": "perf",
@@ -3635,6 +3777,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 14.3111975232129,
         "tier": "perf",
@@ -3661,6 +3804,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 14.534095255817157,
         "tier": "perf",
@@ -3693,6 +3837,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4751655369806893,
         "tier": "perf",
@@ -3716,6 +3861,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4866127421374125,
         "tier": "perf",
@@ -3741,6 +3887,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.472074413880187,
         "tier": "perf",
@@ -3766,6 +3913,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.99906277696708,
         "tier": "perf",
@@ -3791,6 +3939,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.9603478567669117,
         "tier": "perf",
@@ -3817,6 +3966,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.007103382910855,
         "tier": "perf",
@@ -3850,6 +4000,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9772869341115394,
         "tier": "perf",
@@ -3874,6 +4025,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7775227444287058,
         "tier": "perf",
@@ -3900,6 +4052,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.006630022812548,
         "tier": "perf",
@@ -3926,6 +4079,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.9066587481087247,
         "tier": "perf",
@@ -3952,6 +4106,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.102237326466195,
         "tier": "perf",
@@ -3979,6 +4134,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.856248916704799,
         "tier": "perf",
@@ -4012,6 +4168,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9845593216756149,
         "tier": "perf",
@@ -4036,6 +4193,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7082143603599185,
         "tier": "perf",
@@ -4062,6 +4220,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9986980003163083,
         "tier": "perf",
@@ -4088,6 +4247,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 2.056564997331432,
         "tier": "perf",
@@ -4114,6 +4274,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.820614427133065,
         "tier": "perf",
@@ -4141,6 +4302,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.283654609017045,
         "tier": "perf",
@@ -4174,6 +4336,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.395648117476229,
         "tier": "perf",
@@ -4198,6 +4361,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7710627484834992,
         "tier": "perf",
@@ -4224,6 +4388,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.39526918551734747,
         "tier": "perf",
@@ -4250,6 +4415,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5183655191809342,
         "tier": "perf",
@@ -4276,6 +4442,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9297184697439262,
         "tier": "perf",
@@ -4303,6 +4470,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.4480309696174118,
         "tier": "perf",
@@ -4336,6 +4504,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1513493657953415,
         "tier": "perf",
@@ -4360,6 +4529,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7220176593259877,
         "tier": "perf",
@@ -4386,6 +4556,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.991354732951615,
         "tier": "perf",
@@ -4412,6 +4583,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.798002326984757,
         "tier": "perf",
@@ -4438,6 +4610,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.553174326699398,
         "tier": "perf",
@@ -4465,6 +4638,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.6193913065763503,
         "tier": "perf",
@@ -4498,6 +4672,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0407510018328627,
         "tier": "perf",
@@ -4522,6 +4697,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6769254052195995,
         "tier": "perf",
@@ -4548,6 +4724,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6475430627751312,
         "tier": "perf",
@@ -4574,6 +4751,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7198581185117715,
         "tier": "perf",
@@ -4600,6 +4778,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7069509946778697,
         "tier": "perf",
@@ -4627,6 +4806,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.6732809393286283,
         "tier": "perf",
@@ -4660,6 +4840,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0246382752684933,
         "tier": "perf",
@@ -4684,6 +4865,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.13478352807224667,
         "tier": "perf",
@@ -4710,6 +4892,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.05795557659305376,
         "tier": "perf",
@@ -4736,6 +4919,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.12790016837528032,
         "tier": "perf",
@@ -4762,6 +4946,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.12485404915575202,
         "tier": "perf",
@@ -4789,6 +4974,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.12845705232632948,
         "tier": "perf",
@@ -4821,6 +5007,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9902867471142446,
         "tier": "perf",
@@ -4844,6 +5031,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.686913990556075,
         "tier": "perf",
@@ -4869,6 +5057,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.12915098685735724,
         "tier": "perf",
@@ -4894,6 +5083,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7163528944104498,
         "tier": "perf",
@@ -4919,6 +5109,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7444466223869179,
         "tier": "perf",
@@ -4945,6 +5136,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.6986180603560083,
         "tier": "perf",
@@ -4979,6 +5171,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0014165848974264,
         "tier": "perf",
@@ -5004,6 +5197,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3516821402922798,
         "tier": "perf",
@@ -5031,6 +5225,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 2.148337434081422,
         "tier": "perf",
@@ -5058,6 +5253,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.34145182230796,
         "tier": "perf",
@@ -5085,6 +5281,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.7050154271826834,
         "tier": "perf",
@@ -5113,6 +5310,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.6640946292697656,
         "tier": "perf",
@@ -5145,6 +5343,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0003757173611076,
         "tier": "perf",
@@ -5168,6 +5367,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.5994822706964904,
         "tier": "perf",
@@ -5193,6 +5393,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0122903599747166,
         "tier": "perf",
@@ -5218,6 +5419,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.6000745863816679,
         "tier": "perf",
@@ -5243,6 +5445,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 4.791670603312316,
         "tier": "perf",
@@ -5269,6 +5472,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 4.173395829478498,
         "tier": "perf",
@@ -5277,9 +5481,9 @@
     ]
   },
   "matmul-seq": {
-    "best_optimized_best_seconds": 2.504821633003303,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.0172470296588718,
+    "best_optimized_best_seconds": 2.5171019720000913,
+    "best_pipeline": "identity",
+    "best_speedup": 1.0114263296922807,
     "candidates": [
       {
         "baseline_best_seconds": 2.5458632090012543,
@@ -5301,6 +5505,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0114263296922807,
         "tier": "perf",
@@ -5324,6 +5529,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6709964601613405,
         "tier": "perf",
@@ -5349,6 +5555,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6391539023181574,
         "tier": "perf",
@@ -5374,6 +5581,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7559988326004553,
         "tier": "perf",
@@ -5399,6 +5607,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0172470296588718,
         "tier": "perf",
@@ -5425,6 +5634,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0081369205302122,
         "tier": "perf",
@@ -5433,9 +5643,9 @@
     ]
   },
   "matmul-seq3": {
-    "best_optimized_best_seconds": 3.767482288007159,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.0017060231482817,
+    "best_optimized_best_seconds": 3.775829910999164,
+    "best_pipeline": "identity",
+    "best_speedup": 0.9934178830660925,
     "candidates": [
       {
         "baseline_best_seconds": 3.750976957002422,
@@ -5457,6 +5667,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9934178830660925,
         "tier": "perf",
@@ -5480,6 +5691,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.0932204463317147,
         "tier": "perf",
@@ -5505,6 +5717,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.09505634467426352,
         "tier": "perf",
@@ -5530,6 +5743,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.09243258962002261,
         "tier": "perf",
@@ -5555,6 +5769,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0017060231482817,
         "tier": "perf",
@@ -5581,6 +5796,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0010652978602972,
         "tier": "perf",
@@ -5615,6 +5831,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9598834649375447,
         "tier": "perf",
@@ -5640,6 +5857,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0179903993871344,
         "tier": "perf",
@@ -5667,6 +5885,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0635032409282834,
         "tier": "perf",
@@ -5694,6 +5913,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3015645242652472,
         "tier": "perf",
@@ -5721,6 +5941,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8337107818403025,
         "tier": "perf",
@@ -5749,6 +5970,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9494465147877142,
         "tier": "perf",
@@ -5781,6 +6003,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3658255808060906,
         "tier": "perf",
@@ -5804,6 +6027,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6592766221647449,
         "tier": "perf",
@@ -5829,6 +6053,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.8944246070037202,
         "tier": "perf",
@@ -5854,6 +6079,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.7255434111388793,
         "tier": "perf",
@@ -5879,6 +6105,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8864890767922704,
         "tier": "perf",
@@ -5905,6 +6132,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7903388885627146,
         "tier": "perf",
@@ -5937,6 +6165,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.407180826432049,
         "tier": "perf",
@@ -5960,6 +6189,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3643018975353531,
         "tier": "perf",
@@ -5985,6 +6215,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0286402211576424,
         "tier": "perf",
@@ -6010,6 +6241,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2534804154946395,
         "tier": "perf",
@@ -6035,6 +6267,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.9426179378302346,
         "tier": "perf",
@@ -6061,6 +6294,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 2.036900981171806,
         "tier": "perf",
@@ -6093,6 +6327,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.5773753582349503,
         "tier": "perf",
@@ -6116,6 +6351,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3918037101867453,
         "tier": "perf",
@@ -6141,6 +6377,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3801457498482952,
         "tier": "perf",
@@ -6166,6 +6403,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3502475392466418,
         "tier": "perf",
@@ -6191,6 +6429,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.205234163265374,
         "tier": "perf",
@@ -6217,6 +6456,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.3059950225871224,
         "tier": "perf",
@@ -6225,9 +6465,9 @@
     ]
   },
   "mxv-seq": {
-    "best_optimized_best_seconds": 1.5062652620108565,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.0528103980018564,
+    "best_optimized_best_seconds": 0.9455987090041162,
+    "best_pipeline": "identity",
+    "best_speedup": 1.0610869731952126,
     "candidates": [
       {
         "baseline_best_seconds": 1.0033624719944783,
@@ -6249,6 +6489,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0610869731952126,
         "tier": "perf",
@@ -6272,6 +6513,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.8989342282765845,
         "tier": "perf",
@@ -6297,6 +6539,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.594514306539574,
         "tier": "perf",
@@ -6322,6 +6565,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5952180949925241,
         "tier": "perf",
@@ -6347,6 +6591,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0528103980018564,
         "tier": "perf",
@@ -6373,6 +6618,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.6677454902543349,
         "tier": "perf",
@@ -6381,9 +6627,9 @@
     ]
   },
   "mxv-seq3": {
-    "best_optimized_best_seconds": 1.0375181150011485,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.33015737464996,
+    "best_optimized_best_seconds": 1.0322880000021541,
+    "best_pipeline": "identity",
+    "best_speedup": 1.0058581074334385,
     "candidates": [
       {
         "baseline_best_seconds": 1.038335254008416,
@@ -6405,6 +6651,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0058581074334385,
         "tier": "perf",
@@ -6428,6 +6675,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6205193473998636,
         "tier": "perf",
@@ -6453,6 +6701,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6395401556589151,
         "tier": "perf",
@@ -6478,6 +6727,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.5997060557275969,
         "tier": "perf",
@@ -6503,6 +6753,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.33015737464996,
         "tier": "perf",
@@ -6529,6 +6780,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.5730237425417808,
         "tier": "perf",
@@ -6561,6 +6813,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1294800720279834,
         "tier": "perf",
@@ -6584,6 +6837,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3138397592115176,
         "tier": "perf",
@@ -6609,6 +6863,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2199038849617057,
         "tier": "perf",
@@ -6634,6 +6889,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.23013246632557,
         "tier": "perf",
@@ -6659,6 +6915,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.7175293146917252,
         "tier": "perf",
@@ -6685,6 +6942,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.836430608597837,
         "tier": "perf",
@@ -6715,6 +6973,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0943718987851931,
         "tier": "perf",
@@ -6736,6 +6995,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1882187111869633,
         "tier": "perf",
@@ -6759,6 +7019,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.16965421843848,
         "tier": "perf",
@@ -6782,6 +7043,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2554210227147597,
         "tier": "perf",
@@ -6805,6 +7067,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9958181895466345,
         "tier": "perf",
@@ -6829,6 +7092,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8162280996709038,
         "tier": "perf",
@@ -6859,6 +7123,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2073664866746034,
         "tier": "perf",
@@ -6880,6 +7145,7 @@
         "params": {},
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2976220408871622,
         "tier": "perf",
@@ -6903,6 +7169,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1295890792770078,
         "tier": "perf",
@@ -6926,6 +7193,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0760317189855866,
         "tier": "perf",
@@ -6949,6 +7217,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0660846664742836,
         "tier": "perf",
@@ -6973,6 +7242,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8772635557240374,
         "tier": "perf",
@@ -7006,6 +7276,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9977864805728138,
         "tier": "perf",
@@ -7030,6 +7301,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7990029723226209,
         "tier": "perf",
@@ -7056,6 +7328,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.8058102539965488,
         "tier": "perf",
@@ -7082,6 +7355,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.824643880630782,
         "tier": "perf",
@@ -7108,6 +7382,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.016017365991984,
         "tier": "perf",
@@ -7135,6 +7410,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0073504439519285,
         "tier": "perf",
@@ -7167,6 +7443,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.995463451322909,
         "tier": "perf",
@@ -7190,6 +7467,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.4003063077729816,
         "tier": "perf",
@@ -7215,6 +7493,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.3496133287411769,
         "tier": "perf",
@@ -7240,6 +7519,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.2818371213071426,
         "tier": "perf",
@@ -7265,6 +7545,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.2815628810730261,
         "tier": "perf",
@@ -7291,6 +7572,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.27829762581644457,
         "tier": "perf",
@@ -7299,9 +7581,9 @@
     ]
   },
   "seidel": {
-    "best_optimized_best_seconds": 3.384567266009981,
-    "best_pipeline": "iss_parallel_4",
-    "best_speedup": 1.0890157480438905,
+    "best_optimized_best_seconds": 3.4017302810098045,
+    "best_pipeline": "iss",
+    "best_speedup": 1.0894277614217576,
     "candidates": [
       {
         "baseline_best_seconds": 3.6561088599992217,
@@ -7324,6 +7606,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9974780663905742,
         "tier": "perf",
@@ -7348,6 +7631,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0582203011156928,
         "tier": "perf",
@@ -7374,6 +7658,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9001566856468267,
         "tier": "perf",
@@ -7400,6 +7685,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0894277614217576,
         "tier": "perf",
@@ -7426,6 +7712,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0889521368308568,
         "tier": "perf",
@@ -7453,6 +7740,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0890157480438905,
         "tier": "perf",
@@ -7486,6 +7774,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.8397458591716722,
         "tier": "perf",
@@ -7510,6 +7799,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3690162172452434,
         "tier": "perf",
@@ -7536,6 +7826,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2722413754736988,
         "tier": "perf",
@@ -7562,6 +7853,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2838620717945455,
         "tier": "perf",
@@ -7588,6 +7880,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.3439319065761415,
         "tier": "perf",
@@ -7615,6 +7908,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.3810026558264699,
         "tier": "perf",
@@ -7647,6 +7941,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0904351508055021,
         "tier": "perf",
@@ -7670,6 +7965,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2742768063278433,
         "tier": "perf",
@@ -7695,6 +7991,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0750255237091284,
         "tier": "perf",
@@ -7720,6 +8017,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9380885056612818,
         "tier": "perf",
@@ -7745,6 +8043,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.1296765983466466,
         "tier": "perf",
@@ -7771,6 +8070,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.1465612235481022,
         "tier": "perf",
@@ -7804,6 +8104,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.9200911102301959,
         "tier": "perf",
@@ -7828,6 +8129,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0274653973682155,
         "tier": "perf",
@@ -7854,6 +8156,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.6781165106051785,
         "tier": "perf",
@@ -7880,6 +8183,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.4987916369311159,
         "tier": "perf",
@@ -7906,6 +8210,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.07386596390946,
         "tier": "perf",
@@ -7933,6 +8238,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.335836933787179,
         "tier": "perf",
@@ -7965,6 +8271,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0202383050006085,
         "tier": "perf",
@@ -7988,6 +8295,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 4.533435412015969,
         "tier": "perf",
@@ -8013,6 +8321,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 3.2144937749911593,
         "tier": "perf",
@@ -8038,6 +8347,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 4.924553634045007,
         "tier": "perf",
@@ -8063,6 +8373,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 13.977924158731492,
         "tier": "perf",
@@ -8089,6 +8400,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 14.735375799578527,
         "tier": "perf",
@@ -8121,6 +8433,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9933902838779207,
         "tier": "perf",
@@ -8144,6 +8457,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3519563723131984,
         "tier": "perf",
@@ -8169,6 +8483,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9939467707278842,
         "tier": "perf",
@@ -8194,6 +8509,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2037586816024304,
         "tier": "perf",
@@ -8219,6 +8535,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 5.067733808968821,
         "tier": "perf",
@@ -8226,6 +8543,7 @@
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
@@ -8255,6 +8573,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.4982056324065869,
         "tier": "perf",
@@ -8278,6 +8597,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.9002326185844844,
         "tier": "perf",
@@ -8303,6 +8623,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.6256580481376885,
         "tier": "perf",
@@ -8328,6 +8649,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7616039226622204,
         "tier": "perf",
@@ -8353,6 +8675,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 7.814454919557551,
         "tier": "perf",
@@ -8360,14 +8683,15 @@
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
   },
   "tce": {
-    "best_optimized_best_seconds": 3.163900047991774,
-    "best_pipeline": "parallel_4",
-    "best_speedup": 1.1392100468813542,
+    "best_optimized_best_seconds": 3.190497632007464,
+    "best_pipeline": "identity",
+    "best_speedup": 1.1272328447847002,
     "candidates": [
       {
         "baseline_best_seconds": 3.5964337220066227,
@@ -8389,6 +8713,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1272328447847002,
         "tier": "perf",
@@ -8412,6 +8737,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.40290887973630574,
         "tier": "perf",
@@ -8437,6 +8763,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.44657019290064054,
         "tier": "perf",
@@ -8462,6 +8789,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.46360967524022517,
         "tier": "perf",
@@ -8487,6 +8815,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.1392100468813542,
         "tier": "perf",
@@ -8513,6 +8842,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.1433586366430586,
         "tier": "perf",
@@ -8545,6 +8875,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0548359809835746,
         "tier": "perf",
@@ -8568,6 +8899,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.876465917208605,
         "tier": "perf",
@@ -8593,6 +8925,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0640945407103306,
         "tier": "perf",
@@ -8618,6 +8951,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.8494813725634476,
         "tier": "perf",
@@ -8643,6 +8977,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 3.4066086612276516,
         "tier": "perf",
@@ -8650,6 +8985,7 @@
       },
       {
         "pipeline_name": "iss_parallel_4",
+        "requires_parallelized": true,
         "result": "missing_summary"
       }
     ]
@@ -8679,6 +9015,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0043756356032074,
         "tier": "perf",
@@ -8702,6 +9039,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1018.9496346155821,
         "tier": "perf",
@@ -8727,6 +9065,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1028.8053299952885,
         "tier": "perf",
@@ -8752,6 +9091,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 935.4626289936687,
         "tier": "perf",
@@ -8777,6 +9117,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0043485859893877,
         "tier": "perf",
@@ -8803,6 +9144,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9998490192656925,
         "tier": "perf",
@@ -8836,6 +9178,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.208116298564379,
         "tier": "perf",
@@ -8860,6 +9203,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0672251944784716,
         "tier": "perf",
@@ -8886,6 +9230,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1113879456471019,
         "tier": "perf",
@@ -8912,6 +9257,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.2080945685925941,
         "tier": "perf",
@@ -8938,6 +9284,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.8661415289730915,
         "tier": "perf",
@@ -8965,6 +9312,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0268103359330178,
         "tier": "perf",
@@ -8999,6 +9347,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.086658682129301,
         "tier": "perf",
@@ -9024,6 +9373,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0031792989817025,
         "tier": "perf",
@@ -9051,6 +9401,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.998895191352319,
         "tier": "perf",
@@ -9078,6 +9429,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1689560222099615,
         "tier": "perf",
@@ -9105,6 +9457,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 0.9010986990255473,
         "tier": "perf",
@@ -9133,6 +9486,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0938571039592835,
         "tier": "perf",
@@ -9165,6 +9519,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1024063216542717,
         "tier": "perf",
@@ -9188,6 +9543,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0571360653589812,
         "tier": "perf",
@@ -9213,6 +9569,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1908987973436047,
         "tier": "perf",
@@ -9238,6 +9595,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.1210191096827438,
         "tier": "perf",
@@ -9263,6 +9621,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.0339683189308486,
         "tier": "perf",
@@ -9289,6 +9648,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.036487087012394,
         "tier": "perf",
@@ -9321,6 +9681,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0057636058047426,
         "tier": "perf",
@@ -9344,6 +9705,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.3326675608427163,
         "tier": "perf",
@@ -9369,6 +9731,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.0069453803936237,
         "tier": "perf",
@@ -9394,6 +9757,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.6378720474209547,
         "tier": "perf",
@@ -9419,6 +9783,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 5.673069073614038,
         "tier": "perf",
@@ -9445,6 +9810,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 5.224533283774957,
         "tier": "perf",
@@ -9477,6 +9843,7 @@
         "polopt_args": [
           "--identity"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.7836625727198496,
         "tier": "perf",
@@ -9500,6 +9867,7 @@
         },
         "pipeline_name": "default_no_iss_affine_tiling",
         "polopt_args": [],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.5140620764488062,
         "tier": "perf",
@@ -9525,6 +9893,7 @@
         "polopt_args": [
           "--affine-only"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 0.9633565098751046,
         "tier": "perf",
@@ -9550,6 +9919,7 @@
         "polopt_args": [
           "--iss"
         ],
+        "requires_parallelized": false,
         "result": "ok",
         "speedup": 1.089992987891098,
         "tier": "perf",
@@ -9575,6 +9945,7 @@
         "polopt_args": [
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.4244219601311068,
         "tier": "perf",
@@ -9601,6 +9972,7 @@
           "--iss",
           "--parallel"
         ],
+        "requires_parallelized": true,
         "result": "ok",
         "speedup": 1.5259802034638799,
         "tier": "perf",
