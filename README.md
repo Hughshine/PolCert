@@ -51,6 +51,7 @@ opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-parallel-current-suite
 opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
+opam exec -- make test-diamond-tiling-suite
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -84,6 +85,13 @@ It also exposes:
 - a theorem-aligned explicit-dimension parallel path via `--parallel-current`
 - experimental Pluto-hinted parallel routes via `--parallel` and
   `--parallel-strict`
+- experimental checked tiling-family selectors such as `--second-level-tile`,
+  `--diamond-tile`, and `--full-diamond-tile`
+- the ordinary-tiling compatibility selector `--legacy-generic-tiling`
+- CLI-side profiling / inspection flags such as `--profile-stages`,
+  `--extract-only`, and the standalone validation actions documented in
+  [`POLOPT.md`](./POLOPT.md) and
+  [`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md)
 
 ## Status
 
@@ -134,6 +142,10 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - `make test-parallel-current-suite`
 - `make test-second-level-tile-suite`
 - the strict `polopt` benchmark suite
+
+Notably, `test-diamond-tiling-suite` is a separate Pluto-backed regression
+script. It is part of the documented local regression surface, but it is not in
+the default `ci` workflow today.
 
 ## Documentation map
 

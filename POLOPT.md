@@ -18,6 +18,31 @@ There are currently four practically important `polopt` families:
 - theorem-aligned explicit-dimension parallel pipelines (`--parallel-current`)
 - experimental Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`)
 
+The actual public CLI surface is slightly richer than that four-family summary.
+In the normalized flag model, a user-visible run is built from:
+
+- a base route:
+  - default full tiled
+  - `--notile`
+  - `--identity`
+- an optional structural extension:
+  - plain
+  - `--iss`
+- an optional tiling-family selector on full tiled routes:
+  - default band-aware ordinary tiling
+  - `--legacy-generic-tiling`
+  - `--second-level-tile`
+  - `--diamond-tile`
+  - `--full-diamond-tile`
+- an optional parallel-family selector:
+  - sequential
+  - `--parallel`
+  - `--parallel --parallel-strict`
+  - `--parallel-current d`
+
+The detailed legality / rejection matrix lives in
+[doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md).
+
 At a high level, the default pipeline is:
 
 ```text
@@ -536,11 +561,15 @@ Useful modes:
 ```sh
 ./polopt --extract-only file.loop
 ./polopt --debug-scheduler file.loop
+./polopt --profile-stages file.loop
 ./polopt --iss file.loop
 ./polopt --parallel file.loop
 ./polopt --parallel-current 0 file.loop
 ./polopt --iss --parallel-current 0 file.loop
 ./polopt --second-level-tile file.loop
+./polopt --diamond-tile file.loop
+./polopt --full-diamond-tile file.loop
+./polopt --legacy-generic-tiling file.loop
 ```
 
 ## How to write your own example
@@ -583,6 +612,7 @@ opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-parallel-current-suite
 opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
+opam exec -- make test-diamond-tiling-suite
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -593,8 +623,10 @@ opam exec -- make materialize-polopt-loop-suite
 ```
 
 Heavier end-to-end performance checks are intentionally **not** part of default
-CI. The current whole-C harnesses are:
+CI, and neither is the dedicated Pluto-backed diamond live suite. The current
+non-default strengthening workflows are:
 
+- `make test-diamond-tiling-suite`
 - handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
 - generated whole-C cases in
   [tests/end-to-end-generated](./tests/end-to-end-generated)

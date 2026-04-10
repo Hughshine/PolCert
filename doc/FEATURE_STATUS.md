@@ -101,6 +101,55 @@ Relevant components:
 - `src/ParallelCodegen.v`
 - `driver/ParallelPolOpt.v`
 
+### Additional tiling-family selectors
+
+Commands:
+
+```sh
+./polopt --second-level-tile file.loop
+./polopt --diamond-tile file.loop
+./polopt --full-diamond-tile file.loop
+./polopt --legacy-generic-tiling file.loop
+```
+
+Status:
+
+- `--second-level-tile`
+  - experimental checked second-level tiling family
+  - only valid on full tiled optimization routes and tiling witness/validation
+    actions
+- `--diamond-tile` / `--full-diamond-tile`
+  - theorem-backed opt-in sequential diamond route family
+  - currently only supported on the default non-ISS full tiled route
+  - reject ISS, Pluto-hinted parallel, explicit-current parallel, second-level,
+    and legacy-generic ordinary tiling
+- `--legacy-generic-tiling`
+  - compatibility selector for the historical generic ordinary-tiling validator
+  - only supported on the default non-ISS full tiled route
+
+### Standalone validation / inspection actions exposed by `polopt`
+
+Commands:
+
+```sh
+./polopt --validate-affine-openscop before.scop after.scop
+./polopt --extract-tiling-witness-openscop before.scop after.scop
+./polopt --validate-tiling-openscop before.scop after.scop
+./polopt --validate-iss-debug-dumps before.txt after.txt
+./polopt --validate-iss-bridge bridge.txt
+./polopt --validate-iss-pluto-suite
+./polopt --validate-iss-pluto-live-suite
+```
+
+Status:
+
+- these are validator-only / artifact-only actions, not loop-to-loop optimizer
+  routes
+- they cannot be mixed with route selectors such as `--identity`, `--notile`,
+  `--iss`, `--parallel`, `--diamond-tile`, or `--parallel-current`
+- `--second-level-tile` is only meaningful here for tiling witness extraction
+  and tiling validation
+
 ## `polcert`
 
 ### OpenScop validation modes
@@ -156,17 +205,18 @@ Main workflow:
 - `make test-second-level-tile-suite`
 - `make test-polopt-loop-suite`
 
-Additional workflow:
+Not in default `ci` today:
 
-- `.github/workflows/full-tiling-suite.yml`
-- runs the strict `polopt` loop suite plus both ISS suites
-
-Not in default CI:
-
+- `make test-diamond-tiling-suite`
 - handwritten whole-C perf harness: `tests/end-to-end-c`
 - generated whole-C perf harness: `tests/end-to-end-generated`
 - one-command local refresh:
   - `opam exec -- make test-end-to-end-generated-perf-refresh`
+
+Additional workflow:
+
+- `.github/workflows/full-tiling-suite.yml`
+- runs the strict `polopt` loop suite plus both ISS suites
 
 The strict `.loop -> .loop` gate is CI-enforced. The whole-C harnesses are
 artifact-strengthening workflows and local perf campaigns, not default

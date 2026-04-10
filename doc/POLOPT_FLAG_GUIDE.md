@@ -262,7 +262,212 @@ Reason:
   tiling
 - they are not general modifiers for every pipeline family
 
-## 4. Practical reading
+## 4. How route selection actually works
+
+The frontend makes the route choice in roughly this order:
+
+1. If a standalone validation action is selected, run it and stop.
+2. Otherwise, if `--parallel-current d` is present, use the explicit-dimension
+   parallel family.
+3. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
+4. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
+5. Otherwise, choose among:
+   - default route
+   - `--iss`
+   - `--notile`
+   - `--identity`
+   - optional ordinary-tiling refinements such as `--legacy-generic-tiling`
+
+This explains why some flags feel "stronger" than others: some choose the whole
+route family, while others only refine a family that is already selected.
+
+## 5. Current support boundary in one page
+
+The current support boundary is:
+
+- ordinary sequential route
+  - default and stable
+- ISS route
+  - supported and theorem-aligned
+- explicit-dimension parallel route
+  - theorem-aligned
+- Pluto-hinted parallel route
+  - experimental but user-facing
+- second-level tiling
+  - supported as a separate tiling family on sequential full tiled runs
+- diamond tiling
+  - supported as a theorem-backed, opt-in sequential route
+  - currently not composed with ISS, parallel, or second-level tiling
+
+When in doubt, treat `--iss`, `--second-level-tile`, `--diamond-tile`,
+`--parallel`, and `--parallel-current` as selectors for distinct pipeline
+families rather than as independent booleans that should freely stack.
+
+## 6. Assessment of the current flag model
+
+The current flag model is partly principled and partly transitional.
+
+### 6.1 What is already reasonable
+
+Several current rejections are conceptually correct and should remain even
+after a cleanup:
+
+- standalone validation actions should stay separate from loop-to-loop
+  optimization routes
+- `--identity` and `--notile` should reject tiling-family flags, because those
+  flags require a tiling artifact that does not exist on those routes
+- `--parallel` and `--parallel-current` should remain distinct, because they
+  choose different mechanisms for selecting the loop to parallelize
+- `--diamond-tile` should continue to reject combinations whose composed proof
+  story does not exist yet
+
+These are semantic constraints, not parser accidents.
+
+### 6.2 What is still awkward
+
+The main awkwardness is not the individual rejections; it is the CLI structure
+used to express them.
+
+Today, the frontend stores route choice as many flat booleans and then checks a
+long sequence of pairwise exclusions. That works, but it has several costs:
+
+- the user sees many ad hoc rejection messages instead of one normalized route
+  explanation
+- new families such as diamond or second-level must manually add more exclusion
+  clauses
+- producer-family choices and checker-family choices are mixed together in one
+  parser state
+- the implementation has to infer a route family from booleans instead of
+  constructing one explicit route object
+
+So the current status is:
+
+- the supported combinations themselves are mostly reasonable
+- the way they are encoded in the CLI is not yet clean
+
+### 6.3 The biggest conceptual rough edge
+
+The largest remaining design mismatch is that `polopt` currently exposes both:
+
+- loop-to-loop optimizer routes
+- standalone validation actions over external files
+
+in the same top-level command.
+
+That is historically convenient, but conceptually it mixes two tools:
+
+- optimizer family selection
+- validator-only artifact checking
+
+The current exclusions keep this workable, but they also make the flag space
+look more irregular than the underlying framework really is.
+
+## 7. TODO plan for flag cleanup
+
+The following cleanup plan would make the current model easier to maintain.
+
+### 7.1 Normalize route selection into an explicit route-spec record
+
+Instead of carrying many booleans, build a typed route description such as:
+
+- action kind
+  - optimize
+  - standalone validation
+- base route
+  - identity
+  - affine-only
+  - full tiled
+- structural extension
+  - none
+  - ISS
+- tiling family
+  - ordinary-band-aware
+  - ordinary-generic
+  - second-level
+  - diamond
+- diamond producer strength
+  - normal
+  - full
+- parallel family
+  - sequential
+  - hinted
+  - explicit-current
+
+Then legality checking becomes a normalization pass over one route object,
+instead of many pairwise boolean checks.
+
+### 7.2 Separate optimizer mode from standalone validation mode
+
+The cleanest user model would be:
+
+- `polopt ...` for loop-to-loop optimization
+- `polcert ...` for external artifact validation
+
+or, if `polopt` keeps these actions:
+
+- explicit subcommands such as `polopt optimize ...` and `polopt validate ...`
+
+This would eliminate the current need to explain why route flags and
+validation-only actions cannot be mixed.
+
+### 7.3 Retire compatibility-only tiling flags
+
+`--band-tiling-experiment` is already documented and implemented as a
+compatibility alias for the default ordinary checked tiling route.
+
+The likely next step is:
+
+- keep it temporarily for backward compatibility
+- mark it as deprecated in help text
+- eventually remove it
+
+At that point the ordinary route becomes simpler:
+
+- default ordinary band-aware tiling
+- optional `--legacy-generic-tiling` only while comparison is still needed
+
+### 7.4 Unify tiling-family selection more explicitly
+
+Second-level and diamond are both tiling families, but they are currently
+expressed through different flag relationships:
+
+- second-level refines the ordinary family and is also allowed on tiling-only
+  standalone actions
+- diamond selects a narrower sequential route family with an optional stronger
+  producer mode
+
+That is defensible, but the documentation and implementation would become
+clearer if the frontend treated tiling-family choice as one explicit layer with
+sub-options, instead of several unrelated booleans.
+
+### 7.5 Decide which future compositions are worth supporting
+
+Not every currently rejected combination should become legal. The right next
+questions are:
+
+- should diamond compose with `--iss`?
+- should diamond compose with `--parallel-current` before it composes with the
+  Pluto-hinted parallel family?
+- should second-level tiling compose with explicit-current parallelization?
+- should standalone tiling witness/validation actions grow a diamond-aware
+  mode, or should diamond remain a loop-to-loop optimizer family only?
+
+These are proof-architecture questions, not just CLI questions. The flag model
+should follow the supported proof combinations, not lead them.
+
+### 7.6 Keep the error messages route-oriented
+
+Even before a larger refactor, the rejection messages can improve by explaining
+the route family conflict directly. For example:
+
+- "diamond is currently a sequential non-ISS full-tiled family"
+- "parallel-current selects a different parallel family than --parallel"
+- "second-level only refines tiled routes and tiling-only validation actions"
+
+This would make the current flat flag model much easier to understand in
+practice.
+
+## 8. Practical reading
 
 The safest way to read `polopt` today is:
 
