@@ -1,33 +1,19 @@
 --- input.pretty.loop
 +++ optimized.loop
-@@ -1,8 +1,26 @@
+@@ -1,8 +1,12 @@
  context(N, M);
  
 -for i0 in range(0, N) {
--  autocorr = (autocorr + 1);
-+if ((1 <= M && 1 <= N)) {
-+  for i0 in range(0, min(((M + 31) / 32), ((N + 31) / 32))) {
-+    for i1 in range(max((32 * i0), 0), min(min(((32 * i0) + 32), M), N)) {
-+      autocorr = (autocorr + 1);
-+      temp3 = (temp3 + 1);
-+    }
-+    for i1 in range(N, min(((32 * i0) + 32), M)) {
-+      temp3 = (temp3 + 1);
-+    }
-+    for i1 in range(M, min(((32 * i0) + 32), N)) {
-+      autocorr = (autocorr + 1);
-+    }
-+  }
++for i0 in range(0, min(M, N)) {
++  autocorr = (autocorr + 1);
++  temp3 = (temp3 + 1);
++}
++for i0 in range(max(0, N), M) {
++  temp3 = (temp3 + 1);
++}
++for i0 in range(max(M, 0), N) {
+   autocorr = (autocorr + 1);
  }
 -for i0 in range(0, M) {
 -  temp3 = (temp3 + 1);
-+for i0 in range(max(0, ((N + 31) / 32)), ((M + 31) / 32)) {
-+  for i1 in range((32 * i0), min(M, ((32 * i0) + 32))) {
-+    temp3 = (temp3 + 1);
-+  }
- }
-+for i0 in range(max(((M + 31) / 32), 0), ((N + 31) / 32)) {
-+  for i1 in range((32 * i0), min(N, ((32 * i0) + 32))) {
-+    autocorr = (autocorr + 1);
-+  }
-+}
+-}
