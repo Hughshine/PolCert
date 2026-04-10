@@ -46,7 +46,16 @@ For the full local regression flow, also run:
 ```sh
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
+opam exec -- make test-parallel-current-suite
+opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
+```
+
+If you only want to refresh the generated strict-suite corpus for downstream
+whole-C harnesses, without running the strict checker gate, use:
+
+```sh
+opam exec -- make materialize-polopt-loop-suite
 ```
 
 The heavier generated end-to-end perf campaign is intentionally **not** part of
@@ -96,10 +105,10 @@ It also exposes:
 - The strict proved-path `polopt` regression suite currently succeeds on all generated benchmark inputs:
   - total inputs: `62`
   - succeeded: `62`
-  - changed: `60`
-  - unchanged: `2`
-  - nontrivially changed: `60`
-  - automatically detected tiled outputs: `38`
+  - changed: `59`
+  - unchanged: `3`
+  - nontrivially changed: `59`
+  - automatically detected tiled outputs: `39`
 
 ## CI
 
@@ -119,6 +128,8 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - `make test`
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
+- `make test-parallel-current-suite`
+- `make test-second-level-tile-suite`
 - the strict `polopt` benchmark suite
 
 ## Documentation map

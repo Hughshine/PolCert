@@ -41,16 +41,18 @@ Supported constructs:
 
 - `context(x, y, ...)` for symbolic parameters
 - `for i in range(lb, ub) { ... }` with half-open bounds `[lb, ub)`
-- `if (a <= b && c == d) { ... }`
+- `if` guards built from affine `<=` / `==` tests combined with `&&`
 - scalar and array assignments
-- arithmetic using `+`, `-`, `*`, `/`
+- arithmetic using `+`, `-`, `*`, `/` in general RHS expressions
 - pure calls in RHS expressions
 - ternary expressions `cond ? e1 : e2` in RHS expressions
 - float literals in RHS expressions
 
 Still intentionally restricted in affine positions (bounds, guards, indexes):
 
-- non-affine multiplication
+- `||` and `!` are not accepted in affine guards
+- affine positions currently accept only constants, variables, affine sums, and constant-multiplied subexpressions
+- division is not accepted in affine bounds, guards, or indexes
 - general calls in affine bounds / guards / indexes
 - non-affine ternaries in affine bounds / guards / indexes
 

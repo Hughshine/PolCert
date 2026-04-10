@@ -239,18 +239,18 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite profile-advect3d-codegen profile-advect3d-codegen-identity
+.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-second-level-tile-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite profile-advect3d-codegen profile-advect3d-codegen-identity
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
 
-test-polopt-loop-suite: polopt
+materialize-polopt-loop-suite: polopt
 	rm -rf tests/polopt-generated/cases
 	python3 tests/polopt-generated/tools/materialize_polopt_cases.py \
 		--polopt ./polopt \
 		--timeout-seconds 300
 
-test-polopt-generated: test-polopt-loop-suite
+test-polopt-loop-suite: materialize-polopt-loop-suite
 	python3 tests/polopt-generated/tools/check_polopt_cases.py \
 		--cases-dir tests/polopt-generated/cases \
 		--expect-total 62 \
@@ -258,11 +258,21 @@ test-polopt-generated: test-polopt-loop-suite
 		--min-nontrivial-changed 50 \
 		--require-tiled matmul matmul-init wavefront
 
+test-polopt-generated: test-polopt-loop-suite
+
 test-iss-pluto-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-suite
 
 test-iss-pluto-live-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-live-suite
+
+test-parallel-current-suite: polopt
+	python3 tools/parallel_current/run_parallel_current_suite.py \
+		--polopt ./polopt
+
+test-second-level-tile-suite: polopt
+	python3 tools/second_level_tiling/run_second_level_tile_suite.py \
+		--polopt ./polopt
 
 test-end-to-end-c-smoke: polopt
 	python3 tools/end_to_end_c/run_suite.py \
@@ -284,21 +294,21 @@ test-end-to-end-c-matmul-parallel: polopt
 		--require-parallelized \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-smoke: test-polopt-loop-suite
+test-end-to-end-generated-smoke: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--output-root tests/end-to-end-generated/out \
 		--tier smoke \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-perf-default: test-polopt-loop-suite
+test-end-to-end-generated-perf-default: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--output-root tests/end-to-end-generated/out-perf \
 		--tier perf \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-perf: test-polopt-loop-suite
+test-end-to-end-generated-perf: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \
@@ -307,14 +317,14 @@ test-end-to-end-generated-perf: test-polopt-loop-suite
 		--tier perf \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-heavy: test-polopt-loop-suite
+test-end-to-end-generated-heavy: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--output-root tests/end-to-end-generated/out-heavy \
 		--tier heavy \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-perf-parallel: test-polopt-loop-suite
+test-end-to-end-generated-perf-parallel: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \
@@ -324,7 +334,7 @@ test-end-to-end-generated-perf-parallel: test-polopt-loop-suite
 		--omp-threads 4 \
 		--benchmark-repeats 1
 
-test-end-to-end-generated-slow-perf-parallel: test-polopt-loop-suite
+test-end-to-end-generated-slow-perf-parallel: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \
@@ -335,7 +345,7 @@ test-end-to-end-generated-slow-perf-parallel: test-polopt-loop-suite
 		--benchmark-repeats 1 \
 		$(GENERATED_SLOW_CASES)
 
-search-end-to-end-generated-best: test-polopt-loop-suite
+search-end-to-end-generated-best: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/search_best_generated_pipelines.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \

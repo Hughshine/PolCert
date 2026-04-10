@@ -85,6 +85,10 @@ It now records both:
 So if a future case uses tolerances, the numeric difference is still reported
 instead of being silently hidden.
 
+`--timeout-seconds` covers both the `polopt` invocation and the compiled
+baseline / optimized executables, so a hung test binary now fails the case
+instead of wedging the suite.
+
 ## Generated suite boundary
 
 The generated suite under `tests/polopt-generated/cases/*` does not reuse the

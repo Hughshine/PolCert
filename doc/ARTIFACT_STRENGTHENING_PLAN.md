@@ -133,6 +133,31 @@ This workstream is now partially complete:
 
 This harness is intentionally not part of default CI.
 
+### Immediate review follow-ups (2026-04-10)
+
+Recent review passes identified several harness / coverage gaps that should be
+tracked as explicit artifact-TODO items until they are re-verified and closed:
+
+1. CI currently materializes the generated `polopt` regression corpus, but does
+   not yet assert the strict checker invariants (`--expect-total`,
+   `--min-changed`, `--require-tiled`). The CI path needs to run the checker
+   stage as a real gate, not only refresh the materialized outputs.
+2. `--timeout-seconds` needs to cover not only `polopt` itself but also the
+   compiled benchmark executables in both handwritten and generated end-to-end
+   harnesses. A hung baseline or optimized binary should fail the case rather
+   than stall the suite.
+3. The generated whole-C harness should compare numeric summaries with a small
+   documented tolerance for floating-point drift, especially on `--parallel` /
+   OpenMP paths, instead of requiring exact zero drift everywhere.
+4. Public user modes need direct automated regression coverage:
+   - theorem-aligned `--parallel-current`
+   - `--second-level-tile`
+   The current CI surface is still too indirect to guarantee that those routes
+   have not silently regressed.
+
+These remain TODO items until the fixes are landed and then re-checked in the
+real container / CI path.
+
 ## 2. Codegen Performance: `advect3d`
 
 ### Goal
@@ -376,6 +401,10 @@ The existing notes already point to a clear architecture:
 - diamond tiling should not be modeled as a brand-new tiling theorem family
 - the key new object is a diamond-aware affine midpoint artifact
 - the existing tiling relation can then be reused for `mid_diamond -> after`
+- the right summary is not "default affine + ordinary tiling"
+- the right summary is "diamond-aware affine midpoint + ordinary tiling"
+- stronger paper-level claims about concurrent start / load balance remain a
+  separate target
 
 Relevant existing notes:
 
@@ -402,6 +431,11 @@ Relevant existing notes:
 5. Only then add the checked theorem-aligned route:
    - `before -> mid_diamond` via affine validation
    - `mid_diamond -> after` via existing tiling relation/checker
+
+The explicit non-goal for the first milestone is:
+
+- do not claim that the ordinary current affine midpoint is already enough
+  whenever `--diamond-tile` is on
 
 ### Immediate next deliverable
 

@@ -152,6 +152,8 @@ Main workflow:
 - `make test`
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
+- `make test-parallel-current-suite`
+- `make test-second-level-tile-suite`
 - `make test-polopt-loop-suite`
 
 Additional workflow:

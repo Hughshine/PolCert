@@ -7,9 +7,7 @@ verified tiling stage with fallback to affine when tiling is unavailable.
 Tracked content:
 - `inputs/`: generated `.loop` inputs, one file per Pluto benchmark case
 - `tools/`: scripts for materializing and checking per-case outputs
-
-Untracked content:
-- `cases/<name>/`: materialized outputs produced by `polopt` during test runs
+- `cases/<name>/`: checked materialized outputs produced by `polopt`
 
 Run the full suite locally:
 
@@ -29,6 +27,13 @@ That target:
    - the checker reports the automatically detected tiled cases
    - representative cases such as `matmul`, `matmul-init`, and `wavefront`
      are required to satisfy the tiling heuristic
+
+If you only need the materialized `cases/<name>/` outputs for downstream
+generated whole-C harnesses, without rerunning the strict checker gate, use:
+
+```bash
+opam exec -- make materialize-polopt-loop-suite
+```
 
 Current reporting:
 - `changed` means the optimized pretty-printed loop differs from the input.

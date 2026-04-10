@@ -67,6 +67,8 @@ def main() -> int:
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--omp-threads", type=int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
+    ap.add_argument("--abs-tolerance", type=float)
+    ap.add_argument("--rel-tolerance", type=float)
     ap.add_argument("--tier", default=DEFAULT_TIER)
     ap.add_argument(
         "--param-config",
@@ -102,6 +104,10 @@ def main() -> int:
             "--param-config",
             args.param_config,
         ]
+        if args.abs_tolerance is not None:
+            cmd.extend(["--abs-tolerance", str(args.abs_tolerance)])
+        if args.rel_tolerance is not None:
+            cmd.extend(["--rel-tolerance", str(args.rel_tolerance)])
         pipeline_name = resolve_pipeline_name(case_dir.name, pipeline_cfg, args.default_pipeline)
         if pipeline_name:
             spec = pipeline_cfg["pipelines"][pipeline_name]

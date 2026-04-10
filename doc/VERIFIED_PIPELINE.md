@@ -103,9 +103,9 @@ Current strict-suite snapshot:
 
 - total generated inputs: `62`
 - successful runs: `62`
-- changed outputs: `60`
-- nontrivially changed outputs: `60`
-- automatically detected tiled outputs: `38`
+- changed outputs: `59`
+- nontrivially changed outputs: `59`
+- automatically detected tiled outputs: `39`
 
 Representative visible outcomes:
 

@@ -53,12 +53,18 @@ def compile_c(src: pathlib.Path, exe: pathlib.Path, *, openmp: bool) -> subproce
     return run(cmd)
 
 
-def timed_run(exe: pathlib.Path, *, repeats: int, env: dict[str, str]) -> tuple[str, float]:
+def timed_run(
+    exe: pathlib.Path,
+    *,
+    repeats: int,
+    env: dict[str, str],
+    timeout_seconds: int | None = None,
+) -> tuple[str, float]:
     best = None
     stdout_ref = None
     for _ in range(repeats):
         started = time.perf_counter()
-        proc = run([str(exe)], env=env)
+        proc = run([str(exe)], env=env, timeout=timeout_seconds)
         elapsed = time.perf_counter() - started
         if proc.returncode != 0:
             raise RuntimeError(
@@ -153,6 +159,27 @@ def compare_numeric_outputs(
     }
 
 
+def fail_run(
+    out_dir: pathlib.Path,
+    *,
+    which: str,
+    reason: str,
+    timeout_seconds: int | None = None,
+    message: str | None = None,
+) -> None:
+    lines = [
+        "result=fail",
+        "stage=run",
+        f"which={which}",
+        f"reason={reason}",
+    ]
+    if timeout_seconds is not None:
+        lines.append(f"timeout_seconds={timeout_seconds}")
+    if message is not None:
+        lines.append(f"message={message}")
+    write_text(out_dir / "status.txt", "\n".join(lines) + "\n")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -192,7 +219,17 @@ def main() -> int:
     write_text(out_dir / "baseline.c", baseline_src)
 
     polopt_cmd = [str(polopt), *polopt_args, *args.polopt_arg, str(loop_path)]
-    proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds)
+    try:
+        proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds)
+    except subprocess.TimeoutExpired:
+        write_text(
+            out_dir / "status.txt",
+            "result=fail\nstage=polopt\nreason=timeout\n"
+            f"timeout_seconds={args.timeout_seconds}\n",
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] polopt timed out")
     write_text(out_dir / "polopt.stdout.txt", proc.stdout)
     write_text(out_dir / "polopt.stderr.txt", proc.stderr)
     if proc.returncode != 0:
@@ -241,16 +278,60 @@ def main() -> int:
     env = os.environ.copy()
     env.setdefault("OMP_NUM_THREADS", "1")
 
-    baseline_stdout, baseline_best = timed_run(
-        baseline_exe,
-        repeats=args.benchmark_repeats if benchmark else 1,
-        env=env,
-    )
-    optimized_stdout, optimized_best = timed_run(
-        optimized_exe,
-        repeats=args.benchmark_repeats if benchmark else 1,
-        env=env,
-    )
+    try:
+        baseline_stdout, baseline_best = timed_run(
+            baseline_exe,
+            repeats=args.benchmark_repeats if benchmark else 1,
+            env=env,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        fail_run(
+            out_dir,
+            which="baseline",
+            reason="timeout",
+            timeout_seconds=args.timeout_seconds,
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] baseline executable timed out")
+    except RuntimeError as err:
+        fail_run(
+            out_dir,
+            which="baseline",
+            reason="runtime_error",
+            message=str(err),
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] baseline executable failed")
+    try:
+        optimized_stdout, optimized_best = timed_run(
+            optimized_exe,
+            repeats=args.benchmark_repeats if benchmark else 1,
+            env=env,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        fail_run(
+            out_dir,
+            which="optimized",
+            reason="timeout",
+            timeout_seconds=args.timeout_seconds,
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] optimized executable timed out")
+    except RuntimeError as err:
+        fail_run(
+            out_dir,
+            which="optimized",
+            reason="runtime_error",
+            message=str(err),
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] optimized executable failed")
     write_text(out_dir / "baseline.stdout.txt", baseline_stdout)
     write_text(out_dir / "optimized.stdout.txt", optimized_stdout)
     exact_match = baseline_stdout == optimized_stdout

@@ -446,16 +446,18 @@ The current frontend supports:
 
 - symbolic parameters via `context(...)`
 - structured `for` loops with half-open bounds
-- affine `if` guards
+- `if` guards formed from affine `<=` / `==` tests joined by `&&`
 - scalar and array assignments
-- arithmetic using `+`, `-`, `*`, `/`
+- arithmetic using `+`, `-`, `*`, `/` in general RHS expressions
 - pure calls in RHS expressions
 - ternary expressions in RHS expressions
 - float literals in RHS expressions
 
 Still intentionally restricted in affine positions (bounds, guards, indexes):
 
-- non-affine multiplication
+- affine guards currently support only conjunctions of `<=` / `==` tests; `||` and `!` are rejected
+- affine bounds / guards / indexes accept only constants, variables, affine sums, and constant-multiplied subexpressions
+- division is rejected in affine bounds / guards / indexes
 - general calls in affine bounds / guards / indexes
 - non-affine ternaries in affine bounds / guards / indexes
 
@@ -483,10 +485,10 @@ Current strict proved-path status:
 
 - total inputs: `62`
 - succeeded: `62`
-- changed: `60`
-- unchanged: `2`
-- nontrivially changed: `60`
-- automatically detected tiled outputs: `38`
+- changed: `59`
+- unchanged: `3`
+- nontrivially changed: `59`
+- automatically detected tiled outputs: `39`
 
 Interpretation:
 
@@ -575,7 +577,16 @@ opam exec -- make polcert
 make test
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
+opam exec -- make test-parallel-current-suite
+opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
+```
+
+If you only want to refresh the generated strict-suite corpus for downstream
+whole-C harnesses, without running the strict checker gate, use:
+
+```sh
+opam exec -- make materialize-polopt-loop-suite
 ```
 
 Heavier end-to-end performance checks are intentionally **not** part of default

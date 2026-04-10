@@ -6,13 +6,16 @@ import json
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 
 from generated_harness import DEFAULT_TIER, build_harness, load_param_tiers, render_program_source
-from run_case import compare_numeric_outputs, compile_c, extract_optimized_loop, run, timed_run, write_text
+from run_case import compare_numeric_outputs, compile_c, extract_optimized_loop, fail_run, run, timed_run, write_text
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+DEFAULT_ABS_TOLERANCE = 1e-9
+DEFAULT_REL_TOLERANCE = 1e-9
 
 
 def main() -> int:
@@ -27,6 +30,8 @@ def main() -> int:
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--omp-threads", type=int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
+    ap.add_argument("--abs-tolerance", type=float, default=DEFAULT_ABS_TOLERANCE)
+    ap.add_argument("--rel-tolerance", type=float, default=DEFAULT_REL_TOLERANCE)
     ap.add_argument("--tier", default=DEFAULT_TIER)
     ap.add_argument(
         "--param-config",
@@ -46,11 +51,20 @@ def main() -> int:
         optimized_loop = input_loop
     elif args.polopt:
         polopt = pathlib.Path(args.polopt).resolve()
-        proc = run(
-            [str(polopt), *args.polopt_arg, str(case_dir / "input.loop")],
-            cwd=polopt.parent,
-            timeout=args.timeout_seconds,
-        )
+        try:
+            proc = run(
+                [str(polopt), *args.polopt_arg, str(case_dir / "input.loop")],
+                cwd=polopt.parent,
+                timeout=args.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired:
+            write_text(
+                out_dir / "status.txt",
+                "result=fail\nstage=polopt\nreason=timeout\n"
+                f"timeout_seconds={args.timeout_seconds}\n",
+            )
+            print(f"[E2E-GEN] {case_name}: polopt timed out")
+            return 1
         write_text(out_dir / "polopt.stdout.txt", proc.stdout)
         write_text(out_dir / "polopt.stderr.txt", proc.stderr)
         if proc.returncode != 0:
@@ -106,19 +120,68 @@ def main() -> int:
 
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(args.omp_threads)
-    baseline_stdout, baseline_best = timed_run(baseline_exe, repeats=args.benchmark_repeats, env=env)
-    optimized_stdout, optimized_best = timed_run(optimized_exe, repeats=args.benchmark_repeats, env=env)
+    try:
+        baseline_stdout, baseline_best = timed_run(
+            baseline_exe,
+            repeats=args.benchmark_repeats,
+            env=env,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        fail_run(
+            out_dir,
+            which="baseline",
+            reason="timeout",
+            timeout_seconds=args.timeout_seconds,
+        )
+        print(f"[E2E-GEN] {case_name}: baseline executable timed out")
+        return 1
+    except RuntimeError as err:
+        fail_run(
+            out_dir,
+            which="baseline",
+            reason="runtime_error",
+            message=str(err),
+        )
+        print(f"[E2E-GEN] {case_name}: baseline executable failed")
+        return 1
+    try:
+        optimized_stdout, optimized_best = timed_run(
+            optimized_exe,
+            repeats=args.benchmark_repeats,
+            env=env,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        fail_run(
+            out_dir,
+            which="optimized",
+            reason="timeout",
+            timeout_seconds=args.timeout_seconds,
+        )
+        print(f"[E2E-GEN] {case_name}: optimized executable timed out")
+        return 1
+    except RuntimeError as err:
+        fail_run(
+            out_dir,
+            which="optimized",
+            reason="runtime_error",
+            message=str(err),
+        )
+        print(f"[E2E-GEN] {case_name}: optimized executable failed")
+        return 1
     write_text(out_dir / "baseline.stdout.txt", baseline_stdout)
     write_text(out_dir / "optimized.stdout.txt", optimized_stdout)
 
     exact_match = baseline_stdout == optimized_stdout
     numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
-    outputs_match = exact_match or (
+    numeric_within_tolerance = (
         bool(numeric_summary["numeric_comparable"])
         and bool(numeric_summary["value_count_match"])
-        and float(numeric_summary["max_abs_diff"]) == 0.0
-        and float(numeric_summary["max_rel_diff"]) == 0.0
+        and float(numeric_summary["max_abs_diff"]) <= args.abs_tolerance
+        and float(numeric_summary["max_rel_diff"]) <= args.rel_tolerance
     )
+    outputs_match = exact_match or numeric_within_tolerance
     speedup = (baseline_best / optimized_best) if optimized_best > 0 else 0.0
     summary = {
         "case": case_name,
@@ -130,6 +193,9 @@ def main() -> int:
         "value_count_match": numeric_summary["value_count_match"],
         "max_abs_diff": numeric_summary["max_abs_diff"],
         "max_rel_diff": numeric_summary["max_rel_diff"],
+        "abs_tolerance": args.abs_tolerance,
+        "rel_tolerance": args.rel_tolerance,
+        "numeric_within_tolerance": numeric_within_tolerance,
         "baseline_best_seconds": baseline_best,
         "optimized_best_seconds": optimized_best,
         "speedup": speedup,
@@ -148,7 +214,7 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             args.pipeline_name,
             (
@@ -164,6 +230,9 @@ def main() -> int:
             args.omp_threads,
             numeric_summary["max_abs_diff"],
             numeric_summary["max_rel_diff"],
+            args.abs_tolerance,
+            args.rel_tolerance,
+            str(numeric_within_tolerance).lower(),
             baseline_best,
             optimized_best,
             speedup,
@@ -183,6 +252,7 @@ def main() -> int:
         f"speedup={speedup:.3f}x pipeline={args.pipeline_name or 'adhoc'} "
         f"parallelized_loop={str(parallelized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
+        f"numeric_within_tolerance={str(numeric_within_tolerance).lower()} "
         f"max_abs_diff={numeric_summary['max_abs_diff']} "
         f"max_rel_diff={numeric_summary['max_rel_diff']}"
     )

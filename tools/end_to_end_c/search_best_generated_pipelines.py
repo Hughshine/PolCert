@@ -29,6 +29,8 @@ def run_candidate(
     param_config: str,
     benchmark_repeats: int,
     timeout_seconds: int,
+    abs_tolerance: float | None,
+    rel_tolerance: float | None,
     polopt: str | None,
     pipeline_name: str,
     spec: dict,
@@ -52,6 +54,10 @@ def run_candidate(
         "--param-config",
         param_config,
     ]
+    if abs_tolerance is not None:
+        cmd.extend(["--abs-tolerance", str(abs_tolerance)])
+    if rel_tolerance is not None:
+        cmd.extend(["--rel-tolerance", str(rel_tolerance)])
     source = spec.get("source", "cached_default_no_iss_affine_tiling")
     if source == "input":
         cmd.append("--use-input-loop-as-optimized")
@@ -78,6 +84,8 @@ def main() -> int:
     ap.add_argument("--report-out", default="tests/end-to-end-generated/best_pipeline_report.json")
     ap.add_argument("--benchmark-repeats", type=int, default=1)
     ap.add_argument("--timeout-seconds", type=int, default=300)
+    ap.add_argument("--abs-tolerance", type=float)
+    ap.add_argument("--rel-tolerance", type=float)
     ap.add_argument("--tier", default="perf")
     ap.add_argument("--param-config", default="tests/end-to-end-generated/param_tiers.json")
     ap.add_argument("cases", nargs="*")
@@ -109,6 +117,8 @@ def main() -> int:
                 param_config=args.param_config,
                 benchmark_repeats=args.benchmark_repeats,
                 timeout_seconds=args.timeout_seconds,
+                abs_tolerance=args.abs_tolerance,
+                rel_tolerance=args.rel_tolerance,
                 polopt=args.polopt,
                 pipeline_name=pipeline_name,
                 spec=spec,

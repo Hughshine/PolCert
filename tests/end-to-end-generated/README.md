@@ -10,7 +10,8 @@ does not rely on benchmark-specific wrappers. Instead it:
 - synthesizes complete C programs with deterministic parameter values
 - declares and initializes all discovered arrays/scalars
 - recompiles baseline and optimized executables
-- compares their numeric summaries
+- compares their numeric summaries, with a small abs/rel tolerance for
+  floating-point drift
 - records end-to-end runtime for each case
 
 This provides uniform whole-program coverage for the full generated corpus,
@@ -27,6 +28,10 @@ It also supports an on-the-fly optimization mode driven by `polopt`, which is
 useful for benchmarking `--parallel` output without first materializing a new
 `optimized.loop`. When that mode emits `parallel for`, the generated C is
 compiled with OpenMP and run with the requested `OMP_NUM_THREADS`.
+
+`--timeout-seconds` applies both to the `polopt` optimization step and to each
+generated executable run, so a hung baseline or optimized binary fails the case
+instead of stalling the whole suite.
 
 The default `perf` target can also consume a per-case best-pipeline map from
 `best_pipelines.json`. This lets each generated benchmark run with the fastest
