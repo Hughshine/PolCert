@@ -192,6 +192,7 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     syntax/SLoopCli.cmi \
     syntax/SLoopCommon.cmi \
     syntax/SLoopDispatch.cmi \
+    syntax/SLoopProfile.cmi \
     syntax/SLoopIss.cmi \
     lib/Camlcoq.cmi
 
