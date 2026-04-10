@@ -2,6 +2,7 @@ open Diagnostics
 open Result
 open SLoopCommon
 open SLoopCli
+open SLoopDispatch
 
 let tool_name = "Syntax-Frontend Polyhedral Optimizer"
 
@@ -2338,51 +2339,58 @@ let optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop =
                   (fallback, false)
             end
 
+let standalone_handlers = {
+  sa_run_affine_validator = run_affine_validator;
+  sa_run_tiling_witness_extractor = run_tiling_witness_extractor;
+  sa_run_tiling_validator = run_tiling_validator;
+  sa_run_iss_dump_validator = run_iss_dump_validator;
+  sa_run_iss_bridge_validator = run_iss_bridge_validator;
+  sa_run_iss_pluto_suite = run_iss_pluto_suite;
+  sa_run_iss_pluto_live_suite = run_iss_pluto_live_suite;
+}
+
+let sequential_handlers = {
+  seq_optimize_diamond = optimize_with_phase_aligned_pluto;
+  seq_optimize_iss_identity = optimize_with_iss_identity;
+  seq_optimize_iss_affine = optimize_with_iss_affine;
+  seq_optimize_iss_default = SPolOpt.opt_with_iss;
+  seq_optimize_identity = optimize_identity_only;
+  seq_optimize_affine = optimize_affine_only;
+  seq_optimize_legacy = SPolOpt.opt;
+  seq_optimize_default = SBandTilingOpt.opt;
+}
+
+let hinted_parallel_handlers = {
+  hint_optimize_iss_affine = optimize_with_iss_affine_parallel_hint;
+  hint_optimize_iss_default = optimize_with_iss_phase_aligned_pluto_parallel_hint;
+  hint_optimize_affine = optimize_affine_only_with_pluto_parallel_hint;
+  hint_optimize_default = optimize_with_phase_aligned_pluto_parallel_hint;
+}
+
+let current_parallel_handlers = {
+  cur_optimize_iss_identity = SParallelPolOpt.opt_parallel_current_identity_with_iss;
+  cur_optimize_iss_affine = SParallelPolOpt.opt_parallel_current_affine_with_iss;
+  cur_optimize_iss_default = SParallelPolOpt.opt_parallel_current_with_iss;
+  cur_optimize_identity = SParallelPolOpt.opt_parallel_current_identity;
+  cur_optimize_affine = SParallelPolOpt.opt_parallel_current_affine;
+  cur_optimize_default = SParallelPolOpt.opt_parallel_current;
+}
+
 let run_selected_optimization cfg loop =
-  if cfg.force_diamond_tile then
-    optimize_with_phase_aligned_pluto loop
-  else if cfg.force_iss then
-    if cfg.force_identity then
-      optimize_with_iss_identity loop
-    else if cfg.force_notile then
-      optimize_with_iss_affine loop
-    else
-      SPolOpt.opt_with_iss loop
-  else if cfg.force_identity then
-    optimize_identity_only loop
-  else if cfg.force_notile then
-    optimize_affine_only loop
-  else
-    if cfg.force_legacy_generic_tiling
-    then SPolOpt.opt loop
-    else SBandTilingOpt.opt loop
+  SLoopDispatch.run_selected_optimization cfg sequential_handlers loop
 
 let run_selected_parallel_optimization cfg loop =
-  if cfg.force_iss then
-    if cfg.force_notile then
-      optimize_with_iss_affine_parallel_hint cfg loop
-    else
-      optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop
-  else if cfg.force_notile then
-    optimize_affine_only_with_pluto_parallel_hint cfg loop
-  else
-    optimize_with_phase_aligned_pluto_parallel_hint cfg loop
+  SLoopDispatch.run_selected_parallel_optimization
+    cfg
+    hinted_parallel_handlers
+    loop
 
 let run_selected_parallel_current_optimization cfg loop dim =
-  let dim = nat_of_int dim in
-  if cfg.force_iss then
-    if cfg.force_identity then
-      SParallelPolOpt.opt_parallel_current_identity_with_iss loop dim
-    else if cfg.force_notile then
-      SParallelPolOpt.opt_parallel_current_affine_with_iss loop dim
-    else
-      SParallelPolOpt.opt_parallel_current_with_iss loop dim
-  else if cfg.force_identity then
-    SParallelPolOpt.opt_parallel_current_identity loop dim
-  else if cfg.force_notile then
-    SParallelPolOpt.opt_parallel_current_affine loop dim
-  else
-    SParallelPolOpt.opt_parallel_current loop dim
+  SLoopDispatch.run_selected_parallel_current_optimization
+    cfg
+    current_parallel_handlers
+    loop
+    dim
 
 let () =
   try
@@ -2392,30 +2400,10 @@ let () =
     let cfg = parse_args () in
     validate_flag_model Sys.argv.(0) cfg;
     configure_scheduler_modes cfg;
-    match cfg.validate_affine_openscop, cfg.extract_tiling_witness_openscop, cfg.validate_tiling_openscop,
-          cfg.validate_iss_debug_dumps, cfg.validate_iss_bridge,
-          cfg.validate_iss_pluto_suite, cfg.validate_iss_pluto_live_suite with
-    | Some (before_file, after_file), None, None, None, None, false, false ->
-        exit (run_affine_validator before_file after_file)
-    | None, Some (before_file, after_file), None, None, None, false, false ->
-        exit (run_tiling_witness_extractor
-                ~second_level:cfg.force_second_level_tile
-                before_file
-                after_file)
-    | None, None, Some (before_file, after_file), None, None, false, false ->
-        exit (run_tiling_validator
-                ~second_level:cfg.force_second_level_tile
-                before_file
-                after_file)
-    | None, None, None, Some (before_file, after_file), None, false, false ->
-        exit (run_iss_dump_validator before_file after_file)
-    | None, None, None, None, Some bridge_file, false, false ->
-        exit (run_iss_bridge_validator bridge_file)
-    | None, None, None, None, None, true, false ->
-        exit (run_iss_pluto_suite ())
-    | None, None, None, None, None, false, true ->
-        exit (run_iss_pluto_live_suite ())
-    | None, None, None, None, None, false, false ->
+    match SLoopDispatch.run_standalone_action cfg standalone_handlers with
+    | ExitCode code ->
+        exit code
+    | ContinueToLoop ->
       begin match cfg.input with
       | None ->
         print_endline (usage Sys.argv.(0));
@@ -2464,7 +2452,7 @@ let () =
               print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
         end
       end
-    | _ ->
+    | InvalidStandaloneFlags ->
         prerr_endline (usage Sys.argv.(0));
         exit 2
   with

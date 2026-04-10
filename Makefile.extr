@@ -171,6 +171,13 @@ driver/Scheduler.cmo driver/Scheduler.cmx: \
     syntax/PlutoTilingValidator.cmi \
     lib/Camlcoq.cmi
 
+syntax/SLoopRoute.cmo syntax/SLoopRoute.cmx: \
+    syntax/SLoopConfig.cmi
+
+syntax/SLoopCli.cmo syntax/SLoopCli.cmx: \
+    syntax/SLoopConfig.cmi \
+    syntax/SLoopRoute.cmi
+
 syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/ParallelLoop.cmi \
     extraction/ParallelCodegen.cmi \
@@ -184,6 +191,7 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     driver/Scheduler.cmi \
     syntax/SLoopCli.cmi \
     syntax/SLoopCommon.cmi \
+    syntax/SLoopDispatch.cmi \
     syntax/SLoopIss.cmi \
     lib/Camlcoq.cmi
 
