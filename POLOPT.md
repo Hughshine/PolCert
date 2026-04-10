@@ -507,8 +507,16 @@ Interpretation:
 One practical exception is performance on `advect3d`:
 
 - it succeeds semantically
-- but `CodeGen.codegen` currently takes about `40s` on that case
+- but `CodeGen.codegen` is still noticeably slower than Pluto on that case
 - the slowdown is in code generation, not in parsing, Pluto, or validation
+
+Current status after the singleton-piece fast-path repair:
+
+- identity route: about `5.4s -> 1.2s`
+- affine-only route: about `40s -> 22.9s`
+
+So the first codegen repair is already proved and integrated, but `advect3d`
+remains a real compile-time stress case rather than a solved problem.
 
 ## How to run
 
@@ -569,6 +577,49 @@ opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-polopt-loop-suite
 ```
+
+Heavier end-to-end performance checks are intentionally **not** part of default
+CI. The current whole-C harnesses are:
+
+- handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
+- generated whole-C cases in
+  [tests/end-to-end-generated](./tests/end-to-end-generated)
+
+The one-command local perf refresh is:
+
+```sh
+opam exec -- make test-end-to-end-generated-perf-refresh
+```
+
+That command refreshes:
+
+- the per-case best-pipeline search
+- the fixed Markdown report under
+  [tests/end-to-end-generated/BEST_PIPELINES.md](./tests/end-to-end-generated/BEST_PIPELINES.md)
+- the generated `perf` suite run that uses the chosen best pipeline for each
+  case
+
+Current generated `perf` snapshot:
+
+- cases: `62`
+- selected-best results with `exact_match=true`: `62 / 62`
+- best-pipeline distribution:
+  - `parallel_4`: `20`
+  - `iss_parallel_4`: `9`
+  - `affine_only`: `9`
+  - `identity`: `9`
+  - `default no-ISS affine+tiling pipeline`: `8`
+  - `iss`: `7`
+
+Interpretation:
+
+- `parallelized_loop=true` in the report means the chosen route emitted a real
+  verified `parallel for`
+- `parallelized_loop=false` on a `parallel_*` route means that route still won,
+  but only as a better sequential schedule
+- `iss` / `iss_parallel_4` means the `--iss` route measured best; it does
+  **not** by itself prove that Pluto actually performed ISS statement splitting
+  on that generated case
 
 The generated per-case results live under:
 

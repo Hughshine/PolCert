@@ -10,8 +10,6 @@ Module CoreOpt := PolOpt CPolIRs.
 
 Definition opt : CPolIRs.Loop.t -> imp CPolIRs.Loop.t := CoreOpt.Opt.
 
-Definition validate := CoreOpt.ValidatorCore.validate.
-
 Definition opt_poly (pol : CPolIRs.PolyLang.t) : imp CPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).
 
@@ -20,6 +18,10 @@ Definition opt_scop (scop : OpenScop) : imp CPolIRs.Loop.t :=
   | Okk pol => opt_poly pol
   | Err msg => res_to_alarm CPolIRs.Loop.dummy (Err msg)
   end.
+
+Definition validate_instr_list := CoreOpt.validate_instr_list.
+Definition validate := CoreOpt.validate.
+Definition validate_general := CoreOpt.validate_general.
 
 Definition checked_tiling_validate
     (before after: CPolIRs.PolyLang.t)

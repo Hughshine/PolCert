@@ -96,6 +96,7 @@ GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) \
+  extraction/TilingBandScheduleValidator.cmx \
   extraction/TPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
   driver/Entry.cmx)
@@ -106,6 +107,8 @@ POLOPT_OBJS:=$(shell $(MODORDER) \
   extraction/ParallelLoop.cmx \
   extraction/ParallelCodegen.cmx \
   extraction/STilingOpt.cmx \
+  extraction/STilingBandSched.cmx \
+  extraction/SBandTilingOpt.cmx \
   extraction/SParallelPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
   syntax/SLoopMain.cmx)
@@ -157,6 +160,7 @@ clightgen.byte: $(CLIGHTGEN_OBJS:.cmx=.cmo)
 include .depend.extr
 
 driver/Entry.cmo driver/Entry.cmx: \
+    extraction/TilingBandScheduleValidator.cmi \
     extraction/TPolOpt.cmi \
     extraction/TilingWitness.cmi \
     syntax/PlutoTilingValidator.cmi \
@@ -175,6 +179,7 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/TPolValidator.cmi \
     extraction/TPolOpt.cmi \
     extraction/STilingOpt.cmi \
+    extraction/SBandTilingOpt.cmi \
     extraction/TilingWitness.cmi \
     driver/Scheduler.cmi \
     lib/Camlcoq.cmi

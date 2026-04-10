@@ -123,6 +123,23 @@ Parallel status:
 - the Pluto-hinted routes `--parallel` / `--parallel-strict` are still
   experimental CLI routes
 
+Performance-harness status:
+
+- the strict 62-case `.loop -> optimized .loop` suite remains the default
+  regression gate
+- a heavier wrapper-based generated whole-C perf harness now exists under
+  `tests/end-to-end-generated`
+- it is intentionally not part of default CI
+- the local refresh command is:
+  - `opam exec -- make test-end-to-end-generated-perf-refresh`
+- that harness currently tracks a per-case best pipeline among:
+  - default no-ISS affine+tiling
+  - affine-only
+  - ISS
+  - parallel (`4` threads)
+  - ISS+parallel (`4` threads)
+  - identity fallback
+
 ## `polcert`
 
 `polcert` now exposes four practically important validation modes:

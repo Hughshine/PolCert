@@ -11,6 +11,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 POLOPT = ROOT / "polopt"
 PLUTO = Path("/pluto/tool/pluto")
+ISS_TOOL = ROOT / "tools" / "iss" / "pluto_iss_check.py"
 
 
 def run_bridge_checker(bridge: Path) -> tuple[int, str]:
@@ -32,18 +33,38 @@ def emit_pluto_bridge(src: Path, dst: Path) -> tuple[int, str]:
             "--pet",
             "--iss",
             "--identity",
-            "--dump-iss-bridge",
+            "--moredebug",
             "--silent",
             str(src),
         ],
         capture_output=True,
         text=True,
     )
-    dst.write_text(proc.stdout)
-    output = proc.stdout.strip()
-    if proc.stderr.strip():
-        output = (output + "\n" + proc.stderr.strip()).strip()
-    return proc.returncode, output
+    if proc.returncode != 0:
+        output = proc.stdout.strip()
+        if proc.stderr.strip():
+            output = (output + "\n" + proc.stderr.strip()).strip()
+        return proc.returncode, output
+
+    with tempfile.TemporaryDirectory(prefix="iss-live-emit-") as tmpdir:
+        combined = Path(tmpdir) / f"{src.stem}.combined.txt"
+        combined.write_text(proc.stdout)
+        bridge_proc = subprocess.run(
+            [
+                sys.executable,
+                str(ISS_TOOL),
+                "--emit-bridge-from-combined",
+                str(combined),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    dst.write_text(bridge_proc.stdout)
+    output = bridge_proc.stdout.strip()
+    if bridge_proc.stderr.strip():
+        output = (output + "\n" + bridge_proc.stderr.strip()).strip()
+    return bridge_proc.returncode, output
 
 
 def mutate_bad_cut(src: Path, dst: Path) -> None:

@@ -611,9 +611,24 @@ def validate(before: Program, after: Program) -> list[str]:
     return messages
 
 
+def split_combined_debug_dump(text: str) -> tuple[str, str]:
+    lines = text.splitlines()
+    for idx, line in enumerate(lines):
+        if line.strip() == "After ISS":
+            before = "\n".join(lines[:idx]).strip()
+            after = "\n".join(lines[idx:]).strip()
+            if not before:
+                raise ValueError("combined Pluto dump is missing the pre-ISS section")
+            if not after:
+                raise ValueError("combined Pluto dump is missing the After ISS section")
+            return before + "\n", after + "\n"
+    raise ValueError("combined Pluto dump does not contain an After ISS marker")
+
+
 def main(argv: list[str]) -> int:
     emit_json = False
     emit_bridge = False
+    emit_bridge_from_combined = False
     args = argv[1:]
     if args and args[0] == "--emit-json":
         emit_json = True
@@ -621,9 +636,37 @@ def main(argv: list[str]) -> int:
     if args and args[0] == "--emit-bridge":
         emit_bridge = True
         args = args[1:]
+    if args and args[0] == "--emit-bridge-from-combined":
+        emit_bridge_from_combined = True
+        args = args[1:]
+    if emit_bridge_from_combined:
+        if len(args) != 1:
+            print(
+                f"usage: {argv[0]} [--emit-json|--emit-bridge] BEFORE.txt AFTER.txt",
+                file=sys.stderr,
+            )
+            print(
+                f"   or: {argv[0]} --emit-bridge-from-combined COMBINED.txt",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            before_text, after_text = split_combined_debug_dump(Path(args[0]).read_text())
+            before = parse_program(before_text)
+            after = parse_program(after_text)
+            _, payload = collect_iss_structure(before, after)
+        except Exception as ex:
+            print(f"validation: FAIL: {ex}")
+            return 1
+        print(encode_bridge_text(payload["bridge"]))
+        return 0
     if len(args) != 2:
         print(
             f"usage: {argv[0]} [--emit-json|--emit-bridge] BEFORE.txt AFTER.txt",
+            file=sys.stderr,
+        )
+        print(
+            f"   or: {argv[0]} --emit-bridge-from-combined COMBINED.txt",
             file=sys.stderr,
         )
         return 2

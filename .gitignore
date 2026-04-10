@@ -161,3 +161,16 @@ log.txt
 *.cloog
 result.txt
 loc.md
+
+# Local generated test and profiling outputs
+/tests/end-to-end-c/out/
+/tests/end-to-end-c/out-perf/
+/tests/end-to-end-generated/out/
+/tests/end-to-end-generated/out-perf/
+/tests/end-to-end-generated/out-perf-best/
+/tests/end-to-end-generated/out-heavy/
+/tests/end-to-end-generated/out-perf-parallel/
+/tests/end-to-end-generated/out-perf-parallel-slow/
+/tests/end-to-end-generated/out-tuning/
+/tests/end-to-end-generated/search/
+/tools/end_to_end_c/__pycache__/

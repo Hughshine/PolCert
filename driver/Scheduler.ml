@@ -17,13 +17,48 @@ type tiling_mode =
   | OrdinaryTiling
   | SecondLevelTiling
 
+type diamond_mode =
+  | NoDiamondTiling
+  | DiamondTiling
+  | FullDiamondTiling
+
 let current_tiling_mode = ref OrdinaryTiling
+let current_diamond_mode = ref NoDiamondTiling
 
 let set_tiling_mode mode =
   current_tiling_mode := mode
 
+let set_diamond_mode mode =
+  current_diamond_mode := mode
+
 let second_level_tiling_enabled () =
   !current_tiling_mode = SecondLevelTiling
+
+let diamond_tiling_enabled () =
+  !current_diamond_mode <> NoDiamondTiling
+
+let full_diamond_tiling_enabled () =
+  !current_diamond_mode = FullDiamondTiling
+
+let pluto_executable () =
+  match Sys.getenv_opt "POLCERT_PLUTO" with
+  | Some path when String.trim path <> "" -> path
+  | _ ->
+      let container_pluto = "/pluto/tool/pluto" in
+      if Sys.file_exists container_pluto then
+        container_pluto
+      else
+        "pluto"
+
+let resolve_repo_file rel =
+  let candidates =
+    [ rel;
+      Filename.concat (Sys.getcwd ()) rel;
+      Filename.concat "/polcert" rel ]
+  in
+  match List.find_opt Sys.file_exists candidates with
+  | Some path -> path
+  | None -> failwith ("cannot locate repository file " ^ rel)
 
 let read_file path =
   let ic = open_in path in
@@ -48,7 +83,7 @@ let run_pluto_scop flags inscop =
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
-      [["pluto"; "--dumpscop"; "--readscop"]; flags; [inscop_file]]
+      [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
   in
   (* print_string ((String.concat " " cmd) ^ "\n"); *)
   let stdout =  (tmp_file (".stdout")) in
@@ -69,6 +104,41 @@ let run_pluto_scop flags inscop =
              (Printf.sprintf "scheduler failed with exit code %d" exc))
       ) else
         Err (coqstring_of_camlstring ("scheduler failed"))
+
+let text_has_line tag text =
+  String.split_on_char '\n' text
+  |> List.exists (fun line -> String.trim line = tag)
+
+let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
+  let inscop_file = tmp_file ".scop" in
+  let midscop_file = inscop_file ^ ".midtransform.scop" in
+  let posttile_file = inscop_file ^ ".posttile.scop" in
+  let outscop_file = inscop_file ^ ".afterscheduling.scop" in
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  let cmd =
+    List.concat
+      [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
+  in
+  let stdout = tmp_file ".stdout" in
+  let exc = command ?stdout:(Some stdout) cmd in
+  let read_scop path =
+    if Sys.file_exists path then
+      OpenScopReader.read path
+    else
+      None
+  in
+  match read_scop midscop_file, read_scop posttile_file, read_scop outscop_file with
+  | Some midscop, Some posttile_scop, Some outscop -> Okk (midscop, posttile_scop, outscop)
+  | _ ->
+      if exc <> 0 then (
+        safe_remove midscop_file;
+        safe_remove posttile_file;
+        safe_remove outscop_file;
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf "diamond scheduler failed with exit code %d" exc))
+      ) else
+        Err (coqstring_of_camlstring "diamond scheduler failed")
 
 let trim_nonempty_lines lines =
   List.filter_map
@@ -196,7 +266,7 @@ let run_pluto_scop_with_parallel_hint flags inscop =
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
-      [["pluto"; "--dumpscop"; "--readscop"]; flags; [inscop_file]]
+      [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
   in
   let stdout =  (tmp_file (".stdout")) in
   let exc = command ?stdout:(Some stdout) cmd in
@@ -224,16 +294,38 @@ let run_pluto_bridge flags inscop =
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
-      [["pluto"; "--readscop"]; flags; [inscop_file]]
+      [[pluto_executable (); "--readscop"]; flags; [inscop_file]]
   in
   let exc = command ?stdout:(Some stdout_file) cmd in
   let output = read_file stdout_file in
-  if exc = 0 then
-    Okk output
-  else
+  if exc <> 0 then
     Err
       (coqstring_of_camlstring
-         (Printf.sprintf "ISS bridge export failed with exit code %d" exc))
+         (Printf.sprintf "ISS debug dump export failed with exit code %d" exc))
+  else if not (text_has_line "After ISS" output) then
+    Okk output
+  else
+    try
+      let bridge_tool = resolve_repo_file "tools/iss/pluto_iss_check.py" in
+      let bridge_stdout = tmp_file ".bridge.stdout" in
+      let bridge_cmd =
+        [ "python3";
+          bridge_tool;
+          "--emit-bridge-from-combined";
+          stdout_file ]
+      in
+      let bridge_exc = command ?stdout:(Some bridge_stdout) bridge_cmd in
+      let bridge_output = read_file bridge_stdout in
+      if bridge_exc = 0 then
+        Okk bridge_output
+      else
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf
+                "ISS bridge recovery from Pluto debug dump failed with exit code %d"
+                bridge_exc))
+    with Failure msg ->
+      Err (coqstring_of_camlstring msg)
 
 let affine_only_flags =
   [
@@ -281,6 +373,10 @@ let tile_only_parallel_flags =
   [
     "--identity";
     "--tile";
+    (* Keep the tiled schedule canonical so the verified tiling witness
+       stays phase-aligned. Pluto's default tiled --parallel path may
+       skew tiles for wavefront parallelism. *)
+    "--innerpar";
     "--nointratileopt";
     "--nodiamond-tile";
     "--noprevector";
@@ -292,6 +388,21 @@ let tile_only_parallel_flags =
 let tile_only_parallel_second_level_flags =
   tile_only_parallel_flags @ ["--second-level-tile"]
 
+let diamond_phase_flags () =
+  [
+    "--tile";
+    "--nointratileopt";
+    "--noprevector";
+    "--smartfuse";
+    "--nounrolljam";
+    "--noparallel";
+    "--rar";
+  ]
+  @
+  (if full_diamond_tiling_enabled ()
+   then ["--diamond-tile"; "--full-diamond-tile"]
+   else ["--diamond-tile"])
+
 let affine_with_iss_parallel_flags =
   ["--iss"] @ affine_only_parallel_flags
 
@@ -299,7 +410,7 @@ let iss_identity_bridge_flags =
   [
     "--iss";
     "--identity";
-    "--dump-iss-bridge";
+    "--moredebug";
     "--silent";
   ]
 
@@ -363,6 +474,9 @@ let run_pluto_phase_pipeline inscop =
             else
               Okk (midscop, outscop)
       end
+
+let run_pluto_diamond_phase_pipeline inscop =
+  run_pluto_scop_with_midpoint_and_posttile_dump (diamond_phase_flags ()) inscop
 
 let run_pluto_phase_pipeline_with_parallel_hint inscop =
   match affine_only_scop_scheduler inscop with
@@ -465,7 +579,7 @@ let invoke_pluto testname =
   let inscop_file = testname ^ ".beforescheduling.scop" in
   let outscop_file = testname ^ ".afterscheduling.scop" in
   let cmd = List.concat [
-    ["pluto";
+    [pluto_executable ();
     "--dumpscop";
     "--nointratileopt";
     "--nodiamond-tile";
