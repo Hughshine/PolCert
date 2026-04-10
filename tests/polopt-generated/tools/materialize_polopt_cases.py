@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import os
 import pathlib
 import shutil
 import subprocess
+import tempfile
 import time
 
 INPUT_MARKER = "== Input Loop ==\n"
@@ -145,10 +147,18 @@ def main() -> None:
     total = len(cases)
     for index, src in enumerate(cases, start=1):
         case_dir = out_root / src.stem
-        if case_dir.exists():
-            shutil.rmtree(case_dir)
+        scratch_dir = pathlib.Path(
+            tempfile.mkdtemp(prefix=f".{src.stem}.tmp.", dir=str(out_root))
+        )
         print(f"[{index}/{total}] {src.stem}: running", flush=True)
-        outcome = run_case(polopt, src, case_dir, args.timeout_seconds)
+        try:
+            outcome = run_case(polopt, src, scratch_dir, args.timeout_seconds)
+            if case_dir.exists():
+                shutil.rmtree(case_dir)
+            os.replace(scratch_dir, case_dir)
+        finally:
+            if scratch_dir.exists():
+                shutil.rmtree(scratch_dir)
         if outcome["result"] == "ok":
             print(
                 f"[{index}/{total}] {src.stem}: ok "

@@ -19,7 +19,7 @@ That target:
 1. builds the final `polopt`
 2. runs it on all `62` generated inputs
 3. materializes `tests/polopt-generated/cases`
-4. checks:
+4. loads `tests/polopt-generated/strict_suite_manifest.json` and checks:
    - all `62` cases succeed
    - at least `50` cases change structurally
    - at least `50` cases change nontrivially after ignoring alpha-renaming
