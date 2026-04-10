@@ -91,6 +91,7 @@ def run_case(
     optimized = extract_section(proc.stdout, OPT_MARKER)
     changed = input_pretty != optimized
 
+    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "input.pretty.loop").write_text(input_pretty)
     (out_dir / "optimized.loop").write_text(optimized)
     diff = "".join(
@@ -187,8 +188,8 @@ def main() -> None:
     if args.cases:
         case_specs = list(args.cases)
 
-    root = input_dir
-    out_root = output_dir
+    root = input_dir.resolve()
+    out_root = output_dir.resolve()
     polopt = polopt_path.resolve()
 
     if not root.is_dir():
