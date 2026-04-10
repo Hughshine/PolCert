@@ -183,6 +183,8 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/TilingWitness.cmi \
     driver/Scheduler.cmi \
     syntax/SLoopCli.cmi \
+    syntax/SLoopCommon.cmi \
+    syntax/SLoopIss.cmi \
     lib/Camlcoq.cmi
 
 endif
