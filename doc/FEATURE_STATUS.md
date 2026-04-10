@@ -145,8 +145,10 @@ Status:
 
 - these are validator-only / artifact-only actions, not loop-to-loop optimizer
   routes
-- they cannot be mixed with route selectors such as `--identity`, `--notile`,
-  `--iss`, `--parallel`, `--diamond-tile`, or `--parallel-current`
+- they cannot be mixed with route selectors or tiling-family selectors such as
+  `--identity`, `--notile`, `--iss`, `--parallel`, `--parallel-strict`,
+  `--diamond-tile`, `--parallel-current`, `--band-tiling-experiment`, or
+  `--legacy-generic-tiling`
 - `--second-level-tile` is only meaningful here for tiling witness extraction
   and tiling validation
 
@@ -194,6 +196,7 @@ Main workflow:
 
 `run_ci.sh` currently includes:
 
+- Pluto baseline verification (`tools/ci/check_pluto_baseline.sh`)
 - proof build
 - `check-admitted`
 - extraction
@@ -216,7 +219,8 @@ Not in default `ci` today:
 Additional workflow:
 
 - `.github/workflows/full-tiling-suite.yml`
-- runs the strict `polopt` loop suite plus both ISS suites
+- runs the strict `polopt` loop suite, both ISS suites, and the
+  `parallel-current` / `second-level-tile` suite targets
 
 The strict `.loop -> .loop` gate is CI-enforced. The whole-C harnesses are
 artifact-strengthening workflows and local perf campaigns, not default

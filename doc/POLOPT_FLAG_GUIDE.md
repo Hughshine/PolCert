@@ -173,7 +173,10 @@ Rejected combinations:
   - `--notile`
   - `--iss`
   - `--parallel`
+  - `--parallel-strict`
   - `--diamond-tile`
+  - `--band-tiling-experiment`
+  - `--legacy-generic-tiling`
 - any standalone validation action together with `--parallel-current`
 
 Reason:
@@ -325,25 +328,30 @@ These are semantic constraints, not parser accidents.
 
 ### 6.2 What is still awkward
 
-The main awkwardness is not the individual rejections; it is the CLI structure
-used to express them.
+The main awkwardness is no longer route normalization itself. That part already
+exists in [syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml): the parser state is
+collapsed into an explicit selection over:
 
-Today, the frontend stores route choice as many flat booleans and then checks a
-long sequence of pairwise exclusions. That works, but it has several costs:
+- optimize vs standalone validation
+- base route
+- structural extension
+- tiling family
+- parallel family
 
-- the user sees many ad hoc rejection messages instead of one normalized route
-  explanation
-- new families such as diamond or second-level must manually add more exclusion
-  clauses
-- producer-family choices and checker-family choices are mixed together in one
-  parser state
-- the implementation has to infer a route family from booleans instead of
-  constructing one explicit route object
+The remaining awkwardness is around how the CLI gets there:
+
+- the parser still starts from many flat booleans before normalization
+- producer-family choices and checker-family choices still share one top-level
+  command surface
+- new families such as diamond or second-level still need help-text and
+  rejection-message updates in several places
 
 So the current status is:
 
 - the supported combinations themselves are mostly reasonable
-- the way they are encoded in the CLI is not yet clean
+- the normalized route model is in place
+- the remaining cleanup is about parser shape, command structure, and
+  user-facing messaging
 
 ### 6.3 The biggest conceptual rough edge
 
@@ -366,35 +374,22 @@ look more irregular than the underlying framework really is.
 
 The following cleanup plan would make the current model easier to maintain.
 
-### 7.1 Normalize route selection into an explicit route-spec record
+### 7.1 Keep route normalization as the single source of truth
 
-Instead of carrying many booleans, build a typed route description such as:
+That refactor is already mostly done. The current route-spec style selection in
+[syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml) should remain the only place
+that decides:
 
-- action kind
-  - optimize
-  - standalone validation
-- base route
-  - identity
-  - affine-only
-  - full tiled
-- structural extension
-  - none
-  - ISS
+- optimize vs standalone validation
+- base route / structural extension
 - tiling family
-  - ordinary-band-aware
-  - ordinary-generic
-  - second-level
-  - diamond
-- diamond producer strength
-  - normal
-  - full
 - parallel family
-  - sequential
-  - hinted
-  - explicit-current
 
-Then legality checking becomes a normalization pass over one route object,
-instead of many pairwise boolean checks.
+The next cleanup step is not "invent a route-spec", but rather:
+
+- keep parser/help text synchronized with the normalized selection
+- avoid duplicating legality rules in ad hoc command handlers
+- continue making rejection messages describe route-family conflicts directly
 
 ### 7.2 Separate optimizer mode from standalone validation mode
 

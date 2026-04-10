@@ -30,7 +30,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --validate-affine-openscop <before.scop> <after.scop>\n"
@@ -60,6 +60,9 @@ let usage prog =
       "                      currently only supported on the default non-ISS full tiled path\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
       "                        currently only supported on the default non-ISS full tiled path\n";
+      "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
+      "                             ordinary tiling route; only valid on the default\n";
+      "                             non-ISS full tiled path\n";
       "  --legacy-generic-tiling : use the historical generic ordinary-tiling validator path\n";
       "                            instead of the default band-aware path\n";
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";

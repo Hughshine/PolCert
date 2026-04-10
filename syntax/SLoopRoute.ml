@@ -153,13 +153,20 @@ let normalize (cfg : SLoopConfig.config) =
       if explicit_phase_control_selected cfg then
         Error
           "phase-control flags (--identity/--notile/--iss/--diamond-tile) cannot be combined with standalone validation actions"
+      else if cfg.force_parallel_strict then
+        Error "--parallel-strict cannot be combined with standalone validation actions"
       else if has_parallel_current cfg then
         Error "--parallel-current cannot be combined with standalone validation actions"
+      else if cfg.force_band_tiling_experiment then
+        Error
+          "--band-tiling-experiment only applies to the default non-ISS full tiled optimization route"
+      else if cfg.force_legacy_generic_tiling then
+        Error
+          "--legacy-generic-tiling only applies to the default non-ISS full tiled optimization route"
       else if cfg.force_second_level_tile
-              && (Option.is_some cfg.validate_iss_debug_dumps
-                  || Option.is_some cfg.validate_iss_bridge
-                  || cfg.validate_iss_pluto_suite
-                  || cfg.validate_iss_pluto_live_suite)
+              && match action with
+                 | ExtractTilingWitness _ | ValidateTiling _ -> false
+                 | _ -> true
       then
         Error
           "--second-level-tile only applies to tiled optimization or tiling witness/validation actions"

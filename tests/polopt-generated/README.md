@@ -7,7 +7,10 @@ verified tiling stage with fallback to affine when tiling is unavailable.
 Tracked content:
 - `inputs/`: generated `.loop` inputs, one file per Pluto benchmark case
 - `tools/`: scripts for materializing and checking per-case outputs
-- `cases/<name>/`: checked materialized outputs produced by `polopt`
+
+Materialized runtime content:
+- `cases/<name>/`: per-case outputs produced by `polopt` during
+  materialization/suite runs
 
 Run the full suite locally:
 

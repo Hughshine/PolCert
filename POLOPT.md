@@ -518,6 +518,11 @@ Current strict proved-path status:
 - nontrivially changed: `59`
 - automatically detected tiled outputs: `39`
 
+These numbers are the current observed snapshot on the manifest-owned corpus.
+The default CI gate does not assert those exact counts. It enforces the
+thresholds and required representative cases declared in
+[tests/polopt-generated/strict_suite_manifest.json](./tests/polopt-generated/strict_suite_manifest.json).
+
 Interpretation:
 
 - scheduling decisions come from Pluto itself
@@ -594,10 +599,12 @@ Guidelines:
 
 ## How to test
 
-Full regression is already wired into CI through [tools/ci/run_ci.sh](./tools/ci/run_ci.sh).
+The default regression gate is already wired into CI through
+[tools/ci/run_ci.sh](./tools/ci/run_ci.sh).
 Locally, the main commands are:
 
 ```sh
+bash tools/ci/check_pluto_baseline.sh
 make clean
 opam exec -- make depend
 opam exec -- make proof
@@ -623,8 +630,10 @@ opam exec -- make materialize-polopt-loop-suite
 ```
 
 Heavier end-to-end performance checks are intentionally **not** part of default
-CI, and neither is the dedicated Pluto-backed diamond live suite. The current
-non-default strengthening workflows are:
+CI, and neither is the dedicated Pluto-backed diamond live suite. The default
+gate asserts the main proof/build/test path plus the strict loop manifest
+thresholds; it does not assert the exact current `59` / `39` snapshot shown
+above. The current non-default strengthening workflows are:
 
 - `make test-diamond-tiling-suite`
 - handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
