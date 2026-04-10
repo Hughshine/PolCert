@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import os
 import pathlib
 import shutil
@@ -33,8 +34,16 @@ def extract_section(stdout: str, marker: str) -> str:
     return stdout[start:end].strip() + "\n"
 
 
+def load_manifest(path: pathlib.Path) -> dict[str, object]:
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise SystemExit(f"manifest must be a JSON object: {path}")
+    return data
+
+
 def run_case(
     polopt: pathlib.Path,
+    polopt_args: list[str],
     src: pathlib.Path,
     out_dir: pathlib.Path,
     timeout_seconds: int,
@@ -45,7 +54,7 @@ def run_case(
 
     try:
         proc = subprocess.run(
-            [str(polopt), "--dump-input", str(src)],
+            [str(polopt), *polopt_args, "--dump-input", str(src)],
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -111,6 +120,11 @@ def run_case(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--manifest",
+        default=None,
+        help="JSON manifest describing input/output roots, timeouts, polopt args, and optional case subsets",
+    )
+    parser.add_argument(
         "--input-dir",
         default="tests/polopt-generated/inputs",
         help="Directory containing .loop inputs",
@@ -131,11 +145,51 @@ def main() -> None:
         default=300,
         help="Per-case timeout for invoking polopt",
     )
+    parser.add_argument(
+        "--polopt-arg",
+        action="append",
+        default=[],
+        help="Extra argument to pass through to polopt; may be repeated",
+    )
+    parser.add_argument(
+        "cases",
+        nargs="*",
+        help="Optional subset of case stems or filenames to materialize",
+    )
     args = parser.parse_args()
 
-    root = pathlib.Path(args.input_dir)
-    out_root = pathlib.Path(args.output_dir)
-    polopt = pathlib.Path(args.polopt).resolve()
+    manifest: dict[str, object] = {}
+    if args.manifest is not None:
+        manifest = load_manifest(pathlib.Path(args.manifest))
+
+    input_dir = pathlib.Path(str(manifest.get("input_dir", args.input_dir)))
+    if args.input_dir != parser.get_default("input_dir"):
+        input_dir = pathlib.Path(args.input_dir)
+    output_dir = pathlib.Path(str(manifest.get("output_dir", args.output_dir)))
+    if args.output_dir != parser.get_default("output_dir"):
+        output_dir = pathlib.Path(args.output_dir)
+    polopt_path = pathlib.Path(str(manifest.get("polopt", args.polopt)))
+    if args.polopt != parser.get_default("polopt"):
+        polopt_path = pathlib.Path(args.polopt)
+    timeout_seconds = int(manifest.get("timeout_seconds", args.timeout_seconds))
+    if args.timeout_seconds != parser.get_default("timeout_seconds"):
+        timeout_seconds = args.timeout_seconds
+
+    polopt_args = manifest.get("polopt_args", [])
+    if not isinstance(polopt_args, list) or not all(isinstance(arg, str) for arg in polopt_args):
+        raise SystemExit("polopt_args must be a string list")
+    if args.polopt_arg:
+        polopt_args = list(args.polopt_arg)
+
+    case_specs = manifest.get("cases", [])
+    if not isinstance(case_specs, list) or not all(isinstance(case, str) for case in case_specs):
+        raise SystemExit("cases must be a string list")
+    if args.cases:
+        case_specs = list(args.cases)
+
+    root = input_dir
+    out_root = output_dir
+    polopt = polopt_path.resolve()
 
     if not root.is_dir():
         raise SystemExit(f"input dir not found: {root}")
@@ -143,7 +197,20 @@ def main() -> None:
         raise SystemExit(f"polopt not found: {polopt}")
 
     out_root.mkdir(parents=True, exist_ok=True)
-    cases = sorted(root.glob("*.loop"))
+    for stale in out_root.iterdir():
+        if stale.is_dir() and stale.name.startswith(".") and ".tmp." in stale.name:
+            shutil.rmtree(stale)
+    if case_specs:
+        cases = []
+        for case in case_specs:
+            name = case if case.endswith(".loop") else f"{case}.loop"
+            src = root / name
+            if not src.is_file():
+                raise SystemExit(f"requested case not found: {src}")
+            cases.append(src)
+        cases.sort()
+    else:
+        cases = sorted(root.glob("*.loop"))
     total = len(cases)
     for index, src in enumerate(cases, start=1):
         case_dir = out_root / src.stem
@@ -152,7 +219,13 @@ def main() -> None:
         )
         print(f"[{index}/{total}] {src.stem}: running", flush=True)
         try:
-            outcome = run_case(polopt, src, scratch_dir, args.timeout_seconds)
+            outcome = run_case(
+                polopt,
+                list(polopt_args),
+                src,
+                scratch_dir,
+                timeout_seconds,
+            )
             if case_dir.exists():
                 shutil.rmtree(case_dir)
             os.replace(scratch_dir, case_dir)

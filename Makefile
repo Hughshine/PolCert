@@ -247,8 +247,8 @@ test: .depend.extr polcert.ini driver/Version.ml FORCE
 materialize-polopt-loop-suite: polopt
 	rm -rf tests/polopt-generated/cases
 	python3 tests/polopt-generated/tools/materialize_polopt_cases.py \
-		--polopt ./polopt \
-		--timeout-seconds 300
+		--manifest tests/polopt-generated/materialize_manifest.json \
+		--polopt ./polopt
 
 test-polopt-loop-suite: materialize-polopt-loop-suite
 	python3 tests/polopt-generated/tools/check_polopt_cases.py \

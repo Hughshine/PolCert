@@ -1,0 +1,48 @@
+{
+  "suite_name": "SECOND-LEVEL-TILE",
+  "fixtures": {
+    "matmul-init": "fixtures/matmul-init.loop"
+  },
+  "checks": [
+    {
+      "name": "second-level-tile-supported",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile"
+      ],
+      "expect": "success",
+      "needle": "== Optimized Loop =="
+    },
+    {
+      "name": "second-level-tile-rejects-identity",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile",
+        "--identity"
+      ],
+      "expect": "failure",
+      "needle": "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity"
+    },
+    {
+      "name": "second-level-tile-rejects-notile",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile",
+        "--notile"
+      ],
+      "expect": "failure",
+      "needle": "--second-level-tile requires tiling and cannot be combined with --notile"
+    },
+    {
+      "name": "second-level-tile-rejects-parallel-current",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needle": "--second-level-tile is not yet supported with --parallel-current"
+    }
+  ]
+}

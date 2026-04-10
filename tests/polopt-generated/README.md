@@ -35,6 +35,10 @@ generated whole-C harnesses, without rerunning the strict checker gate, use:
 opam exec -- make materialize-polopt-loop-suite
 ```
 
+That target now loads `tests/polopt-generated/materialize_manifest.json`, so
+the input/output roots and materialization timeout live in manifest data rather
+than Makefile literals.
+
 Current reporting:
 - `changed` means the optimized pretty-printed loop differs from the input.
 - `nontrivial_changed` means the loop still differs after:

@@ -1,0 +1,50 @@
+{
+  "suite_name": "PARALLEL-CURRENT",
+  "fixtures": {
+    "positive": "fixtures/positive.loop",
+    "dependent": "fixtures/dependent.loop"
+  },
+  "checks": [
+    {
+      "name": "parallel-current-positive",
+      "fixture": "positive",
+      "args": [
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for"
+    },
+    {
+      "name": "parallel-current-positive-iss",
+      "fixture": "positive",
+      "args": [
+        "--iss",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for"
+    },
+    {
+      "name": "parallel-current-out-of-bounds",
+      "fixture": "positive",
+      "args": [
+        "--parallel-current",
+        "5"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    },
+    {
+      "name": "parallel-current-dependent",
+      "fixture": "dependent",
+      "args": [
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    }
+  ]
+}

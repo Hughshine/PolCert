@@ -249,6 +249,108 @@ let parse_args () =
   in
   go 1
 
+let usage_error prog msg =
+  prerr_endline msg;
+  prerr_endline (usage prog);
+  exit 2
+
+let standalone_action_count cfg =
+  List.length
+    (List.filter
+       (fun x -> x)
+       [ Option.is_some cfg.extract_tiling_witness_openscop;
+         Option.is_some cfg.validate_affine_openscop;
+         Option.is_some cfg.validate_tiling_openscop;
+         Option.is_some cfg.validate_iss_debug_dumps;
+         Option.is_some cfg.validate_iss_bridge;
+         cfg.validate_iss_pluto_suite;
+         cfg.validate_iss_pluto_live_suite ])
+
+let has_explicit_phase_control cfg =
+  cfg.force_identity || cfg.force_notile || cfg.force_iss ||
+  cfg.force_parallel || cfg.force_diamond_tile
+
+let has_parallel_current cfg =
+  Option.is_some cfg.parallel_current_dim
+
+let validate_flag_model prog cfg =
+  let selected_actions = standalone_action_count cfg in
+  if selected_actions > 1 then
+    usage_error prog "only one experimental validation action may be selected";
+  if selected_actions > 0 && has_explicit_phase_control cfg then
+    usage_error prog
+      "phase-control flags (--identity/--notile/--iss/--diamond-tile) cannot be combined with standalone validation actions";
+  if has_parallel_current cfg && selected_actions > 0 then
+    usage_error prog "--parallel-current cannot be combined with standalone validation actions";
+  if has_parallel_current cfg && cfg.extract_only then
+    usage_error prog "--parallel-current cannot be combined with --extract-only";
+  if cfg.force_parallel_strict && not cfg.force_parallel then
+    usage_error prog "--parallel-strict requires --parallel";
+  if cfg.force_parallel && cfg.force_identity then
+    usage_error prog "--parallel requires a Pluto scheduling phase and cannot be combined with --identity";
+  if cfg.force_parallel && has_parallel_current cfg then
+    usage_error prog "--parallel cannot be combined with --parallel-current";
+  if cfg.force_band_tiling_experiment && cfg.force_legacy_generic_tiling then
+    usage_error prog "--band-tiling-experiment cannot be combined with --legacy-generic-tiling";
+  if cfg.force_band_tiling_experiment &&
+       (cfg.force_identity || cfg.force_notile || cfg.force_iss ||
+        cfg.force_parallel || cfg.force_parallel_strict ||
+        has_parallel_current cfg) then
+    usage_error prog
+      "--band-tiling-experiment is now only a compatibility alias for the default non-ISS full tiled route";
+  if cfg.force_legacy_generic_tiling &&
+       (cfg.force_identity || cfg.force_notile || cfg.force_iss ||
+        cfg.force_parallel || cfg.force_parallel_strict ||
+        has_parallel_current cfg) then
+    usage_error prog
+      "--legacy-generic-tiling only supports the default non-ISS full tiled route";
+  if cfg.force_second_level_tile && cfg.force_identity then
+    usage_error prog
+      "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
+  if cfg.force_second_level_tile && cfg.force_notile then
+    usage_error prog
+      "--second-level-tile requires tiling and cannot be combined with --notile";
+  if cfg.force_second_level_tile && cfg.force_parallel then
+    usage_error prog "--second-level-tile is not yet supported with --parallel";
+  if cfg.force_second_level_tile && has_parallel_current cfg then
+    usage_error prog "--second-level-tile is not yet supported with --parallel-current";
+  if cfg.force_second_level_tile &&
+       (Option.is_some cfg.validate_iss_debug_dumps ||
+        Option.is_some cfg.validate_iss_bridge ||
+        cfg.validate_iss_pluto_suite ||
+        cfg.validate_iss_pluto_live_suite) then
+    usage_error prog
+      "--second-level-tile only applies to tiled optimization or tiling witness/validation actions";
+  if cfg.force_diamond_tile && cfg.force_identity then
+    usage_error prog
+      "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
+  if cfg.force_diamond_tile && cfg.force_notile then
+    usage_error prog "--diamond-tile requires tiling and cannot be combined with --notile";
+  if cfg.force_diamond_tile && cfg.force_iss then
+    usage_error prog "--diamond-tile is not yet supported with --iss";
+  if cfg.force_diamond_tile && cfg.force_parallel then
+    usage_error prog "--diamond-tile is not yet supported with --parallel";
+  if cfg.force_diamond_tile && has_parallel_current cfg then
+    usage_error prog "--diamond-tile is not yet supported with --parallel-current";
+  if cfg.force_diamond_tile && cfg.force_second_level_tile then
+    usage_error prog "--diamond-tile is not yet supported with --second-level-tile";
+  if cfg.force_diamond_tile && cfg.force_band_tiling_experiment then
+    usage_error prog "--diamond-tile cannot be combined with --band-tiling-experiment";
+  if cfg.force_diamond_tile && cfg.force_legacy_generic_tiling then
+    usage_error prog "--diamond-tile cannot be combined with --legacy-generic-tiling"
+
+let configure_scheduler_modes cfg =
+  Scheduler.set_tiling_mode
+    (if cfg.force_second_level_tile
+     then Scheduler.SecondLevelTiling
+     else Scheduler.OrdinaryTiling);
+  Scheduler.set_diamond_mode
+    (if cfg.force_full_diamond_tile
+     then Scheduler.FullDiamondTiling
+     else if cfg.force_diamond_tile
+     then Scheduler.DiamondTiling
+     else Scheduler.NoDiamondTiling)
+
 let string_of_coq_err msg = Camlcoq.camlstring_of_coqstring msg
 
 let read_openscop_or_fail path =
@@ -2935,157 +3037,8 @@ let () =
                Gc.minor_heap_size = 524288;
                Gc.major_heap_increment = 4194304 };
     let cfg = parse_args () in
-    let selected_actions =
-      List.length
-        (List.filter
-           (fun x -> x)
-           [ Option.is_some cfg.extract_tiling_witness_openscop;
-             Option.is_some cfg.validate_affine_openscop;
-             Option.is_some cfg.validate_tiling_openscop;
-             Option.is_some cfg.validate_iss_debug_dumps;
-             Option.is_some cfg.validate_iss_bridge;
-             cfg.validate_iss_pluto_suite;
-             cfg.validate_iss_pluto_live_suite ])
-    in
-    let has_explicit_phase_control =
-      cfg.force_identity || cfg.force_notile || cfg.force_iss ||
-      cfg.force_parallel || cfg.force_diamond_tile
-    in
-    if selected_actions > 1 then begin
-        prerr_endline "only one experimental validation action may be selected";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if selected_actions > 0 && has_explicit_phase_control then begin
-        prerr_endline "phase-control flags (--identity/--notile/--iss/--diamond-tile) cannot be combined with standalone validation actions";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if Option.is_some cfg.parallel_current_dim && selected_actions > 0 then begin
-        prerr_endline "--parallel-current cannot be combined with standalone validation actions";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if Option.is_some cfg.parallel_current_dim && cfg.extract_only then begin
-        prerr_endline "--parallel-current cannot be combined with --extract-only";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_parallel_strict && not cfg.force_parallel then begin
-        prerr_endline "--parallel-strict requires --parallel";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_parallel && cfg.force_identity then begin
-        prerr_endline "--parallel requires a Pluto scheduling phase and cannot be combined with --identity";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_parallel && Option.is_some cfg.parallel_current_dim then begin
-        prerr_endline "--parallel cannot be combined with --parallel-current";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_band_tiling_experiment && cfg.force_legacy_generic_tiling then begin
-        prerr_endline "--band-tiling-experiment cannot be combined with --legacy-generic-tiling";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_band_tiling_experiment &&
-         (cfg.force_identity || cfg.force_notile || cfg.force_iss ||
-          cfg.force_parallel || cfg.force_parallel_strict ||
-          Option.is_some cfg.parallel_current_dim) then begin
-        prerr_endline "--band-tiling-experiment is now only a compatibility alias for the default non-ISS full tiled route";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_legacy_generic_tiling &&
-         (cfg.force_identity || cfg.force_notile || cfg.force_iss ||
-          cfg.force_parallel || cfg.force_parallel_strict ||
-          Option.is_some cfg.parallel_current_dim) then begin
-        prerr_endline "--legacy-generic-tiling only supports the default non-ISS full tiled route";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_second_level_tile && cfg.force_identity then begin
-        prerr_endline "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_second_level_tile && cfg.force_notile then begin
-        prerr_endline "--second-level-tile requires tiling and cannot be combined with --notile";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_second_level_tile && cfg.force_parallel then begin
-        prerr_endline "--second-level-tile is not yet supported with --parallel";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_second_level_tile && Option.is_some cfg.parallel_current_dim then begin
-        prerr_endline "--second-level-tile is not yet supported with --parallel-current";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_second_level_tile &&
-         (Option.is_some cfg.validate_iss_debug_dumps ||
-          Option.is_some cfg.validate_iss_bridge ||
-          cfg.validate_iss_pluto_suite ||
-          cfg.validate_iss_pluto_live_suite) then begin
-        prerr_endline "--second-level-tile only applies to tiled optimization or tiling witness/validation actions";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_identity then begin
-        prerr_endline "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_notile then begin
-        prerr_endline "--diamond-tile requires tiling and cannot be combined with --notile";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_iss then begin
-        prerr_endline "--diamond-tile is not yet supported with --iss";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_parallel then begin
-        prerr_endline "--diamond-tile is not yet supported with --parallel";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && Option.is_some cfg.parallel_current_dim then begin
-        prerr_endline "--diamond-tile is not yet supported with --parallel-current";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_second_level_tile then begin
-        prerr_endline "--diamond-tile is not yet supported with --second-level-tile";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_band_tiling_experiment then begin
-        prerr_endline "--diamond-tile cannot be combined with --band-tiling-experiment";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    if cfg.force_diamond_tile && cfg.force_legacy_generic_tiling then begin
-        prerr_endline "--diamond-tile cannot be combined with --legacy-generic-tiling";
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
-    end;
-    Scheduler.set_tiling_mode
-      (if cfg.force_second_level_tile
-       then Scheduler.SecondLevelTiling
-       else Scheduler.OrdinaryTiling);
-    Scheduler.set_diamond_mode
-      (if cfg.force_full_diamond_tile
-       then Scheduler.FullDiamondTiling
-       else if cfg.force_diamond_tile
-       then Scheduler.DiamondTiling
-       else Scheduler.NoDiamondTiling);
+    validate_flag_model Sys.argv.(0) cfg;
+    configure_scheduler_modes cfg;
     match cfg.validate_affine_openscop, cfg.extract_tiling_witness_openscop, cfg.validate_tiling_openscop,
           cfg.validate_iss_debug_dumps, cfg.validate_iss_bridge,
           cfg.validate_iss_pluto_suite, cfg.validate_iss_pluto_live_suite with
