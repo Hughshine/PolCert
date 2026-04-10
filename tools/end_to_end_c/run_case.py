@@ -157,9 +157,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
     ap.add_argument("--polopt", default="./polopt")
+    ap.add_argument("--polopt-arg", action="append", default=[])
     ap.add_argument("--output-root", default="tests/end-to-end-c/out")
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--benchmark-repeats", type=int, default=3)
+    ap.add_argument("--require-parallelized", action="store_true")
     ap.add_argument("--keep-going", action="store_true")
     args = ap.parse_args()
 
@@ -189,7 +191,7 @@ def main() -> int:
     write_text(out_dir / "baseline.kernel.c", baseline_kernel)
     write_text(out_dir / "baseline.c", baseline_src)
 
-    polopt_cmd = [str(polopt), *polopt_args, str(loop_path)]
+    polopt_cmd = [str(polopt), *polopt_args, *args.polopt_arg, str(loop_path)]
     proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds)
     write_text(out_dir / "polopt.stdout.txt", proc.stdout)
     write_text(out_dir / "polopt.stderr.txt", proc.stderr)
@@ -203,7 +205,16 @@ def main() -> int:
         raise SystemExit(f"[{case_name}] polopt failed")
 
     optimized_loop = extract_optimized_loop(proc.stdout)
+    parallelized_loop = "parallel for" in optimized_loop
     write_text(out_dir / "optimized.loop", optimized_loop)
+    if args.require_parallelized and not parallelized_loop:
+        write_text(
+            out_dir / "status.txt",
+            "result=fail\nstage=parallelize\nparallelized_loop=false\n",
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] no parallel for emitted")
     optimized_kernel = transpile_loop_text(optimized_loop)
     optimized_src = render_source(template, optimized_kernel)
     write_text(out_dir / "optimized.kernel.c", optimized_kernel)
@@ -211,8 +222,9 @@ def main() -> int:
 
     baseline_exe = out_dir / "baseline.exe"
     optimized_exe = out_dir / "optimized.exe"
-    baseline_build = compile_c(out_dir / "baseline.c", baseline_exe, openmp=openmp)
-    optimized_build = compile_c(out_dir / "optimized.c", optimized_exe, openmp=openmp)
+    compile_with_openmp = openmp or parallelized_loop
+    baseline_build = compile_c(out_dir / "baseline.c", baseline_exe, openmp=compile_with_openmp)
+    optimized_build = compile_c(out_dir / "optimized.c", optimized_exe, openmp=compile_with_openmp)
     write_text(out_dir / "baseline.build.stderr.txt", baseline_build.stderr)
     write_text(out_dir / "optimized.build.stderr.txt", optimized_build.stderr)
     if baseline_build.returncode != 0 or optimized_build.returncode != 0:
@@ -255,6 +267,7 @@ def main() -> int:
         "result": "ok" if outputs_match else "fail",
         "outputs_match": outputs_match,
         "exact_match": exact_match,
+        "parallelized_loop": parallelized_loop,
         "numeric_comparable": numeric_summary["numeric_comparable"],
         "value_count_match": numeric_summary["value_count_match"],
         "max_abs_diff": numeric_summary["max_abs_diff"],
@@ -265,15 +278,16 @@ def main() -> int:
         "baseline_best_seconds": baseline_best,
         "optimized_best_seconds": optimized_best,
         "speedup": speedup,
-        "polopt_args": polopt_args,
+        "polopt_args": [*polopt_args, *args.polopt_arg],
     }
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             str(outputs_match).lower(),
             str(exact_match).lower(),
+            str(parallelized_loop).lower(),
             str(bool(numeric_summary["numeric_comparable"])).lower(),
             str(bool(numeric_summary["value_count_match"])).lower(),
             numeric_summary["max_abs_diff"],
@@ -294,6 +308,7 @@ def main() -> int:
     print(
         f"[E2E] {case_name}: ok "
         f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x "
+        f"parallelized_loop={str(parallelized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
         f"max_abs_diff={numeric_summary['max_abs_diff']} "
         f"max_rel_diff={numeric_summary['max_rel_diff']}"

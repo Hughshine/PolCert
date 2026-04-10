@@ -239,7 +239,7 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint profile-advect3d-codegen profile-advect3d-codegen-identity
+.PHONY: proof extraction FORCE test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite profile-advect3d-codegen profile-advect3d-codegen-identity
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -275,6 +275,14 @@ test-end-to-end-c-perf: polopt
 		--output-root tests/end-to-end-c/out-perf \
 		--benchmark-repeats 3 \
 		--name-suffix _perf
+
+test-end-to-end-c-matmul-parallel: polopt
+	python3 tools/end_to_end_c/run_case.py \
+		tests/end-to-end-c/cases/matmul \
+		--polopt ./polopt \
+		--polopt-arg=--parallel \
+		--require-parallelized \
+		--benchmark-repeats 1
 
 test-end-to-end-generated-smoke: test-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
@@ -360,6 +368,9 @@ test-end-to-end-all: test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-
 
 test-pluto-bug-matmul-parallel-hint: polopt polcert.ini
 	python3 tools/pluto_bugs/run_matmul_parallel_hint.py
+
+test-diamond-tiling-suite: polopt polcert
+	python3 tools/diamond_tiling/run_pluto_diamond_suite.py
 
 profile-advect3d-codegen: polopt
 	python3 tools/perf/run_stage_profile.py \

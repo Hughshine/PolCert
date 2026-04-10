@@ -96,6 +96,7 @@ GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) \
+  extraction/TilingBandScheduleValidator.cmx \
   extraction/TPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
   driver/Entry.cmx)
@@ -159,6 +160,7 @@ clightgen.byte: $(CLIGHTGEN_OBJS:.cmx=.cmo)
 include .depend.extr
 
 driver/Entry.cmo driver/Entry.cmx: \
+    extraction/TilingBandScheduleValidator.cmi \
     extraction/TPolOpt.cmi \
     extraction/TilingWitness.cmi \
     syntax/PlutoTilingValidator.cmi \

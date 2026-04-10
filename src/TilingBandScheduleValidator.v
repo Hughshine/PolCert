@@ -409,6 +409,93 @@ Definition band_new_cutoff
     (band: pinstr_tiling_band) : nat :=
   (ptb_start band + 2 * ptb_len band)%nat.
 
+Definition tile_sizes_of_witness
+    (w: statement_tiling_witness) : list Z :=
+  List.map tl_tile_size (stw_links w).
+
+Fixpoint check_common_tiling_band_recipe_withb
+    (sizes: list Z)
+    (ws: list statement_tiling_witness) : bool :=
+  match ws with
+  | [] => true
+  | w :: ws' =>
+      listz_strict_eqb sizes (tile_sizes_of_witness w) &&
+      check_common_tiling_band_recipe_withb sizes ws'
+  end.
+
+Definition check_common_tiling_band_recipeb
+    (ws: list statement_tiling_witness) : bool :=
+  match ws with
+  | [] => true
+  | w :: ws' =>
+      check_common_tiling_band_recipe_withb (tile_sizes_of_witness w) ws'
+  end.
+
+Definition constant_schedule_row_like
+    (sched: Schedule)
+    (c: Z) : (list Z * Z) :=
+  match sched with
+  | [] => ([], c)
+  | (coeffs, _) :: _ => (repeat 0%Z (List.length coeffs), c)
+  end.
+
+Fixpoint uniform_tile_link_const_opt
+    (links: list tile_link) : option Z :=
+  match links with
+  | [] => Some 0%Z
+  | link :: links' =>
+      let c := ae_const (tl_expr link) in
+      if forallb (fun link' => Z.eqb c (ae_const (tl_expr link'))) links'
+      then Some c
+      else None
+  end.
+
+Definition witness_phase_const_opt
+    (w: statement_tiling_witness) : option Z :=
+  uniform_tile_link_const_opt (stw_links w).
+
+Definition schedule_band_rows
+    (band: pinstr_tiling_band)
+    (sched: Schedule) : Schedule :=
+  firstn (ptb_len band) (skipn (ptb_start band) sched).
+
+Definition project_pluto_phased_band_pi_ext
+    (band: pinstr_tiling_band)
+    (phase: Z)
+    (pi_ext: Tiling.PL.PolyInstr_ext) : Tiling.PL.PolyInstr_ext :=
+  let prefix := schedule_take_prefix_only band (Tiling.PL.pi_schedule1_ext pi_ext) in
+  let phase_row := constant_schedule_row_like (Tiling.PL.pi_schedule1_ext pi_ext) phase in
+  let band_rows := schedule_band_rows band (Tiling.PL.pi_schedule1_ext pi_ext) in
+  {|
+    Tiling.PL.pi_depth_ext := Tiling.PL.pi_depth_ext pi_ext;
+    Tiling.PL.pi_instr_ext := Tiling.PL.pi_instr_ext pi_ext;
+    Tiling.PL.pi_poly_ext := Tiling.PL.pi_poly_ext pi_ext;
+    Tiling.PL.pi_point_witness_ext := Tiling.PL.pi_point_witness_ext pi_ext;
+    Tiling.PL.pi_transformation_ext := Tiling.PL.pi_transformation_ext pi_ext;
+    Tiling.PL.pi_access_transformation_ext :=
+      Tiling.PL.pi_access_transformation_ext pi_ext;
+    Tiling.PL.pi_schedule1_ext := prefix ++ phase_row :: band_rows;
+    Tiling.PL.pi_schedule2_ext := prefix ++ [phase_row];
+    Tiling.PL.pi_waccess_ext := Tiling.PL.pi_waccess_ext pi_ext;
+    Tiling.PL.pi_raccess_ext := Tiling.PL.pi_raccess_ext pi_ext;
+  |}.
+
+Fixpoint project_pinstrs_ext_with_pluto_phased_band
+    (pil_ext: list Tiling.PL.PolyInstr_ext)
+    (ws: list statement_tiling_witness)
+    (band: pinstr_tiling_band) : option (list Tiling.PL.PolyInstr_ext) :=
+  match pil_ext, ws with
+  | [], [] => Some []
+  | pi_ext :: pil_ext', w :: ws' =>
+      match witness_phase_const_opt w,
+            project_pinstrs_ext_with_pluto_phased_band pil_ext' ws' band with
+      | Some phase, Some rest =>
+          Some (project_pluto_phased_band_pi_ext band phase pi_ext :: rest)
+      | _, _ => None
+      end
+  | _, _ => None
+  end.
+
 Fixpoint max_band_new_cutoff
     (bands: list pinstr_tiling_band) : nat :=
   match bands with
@@ -443,6 +530,27 @@ Definition project_cutoff_pi_ext
     Tiling.PL.pi_raccess_ext := Tiling.PL.pi_raccess_ext pi_ext;
   |}.
 
+Definition project_pluto_band_pi_ext
+    (band: pinstr_tiling_band)
+    (pi_ext: Tiling.PL.PolyInstr_ext) : Tiling.PL.PolyInstr_ext :=
+  {|
+    Tiling.PL.pi_depth_ext := Tiling.PL.pi_depth_ext pi_ext;
+    Tiling.PL.pi_instr_ext := Tiling.PL.pi_instr_ext pi_ext;
+    Tiling.PL.pi_poly_ext := Tiling.PL.pi_poly_ext pi_ext;
+    Tiling.PL.pi_point_witness_ext := Tiling.PL.pi_point_witness_ext pi_ext;
+    Tiling.PL.pi_transformation_ext := Tiling.PL.pi_transformation_ext pi_ext;
+    Tiling.PL.pi_access_transformation_ext :=
+      Tiling.PL.pi_access_transformation_ext pi_ext;
+    Tiling.PL.pi_schedule1_ext :=
+      firstn (ptb_start band + ptb_len band)%nat
+        (Tiling.PL.pi_schedule1_ext pi_ext);
+    Tiling.PL.pi_schedule2_ext :=
+      firstn (ptb_start band)%nat
+        (Tiling.PL.pi_schedule1_ext pi_ext);
+    Tiling.PL.pi_waccess_ext := Tiling.PL.pi_waccess_ext pi_ext;
+    Tiling.PL.pi_raccess_ext := Tiling.PL.pi_raccess_ext pi_ext;
+  |}.
+
 Definition project_cutoff_ip_ext
     (cutoff: nat)
     (ip_ext: Tiling.PL.InstrPoint_ext) : Tiling.PL.InstrPoint_ext :=
@@ -463,6 +571,11 @@ Definition project_pinstrs_ext_with_cutoff
     (pil_ext: list Tiling.PL.PolyInstr_ext)
     (cutoff: nat) : list Tiling.PL.PolyInstr_ext :=
   List.map (project_cutoff_pi_ext cutoff) pil_ext.
+
+Definition project_pinstrs_ext_with_pluto_band
+    (pil_ext: list Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band) : list Tiling.PL.PolyInstr_ext :=
+  List.map (project_pluto_band_pi_ext band) pil_ext.
 
 Definition project_band_ip_ext
     (band: pinstr_tiling_band)
@@ -3884,6 +3997,73 @@ Definition check_pinstr_list_permutable_tiling_band_via_validate_tiling
   BIND res <- BandAffine.validate_instr_list (rev pil_ext) env_size -;
   pure (res && valid_access).
 
+Fixpoint check_pinstr_list_cross_validate_tiling
+    (pil_ext: list Tiling.PL.PolyInstr_ext)
+    (env_size: nat) : imp bool :=
+  match pil_ext with
+  | [] => pure true
+  | pi_ext :: pil_ext' =>
+      BIND res <- BandAffine.validate_instr_and_list pi_ext pil_ext' env_size -;
+      if res then
+        check_pinstr_list_cross_validate_tiling pil_ext' env_size
+      else pure false
+  end.
+
+Definition check_pinstr_list_pluto_permutable_band_via_validate_tiling
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (band: pinstr_tiling_band) : imp bool :=
+  let run pil_ext :=
+    let valid_access := BandAffine.check_valid_access pil_ext in
+    BIND res <- check_pinstr_list_cross_validate_tiling (rev pil_ext) env_size -;
+    pure (res && valid_access)
+  in
+  match
+    project_pinstrs_ext_with_pluto_phased_band
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+         env_size before_pis after_pis ws)
+      ws
+      band
+  with
+  | Some pil_ext => run pil_ext
+  | None => pure false
+  end.
+
+Definition check_pinstr_list_pluto_permutable_band_via_validate_tiling_old
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (band: pinstr_tiling_band) : imp bool :=
+  check_pinstr_list_pluto_permutable_band_via_validate_tiling
+    env_size before_pis after_pis ws band.
+
+Fixpoint check_pinstr_list_single_permutable_tiling_bands_via_validate_tiling
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (bands: list pinstr_tiling_band) : imp bool :=
+  match before_pis, after_pis, ws, bands with
+  | [], [], [], [] => pure true
+  | before_pi :: before_pis',
+    after_pi :: after_pis',
+    w :: ws',
+    band :: bands' =>
+      let cutoff := max_pinstr_schedule_len (after_pi :: nil) in
+      BIND one <-
+        check_pinstr_list_permutable_tiling_band_via_validate_tiling
+          env_size
+          (before_pi :: nil)
+          (after_pi :: nil)
+          (w :: nil)
+          cutoff -;
+      if one then
+        check_pinstr_list_single_permutable_tiling_bands_via_validate_tiling
+          env_size before_pis' after_pis' ws' bands'
+      else pure false
+  | _, _, _, _ => pure false
+  end.
+
 Definition check_pprog_permutable_tiling_bands_via_validate_tiling
     (before after: Tiling.PL.t)
     (ws: list statement_tiling_witness)
@@ -3900,6 +4080,44 @@ Definition check_pprog_permutable_tiling_bands_via_validate_tiling
       else pure false
     else pure false
   else pure false.
+
+Definition check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    (bands: list pinstr_tiling_band) : imp bool :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars then
+    if Nat.eqb (List.length bands) (List.length before_pis) then
+      match infer_common_tiling_band bands with
+      | Some band =>
+          if check_common_tiling_band_recipeb ws then
+            BIND single_ok <-
+              check_pinstr_list_single_permutable_tiling_bands_via_validate_tiling
+                (List.length before_ctxt) before_pis after_pis ws bands -;
+            if single_ok then
+              check_pinstr_list_pluto_permutable_band_via_validate_tiling
+                (List.length before_ctxt) before_pis after_pis ws band
+            else pure false
+          else pure false
+      | None => pure false
+      end
+    else pure false
+  else pure false.
+
+Definition check_pprog_permutable_tiling_bands_runtime
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    (bands: list pinstr_tiling_band) : imp bool :=
+  BIND direct <-
+    check_pprog_permutable_tiling_bands_via_validate_tiling
+      before after ws bands -;
+  if direct then
+    pure true
+  else
+    check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
+      before after ws bands.
 
 Lemma check_pprog_permutable_tiling_bands_via_validate_tiling_true_inv :
   forall before after ws bands,
