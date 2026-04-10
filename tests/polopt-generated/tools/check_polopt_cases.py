@@ -186,7 +186,9 @@ def main() -> None:
     if not cases_root.is_dir():
         raise SystemExit(f"cases dir not found: {cases_root}")
 
-    case_dirs = sorted(p for p in cases_root.iterdir() if p.is_dir())
+    case_dirs = sorted(
+        p for p in cases_root.iterdir() if p.is_dir() and not p.name.startswith(".")
+    )
     total = len(case_dirs)
     ok = 0
     changed = 0
