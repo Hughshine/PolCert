@@ -150,18 +150,36 @@ def run_pluto_case(
 
 
 def run_polopt(label: str, args: list[str], case_root: Path, timeout: int) -> subprocess.CompletedProcess[str]:
-    proc = run([str(POLOPT), *args], cwd=ROOT, timeout=timeout)
+    cmd = [str(POLOPT), *args]
+    try:
+        proc = run(cmd, cwd=ROOT, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        proc = subprocess.CompletedProcess(
+            cmd,
+            returncode=124,
+            stdout=exc.stdout or "",
+            stderr=exc.stderr or "",
+        )
     write_text(case_root / f"{label}.stdout.txt", proc.stdout)
     write_text(case_root / f"{label}.stderr.txt", proc.stderr)
     return proc
 
 
 def run_polcert_phase(before: Path, mid: Path, posttile: Path, after: Path, case_root: Path, timeout: int) -> subprocess.CompletedProcess[str]:
-    proc = run(
-        [str(POLCERT), str(before), str(mid), str(posttile), str(after)],
-        cwd=ROOT,
-        timeout=timeout,
-    )
+    cmd = [str(POLCERT), str(before), str(mid), str(posttile), str(after)]
+    try:
+        proc = run(
+            cmd,
+            cwd=ROOT,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        proc = subprocess.CompletedProcess(
+            cmd,
+            returncode=124,
+            stdout=exc.stdout or "",
+            stderr=exc.stderr or "",
+        )
     write_text(case_root / "phase.stdout.txt", proc.stdout)
     write_text(case_root / "phase.stderr.txt", proc.stderr)
     return proc
@@ -205,7 +223,9 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         case_root,
         timeout,
     )
-    if affine.returncode != 0 or "overall: PASS" not in affine.stdout:
+    if affine.returncode == 124:
+        failures.append(f"{case_name}: affine validator timed out")
+    elif affine.returncode != 0 or "overall: PASS" not in affine.stdout:
         failures.append(f"{case_name}: affine validator failed")
 
     tiling = run_polopt(
@@ -213,12 +233,14 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         [
             "--validate-tiling-openscop",
             str(diamond["mid"]),
-            str(diamond["after"]),
+            str(diamond["posttile"]),
         ],
         case_root,
         timeout,
     )
-    if tiling.returncode != 0 or "overall: PASS" not in tiling.stdout:
+    if tiling.returncode == 124:
+        failures.append(f"{case_name}: OpenScop tiling validator timed out")
+    elif tiling.returncode != 0 or "overall: PASS" not in tiling.stdout:
         failures.append(f"{case_name}: OpenScop tiling validator failed")
 
     witness = run_polopt(
@@ -226,13 +248,15 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         [
             "--extract-tiling-witness-openscop",
             str(diamond["mid"]),
-            str(diamond["after"]),
+            str(diamond["posttile"]),
         ],
         case_root,
         timeout,
     )
     mixed_affine = witness_has_mixed_affine(witness.stdout)
-    if witness.returncode != 0:
+    if witness.returncode == 124:
+        failures.append(f"{case_name}: witness extraction timed out")
+    elif witness.returncode != 0:
         failures.append(f"{case_name}: witness extraction failed")
     elif expected_kind == "diamond" and not mixed_affine:
         failures.append(f"{case_name}: witness did not expose a mixed affine diamond link")
@@ -246,7 +270,9 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         timeout,
     )
     phase_ok = phase_validation_succeeds(phase.stdout)
-    if phase_ok != bool(expectation["phase_ok"]):
+    if phase.returncode == 124:
+        failures.append(f"{case_name}: phase validator timed out")
+    elif phase_ok != bool(expectation["phase_ok"]):
         failures.append(
             f"{case_name}: expected phase_ok={expectation['phase_ok']}, observed {phase_ok}"
         )
