@@ -47,6 +47,9 @@ time-of-build-before.log
 time-of-build-both.log
 time-of-build-pretty.log
 *.stdout
+*.pyc
+__pycache__/
+*/__pycache__/
 
 *.v.d
 polcomp
