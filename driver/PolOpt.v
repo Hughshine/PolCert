@@ -101,6 +101,8 @@ Definition run_pluto_phase_pipeline :=
   PolIRs.run_pluto_phase_pipeline.
 Definition run_pluto_phase_pipeline_with_iss :=
   PolIRs.run_pluto_phase_pipeline_with_iss.
+Definition run_pluto_diamond_phase_pipeline :=
+  PolIRs.run_pluto_diamond_phase_pipeline.
 Definition infer_iss_from_source_scop :=
   PolIRs.infer_iss_from_source_scop.
 Definition phase_scop_scheduler := PolIRs.phase_scop_scheduler.
@@ -140,6 +142,9 @@ Definition scheduler' := checked_affine_schedule.
 Definition affine_only_opt_prepared_from_poly (pol: PolyLang.t): imp LoopIR.t :=
   BIND pol' <- checked_affine_schedule pol -;
   PrepareCore.prepared_codegen pol'.
+
+Definition identity_opt_prepared_from_poly (pol: PolyLang.t): imp LoopIR.t :=
+  PrepareCore.prepared_codegen pol.
 
 Definition affine_opt_prepared_from_poly := affine_only_opt_prepared_from_poly.
 
@@ -255,6 +260,18 @@ Definition phase_pipeline_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
   let pol := Strengthen.strengthen_pprog pol0 in
   phase_pipeline_opt_prepared_from_poly pol.
+
+Definition identity_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
+  let pol := Strengthen.strengthen_pprog pol0 in
+  identity_opt_prepared_from_poly pol.
+
+Definition affine_only_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
+  let pol := Strengthen.strengthen_pprog pol0 in
+  affine_only_opt_prepared_from_poly pol.
+
+Definition affine_opt_prepared := affine_only_opt_prepared.
 
 Definition phase_pipeline_opt_prepared_with_iss (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;

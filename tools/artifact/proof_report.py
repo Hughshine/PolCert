@@ -23,8 +23,26 @@ SCAN_DIRS = [
 
 TOP_LEVEL_ROUTES = [
     {
-        "route": "default sequential optimizer",
+        "route": "default band-aware sequential optimizer",
         "cli": "polopt <file.loop>",
+        "theorem_file": "driver/PolOptBandTiling.v",
+        "theorem_names": ["Opt_band_correct", "Opt_prepared_band_correct"],
+    },
+    {
+        "route": "identity extraction/codegen route",
+        "cli": "polopt --identity --notile <file.loop>",
+        "theorem_file": "driver/PolOptCorrect.v",
+        "theorem_names": ["Identity_opt_prepared_correct"],
+    },
+    {
+        "route": "affine-only route",
+        "cli": "polopt --notile <file.loop>",
+        "theorem_file": "driver/PolOptCorrect.v",
+        "theorem_names": ["Affine_opt_prepared_correct"],
+    },
+    {
+        "route": "legacy generic sequential optimizer",
+        "cli": "polopt --legacy-generic-tiling <file.loop>",
         "theorem_file": "driver/PolOptCorrect.v",
         "theorem_names": ["Opt_correct", "Opt_prepared_correct"],
     },
@@ -41,11 +59,15 @@ TOP_LEVEL_ROUTES = [
         "theorem_names": ["Opt_parallel_current_correct"],
     },
     {
-        "route": "diamond phase-aligned validation",
-        "cli": "polcert before.scop mid.scop posttile.scop after.scop",
-        "theorem_file": "src/TilingBandScheduleValidator.v",
-        "theorem_names": ["band-aware tiling validator lemmas"],
-        "note": "Executable four-phase route still needs a top-level composed theorem wrapper.",
+        "route": "diamond phase-aligned optimizer",
+        "cli": "polopt --diamond-tile <file.loop>",
+        "theorem_file": "driver/PolOptBandTiling.v",
+        "theorem_names": [
+            "Opt_diamond_band_correct",
+            "Opt_prepared_diamond_band_correct",
+            "try_diamond_phase_pipeline_from_source_pol_band_correct",
+        ],
+        "note": "Also covers --full-diamond-tile through the same extracted route.",
     },
 ]
 

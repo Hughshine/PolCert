@@ -22,6 +22,8 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
   Parameter phase_scop_scheduler : OpenScop -> result (OpenScop * OpenScop).
   Parameter phase_scop_scheduler_with_iss :
     OpenScop -> result (OpenScop * OpenScop).
+  Parameter diamond_phase_scop_scheduler :
+    OpenScop -> result (OpenScop * (OpenScop * OpenScop)).
   Parameter infer_iss_from_source_scop :
     PolyLang.t -> OpenScop -> result (option (PolyLang.t * iss_witness)).
   Parameter infer_tiling_witness_scops :
@@ -92,4 +94,6 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
   Definition run_pluto_phase_pipeline := phase_scop_scheduler.
   Definition run_pluto_phase_pipeline_with_iss :=
     phase_scop_scheduler_with_iss.
+  Definition run_pluto_diamond_phase_pipeline :=
+    diamond_phase_scop_scheduler.
 End SPolIRs.

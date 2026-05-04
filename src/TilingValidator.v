@@ -49,6 +49,11 @@ Module TilingPolIRs <: POLIRS with Module Instr := Instr.
     Err EmptyString.
   Definition run_pluto_phase_pipeline_with_iss :=
     phase_scop_scheduler_with_iss.
+  Definition diamond_phase_scop_scheduler
+      (_: OpenScop) : result (OpenScop * (OpenScop * OpenScop)) :=
+    Err EmptyString.
+  Definition run_pluto_diamond_phase_pipeline :=
+    diamond_phase_scop_scheduler.
   Definition infer_iss_from_source_scop
       (_: PolyLang.t) (_: OpenScop)
       : result (option (PolyLang.t * iss_witness)) :=

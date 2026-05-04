@@ -19,11 +19,23 @@ Definition proved_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
 Definition proved_opt_with_iss : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
   CoreOpt.Opt_with_iss.
 
+Definition proved_identity_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreOpt.identity_opt_prepared.
+
+Definition proved_affine_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreOpt.affine_opt_prepared.
+
 Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_opt loop.
 
 Definition opt_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_opt_with_iss loop.
+
+Definition opt_identity (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  proved_identity_opt loop.
+
+Definition opt_affine (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  proved_affine_opt loop.
 
 Definition opt_poly (pol : SPolIRs.PolyLang.t) : imp SPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).

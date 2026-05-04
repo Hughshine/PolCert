@@ -478,6 +478,12 @@ let run_pluto_phase_pipeline inscop =
 let run_pluto_diamond_phase_pipeline inscop =
   run_pluto_scop_with_midpoint_and_posttile_dump (diamond_phase_flags ()) inscop
 
+let run_pluto_diamond_phase_pipeline_nested inscop =
+  match run_pluto_diamond_phase_pipeline inscop with
+  | Err msg -> Err msg
+  | Okk (midscop, posttile_scop, after_scop) ->
+      Okk (midscop, (posttile_scop, after_scop))
+
 let run_pluto_phase_pipeline_with_parallel_hint inscop =
   match affine_only_scop_scheduler inscop with
   | Err msg -> Err msg

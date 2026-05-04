@@ -25,15 +25,15 @@ class Capability:
 
 
 SUPPORTED = [
-    Capability("default tiled route", "supported", "checked affine plus ordinary tiling route", "strict suite; pluto-compat ordinary-tiled", "keep as baseline"),
-    Capability("--notile", "supported", "affine-only checked route", "pluto-compat affine-only", "keep"),
-    Capability("--identity --notile", "supported", "no-Pluto identity extraction/codegen route", "pluto-compat identity-notile", "keep"),
+    Capability("default tiled route", "supported", "extracted checked affine plus ordinary/second-level tiling route", "strict suite; pluto-compat ordinary-tiled; PolOptBandTiling Opt_band_correct", "keep as baseline"),
+    Capability("--notile", "supported", "extracted affine-only checked route", "pluto-compat affine-only; Affine_opt_prepared_correct", "keep"),
+    Capability("--identity --notile", "supported", "extracted no-Pluto identity extraction/codegen route", "pluto-compat identity-notile; Identity_opt_prepared_correct", "keep"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "sequential checked second-level tiling route", "second-level suite", "extend composition tests"),
-    Capability("--parallel", "supported", "one Pluto-hinted checked parallel loop", "pluto-compat parallel; parallel tests", "keep route boundary explicit"),
+    Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
     Capability("--parallel-current d", "supported", "explicit checked parallel dimension", "parallel-current suite", "keep separate from Pluto compatibility"),
-    Capability("--diamond-tile", "supported-narrow", "sequential non-ISS single-level four-phase diamond route", "diamond suite", "close theorem/driver wrapper and composition gaps"),
-    Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same checked diamond route", "pluto-compat full-diamond", "add more full-diamond cases"),
+    Capability("--diamond-tile", "supported-narrow", "extracted sequential non-ISS single-level four-phase diamond route", "diamond suite; Opt_diamond_band_correct", "extend rejected compositions"),
+    Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
 ]
 
 DIAMOND_COMBINATIONS = [

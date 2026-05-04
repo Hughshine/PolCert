@@ -2230,12 +2230,12 @@ let standalone_handlers = {
 }
 
 let sequential_handlers = {
-  seq_optimize_diamond = optimize_with_phase_aligned_pluto;
+  seq_optimize_diamond = SBandTilingOpt.opt_diamond;
   seq_optimize_iss_identity = optimize_with_iss_identity;
   seq_optimize_iss_affine = optimize_with_iss_affine;
   seq_optimize_iss_default = SPolOpt.opt_with_iss;
-  seq_optimize_identity = optimize_identity_only;
-  seq_optimize_affine = optimize_affine_only;
+  seq_optimize_identity = SPolOpt.opt_identity;
+  seq_optimize_affine = SPolOpt.opt_affine;
   seq_optimize_legacy = SPolOpt.opt;
   seq_optimize_default = SBandTilingOpt.opt;
 }

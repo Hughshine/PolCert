@@ -15,6 +15,23 @@ Module LoopIR := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
 
+Lemma identity_opt_prepared_from_poly_correct:
+  forall pol st st',
+    PolyLang.wf_pprog_affine pol ->
+    WHEN loop' <- Core.identity_opt_prepared_from_poly pol THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol st st' Hwf loop' Hopt Hloop.
+  unfold Core.identity_opt_prepared_from_poly in Hopt.
+  pose proof
+    (Core.PrepareCore.prepared_codegen_correct
+       pol st st' loop' Hopt Hwf Hloop)
+    as Hsem.
+  exists st'. split; auto. eapply State.eq_refl.
+Qed.
+
 Lemma try_checked_iss_phase_pipeline_from_poly_correct:
   forall pol before_scop st st',
     PolyLang.wf_pprog_affine pol ->
@@ -121,6 +138,72 @@ Proof.
     as Hwf_pol.
   pose proof
     (phase_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
+  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
+    as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans.
+  - exact Heq_str.
+  - exact Heq_src.
+Qed.
+
+Theorem Identity_opt_prepared_correct:
+  forall loop st st',
+    WHEN loop' <- Core.identity_opt_prepared loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop st st' loop' Hopt Hloop.
+  unfold Core.identity_opt_prepared in Hopt.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := Core.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (Core.Strengthen.strengthen_pprog_wf_affine pol0
+       (Core.extractor_success_wf_pprog_affine loop pol0
+          Hextok))
+    as Hwf_pol.
+  pose proof
+    (identity_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
+  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
+    as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans.
+  - exact Heq_str.
+  - exact Heq_src.
+Qed.
+
+Theorem Affine_opt_prepared_correct:
+  forall loop st st',
+    WHEN loop' <- Core.affine_opt_prepared loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop st st' loop' Hopt Hloop.
+  unfold Core.affine_opt_prepared, Core.affine_only_opt_prepared in Hopt.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := Core.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (Core.Strengthen.strengthen_pprog_wf_affine pol0
+       (Core.extractor_success_wf_pprog_affine loop pol0
+          Hextok))
+    as Hwf_pol.
+  pose proof
+    (Core.affine_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
   eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
