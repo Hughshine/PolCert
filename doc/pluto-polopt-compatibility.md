@@ -50,7 +50,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - result: `37 / 37` checks passed
+  - result: `38 / 38` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -96,6 +96,7 @@ The supported surface is already nontrivial.
 | `--flic`, `--fast-lin-ind-check` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-flic-affine` and `optimizer-fast-lin-ind-check-affine`; differ from smartfuse baseline |
 | `--determine-tile-size` | Passed through to Pluto's checked scheduler oracle on tiled routes. | native compat `optimizer-determine-tile-size`; differs from fixed-size tiling baseline |
 | `--cache-size <n>`, `--data-element-size <n>` | Passed through to Pluto's checked scheduler oracle when paired with `--determine-tile-size` on tiled routes. | native compat `optimizer-cache-size` and `optimizer-data-element-size`; differ from automatic tile-size baseline |
+| `--lastwriter` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-lastwriter-affine`; differs from default dependence mode baseline |
 | `--rar` | Compatible with current scheduler recipes. | scheduler flags |
 | `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | native compat suite |
 
@@ -186,7 +187,8 @@ The strongest remaining candidate in this group is value-based `--coeff-bound`. 
 | `--islsolve` | Compatible no-op | Pluto uses ISL ILP solving by default. | Already acceptable. | Keep as no-op or pass-through. |
 | `--candldep` | Unsupported | Current route has not tested Candl-derived schedules. | Yes, as oracle tuning. | Pass to Pluto, keep validation as the correctness gate, add Candl cases. |
 | `--pipsolve` | Unsupported | Solver selection not exposed. | Yes, as oracle tuning. | Pass to Pluto and validate. |
-| `--lastwriter`, `--nolastwriter` | Unsupported | Changes Pluto dependence analysis mode. | Likely yes. | Mirror Pluto's consistency rule: `--lastwriter` only with ISL dependence. Validate schedules against `polopt`'s own semantics. |
+| `--lastwriter` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a schedule/codegen difference from the default dependence mode. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and reject unsafe combinations such as Candl if exposed later. |
+| `--nolastwriter` | Unsupported | It is Pluto's current default-off mode in this build, and no effect-oriented fixture has been added. | Possible as a no-op, but low priority. | Accept only if no-op/default flags are being normalized more broadly. |
 | `--isldepaccesswise`, `--isldepstmtwise`, `--isldepcoalesce` | Unsupported | Dependence-analysis tuning not tested. | Likely yes. | Pass through as oracle tuning, add regression cases. |
 | `--scalpriv` | Unsupported | Candl scalar privatization mode. | Unclear. | First test whether Pluto output stays inside current loop/source model. If scalar privatization changes memory behavior, a validator/codegen extension may be needed. |
 

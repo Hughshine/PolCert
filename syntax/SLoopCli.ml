@@ -182,7 +182,6 @@ let known_rejection_reason = function
   | "--isldepaccesswise" -> Some "ISL dependence-analysis tuning is not exposed through the checked polopt route"
   | "--isldepstmtwise" -> Some "ISL dependence-analysis tuning is not exposed through the checked polopt route"
   | "--isldepcoalesce" -> Some "ISL dependence-analysis tuning is not exposed through the checked polopt route"
-  | "--lastwriter" -> Some "last-writer dependence mode is not exposed through the checked polopt route"
   | "--nolastwriter" -> Some "last-writer dependence mode is not exposed through the checked polopt route"
   | "--pipsolve" -> Some "PIP solver selection is not exposed through the checked polopt route"
   | "--scalpriv" -> Some "Candl scalar privatization is not exposed through the checked polopt route"
@@ -445,7 +444,7 @@ let parse_args () : config =
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"
-         | "--determine-tile-size") as flag) ->
+         | "--determine-tile-size" | "--lastwriter") as flag) ->
           enable_pluto_compat cfg;
           add_pluto_extra_flag cfg flag;
           add_pluto_note cfg (flag ^ " passed through to Pluto's checked scheduler oracle");

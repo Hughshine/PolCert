@@ -87,7 +87,6 @@ DEPENDENCE_SOLVER_OPTIONS = {
     "--isldepaccesswise": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
     "--isldepstmtwise": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
     "--isldepcoalesce": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
-    "--lastwriter": "last-writer dependence mode is not exposed through the checked polopt route",
     "--nolastwriter": "last-writer dependence mode is not exposed through the checked polopt route",
     "--pipsolve": "PIP solver selection is not exposed through the checked polopt route",
     "--scalpriv": "Candl scalar privatization is not exposed through the checked polopt route",
@@ -129,6 +128,7 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--flic": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--fast-lin-ind-check": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
+    "--lastwriter": "Pluto last-writer dependence mode is passed to the checked scheduler oracle",
 }
 
 SUPPORTED_VALUE_OPTIONS = {
