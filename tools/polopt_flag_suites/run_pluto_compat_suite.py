@@ -27,6 +27,7 @@ class Check:
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_NOFUSE = ["--notile", "--nofuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_MAXFUSE = ["--notile", "--maxfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -62,6 +63,16 @@ CHECKS = [
         "polopt args: <default>",
         effect_needles=("32 *", "/ 32"),
         differs_from_args=(tuple(MATMUL_NOTILE),),
+    ),
+    Check(
+        "optimizer-determine-tile-size",
+        MATMUL_TILED_DETERMINE,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --determine-tile-size",
+        effect_needles=("2048 *",),
+        differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
         "affine-only",

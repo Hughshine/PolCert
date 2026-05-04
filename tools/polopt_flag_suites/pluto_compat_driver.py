@@ -115,7 +115,6 @@ CODEGEN_OPTIONS = {
 }
 
 UNSUPPORTED_OPTIMIZER_OPTIONS = {
-    "--determine-tile-size": "automatic Pluto tile-size selection is not exposed through the checked polopt route",
     "--forceparallel": "Pluto accepts this flag, but the current source has no effective use site",
     "--intratileopt": "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route",
     "--multipar": "multi-degree Pluto parallel extraction is not exposed through the checked polopt route",
@@ -129,6 +128,7 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--per-cc-obj": "Pluto per-connected-component objective is passed to the checked scheduler oracle",
     "--flic": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--fast-lin-ind-check": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
+    "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
 }
 
 STALE_OR_NON_PLUTO_OPTIONS = {

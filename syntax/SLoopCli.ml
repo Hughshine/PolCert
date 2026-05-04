@@ -196,7 +196,6 @@ let known_rejection_reason = function
   | "--indent" -> Some "formatting is outside the optimizer-validation route"
   | "--prevector" -> Some "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen"
   | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
-  | "--determine-tile-size" -> Some "automatic Pluto tile-size selection is not exposed through the checked polopt route"
   | "--forceparallel" -> Some "Pluto accepts this flag, but the current source has no effective use site"
   | "--intratileopt" -> Some "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route"
   | "--multipar" -> Some "multi-degree Pluto parallel extraction is not exposed through the checked polopt route"
@@ -408,7 +407,8 @@ let parse_args () : config =
           add_pluto_note cfg "--nounrolljam accepted because polopt does not use Pluto unroll-jam output";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
-         | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check") as flag) ->
+         | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"
+         | "--determine-tile-size") as flag) ->
           enable_pluto_compat cfg;
           add_pluto_extra_flag cfg flag;
           add_pluto_note cfg (flag ^ " passed through to Pluto's checked scheduler oracle");
