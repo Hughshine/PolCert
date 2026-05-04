@@ -1,6 +1,6 @@
 # Pluto-Polopt Compatibility Surface
 
-Date: 2026-05-03
+Date: 2026-05-04
 
 Audience: PolCert developers who need to align `polopt` with Pluto as the reference optimizer.
 
@@ -47,12 +47,16 @@ The current assessment is based on these concrete checks.
   - `syntax/SLoopRoute.ml`: route normalization and explicit rejections
   - `driver/Scheduler.ml`: actual Pluto flag recipes sent by `polopt`
 - Executed compatibility wrapper:
-  - `tools/polopt_flag_suites/pluto_compat_driver.py`
+  - public entry: `./polopt-pluto`
+  - implementation: `tools/polopt_flag_suites/pluto_compat_driver.py`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
   - result: `21 / 21` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
+- Executed artifact smoke check:
+  - `make artifact-check`
+  - result: py-compile, proof report, capability matrix, Pluto-compatible suite, second-level suite, and diamond suite all passed
 
 One important correction: Pluto's `--help` is not reliable for defaults in this build. The help text says some features are disabled by default, but `lib/program.cpp` initializes `tile=1`, `parallel=1`, `diamondtile=1`, `intratileopt=1`, `prevector=1`, `unrolljam=1`, and `smartfuse`.
 
@@ -93,6 +97,26 @@ The current default `polopt` route is not "Pluto default". It intentionally uses
 The bare Pluto flag `--identity` needs special care. In the current Pluto source, tiling is enabled by default, so `--identity` can still reach the tiling phase. The compatible `polopt` no-tiling identity route is therefore better modeled as `--identity --notile`. Bare `--identity` and `--identity --tile` are identity-plus-tiling gaps for a Pluto-compatible wrapper.
 
 The compatibility wrapper also requires callers to say how they want to handle Pluto defaults that are outside the checked route. A bare invocation is rejected. The caller must explicitly disable unsupported default-on Pluto side effects with `--nointratileopt --noprevector --nounrolljam`, and must choose either `--noparallel` or `--parallel`, and either `--nodiamond-tile` or a diamond route.
+
+The public artifact-facing entry point is:
+
+```bash
+./polopt-pluto [--explain] <Pluto-like flags> file.loop
+```
+
+For example:
+
+```bash
+./polopt-pluto --explain \
+  --tile --smartfuse --nointratileopt --noprevector --nounrolljam \
+  --rar --nodiamond-tile --noparallel \
+  tests/polopt-generated/inputs/matmul.loop
+```
+
+This command does not pass Pluto frontend or codegen products through to
+`polopt`. It filters Pluto-style optimizer flags, maps the accepted subset to
+the existing checked `polopt` routes, and prints a specific reason for rejected
+flags or combinations.
 
 ## Frontend and Input Flags
 
@@ -235,7 +259,11 @@ These are not `polopt` deficiencies.
 
 ## Implementation Plan
 
-The next step should be to turn `pluto_compat_driver.py` into the design contract for `polopt`'s own CLI.
+The first artifact step is now in place: `./polopt-pluto` is the public
+Pluto-style filtered entry point, backed by `pluto_compat_driver.py` and tested
+by `make test-pluto-compat-suite`. The remaining implementation work is to
+graduate that contract into `polopt`'s native CLI if we want a single binary,
+and then expand the supported surface.
 
 1. Define a `PlutoCompat` flag module.
    - Parse Pluto-like flags.
@@ -287,7 +315,7 @@ The executable compatibility suite should grow into the regression test for this
 Current smoke command:
 
 ```bash
-python3 tools/polopt_flag_suites/run_pluto_compat_suite.py --timeout 30
+make test-pluto-compat-suite
 ```
 
 Current result:

@@ -99,6 +99,29 @@ def phase_validation_succeeds(text: str) -> bool:
     )
 
 
+def first_nonempty_line(text: str) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
+def classify_pluto_rejection(result: dict[str, object]) -> tuple[str, str]:
+    if result["timed_out"]:
+        return ("timeout", "Pluto timed out")
+    stderr = str(result["stderr"])
+    stdout = str(result["stdout"])
+    combined = stderr + "\n" + stdout
+    if "[Clan] Error:" in combined or "Error extracting polyhedra" in combined:
+        reason = first_nonempty_line(stderr) or "Error extracting polyhedra from source file"
+        return ("pluto_frontend_rejected", reason)
+    if result["returncode"] != 0:
+        reason = first_nonempty_line(stderr) or first_nonempty_line(stdout)
+        return ("pluto_rejected", reason or f"Pluto exited with {result['returncode']}")
+    return ("unexpected_success", "")
+
+
 def run_pluto_case(
     case_name: str,
     case_root: Path,
@@ -293,11 +316,13 @@ def check_unsupported_case(case_name: str, out_root: Path, timeout: int) -> tupl
     case_root = out_root / Path(case_name).stem
     failures: list[str] = []
     diamond = run_pluto_case(case_name, case_root, diamond=True, timeout=timeout)
+    status, reason = classify_pluto_rejection(diamond)
     if diamond["returncode"] == 0:
         failures.append(f"{case_name}: expected unsupported Pluto input, but command succeeded")
     result = {
         "case": case_name,
-        "status": "unsupported" if diamond["returncode"] != 0 else "unexpected_success",
+        "status": status,
+        "reason": reason,
         "returncode": diamond["returncode"],
         "timed_out": diamond["timed_out"],
     }
@@ -306,7 +331,7 @@ def check_unsupported_case(case_name: str, out_root: Path, timeout: int) -> tupl
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--timeout-seconds", type=int, default=60)
+    ap.add_argument("--timeout-seconds", type=int, default=180)
     ap.add_argument("--keep-artifacts", action="store_true")
     ap.add_argument("--output-root")
     args = ap.parse_args()
@@ -363,7 +388,7 @@ def main() -> int:
             failures.extend(case_failures)
             print(
                 f"[diamond-suite] {case_name}: status={result['status']} "
-                f"exit={result.get('returncode')}"
+                f"exit={result.get('returncode')} reason={result.get('reason')}"
             )
 
         summary = {

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DRIVER = ROOT / "tools" / "polopt_flag_suites" / "pluto_compat_driver.py"
+DRIVER = ROOT / "polopt-pluto"
 POLOPT = ROOT / "polopt"
 
 

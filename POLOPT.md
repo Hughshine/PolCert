@@ -113,6 +113,25 @@ Three important extensions now sit beside that default path:
   - expose Pluto-hinted verified parallel certification / code generation routes
   - these remain experimental CLI routes
 
+## Pluto-style filtered entry point
+
+For artifact runs that should look like a Pluto invocation, use:
+
+```sh
+./polopt-pluto --explain \
+  --tile --smartfuse --nointratileopt --noprevector --nounrolljam \
+  --rar --nodiamond-tile --noparallel \
+  tests/polopt-generated/inputs/matmul.loop
+```
+
+`polopt-pluto` accepts Pluto-like optimizer flags, rejects unsupported flags
+with a specific reason, and invokes `./polopt` on the corresponding checked
+route. The regression target is:
+
+```sh
+make test-pluto-compat-suite
+```
+
 ## Main example: covariance (`covcol`)
 
 Input `.loop`:

@@ -239,7 +239,7 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-second-level-tile-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite profile-advect3d-codegen profile-advect3d-codegen-identity
+.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-second-level-tile-suite test-pluto-compat-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -269,6 +269,10 @@ test-parallel-current-suite: polopt
 test-second-level-tile-suite: polopt
 	python3 tools/second_level_tiling/run_second_level_tile_suite.py \
 		--polopt ./polopt
+
+test-pluto-compat-suite: polopt
+	python3 tools/polopt_flag_suites/run_pluto_compat_suite.py \
+		--timeout 30
 
 test-end-to-end-c-smoke: polopt
 	python3 tools/end_to_end_c/run_suite.py \
@@ -377,6 +381,18 @@ test-pluto-bug-matmul-parallel-hint: polopt polcert.ini
 
 test-diamond-tiling-suite: polopt polcert
 	python3 tools/diamond_tiling/run_pluto_diamond_suite.py
+
+artifact-check: polopt polcert
+	python3 tools/artifact/run_artifact_check.py --mode smoke
+
+artifact-check-full: polopt polcert
+	python3 tools/artifact/run_artifact_check.py --mode full
+
+artifact-capability-matrix:
+	python3 tools/artifact/generate_capability_matrix.py
+
+proof-report:
+	python3 tools/artifact/proof_report.py
 
 profile-advect3d-codegen: polopt
 	python3 tools/perf/run_stage_profile.py \
