@@ -27,6 +27,10 @@ class Check:
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+FUSION_NOTILE_NOFUSE = ["--notile", "--nofuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+FUSION_NOTILE_MAXFUSE = ["--notile", "--maxfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+FUSION_NOTILE_NODEPBOUND = ["--notile", "--smartfuse", "--nodepbound", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 JACOBI_NODIAMOND = [*FLAGS, "--nodiamond-tile", "--noparallel"]
 JACOBI_NODIAMOND_ISS = [*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]
 JACOBI_DIAMOND = [*FLAGS, "--diamond-tile", "--noparallel"]
@@ -34,6 +38,9 @@ JACOBI_DIAMOND_ISS = [*FLAGS, "--diamond-tile", "--noparallel", "--iss"]
 JACOBI_FULL_DIAMOND = [*FLAGS, "--full-diamond-tile", "--noparallel"]
 JACOBI_FULL_DIAMOND_ISS = [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss"]
 MATMUL = ROOT / "tests" / "polopt-generated" / "inputs" / "matmul.loop"
+FUSION1 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion1.loop"
+FUSION2 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion2.loop"
+FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
 DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
@@ -59,6 +66,33 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --notile",
         effect_absent=("32 *", "/ 32"),
+    ),
+    Check(
+        "optimizer-nofuse-affine",
+        FUSION_NOTILE_NOFUSE,
+        FUSION1,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --nofuse",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+    ),
+    Check(
+        "optimizer-maxfuse-affine",
+        FUSION_NOTILE_MAXFUSE,
+        FUSION6,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --maxfuse",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+    ),
+    Check(
+        "optimizer-nodepbound-affine",
+        FUSION_NOTILE_NODEPBOUND,
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --nodepbound",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
     Check(

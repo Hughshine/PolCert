@@ -24,12 +24,19 @@ type diamond_mode =
 
 let current_tiling_mode = ref OrdinaryTiling
 let current_diamond_mode = ref NoDiamondTiling
+let current_pluto_extra_flags = ref []
 
 let set_tiling_mode mode =
   current_tiling_mode := mode
 
 let set_diamond_mode mode =
   current_diamond_mode := mode
+
+let set_pluto_extra_flags flags =
+  current_pluto_extra_flags := flags
+
+let with_pluto_extra_flags flags =
+  flags @ !current_pluto_extra_flags
 
 let second_level_tiling_enabled () =
   !current_tiling_mode = SecondLevelTiling
@@ -440,7 +447,7 @@ let iss_identity_bridge_flags =
   ]
 
 let affine_only_scop_scheduler inscop =
-  run_pluto_scop affine_only_flags inscop
+  run_pluto_scop (with_pluto_extra_flags affine_only_flags) inscop
 
 let tile_only_scop_scheduler inscop =
   let flags =
@@ -448,10 +455,12 @@ let tile_only_scop_scheduler inscop =
     then tile_only_second_level_flags
     else tile_only_flags
   in
-  run_pluto_scop flags inscop
+  run_pluto_scop (with_pluto_extra_flags flags) inscop
 
 let affine_only_scop_scheduler_with_parallel_hint inscop =
-  run_pluto_scop_with_parallel_hint affine_only_parallel_flags inscop
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags affine_only_parallel_flags)
+    inscop
 
 let tile_only_scop_scheduler_with_parallel_hint inscop =
   let flags =
@@ -459,13 +468,15 @@ let tile_only_scop_scheduler_with_parallel_hint inscop =
     then tile_only_parallel_second_level_flags
     else tile_only_parallel_flags
   in
-  run_pluto_scop_with_parallel_hint flags inscop
+  run_pluto_scop_with_parallel_hint (with_pluto_extra_flags flags) inscop
 
 let affine_only_scop_scheduler_with_iss inscop =
-  run_pluto_scop affine_with_iss_flags inscop
+  run_pluto_scop (with_pluto_extra_flags affine_with_iss_flags) inscop
 
 let affine_only_scop_scheduler_with_iss_with_parallel_hint inscop =
-  run_pluto_scop_with_parallel_hint affine_with_iss_parallel_flags inscop
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags affine_with_iss_parallel_flags)
+    inscop
 
 let iss_identity_bridge_from_scop inscop =
   run_pluto_bridge iss_identity_bridge_flags inscop
@@ -501,7 +512,9 @@ let run_pluto_phase_pipeline inscop =
       end
 
 let run_pluto_diamond_phase_pipeline inscop =
-  run_pluto_scop_with_midpoint_and_posttile_dump (diamond_phase_flags ()) inscop
+  run_pluto_scop_with_midpoint_and_posttile_dump
+    (with_pluto_extra_flags (diamond_phase_flags ()))
+    inscop
 
 let run_pluto_diamond_phase_pipeline_nested inscop =
   match run_pluto_diamond_phase_pipeline inscop with
@@ -511,7 +524,7 @@ let run_pluto_diamond_phase_pipeline_nested inscop =
 
 let run_pluto_diamond_phase_pipeline_with_iss inscop =
   run_pluto_scop_with_midpoint_and_posttile_dump
-    (diamond_phase_with_iss_flags ())
+    (with_pluto_extra_flags (diamond_phase_with_iss_flags ()))
     inscop
 
 let run_pluto_diamond_phase_pipeline_with_iss_nested inscop =
@@ -531,12 +544,16 @@ let run_pluto_phase_pipeline_with_parallel_hint inscop =
       end
 
 let run_pluto_diamond_parallel_hint inscop =
-  match run_pluto_scop_with_parallel_hint (diamond_phase_parallel_flags ()) inscop with
+  match run_pluto_scop_with_parallel_hint
+          (with_pluto_extra_flags (diamond_phase_parallel_flags ()))
+          inscop with
   | Err msg -> Err msg
   | Okk (_outscop, hint) -> Okk hint
 
 let run_pluto_diamond_parallel_hint_with_iss inscop =
-  match run_pluto_scop_with_parallel_hint (diamond_phase_parallel_with_iss_flags ()) inscop with
+  match run_pluto_scop_with_parallel_hint
+          (with_pluto_extra_flags (diamond_phase_parallel_with_iss_flags ()))
+          inscop with
   | Err msg -> Err msg
   | Okk (_outscop, hint) -> Okk hint
 

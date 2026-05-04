@@ -28,6 +28,7 @@ type config = SLoopConfig.config = {
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
+  mutable pluto_extra_flags : string list;
   mutable pluto_compat_notes : string list;
   mutable validate_affine_openscop : (string * string) option;
   mutable extract_tiling_witness_openscop : (string * string) option;
@@ -131,6 +132,9 @@ let enable_pluto_compat cfg =
 let add_pluto_note cfg msg =
   cfg.pluto_compat_notes <- cfg.pluto_compat_notes @ [msg]
 
+let add_pluto_extra_flag cfg flag =
+  cfg.pluto_extra_flags <- cfg.pluto_extra_flags @ [flag]
+
 let starts_with s prefix =
   let len_s = String.length s in
   let len_p = String.length prefix in
@@ -197,10 +201,7 @@ let known_rejection_reason = function
   | "--flic" -> Some "fast linear-independence search tuning is not exposed through the checked polopt route"
   | "--forceparallel" -> Some "Pluto accepts this flag, but the current source has no effective use site"
   | "--intratileopt" -> Some "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route"
-  | "--maxfuse" -> Some "maximal fusion is not exposed as a checked polopt route"
   | "--multipar" -> Some "multi-degree Pluto parallel extraction is not exposed through the checked polopt route"
-  | "--nofuse" -> Some "no-fusion scheduling is not exposed as a checked polopt route"
-  | "--nodepbound" -> Some "dependence-bound search tuning is not exposed through the checked polopt route"
   | "--per-cc-obj" -> Some "per-connected-component objective is not exposed as a checked polopt route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -235,6 +236,10 @@ let print_pluto_explain cfg =
   print_endline
     ("[pluto-compat] polopt args: "
      ^ (match args with [] -> "<default>" | _ -> String.concat " " args));
+  if cfg.pluto_extra_flags <> [] then
+    print_endline
+      ("[pluto-compat] pluto oracle flags: "
+       ^ String.concat " " cfg.pluto_extra_flags);
   List.iter
     (fun note -> print_endline ("[pluto-compat] note: " ^ note))
     cfg.pluto_compat_notes
@@ -312,6 +317,7 @@ let parse_args () : config =
       pluto_no_intratileopt_seen = false;
       pluto_no_prevector_seen = false;
       pluto_no_unrolljam_seen = false;
+      pluto_extra_flags = [];
       pluto_compat_notes = [];
       validate_affine_openscop = None;
       extract_tiling_witness_openscop = None;
@@ -404,8 +410,13 @@ let parse_args () : config =
           cfg.pluto_no_unrolljam_seen <- true;
           add_pluto_note cfg "--nounrolljam accepted because polopt does not use Pluto unroll-jam output";
           go (i + 1)
+      | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound") as flag) ->
+          enable_pluto_compat cfg;
+          add_pluto_extra_flag cfg flag;
+          add_pluto_note cfg (flag ^ " passed through to Pluto's checked scheduler oracle");
+          go (i + 1)
       | (("--debug" | "--isldep" | "--islsolve" | "--moredebug"
-         | "--nocloogbacktrack" | "--rar" | "--silent" | "--smartfuse") as flag) ->
+         | "--nocloogbacktrack" | "--rar" | "--silent") as flag) ->
           enable_pluto_compat cfg;
           add_pluto_note cfg (flag ^ " accepted as a no-op for the checked polopt route");
           go (i + 1)
@@ -509,4 +520,5 @@ let configure_scheduler_modes (cfg : config) =
      then Scheduler.FullDiamondTiling
      else if cfg.force_diamond_tile
      then Scheduler.DiamondTiling
-     else Scheduler.NoDiamondTiling)
+     else Scheduler.NoDiamondTiling);
+  Scheduler.set_pluto_extra_flags cfg.pluto_extra_flags

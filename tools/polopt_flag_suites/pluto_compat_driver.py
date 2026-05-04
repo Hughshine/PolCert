@@ -43,12 +43,18 @@ class PlutoFlagState:
     no_intratileopt_seen: bool = False
     no_prevector_seen: bool = False
     no_unrolljam_seen: bool = False
+    oracle_flags: list[str] | None = None
     notes: list[str] | None = None
 
     def add_note(self, msg: str) -> None:
         if self.notes is None:
             self.notes = []
         self.notes.append(msg)
+
+    def add_oracle_flag(self, flag: str) -> None:
+        if self.oracle_flags is None:
+            self.oracle_flags = []
+        self.oracle_flags.append(flag)
 
 
 VALUE_OPTIONS = {
@@ -114,11 +120,15 @@ UNSUPPORTED_OPTIMIZER_OPTIONS = {
     "--flic": "fast linear-independence search tuning is not exposed through the checked polopt route",
     "--forceparallel": "Pluto accepts this flag, but the current source has no effective use site",
     "--intratileopt": "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route",
-    "--maxfuse": "maximal fusion is not exposed as a checked polopt route",
     "--multipar": "multi-degree Pluto parallel extraction is not exposed through the checked polopt route",
-    "--nofuse": "no-fusion scheduling is not exposed as a checked polopt route",
-    "--nodepbound": "dependence-bound search tuning is not exposed through the checked polopt route",
     "--per-cc-obj": "per-connected-component objective is not exposed as a checked polopt route",
+}
+
+SUPPORTED_OPTIMIZER_OPTIONS = {
+    "--smartfuse": "Pluto smart fusion policy is passed to the checked scheduler oracle",
+    "--nofuse": "Pluto no-fusion policy is passed to the checked scheduler oracle",
+    "--maxfuse": "Pluto maximal-fusion policy is passed to the checked scheduler oracle",
+    "--nodepbound": "Pluto dependence-bound search tuning is passed to the checked scheduler oracle",
 }
 
 STALE_OR_NON_PLUTO_OPTIONS = {
@@ -141,7 +151,6 @@ ACCEPTED_NOOPS = {
     "--nounrolljam",
     "--rar",
     "--silent",
-    "--smartfuse",
 }
 
 
@@ -277,6 +286,9 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag == "--nounrolljam":
             state.no_unrolljam_seen = True
             state.add_note("--nounrolljam accepted because polopt does not use Pluto unroll-jam output")
+        elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
+            state.add_oracle_flag(flag)
+            state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
         elif flag in ACCEPTED_NOOPS:
             state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
         elif flag == "--unroll":
@@ -347,6 +359,37 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     return args
 
 
+def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
+    args: list[str] = ["--pluto-compat"]
+    if state.identity:
+        args.append("--identity")
+        if not state.tile:
+            args.append("--notile")
+    elif state.tile:
+        args.append("--tile")
+    else:
+        args.append("--notile")
+    if state.iss:
+        args.append("--iss")
+    if state.second_level_tile:
+        args.append("--second-level-tile")
+    if state.full_diamond_tile:
+        args.append("--full-diamond-tile")
+    elif state.diamond_tile:
+        args.append("--diamond-tile")
+    else:
+        args.append("--nodiamond-tile")
+    if state.parallel:
+        args.append("--parallel")
+    else:
+        args.append("--noparallel")
+    args.extend(["--nointratileopt", "--noprevector", "--nounrolljam"])
+    if state.oracle_flags:
+        args.extend(state.oracle_flags)
+    args.append(str(state.input_path))
+    return args
+
+
 def main(argv: list[str]) -> int:
     try:
         cfg, rest = parse_wrapper_args(argv)
@@ -357,7 +400,8 @@ def main(argv: list[str]) -> int:
         print(f"[pluto-compat] reject: {exc}", file=sys.stderr)
         return 2
 
-    cmd = [str(cfg.polopt), *polopt_args, str(state.input_path)]
+    polopt_path = cfg.polopt if cfg.polopt.is_absolute() else ROOT / cfg.polopt
+    cmd = [str(polopt_path), *native_compat_args_for_state(state)]
     if cfg.explain or cfg.dry_run:
         print("[pluto-compat] accepted", flush=True)
         print(
@@ -365,6 +409,12 @@ def main(argv: list[str]) -> int:
             " ".join(polopt_args) if polopt_args else "<default>",
             flush=True,
         )
+        if state.oracle_flags:
+            print(
+                "[pluto-compat] pluto oracle flags:",
+                " ".join(state.oracle_flags),
+                flush=True,
+            )
         if state.notes:
             for note in state.notes:
                 print(f"[pluto-compat] note: {note}", flush=True)

@@ -50,7 +50,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - result: `21 / 21` checks passed
+  - result: `30 / 30` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -88,7 +88,10 @@ The supported surface is already nontrivial.
 | `--parallel-current d` | Runs explicit-dimension checked parallel route. | parallel-current suite |
 | `--diamond-tile` | Runs sequential diamond phase-aligned route on default full tiled path. | native compat `diamond`; diamond suite |
 | `--full-diamond-tile` | Runs stronger diamond producer mode on the same checked route. | native compat `full-diamond` |
-| `--smartfuse` | Compatible with current default affine scheduler recipe. | scheduler flags and native no-op note |
+| `--smartfuse` | Passed through to Pluto's checked scheduler oracle; this is also the default fusion policy in current recipes. | native compat `ordinary-tiled`; oracle flag note |
+| `--nofuse` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-nofuse-affine`; differs from smartfuse baseline |
+| `--maxfuse` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-maxfuse-affine`; differs from smartfuse baseline |
+| `--nodepbound` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-nodepbound-affine`; differs from smartfuse baseline |
 | `--rar` | Compatible with current scheduler recipes. | scheduler flags |
 | `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | native compat suite |
 
@@ -160,16 +163,16 @@ This category is likely a surface/build gap before it is a proof gap. If DFP onl
 
 | Pluto flag | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
-| `--nofuse` | Unsupported | Current `polopt` route fixes `--smartfuse`. | Likely surface gap. | Add a fusion-mode enum and pass `--nofuse` in the affine phase. Validate resulting schedule. |
-| `--maxfuse` | Unsupported | Same as `--nofuse`. | Likely surface gap. | Add the route and regression cases. |
-| `--smartfuse` | Supported as default | Current recipes use it. | Already supported. | Keep explicit acceptance. |
+| `--nofuse` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls after the default recipe flags. | Already supported for checked routes whose produced schedule validates. | Keep effect tests; broaden beyond affine-only fusion fixtures. |
+| `--maxfuse` | Supported as oracle tuning | Same pass-through mechanism as `--nofuse`. | Already supported for checked routes whose produced schedule validates. | Keep effect tests; broaden beyond affine-only fusion fixtures. |
+| `--smartfuse` | Supported as oracle tuning/default | Current recipes use it by default, and explicit `--smartfuse` is preserved in the Pluto oracle flag stream. | Already supported. | Keep explicit acceptance and ordering behavior. |
 | `--per-cc-obj` | Unsupported | Current route does not expose per-connected-component objective. | Likely surface gap. | Pass through to affine phase and test import/validation of produced schedules. |
 | `.fst` / `.precut` | Unsupported as public interface | Pluto can read working-directory files that force fusion or partial schedules. This is implicit global state. | Possible, but should not be implicit. | Add explicit `--fusion-structure FILE` or `--precut FILE`, copy into an isolated Pluto working directory, validate the output. |
-| `--nodepbound` | Unsupported | Search-constraint tuning is not exposed. | Possibly surface gap. | Pass as oracle tuning after tests show schedules import and validate. |
+| `--nodepbound` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `fusion2.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
 | `--coeff-bound` | Unsupported | Search-bound tuning with a value. | Possibly surface gap. | Add value parsing and pass to affine phase; validate output. |
 | `--fast-lin-ind-check`, `--flic` | Unsupported | Search heuristic, not a semantic feature. | Surface gap if useful. | Allow as oracle tuning with validation and regression tests. |
 
-The strongest candidates for near-term support are `--nofuse`, `--maxfuse`, and `--per-cc-obj`. They should not require new proof principles if the output remains an affine schedule accepted by the current affine validator.
+The strongest remaining candidates in this group are `--per-cc-obj`, `--fast-lin-ind-check`/`--flic`, and value-based `--coeff-bound`. They should not require new proof principles if the output remains an affine schedule accepted by the current affine validator, but they still need effect-oriented fixtures before being marked supported.
 
 ## Dependence and Solver Knobs
 

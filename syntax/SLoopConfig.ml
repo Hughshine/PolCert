@@ -28,6 +28,7 @@ type config = {
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
+  mutable pluto_extra_flags : string list;
   mutable pluto_compat_notes : string list;
   mutable validate_affine_openscop : (string * string) option;
   mutable extract_tiling_witness_openscop : (string * string) option;
