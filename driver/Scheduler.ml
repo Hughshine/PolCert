@@ -407,6 +407,21 @@ let diamond_phase_flags () =
    then ["--second-level-tile"]
    else [])
 
+let diamond_phase_parallel_flags () =
+  [
+    "--tile";
+    "--nointratileopt";
+    "--noprevector";
+    "--smartfuse";
+    "--nounrolljam";
+    "--parallel";
+    "--rar";
+  ]
+  @
+  (if full_diamond_tiling_enabled ()
+   then ["--diamond-tile"; "--full-diamond-tile"]
+   else ["--diamond-tile"])
+
 let diamond_phase_with_iss_flags () =
   "--iss" :: diamond_phase_flags ()
 
@@ -511,6 +526,11 @@ let run_pluto_phase_pipeline_with_parallel_hint inscop =
         | Err msg -> Err msg
         | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
       end
+
+let run_pluto_diamond_parallel_hint inscop =
+  match run_pluto_scop_with_parallel_hint (diamond_phase_parallel_flags ()) inscop with
+  | Err msg -> Err msg
+  | Okk (_outscop, hint) -> Okk hint
 
 let run_pluto_phase_pipeline_with_iss inscop =
   match affine_only_scop_scheduler_with_iss inscop with

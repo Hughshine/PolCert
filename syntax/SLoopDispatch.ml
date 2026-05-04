@@ -83,6 +83,8 @@ let run_selected_optimization (cfg : SLoopCli.config) handlers loop =
     handlers.seq_optimize_default loop
 
 type ('loop, 'parallel_loop) hinted_parallel_handlers = {
+  hint_optimize_diamond :
+    SLoopCli.config -> 'loop -> 'parallel_loop * bool;
   hint_optimize_iss_affine :
     SLoopCli.config -> 'loop -> 'parallel_loop * bool;
   hint_optimize_iss_default :
@@ -94,7 +96,9 @@ type ('loop, 'parallel_loop) hinted_parallel_handlers = {
 }
 
 let run_selected_parallel_optimization (cfg : SLoopCli.config) handlers loop =
-  if cfg.force_iss then
+  if cfg.force_diamond_tile then
+    handlers.hint_optimize_diamond cfg loop
+  else if cfg.force_iss then
     if cfg.force_notile then
       handlers.hint_optimize_iss_affine cfg loop
     else

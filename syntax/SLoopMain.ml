@@ -960,6 +960,44 @@ let try_pluto_parallel_codegen pol hint_dim strict =
   | _ ->
       try_pluto_hint_preferred_parallel_codegen pol hint_dim
 
+let try_extracted_diamond_parallel_current loop dim =
+  try
+    let (pl, ok) =
+      SParallelPolOpt.opt_parallel_current_diamond loop (nat_of_int dim)
+    in
+    if ok then Some pl else None
+  with
+  | CertcheckerConfig.CertCheckerFailure _ -> None
+
+let diamond_parallel_candidate_dims hint_dim =
+  let fallback_dims = int_range 0 8 in
+  match hint_dim with
+  | Some d -> d :: List.filter (fun x -> x <> d) fallback_dims
+  | None -> fallback_dims
+
+let try_diamond_parallel_codegen loop hint_dim strict =
+  let dims =
+    match hint_dim, strict with
+    | Some d, true -> [d]
+    | None, true -> []
+    | _ -> diamond_parallel_candidate_dims hint_dim
+  in
+  let rec go = function
+    | [] -> None
+    | dim :: rest ->
+        begin match try_extracted_diamond_parallel_current loop dim with
+        | Some pl ->
+            let used_hint =
+              match hint_dim with
+              | Some hinted -> hinted = dim
+              | None -> false
+            in
+            Some (pl, used_hint)
+        | None -> go rest
+        end
+  in
+  go dims
+
 let checked_affine_schedule_or_fail pol =
   let (pol', ok) = SPolOpt.CoreOpt.checked_affine_schedule pol in
   if not ok then
@@ -1052,6 +1090,13 @@ let pluto_phase_scops_with_parallel_hint loop =
   | Err _ -> None
   | Okk (mid_scop, after_scop, hint) ->
       Some (pol, before_scop, mid_scop, after_scop, hint)
+
+let pluto_diamond_parallel_hint loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.run_pluto_diamond_parallel_hint before_scop with
+  | Err _ -> None
+  | Okk hint -> hint
 
 let debug_generic_tiling_runtime loop =
   let pol0 = extract_poly loop in
@@ -1979,6 +2024,17 @@ let optimize_with_iss_affine_parallel_hint cfg loop =
             (fallback, false)
         end
 
+let optimize_with_diamond_parallel_hint cfg loop =
+  let hint = pluto_diamond_parallel_hint loop in
+  debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+  match try_diamond_parallel_codegen
+          loop
+          (Option.map (fun h -> h.Scheduler.hint_current_dim) hint)
+          cfg.force_parallel_strict
+  with
+  | Some (pl, used_hint) -> (pl, used_hint)
+  | None -> (tag_loop_for_parallel_pretty loop, false)
+
 let optimize_with_iss_identity loop =
   let pol = extract_strengthened_poly loop in
   let before_scop = poly_to_openscop pol in
@@ -2242,6 +2298,7 @@ let sequential_handlers = {
 }
 
 let hinted_parallel_handlers = {
+  hint_optimize_diamond = optimize_with_diamond_parallel_hint;
   hint_optimize_iss_affine = optimize_with_iss_affine_parallel_hint;
   hint_optimize_iss_default = optimize_with_iss_phase_aligned_pluto_parallel_hint;
   hint_optimize_affine = optimize_affine_only_with_pluto_parallel_hint;

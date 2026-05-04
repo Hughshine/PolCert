@@ -36,6 +36,7 @@ JACOBI_FULL_DIAMOND_ISS = [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss
 MATMUL = ROOT / "tests" / "polopt-generated" / "inputs" / "matmul.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
+DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
 
 
 CHECKS = [
@@ -100,6 +101,16 @@ CHECKS = [
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS),),
     ),
     Check(
+        "diamond-parallel",
+        [*FLAGS, "--diamond-tile", "--parallel"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile --parallel",
+        effect_needles=("parallel for", "32 *", "/ 32", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple(JACOBI_DIAMOND),),
+    ),
+    Check(
         "diamond-second-level",
         [*FLAGS, "--diamond-tile", "--noparallel", "--second-level-tile"],
         JACOBI_1D,
@@ -160,7 +171,7 @@ CHECKS = [
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_FULL_DIAMOND_ISS)),
     ),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
-    Check("reject-diamond-parallel", [*FLAGS, "--diamond-tile", "--parallel"], JACOBI_1D, False, "--diamond-tile is not yet supported with --parallel"),
+    Check("reject-diamond-iss-parallel", [*FLAGS, "--diamond-tile", "--parallel", "--iss"], JACOBI_1D, False, "--diamond-tile --iss is not yet supported with --parallel"),
     Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
     Check("reject-intratileopt", ["--tile", "--intratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "Pluto intra-tile schedule rewriting is not exposed"),

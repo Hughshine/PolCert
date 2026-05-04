@@ -220,8 +220,8 @@ let normalize (cfg : SLoopConfig.config) =
           "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity"
       else if cfg.force_diamond_tile && cfg.force_notile then
         Error "--diamond-tile requires tiling and cannot be combined with --notile"
-      else if cfg.force_diamond_tile && cfg.force_parallel then
-        Error "--diamond-tile is not yet supported with --parallel"
+      else if cfg.force_diamond_tile && cfg.force_parallel && cfg.force_iss then
+        Error "--diamond-tile --iss is not yet supported with --parallel"
       else if cfg.force_diamond_tile
               && cfg.force_band_tiling_experiment
       then

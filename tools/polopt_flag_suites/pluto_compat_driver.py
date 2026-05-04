@@ -325,12 +325,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
             raise Reject("--diamond-tile requires tiling and cannot be combined with --notile")
         if state.identity:
             raise Reject("--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity")
-        if state.iss:
-            raise Reject("--diamond-tile is not yet supported with --iss")
-        if state.parallel:
-            raise Reject("--diamond-tile is not yet supported with --parallel")
-        if state.second_level_tile:
-            raise Reject("--diamond-tile is not yet supported with --second-level-tile")
+        if state.iss and state.parallel:
+            raise Reject("--diamond-tile --iss is not yet supported with --parallel")
 
     args: list[str] = []
     if state.identity:
