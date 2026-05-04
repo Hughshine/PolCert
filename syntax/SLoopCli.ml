@@ -197,12 +197,9 @@ let known_rejection_reason = function
   | "--prevector" -> Some "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen"
   | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
   | "--determine-tile-size" -> Some "automatic Pluto tile-size selection is not exposed through the checked polopt route"
-  | "--fast-lin-ind-check" -> Some "fast linear-independence search tuning is not exposed through the checked polopt route"
-  | "--flic" -> Some "fast linear-independence search tuning is not exposed through the checked polopt route"
   | "--forceparallel" -> Some "Pluto accepts this flag, but the current source has no effective use site"
   | "--intratileopt" -> Some "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route"
   | "--multipar" -> Some "multi-degree Pluto parallel extraction is not exposed through the checked polopt route"
-  | "--per-cc-obj" -> Some "per-connected-component objective is not exposed as a checked polopt route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
   | "--multipipe" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -410,7 +407,8 @@ let parse_args () : config =
           cfg.pluto_no_unrolljam_seen <- true;
           add_pluto_note cfg "--nounrolljam accepted because polopt does not use Pluto unroll-jam output";
           go (i + 1)
-      | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound") as flag) ->
+      | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
+         | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check") as flag) ->
           enable_pluto_compat cfg;
           add_pluto_extra_flag cfg flag;
           add_pluto_note cfg (flag ^ " passed through to Pluto's checked scheduler oracle");
