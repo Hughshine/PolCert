@@ -74,9 +74,9 @@ let usage prog =
       "                        full tiled optimization routes and tiling witness/validation\n";
       "                        actions\n";
       "  --diamond-tile    : experimental sequential checked diamond midpoint + tiling route;\n";
-      "                      supported on the non-ISS and ISS full tiled paths\n";
+      "                      supported on non-ISS/ISS and ordinary/second-level tiled paths\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
-      "                        supported on the non-ISS and ISS full tiled paths\n";
+      "                        supported on non-ISS/ISS and ordinary/second-level tiled paths\n";
       "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
@@ -278,8 +278,7 @@ let validate_pluto_compat prog cfg =
         pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
       if cfg.force_parallel then
         pluto_reject prog "--diamond-tile is not yet supported with --parallel";
-      if cfg.force_second_level_tile then
-        pluto_reject prog "--diamond-tile is not yet supported with --second-level-tile"
+      ()
     end
   end
 

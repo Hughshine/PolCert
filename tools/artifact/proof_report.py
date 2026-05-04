@@ -77,7 +77,7 @@ TOP_LEVEL_ROUTES = [
             "Opt_prepared_diamond_band_correct",
             "try_diamond_phase_pipeline_from_source_pol_band_correct",
         ],
-        "note": "Also covers --full-diamond-tile through the same extracted route.",
+        "note": "Also covers --full-diamond-tile and --second-level-tile through the same extracted route.",
     },
     {
         "route": "ISS plus diamond phase-aligned optimizer",
@@ -88,7 +88,7 @@ TOP_LEVEL_ROUTES = [
             "Opt_prepared_diamond_band_with_iss_correct",
             "try_checked_iss_diamond_phase_pipeline_from_poly_band_correct",
         ],
-        "note": "Also covers --iss --full-diamond-tile through the same extracted route.",
+        "note": "Also covers --iss --full-diamond-tile and --iss --second-level-tile through the same extracted route.",
     },
 ]
 

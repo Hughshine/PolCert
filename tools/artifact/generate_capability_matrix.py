@@ -36,12 +36,13 @@ SUPPORTED = [
     Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
     Capability("--diamond-tile --iss", "supported-narrow", "ISS bridge validation is composed before the single-level four-phase diamond route", "pluto-compat diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+diamond fixtures"),
     Capability("--full-diamond-tile --iss", "supported-narrow", "full-diamond producer mode over the same checked ISS+diamond route", "pluto-compat full-diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+full-diamond fixtures"),
+    Capability("--diamond-tile --second-level-tile", "supported-narrow", "second-level Pluto diamond output is checked by the same diamond route with second-level witness extraction enabled", "pluto-compat diamond-second-level; Opt_diamond_band_correct", "add broader second-level diamond fixtures"),
+    Capability("--diamond-tile --iss --second-level-tile", "supported-narrow", "ISS bridge validation composes with second-level diamond witness extraction", "pluto-compat diamond-iss-second-level; Opt_diamond_band_with_iss_correct", "add broader ISS+second-level diamond fixtures"),
     Capability("--diamond-tile --parallel-current d", "supported", "diamond route now validates the four-phase diamond boundary before explicit current-space parallel certification", "parallel-current suite; Opt_parallel_current_diamond_correct", "add broader fixtures beyond positive.loop"),
 ]
 
 DIAMOND_COMBINATIONS = [
     Capability("--diamond-tile --parallel", "composition-gap", "Pluto-hinted --parallel still needs an OCaml hint-selection wrapper; the theorem-facing form is --diamond-tile --parallel-current d", "tested rejection", "add a Coq route parameterizing the Pluto hint oracle or keep explicit-current as the verified entry"),
-    Capability("--diamond-tile --second-level-tile", "validator-gap", "Pluto emits second-level diamond SCOPs, but the current diamond checker fails the mid-to-posttile second-level boundary", "tested rejection plus standalone diamond/second-level probe", "extend the band permutation checker to nested second-level fk links or prove a canonical second-level diamond checker"),
     Capability("--diamond-tile --notile", "correct-rejection", "diamond requires a tiling phase", "route rejection", "keep rejecting"),
     Capability("--diamond-tile --identity", "correct-rejection", "diamond requires Pluto scheduling/skew plus tiling", "route rejection", "keep rejecting unless a meaningful identity-diamond route is designed"),
 ]

@@ -222,8 +222,6 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--diamond-tile requires tiling and cannot be combined with --notile"
       else if cfg.force_diamond_tile && cfg.force_parallel then
         Error "--diamond-tile is not yet supported with --parallel"
-      else if cfg.force_diamond_tile && cfg.force_second_level_tile then
-        Error "--diamond-tile is not yet supported with --second-level-tile"
       else if cfg.force_diamond_tile
               && cfg.force_band_tiling_experiment
       then

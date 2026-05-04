@@ -402,6 +402,10 @@ let diamond_phase_flags () =
   (if full_diamond_tiling_enabled ()
    then ["--diamond-tile"; "--full-diamond-tile"]
    else ["--diamond-tile"])
+  @
+  (if second_level_tiling_enabled ()
+   then ["--second-level-tile"]
+   else [])
 
 let diamond_phase_with_iss_flags () =
   "--iss" :: diamond_phase_flags ()
