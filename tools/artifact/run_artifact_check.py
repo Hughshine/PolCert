@@ -73,7 +73,6 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 "tools/artifact/run_artifact_check.py",
                 "tools/artifact/generate_capability_matrix.py",
                 "tools/artifact/proof_report.py",
-                "polopt-pluto",
                 "tools/diamond_tiling/run_pluto_diamond_suite.py",
                 "tools/polopt_flag_suites/pluto_compat_driver.py",
                 "tools/polopt_flag_suites/run_pluto_compat_suite.py",

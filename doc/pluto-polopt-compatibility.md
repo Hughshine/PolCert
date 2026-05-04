@@ -46,9 +46,9 @@ The current assessment is based on these concrete checks.
 - Current `polopt` route inspection:
   - `syntax/SLoopRoute.ml`: route normalization and explicit rejections
   - `driver/Scheduler.ml`: actual Pluto flag recipes sent by `polopt`
-- Executed compatibility wrapper:
-  - public entry: `./polopt-pluto`
-  - implementation: `tools/polopt_flag_suites/pluto_compat_driver.py`
+- Executed native compatibility mode:
+  - public entry: `./polopt --pluto-compat`
+  - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
   - result: `21 / 21` checks passed
 - Executed diamond validation suite:
@@ -78,45 +78,45 @@ The supported surface is already nontrivial.
 
 | Pluto-style request | Current `polopt` behavior | Evidence |
 |---|---|---|
-| Default full tiled route | Runs checked affine + ordinary band-aware tiling route. | generated suite and wrapper `ordinary-tiled` |
-| `--notile` | Runs affine-only checked route. | wrapper `affine-only` |
+| Default full tiled route | Runs checked affine + ordinary band-aware tiling route. | generated suite and native compat `ordinary-tiled` |
+| `--notile` | Runs affine-only checked route. | native compat `affine-only` |
 | `--identity --notile` | Runs no-Pluto identity extraction/codegen route. | existing CLI route |
 | `--iss` | Runs ISS + affine + tiling route when the input satisfies ISS shape constraints. | existing ISS suite |
-| `--second-level-tile` | Runs checked second-level tiling route on full tiled paths. | wrapper `second-level`; second-level suite |
-| `--iss --second-level-tile` | Route normalization and scheduler support the sequential ISS + second-level route. | `SLoopRoute.ml` and `Scheduler.ml`; needs a focused wrapper case |
-| `--parallel` | Runs Pluto-hinted checked parallel route for one parallel loop. | wrapper `parallel`; parallel tests |
+| `--second-level-tile` | Runs checked second-level tiling route on full tiled paths. | native compat `second-level`; second-level suite |
+| `--iss --second-level-tile` | Route normalization and scheduler support the sequential ISS + second-level route. | `SLoopRoute.ml` and `Scheduler.ml`; needs a focused native compat case |
+| `--parallel` | Runs Pluto-hinted checked parallel route for one parallel loop. | native compat `parallel`; parallel tests |
 | `--parallel-current d` | Runs explicit-dimension checked parallel route. | parallel-current suite |
-| `--diamond-tile` | Runs sequential diamond phase-aligned route on default full tiled path. | wrapper `diamond`; diamond suite |
-| `--full-diamond-tile` | Runs stronger diamond producer mode on the same checked route. | wrapper `full-diamond` |
-| `--smartfuse` | Compatible with current default affine scheduler recipe. | scheduler flags and wrapper no-op note |
+| `--diamond-tile` | Runs sequential diamond phase-aligned route on default full tiled path. | native compat `diamond`; diamond suite |
+| `--full-diamond-tile` | Runs stronger diamond producer mode on the same checked route. | native compat `full-diamond` |
+| `--smartfuse` | Compatible with current default affine scheduler recipe. | scheduler flags and native no-op note |
 | `--rar` | Compatible with current scheduler recipes. | scheduler flags |
-| `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | wrapper suite |
+| `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | native compat suite |
 
 The current default `polopt` route is not "Pluto default". It intentionally uses phase-aligned recipes. For ordinary sequential optimization, it runs an affine-only Pluto phase with tiling and codegen effects disabled, then a tile-only Pluto phase with `--identity --tile`. This makes the output easier to validate because affine scheduling and tiling are separated.
 
-The bare Pluto flag `--identity` needs special care. In the current Pluto source, tiling is enabled by default, so `--identity` can still reach the tiling phase. The compatible `polopt` no-tiling identity route is therefore better modeled as `--identity --notile`. Bare `--identity` and `--identity --tile` are identity-plus-tiling gaps for a Pluto-compatible wrapper.
+The bare Pluto flag `--identity` needs special care. In the current Pluto source, tiling is enabled by default, so `--identity` can still reach the tiling phase. The compatible `polopt` no-tiling identity route is therefore better modeled as `--identity --notile`. Bare `--identity` and `--identity --tile` are identity-plus-tiling gaps for the Pluto-compatible mode.
 
-The compatibility wrapper also requires callers to say how they want to handle Pluto defaults that are outside the checked route. A bare invocation is rejected. The caller must explicitly disable unsupported default-on Pluto side effects with `--nointratileopt --noprevector --nounrolljam`, and must choose either `--noparallel` or `--parallel`, and either `--nodiamond-tile` or a diamond route.
+The compatibility mode also requires callers to say how they want to handle Pluto defaults that are outside the checked route. A bare invocation is rejected. The caller must explicitly disable unsupported default-on Pluto side effects with `--nointratileopt --noprevector --nounrolljam`, and must choose either `--noparallel` or `--parallel`, and either `--nodiamond-tile` or a diamond route.
 
-The public artifact-facing entry point is:
+The public artifact-facing entry point is native in `polopt`:
 
 ```bash
-./polopt-pluto [--explain] <Pluto-like flags> file.loop
+./polopt --pluto-compat [--explain] <Pluto-like flags> file.loop
 ```
 
 For example:
 
 ```bash
-./polopt-pluto --explain \
+./polopt --pluto-compat --explain \
   --tile --smartfuse --nointratileopt --noprevector --nounrolljam \
   --rar --nodiamond-tile --noparallel \
   tests/polopt-generated/inputs/matmul.loop
 ```
 
-This command does not pass Pluto frontend or codegen products through to
-`polopt`. It filters Pluto-style optimizer flags, maps the accepted subset to
-the existing checked `polopt` routes, and prints a specific reason for rejected
-flags or combinations.
+This command still uses `polopt`'s verified extraction and code generation. The
+native driver filters Pluto-style optimizer flags, maps the accepted subset to
+checked `polopt` routes, and prints a specific reason for rejected flags or
+combinations.
 
 ## Frontend and Input Flags
 
@@ -138,9 +138,9 @@ These are not proof limitations. They are interface-boundary choices.
 | `--nounrolljam` | Compatible no-op | Current checked recipes already disable Pluto unroll-jam. | Already acceptable. | Keep as no-op with explanation. |
 | `--ufactor` | Unsupported | Only meaningful with `--unrolljam`. | Depends on unroll-jam support. | Add after checked unroll-jam exists. |
 | `--cloogsh`, `--cloogf`, `--cloogl` | Unsupported | These tune Cloog code generation, which `polopt` does not use as trusted output. | Not as optimizer flags. | Only expose equivalent `polopt` codegen knobs if needed. |
-| `--nocloogbacktrack` | Compatible no-op in the wrapper | It only constrains Pluto/Cloog code generation, which `polopt` discards. Accepting it avoids rejecting a harmless disabling flag. | Already acceptable as no-op. | Keep the wrapper note explicit so users do not infer Cloog output is validated. |
+| `--nocloogbacktrack` | Compatible no-op in native compatibility mode | It only constrains Pluto/Cloog code generation, which `polopt` discards. Accepting it avoids rejecting a harmless disabling flag. | Already acceptable as no-op. | Keep the native note explicit so users do not infer Cloog output is validated. |
 | `--codegen-context` | Unsupported | This shapes Pluto/Cloog generated bounds. `polopt` regenerates code itself. | Possible as a `polopt` codegen knob. | Add a checked codegen context option if the loop language needs it. |
-| `--bee`, `--indent`, `-o` | Unsupported in wrapper | These are backend/output concerns. | Possible under `polopt` names. | Add `polopt` output formatting/path options separately from optimizer compatibility. |
+| `--bee`, `--indent`, `-o` | Unsupported in native compatibility mode | These are backend/output concerns. | Possible under `polopt` names. | Add `polopt` output formatting/path options separately from optimizer compatibility. |
 
 These are mostly not "missing Pluto optimization". They are backend features. Supporting `--prevector` and `--unrolljam` as transformations would require real work, especially for `--unrolljam`.
 
@@ -198,7 +198,7 @@ These flags do not need to be trusted for correctness if `polopt` validates the 
 | `--cache-size`, `--data-element-size` | Unsupported | Only meaningful with `--determine-tile-size`. | Depends on tile-size model support. | Add value parsing after `--determine-tile-size` works. |
 | `tile.sizes` | Unsupported as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into isolated Pluto cwd, and validate actual generated tile sizes. |
 | `--ft`, `--lt` | Unsupported | Pluto's partial tiling-level controls are under-specified in current route. | Possible, but more than surface. | Extend tiling witness extraction to partial bands/sub-bands and add tests. |
-| bare `--identity` or `--identity --tile` | Unsupported in Pluto-compatible wrapper | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface/composition gap. | Add an `IdentityTiled` route: extract identity schedule, run tile-only Pluto phase, validate tiling. |
+| bare `--identity` or `--identity --tile` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface/composition gap. | Add an `IdentityTiled` route: extract identity schedule, run tile-only Pluto phase, validate tiling. |
 | `--second-level-tile --parallel` | Unsupported | Route rejected although scheduler code has a flag recipe for parallel second-level tiling. | Composition gap. | Compose second-level tiling witness validation with parallel-loop validation. Add route and tests. |
 | `--second-level-tile --parallel-current d` | Unsupported | Route normalization rejects the explicit-current parallel composition too. | Composition gap. | Compose second-level tiling validation with explicit-current parallel validation. |
 
@@ -259,11 +259,10 @@ These are not `polopt` deficiencies.
 
 ## Implementation Plan
 
-The first artifact step is now in place: `./polopt-pluto` is the public
-Pluto-style filtered entry point, backed by `pluto_compat_driver.py` and tested
-by `make test-pluto-compat-suite`. The remaining implementation work is to
-graduate that contract into `polopt`'s native CLI if we want a single binary,
-and then expand the supported surface.
+The first artifact step is now in place: `./polopt --pluto-compat` is the
+native Pluto-style filtered entry point, implemented in the OCaml driver and
+tested by `make test-pluto-compat-suite`. The remaining implementation work is
+to expand the supported surface.
 
 1. Define a `PlutoCompat` flag module.
    - Parse Pluto-like flags.

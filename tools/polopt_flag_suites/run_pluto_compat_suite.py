@@ -8,7 +8,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DRIVER = ROOT / "polopt-pluto"
 POLOPT = ROOT / "polopt"
 
 
@@ -62,20 +61,16 @@ CHECKS = [
 
 def run_check(check: Check, timeout: int) -> str | None:
     cmd = [
-        sys.executable,
-        str(DRIVER),
-        "--explain",
-        "--polopt",
         str(POLOPT),
-        "--timeout",
-        str(timeout),
+        "--pluto-compat",
+        "--explain",
         *check.args,
         str(check.fixture),
     ]
     try:
         proc = subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True, timeout=timeout + 5, check=False)
     except subprocess.TimeoutExpired:
-        return f"{check.name}: wrapper timed out"
+        return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
     if check.success:
         if proc.returncode != 0:

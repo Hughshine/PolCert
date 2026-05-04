@@ -52,17 +52,17 @@ def table_rows() -> list[Capability]:
     rows.extend(DIAMOND_COMBINATIONS)
 
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
-        rows.append(Capability(flag, "out-of-optimizer-surface", reason, "compat wrapper rejection", "keep as separate importer/debug mode if needed"))
+        rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))
     for flag, reason in sorted(compat.CODEGEN_OPTIONS.items()):
-        rows.append(Capability(flag, "validator-or-codegen-gap", reason, "compat wrapper rejection", "implement checked PolOpt equivalent, not Pluto pass-through"))
+        rows.append(Capability(flag, "validator-or-codegen-gap", reason, "native compat rejection", "implement checked PolOpt equivalent, not Pluto pass-through"))
     for flag, reason in sorted(compat.DFP_OPTIONS.items()):
-        rows.append(Capability(flag, "surface-or-build-gap", reason, "compat wrapper rejection", "enable solver build and validate produced affine schedules"))
+        rows.append(Capability(flag, "surface-or-build-gap", reason, "native compat rejection", "enable solver build and validate produced affine schedules"))
     for flag, reason in sorted(compat.UNSUPPORTED_OPTIMIZER_OPTIONS.items()):
-        rows.append(Capability(flag, "surface-gap", reason, "compat wrapper rejection", "pass through as oracle tuning only after regression coverage"))
+        rows.append(Capability(flag, "surface-gap", reason, "native compat rejection", "pass through as oracle tuning only after regression coverage"))
     for flag, reason in sorted(compat.DEPENDENCE_SOLVER_OPTIONS.items()):
-        rows.append(Capability(flag, "surface-gap", reason, "compat wrapper rejection", "pass through as oracle tuning, then validate output schedules"))
+        rows.append(Capability(flag, "surface-gap", reason, "native compat rejection", "pass through as oracle tuning, then validate output schedules"))
     for flag, reason in sorted(compat.STALE_OR_NON_PLUTO_OPTIONS.items()):
-        rows.append(Capability(flag, "stale-or-non-pluto", reason, "compat wrapper rejection", "do not expose as optimizer compatibility"))
+        rows.append(Capability(flag, "stale-or-non-pluto", reason, "native compat rejection", "do not expose as optimizer compatibility"))
     return rows
 
 
@@ -91,7 +91,7 @@ def build_matrix() -> dict[str, object]:
             "capability_rows": len(table_rows()),
             "compatibility_checks": len(compat_suite.CHECKS),
             "diamond_supported_route": "sequential non-ISS single-level four-phase route",
-            "pluto_style_entry": "./polopt-pluto",
+            "pluto_style_entry": "./polopt --pluto-compat",
         },
     }
 
@@ -100,7 +100,7 @@ def write_markdown(matrix: dict[str, object]) -> str:
     lines = [
         "# Pluto/PolOpt Capability Matrix",
         "",
-        "- Pluto-style filtered entry: `./polopt-pluto`",
+        "- Pluto-style filtered entry: `./polopt --pluto-compat`",
         "",
         "## Capability Surface",
         "",

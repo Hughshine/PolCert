@@ -2279,6 +2279,7 @@ let () =
                Gc.major_heap_increment = 4194304 };
     let cfg = parse_args () in
     validate_flag_model Sys.argv.(0) cfg;
+    if cfg.pluto_compat_dry_run then exit 0;
     configure_scheduler_modes cfg;
     match SLoopDispatch.run_standalone_action cfg standalone_handlers with
     | ExitCode code ->

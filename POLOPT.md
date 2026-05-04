@@ -113,20 +113,20 @@ Three important extensions now sit beside that default path:
   - expose Pluto-hinted verified parallel certification / code generation routes
   - these remain experimental CLI routes
 
-## Pluto-style filtered entry point
+## Native Pluto-style filtered mode
 
 For artifact runs that should look like a Pluto invocation, use:
 
 ```sh
-./polopt-pluto --explain \
+./polopt --pluto-compat --explain \
   --tile --smartfuse --nointratileopt --noprevector --nounrolljam \
   --rar --nodiamond-tile --noparallel \
   tests/polopt-generated/inputs/matmul.loop
 ```
 
-`polopt-pluto` accepts Pluto-like optimizer flags, rejects unsupported flags
-with a specific reason, and invokes `./polopt` on the corresponding checked
-route. The regression target is:
+`--pluto-compat` is handled by the OCaml `polopt` driver. It accepts Pluto-like
+optimizer flags, rejects unsupported flags with a specific reason, and runs the
+corresponding checked route. The regression target is:
 
 ```sh
 make test-pluto-compat-suite
