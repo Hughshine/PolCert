@@ -2,6 +2,7 @@
   "suite_name": "PARALLEL-CURRENT",
   "fixtures": {
     "positive": "fixtures/positive.loop",
+    "diamond-example-inner-batch": "fixtures/diamond-example-inner-batch.loop",
     "dependent": "fixtures/dependent.loop"
   },
   "checks": [
@@ -26,6 +27,24 @@
       ],
       "expect": "success",
       "needle": "parallel for",
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
+    },
+    {
+      "name": "diamond-current-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "32 *",
+        "/ 32"
+      ],
       "differs_from_args": [
         "--diamond-tile"
       ]
