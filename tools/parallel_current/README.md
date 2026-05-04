@@ -10,10 +10,10 @@ The `diamond-current-combined-effect` case is the positive diamond witness. The 
 
 must emit `parallel for`, 32-sized tile expressions, and the diagonal expression `i4 + (-1 * i5)`. The diagonal expression is the useful witness: it shows that the output is not just rectangular tiling over `t` and `i`, but a skewed diamond schedule where one source index is reconstructed from coupled schedule coordinates.
 
-The `diamond-current-jacobi-batch-codegen-gap` case records a narrower current limit. Batched two-statement Jacobi exposes an independent batch dimension, but the diamond route currently fails after validation during annotated parallel code generation:
+The `diamond-current-jacobi-batch-positive` case covers the wider two-statement Jacobi shape. Batched Jacobi exposes the same independent batch dimension, while the diamond schedule introduces parity guards and singleton reconstruction loops. The command
 
-```text
-Annotated parallel codegen produced non-affine instruction trace loop
+```sh
+./polopt --diamond-tile --parallel-current 0 tools/parallel_current/fixtures/jacobi-batch.loop
 ```
 
-That failure is not evidence that the explicit batch dimension is semantically dependent. It is a code-generation guard for non-affine instruction traces after the diamond schedule has been lowered. The positive single-statement batch stencil and this negative Jacobi-batch case together document the current supported shape.
+must emit `parallel for`, coupled diamond expressions such as `64 *` and `(-2 * i11)`, and both `a` and `b` updates. This case is accepted through the checked raw-codegen fallback: the cleaned codegen output can produce non-affine instruction traces, so the verified parallel codegen first tries the cleaned output and then falls back to the raw singleton-loop form when the raw trace passes the same safety check. The remaining polish item is output cleanup quality, not validator coverage for this shape.

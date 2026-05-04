@@ -59,6 +59,25 @@ TOP_LEVEL_ROUTES = [
         "theorem_names": ["Opt_parallel_current_correct"],
     },
     {
+        "route": "parallel codegen raw fallback",
+        "cli": "internal fallback used by checked parallel-current routes",
+        "theorem_file": "src/ParallelCodegen.v",
+        "theorem_names": [
+            "checked_annotated_codegen_correct_general",
+            "annotated_codegen_raw_correct_general",
+        ],
+        "note": "The fallback preserves trace safety by checking the raw singleton-loop output when cleaned codegen is not trace-safe.",
+    },
+    {
+        "route": "raw prepared codegen",
+        "cli": "internal fallback codegen before singleton cleanup",
+        "theorem_file": "src/PrepareCodegen.v",
+        "theorem_names": [
+            "prepared_codegen_raw_correct",
+            "prepared_codegen_raw_correct_general",
+        ],
+    },
+    {
         "route": "checked diamond plus parallel current",
         "cli": "polopt --diamond-tile --parallel-current <dim> <file.loop>",
         "theorem_file": "driver/ParallelPolOptCorrect.v",

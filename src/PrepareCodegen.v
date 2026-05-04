@@ -1897,13 +1897,16 @@ Proof.
   - exact Hexec_sem.
 Qed.
 
+Definition prepared_codegen_raw (pol: PolyLang.t) : imp Loop.t :=
+  CodeGen.codegen (prepare_codegen pol).
+
 Definition prepared_codegen (pol: PolyLang.t) : imp Loop.t :=
-  BIND loop <- CodeGen.codegen (prepare_codegen pol) -;
+  BIND loop <- prepared_codegen_raw pol -;
   pure (Cleanup.cleanup loop).
 
-Theorem prepared_codegen_correct:
+Theorem prepared_codegen_raw_correct:
   forall pol st st',
-    WHEN loop <- prepared_codegen pol THEN
+    WHEN loop <- prepared_codegen_raw pol THEN
     PolyLang.wf_pprog_affine pol ->
     Loop.semantics loop st st' ->
     PolyLang.instance_list_semantics pol st st'.
@@ -1928,14 +1931,11 @@ Proof.
   set (es := length varctxt).
   set (n := codegen_target_dim (pis, varctxt, vars)).
   set (prep_pis := map (prepare_pi es n) pis).
-  unfold prepared_codegen in Hcodegen.
-  bind_imp_destruct Hcodegen loop_raw Hcodegen_raw.
+  unfold prepared_codegen_raw in Hcodegen.
+  unfold CodeGen.codegen in Hcodegen. simpl in Hcodegen.
+  bind_imp_destruct Hcodegen loop_stmt Hgen.
   eapply mayReturn_pure in Hcodegen. subst loop.
-  pose proof ((proj1 (Cleanup.cleanup_correct loop_raw st st')) Hloop) as Hloop_raw.
-  unfold CodeGen.codegen in Hcodegen_raw. simpl in Hcodegen_raw.
-  bind_imp_destruct Hcodegen_raw loop_stmt Hgen.
-  eapply mayReturn_pure in Hcodegen_raw. subst loop_raw.
-  inversion Hloop_raw. rename env into envv.
+  inversion Hloop. rename env into envv.
   inversion H; subst.
   assert (Hctxt' : (es <= n)%nat).
   { subst es n. exact Hctxt. }
@@ -2024,6 +2024,45 @@ Proof.
       * exact Hdim_gen.
       * exact Henvdim_gen.
       * exact Hsched_gen.
+Qed.
+
+Theorem prepared_codegen_correct:
+  forall pol st st',
+    WHEN loop <- prepared_codegen pol THEN
+    PolyLang.wf_pprog_affine pol ->
+    Loop.semantics loop st st' ->
+    PolyLang.instance_list_semantics pol st st'.
+Proof.
+  intros pol st st' loop Hcodegen Hwf Hloop.
+  unfold prepared_codegen in Hcodegen.
+  bind_imp_destruct Hcodegen loop_raw Hraw.
+  eapply mayReturn_pure in Hcodegen. subst loop.
+  pose proof ((proj1 (Cleanup.cleanup_correct loop_raw st st')) Hloop)
+    as Hloop_raw.
+  eapply prepared_codegen_raw_correct; eauto.
+Qed.
+
+Theorem prepared_codegen_raw_correct_general:
+  forall pol st st',
+    WHEN loop <- prepared_codegen_raw (PolyLang.current_view_pprog pol) THEN
+    PolyLang.wf_pprog_general pol ->
+    Loop.semantics loop st st' ->
+    PolyLang.instance_list_semantics pol st st'.
+Proof.
+  intros pol st st' loop Hcodegen Hwf Hloop.
+  pose proof
+    (PolyLang.wf_pprog_general_current_view_affine pol Hwf)
+    as Hwf_cur.
+  pose proof
+    (prepared_codegen_raw_correct
+       (PolyLang.current_view_pprog pol) st st' loop
+       Hcodegen Hwf_cur Hloop)
+    as Hsem_cur.
+  pose proof
+    (PolyLang.instance_list_semantics_current_view_iff pol st st' Hwf)
+    as Hview.
+  apply (proj1 Hview).
+  exact Hsem_cur.
 Qed.
 
 Theorem prepared_codegen_correct_general:

@@ -73,15 +73,24 @@
       ]
     },
     {
-      "name": "diamond-current-jacobi-batch-codegen-gap",
+      "name": "diamond-current-jacobi-batch-positive",
       "fixture": "jacobi-batch",
       "args": [
         "--diamond-tile",
         "--parallel-current",
         "0"
       ],
-      "expect": "failure",
-      "needle": "Annotated parallel codegen produced non-affine instruction trace loop"
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "64 *",
+        "(-2 * i11)",
+        "a[",
+        "b["
+      ],
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
     },
     {
       "name": "parallel-current-positive-iss",

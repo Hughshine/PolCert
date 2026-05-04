@@ -37,6 +37,7 @@ MATMUL = ROOT / "tests" / "polopt-generated" / "inputs" / "matmul.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
 DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
+JACOBI_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "jacobi-batch.loop"
 
 
 CHECKS = [
@@ -119,6 +120,16 @@ CHECKS = [
         "polopt args: --iss --diamond-tile --parallel",
         effect_needles=("parallel for", "32 *", "/ 32", "i4 + (-1 * i5)"),
         differs_from_args=(tuple(JACOBI_DIAMOND_ISS),),
+    ),
+    Check(
+        "diamond-parallel-jacobi-batch",
+        [*FLAGS, "--diamond-tile", "--parallel"],
+        JACOBI_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile --parallel",
+        effect_needles=("parallel for", "64 *", "(-2 * i11)", "a[", "b["),
+        differs_from_args=(tuple(JACOBI_DIAMOND),),
     ),
     Check(
         "diamond-second-level",

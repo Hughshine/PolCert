@@ -355,6 +355,11 @@ Definition tagged_prepared_codegen
   BIND loop <- PrepareCore.prepared_codegen pp -;
   pure (tag_loop loop).
 
+Definition tagged_prepared_codegen_raw
+  (pp : PolyLang.t) : imp ParallelLoop.t :=
+  BIND loop <- PrepareCore.prepared_codegen_raw pp -;
+  pure (tag_loop loop).
+
 Record codegen_matches_current_dims
   (_pp : PolyLang.t) (pl : ParallelLoop.t) : Prop := {
   cmd_origin_tagged :
@@ -366,6 +371,13 @@ Definition annotated_codegen
   (cert : ParallelValidator.parallel_cert)
   : imp ParallelLoop.t :=
   BIND pl <- tagged_prepared_codegen pp -;
+  pure (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Definition annotated_codegen_raw
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl <- tagged_prepared_codegen_raw pp -;
   pure (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl).
 
 Definition result_is_ok {A} (r : result A) : bool :=
@@ -433,7 +445,10 @@ Definition checked_annotated_codegen
   : imp (result ParallelLoop.t) :=
   BIND pl <- annotated_codegen pp cert -;
   if all_es_safeb pl then pure (Okk pl)
-  else pure (Err "Annotated parallel codegen produced non-affine instruction trace loop"%string).
+  else
+    BIND pl_raw <- annotated_codegen_raw pp cert -;
+    if all_es_safeb pl_raw then pure (Okk pl_raw)
+    else pure (Err "Annotated parallel codegen produced non-affine instruction trace loop"%string).
 
 Lemma tagged_prepared_codegen_matches :
   forall pp pl,
@@ -470,6 +485,25 @@ Proof.
   apply erase_tag_loop_eq.
 Qed.
 
+Lemma tagged_prepared_codegen_raw_erase_eq :
+  forall pp pl,
+    mayReturn (tagged_prepared_codegen_raw pp) pl ->
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp pl Hgen.
+  unfold tagged_prepared_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [loop [Hprep Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  exists loop.
+  split; auto.
+  simpl.
+  apply erase_tag_loop_eq.
+Qed.
+
 Lemma annotated_codegen_erase_eq :
   forall pp cert pl,
     mayReturn (annotated_codegen pp cert) pl ->
@@ -491,6 +525,27 @@ Proof.
   exact Herase.
 Qed.
 
+Lemma annotated_codegen_raw_erase_eq :
+  forall pp cert pl,
+    mayReturn (annotated_codegen_raw pp cert) pl ->
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold annotated_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_raw_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_parallelize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
 Lemma annotated_codegen_refines_prepared_codegen :
   forall pp cert pl st st',
     mayReturn (annotated_codegen pp cert) pl ->
@@ -503,6 +558,30 @@ Lemma annotated_codegen_refines_prepared_codegen :
 Proof.
   intros pp cert [[s ctxt] vars] st st' Hgen Hsafe Hsem.
   pose proof (annotated_codegen_erase_eq pp cert ((s, ctxt), vars) Hgen)
+    as [loop [Hprep Herase]].
+  pose proof (ParallelLoop.semantics_refines_erased ((s, ctxt), vars) st st' Hsafe Hsem)
+    as [st'' [Herased Heq]].
+  exists loop, st''.
+  split; [exact Hprep|].
+  split.
+  - rewrite <- Herase.
+    eapply erase_to_loop_semantics.
+    exact Herased.
+  - exact Heq.
+Qed.
+
+Lemma annotated_codegen_raw_refines_prepared_codegen :
+  forall pp cert pl st st',
+    mayReturn (annotated_codegen_raw pp cert) pl ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists loop st'',
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      Loop.semantics loop st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pp cert [[s ctxt] vars] st st' Hgen Hsafe Hsem.
+  pose proof (annotated_codegen_raw_erase_eq pp cert ((s, ctxt), vars) Hgen)
     as [loop [Hprep Herase]].
   pose proof (ParallelLoop.semantics_refines_erased ((s, ctxt), vars) st st' Hsafe Hsem)
     as [st'' [Herased Heq]].
@@ -537,11 +616,35 @@ Proof.
   - exact Heq.
 Qed.
 
+Theorem annotated_codegen_raw_correct_general :
+  forall pol cert pl st st',
+    mayReturn (annotated_codegen_raw (PolyLang.current_view_pprog pol) cert) pl ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pol cert pl st st' Hcodegen Hwf Hsafe Hsem.
+  destruct
+    (annotated_codegen_raw_refines_prepared_codegen
+       (PolyLang.current_view_pprog pol) cert pl st st'
+       Hcodegen Hsafe Hsem)
+    as [loop [st'' [Hprep [Hloop Heq]]]].
+  exists st''.
+  split.
+  - eapply PrepareCore.prepared_codegen_raw_correct_general; eauto.
+  - exact Heq.
+Qed.
+
 Lemma checked_annotated_codegen_ok_inv :
   forall pp cert pl,
     mayReturn (checked_annotated_codegen pp cert) (Okk pl) ->
-    mayReturn (annotated_codegen pp cert) pl /\
-    ParallelLoop.trace_safe pl.
+    (mayReturn (annotated_codegen pp cert) pl /\
+     ParallelLoop.trace_safe pl) \/
+    (mayReturn (annotated_codegen_raw pp cert) pl /\
+     ParallelLoop.trace_safe pl).
 Proof.
   intros pp cert pl Hcodegen.
   unfold checked_annotated_codegen in Hcodegen.
@@ -550,11 +653,21 @@ Proof.
   destruct (all_es_safeb pl') eqn:Hsafe.
   - apply mayReturn_pure in Hret.
     inversion Hret; subst pl'.
+    left.
     split.
     + exact Hann.
     + eapply all_es_safeb_sound; eauto.
-  - apply mayReturn_pure in Hret.
-    discriminate.
+  - apply mayReturn_bind in Hret.
+    destruct Hret as [pl_raw [Hraw Hret]].
+    destruct (all_es_safeb pl_raw) eqn:Hsafe_raw.
+    + apply mayReturn_pure in Hret.
+      inversion Hret; subst pl_raw.
+      right.
+      split.
+      * exact Hraw.
+      * eapply all_es_safeb_sound; eauto.
+    + apply mayReturn_pure in Hret.
+      discriminate.
 Qed.
 
 Theorem checked_annotated_codegen_correct_general :
@@ -569,8 +682,9 @@ Proof.
   intros pol cert pl st st' Hcodegen Hwf Hsem.
   destruct (checked_annotated_codegen_ok_inv
               (PolyLang.current_view_pprog pol) cert pl Hcodegen)
-    as [Hann Hsafe].
-  eapply annotated_codegen_correct_general; eauto.
+    as [[Hann Hsafe] | [Hann Hsafe]].
+  - eapply annotated_codegen_correct_general; eauto.
+  - eapply annotated_codegen_raw_correct_general; eauto.
 Qed.
 
 End ParallelCodegen.
