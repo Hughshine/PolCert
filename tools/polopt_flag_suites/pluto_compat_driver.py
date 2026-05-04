@@ -40,6 +40,7 @@ class PlutoFlagState:
     parallel_seen: bool = False
     innerpar_seen: bool = False
     no_parallel_seen: bool = False
+    intratileopt_seen: bool = False
     no_intratileopt_seen: bool = False
     no_prevector_seen: bool = False
     no_unrolljam_seen: bool = False
@@ -115,7 +116,6 @@ CODEGEN_OPTIONS = {
 
 UNSUPPORTED_OPTIMIZER_OPTIONS = {
     "--forceparallel": "Pluto accepts this flag, but the current source has no effective use site",
-    "--intratileopt": "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route",
     "--multipar": "multi-degree Pluto parallel extraction is not exposed through the checked polopt route",
 }
 
@@ -129,6 +129,7 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--fast-lin-ind-check": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
     "--lastwriter": "Pluto last-writer dependence mode is passed to the checked scheduler oracle",
+    "--intratileopt": "Pluto intra-tile schedule rewriting is passed to the checked scheduler oracle",
 }
 
 SUPPORTED_VALUE_OPTIONS = {
@@ -285,6 +286,10 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag == "--nointratileopt":
             state.no_intratileopt_seen = True
             state.add_note("--nointratileopt accepted because checked routes disable Pluto intra-tile rewriting")
+        elif flag == "--intratileopt":
+            state.intratileopt_seen = True
+            state.add_oracle_flag(flag)
+            state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
         elif flag == "--noprevector":
             state.no_prevector_seen = True
             state.add_note("--noprevector accepted because polopt does not use Pluto codegen vector marking")
@@ -324,8 +329,10 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--parallel and --noparallel are both present; this wrapper rejects contradictory phase controls")
     if state.diamond_seen and state.nodiamond_seen:
         raise Reject("--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this wrapper rejects contradictory phase controls")
-    if not state.no_intratileopt_seen:
-        raise Reject("Pluto enables --intratileopt by default; pass --nointratileopt for the current checked polopt subset")
+    if state.intratileopt_seen and state.no_intratileopt_seen:
+        raise Reject("--intratileopt and --nointratileopt are both present; this wrapper rejects contradictory tile-schedule controls")
+    if not (state.intratileopt_seen or state.no_intratileopt_seen):
+        raise Reject("Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly")
     if not state.no_prevector_seen:
         raise Reject("Pluto enables --prevector by default; pass --noprevector because polopt does not use Pluto codegen vector marking")
     if not state.no_unrolljam_seen:
@@ -407,7 +414,9 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
         args.append("--parallel")
     else:
         args.append("--noparallel")
-    args.extend(["--nointratileopt", "--noprevector", "--nounrolljam"])
+    args.extend(["--noprevector", "--nounrolljam"])
+    if state.no_intratileopt_seen:
+        args.append("--nointratileopt")
     if state.oracle_flags:
         args.extend(state.oracle_flags)
     args.append(str(state.input_path))

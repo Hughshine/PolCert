@@ -25,6 +25,7 @@ type config = SLoopConfig.config = {
   mutable pluto_nodiamond_seen : bool;
   mutable pluto_parallel_seen : bool;
   mutable pluto_no_parallel_seen : bool;
+  mutable pluto_intratileopt_seen : bool;
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
@@ -201,7 +202,6 @@ let known_rejection_reason = function
   | "--prevector" -> Some "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen"
   | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
   | "--forceparallel" -> Some "Pluto accepts this flag, but the current source has no effective use site"
-  | "--intratileopt" -> Some "Pluto intra-tile schedule rewriting is not exposed through the checked polopt route"
   | "--multipar" -> Some "multi-degree Pluto parallel extraction is not exposed through the checked polopt route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -274,8 +274,10 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--parallel and --noparallel are both present; this driver rejects contradictory phase controls";
     if cfg.pluto_diamond_seen && cfg.pluto_nodiamond_seen then
       pluto_reject prog "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this driver rejects contradictory phase controls";
-    if not cfg.pluto_no_intratileopt_seen then
-      pluto_reject prog "Pluto enables --intratileopt by default; pass --nointratileopt for the current checked polopt subset";
+    if cfg.pluto_intratileopt_seen && cfg.pluto_no_intratileopt_seen then
+      pluto_reject prog "--intratileopt and --nointratileopt are both present; this driver rejects contradictory tile-schedule controls";
+    if not (cfg.pluto_intratileopt_seen || cfg.pluto_no_intratileopt_seen) then
+      pluto_reject prog "Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly";
     if not cfg.pluto_no_prevector_seen then
       pluto_reject prog "Pluto enables --prevector by default; pass --noprevector because polopt does not use Pluto codegen vector marking";
     if not cfg.pluto_no_unrolljam_seen then
@@ -346,6 +348,7 @@ let parse_args () : config =
       pluto_nodiamond_seen = false;
       pluto_parallel_seen = false;
       pluto_no_parallel_seen = false;
+      pluto_intratileopt_seen = false;
       pluto_no_intratileopt_seen = false;
       pluto_no_prevector_seen = false;
       pluto_no_unrolljam_seen = false;
@@ -431,6 +434,12 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_no_intratileopt_seen <- true;
           add_pluto_note cfg "--nointratileopt accepted because checked routes disable Pluto intra-tile rewriting";
+          go (i + 1)
+      | "--intratileopt" ->
+          enable_pluto_compat cfg;
+          cfg.pluto_intratileopt_seen <- true;
+          add_pluto_extra_flag cfg "--intratileopt";
+          add_pluto_note cfg "--intratileopt passed through to Pluto's checked scheduler oracle";
           go (i + 1)
       | "--noprevector" ->
           enable_pluto_compat cfg;

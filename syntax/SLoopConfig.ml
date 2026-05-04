@@ -25,6 +25,7 @@ type config = {
   mutable pluto_nodiamond_seen : bool;
   mutable pluto_parallel_seen : bool;
   mutable pluto_no_parallel_seen : bool;
+  mutable pluto_intratileopt_seen : bool;
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;

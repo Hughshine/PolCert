@@ -25,8 +25,10 @@ class Check:
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
+FLAGS_INTRATILE = ["--tile", "--smartfuse", "--intratileopt", "--noprevector", "--nounrolljam", "--rar"]
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_INTRATILE = [*FLAGS_INTRATILE, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
@@ -67,6 +69,16 @@ CHECKS = [
         "polopt args: <default>",
         effect_needles=("32 *", "/ 32"),
         differs_from_args=(tuple(MATMUL_NOTILE),),
+    ),
+    Check(
+        "optimizer-intratileopt",
+        MATMUL_TILED_INTRATILE,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --intratileopt",
+        effect_needles=("for i1 in range(0, ((M + 31) / 32))",),
+        differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
         "optimizer-determine-tile-size",
@@ -305,7 +317,7 @@ CHECKS = [
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
     Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
-    Check("reject-intratileopt", ["--tile", "--intratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "Pluto intra-tile schedule rewriting is not exposed"),
+    Check("reject-intratile-conflict", ["--tile", "--intratileopt", "--nointratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory tile-schedule controls"),
     Check("reject-pet", ["--pet", *FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, False, "frontend is polopt's verified loop extractor"),
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "typed fusion depends on DFP"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),

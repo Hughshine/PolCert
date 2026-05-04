@@ -50,7 +50,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - result: `38 / 38` checks passed
+  - result: `39 / 39` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -96,6 +96,7 @@ The supported surface is already nontrivial.
 | `--flic`, `--fast-lin-ind-check` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-flic-affine` and `optimizer-fast-lin-ind-check-affine`; differ from smartfuse baseline |
 | `--determine-tile-size` | Passed through to Pluto's checked scheduler oracle on tiled routes. | native compat `optimizer-determine-tile-size`; differs from fixed-size tiling baseline |
 | `--cache-size <n>`, `--data-element-size <n>` | Passed through to Pluto's checked scheduler oracle when paired with `--determine-tile-size` on tiled routes. | native compat `optimizer-cache-size` and `optimizer-data-element-size`; differ from automatic tile-size baseline |
+| `--intratileopt` | Passed through to Pluto's checked scheduler oracle as the explicit alternative to `--nointratileopt`. | native compat `optimizer-intratileopt`; standalone affine+tiling validators pass on intratileopt fixtures |
 | `--lastwriter` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-lastwriter-affine`; differs from default dependence mode baseline |
 | `--rar` | Compatible with current scheduler recipes. | scheduler flags |
 | `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | native compat suite |
@@ -201,8 +202,8 @@ These flags do not need to be trusted for correctness if `polopt` validates the 
 | `--tile` | Supported on default full route | Current default is tiled. | Already supported. | Keep explicit compatibility. |
 | `--notile` | Supported | Affine-only route exists. | Already supported. | Keep. |
 | `--second-level-tile` | Supported on sequential full tiled route, including the ISS route at the route/scheduler level | Existing validator route supports it. | Already supported for ordinary route; ISS combination needs a dedicated regression case. | Keep and extend tests. |
-| `--intratileopt` | Unsupported | Current checked recipes disable Pluto's intra-tile post-tiling schedule rewrite to keep phase witnesses canonical. | Possible, but not just parser work. | Treat Pluto's intra-tile rewrite as a separate affine/post-tiling phase and validate that phase explicitly. Add cases where it changes loop order. |
-| `--nointratileopt` | Compatible no-op | Current checked recipes already disable this Pluto rewrite. | Already acceptable. | Keep as no-op with explanation. |
+| `--intratileopt` | Supported as oracle tuning on tiled routes | Native compatibility mode treats it as an explicit alternative to `--nointratileopt`; it is appended to Pluto scheduler calls and validated by the existing phase split. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and interactions with diamond/second-level routes. |
+| `--nointratileopt` | Compatible no-op | Current checked recipes disable this Pluto rewrite unless `--intratileopt` is explicitly selected. | Already acceptable. | Keep as no-op with explanation and reject contradictory use with `--intratileopt`. |
 | `--determine-tile-size` | Supported as oracle tuning on tiled routes | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a final loop difference from fixed-size tiling. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and test interactions with diamond/second-level routes. |
 | `--cache-size`, `--data-element-size` | Supported with `--determine-tile-size` on tiled routes | Native compatibility mode parses positive integer values, appends them to Pluto scheduler calls, and rejects them when `--determine-tile-size` or a tiled route is absent. | Already supported for checked routes whose produced tile witness validates. | Broaden value choices and non-matmul fixtures. |
 | `tile.sizes` | Unsupported as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into isolated Pluto cwd, and validate actual generated tile sizes. |
