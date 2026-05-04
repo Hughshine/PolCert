@@ -11,7 +11,12 @@
         "--second-level-tile"
       ],
       "expect": "success",
-      "needle": "== Optimized Loop =="
+      "needle": "== Optimized Loop ==",
+      "absent_needles": [
+        "32 *",
+        "/ 32"
+      ],
+      "differs_from_args": []
     },
     {
       "name": "second-level-tile-rejects-identity",

@@ -78,6 +78,9 @@ def check_rows() -> list[dict[str, object]]:
                 "expect": "success" if check.success else "reject",
                 "needle": check.needle,
                 "normalized": check.normalized,
+                "effect_needles": list(check.effect_needles),
+                "effect_absent": list(check.effect_absent),
+                "differs_from_args": [list(args) for args in check.differs_from_args],
                 "fixture": str(check.fixture.relative_to(ROOT)),
             }
         )
@@ -113,10 +116,18 @@ def write_markdown(matrix: dict[str, object]) -> str:
         lines.append(
             f"| `{row['request']}` | {row['status']} | {row['reason']} | {row['evidence']} | {row['next_step']} |"
         )
-    lines.extend(["", "## Compatibility Checks", "", "| Check | Expectation | Fixture | Args |", "|---|---|---|---|"])
+    lines.extend(["", "## Compatibility Checks", "", "| Check | Expectation | Fixture | Args | Effect oracle |", "|---|---|---|---|---|"])
     for row in matrix["compatibility_checks"]:  # type: ignore[index]
         args = " ".join(row["args"])
-        lines.append(f"| `{row['name']}` | {row['expect']} | `{row['fixture']}` | `{args}` |")
+        effect_parts = []
+        if row["effect_needles"]:
+            effect_parts.append("requires " + ", ".join(f"`{needle}`" for needle in row["effect_needles"]))
+        if row["effect_absent"]:
+            effect_parts.append("forbids " + ", ".join(f"`{needle}`" for needle in row["effect_absent"]))
+        if row["differs_from_args"]:
+            effect_parts.append("differs from baseline")
+        effect = "; ".join(effect_parts) if effect_parts else ""
+        lines.append(f"| `{row['name']}` | {row['expect']} | `{row['fixture']}` | `{args}` | {effect} |")
     return "\n".join(lines) + "\n"
 
 

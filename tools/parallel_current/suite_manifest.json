@@ -13,10 +13,11 @@
         "0"
       ],
       "expect": "success",
-      "needle": "parallel for"
+      "needle": "parallel for",
+      "differs_from_args": []
     },
     {
-      "name": "parallel-current-diamond-positive",
+      "name": "diamond-route-then-parallel-current-positive",
       "fixture": "positive",
       "args": [
         "--diamond-tile",
@@ -24,7 +25,10 @@
         "0"
       ],
       "expect": "success",
-      "needle": "parallel for"
+      "needle": "parallel for",
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
     },
     {
       "name": "parallel-current-positive-iss",
@@ -35,7 +39,10 @@
         "0"
       ],
       "expect": "success",
-      "needle": "parallel for"
+      "needle": "parallel for",
+      "differs_from_args": [
+        "--iss"
+      ]
     },
     {
       "name": "parallel-current-out-of-bounds",

@@ -41,6 +41,22 @@ def run_polopt(polopt: pathlib.Path, loop_path: pathlib.Path, args: list[str]) -
     )
 
 
+def string_list_field(spec: dict[str, object], field: str) -> list[str]:
+    raw = spec.get(field, [])
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise SystemExit(f"{spec.get('name', '<unnamed>')}: {field} must be a string list")
+    return list(raw)
+
+
+def args_list_field(spec: dict[str, object], field: str) -> list[str] | None:
+    raw = spec.get(field)
+    if raw is None:
+        return None
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise SystemExit(f"{spec.get('name', '<unnamed>')}: {field} must be a string list")
+    return list(raw)
+
+
 def evaluate_check(
     fixtures: dict[str, pathlib.Path],
     polopt: pathlib.Path,
@@ -52,7 +68,7 @@ def evaluate_check(
         raise SystemExit(f"{spec.get('name', '<unnamed>')}: fixture must be a string")
     if not isinstance(spec.get("expect"), str):
         raise SystemExit(f"{spec.get('name', '<unnamed>')}: expect must be a string")
-    if not isinstance(spec.get("needle"), str):
+    if "needle" in spec and not isinstance(spec.get("needle"), str):
         raise SystemExit(f"{spec.get('name', '<unnamed>')}: needle must be a string")
     raw_args = spec.get("args", [])
     if not isinstance(raw_args, list) or not all(isinstance(arg, str) for arg in raw_args):
@@ -63,19 +79,41 @@ def evaluate_check(
 
     proc = run_polopt(polopt, fixtures[fixture_name], list(raw_args))
     expected = str(spec["expect"])
-    needle = str(spec["needle"])
+    needles = []
+    if "needle" in spec:
+        needles.append(str(spec["needle"]))
+    needles.extend(string_list_field(spec, "needles"))
+    absent_needles = string_list_field(spec, "absent_needles")
+    differs_from_args = args_list_field(spec, "differs_from_args")
     if expected == "success":
         if proc.returncode != 0:
             return f"{spec['name']}: expected success, got exit {proc.returncode}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-        if needle not in proc.stdout:
-            return f"{spec['name']}: missing {needle!r} in stdout\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle in needles:
+            if needle not in proc.stdout:
+                return f"{spec['name']}: missing {needle!r} in stdout\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle in absent_needles:
+            if needle in proc.stdout:
+                return f"{spec['name']}: unexpected {needle!r} in stdout\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        if differs_from_args is not None:
+            baseline = run_polopt(polopt, fixtures[fixture_name], differs_from_args)
+            if baseline.returncode != 0:
+                return (
+                    f"{spec['name']}: baseline command failed with exit {baseline.returncode}\n"
+                    f"baseline stdout:\n{baseline.stdout}\nbaseline stderr:\n{baseline.stderr}"
+                )
+            if baseline.stdout == proc.stdout:
+                return (
+                    f"{spec['name']}: stdout did not differ from baseline args {differs_from_args!r}\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
         return None
     if expected == "failure":
         if proc.returncode == 0:
             return f"{spec['name']}: expected failure, but command succeeded\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         haystack = proc.stderr + proc.stdout
-        if needle not in haystack:
-            return f"{spec['name']}: missing {needle!r} in failure output\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle in needles:
+            if needle not in haystack:
+                return f"{spec['name']}: missing {needle!r} in failure output\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         return None
     raise SystemExit(f"{spec['name']}: unsupported expect value {expected!r}")
 

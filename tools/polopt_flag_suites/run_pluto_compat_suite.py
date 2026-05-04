@@ -19,35 +19,146 @@ class Check:
     success: bool
     needle: str
     normalized: str | None = None
+    effect_needles: tuple[str, ...] = ()
+    effect_absent: tuple[str, ...] = ()
+    differs_from_args: tuple[tuple[str, ...], ...] = ()
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
+MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+JACOBI_NODIAMOND = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+JACOBI_NODIAMOND_ISS = [*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]
+JACOBI_DIAMOND = [*FLAGS, "--diamond-tile", "--noparallel"]
+JACOBI_DIAMOND_ISS = [*FLAGS, "--diamond-tile", "--noparallel", "--iss"]
+JACOBI_FULL_DIAMOND = [*FLAGS, "--full-diamond-tile", "--noparallel"]
+JACOBI_FULL_DIAMOND_ISS = [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss"]
 MATMUL = ROOT / "tests" / "polopt-generated" / "inputs" / "matmul.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
 
 
 CHECKS = [
-    Check("ordinary-tiled", [*FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: <default>"),
+    Check(
+        "ordinary-tiled",
+        MATMUL_TILED,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: <default>",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(MATMUL_NOTILE),),
+    ),
     Check(
         "affine-only",
-        ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"],
+        MATMUL_NOTILE,
         MATMUL,
         True,
         "== Optimized Loop ==",
         "polopt args: --notile",
+        effect_absent=("32 *", "/ 32"),
     ),
     Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
-    Check("second-level", [*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"], MATMUL_INIT, True, "== Optimized Loop ==", "polopt args: --second-level-tile"),
-    Check("parallel", [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"], MATMUL, True, "== Optimized Loop ==", "polopt args: --parallel"),
-    Check("diamond", [*FLAGS, "--diamond-tile", "--noparallel"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --diamond-tile"),
-    Check("diamond-iss", [*FLAGS, "--diamond-tile", "--noparallel", "--iss"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --diamond-tile"),
-    Check("diamond-second-level", [*FLAGS, "--diamond-tile", "--noparallel", "--second-level-tile"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --second-level-tile --diamond-tile"),
-    Check("diamond-iss-second-level", [*FLAGS, "--diamond-tile", "--noparallel", "--iss", "--second-level-tile"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --second-level-tile --diamond-tile"),
-    Check("full-diamond", [*FLAGS, "--full-diamond-tile", "--noparallel"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --full-diamond-tile"),
-    Check("full-diamond-iss", [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --full-diamond-tile"),
-    Check("full-diamond-second-level", [*FLAGS, "--full-diamond-tile", "--noparallel", "--second-level-tile"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --second-level-tile --full-diamond-tile"),
-    Check("full-diamond-iss-second-level", [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss", "--second-level-tile"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --second-level-tile --full-diamond-tile"),
+    Check(
+        "second-level",
+        [*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --second-level-tile",
+        effect_absent=("32 *", "/ 32"),
+        differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "parallel",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --parallel",
+        effect_needles=("parallel for",),
+        differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "diamond",
+        JACOBI_DIAMOND,
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile",
+        effect_needles=("% 4", "32 *"),
+        differs_from_args=(tuple(JACOBI_NODIAMOND),),
+    ),
+    Check(
+        "diamond-iss",
+        JACOBI_DIAMOND_ISS,
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --diamond-tile",
+        effect_needles=("% 4", "32 *"),
+        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS),),
+    ),
+    Check(
+        "diamond-second-level",
+        [*FLAGS, "--diamond-tile", "--noparallel", "--second-level-tile"],
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --second-level-tile --diamond-tile",
+        effect_needles=("% 4",),
+        differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_DIAMOND)),
+    ),
+    Check(
+        "diamond-iss-second-level",
+        [*FLAGS, "--diamond-tile", "--noparallel", "--iss", "--second-level-tile"],
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --second-level-tile --diamond-tile",
+        effect_needles=("% 4",),
+        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_DIAMOND_ISS)),
+    ),
+    Check(
+        "full-diamond",
+        JACOBI_FULL_DIAMOND,
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --full-diamond-tile",
+        effect_needles=("% 4", "32 *"),
+        differs_from_args=(tuple(JACOBI_NODIAMOND),),
+    ),
+    Check(
+        "full-diamond-iss",
+        JACOBI_FULL_DIAMOND_ISS,
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --full-diamond-tile",
+        effect_needles=("% 4", "32 *"),
+        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS),),
+    ),
+    Check(
+        "full-diamond-second-level",
+        [*FLAGS, "--full-diamond-tile", "--noparallel", "--second-level-tile"],
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --second-level-tile --full-diamond-tile",
+        effect_needles=("% 4",),
+        differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_FULL_DIAMOND)),
+    ),
+    Check(
+        "full-diamond-iss-second-level",
+        [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss", "--second-level-tile"],
+        JACOBI_1D,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --second-level-tile --full-diamond-tile",
+        effect_needles=("% 4",),
+        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_FULL_DIAMOND_ISS)),
+    ),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
     Check("reject-diamond-parallel", [*FLAGS, "--diamond-tile", "--parallel"], JACOBI_1D, False, "--diamond-tile is not yet supported with --parallel"),
     Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
@@ -84,19 +195,32 @@ def check_route_bindings() -> list[str]:
     return failures
 
 
-def run_check(check: Check, timeout: int) -> str | None:
+def optimized_loop(output: str) -> str:
+    marker = "== Optimized Loop =="
+    pos = output.find(marker)
+    if pos < 0:
+        return output
+    return output[pos:]
+
+
+def run_polopt_compat(args: list[str], fixture: Path, timeout: int) -> subprocess.CompletedProcess[str]:
     cmd = [
         str(POLOPT),
         "--pluto-compat",
         "--explain",
-        *check.args,
-        str(check.fixture),
+        *args,
+        str(fixture),
     ]
+    return subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True, timeout=timeout + 5, check=False)
+
+
+def run_check(check: Check, timeout: int) -> str | None:
     try:
-        proc = subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True, timeout=timeout + 5, check=False)
+        proc = run_polopt_compat(check.args, check.fixture, timeout)
     except subprocess.TimeoutExpired:
         return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
+    optimized = optimized_loop(output)
     if check.success:
         if proc.returncode != 0:
             return f"{check.name}: expected success, got exit {proc.returncode}\n{output}"
@@ -104,6 +228,25 @@ def run_check(check: Check, timeout: int) -> str | None:
             return f"{check.name}: missing {check.needle!r}\n{output}"
         if check.normalized is not None and check.normalized not in output:
             return f"{check.name}: missing normalized mapping {check.normalized!r}\n{output}"
+        for needle in check.effect_needles:
+            if needle not in optimized:
+                return f"{check.name}: missing optimization effect marker {needle!r}\n{output}"
+        for needle in check.effect_absent:
+            if needle in optimized:
+                return f"{check.name}: unexpected optimization marker {needle!r}\n{output}"
+        for baseline_args in check.differs_from_args:
+            try:
+                baseline = run_polopt_compat(list(baseline_args), check.fixture, timeout)
+            except subprocess.TimeoutExpired:
+                return f"{check.name}: baseline comparison timed out for args {list(baseline_args)!r}"
+            baseline_output = baseline.stdout + baseline.stderr
+            if baseline.returncode != 0:
+                return (
+                    f"{check.name}: baseline comparison command failed with exit {baseline.returncode} "
+                    f"for args {list(baseline_args)!r}\n{baseline_output}"
+                )
+            if optimized_loop(baseline_output) == optimized:
+                return f"{check.name}: optimized loop did not differ from baseline args {list(baseline_args)!r}\n{output}"
     else:
         if proc.returncode == 0:
             return f"{check.name}: expected rejection, but command succeeded\n{output}"
