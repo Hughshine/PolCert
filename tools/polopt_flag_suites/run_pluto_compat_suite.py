@@ -28,6 +28,8 @@ FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounro
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
 FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_NOFUSE = ["--notile", "--nofuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_MAXFUSE = ["--notile", "--maxfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -73,6 +75,26 @@ CHECKS = [
         "pluto oracle flags: --smartfuse --determine-tile-size",
         effect_needles=("2048 *",),
         differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "optimizer-cache-size",
+        MATMUL_TILED_DETERMINE_CACHE,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --determine-tile-size --cache-size=32768",
+        effect_needles=("64 *",),
+        differs_from_args=(tuple(MATMUL_TILED_DETERMINE),),
+    ),
+    Check(
+        "optimizer-data-element-size",
+        MATMUL_TILED_DETERMINE_DATA,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --determine-tile-size --data-element-size=16",
+        effect_needles=("1024 *",),
+        differs_from_args=(tuple(MATMUL_TILED_DETERMINE),),
     ),
     Check(
         "affine-only",
@@ -274,6 +296,7 @@ CHECKS = [
     Check("reject-intratileopt", ["--tile", "--intratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "Pluto intra-tile schedule rewriting is not exposed"),
     Check("reject-pet", ["--pet", *FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, False, "frontend is polopt's verified loop extractor"),
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "typed fusion depends on DFP"),
+    Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-identity-tile", ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-multipar", [*FLAGS, "--parallel", "--multipar", "--nodiamond-tile"], MATMUL, False, "multi-degree Pluto parallel extraction is not exposed"),

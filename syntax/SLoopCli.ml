@@ -168,6 +168,11 @@ let output_value_options = [
   "-o";
 ]
 
+let tile_size_value_options = [
+  "--cache-size";
+  "--data-element-size";
+]
+
 let known_rejection_reason = function
   | "--pet" -> Some "frontend is polopt's verified loop extractor, not Pluto/PET"
   | "--readscop" -> Some "frontend is polopt's verified loop extractor, not Pluto OpenScop input"
@@ -212,6 +217,26 @@ let reject_value_option prog flag value =
     pluto_reject prog (flag ^ ": output/codegen shaping is outside the polopt checked route")
   else
     pluto_reject prog (Printf.sprintf "%s: value %S is not exposed through the checked polopt route" flag value)
+
+let parse_positive_int_value prog flag value =
+  try
+    let n = int_of_string value in
+    if n <= 0 then
+      pluto_reject prog (flag ^ ": value must be a positive integer");
+    value
+  with Failure _ ->
+    pluto_reject prog (flag ^ ": value must be a positive integer")
+
+let add_pluto_value_flag prog cfg flag value =
+  let value = parse_positive_int_value prog flag value in
+  add_pluto_extra_flag cfg (flag ^ "=" ^ value);
+  add_pluto_note cfg (flag ^ "=" ^ value ^ " passed through to Pluto's checked scheduler oracle")
+
+let pluto_extra_has flag cfg =
+  List.exists (String.equal flag) cfg.pluto_extra_flags
+
+let pluto_extra_has_prefix prefix cfg =
+  List.exists (fun flag -> starts_with flag prefix) cfg.pluto_extra_flags
 
 let pluto_polopt_args cfg =
   let args = ref [] in
@@ -272,6 +297,18 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
     if cfg.force_second_level_tile && cfg.force_parallel then
       pluto_reject prog "--second-level-tile is not yet supported with --parallel";
+    if
+      (pluto_extra_has_prefix "--cache-size=" cfg
+       || pluto_extra_has_prefix "--data-element-size=" cfg)
+      && not (pluto_extra_has "--determine-tile-size" cfg)
+    then
+      pluto_reject prog "--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset";
+    if
+      (pluto_extra_has_prefix "--cache-size=" cfg
+       || pluto_extra_has_prefix "--data-element-size=" cfg)
+      && (cfg.force_notile || cfg.force_identity)
+    then
+      pluto_reject prog "--cache-size/--data-element-size require a tiled route in the checked polopt subset";
     if cfg.force_diamond_tile then begin
       if cfg.force_notile then
         pluto_reject prog "--diamond-tile requires tiling and cannot be combined with --notile";
@@ -463,6 +500,24 @@ let parse_args () : config =
       | "--validate-iss-pluto-live-suite" ->
           cfg.validate_iss_pluto_live_suite <- true;
           go (i + 1)
+      | s when List.mem s tile_size_value_options ->
+          enable_pluto_compat cfg;
+          if i + 1 >= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (s ^ " requires a value");
+          add_pluto_value_flag Sys.argv.(0) cfg s Sys.argv.(i + 1);
+          go (i + 2)
+      | s when
+          begin match split_eq_flag s with
+          | Some (flag, _) -> List.mem flag tile_size_value_options
+          | None -> false
+          end ->
+          enable_pluto_compat cfg;
+          begin match split_eq_flag s with
+          | Some (flag, value) ->
+              add_pluto_value_flag Sys.argv.(0) cfg flag value;
+              go (i + 1)
+          | None -> assert false
+          end
       | s when List.mem s value_options ->
           enable_pluto_compat cfg;
           if i + 1 >= Array.length Sys.argv then

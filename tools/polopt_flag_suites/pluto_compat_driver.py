@@ -131,6 +131,11 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
 }
 
+SUPPORTED_VALUE_OPTIONS = {
+    "--cache-size": "Pluto cache-size tile model parameter is passed to the checked scheduler oracle",
+    "--data-element-size": "Pluto data-element-size tile model parameter is passed to the checked scheduler oracle",
+}
+
 STALE_OR_NON_PLUTO_OPTIONS = {
     "--dump-iss-bridge": "this flag is not accepted by the current Pluto binary",
     "--lbtile": "this flag appears in stale scripts but is not accepted by the current Pluto binary",
@@ -289,6 +294,16 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
+        elif flag in SUPPORTED_VALUE_OPTIONS:
+            assert value is not None
+            try:
+                parsed = int(value)
+            except ValueError as exc:
+                raise Reject(f"{flag}: value must be a positive integer") from exc
+            if parsed <= 0:
+                raise Reject(f"{flag}: value must be a positive integer")
+            state.add_oracle_flag(f"{flag}={value}")
+            state.add_note(f"{flag}={value} passed through to Pluto's checked scheduler oracle")
         elif flag in ACCEPTED_NOOPS:
             state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
         elif flag == "--unroll":
@@ -331,6 +346,15 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
     if state.second_level_tile and state.parallel:
         raise Reject("--second-level-tile is not yet supported with --parallel")
+    oracle_flags = state.oracle_flags or []
+    has_tile_size_value = any(
+        flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")
+        for flag in oracle_flags
+    )
+    if has_tile_size_value and "--determine-tile-size" not in oracle_flags:
+        raise Reject("--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset")
+    if has_tile_size_value and (state.identity or not state.tile):
+        raise Reject("--cache-size/--data-element-size require a tiled route in the checked polopt subset")
 
     if state.diamond_tile:
         if not state.tile:

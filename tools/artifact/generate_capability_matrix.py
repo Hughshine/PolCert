@@ -55,6 +55,8 @@ def table_rows() -> list[Capability]:
     rows.extend(DIAMOND_COMBINATIONS)
     for flag, reason in sorted(compat.SUPPORTED_OPTIMIZER_OPTIONS.items()):
         rows.append(Capability(flag, "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden fixtures for additional effect cases"))
+    for flag, reason in sorted(compat.SUPPORTED_VALUE_OPTIONS.items()):
+        rows.append(Capability(flag + " <n>", "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden value/effect fixtures"))
 
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
         rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))
