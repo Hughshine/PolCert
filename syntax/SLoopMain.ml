@@ -2231,6 +2231,7 @@ let standalone_handlers = {
 
 let sequential_handlers = {
   seq_optimize_diamond = SBandTilingOpt.opt_diamond;
+  seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss;
   seq_optimize_iss_identity = optimize_with_iss_identity;
   seq_optimize_iss_affine = optimize_with_iss_affine;
   seq_optimize_iss_default = SPolOpt.opt_with_iss;
@@ -2248,6 +2249,7 @@ let hinted_parallel_handlers = {
 }
 
 let current_parallel_handlers = {
+  cur_optimize_diamond = SParallelPolOpt.opt_parallel_current_diamond;
   cur_optimize_iss_identity = SParallelPolOpt.opt_parallel_current_identity_with_iss;
   cur_optimize_iss_affine = SParallelPolOpt.opt_parallel_current_affine_with_iss;
   cur_optimize_iss_default = SParallelPolOpt.opt_parallel_current_with_iss;

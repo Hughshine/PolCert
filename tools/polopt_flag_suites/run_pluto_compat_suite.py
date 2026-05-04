@@ -41,10 +41,11 @@ CHECKS = [
     Check("second-level", [*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"], MATMUL_INIT, True, "== Optimized Loop ==", "polopt args: --second-level-tile"),
     Check("parallel", [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"], MATMUL, True, "== Optimized Loop ==", "polopt args: --parallel"),
     Check("diamond", [*FLAGS, "--diamond-tile", "--noparallel"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --diamond-tile"),
+    Check("diamond-iss", [*FLAGS, "--diamond-tile", "--noparallel", "--iss"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --diamond-tile"),
     Check("full-diamond", [*FLAGS, "--full-diamond-tile", "--noparallel"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --full-diamond-tile"),
+    Check("full-diamond-iss", [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss"], JACOBI_1D, True, "== Optimized Loop ==", "polopt args: --iss --full-diamond-tile"),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
     Check("reject-diamond-parallel", [*FLAGS, "--diamond-tile", "--parallel"], JACOBI_1D, False, "--diamond-tile is not yet supported with --parallel"),
-    Check("reject-diamond-iss", [*FLAGS, "--diamond-tile", "--noparallel", "--iss"], JACOBI_1D, False, "--diamond-tile is not yet supported with --iss"),
     Check("reject-diamond-second-level", [*FLAGS, "--diamond-tile", "--noparallel", "--second-level-tile"], JACOBI_1D, False, "--diamond-tile is not yet supported with --second-level-tile"),
     Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
@@ -57,6 +58,27 @@ CHECKS = [
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
 ]
+
+
+ROUTE_BINDINGS = {
+    "seq_optimize_diamond = SBandTilingOpt.opt_diamond":
+        "diamond route must use the extracted SBandTilingOpt.opt_diamond entry",
+    "seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss":
+        "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
+    "seq_optimize_identity = SPolOpt.opt_identity":
+        "identity route must use the extracted SPolOpt.opt_identity entry",
+    "seq_optimize_affine = SPolOpt.opt_affine":
+        "affine route must use the extracted SPolOpt.opt_affine entry",
+}
+
+
+def check_route_bindings() -> list[str]:
+    source = (ROOT / "syntax" / "SLoopMain.ml").read_text()
+    failures = []
+    for needle, reason in ROUTE_BINDINGS.items():
+        if needle not in source:
+            failures.append(f"route binding missing: {needle!r}; {reason}")
+    return failures
 
 
 def run_check(check: Check, timeout: int) -> str | None:
@@ -96,7 +118,7 @@ def main(argv: list[str]) -> int:
             print("Usage: run_pluto_compat_suite.py [--timeout SECONDS]", file=sys.stderr)
             return 2
 
-    failures = []
+    failures = check_route_bindings()
     if not POLOPT.exists():
         print(f"[pluto-compat-suite] missing polopt: {POLOPT}", file=sys.stderr)
         return 2

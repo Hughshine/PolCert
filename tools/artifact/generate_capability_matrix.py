@@ -31,16 +31,17 @@ SUPPORTED = [
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "sequential checked second-level tiling route", "second-level suite", "extend composition tests"),
     Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
-    Capability("--parallel-current d", "supported", "explicit checked parallel dimension", "parallel-current suite", "keep separate from Pluto compatibility"),
+    Capability("--parallel-current d", "supported", "explicit checked parallel dimension", "parallel-current suite; Opt_parallel_current_correct", "keep separate from Pluto compatibility"),
     Capability("--diamond-tile", "supported-narrow", "extracted sequential non-ISS single-level four-phase diamond route", "diamond suite; Opt_diamond_band_correct", "extend rejected compositions"),
     Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
+    Capability("--diamond-tile --iss", "supported-narrow", "ISS bridge validation is composed before the single-level four-phase diamond route", "pluto-compat diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+diamond fixtures"),
+    Capability("--full-diamond-tile --iss", "supported-narrow", "full-diamond producer mode over the same checked ISS+diamond route", "pluto-compat full-diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+full-diamond fixtures"),
+    Capability("--diamond-tile --parallel-current d", "supported", "diamond route now validates the four-phase diamond boundary before explicit current-space parallel certification", "parallel-current suite; Opt_parallel_current_diamond_correct", "add broader fixtures beyond positive.loop"),
 ]
 
 DIAMOND_COMBINATIONS = [
-    Capability("--diamond-tile --iss", "composition-gap", "ISS changes statement structure before diamond witness recovery", "tested rejection", "compose ISS witness with diamond phase witness"),
-    Capability("--diamond-tile --parallel", "composition-gap", "current diamond route forces sequential noparallel scheduling", "tested rejection", "validate diamond first, then certify parallel target"),
-    Capability("--diamond-tile --parallel-current d", "composition-gap", "explicit current dimension has not been composed with diamond current space", "route rejection", "run diamond phase validation before parallel-current checker"),
-    Capability("--diamond-tile --second-level-tile", "composition-gap", "current diamond checker handles one tiling boundary", "tested rejection", "validate multiple tiling boundaries or add multi-level witness"),
+    Capability("--diamond-tile --parallel", "composition-gap", "Pluto-hinted --parallel still needs an OCaml hint-selection wrapper; the theorem-facing form is --diamond-tile --parallel-current d", "tested rejection", "add a Coq route parameterizing the Pluto hint oracle or keep explicit-current as the verified entry"),
+    Capability("--diamond-tile --second-level-tile", "validator-gap", "Pluto emits second-level diamond SCOPs, but the current diamond checker fails the mid-to-posttile second-level boundary", "tested rejection plus standalone diamond/second-level probe", "extend the band permutation checker to nested second-level fk links or prove a canonical second-level diamond checker"),
     Capability("--diamond-tile --notile", "correct-rejection", "diamond requires a tiling phase", "route rejection", "keep rejecting"),
     Capability("--diamond-tile --identity", "correct-rejection", "diamond requires Pluto scheduling/skew plus tiling", "route rejection", "keep rejecting unless a meaningful identity-diamond route is designed"),
 ]

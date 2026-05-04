@@ -50,6 +50,7 @@ let run_standalone_action (cfg : SLoopCli.config) handlers =
 
 type 'loop sequential_handlers = {
   seq_optimize_diamond : 'loop -> 'loop * bool;
+  seq_optimize_diamond_iss : 'loop -> 'loop * bool;
   seq_optimize_iss_identity : 'loop -> 'loop * bool;
   seq_optimize_iss_affine : 'loop -> 'loop * bool;
   seq_optimize_iss_default : 'loop -> 'loop * bool;
@@ -61,7 +62,10 @@ type 'loop sequential_handlers = {
 
 let run_selected_optimization (cfg : SLoopCli.config) handlers loop =
   if cfg.force_diamond_tile then
-    handlers.seq_optimize_diamond loop
+    if cfg.force_iss then
+      handlers.seq_optimize_diamond_iss loop
+    else
+      handlers.seq_optimize_diamond loop
   else if cfg.force_iss then
     if cfg.force_identity then
       handlers.seq_optimize_iss_identity loop
@@ -101,6 +105,8 @@ let run_selected_parallel_optimization (cfg : SLoopCli.config) handlers loop =
     handlers.hint_optimize_default cfg loop
 
 type ('loop, 'parallel_loop) current_parallel_handlers = {
+  cur_optimize_diamond :
+    'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_identity :
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_affine :
@@ -121,7 +127,9 @@ let run_selected_parallel_current_optimization
     loop
     dim =
   let dim = nat_of_int dim in
-  if cfg.force_iss then
+  if cfg.force_diamond_tile then
+    handlers.cur_optimize_diamond loop dim
+  else if cfg.force_iss then
     if cfg.force_identity then
       handlers.cur_optimize_iss_identity loop dim
     else if cfg.force_notile then

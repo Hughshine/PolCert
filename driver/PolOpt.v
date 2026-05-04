@@ -103,6 +103,8 @@ Definition run_pluto_phase_pipeline_with_iss :=
   PolIRs.run_pluto_phase_pipeline_with_iss.
 Definition run_pluto_diamond_phase_pipeline :=
   PolIRs.run_pluto_diamond_phase_pipeline.
+Definition run_pluto_diamond_phase_pipeline_with_iss :=
+  PolIRs.run_pluto_diamond_phase_pipeline_with_iss.
 Definition infer_iss_from_source_scop :=
   PolIRs.infer_iss_from_source_scop.
 Definition phase_scop_scheduler := PolIRs.phase_scop_scheduler.

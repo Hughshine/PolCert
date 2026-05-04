@@ -47,6 +47,14 @@ Parameter diamond_phase_scop_scheduler:
 Definition run_pluto_diamond_phase_pipeline :=
   diamond_phase_scop_scheduler.
 
+Parameter diamond_phase_scop_scheduler_with_iss:
+  OpenScop -> result (OpenScop * (OpenScop * OpenScop)).
+(** ISS-enabled variant of the diamond phase pipeline.  The verified route
+    still validates the ISS bridge and each affine/tiling boundary before using
+    the oracle-produced OpenScop schedules. *)
+Definition run_pluto_diamond_phase_pipeline_with_iss :=
+  diamond_phase_scop_scheduler_with_iss.
+
 Parameter infer_iss_from_source_scop:
   PolyLang.t -> OpenScop -> result (option (PolyLang.t * iss_witness)).
 

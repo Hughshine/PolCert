@@ -16,6 +16,17 @@
       "needle": "parallel for"
     },
     {
+      "name": "parallel-current-diamond-positive",
+      "fixture": "positive",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for"
+    },
+    {
       "name": "parallel-current-positive-iss",
       "fixture": "positive",
       "args": [

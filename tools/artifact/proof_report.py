@@ -59,6 +59,16 @@ TOP_LEVEL_ROUTES = [
         "theorem_names": ["Opt_parallel_current_correct"],
     },
     {
+        "route": "checked diamond plus parallel current",
+        "cli": "polopt --diamond-tile --parallel-current <dim> <file.loop>",
+        "theorem_file": "driver/ParallelPolOptCorrect.v",
+        "theorem_names": [
+            "Opt_parallel_current_diamond_correct",
+            "Opt_parallel_current_diamond_result_correct",
+            "parallel_current_diamond_prepared_from_poly_correct",
+        ],
+    },
+    {
         "route": "diamond phase-aligned optimizer",
         "cli": "polopt --diamond-tile <file.loop>",
         "theorem_file": "driver/PolOptBandTiling.v",
@@ -68,6 +78,17 @@ TOP_LEVEL_ROUTES = [
             "try_diamond_phase_pipeline_from_source_pol_band_correct",
         ],
         "note": "Also covers --full-diamond-tile through the same extracted route.",
+    },
+    {
+        "route": "ISS plus diamond phase-aligned optimizer",
+        "cli": "polopt --iss --diamond-tile <file.loop>",
+        "theorem_file": "driver/PolOptBandTiling.v",
+        "theorem_names": [
+            "Opt_diamond_band_with_iss_correct",
+            "Opt_prepared_diamond_band_with_iss_correct",
+            "try_checked_iss_diamond_phase_pipeline_from_poly_band_correct",
+        ],
+        "note": "Also covers --iss --full-diamond-tile through the same extracted route.",
     },
 ]
 
@@ -134,6 +155,27 @@ def build_report() -> dict[str, object]:
                 if "AXIOM TO BE REALIZED" in line:
                     extraction_axioms.append(Finding(str(path.relative_to(ROOT)), idx, line.strip()))
 
+    index = theorem_index(files)
+    flat_theorems = {
+        (path, name)
+        for path, names in index.items()
+        for name in names
+    }
+    missing_route_theorems = []
+    for route in TOP_LEVEL_ROUTES:
+        theorem_file = route["theorem_file"]
+        for name in route.get("theorem_names", []):
+            if name == "band-aware tiling validator lemmas":
+                continue
+            if (theorem_file, name) not in flat_theorems:
+                missing_route_theorems.append(
+                    {
+                        "route": route["route"],
+                        "theorem_file": theorem_file,
+                        "theorem_name": name,
+                    }
+                )
+
     return {
         "root": str(ROOT),
         "scanned_dirs": SCAN_DIRS,
@@ -141,11 +183,13 @@ def build_report() -> dict[str, object]:
         "admitted_count": len(admitted),
         "abort_count": len(aborted),
         "extraction_axiom_count": len(extraction_axioms),
+        "missing_route_theorem_count": len(missing_route_theorems),
         "admitted": [asdict(item) for item in admitted],
         "aborted": [asdict(item) for item in aborted],
         "extraction_axioms": [asdict(item) for item in extraction_axioms],
+        "missing_route_theorems": missing_route_theorems,
         "top_level_routes": TOP_LEVEL_ROUTES,
-        "theorem_index": theorem_index(files),
+        "theorem_index": index,
     }
 
 
@@ -157,6 +201,7 @@ def write_markdown(report: dict[str, object]) -> str:
         f"- Local admitted markers: `{report['admitted_count']}`",
         f"- Local abort markers: `{report['abort_count']}`",
         f"- Extracted OCaml unrealized axioms: `{report['extraction_axiom_count']}`",
+        f"- Missing listed route theorems: `{report['missing_route_theorem_count']}`",
         "",
         "## Route Map",
         "",
@@ -176,6 +221,12 @@ def write_markdown(report: dict[str, object]) -> str:
         for key in ("admitted", "aborted"):
             for item in report[key]:  # type: ignore[index]
                 lines.append(f"- `{item['path']}:{item['line']}`: `{item['text']}`")
+    if report["missing_route_theorem_count"]:  # type: ignore[index]
+        lines.extend(["", "## Missing Route Theorems", ""])
+        for item in report["missing_route_theorems"]:  # type: ignore[index]
+            lines.append(
+                f"- `{item['theorem_file']}`: `{item['theorem_name']}` for {item['route']}"
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -196,6 +247,8 @@ def main() -> int:
         out.write_text(write_markdown(report))
     if not args.json_out and not args.markdown_out:
         print(write_markdown(report), end="")
+    if report["missing_route_theorem_count"] != 0:
+        return 2
     return 0
 
 

@@ -74,9 +74,9 @@ let usage prog =
       "                        full tiled optimization routes and tiling witness/validation\n";
       "                        actions\n";
       "  --diamond-tile    : experimental sequential checked diamond midpoint + tiling route;\n";
-      "                      currently only supported on the default non-ISS full tiled path\n";
+      "                      supported on the non-ISS and ISS full tiled paths\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
-      "                        currently only supported on the default non-ISS full tiled path\n";
+      "                        supported on the non-ISS and ISS full tiled paths\n";
       "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
@@ -89,7 +89,8 @@ let usage prog =
       "                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n";
       "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
       "                         dimension d; supported on identity, affine-only, and full\n";
-      "                         tiled paths, including their `--iss` variants\n";
+      "                         tiled paths, including their `--iss` variants and the\n";
+      "                         non-ISS diamond route\n";
       "  --pluto-compat    : parse Pluto-style optimizer flags in this OCaml driver,\n";
       "                      reject unsupported Pluto defaults/features with explicit\n";
       "                      reasons, then run the matching checked polopt route\n";
@@ -98,10 +99,12 @@ let usage prog =
       Printf.sprintf "  %s --profile-stages file.loop       # print per-stage timings for the default route\n" prog;
       Printf.sprintf "  %s --second-level-tile file.loop    # full tiled checked path with second-level tiling enabled\n" prog;
       Printf.sprintf "  %s --diamond-tile file.loop         # sequential checked diamond midpoint + tiling route\n" prog;
+      Printf.sprintf "  %s --iss --diamond-tile file.loop   # ISS split plus checked diamond route\n" prog;
       Printf.sprintf "  %s --full-diamond-tile file.loop    # stronger diamond producer mode over the same checked route\n" prog;
       Printf.sprintf "  %s --parallel file.loop             # Pluto-hinted verified parallel path\n" prog;
       Printf.sprintf "  %s --parallel --parallel-strict file.loop\n" prog;
       Printf.sprintf "  %s --parallel-current 0 file.loop   # theorem-aligned explicit-dimension parallel path\n" prog;
+      Printf.sprintf "  %s --diamond-tile --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --iss --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --notile file.loop               # affine-only checked path\n" prog;
       Printf.sprintf "  %s --identity file.loop             # identity/no-schedule path\n" prog;
@@ -273,8 +276,6 @@ let validate_pluto_compat prog cfg =
         pluto_reject prog "--diamond-tile requires tiling and cannot be combined with --notile";
       if cfg.force_identity then
         pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
-      if cfg.force_iss then
-        pluto_reject prog "--diamond-tile is not yet supported with --iss";
       if cfg.force_parallel then
         pluto_reject prog "--diamond-tile is not yet supported with --parallel";
       if cfg.force_second_level_tile then

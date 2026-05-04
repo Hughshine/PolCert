@@ -403,6 +403,9 @@ let diamond_phase_flags () =
    then ["--diamond-tile"; "--full-diamond-tile"]
    else ["--diamond-tile"])
 
+let diamond_phase_with_iss_flags () =
+  "--iss" :: diamond_phase_flags ()
+
 let affine_with_iss_parallel_flags =
   ["--iss"] @ affine_only_parallel_flags
 
@@ -480,6 +483,17 @@ let run_pluto_diamond_phase_pipeline inscop =
 
 let run_pluto_diamond_phase_pipeline_nested inscop =
   match run_pluto_diamond_phase_pipeline inscop with
+  | Err msg -> Err msg
+  | Okk (midscop, posttile_scop, after_scop) ->
+      Okk (midscop, (posttile_scop, after_scop))
+
+let run_pluto_diamond_phase_pipeline_with_iss inscop =
+  run_pluto_scop_with_midpoint_and_posttile_dump
+    (diamond_phase_with_iss_flags ())
+    inscop
+
+let run_pluto_diamond_phase_pipeline_with_iss_nested inscop =
+  match run_pluto_diamond_phase_pipeline_with_iss inscop with
   | Err msg -> Err msg
   | Okk (midscop, posttile_scop, after_scop) ->
       Okk (midscop, (posttile_scop, after_scop))

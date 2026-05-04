@@ -142,6 +142,44 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
       end
   end.
 
+Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
+    (pol_source: SPolIRs.PolyLang.t)
+    (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
+  match SPolOpt.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
+  | Err _ =>
+      SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol_source
+  | Okk (mid_scop, (posttile_scop, after_scop)) =>
+      match SPolIRs.PolyLang.from_openscop_like_source pol_source mid_scop with
+      | Err _ =>
+          SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol_source
+      | Okk pol_mid =>
+          BIND affine_ok <- SPolOpt.CoreOpt.ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_diamond_after_phase_mid_band
+              pol_mid mid_scop posttile_scop after_scop
+          else
+            SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol_source
+      end
+  end.
+
+Definition try_checked_iss_diamond_phase_pipeline_from_poly_band
+    (pol: SPolIRs.PolyLang.t)
+    (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
+  match SPolOpt.CoreOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =>
+      if SPolOpt.CoreOpt.ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf <- SPolOpt.CoreOpt.ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          try_diamond_phase_pipeline_from_source_pol_band_with_iss
+            pol_iss before_scop
+        else
+          try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+      else
+        try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+  | _ =>
+      try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+  end.
+
 Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
   let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
@@ -171,11 +209,27 @@ Definition opt_diamond (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   else
     SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
 
+Definition opt_diamond_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
+  let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
+  if SPolOpt.CoreOpt.has_nonscalar_stmt pol then
+    match SPolOpt.CoreOpt.export_for_phase_scheduler pol with
+    | Some before_scop =>
+        try_checked_iss_diamond_phase_pipeline_from_poly_band pol before_scop
+    | None =>
+        SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
+    end
+  else
+    SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
+
 Definition opt_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   opt loop.
 
 Definition opt_diamond_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   opt_diamond loop.
+
+Definition opt_diamond_with_iss_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  opt_diamond_with_iss loop.
 
 Definition opt_poly (pol : SPolIRs.PolyLang.t) : imp SPolIRs.Loop.t :=
   let pol' := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol in
