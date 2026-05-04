@@ -15,6 +15,7 @@ type config = {
   mutable force_legacy_generic_tiling : bool;
   mutable force_parallel : bool;
   mutable force_parallel_strict : bool;
+  mutable force_multipar : bool;
   mutable parallel_current_dim : int option;
   mutable pluto_compat_mode : bool;
   mutable pluto_compat_explain : bool;

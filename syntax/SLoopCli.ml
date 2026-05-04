@@ -15,6 +15,7 @@ type config = SLoopConfig.config = {
   mutable force_legacy_generic_tiling : bool;
   mutable force_parallel : bool;
   mutable force_parallel_strict : bool;
+  mutable force_multipar : bool;
   mutable parallel_current_dim : int option;
   mutable pluto_compat_mode : bool;
   mutable pluto_compat_explain : bool;
@@ -87,6 +88,8 @@ let usage prog =
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
       "                       loop hints; supported on both the default and `--iss` pipelines,\n";
       "                       with or without `--notile`\n";
+      "                       In Pluto-compatible mode, --multipar enables up to two\n";
+      "                       checked parallel dimensions when the validator accepts them\n";
       "  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n";
       "                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n";
       "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
@@ -202,7 +205,6 @@ let known_rejection_reason = function
   | "--prevector" -> Some "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen"
   | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
   | "--forceparallel" -> Some "Pluto accepts this flag, but the current source has no effective use site"
-  | "--multipar" -> Some "multi-degree Pluto parallel extraction is not exposed through the checked polopt route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
   | "--multipipe" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -298,6 +300,8 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
     if cfg.force_second_level_tile && cfg.force_parallel then
       pluto_reject prog "--second-level-tile is not yet supported with --parallel";
+    if cfg.force_multipar && cfg.force_diamond_tile then
+      pluto_reject prog "--multipar is not yet supported with --diamond-tile in the checked polopt route";
     if
       (pluto_extra_has_prefix "--cache-size=" cfg
        || pluto_extra_has_prefix "--data-element-size=" cfg)
@@ -338,6 +342,7 @@ let parse_args () : config =
       force_legacy_generic_tiling = false;
       force_parallel = false;
       force_parallel_strict = false;
+      force_multipar = false;
       parallel_current_dim = None;
       pluto_compat_mode = false;
       pluto_compat_explain = false;
@@ -419,6 +424,14 @@ let parse_args () : config =
       | "--parallel" | "--parallelize" ->
           cfg.force_parallel <- true;
           cfg.pluto_parallel_seen <- true;
+          go (i + 1)
+      | "--multipar" ->
+          enable_pluto_compat cfg;
+          cfg.force_parallel <- true;
+          cfg.force_multipar <- true;
+          cfg.pluto_parallel_seen <- true;
+          add_pluto_extra_flag cfg "--multipar";
+          add_pluto_note cfg "--multipar enables up to two checked parallel dimensions when available";
           go (i + 1)
       | "--noparallel" ->
           enable_pluto_compat cfg;

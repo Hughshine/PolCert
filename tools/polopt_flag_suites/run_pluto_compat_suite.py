@@ -54,6 +54,7 @@ FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
+NODEP = ROOT / "tests" / "polopt-regression" / "inputs" / "nodep.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
 DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
 JACOBI_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "jacobi-batch.loop"
@@ -205,6 +206,16 @@ CHECKS = [
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
+        "parallel-multipar",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar"],
+        NODEP,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --multipar",
+        effect_needles=("parallel for i0", "parallel for i2"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"]),),
+    ),
+    Check(
         "diamond",
         JACOBI_DIAMOND,
         JACOBI_1D,
@@ -323,7 +334,6 @@ CHECKS = [
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-identity-tile", ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
-    Check("reject-multipar", [*FLAGS, "--parallel", "--multipar", "--nodiamond-tile"], MATMUL, False, "multi-degree Pluto parallel extraction is not exposed"),
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
 ]

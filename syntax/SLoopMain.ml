@@ -878,16 +878,27 @@ let tagged_prepared_codegen pol =
   in
   (tag_loop_for_parallel_pretty loop, ok)
 
-let debug_parallel_hint_if name hint =
+let debug_parallel_hint_if name hints =
   if debug_env_enabled name then
-    match hint with
-    | None ->
+    match hints with
+    | [] ->
         Printf.eprintf "[debug-parallel] no Pluto loop hint found\n"
-    | Some hint ->
-        Printf.eprintf
-          "[debug-parallel] Pluto hint iterator=%s current_dim=%d\n"
-          hint.Scheduler.hint_iterator
-          hint.Scheduler.hint_current_dim
+    | _ ->
+        List.iter
+          (fun hint ->
+             Printf.eprintf
+               "[debug-parallel] Pluto hint iterator=%s current_dim=%d\n"
+               hint.Scheduler.hint_iterator
+               hint.Scheduler.hint_current_dim)
+          hints
+
+let hint_dims hints =
+  List.map (fun hint -> hint.Scheduler.hint_current_dim) hints
+
+let first_hint_dim hints =
+  match hint_dims hints with
+  | [] -> None
+  | dim :: _ -> Some dim
 
 let debug_parallel_dim_scan_if name pol =
   if debug_env_enabled name then
@@ -921,6 +932,15 @@ let max_current_depth_spol_pprog pp =
 
 let rec int_range lo hi =
   if lo >= hi then [] else lo :: int_range (lo + 1) hi
+
+let unique_ints xs =
+  let rec go seen acc = function
+    | [] -> List.rev acc
+    | x :: rest ->
+        if List.mem x seen then go seen acc rest
+        else go (x :: seen) (x :: acc) rest
+  in
+  go [] [] xs
 
 let parallel_candidate_dims pol hint_dim =
   let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
@@ -959,6 +979,83 @@ let try_pluto_parallel_codegen pol hint_dim strict =
       None
   | _ ->
       try_pluto_hint_preferred_parallel_codegen pol hint_dim
+
+let parallel_multipar_candidate_dims pol hinted_dims strict =
+  let hinted_dims = unique_ints hinted_dims in
+  if strict then
+    hinted_dims
+  else
+    let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
+    let depth = max_current_depth_spol_pprog current in
+    unique_ints (hinted_dims @ int_range 0 depth)
+
+let try_checked_parallel_current_codegen_many pol dims =
+  let dims = unique_ints dims in
+  let pol = normalize_spol_codegen_input pol in
+  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
+  let rec collect accepted_dims accepted_certs = function
+    | [] -> (List.rev accepted_dims, List.rev accepted_certs)
+    | _ when List.length accepted_dims >= 2 ->
+        (List.rev accepted_dims, List.rev accepted_certs)
+    | dim :: rest ->
+        let (cert_res, cert_ok) =
+          ParallelValidatorCore.checked_parallelize_current current (nat_of_int dim)
+        in
+        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+          begin match cert_res with
+          | Okk _ ->
+              Printf.eprintf
+                "[debug-parallel] multipar candidate dim=%d => accepted(ok=%b)\n"
+                dim cert_ok
+          | Err msg ->
+              Printf.eprintf
+                "[debug-parallel] multipar candidate dim=%d => rejected(ok=%b,msg=%s)\n"
+                dim cert_ok (string_of_coq_err msg)
+          end;
+        if not cert_ok then
+          collect accepted_dims accepted_certs rest
+        else
+          match cert_res with
+          | Okk cert -> collect (dim :: accepted_dims) (cert :: accepted_certs) rest
+          | Err _ -> collect accepted_dims accepted_certs rest
+  in
+  let (accepted_dims, certs) = collect [] [] dims in
+  match certs with
+  | [] -> None
+  | _ ->
+      let (codegen_res, codegen_ok) =
+        ParallelCodegenCore.checked_annotated_codegen_many current certs
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        begin match codegen_res with
+        | Okk _ ->
+            Printf.eprintf
+              "[debug-parallel] checked_annotated_codegen_many dims=[%s] => accepted(ok=%b)\n"
+              (String.concat "," (List.map string_of_int accepted_dims))
+              codegen_ok
+        | Err msg ->
+            Printf.eprintf
+              "[debug-parallel] checked_annotated_codegen_many dims=[%s] => rejected(ok=%b,msg=%s)\n"
+              (String.concat "," (List.map string_of_int accepted_dims))
+              codegen_ok
+              (string_of_coq_err msg)
+        end;
+      if not codegen_ok then
+        None
+      else
+        match codegen_res with
+        | Okk pl -> Some (pl, accepted_dims)
+        | Err _ -> None
+
+let try_pluto_multipar_codegen pol hinted_dims strict =
+  let candidates = parallel_multipar_candidate_dims pol hinted_dims strict in
+  match try_checked_parallel_current_codegen_many pol candidates with
+  | None -> None
+  | Some (pl, accepted_dims) ->
+      let used_hint =
+        List.exists (fun dim -> List.mem dim hinted_dims) accepted_dims
+      in
+      Some (pl, used_hint)
 
 let try_extracted_diamond_parallel_current use_iss loop dim =
   try
@@ -1106,7 +1203,7 @@ let pluto_diamond_parallel_hint cfg loop =
       Scheduler.run_pluto_diamond_parallel_hint
   in
   match runner before_scop with
-  | Err _ -> None
+  | Err _ -> []
   | Okk hint -> hint
 
 let debug_generic_tiling_runtime loop =
@@ -1987,10 +2084,17 @@ let optimize_affine_only_with_pluto_parallel_hint cfg loop =
       if not (affine_ok && affine_res) then
         (tag_loop_for_parallel_pretty loop, false)
       else
-        let hinted_dim =
-          Option.map (fun hint -> hint.Scheduler.hint_current_dim) hint
+        let hinted_dims = hint_dims hint in
+        let try_codegen =
+          if cfg.force_multipar then
+            try_pluto_multipar_codegen pol_mid hinted_dims cfg.force_parallel_strict
+          else
+            try_pluto_parallel_codegen
+              pol_mid
+              (first_hint_dim hint)
+              cfg.force_parallel_strict
         in
-        begin match try_pluto_parallel_codegen pol_mid hinted_dim cfg.force_parallel_strict with
+        begin match try_codegen with
         | Some (pl, used_hint) -> (pl, used_hint)
         | None ->
             let (fallback, _ok) = tagged_prepared_codegen pol_mid in
@@ -2025,10 +2129,17 @@ let optimize_with_iss_affine_parallel_hint cfg loop =
       if not (affine_ok && affine_res) then
         (tag_loop_for_parallel_pretty loop, false)
       else
-        let hinted_dim =
-          Option.map (fun h -> h.Scheduler.hint_current_dim) hint
+        let hinted_dims = hint_dims hint in
+        let try_codegen =
+          if cfg.force_multipar then
+            try_pluto_multipar_codegen pol_mid hinted_dims cfg.force_parallel_strict
+          else
+            try_pluto_parallel_codegen
+              pol_mid
+              (first_hint_dim hint)
+              cfg.force_parallel_strict
         in
-        begin match try_pluto_parallel_codegen pol_mid hinted_dim cfg.force_parallel_strict with
+        begin match try_codegen with
         | Some (pl, used_hint) -> (pl, used_hint)
         | None ->
             let (fallback, _ok) = tagged_prepared_codegen pol_mid in
@@ -2041,7 +2152,7 @@ let optimize_with_diamond_parallel_hint cfg loop =
   match try_diamond_parallel_codegen
           cfg.force_iss
           loop
-          (Option.map (fun h -> h.Scheduler.hint_current_dim) hint)
+          (first_hint_dim hint)
           cfg.force_parallel_strict
   with
   | Some (pl, used_hint) -> (pl, used_hint)
@@ -2193,11 +2304,18 @@ let optimize_with_phase_aligned_pluto_parallel_hint cfg loop =
           if not (ok && res) then
             (tag_loop_for_parallel_pretty loop, false)
           else
-            let hinted_dim =
-              Option.map (fun hint -> hint.Scheduler.hint_current_dim) hint
+            let hinted_dims = hint_dims hint in
+            let try_codegen =
+              if cfg.force_multipar then
+                try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
+              else
+                try_pluto_parallel_codegen
+                  pol_after
+                  (first_hint_dim hint)
+                  cfg.force_parallel_strict
             in
             begin
-              match try_pluto_parallel_codegen pol_after hinted_dim cfg.force_parallel_strict with
+              match try_codegen with
               | Some (pl, used_hint) -> (pl, used_hint)
               | None ->
                   let (fallback, _ok) =
@@ -2273,11 +2391,18 @@ let optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop =
           if not (ok && res) then
             (tag_loop_for_parallel_pretty loop, false)
           else
-            let hinted_dim =
-              Option.map (fun h -> h.Scheduler.hint_current_dim) hint
+            let hinted_dims = hint_dims hint in
+            let try_codegen =
+              if cfg.force_multipar then
+                try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
+              else
+                try_pluto_parallel_codegen
+                  pol_after
+                  (first_hint_dim hint)
+                  cfg.force_parallel_strict
             in
             begin
-              match try_pluto_parallel_codegen pol_after hinted_dim cfg.force_parallel_strict with
+              match try_codegen with
               | Some (pl, used_hint) -> (pl, used_hint)
               | None ->
                   let (fallback, _ok) =

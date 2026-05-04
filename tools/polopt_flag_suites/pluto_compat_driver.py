@@ -38,6 +38,7 @@ class PlutoFlagState:
     full_diamond_tile: bool = False
     parallel: bool = False
     parallel_seen: bool = False
+    multipar: bool = False
     innerpar_seen: bool = False
     no_parallel_seen: bool = False
     intratileopt_seen: bool = False
@@ -116,7 +117,6 @@ CODEGEN_OPTIONS = {
 
 UNSUPPORTED_OPTIMIZER_OPTIONS = {
     "--forceparallel": "Pluto accepts this flag, but the current source has no effective use site",
-    "--multipar": "multi-degree Pluto parallel extraction is not exposed through the checked polopt route",
 }
 
 SUPPORTED_OPTIMIZER_OPTIONS = {
@@ -130,6 +130,7 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
     "--lastwriter": "Pluto last-writer dependence mode is passed to the checked scheduler oracle",
     "--intratileopt": "Pluto intra-tile schedule rewriting is passed to the checked scheduler oracle",
+    "--multipar": "Pluto multi-degree parallel extraction is passed to the checked scheduler oracle",
 }
 
 SUPPORTED_VALUE_OPTIONS = {
@@ -277,6 +278,12 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag in ("--parallel", "--parallelize"):
             state.parallel = True
             state.parallel_seen = True
+        elif flag == "--multipar":
+            state.parallel = True
+            state.parallel_seen = True
+            state.multipar = True
+            state.add_oracle_flag(flag)
+            state.add_note("--multipar enables up to two checked parallel dimensions when available")
         elif flag == "--noparallel":
             state.parallel = False
             state.no_parallel_seen = True
@@ -353,6 +360,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
     if state.second_level_tile and state.parallel:
         raise Reject("--second-level-tile is not yet supported with --parallel")
+    if state.multipar and state.diamond_tile:
+        raise Reject("--multipar is not yet supported with --diamond-tile in the checked polopt route")
     oracle_flags = state.oracle_flags or []
     has_tile_size_value = any(
         flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")

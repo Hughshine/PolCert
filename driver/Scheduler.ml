@@ -201,7 +201,7 @@ let drop n xs =
   in
   go n xs
 
-let extract_parallel_hint_from_outscop outscop_file =
+let extract_parallel_hints_from_outscop outscop_file =
   try
     let text = read_file outscop_file in
     let scatnames =
@@ -241,31 +241,36 @@ let extract_parallel_hint_from_outscop outscop_file =
           parse loop_count [] rest
     in
     let loop_entries = parse_loop_entries loop_payload in
-    let parallel_iterator =
-      List.find_map
-        (fun (iterator, directive) ->
-          if directive = 1 then Some iterator else None)
-        loop_entries
+    let rec find_index iterator i = function
+      | [] -> None
+      | name :: rest ->
+          if String.equal name iterator then Some i
+          else find_index iterator (i + 1) rest
     in
-    match parallel_iterator with
-    | None -> None
-    | Some iterator ->
-        begin match List.find_opt (fun name -> String.equal name iterator) scatnames with
-        | None -> None
-        | Some _ ->
-            let rec find_index i = function
-              | [] -> None
-              | name :: rest ->
-                  if String.equal name iterator then Some i
-                  else find_index (i + 1) rest
-            in
-            Option.map
-              (fun dim -> { hint_iterator = iterator; hint_current_dim = dim })
-              (find_index 0 scatnames)
-        end
+    let rec add_unique seen acc = function
+      | [] -> List.rev acc
+      | (iterator, directive) :: rest ->
+          if directive <> 1 then
+            add_unique seen acc rest
+          else
+            match find_index iterator 0 scatnames with
+            | None -> add_unique seen acc rest
+            | Some dim ->
+                if List.mem dim seen then
+                  add_unique seen acc rest
+                else
+                  let hint = { hint_iterator = iterator; hint_current_dim = dim } in
+                  add_unique (dim :: seen) (hint :: acc) rest
+    in
+    add_unique [] [] loop_entries
   with
   | Sys_error _
-  | Failure _ -> None
+  | Failure _ -> []
+
+let extract_parallel_hint_from_outscop outscop_file =
+  match extract_parallel_hints_from_outscop outscop_file with
+  | [] -> None
+  | hint :: _ -> Some hint
 
 let run_pluto_scop_with_parallel_hint flags inscop =
   let inscop_file = tmp_file ".scop" in
@@ -283,9 +288,9 @@ let run_pluto_scop_with_parallel_hint flags inscop =
     else
       None
   in
-  let hint = extract_parallel_hint_from_outscop outscop_file in
+  let hints = extract_parallel_hints_from_outscop outscop_file in
   match read_outscop () with
-  | Some outscop -> Okk (outscop, hint)
+  | Some outscop -> Okk (outscop, hints)
   | None ->
       if exc <> 0 then (
         safe_remove outscop_file;
