@@ -38,7 +38,7 @@ SUPPORTED = [
     Capability("--full-diamond-tile --iss", "supported-narrow", "full-diamond producer mode over the same checked ISS+diamond route", "pluto-compat full-diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+full-diamond fixtures"),
     Capability("--diamond-tile --second-level-tile", "supported-narrow", "second-level Pluto diamond output is checked by the same diamond route with second-level witness extraction enabled", "pluto-compat diamond-second-level; Opt_diamond_band_correct", "add broader second-level diamond fixtures"),
     Capability("--diamond-tile --iss --second-level-tile", "supported-narrow", "ISS bridge validation composes with second-level diamond witness extraction", "pluto-compat diamond-iss-second-level; Opt_diamond_band_with_iss_correct", "add broader ISS+second-level diamond fixtures"),
-    Capability("--diamond-tile --parallel-current d", "supported", "diamond route now validates the four-phase diamond boundary before explicit current-space parallel certification", "parallel-current diamond-current-combined-effect; Opt_parallel_current_diamond_correct", "broaden beyond the single-statement batch stencil; Jacobi-style two-statement stencils still hit the parallel trace-codegen affine guard"),
+    Capability("--diamond-tile --parallel-current d", "supported-narrow", "diamond route validates the four-phase diamond boundary before explicit current-space parallel certification; current positive support is a single-statement batch stencil with diagonal diamond shape", "parallel-current diamond-current-combined-effect; Opt_parallel_current_diamond_correct", "broaden beyond the single-statement batch stencil; tracked by diamond-current-jacobi-batch-codegen-gap"),
 ]
 
 DIAMOND_COMBINATIONS = [

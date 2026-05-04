@@ -3,6 +3,7 @@
   "fixtures": {
     "positive": "fixtures/positive.loop",
     "diamond-example-inner-batch": "fixtures/diamond-example-inner-batch.loop",
+    "jacobi-batch": "fixtures/jacobi-batch.loop",
     "dependent": "fixtures/dependent.loop"
   },
   "checks": [
@@ -43,11 +44,23 @@
       "needles": [
         "parallel for",
         "32 *",
-        "/ 32"
+        "/ 32",
+        "i4 + (-1 * i5)"
       ],
       "differs_from_args": [
         "--diamond-tile"
       ]
+    },
+    {
+      "name": "diamond-current-jacobi-batch-codegen-gap",
+      "fixture": "jacobi-batch",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needle": "Annotated parallel codegen produced non-affine instruction trace loop"
     },
     {
       "name": "parallel-current-positive-iss",
