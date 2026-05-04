@@ -69,6 +69,16 @@ TOP_LEVEL_ROUTES = [
         ],
     },
     {
+        "route": "checked ISS plus diamond plus parallel current",
+        "cli": "polopt --iss --diamond-tile --parallel-current <dim> <file.loop>",
+        "theorem_file": "driver/ParallelPolOptCorrect.v",
+        "theorem_names": [
+            "Opt_parallel_current_diamond_with_iss_correct",
+            "Opt_parallel_current_diamond_with_iss_result_correct",
+            "parallel_current_diamond_prepared_from_poly_with_iss_correct",
+        ],
+    },
+    {
         "route": "diamond phase-aligned optimizer",
         "cli": "polopt --diamond-tile <file.loop>",
         "theorem_file": "driver/PolOptBandTiling.v",

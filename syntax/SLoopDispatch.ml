@@ -111,6 +111,8 @@ let run_selected_parallel_optimization (cfg : SLoopCli.config) handlers loop =
 type ('loop, 'parallel_loop) current_parallel_handlers = {
   cur_optimize_diamond :
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
+  cur_optimize_diamond_iss :
+    'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_identity :
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_affine :
@@ -132,7 +134,10 @@ let run_selected_parallel_current_optimization
     dim =
   let dim = nat_of_int dim in
   if cfg.force_diamond_tile then
-    handlers.cur_optimize_diamond loop dim
+    if cfg.force_iss then
+      handlers.cur_optimize_diamond_iss loop dim
+    else
+      handlers.cur_optimize_diamond loop dim
   else if cfg.force_iss then
     if cfg.force_identity then
       handlers.cur_optimize_iss_identity loop dim

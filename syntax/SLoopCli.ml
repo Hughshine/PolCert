@@ -276,8 +276,6 @@ let validate_pluto_compat prog cfg =
         pluto_reject prog "--diamond-tile requires tiling and cannot be combined with --notile";
       if cfg.force_identity then
         pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
-      if cfg.force_parallel && cfg.force_iss then
-        pluto_reject prog "--diamond-tile --iss is not yet supported with --parallel";
       ()
     end
   end

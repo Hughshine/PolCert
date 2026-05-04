@@ -52,6 +52,27 @@
       ]
     },
     {
+      "name": "diamond-iss-current-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": [
+        "--diamond-tile",
+        "--iss",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "32 *",
+        "/ 32",
+        "i4 + (-1 * i5)"
+      ],
+      "differs_from_args": [
+        "--diamond-tile",
+        "--iss"
+      ]
+    },
+    {
       "name": "diamond-current-jacobi-batch-codegen-gap",
       "fixture": "jacobi-batch",
       "args": [

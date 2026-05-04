@@ -167,6 +167,27 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly
       end
   end.
 
+Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+    (pol_source : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
+  | Err _ =>
+      CoreOpt.checked_affine_schedule pol_source
+  | Okk (mid_scop, (posttile_scop, after_scop)) =>
+      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      | Err _ =>
+          CoreOpt.checked_affine_schedule pol_source
+      | Okk pol_mid =>
+          BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_diamond_after_phase_mid_poly
+              pol_mid mid_scop posttile_scop after_scop
+          else
+            CoreOpt.checked_affine_schedule pol_source
+      end
+  end.
+
 Definition try_checked_iss_phase_pipeline_from_poly_poly
     (pol : PolyLang.t)
     (before_scop : OpenScop)
@@ -194,6 +215,32 @@ Definition try_checked_iss_phase_pipeline_from_poly_poly
       try_phase_pipeline_from_source_pol_poly
         pol
         CoreOpt.run_pluto_phase_pipeline
+        before_scop
+  end.
+
+Definition try_checked_iss_diamond_phase_pipeline_from_poly_poly
+    (pol : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  match CoreOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =>
+      if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf <- ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+            pol_iss
+            before_scop
+        else
+          try_diamond_phase_pipeline_from_source_pol_poly
+            pol
+            before_scop
+      else
+        try_diamond_phase_pipeline_from_source_pol_poly
+          pol
+          before_scop
+  | _ =>
+      try_diamond_phase_pipeline_from_source_pol_poly
+        pol
         before_scop
   end.
 
@@ -264,6 +311,19 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
   else
     pure pol.
 
+Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =>
+        CoreOpt.checked_affine_schedule pol
+    | Some before_scop =>
+        try_checked_iss_diamond_phase_pipeline_from_poly_poly pol before_scop
+    end
+  else
+    pure pol.
+
 Definition parallel_current_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
@@ -276,6 +336,13 @@ Definition parallel_current_diamond_prepared_from_poly
     (d : nat)
   : imp (result ParallelLoop.t) :=
   BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol' d.
+
+Definition parallel_current_diamond_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelLoop.t) :=
+  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
 Definition parallel_current_identity_prepared_from_poly_with_iss
@@ -336,6 +403,15 @@ Definition opt_parallel_current_diamond
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   BIND res <- parallel_current_diamond_prepared_from_poly pol d -;
+  res_to_alarm parallel_dummy res.
+
+Definition opt_parallel_current_diamond_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelLoop.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  BIND res <- parallel_current_diamond_prepared_from_poly_with_iss pol d -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_parallel_current_identity_with_iss
