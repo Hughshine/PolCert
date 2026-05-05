@@ -50,6 +50,7 @@ class PlutoFlagState:
     no_prevector_seen: bool = False
     no_unrolljam_seen: bool = False
     oracle_flags: list[str] | None = None
+    control_files: list[tuple[str, str]] | None = None
     notes: list[str] | None = None
 
     def add_note(self, msg: str) -> None:
@@ -62,6 +63,14 @@ class PlutoFlagState:
             self.oracle_flags = []
         self.oracle_flags.append(flag)
 
+    def add_control_file(self, flag: str, target: str, value: str) -> None:
+        if not Path(value).exists():
+            raise Reject(f"{flag}: no such file: {value}")
+        if self.control_files is None:
+            self.control_files = []
+        self.control_files.append((flag, value))
+        self.add_note(f"{flag} installs explicit Pluto {target} control input for the checked oracle run")
+
 
 VALUE_OPTIONS = {
     "--cache-size",
@@ -71,8 +80,13 @@ VALUE_OPTIONS = {
     "--coeff-bound",
     "--data-element-size",
     "--forceparallel",
+    "--fst-file",
     "--ft",
+    "--fusion-structure",
     "--lt",
+    "--precut",
+    "--precut-file",
+    "--tile-sizes-file",
     "--ufactor",
     "-o",
 }
@@ -377,6 +391,15 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag == "--innerpar":
             state.innerpar_seen = True
             state.add_note("--innerpar is implicit in polopt's current --parallel route")
+        elif flag == "--tile-sizes-file":
+            assert value is not None
+            state.add_control_file(flag, "tile.sizes", value)
+        elif flag in ("--fusion-structure", "--fst-file"):
+            assert value is not None
+            state.add_control_file(flag, ".fst", value)
+        elif flag in ("--precut", "--precut-file"):
+            assert value is not None
+            state.add_control_file(flag, ".precut", value)
         elif flag == "--nointratileopt":
             state.no_intratileopt_seen = True
             state.add_note("--nointratileopt accepted because checked routes disable Pluto intra-tile rewriting")
@@ -565,6 +588,9 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
         args.append("--nointratileopt")
     if state.oracle_flags:
         args.extend(state.oracle_flags)
+    if state.control_files:
+        for flag, path in state.control_files:
+            args.extend([flag, path])
     args.append(str(state.input_path))
     return args
 
@@ -592,6 +618,12 @@ def main(argv: list[str]) -> int:
             print(
                 "[pluto-compat] pluto oracle flags:",
                 " ".join(state.oracle_flags),
+                flush=True,
+            )
+        if state.control_files:
+            print(
+                "[pluto-compat] pluto control files:",
+                " ".join(f"{flag}={path}" for flag, path in state.control_files),
                 flush=True,
             )
         if state.notes:

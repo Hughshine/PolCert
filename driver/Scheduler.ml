@@ -25,6 +25,7 @@ type diamond_mode =
 let current_tiling_mode = ref OrdinaryTiling
 let current_diamond_mode = ref NoDiamondTiling
 let current_pluto_extra_flags = ref []
+let current_pluto_control_files = ref []
 
 let set_tiling_mode mode =
   current_tiling_mode := mode
@@ -34,6 +35,16 @@ let set_diamond_mode mode =
 
 let set_pluto_extra_flags flags =
   current_pluto_extra_flags := flags
+
+let absolute_path path =
+  if Filename.is_relative path then
+    Filename.concat (Sys.getcwd ()) path
+  else
+    path
+
+let set_pluto_control_files files =
+  current_pluto_control_files :=
+    List.map (fun (target, source) -> (target, absolute_path source)) files
 
 let with_pluto_extra_flags flags =
   flags @ !current_pluto_extra_flags
@@ -46,6 +57,49 @@ let diamond_tiling_enabled () =
 
 let full_diamond_tiling_enabled () =
   !current_diamond_mode = FullDiamondTiling
+
+let tmp_file_abs suff =
+  absolute_path (tmp_file suff)
+
+let copy_file src dst =
+  let ic = open_in_bin src in
+  Fun.protect
+    ~finally:(fun () -> close_in_noerr ic)
+    (fun () ->
+      let oc = open_out_bin dst in
+      Fun.protect
+        ~finally:(fun () -> close_out_noerr oc)
+        (fun () ->
+          let buf = Bytes.create 65536 in
+          let rec loop () =
+            let n = input ic buf 0 (Bytes.length buf) in
+            if n > 0 then begin
+              output oc buf 0 n;
+              loop ()
+            end
+          in
+          loop ()))
+
+let with_pluto_control_workdir f =
+  match !current_pluto_control_files with
+  | [] -> f ()
+  | files ->
+      let installed = ref [] in
+      Fun.protect
+        ~finally:(fun () ->
+          List.iter safe_remove !installed)
+        (fun () ->
+          List.iter
+            (fun (target, source) ->
+              if Sys.file_exists target then
+                failwith
+                  (Printf.sprintf
+                     "explicit Pluto control file target %s already exists in the oracle working directory"
+                     target);
+              installed := target :: !installed;
+              copy_file source target)
+            files;
+          f ())
 
 let pluto_executable () =
   match Sys.getenv_opt "POLCERT_PLUTO" with
@@ -100,7 +154,7 @@ let run_pluto_scop flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
-  let inscop_file = tmp_file ".scop" in
+  let inscop_file = tmp_file_abs ".scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in 
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
@@ -108,8 +162,11 @@ let run_pluto_scop flags inscop =
       [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
   in
   (* print_string ((String.concat " " cmd) ^ "\n"); *)
-  let stdout =  (tmp_file (".stdout")) in
-  let exc = command ?stdout:(Some stdout) cmd in
+  let stdout = tmp_file_abs ".stdout" in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -> command ?stdout:(Some stdout) cmd)
+  in
   let read_outscop () =
       if Sys.file_exists outscop_file then
       OpenScopReader.read outscop_file
@@ -135,7 +192,7 @@ let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
-  let inscop_file = tmp_file ".scop" in
+  let inscop_file = tmp_file_abs ".scop" in
   let midscop_file = inscop_file ^ ".midtransform.scop" in
   let posttile_file = inscop_file ^ ".posttile.scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in
@@ -144,8 +201,11 @@ let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
     List.concat
       [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
   in
-  let stdout = tmp_file ".stdout" in
-  let exc = command ?stdout:(Some stdout) cmd in
+  let stdout = tmp_file_abs ".stdout" in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -> command ?stdout:(Some stdout) cmd)
+  in
   let read_scop path =
     if Sys.file_exists path then
       OpenScopReader.read path
@@ -294,15 +354,18 @@ let run_pluto_scop_with_parallel_hint flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
-  let inscop_file = tmp_file ".scop" in
+  let inscop_file = tmp_file_abs ".scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
       [[pluto_executable (); "--dumpscop"; "--readscop"]; flags; [inscop_file]]
   in
-  let stdout =  (tmp_file (".stdout")) in
-  let exc = command ?stdout:(Some stdout) cmd in
+  let stdout = tmp_file_abs ".stdout" in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -> command ?stdout:(Some stdout) cmd)
+  in
   let read_outscop () =
     if Sys.file_exists outscop_file then
       OpenScopReader.read outscop_file
@@ -325,14 +388,17 @@ let run_pluto_bridge flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
-  let inscop_file = tmp_file ".scop" in
-  let stdout_file = tmp_file ".stdout" in
+  let inscop_file = tmp_file_abs ".scop" in
+  let stdout_file = tmp_file_abs ".stdout" in
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
       [[pluto_executable (); "--readscop"]; flags; [inscop_file]]
   in
-  let exc = command ?stdout:(Some stdout_file) cmd in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -> command ?stdout:(Some stdout_file) cmd)
+  in
   let output = read_file stdout_file in
   if exc <> 0 then
     Err
@@ -343,7 +409,7 @@ let run_pluto_bridge flags inscop =
   else
     try
       let bridge_tool = resolve_repo_file "tools/iss/pluto_iss_check.py" in
-      let bridge_stdout = tmp_file ".bridge.stdout" in
+      let bridge_stdout = tmp_file_abs ".bridge.stdout" in
       let bridge_cmd =
         [ "python3";
           bridge_tool;

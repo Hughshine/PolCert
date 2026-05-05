@@ -30,9 +30,9 @@ SUPPORTED = [
     Capability("--identity --notile", "supported", "extracted no-Pluto identity extraction/codegen route", "pluto-compat identity-notile; Identity_opt_prepared_correct", "keep"),
     Capability("--identity --tile", "supported-narrow", "checked identity schedule plus tile-only Pluto route; gives a tiling effect when the source-order band is directly tileable", "pluto-compat identity-tiled; Opt_identity_tiled_band_correct", "add composed identity-tile routes only when they map to an extracted theorem-facing pass"),
     Capability("--identity --tile --iss", "supported-narrow", "checked ISS complete-cut split composed with the checked identity-tiling route; current fixture demonstrates the tiling effect under the ISS flag, but not an ISS-sensitive extra tiling opportunity", "pluto-compat identity-tiled-iss; Opt_identity_tiled_band_with_iss_correct", "find or construct an ISS-sensitive identity-tiling fixture"),
-    Capability("tile.sizes", "supported-legacy-control-file", "Pluto reads this old working-directory file to choose tile sizes; PolOpt accepts it because the checked tiling route validates the produced tile-size witness", "pluto-compat optimizer-implicit-tile-sizes-file", "prefer an explicit file option for hermetic artifact runs"),
-    Capability(".fst", "supported-legacy-control-file", "Pluto reads this old working-directory file to force a fusion/distribution partition; PolOpt accepts schedules that pass the checked affine validator", "pluto-compat optimizer-implicit-fst-file", "prefer an explicit --fusion-structure FILE interface for hermetic artifact runs"),
-    Capability(".precut", "supported-legacy-control-file", "Pluto reads this old working-directory file as a partial transformation to complete; PolOpt accepts produced schedules that pass checked affine and tiling validators", "pluto-compat optimizer-implicit-precut-file", "prefer an explicit --precut FILE interface for hermetic artifact runs"),
+    Capability("tile.sizes / --tile-sizes-file FILE", "supported-legacy-and-explicit-control-file", "Pluto reads this old working-directory file to choose tile sizes; PolOpt can now install it explicitly for the oracle call and accepts it because the checked tiling route validates the produced tile-size witness", "pluto-compat optimizer-implicit-tile-sizes-file; optimizer-explicit-tile-sizes-file", "keep explicit option as preferred artifact interface"),
+    Capability(".fst / --fusion-structure FILE", "supported-legacy-and-explicit-control-file", "Pluto reads this old working-directory file to force a fusion/distribution partition; PolOpt can now install it explicitly for the oracle call and accepts schedules that pass the checked affine validator", "pluto-compat optimizer-implicit-fst-file; optimizer-explicit-fst-file", "keep explicit option as preferred artifact interface"),
+    Capability(".precut / --precut-file FILE", "supported-legacy-and-explicit-control-file", "Pluto reads this old working-directory file as a partial transformation to complete; PolOpt can now install it explicitly for the oracle call and accepts produced schedules that pass checked affine and tiling validators", "pluto-compat optimizer-implicit-precut-file; optimizer-explicit-precut-file", "keep explicit option as preferred artifact interface"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "checked second-level tiling route, including ISS, explicit-current, and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-iss; pluto-compat second-level-parallel", "broaden fixtures"),
     Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
@@ -97,6 +97,7 @@ def check_rows() -> list[dict[str, object]]:
                 "differs_from_args": [list(args) for args in check.differs_from_args],
                 "implicit_control_file": check.implicit_control_file,
                 "implicit_control_file_content": check.implicit_control_file_content,
+                "explicit_control_flag": check.explicit_control_flag,
                 "fixture": str(check.fixture.relative_to(ROOT)),
             }
         )
@@ -145,6 +146,8 @@ def write_markdown(matrix: dict[str, object]) -> str:
         effect = "; ".join(effect_parts) if effect_parts else ""
         if row["implicit_control_file"]:
             effect = (effect + "; " if effect else "") + f"with `{row['implicit_control_file']}` present"
+        if row["explicit_control_flag"]:
+            effect = (effect + "; " if effect else "") + f"with `{row['explicit_control_flag']}` file"
         lines.append(f"| `{row['name']}` | {row['expect']} | `{row['fixture']}` | `{args}` | {effect} |")
     return "\n".join(lines) + "\n"
 

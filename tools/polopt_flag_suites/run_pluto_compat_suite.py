@@ -28,6 +28,8 @@ class Check:
     differs_from_args: tuple[tuple[str, ...], ...] = ()
     implicit_control_file: str | None = None
     implicit_control_file_content: str = "16\n"
+    explicit_control_flag: str | None = None
+    explicit_control_file_content: str = "16\n"
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -492,6 +494,18 @@ CHECKS = [
         implicit_control_file_content="16\n16\n16\n",
     ),
     Check(
+        "optimizer-explicit-tile-sizes-file",
+        MATMUL_TILED,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: tile.sizes<=",
+        effect_needles=("16 *", "/ 16"),
+        differs_from_args=(tuple(MATMUL_TILED),),
+        explicit_control_flag="--tile-sizes-file",
+        explicit_control_file_content="16\n16\n16\n",
+    ),
+    Check(
         "optimizer-implicit-fst-file",
         FUSION_NOTILE_SMART,
         FUSION1,
@@ -501,6 +515,17 @@ CHECKS = [
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         implicit_control_file=".fst",
         implicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
+    ),
+    Check(
+        "optimizer-explicit-fst-file",
+        FUSION_NOTILE_SMART,
+        FUSION1,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: .fst<=",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+        explicit_control_flag="--fusion-structure",
+        explicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
     ),
     Check(
         "optimizer-implicit-precut-file",
@@ -513,6 +538,18 @@ CHECKS = [
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         implicit_control_file=".precut",
         implicit_control_file_content="2\n1\n2 4\n0 0 0 0\n0 1 0 0\n1\n0\n2 4\n0 0 0 1\n0 1 0 0\n1\n0\n",
+    ),
+    Check(
+        "optimizer-explicit-precut-file",
+        FUSION_NOTILE_SMART,
+        FUSION1,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: .precut<=",
+        effect_needles=("if (4 <= N)", "if (6 <= N)"),
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+        explicit_control_flag="--precut-file",
+        explicit_control_file_content="2\n1\n2 4\n0 0 0 0\n0 1 0 0\n1\n0\n2 4\n0 0 0 1\n0 1 0 0\n1\n0\n",
     ),
     Check(
         "identity-tiled",
@@ -767,7 +804,19 @@ def run_polopt_compat(
 
 
 def run_check(check: Check, timeout: int) -> str | None:
-    if check.implicit_control_file:
+    if check.explicit_control_flag:
+        with tempfile.TemporaryDirectory(prefix="polopt-compat-explicit-") as tmp:
+            control_path = Path(tmp) / "control.in"
+            control_path.write_text(check.explicit_control_file_content)
+            try:
+                proc = run_polopt_compat(
+                    [*check.args, check.explicit_control_flag, str(control_path)],
+                    check.fixture,
+                    timeout,
+                )
+            except subprocess.TimeoutExpired:
+                return f"{check.name}: native polopt compatibility mode timed out"
+    elif check.implicit_control_file:
         with tempfile.TemporaryDirectory(prefix="polopt-compat-") as tmp:
             cwd = Path(tmp)
             (cwd / check.implicit_control_file).write_text(check.implicit_control_file_content)

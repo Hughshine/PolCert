@@ -33,6 +33,7 @@ type config = SLoopConfig.config = {
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
   mutable pluto_extra_flags : string list;
+  mutable pluto_control_files : (string * string) list;
   mutable pluto_compat_notes : string list;
   mutable validate_affine_openscop : (string * string) option;
   mutable extract_tiling_witness_openscop : (string * string) option;
@@ -140,6 +141,13 @@ let add_pluto_note cfg msg =
 
 let add_pluto_extra_flag cfg flag =
   cfg.pluto_extra_flags <- cfg.pluto_extra_flags @ [flag]
+
+let add_pluto_control_file prog cfg target path note =
+  enable_pluto_compat cfg;
+  if not (Sys.file_exists path) then
+    pluto_reject prog (Printf.sprintf "%s: no such file" path);
+  cfg.pluto_control_files <- cfg.pluto_control_files @ [(target, path)];
+  add_pluto_note cfg note
 
 let starts_with s prefix =
   let len_s = String.length s in
@@ -340,8 +348,16 @@ let pluto_extra_has flag cfg =
 let pluto_extra_has_prefix prefix cfg =
   List.exists (fun flag -> starts_with flag prefix) cfg.pluto_extra_flags
 
+let rec find_map f = function
+  | [] -> None
+  | x :: xs ->
+      begin match f x with
+      | None -> find_map f xs
+      | some -> some
+      end
+
 let pluto_extra_value prefix cfg =
-  List.find_map
+  find_map
     (fun flag ->
        if starts_with flag prefix then
          Some (String.sub flag (String.length prefix) (String.length flag - String.length prefix))
@@ -373,6 +389,13 @@ let print_pluto_explain cfg =
     print_endline
       ("[pluto-compat] pluto oracle flags: "
        ^ String.concat " " cfg.pluto_extra_flags);
+  if cfg.pluto_control_files <> [] then
+    print_endline
+      ("[pluto-compat] pluto control files: "
+       ^ String.concat " "
+           (List.map
+              (fun (target, source) -> target ^ "<=" ^ source)
+              cfg.pluto_control_files));
   List.iter
     (fun note -> print_endline ("[pluto-compat] note: " ^ note))
     cfg.pluto_compat_notes
@@ -498,6 +521,7 @@ let parse_args () : config =
       pluto_no_prevector_seen = false;
       pluto_no_unrolljam_seen = false;
       pluto_extra_flags = [];
+      pluto_control_files = [];
       pluto_compat_notes = [];
       validate_affine_openscop = None;
       extract_tiling_witness_openscop = None;
@@ -583,6 +607,48 @@ let parse_args () : config =
           add_pluto_note cfg "--innerpar is implicit in polopt's current --parallel route";
           go (i + 1)
       | "--parallel-strict" -> cfg.force_parallel_strict <- true; go (i + 1)
+      | "--tile-sizes-file" ->
+          if i + 1 >= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) "--tile-sizes-file requires a file path";
+          add_pluto_control_file Sys.argv.(0) cfg "tile.sizes" Sys.argv.(i + 1)
+            "--tile-sizes-file installs an explicit Pluto tile.sizes file for the checked oracle run";
+          go (i + 2)
+      | "--fusion-structure" | "--fst-file" ->
+          if i + 1 >= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (Sys.argv.(i) ^ " requires a file path");
+          add_pluto_control_file Sys.argv.(0) cfg ".fst" Sys.argv.(i + 1)
+            (Sys.argv.(i) ^ " installs an explicit Pluto .fst file for the checked oracle run");
+          go (i + 2)
+      | "--precut" | "--precut-file" ->
+          if i + 1 >= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (Sys.argv.(i) ^ " requires a file path");
+          add_pluto_control_file Sys.argv.(0) cfg ".precut" Sys.argv.(i + 1)
+            (Sys.argv.(i) ^ " installs an explicit Pluto .precut file for the checked oracle run");
+          go (i + 2)
+      | s when starts_with s "--tile-sizes-file=" ->
+          begin match split_eq_flag s with
+          | Some (_, path) ->
+              add_pluto_control_file Sys.argv.(0) cfg "tile.sizes" path
+                "--tile-sizes-file installs an explicit Pluto tile.sizes file for the checked oracle run";
+              go (i + 1)
+          | None -> assert false
+          end
+      | s when starts_with s "--fusion-structure=" || starts_with s "--fst-file=" ->
+          begin match split_eq_flag s with
+          | Some (flag, path) ->
+              add_pluto_control_file Sys.argv.(0) cfg ".fst" path
+                (flag ^ " installs an explicit Pluto .fst file for the checked oracle run");
+              go (i + 1)
+          | None -> assert false
+          end
+      | s when starts_with s "--precut=" || starts_with s "--precut-file=" ->
+          begin match split_eq_flag s with
+          | Some (flag, path) ->
+              add_pluto_control_file Sys.argv.(0) cfg ".precut" path
+                (flag ^ " installs an explicit Pluto .precut file for the checked oracle run");
+              go (i + 1)
+          | None -> assert false
+          end
       | "--nointratileopt" ->
           enable_pluto_compat cfg;
           cfg.pluto_no_intratileopt_seen <- true;
@@ -780,4 +846,5 @@ let configure_scheduler_modes (cfg : config) =
      else if cfg.force_diamond_tile
      then Scheduler.DiamondTiling
      else Scheduler.NoDiamondTiling);
-  Scheduler.set_pluto_extra_flags cfg.pluto_extra_flags
+  Scheduler.set_pluto_extra_flags cfg.pluto_extra_flags;
+  Scheduler.set_pluto_control_files cfg.pluto_control_files

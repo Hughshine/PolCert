@@ -92,6 +92,9 @@ let rec stmt_list_to_list = function
   | Loop.SNil -> []
   | Loop.SCons (st, tl) -> st :: stmt_list_to_list tl
 
+let concat_map f xs =
+  List.concat (List.map f xs)
+
 let fresh_loop_name env depth =
   let rec pick n =
     let cand = Printf.sprintf "i%d" (depth + n) in
@@ -113,7 +116,7 @@ let rec lines_of_stmt env depth lvl = function
       | Instr.SAssign (lhs, rhs) ->
           [indent lvl ^ string_of_access env slots lhs ^ " = " ^ string_of_instr_expr env slots rhs ^ ";"]
       end
-  | Loop.Seq stmts -> List.concat_map (lines_of_stmt env depth lvl) (stmt_list_to_list stmts)
+  | Loop.Seq stmts -> concat_map (lines_of_stmt env depth lvl) (stmt_list_to_list stmts)
   | Loop.Guard (tst, body) ->
       let header = Printf.sprintf "%sif (%s) {" (indent lvl) (string_of_test env tst) in
       let body_lines = lines_of_stmt env depth (lvl + 1) body in
