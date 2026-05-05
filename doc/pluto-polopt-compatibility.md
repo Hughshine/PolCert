@@ -313,7 +313,10 @@ dependence testing.
    - Rejection messages should match tests.
 
 2. Add remaining route-level surface gaps.
-   - bare `--identity` / `--identity --tile`
+   - bare `--identity` policy remains explicit: require `--identity --notile`
+     or `--identity --tile`
+   - mixed `--identity --tile` compositions with ISS, parallel, diamond, or
+     second-level tiling
    - explicit `tile.sizes` file input instead of implicit working-directory state
    - explicit `.fst` / `.precut` file input instead of implicit working-directory state
 
