@@ -4,6 +4,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -492,12 +493,16 @@ CHECKS = [
         implicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
     ),
     Check(
-        "reject-implicit-precut-file",
-        MATMUL_TILED,
-        MATMUL,
-        False,
-        "implicit Pluto control file .precut is not supported",
+        "optimizer-implicit-precut-file",
+        FUSION_NOTILE_SMART,
+        FUSION1,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("if (4 <= N)", "if (6 <= N)"),
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         implicit_control_file=".precut",
+        implicit_control_file_content="2\n1\n2 4\n0 0 0 0\n0 1 0 0\n1\n0\n2 4\n0 0 0 1\n0 1 0 0\n1\n0\n",
     ),
     Check(
         "identity-tiled",
@@ -724,7 +729,12 @@ def optimized_loop(output: str) -> str:
     return output[pos:]
 
 
-def run_polopt_compat(args: list[str], fixture: Path, timeout: int) -> subprocess.CompletedProcess[str]:
+def run_polopt_compat(
+    args: list[str],
+    fixture: Path,
+    timeout: int,
+    cwd: Path = ROOT,
+) -> subprocess.CompletedProcess[str]:
     cmd = [
         str(POLOPT),
         "--pluto-compat",
@@ -732,22 +742,23 @@ def run_polopt_compat(args: list[str], fixture: Path, timeout: int) -> subproces
         *args,
         str(fixture),
     ]
-    return subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True, timeout=timeout + 5, check=False)
+    return subprocess.run(cmd, cwd=str(cwd), text=True, capture_output=True, timeout=timeout + 5, check=False)
 
 
 def run_check(check: Check, timeout: int) -> str | None:
-    implicit_path = ROOT / check.implicit_control_file if check.implicit_control_file else None
-    if implicit_path is not None:
-        if implicit_path.exists():
-            return f"{check.name}: refusing to overwrite existing {implicit_path}"
-        implicit_path.write_text(check.implicit_control_file_content)
-    try:
-        proc = run_polopt_compat(check.args, check.fixture, timeout)
-    except subprocess.TimeoutExpired:
-        return f"{check.name}: native polopt compatibility mode timed out"
-    finally:
-        if implicit_path is not None:
-            implicit_path.unlink(missing_ok=True)
+    if check.implicit_control_file:
+        with tempfile.TemporaryDirectory(prefix="polopt-compat-") as tmp:
+            cwd = Path(tmp)
+            (cwd / check.implicit_control_file).write_text(check.implicit_control_file_content)
+            try:
+                proc = run_polopt_compat(check.args, check.fixture, timeout, cwd=cwd)
+            except subprocess.TimeoutExpired:
+                return f"{check.name}: native polopt compatibility mode timed out"
+    else:
+        try:
+            proc = run_polopt_compat(check.args, check.fixture, timeout)
+        except subprocess.TimeoutExpired:
+            return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
     optimized = optimized_loop(output)
     if check.success:

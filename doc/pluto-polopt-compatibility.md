@@ -194,7 +194,7 @@ This category is now default artifact behavior for GLPK-backed Pluto. If DFP or 
 | `--smartfuse` | Supported as oracle tuning/default | Current recipes use it by default, and explicit `--smartfuse` is preserved in the Pluto oracle flag stream. | Already supported. | Keep explicit acceptance and ordering behavior. |
 | `--per-cc-obj` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `pca.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
 | `.fst` | Supported as Pluto's legacy implicit file | Pluto reads this file from the working directory and uses it to force a statement partition for fusion or distribution. PolOpt accepts the produced schedule only when the checked affine validator accepts it. | Already supported for affine checked routes. | Prefer a future explicit `--fusion-structure FILE` interface for hermetic artifact runs. |
-| `.precut` | Rejected as implicit file | Pluto reads this file from the working directory and uses it as a partial transformation for Pluto to complete. This is more expressive than a fusion partition. | Possible, but needs dedicated fixtures and failure handling. | Add explicit `--precut FILE`, copy into an isolated Pluto working directory, and validate the produced affine and tiling boundaries. |
+| `.precut` | Supported as Pluto's legacy implicit file | Pluto reads this file from the working directory and uses it as a partial transformation for Pluto to complete. PolOpt accepts the produced schedule only when the checked affine and tiling validators accept it. | Already supported for checked routes with validated outputs. | Prefer a future explicit `--precut FILE` interface for hermetic artifact runs. |
 | `--nodepbound` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `fusion2.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
 | `--coeff-bound` | Supported as oracle tuning | Search-bound tuning with a positive integer value. | Already supported for checked routes whose produced schedule validates. | Keep the tight-bound effect fixture and broaden value choices. |
 | `--fast-lin-ind-check`, `--flic` | Supported as oracle tuning | Native compatibility mode appends either alias to Pluto scheduler calls; `costfunc.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Keep both aliases covered; broaden beyond the current cost-function case. |
@@ -320,7 +320,7 @@ dependence testing.
      second-level tiling
    - optional explicit `tile.sizes` file input instead of Pluto's implicit working-directory state
    - optional explicit `.fst` file input instead of Pluto's implicit working-directory state
-   - explicit `.precut` file input instead of rejected implicit working-directory state
+   - optional explicit `.precut` file input instead of Pluto's implicit working-directory state
 
 3. Treat semantic extensions as separate projects.
    - unroll-jam
@@ -358,6 +358,6 @@ For rejected flags, the acceptance criterion is a stable, specific reason. A gen
 
 ## Short Summary
 
-The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, Pluto `tile.sizes` tile-size control, Pluto `.fst` fusion-structure control, second-level tiling, ISS, one-loop parallelization, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, conservative `--candldep --scalpriv` pass-through, and LP/DFP-family pass-through on the pinned GLPK-enabled Pluto baseline.
+The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, Pluto `tile.sizes` tile-size control, Pluto `.fst` fusion-structure control, Pluto `.precut` partial-transformation control, second-level tiling, ISS, one-loop parallelization, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, conservative `--candldep --scalpriv` pass-through, and LP/DFP-family pass-through on the pinned GLPK-enabled Pluto baseline.
 
 Most missing Pluto optimizer knobs are now surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, unbounded multipar beyond Pluto's current extraction model, and full scalar privatization when the accepted schedule needs private scalar storage. Frontend and backend flags should remain outside the optimizer compatibility surface.
