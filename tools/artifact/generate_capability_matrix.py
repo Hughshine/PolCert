@@ -59,7 +59,7 @@ def table_rows() -> list[Capability]:
     for flag, reason in sorted(compat.SUPPORTED_VALUE_OPTIONS.items()):
         rows.append(Capability(flag + " <n>", "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden value/effect fixtures"))
     for flag, reason in sorted(compat.CONDITIONAL_LP_SOLVER_OPTIONS.items()):
-        rows.append(Capability(flag, "supported-conditional-oracle-tuning", reason, "default suite rejects when the pinned Pluto lacks LP/DFP support; GLPK-enabled suite accepts and validates representative affine cases", "publish or select a GLPK-enabled Pluto baseline before treating as default artifact support"))
+        rows.append(Capability(flag, "supported-oracle-tuning-with-runtime-probe", reason, "pinned GLPK-enabled Pluto baseline accepts and validates representative affine cases; alternate Pluto binaries are rejected if they lack the advertised option", "broaden non-matmul effect fixtures"))
 
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
         rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))

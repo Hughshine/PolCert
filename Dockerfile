@@ -1,7 +1,7 @@
 # Keep these defaults aligned with tools/ci/pluto-baseline.env.
 ARG PLUTO_IMAGE=hughshine/pluto-verif:polcert-pluto-iss-bridge-ac5ea83
 ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
-ARG PLUTO_GIT_COMMIT=ac5ea8323129655afb283b77684f4d71066c6e79
+ARG PLUTO_GIT_COMMIT=6f43860b6c4cddeeca09189bf3073f05b78b14a5
 
 FROM ${PLUTO_IMAGE}
 
@@ -24,6 +24,14 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN  apt-get update \
   && apt-get install -y wget make m4 build-essential patch unzip git libgmp3-dev libgmp-dev libglpk-dev libeigen3-dev \
   && rm -rf /var/lib/apt/lists/*
+
+RUN git -C /pluto fetch "${PLUTO_GIT_REMOTE}" "${PLUTO_GIT_COMMIT}" \
+  && git -C /pluto checkout "${PLUTO_GIT_COMMIT}" \
+  && cd /pluto \
+  && ./configure --enable-glpk --with-glpk-prefix=/usr \
+  && make clean \
+  && make -j"$(nproc)" \
+  && make install
 
 RUN wget https://github.com/ocaml/opam/releases/download/2.0.8/opam-2.0.8-x86_64-linux --no-check-certificate -O opam && \
     chmod 744 opam && \

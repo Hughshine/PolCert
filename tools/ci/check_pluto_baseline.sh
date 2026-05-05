@@ -80,4 +80,19 @@ if [[ "$pluto_version_line" != *"$short_commit"* ]] &&
   exit 1
 fi
 
+require_glpk_family_flags() {
+  local binary="$1"
+  local help_text
+  help_text="$("$binary" --help 2>&1 || true)"
+  for required_flag in "--glpk" "--lp" "--dfp"; do
+    if [[ "$help_text" != *"$required_flag"* ]]; then
+      echo "[ci] Pluto binary $binary does not advertise required GLPK-family flag $required_flag" >&2
+      exit 1
+    fi
+  done
+}
+
+require_glpk_family_flags pluto
+require_glpk_family_flags /pluto/tool/pluto
+
 echo "[ci] Pluto baseline OK: $short_commit from $PLUTO_GIT_REMOTE"

@@ -50,10 +50,16 @@ TUNING_NOTILE_ISL_ACCESSWISE = ["--notile", "--smartfuse", "--isldepaccesswise",
 TUNING_NOTILE_ISL_STMTWISE = ["--notile", "--smartfuse", "--isldepstmtwise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_ISL_COALESCE = ["--notile", "--smartfuse", "--isldepcoalesce", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_COEFF_BOUND = ["--notile", "--smartfuse", "--coeff-bound=10", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_COEFF_BOUND_TIGHT = ["--notile", "--smartfuse", "--coeff-bound=1", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_FORCEPARALLEL = ["--notile", "--smartfuse", "--forceparallel=1", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_GLPK = ["--notile", "--smartfuse", "--glpk", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_ILP = ["--notile", "--smartfuse", "--glpk", "--ilp", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_LP = ["--notile", "--smartfuse", "--glpk", "--lp", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_LPCOLOR = ["--notile", "--smartfuse", "--glpk", "--lpcolor", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_DFP = ["--notile", "--smartfuse", "--glpk", "--dfp", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_CLUSTERSCC = ["--notile", "--smartfuse", "--glpk", "--clusterscc", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_HYBRIDFUSE = ["--notile", "--smartfuse", "--glpk", "--hybridfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_DELAYEDCUT = ["--notile", "--smartfuse", "--glpk", "--dfp", "--delayedcut", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_TYPEDFUSE = ["--notile", "--typedfuse", "--glpk", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED_PARTIAL_LEVELS = [*FLAGS, "--ft=0", "--lt=1", "--nodiamond-tile", "--noparallel"]
 JACOBI_NODIAMOND = [*FLAGS, "--nodiamond-tile", "--noparallel"]
@@ -67,6 +73,7 @@ REG_MATMUL = ROOT / "tests" / "polopt-regression" / "inputs" / "matmul.loop"
 FUSION1 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion1.loop"
 FUSION2 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion2.loop"
 FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
+FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
@@ -247,6 +254,16 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --coeff-bound=10",
+    ),
+    Check(
+        "optimizer-coeff-bound-tight-effect",
+        TUNING_NOTILE_COEFF_BOUND_TIGHT,
+        FUSION10,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --coeff-bound=1",
+        effect_needles=("A[((2 * i0) + 0)]", "B[((2 * 1) + 1)]"),
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
         "optimizer-forceparallel-pass-through",
@@ -489,6 +506,18 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --glpk",
+                    effect_needles=("for i0 in range(0, M)", "A[i0][i2]"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-ilp-affine",
+                    TUNING_NOTILE_ILP,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --ilp",
+                    effect_needles=("for i0 in range(0, M)", "A[i0][i2]"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
                 ),
                 Check(
                     "optimizer-lp-affine",
@@ -497,6 +526,18 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --glpk --lp",
+                    effect_needles=("for i0 in range(0, M)", "A[i0][i2]"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-lpcolor-affine",
+                    TUNING_NOTILE_LPCOLOR,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --lpcolor",
+                    effect_needles=("for i0 in range(0, M)", "A[i0][i2]"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
                 ),
                 Check(
                     "optimizer-dfp-affine",
@@ -505,6 +546,38 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --glpk --dfp",
+                    effect_needles=("for i1 in range(i0, (N + i0))", "(-1 * i0)"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-clusterscc-affine",
+                    TUNING_NOTILE_CLUSTERSCC,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --clusterscc",
+                    effect_needles=("for i0 in range(0, M)", "A[i0][i2]"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-hybridfuse-affine",
+                    TUNING_NOTILE_HYBRIDFUSE,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --hybridfuse",
+                    effect_needles=("for i1 in range(i0, (N + i0))", "(-1 * i0)"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-delayedcut-affine",
+                    TUNING_NOTILE_DELAYEDCUT,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --dfp --delayedcut",
+                    effect_needles=("for i1 in range(i0, (N + i0))", "(-1 * i0)"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
                 ),
                 Check(
                     "optimizer-typedfuse-affine",
@@ -513,6 +586,8 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --typedfuse --glpk",
+                    effect_needles=("for i1 in range(i0, (N + i0))", "(-1 * i0)"),
+                    differs_from_args=(tuple(FUSION_NOTILE_SMART),),
                 ),
             ]
         )
