@@ -25,6 +25,7 @@ class Check:
     effect_needles: tuple[str, ...] = ()
     effect_absent: tuple[str, ...] = ()
     differs_from_args: tuple[tuple[str, ...], ...] = ()
+    implicit_control_file: str | None = None
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -467,6 +468,30 @@ CHECKS = [
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check(
+        "reject-implicit-tile-sizes-file",
+        MATMUL_TILED,
+        MATMUL,
+        False,
+        "implicit Pluto control file tile.sizes is not supported",
+        implicit_control_file="tile.sizes",
+    ),
+    Check(
+        "reject-implicit-fst-file",
+        MATMUL_TILED,
+        MATMUL,
+        False,
+        "implicit Pluto control file .fst is not supported",
+        implicit_control_file=".fst",
+    ),
+    Check(
+        "reject-implicit-precut-file",
+        MATMUL_TILED,
+        MATMUL,
+        False,
+        "implicit Pluto control file .precut is not supported",
+        implicit_control_file=".precut",
+    ),
+    Check(
         "identity-tiled",
         ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
         FUSION7,
@@ -667,6 +692,8 @@ ROUTE_BINDINGS = {
         "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
     "seq_optimize_identity = SPolOpt.opt_identity":
         "identity route must use the extracted SPolOpt.opt_identity entry",
+    "seq_optimize_identity_tiled = SBandTilingOpt.opt_identity_tiled":
+        "identity tiling route must use the extracted SBandTilingOpt.opt_identity_tiled entry",
     "seq_optimize_affine = SPolOpt.opt_affine":
         "affine route must use the extracted SPolOpt.opt_affine entry",
 }
@@ -701,10 +728,18 @@ def run_polopt_compat(args: list[str], fixture: Path, timeout: int) -> subproces
 
 
 def run_check(check: Check, timeout: int) -> str | None:
+    implicit_path = ROOT / check.implicit_control_file if check.implicit_control_file else None
+    if implicit_path is not None:
+        if implicit_path.exists():
+            return f"{check.name}: refusing to overwrite existing {implicit_path}"
+        implicit_path.write_text("16\n")
     try:
         proc = run_polopt_compat(check.args, check.fixture, timeout)
     except subprocess.TimeoutExpired:
         return f"{check.name}: native polopt compatibility mode timed out"
+    finally:
+        if implicit_path is not None:
+            implicit_path.unlink(missing_ok=True)
     output = proc.stdout + proc.stderr
     optimized = optimized_loop(output)
     if check.success:

@@ -81,10 +81,25 @@ let read_file path =
        with End_of_file -> ());
       Buffer.contents buf)
 
+let implicit_pluto_control_files = ["tile.sizes"; ".fst"; ".precut"]
+
+let implicit_pluto_control_file_error () =
+  match List.find_opt Sys.file_exists implicit_pluto_control_files with
+  | None -> None
+  | Some path ->
+      Some
+        (coqstring_of_camlstring
+           (Printf.sprintf
+              "implicit Pluto control file %s is not supported by polopt; remove it or use a future explicit file option"
+              path))
+
 (** scop to scop *)
 
 (** TODO: specify dump scop file name in pluto*)
 let run_pluto_scop flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -> Err msg
+  | None ->
   let inscop_file = tmp_file ".scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in 
   OpenScopPrinter.openscop_printer inscop_file inscop;
@@ -117,6 +132,9 @@ let text_has_line tag text =
   |> List.exists (fun line -> String.trim line = tag)
 
 let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -> Err msg
+  | None ->
   let inscop_file = tmp_file ".scop" in
   let midscop_file = inscop_file ^ ".midtransform.scop" in
   let posttile_file = inscop_file ^ ".posttile.scop" in
@@ -273,6 +291,9 @@ let extract_parallel_hint_from_outscop outscop_file =
   | hint :: _ -> Some hint
 
 let run_pluto_scop_with_parallel_hint flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -> Err msg
+  | None ->
   let inscop_file = tmp_file ".scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in
   OpenScopPrinter.openscop_printer inscop_file inscop;
@@ -301,6 +322,9 @@ let run_pluto_scop_with_parallel_hint flags inscop =
         Err (coqstring_of_camlstring ("scheduler failed"))
 
 let run_pluto_bridge flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -> Err msg
+  | None ->
   let inscop_file = tmp_file ".scop" in
   let stdout_file = tmp_file ".stdout" in
   OpenScopPrinter.openscop_printer inscop_file inscop;

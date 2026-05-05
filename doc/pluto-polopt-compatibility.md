@@ -57,7 +57,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - default GLPK-enabled Pluto baseline result: `67 / 67` checks passed
+  - default GLPK-enabled Pluto baseline result: `70 / 70` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -193,7 +193,7 @@ This category is now default artifact behavior for GLPK-backed Pluto. If DFP or 
 | `--maxfuse` | Supported as oracle tuning | Same pass-through mechanism as `--nofuse`. | Already supported for checked routes whose produced schedule validates. | Keep effect tests; broaden beyond affine-only fusion fixtures. |
 | `--smartfuse` | Supported as oracle tuning/default | Current recipes use it by default, and explicit `--smartfuse` is preserved in the Pluto oracle flag stream. | Already supported. | Keep explicit acceptance and ordering behavior. |
 | `--per-cc-obj` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `pca.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
-| `.fst` / `.precut` | Unsupported as public interface | Pluto can read working-directory files that force fusion or partial schedules. This is implicit global state. | Possible, but should not be implicit. | Add explicit `--fusion-structure FILE` or `--precut FILE`, copy into an isolated Pluto working directory, validate the output. |
+| `.fst` / `.precut` | Rejected as implicit files | Pluto can read working-directory files that force fusion or partial schedules. This is implicit global state, so the scheduler rejects stray files instead of letting them silently change the oracle output. | Possible, but should not be implicit. | Add explicit `--fusion-structure FILE` or `--precut FILE`, copy into an isolated Pluto working directory, validate the output. |
 | `--nodepbound` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `fusion2.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
 | `--coeff-bound` | Supported as oracle tuning | Search-bound tuning with a positive integer value. | Already supported for checked routes whose produced schedule validates. | Keep the tight-bound effect fixture and broaden value choices. |
 | `--fast-lin-ind-check`, `--flic` | Supported as oracle tuning | Native compatibility mode appends either alias to Pluto scheduler calls; `costfunc.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Keep both aliases covered; broaden beyond the current cost-function case. |
@@ -236,7 +236,7 @@ That is not just a solver knob if the final schedule relies on each iteration ha
 | `--nointratileopt` | Compatible no-op | Current checked recipes disable this Pluto rewrite unless `--intratileopt` is explicitly selected. | Already acceptable. | Keep as no-op with explanation and reject contradictory use with `--intratileopt`. |
 | `--determine-tile-size` | Supported as oracle tuning on tiled routes | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a final loop difference from fixed-size tiling. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and test interactions with diamond/second-level routes. |
 | `--cache-size`, `--data-element-size` | Supported with `--determine-tile-size` on tiled routes | Native compatibility mode parses positive integer values, appends them to Pluto scheduler calls, and rejects them when `--determine-tile-size` or a tiled route is absent. | Already supported for checked routes whose produced tile witness validates. | Broaden value choices and non-matmul fixtures. |
-| `tile.sizes` | Unsupported as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into isolated Pluto cwd, and validate actual generated tile sizes. |
+| `tile.sizes` | Rejected as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface, so the scheduler rejects a stray file instead of letting it silently change the oracle output. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into an isolated Pluto cwd, and validate actual generated tile sizes. |
 | `--ft`, `--lt` | Supported together on tiled routes | Pluto's first/last tiled hyperplane levels are passed through as non-negative values. The driver rejects one-sided or descending ranges. | Already supported for checked routes whose produced tiling witness validates. | Broaden effect fixtures and add out-of-range rejection tests because some valid-looking values trigger Pluto tiling assertions on small programs. |
 | bare `--identity` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface gap. | Keep requiring either `--identity --notile` or `--identity --tile`. |
 | `--identity --tile` with ISS/parallel/diamond/second-level composition | Unsupported composition | Plain sequential identity tiling reuses the checked full tiled route, but these mixed forms need their own theorem-facing route selection and tests. | Composition gap. | Add each composition only when it can map to an existing extracted pass or a new Coq pass/theorem. |
@@ -317,8 +317,8 @@ dependence testing.
      or `--identity --tile`
    - mixed `--identity --tile` compositions with ISS, parallel, diamond, or
      second-level tiling
-   - explicit `tile.sizes` file input instead of implicit working-directory state
-   - explicit `.fst` / `.precut` file input instead of implicit working-directory state
+   - explicit `tile.sizes` file input instead of rejected implicit working-directory state
+   - explicit `.fst` / `.precut` file input instead of rejected implicit working-directory state
 
 3. Treat semantic extensions as separate projects.
    - unroll-jam
@@ -342,7 +342,7 @@ make test-pluto-compat-suite
 Current result with the pinned GLPK-enabled Pluto baseline:
 
 ```text
-[pluto-compat-suite] OK (67 checks)
+[pluto-compat-suite] OK (70 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:

@@ -91,6 +91,7 @@ def check_rows() -> list[dict[str, object]]:
                 "effect_needles": list(check.effect_needles),
                 "effect_absent": list(check.effect_absent),
                 "differs_from_args": [list(args) for args in check.differs_from_args],
+                "implicit_control_file": check.implicit_control_file,
                 "fixture": str(check.fixture.relative_to(ROOT)),
             }
         )
@@ -137,6 +138,8 @@ def write_markdown(matrix: dict[str, object]) -> str:
         if row["differs_from_args"]:
             effect_parts.append("differs from baseline")
         effect = "; ".join(effect_parts) if effect_parts else ""
+        if row["implicit_control_file"]:
+            effect = (effect + "; " if effect else "") + f"with `{row['implicit_control_file']}` present"
         lines.append(f"| `{row['name']}` | {row['expect']} | `{row['fixture']}` | `{args}` | {effect} |")
     return "\n".join(lines) + "\n"
 
