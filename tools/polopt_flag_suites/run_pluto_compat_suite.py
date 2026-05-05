@@ -299,6 +299,16 @@ CHECKS = [
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
+        "second-level-iss",
+        [*FLAGS, "--nodiamond-tile", "--noparallel", "--iss", "--second-level-tile"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --second-level-tile",
+        effect_needles=("8 *", "/ 256", "32 *"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]),),
+    ),
+    Check(
         "parallel",
         [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"],
         MATMUL,

@@ -92,7 +92,7 @@ The supported surface is already nontrivial.
 | `--identity --tile --iss` | Runs checked ISS complete-cut recovery, then checked identity tiling over the split program. Current tests show the tiling effect remains available under `--iss`; the current `.loop` corpus did not contain a case where ISS uniquely enables identity tiling. | native compat `identity-tiled-iss`; `SBandTilingOpt.opt_identity_tiled_with_iss`; `Opt_identity_tiled_band_with_iss_correct` |
 | `--iss` | Runs ISS + affine + tiling route when the input satisfies ISS shape constraints. | existing ISS suite |
 | `--second-level-tile` | Runs checked second-level tiling route on full tiled paths. | native compat `second-level`; second-level suite |
-| `--iss --second-level-tile` | Route normalization and scheduler support the sequential ISS + second-level route. | `SLoopRoute.ml` and `Scheduler.ml`; needs a focused native compat case |
+| `--iss --second-level-tile` | Runs the sequential ISS + second-level route; the focused native compat case shows the expected two-level tile shape. | native compat `second-level-iss` |
 | `--parallel` | Runs Pluto-hinted checked parallel route for one parallel loop. | native compat `parallel`; parallel tests |
 | `--parallel-current d` | Runs explicit-dimension checked parallel route. | parallel-current suite |
 | `--diamond-tile` | Runs sequential diamond phase-aligned route on default full tiled path. | native compat `diamond`; diamond suite |
@@ -233,7 +233,7 @@ That is not just a solver knob if the final schedule relies on each iteration ha
 |---|---|---|---|---|
 | `--tile` | Supported on default full route | Current default is tiled. | Already supported. | Keep explicit compatibility. |
 | `--notile` | Supported | Affine-only route exists. | Already supported. | Keep. |
-| `--second-level-tile` | Supported on sequential full tiled route, including the ISS route at the route/scheduler level | Existing validator route supports it. | Already supported for ordinary route; ISS combination needs a dedicated regression case. | Keep and extend tests. |
+| `--second-level-tile` | Supported on sequential full tiled route, including the ISS route | Existing validator route supports it, and `second-level-iss` now checks the focused ISS combination. | Already supported for ordinary and ISS routes. | Keep and extend tests. |
 | `--intratileopt` | Supported as oracle tuning on tiled routes | Native compatibility mode treats it as an explicit alternative to `--nointratileopt`; it is appended to Pluto scheduler calls and validated by the existing phase split. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and interactions with diamond/second-level routes. |
 | `--nointratileopt` | Compatible no-op | Current checked recipes disable this Pluto rewrite unless `--intratileopt` is explicitly selected. | Already acceptable. | Keep as no-op with explanation and reject contradictory use with `--intratileopt`. |
 | `--determine-tile-size` | Supported as oracle tuning on tiled routes | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a final loop difference from fixed-size tiling. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and test interactions with diamond/second-level routes. |
