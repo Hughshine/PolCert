@@ -17,6 +17,9 @@ type config = SLoopConfig.config = {
   mutable force_parallel_strict : bool;
   mutable force_multipar : bool;
   mutable parallel_current_dim : int option;
+  mutable force_vector : bool;
+  mutable force_vector_strict : bool;
+  mutable vector_current_dim : int option;
   mutable pluto_compat_mode : bool;
   mutable pluto_compat_explain : bool;
   mutable pluto_compat_dry_run : bool;
@@ -30,6 +33,7 @@ type config = SLoopConfig.config = {
   mutable pluto_candldep_seen : bool;
   mutable pluto_intratileopt_seen : bool;
   mutable pluto_no_intratileopt_seen : bool;
+  mutable pluto_prevector_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
   mutable pluto_extra_flags : string list;
@@ -49,7 +53,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --pluto-compat [--explain] [--dry-run] <Pluto-like optimizer flags> <file.loop>\n"
@@ -101,6 +105,14 @@ let usage prog =
       "                         dimension d; supported on identity, affine-only, and full\n";
       "                         tiled paths, including their `--iss` variants and the\n";
       "                         non-ISS diamond route\n";
+      "  --vector          : experimental checked `vector for` route driven by Pluto\n";
+      "                       `--prevector` loop hints; it reuses the same doall checker\n";
+      "                       as --parallel because Pluto marks vector loops from the\n";
+      "                       same parallel-loop analysis\n";
+      "  --vector-strict   : with `--vector`, require the certified vector loop to be the\n";
+      "                       Pluto-hinted dimension\n";
+      "  --vector-current d : theorem-aligned checked `vector for` on explicit current\n";
+      "                         dimension d, using the parallel/doall certificate\n";
       "  --pluto-compat    : parse Pluto-style optimizer flags in this OCaml driver,\n";
       "                      reject unsupported Pluto defaults/features with explicit\n";
       "                      reasons, then run the matching checked polopt route\n";
@@ -114,6 +126,7 @@ let usage prog =
       Printf.sprintf "  %s --parallel file.loop             # Pluto-hinted verified parallel path\n" prog;
       Printf.sprintf "  %s --parallel --parallel-strict file.loop\n" prog;
       Printf.sprintf "  %s --parallel-current 0 file.loop   # theorem-aligned explicit-dimension parallel path\n" prog;
+      Printf.sprintf "  %s --vector-current 0 file.loop     # theorem-aligned explicit-dimension vector path\n" prog;
       Printf.sprintf "  %s --diamond-tile --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --iss --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --notile file.loop               # affine-only checked path\n" prog;
@@ -123,7 +136,7 @@ let usage prog =
       Printf.sprintf "  %s --validate-tiling-openscop mid.scop after.scop\n" prog;
       Printf.sprintf "  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n" prog;
       Printf.sprintf "  %s --iss --identity file.loop       # ISS-only checked split path\n" prog;
-      Printf.sprintf "  %s --pluto-compat --tile --smartfuse --nointratileopt --noprevector --nounrolljam --rar --nodiamond-tile --noparallel file.loop\n" prog;
+      Printf.sprintf "  %s --pluto-compat --tile --smartfuse --nointratileopt --prevector --nounrolljam --rar --nodiamond-tile --noparallel file.loop\n" prog;
     ]
 
 let usage_error prog msg =
@@ -290,7 +303,6 @@ let known_rejection_reason = function
   | "--bee" -> Some "Bee pragmas are Pluto codegen output, while polopt uses its own codegen"
   | "--cloogsh" -> Some "Cloog codegen tuning is outside the polopt checked route"
   | "--indent" -> Some "formatting is outside the optimizer-validation route"
-  | "--prevector" -> Some "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen"
   | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -380,6 +392,7 @@ let pluto_polopt_args cfg =
     else if cfg.force_diamond_tile then args := !args @ ["--diamond-tile"]
   end;
   if cfg.force_parallel then args := !args @ ["--parallel"];
+  if cfg.force_vector then args := !args @ ["--vector"];
   !args
 
 let print_pluto_explain cfg =
@@ -409,12 +422,16 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--tile and --notile are both present; this driver rejects contradictory phase controls";
     if cfg.parallel_current_dim <> None then
       pluto_reject prog "--parallel-current: not a Pluto flag; use native polopt mode for explicit-current parallel certification";
+    if cfg.vector_current_dim <> None then
+      pluto_reject prog "--vector-current: not a Pluto flag; use native polopt mode for explicit-current vector certification";
     if cfg.pluto_parallel_seen && cfg.pluto_no_parallel_seen then
       pluto_reject prog "--parallel and --noparallel are both present; this driver rejects contradictory phase controls";
     if cfg.pluto_diamond_seen && cfg.pluto_nodiamond_seen then
       pluto_reject prog "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this driver rejects contradictory phase controls";
     if cfg.pluto_intratileopt_seen && cfg.pluto_no_intratileopt_seen then
       pluto_reject prog "--intratileopt and --nointratileopt are both present; this driver rejects contradictory tile-schedule controls";
+    if cfg.pluto_prevector_seen && cfg.pluto_no_prevector_seen then
+      pluto_reject prog "--prevector and --noprevector are both present; this driver rejects contradictory vector controls";
     if (pluto_extra_has "--lastwriter" cfg) && (pluto_extra_has "--nolastwriter" cfg) then
       pluto_reject prog "--lastwriter and --nolastwriter are both present; this driver rejects contradictory dependence controls";
     if cfg.pluto_isldep_seen && cfg.pluto_candldep_seen then
@@ -425,16 +442,23 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--lastwriter is only supported with Pluto's ISL dependence tester, not --candldep";
     if not (cfg.pluto_intratileopt_seen || cfg.pluto_no_intratileopt_seen) then
       pluto_reject prog "Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly";
-    if not cfg.pluto_no_prevector_seen then
-      pluto_reject prog "Pluto enables --prevector by default; pass --noprevector because polopt does not use Pluto codegen vector marking";
+    if not cfg.pluto_no_prevector_seen then begin
+      cfg.force_vector <- true;
+      add_pluto_note cfg
+        "Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel"
+    end;
     if not cfg.pluto_no_unrolljam_seen then
       pluto_reject prog "Pluto enables --unrolljam by default; pass --nounrolljam because polopt does not use Pluto unroll-jam output";
     if (not cfg.force_parallel) && not cfg.pluto_no_parallel_seen then
       pluto_reject prog "Pluto enables --parallel by default; pass --noparallel or --parallel explicitly";
+    if cfg.force_vector && cfg.force_parallel then
+      pluto_reject prog "--prevector/--vector cannot be combined with --parallel in the current checked annotation surface";
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then
       pluto_reject prog "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
+    if cfg.force_identity && cfg.force_vector && not cfg.pluto_tile_seen then
+      pluto_reject prog "--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
     if cfg.force_identity && cfg.force_second_level_tile then
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.force_diamond_tile then
@@ -508,6 +532,9 @@ let parse_args () : config =
       force_parallel_strict = false;
       force_multipar = false;
       parallel_current_dim = None;
+      force_vector = false;
+      force_vector_strict = false;
+      vector_current_dim = None;
       pluto_compat_mode = false;
       pluto_compat_explain = false;
       pluto_compat_dry_run = false;
@@ -521,6 +548,7 @@ let parse_args () : config =
       pluto_candldep_seen = false;
       pluto_intratileopt_seen = false;
       pluto_no_intratileopt_seen = false;
+      pluto_prevector_seen = false;
       pluto_no_prevector_seen = false;
       pluto_no_unrolljam_seen = false;
       pluto_extra_flags = [];
@@ -538,6 +566,9 @@ let parse_args () : config =
   in
   let invalid_non_negative_int prog =
     usage_error prog "option --parallel-current expects a non-negative integer"
+  in
+  let invalid_vector_non_negative_int prog =
+    usage_error prog "option --vector-current expects a non-negative integer"
   in
   let rec go i =
     if i >= Array.length Sys.argv then cfg
@@ -615,6 +646,11 @@ let parse_args () : config =
           add_pluto_note cfg "--innerpar is implicit in polopt's current --parallel route";
           go (i + 1)
       | "--parallel-strict" -> cfg.force_parallel_strict <- true; go (i + 1)
+      | "--vector" | "--vectorize" ->
+          cfg.force_vector <- true;
+          cfg.pluto_prevector_seen <- true;
+          go (i + 1)
+      | "--vector-strict" -> cfg.force_vector_strict <- true; go (i + 1)
       | "--tile-sizes-file" ->
           if i + 1 >= Array.length Sys.argv then
             pluto_reject Sys.argv.(0) "--tile-sizes-file requires a file path";
@@ -671,7 +707,13 @@ let parse_args () : config =
       | "--noprevector" ->
           enable_pluto_compat cfg;
           cfg.pluto_no_prevector_seen <- true;
-          add_pluto_note cfg "--noprevector accepted because polopt does not use Pluto codegen vector marking";
+          add_pluto_note cfg "--noprevector accepted; no checked vector annotation is requested";
+          go (i + 1)
+      | "--prevector" ->
+          enable_pluto_compat cfg;
+          cfg.pluto_prevector_seen <- true;
+          cfg.force_vector <- true;
+          add_pluto_note cfg "--prevector selects the checked vector annotation route";
           go (i + 1)
       | "--nounrolljam" ->
           enable_pluto_compat cfg;
@@ -727,6 +769,15 @@ let parse_args () : config =
           in
           if dim < 0 then invalid_non_negative_int Sys.argv.(0);
           cfg.parallel_current_dim <- Some dim;
+          go (i + 2)
+      | "--vector-current" ->
+          if i + 1 >= Array.length Sys.argv then invalid_vector_non_negative_int Sys.argv.(0);
+          let dim =
+            try int_of_string Sys.argv.(i + 1)
+            with Failure _ -> invalid_vector_non_negative_int Sys.argv.(0)
+          in
+          if dim < 0 then invalid_vector_non_negative_int Sys.argv.(0);
+          cfg.vector_current_dim <- Some dim;
           go (i + 2)
       | "--help" | "-h" ->
           print_endline (usage Sys.argv.(0));

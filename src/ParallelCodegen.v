@@ -165,9 +165,7 @@ with erase_parallelize_dim_stmts_to_loop_eq
   : erase_to_loop_stmts (ParallelLoop.parallelize_dim_stmts d ss) = erase_to_loop_stmts ss.
 Proof.
   - destruct s; simpl.
-    + destruct l.
-      * destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_to_loop_eq; reflexivity.
-      * destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_to_loop_eq; reflexivity.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_to_loop_eq; reflexivity.
     + reflexivity.
     + rewrite erase_parallelize_dim_stmts_to_loop_eq. reflexivity.
     + rewrite erase_parallelize_dim_stmt_to_loop_eq. reflexivity.
@@ -183,6 +181,33 @@ Lemma erase_parallelize_dim_to_loop_eq :
 Proof.
   intros d [[s ctxt] vars]; simpl.
   rewrite erase_parallelize_dim_stmt_to_loop_eq.
+  reflexivity.
+Qed.
+
+Fixpoint erase_vectorize_dim_stmt_to_loop_eq
+  (d : nat) (s : ParallelLoop.stmt) {struct s}
+  : erase_to_loop_stmt (ParallelLoop.vectorize_dim_stmt d s) = erase_to_loop_stmt s
+with erase_vectorize_dim_stmts_to_loop_eq
+  (d : nat) (ss : ParallelLoop.stmt_list) {struct ss}
+  : erase_to_loop_stmts (ParallelLoop.vectorize_dim_stmts d ss) = erase_to_loop_stmts ss.
+Proof.
+  - destruct s; simpl.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_vectorize_dim_stmt_to_loop_eq; reflexivity.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmts_to_loop_eq. reflexivity.
+    + rewrite erase_vectorize_dim_stmt_to_loop_eq. reflexivity.
+  - destruct ss; simpl.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmt_to_loop_eq, erase_vectorize_dim_stmts_to_loop_eq.
+      reflexivity.
+Qed.
+
+Lemma erase_vectorize_dim_to_loop_eq :
+  forall d p,
+    erase_to_loop (ParallelLoop.vectorize_dim d p) = erase_to_loop p.
+Proof.
+  intros d [[s ctxt] vars]; simpl.
+  rewrite erase_vectorize_dim_stmt_to_loop_eq.
   reflexivity.
 Qed.
 
@@ -380,6 +405,20 @@ Definition annotated_codegen_raw
   BIND pl <- tagged_prepared_codegen_raw pp -;
   pure (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl).
 
+Definition vector_annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl <- tagged_prepared_codegen pp -;
+  pure (ParallelLoop.vectorize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Definition vector_annotated_codegen_raw
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl <- tagged_prepared_codegen_raw pp -;
+  pure (ParallelLoop.vectorize_dim cert.(ParallelValidator.certified_dim) pl).
+
 Fixpoint parallelize_certified_dims
   (certs : list ParallelValidator.parallel_cert)
   (pl : ParallelLoop.t) : ParallelLoop.t :=
@@ -474,6 +513,17 @@ Definition checked_annotated_codegen
     BIND pl_raw <- annotated_codegen_raw pp cert -;
     if all_es_safeb pl_raw then pure (Okk pl_raw)
     else pure (Err "Annotated parallel codegen produced non-affine instruction trace loop"%string).
+
+Definition checked_vector_annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp (result ParallelLoop.t) :=
+  BIND pl <- vector_annotated_codegen pp cert -;
+  if all_es_safeb pl then pure (Okk pl)
+  else
+    BIND pl_raw <- vector_annotated_codegen_raw pp cert -;
+    if all_es_safeb pl_raw then pure (Okk pl_raw)
+    else pure (Err "Annotated vector codegen produced non-affine instruction trace loop"%string).
 
 Definition checked_annotated_codegen_many
   (pp : PolyLang.t)
@@ -582,6 +632,48 @@ Proof.
   exact Herase.
 Qed.
 
+Lemma vector_annotated_codegen_erase_eq :
+  forall pp cert pl,
+    mayReturn (vector_annotated_codegen pp cert) pl ->
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold vector_annotated_codegen in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_vectorize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma vector_annotated_codegen_raw_erase_eq :
+  forall pp cert pl,
+    mayReturn (vector_annotated_codegen_raw pp cert) pl ->
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold vector_annotated_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_raw_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_vectorize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
 Lemma erase_parallelize_certified_dims_to_loop_eq :
   forall certs pl,
     erase_to_loop (parallelize_certified_dims certs pl) = erase_to_loop pl.
@@ -670,6 +762,54 @@ Lemma annotated_codegen_raw_refines_prepared_codegen :
 Proof.
   intros pp cert [[s ctxt] vars] st st' Hgen Hsafe Hsem.
   pose proof (annotated_codegen_raw_erase_eq pp cert ((s, ctxt), vars) Hgen)
+    as [loop [Hprep Herase]].
+  pose proof (ParallelLoop.semantics_refines_erased ((s, ctxt), vars) st st' Hsafe Hsem)
+    as [st'' [Herased Heq]].
+  exists loop, st''.
+  split; [exact Hprep|].
+  split.
+  - rewrite <- Herase.
+    eapply erase_to_loop_semantics.
+    exact Herased.
+  - exact Heq.
+Qed.
+
+Lemma vector_annotated_codegen_refines_prepared_codegen :
+  forall pp cert pl st st',
+    mayReturn (vector_annotated_codegen pp cert) pl ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists loop st'',
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      Loop.semantics loop st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pp cert [[s ctxt] vars] st st' Hgen Hsafe Hsem.
+  pose proof (vector_annotated_codegen_erase_eq pp cert ((s, ctxt), vars) Hgen)
+    as [loop [Hprep Herase]].
+  pose proof (ParallelLoop.semantics_refines_erased ((s, ctxt), vars) st st' Hsafe Hsem)
+    as [st'' [Herased Heq]].
+  exists loop, st''.
+  split; [exact Hprep|].
+  split.
+  - rewrite <- Herase.
+    eapply erase_to_loop_semantics.
+    exact Herased.
+  - exact Heq.
+Qed.
+
+Lemma vector_annotated_codegen_raw_refines_prepared_codegen :
+  forall pp cert pl st st',
+    mayReturn (vector_annotated_codegen_raw pp cert) pl ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists loop st'',
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      Loop.semantics loop st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pp cert [[s ctxt] vars] st st' Hgen Hsafe Hsem.
+  pose proof (vector_annotated_codegen_raw_erase_eq pp cert ((s, ctxt), vars) Hgen)
     as [loop [Hprep Herase]].
   pose proof (ParallelLoop.semantics_refines_erased ((s, ctxt), vars) st st' Hsafe Hsem)
     as [st'' [Herased Heq]].
@@ -774,6 +914,50 @@ Proof.
   - exact Heq.
 Qed.
 
+Theorem vector_annotated_codegen_correct_general :
+  forall pol cert pl st st',
+    mayReturn (vector_annotated_codegen (PolyLang.current_view_pprog pol) cert) pl ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pol cert pl st st' Hcodegen Hwf Hsafe Hsem.
+  destruct
+    (vector_annotated_codegen_refines_prepared_codegen
+       (PolyLang.current_view_pprog pol) cert pl st st'
+       Hcodegen Hsafe Hsem)
+    as [loop [st'' [Hprep [Hloop Heq]]]].
+  exists st''.
+  split.
+  - eapply PrepareCore.prepared_codegen_correct_general; eauto.
+  - exact Heq.
+Qed.
+
+Theorem vector_annotated_codegen_raw_correct_general :
+  forall pol cert pl st st',
+    mayReturn (vector_annotated_codegen_raw (PolyLang.current_view_pprog pol) cert) pl ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelLoop.trace_safe pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pol cert pl st st' Hcodegen Hwf Hsafe Hsem.
+  destruct
+    (vector_annotated_codegen_raw_refines_prepared_codegen
+       (PolyLang.current_view_pprog pol) cert pl st st'
+       Hcodegen Hsafe Hsem)
+    as [loop [st'' [Hprep [Hloop Heq]]]].
+  exists st''.
+  split.
+  - eapply PrepareCore.prepared_codegen_raw_correct_general; eauto.
+  - exact Heq.
+Qed.
+
 Theorem annotated_codegen_many_correct_general :
   forall pol certs pl st st',
     mayReturn (annotated_codegen_many (PolyLang.current_view_pprog pol) certs) pl ->
@@ -850,6 +1034,38 @@ Proof.
       discriminate.
 Qed.
 
+Lemma checked_vector_annotated_codegen_ok_inv :
+  forall pp cert pl,
+    mayReturn (checked_vector_annotated_codegen pp cert) (Okk pl) ->
+    (mayReturn (vector_annotated_codegen pp cert) pl /\
+     ParallelLoop.trace_safe pl) \/
+    (mayReturn (vector_annotated_codegen_raw pp cert) pl /\
+     ParallelLoop.trace_safe pl).
+Proof.
+  intros pp cert pl Hcodegen.
+  unfold checked_vector_annotated_codegen in Hcodegen.
+  apply mayReturn_bind in Hcodegen.
+  destruct Hcodegen as [pl' [Hann Hret]].
+  destruct (all_es_safeb pl') eqn:Hsafe.
+  - apply mayReturn_pure in Hret.
+    inversion Hret; subst pl'.
+    left.
+    split.
+    + exact Hann.
+    + eapply all_es_safeb_sound; eauto.
+  - apply mayReturn_bind in Hret.
+    destruct Hret as [pl_raw [Hraw Hret]].
+    destruct (all_es_safeb pl_raw) eqn:Hsafe_raw.
+    + apply mayReturn_pure in Hret.
+      inversion Hret; subst pl_raw.
+      right.
+      split.
+      * exact Hraw.
+      * eapply all_es_safeb_sound; eauto.
+    + apply mayReturn_pure in Hret.
+      discriminate.
+Qed.
+
 Lemma checked_annotated_codegen_many_ok_inv :
   forall pp certs pl,
     mayReturn (checked_annotated_codegen_many pp certs) (Okk pl) ->
@@ -897,6 +1113,23 @@ Proof.
     as [[Hann Hsafe] | [Hann Hsafe]].
   - eapply annotated_codegen_correct_general; eauto.
   - eapply annotated_codegen_raw_correct_general; eauto.
+Qed.
+
+Theorem checked_vector_annotated_codegen_correct_general :
+  forall pol cert pl st st',
+    mayReturn (checked_vector_annotated_codegen (PolyLang.current_view_pprog pol) cert) (Okk pl) ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      Instr.State.eq st' st''.
+Proof.
+  intros pol cert pl st st' Hcodegen Hwf Hsem.
+  destruct (checked_vector_annotated_codegen_ok_inv
+              (PolyLang.current_view_pprog pol) cert pl Hcodegen)
+    as [[Hann Hsafe] | [Hann Hsafe]].
+  - eapply vector_annotated_codegen_correct_general; eauto.
+  - eapply vector_annotated_codegen_raw_correct_general; eauto.
 Qed.
 
 Theorem checked_annotated_codegen_many_correct_general :

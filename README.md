@@ -49,6 +49,7 @@ For the full local regression flow, also run:
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
 opam exec -- make test-parallel-current-suite
+opam exec -- make test-vector-current-suite
 opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
 opam exec -- make test-diamond-tiling-suite
@@ -83,8 +84,10 @@ It also exposes:
 
 - an optional theorem-aligned ISS path via `--iss`
 - a theorem-aligned explicit-dimension parallel path via `--parallel-current`
+- a theorem-aligned explicit-dimension vector annotation path via `--vector-current`
 - experimental Pluto-hinted parallel routes via `--parallel` and
   `--parallel-strict`
+- experimental Pluto-hinted vector annotation via `--vector` / `--prevector`
 - experimental checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
 - the ordinary-tiling compatibility selector `--legacy-generic-tiling`
@@ -106,8 +109,10 @@ It also exposes:
   - the default verified affine+tiling route
   - the optional verified ISS+affine+tiling route (`--iss`)
   - a theorem-aligned explicit-dimension parallel route (`--parallel-current`)
+  - a theorem-aligned explicit-dimension vector route (`--vector-current`)
   - experimental Pluto-hinted parallel routes (`--parallel`,
     `--parallel-strict`)
+  - experimental Pluto-hinted vector annotation (`--vector`, `--prevector`)
 - `polcert` now supports:
   - direct affine validation
   - phase-aligned tiling validation
@@ -140,6 +145,7 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
 - `make test-parallel-current-suite`
+- `make test-vector-current-suite`
 - `make test-second-level-tile-suite`
 - the strict `polopt` benchmark suite
 

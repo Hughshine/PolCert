@@ -45,6 +45,28 @@ Definition checked_parallel_current_annotated_codegen_at
   : imp (result ParallelCodegenCore.ParallelLoop.t) :=
   checked_parallel_current_annotated_codegen pol (parallel_plan_of_dim d).
 
+Definition checked_vector_current_annotated_codegen
+    (pol : PolyLang.t)
+    (plan : ValidatorCore.parallel_plan)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND cert_res <- ValidatorCore.checked_parallelize_current
+                     (PolyLang.current_view_pprog pol) plan -;
+  match cert_res with
+  | Okk cert =>
+      let cert' :=
+        {| ParallelCodegenCore.ParallelValidator.certified_dim :=
+             cert.(ValidatorCore.ParallelCore.certified_dim) |} in
+      ParallelCodegenCore.checked_vector_annotated_codegen
+        (PolyLang.current_view_pprog pol) cert'
+  | Err msg => pure (Err msg)
+  end.
+
+Definition checked_vector_current_annotated_codegen_at
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_vector_current_annotated_codegen pol (parallel_plan_of_dim d).
+
 Definition parallel_current_identity_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
@@ -57,6 +79,19 @@ Definition parallel_current_affine_prepared_from_poly
   : imp (result ParallelCodegenCore.ParallelLoop.t) :=
   BIND pol' <- CoreOpt.checked_affine_schedule pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
+
+Definition vector_current_identity_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_vector_current_annotated_codegen_at pol d.
+
+Definition vector_current_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- CoreOpt.checked_affine_schedule pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
 
 Definition try_verified_tiling_after_phase_mid_poly
     (pol_mid : PolyLang.t)
@@ -393,6 +428,55 @@ Definition parallel_current_prepared_from_poly_with_iss
   BIND pol' <- phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
+Definition vector_current_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_identity_tiled_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_diamond_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_diamond_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_identity_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- iss_only_prepared_from_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- iss_affine_prepared_from_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
+Definition vector_current_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
 Definition parallel_dummy : ParallelCodegenCore.ParallelLoop.t :=
   ParallelCodegenCore.tag_loop LoopIR.dummy.
 
@@ -468,6 +552,78 @@ Definition Opt_parallel_current_with_iss_result
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   parallel_current_prepared_from_poly_with_iss pol d.
 
+Definition Opt_vector_current_identity_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_prepared_from_poly pol d.
+
+Definition Opt_vector_current_identity_tiled_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_tiled_prepared_from_poly pol d.
+
+Definition Opt_vector_current_affine_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_affine_prepared_from_poly pol d.
+
+Definition Opt_vector_current_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_prepared_from_poly pol d.
+
+Definition Opt_vector_current_diamond_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_diamond_prepared_from_poly pol d.
+
+Definition Opt_vector_current_diamond_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_diamond_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_identity_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_affine_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_affine_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_prepared_from_poly_with_iss pol d.
+
 Definition Opt_parallel_current_identity
     (loop : LoopIR.t)
     (d : nat)
@@ -531,6 +687,69 @@ Definition Opt_parallel_current_with_iss
   BIND res <- Opt_parallel_current_with_iss_result loop d -;
   res_to_alarm parallel_dummy res.
 
+Definition Opt_vector_current_identity
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_identity_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_tiled
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_identity_tiled_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_affine
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_affine_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_diamond
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_diamond_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_diamond_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_diamond_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_identity_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_affine_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_affine_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
 Lemma checked_parallel_current_annotated_codegen_correct :
   forall pol plan pl st st',
     mayReturn (checked_parallel_current_annotated_codegen pol plan) (Okk pl) ->
@@ -545,6 +764,24 @@ Proof.
   destruct Hopt as [cert_res [Hcert Hret]].
   destruct cert_res as [cert|msg].
   - eapply ParallelCodegenCore.checked_annotated_codegen_correct_general; eauto.
+  - apply mayReturn_pure in Hret.
+    discriminate.
+Qed.
+
+Lemma checked_vector_current_annotated_codegen_correct :
+  forall pol plan pl st st',
+    mayReturn (checked_vector_current_annotated_codegen pol plan) (Okk pl) ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelCodegenCore.ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol plan pl st st' Hopt Hwf Hsem.
+  unfold checked_vector_current_annotated_codegen in Hopt.
+  apply mayReturn_bind in Hopt.
+  destruct Hopt as [cert_res [Hcert Hret]].
+  destruct cert_res as [cert|msg].
+  - eapply ParallelCodegenCore.checked_vector_annotated_codegen_correct_general; eauto.
   - apply mayReturn_pure in Hret.
     discriminate.
 Qed.

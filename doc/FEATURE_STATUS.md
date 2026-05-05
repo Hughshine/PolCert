@@ -88,6 +88,20 @@ Status:
 - supported on identity, affine-only, and full tiled paths
 - also available with `--iss`
 
+### Explicit-dimension vector mode
+
+Command:
+
+```sh
+./polopt --vector-current 0 file.loop
+```
+
+Status:
+
+- theorem-aligned checked vector annotation for an explicit current dimension
+- reuses the parallel/doall certificate, matching Pluto's prevector source
+- also exposed through Pluto compatibility as `--prevector`
+
 Proof objects:
 
 - `driver/ParallelPolOpt.v`
@@ -205,6 +219,7 @@ Main workflow:
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
 - `make test-parallel-current-suite`
+- `make test-vector-current-suite`
 - `make test-second-level-tile-suite`
 - `make test-polopt-loop-suite`
 

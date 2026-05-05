@@ -33,9 +33,11 @@ class Check:
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
+FLAGS_PREVECTOR = ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--nounrolljam", "--rar"]
 FLAGS_INTRATILE = ["--tile", "--smartfuse", "--intratileopt", "--noprevector", "--nounrolljam", "--rar"]
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_PREVECTOR = [*FLAGS_PREVECTOR, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_INTRATILE = [*FLAGS_INTRATILE, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
@@ -474,7 +476,16 @@ CHECKS = [
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_FULL_DIAMOND_ISS)),
     ),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
-    Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
+    Check(
+        "prevector",
+        MATMUL_TILED_PREVECTOR,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --vector",
+        effect_needles=("vector for",),
+        differs_from_args=(tuple(MATMUL_TILED),),
+    ),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
     Check("reject-intratile-conflict", ["--tile", "--intratileopt", "--nointratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory tile-schedule controls"),
     Check("reject-lastwriter-conflict", ["--notile", "--lastwriter", "--nolastwriter", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory dependence controls"),

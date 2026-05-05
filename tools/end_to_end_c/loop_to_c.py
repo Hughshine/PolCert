@@ -33,9 +33,14 @@ def transpile_line(line: str) -> list[str]:
 
     indent = line[: len(line) - len(line.lstrip())]
 
-    if stripped.startswith("parallel for ") or stripped.startswith("for "):
+    if (
+        stripped.startswith("parallel for ")
+        or stripped.startswith("vector for ")
+        or stripped.startswith("for ")
+    ):
         is_parallel = stripped.startswith("parallel for ")
-        prefix = "parallel for " if is_parallel else "for "
+        is_vector = stripped.startswith("vector for ")
+        prefix = "parallel for " if is_parallel else "vector for " if is_vector else "for "
         rest = stripped[len(prefix) :]
         marker = " in range("
         if marker not in rest or not rest.endswith(") {"):
@@ -46,6 +51,8 @@ def transpile_line(line: str) -> list[str]:
         loop_line = f"{indent}for (long long {var.strip()} = {lb}; {var.strip()} < {ub}; ++{var.strip()}) {{"
         if is_parallel:
             return [f"{indent}#pragma omp parallel for", loop_line]
+        if is_vector:
+            return [f"{indent}#pragma omp simd", loop_line]
         return [loop_line]
 
     if stripped.startswith("if "):

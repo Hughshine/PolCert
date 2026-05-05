@@ -40,6 +40,8 @@ class PlutoFlagState:
     full_diamond_tile: bool = False
     parallel: bool = False
     parallel_seen: bool = False
+    vector: bool = False
+    prevector_seen: bool = False
     multipar: bool = False
     innerpar_seen: bool = False
     no_parallel_seen: bool = False
@@ -111,7 +113,6 @@ CODEGEN_OPTIONS = {
     "--bee": "Bee pragmas are Pluto codegen output, while polopt uses its own codegen",
     "--cloogsh": "Cloog codegen tuning is outside the polopt checked route",
     "--indent": "formatting is outside the optimizer-validation route",
-    "--prevector": "prevectorization is a Pluto codegen/post-transform effect, while polopt uses its own codegen",
     "--unrolljam": "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route",
 }
 
@@ -423,7 +424,11 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--scalpriv passed through only with --candldep; PolOpt still validates the output schedule under the original scalar storage semantics")
         elif flag == "--noprevector":
             state.no_prevector_seen = True
-            state.add_note("--noprevector accepted because polopt does not use Pluto codegen vector marking")
+            state.add_note("--noprevector accepted; no checked vector annotation is requested")
+        elif flag == "--prevector":
+            state.prevector_seen = True
+            state.vector = True
+            state.add_note("--prevector selects the checked vector annotation route")
         elif flag == "--nounrolljam":
             state.no_unrolljam_seen = True
             state.add_note("--nounrolljam accepted because polopt does not use Pluto unroll-jam output")
@@ -473,6 +478,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this wrapper rejects contradictory phase controls")
     if state.intratileopt_seen and state.no_intratileopt_seen:
         raise Reject("--intratileopt and --nointratileopt are both present; this wrapper rejects contradictory tile-schedule controls")
+    if state.prevector_seen and state.no_prevector_seen:
+        raise Reject("--prevector and --noprevector are both present; this wrapper rejects contradictory vector controls")
     oracle_flags = state.oracle_flags or []
     if "--lastwriter" in oracle_flags and "--nolastwriter" in oracle_flags:
         raise Reject("--lastwriter and --nolastwriter are both present; this wrapper rejects contradictory dependence controls")
@@ -485,16 +492,21 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if not (state.intratileopt_seen or state.no_intratileopt_seen):
         raise Reject("Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly")
     if not state.no_prevector_seen:
-        raise Reject("Pluto enables --prevector by default; pass --noprevector because polopt does not use Pluto codegen vector marking")
+        state.vector = True
+        state.add_note("Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel")
     if not state.no_unrolljam_seen:
         raise Reject("Pluto enables --unrolljam by default; pass --nounrolljam because polopt does not use Pluto unroll-jam output")
     if not state.parallel and not state.no_parallel_seen:
         raise Reject("Pluto enables --parallel by default; pass --noparallel or --parallel explicitly")
+    if state.vector and state.parallel:
+        raise Reject("--prevector/--vector cannot be combined with --parallel in the current checked annotation surface")
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
     identity_tiled = state.identity and state.tile_seen and state.tile
     if state.identity and state.parallel and not identity_tiled:
         raise Reject("--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
+    if state.identity and state.vector and not identity_tiled:
+        raise Reject("--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
     if identity_tiled and state.second_level_tile:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
     if identity_tiled and state.diamond_tile:
@@ -554,6 +566,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
             args.append("--diamond-tile")
     if state.parallel:
         args.append("--parallel")
+    if state.vector:
+        args.append("--vector")
     return args
 
 
@@ -583,7 +597,8 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
         args.append("--parallel")
     else:
         args.append("--noparallel")
-    args.extend(["--noprevector", "--nounrolljam"])
+    args.append("--prevector" if state.vector else "--noprevector")
+    args.append("--nounrolljam")
     if state.no_intratileopt_seen:
         args.append("--nointratileopt")
     if state.oracle_flags:

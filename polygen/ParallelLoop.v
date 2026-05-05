@@ -29,7 +29,8 @@ Definition InstrPoint := ILSema.InstrPoint.
 
 Inductive loop_mode :=
 | SeqMode
-| ParMode.
+| ParMode
+| VecMode.
 
 Inductive stmt :=
 | Loop : loop_mode -> option nat -> expr -> expr -> stmt -> stmt
@@ -82,6 +83,30 @@ with parallelize_dim_stmts (d : nat) (ss : stmt_list) : stmt_list :=
 Definition parallelize_dim (d : nat) (p : t) : t :=
   let '(s, ctxt, vars) := p in
   (parallelize_dim_stmt d s, ctxt, vars).
+
+Fixpoint vectorize_dim_stmt (d : nat) (s : stmt) : stmt :=
+  match s with
+  | Loop SeqMode (Some d') lb ub body =>
+      Loop (if Nat.eqb d d' then VecMode else SeqMode)
+           (Some d')
+           lb
+           ub
+           (vectorize_dim_stmt d body)
+  | Loop mode od lb ub body =>
+      Loop mode od lb ub (vectorize_dim_stmt d body)
+  | Instr i es => Instr i es
+  | Seq ss => Seq (vectorize_dim_stmts d ss)
+  | Guard tst body => Guard tst (vectorize_dim_stmt d body)
+  end
+with vectorize_dim_stmts (d : nat) (ss : stmt_list) : stmt_list :=
+  match ss with
+  | SNil => SNil
+  | SCons s ss' => SCons (vectorize_dim_stmt d s) (vectorize_dim_stmts d ss')
+  end.
+
+Definition vectorize_dim (d : nat) (p : t) : t :=
+  let '(s, ctxt, vars) := p in
+  (vectorize_dim_stmt d s, ctxt, vars).
 
 Fixpoint of_loop_stmt (s : BaseLoop.stmt) : stmt :=
   match s with
@@ -188,6 +213,11 @@ Inductive par_trace : stmt -> list Z -> list InstrPoint -> Prop :=
     Forall2 (fun z tri => par_trace body (z :: env) tri) zs trs ->
     tr = concat trs ->
     par_trace (Loop SeqMode od lb ub body) env tr
+| PTLoopVec : forall od lb ub body env zs trs tr,
+    zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) ->
+    Forall2 (fun z tri => par_trace body (z :: env) tri) zs trs ->
+    tr = concat trs ->
+    par_trace (Loop VecMode od lb ub body) env tr
 | PTLoopPar : forall d lb ub body env zs trs tr,
     zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) ->
     Forall2 (fun z tri => seq_trace body (z :: env) tri) zs trs ->
@@ -239,11 +269,7 @@ with erase_parallelize_dim_stmts_eq_rec
   : erase_stmt_list (parallelize_dim_stmts d ss) = erase_stmt_list ss.
 Proof.
   - destruct s; simpl.
-    + destruct l.
-      * destruct o as [n|].
-        -- destruct (Nat.eqb d n); simpl; rewrite erase_parallelize_dim_stmt_eq_rec; reflexivity.
-        -- simpl. rewrite erase_parallelize_dim_stmt_eq_rec. reflexivity.
-      * destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_eq_rec; reflexivity.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_eq_rec; reflexivity.
     + reflexivity.
     + rewrite erase_parallelize_dim_stmts_eq_rec. reflexivity.
     + rewrite erase_parallelize_dim_stmt_eq_rec. reflexivity.
@@ -251,6 +277,46 @@ Proof.
     + reflexivity.
     + rewrite erase_parallelize_dim_stmt_eq_rec, erase_parallelize_dim_stmts_eq_rec.
       reflexivity.
+Qed.
+
+Fixpoint erase_vectorize_dim_stmt_eq_rec
+  (d : nat) (s : stmt) {struct s}
+  : erase_stmt (vectorize_dim_stmt d s) = erase_stmt s
+with erase_vectorize_dim_stmts_eq_rec
+  (d : nat) (ss : stmt_list) {struct ss}
+  : erase_stmt_list (vectorize_dim_stmts d ss) = erase_stmt_list ss.
+Proof.
+  - destruct s; simpl.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_vectorize_dim_stmt_eq_rec; reflexivity.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmts_eq_rec. reflexivity.
+    + rewrite erase_vectorize_dim_stmt_eq_rec. reflexivity.
+  - destruct ss; simpl.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmt_eq_rec, erase_vectorize_dim_stmts_eq_rec.
+      reflexivity.
+Qed.
+
+Lemma erase_vectorize_dim_stmt_eq :
+  forall d s,
+    erase_stmt (vectorize_dim_stmt d s) = erase_stmt s
+with erase_vectorize_dim_stmts_eq :
+  forall d ss,
+    erase_stmt_list (vectorize_dim_stmts d ss) = erase_stmt_list ss.
+Proof.
+  - intros d s.
+    apply erase_vectorize_dim_stmt_eq_rec.
+  - intros d ss.
+    apply erase_vectorize_dim_stmts_eq_rec.
+Qed.
+
+Lemma erase_vectorize_dim_eq :
+  forall d p,
+    erase_parallel (vectorize_dim d p) = erase_parallel p.
+Proof.
+  intros d [[s ctxt] vars]; simpl.
+  rewrite erase_vectorize_dim_stmt_eq.
+  reflexivity.
 Qed.
 
 Lemma erase_parallelize_dim_stmt_eq :
@@ -1037,8 +1103,21 @@ Proof.
       intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
     + inversion Htrace as
           [| | | |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat
+           |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat
            |d lb' ub' body' env' zs trs tr' Hzs Hfor Hinter];
         subst.
+      * simpl in Hsafe.
+        match goal with
+        | Hfor0 :
+            Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
+            pose proof
+              (par_trace_forall2_refines_erased
+                 body env IHbody zs0 trs0 mem1 mem2 Hna Hsafe Hfor0 Hsem)
+              as [mem2' [Hloop_sem Heq]]
+        end.
+        exists mem2'. split.
+        -- econstructor. exact Hloop_sem.
+        -- exact Heq.
       * simpl in Hsafe.
         match goal with
         | Hfor0 :
@@ -1091,7 +1170,7 @@ Proof.
     + inversion Htrace; subst.
       eapply par_trace_refines_erased_stmts; eauto.
     + inversion Htrace as
-          [| | env' tst st tr' Heval Hbodytrace | env' tst st Heval | |];
+          [| | env' tst st tr' Heval Hbodytrace | env' tst st Heval | | |];
         subst; simpl in Hsafe.
       * pose proof (IHbody env tr mem1 mem2 Hna Hsafe Hbodytrace Hsem)
           as [mem2' [Hbody_sem Heq]].

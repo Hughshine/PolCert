@@ -17,6 +17,9 @@ type config = {
   mutable force_parallel_strict : bool;
   mutable force_multipar : bool;
   mutable parallel_current_dim : int option;
+  mutable force_vector : bool;
+  mutable force_vector_strict : bool;
+  mutable vector_current_dim : int option;
   mutable pluto_compat_mode : bool;
   mutable pluto_compat_explain : bool;
   mutable pluto_compat_dry_run : bool;
@@ -30,6 +33,7 @@ type config = {
   mutable pluto_candldep_seen : bool;
   mutable pluto_intratileopt_seen : bool;
   mutable pluto_no_intratileopt_seen : bool;
+  mutable pluto_prevector_seen : bool;
   mutable pluto_no_prevector_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
   mutable pluto_extra_flags : string list;

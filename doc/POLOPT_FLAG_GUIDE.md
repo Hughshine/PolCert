@@ -73,7 +73,7 @@ These flags only matter on full tiled routes.
 These flags answer: if a tiling phase exists, which tiling family should
 produce and validate it?
 
-### 1.4 Parallel family selection
+### 1.4 Parallel and vector family selection
 
 - no parallel flag
   - stay sequential
@@ -84,9 +84,17 @@ produce and validate it?
     dimension
 - `--parallel-current d`
   - use the theorem-aligned explicit-dimension parallel route
+- `--vector`, `--prevector`
+  - use Pluto's vector loop hint when possible, then certify a doall current
+    dimension and emit `vector for`
+- `--vector-strict`
+  - refine `--vector`: require the certified loop to match Pluto's vector hint
+- `--vector-current d`
+  - use the theorem-aligned explicit-dimension vector route
 
 These flags answer: do we stay sequential, follow Pluto's hint, or certify a
-user-selected current dimension?
+user-selected current dimension? Vector routes reuse the same parallel/doall
+checker because Pluto's prevector marker is derived from parallel-loop analysis.
 
 ### 1.5 Standalone validation actions
 
@@ -137,11 +145,14 @@ The practically important user-visible route shapes are:
 | `./polopt --parallel --parallel-strict file.loop` | Pluto-hinted route with strict hinted-dimension requirement |
 | `./polopt --parallel-current d file.loop` | Explicit-dimension theorem-aligned parallel route |
 | `./polopt --iss --parallel-current d file.loop` | ISS + explicit-dimension parallel route |
+| `./polopt --vector file.loop` | Pluto-hinted checked vector route |
+| `./polopt --vector-current d file.loop` | Explicit-dimension theorem-aligned vector route |
 
 Two important details:
 
 - `--full-diamond-tile` implies `--diamond-tile`
 - `--parallel-strict` only makes sense as a refinement of `--parallel`
+- `--vector-strict` only makes sense as a refinement of `--vector`
 
 The table above lists the important shapes, not every legal combination. In
 particular:
@@ -158,6 +169,8 @@ particular:
   - `--iss`
   - `--iss --notile`
   - `--iss --identity`
+- `--vector-current d` follows the same explicit-current support shape as
+  `--parallel-current d`, but emits `vector for`
 - `--second-level-tile` is also valid with:
   - `--extract-tiling-witness-openscop`
   - `--validate-tiling-openscop`
@@ -270,11 +283,15 @@ Reason:
 The frontend makes the route choice in roughly this order:
 
 1. If a standalone validation action is selected, run it and stop.
-2. Otherwise, if `--parallel-current d` is present, use the explicit-dimension
+2. Otherwise, if `--vector-current d` is present, use the explicit-dimension
+   vector family.
+3. Otherwise, if `--parallel-current d` is present, use the explicit-dimension
    parallel family.
-3. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
-4. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
-5. Otherwise, choose among:
+4. Otherwise, if `--vector` or `--prevector` is present, use the Pluto-hinted
+   vector family.
+5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
+6. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
+7. Otherwise, choose among:
    - default route
    - `--iss`
    - `--notile`

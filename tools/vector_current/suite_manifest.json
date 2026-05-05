@@ -1,0 +1,59 @@
+{
+  "suite_name": "VECTOR-CURRENT",
+  "fixtures": {
+    "positive": "../parallel_current/fixtures/positive.loop",
+    "matmul-init": "../second_level_tiling/fixtures/matmul-init.loop",
+    "dependent": "../parallel_current/fixtures/dependent.loop"
+  },
+  "checks": [
+    {
+      "name": "vector-current-positive",
+      "fixture": "positive",
+      "args": [
+        "--vector-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "vector for",
+      "differs_from_args": []
+    },
+    {
+      "name": "identity-tiled-vector-current-combined-effect",
+      "fixture": "matmul-init",
+      "args": [
+        "--identity-tiled",
+        "--vector-current",
+        "1"
+      ],
+      "expect": "success",
+      "needles": [
+        "vector for i1",
+        "32 *",
+        "/ 32"
+      ],
+      "differs_from_args": [
+        "--identity-tiled"
+      ]
+    },
+    {
+      "name": "vector-current-out-of-bounds",
+      "fixture": "positive",
+      "args": [
+        "--vector-current",
+        "5"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    },
+    {
+      "name": "vector-current-dependent",
+      "fixture": "dependent",
+      "args": [
+        "--vector-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    }
+  ]
+}

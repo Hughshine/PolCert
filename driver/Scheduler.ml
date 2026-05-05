@@ -11,6 +11,7 @@ open Str  (* Required for regular expressions *)
 type pluto_parallel_hint = {
   hint_iterator : string;
   hint_current_dim : int;
+  hint_directive : int;
 }
 
 type tiling_mode =
@@ -279,7 +280,7 @@ let drop n xs =
   in
   go n xs
 
-let extract_parallel_hints_from_outscop outscop_file =
+let extract_loop_hints_from_outscop directive_mask outscop_file =
   try
     let text = read_file outscop_file in
     let scatnames =
@@ -328,7 +329,7 @@ let extract_parallel_hints_from_outscop outscop_file =
     let rec add_unique seen acc = function
       | [] -> List.rev acc
       | (iterator, directive) :: rest ->
-          if directive <> 1 then
+          if directive land directive_mask = 0 then
             add_unique seen acc rest
           else
             match find_index iterator 0 scatnames with
@@ -337,7 +338,13 @@ let extract_parallel_hints_from_outscop outscop_file =
                 if List.mem dim seen then
                   add_unique seen acc rest
                 else
-                  let hint = { hint_iterator = iterator; hint_current_dim = dim } in
+                  let hint =
+                    {
+                      hint_iterator = iterator;
+                      hint_current_dim = dim;
+                      hint_directive = directive;
+                    }
+                  in
                   add_unique (dim :: seen) (hint :: acc) rest
     in
     add_unique [] [] loop_entries
@@ -345,12 +352,23 @@ let extract_parallel_hints_from_outscop outscop_file =
   | Sys_error _
   | Failure _ -> []
 
+let extract_parallel_hints_from_outscop outscop_file =
+  extract_loop_hints_from_outscop 1 outscop_file
+
+let extract_vector_hints_from_outscop outscop_file =
+  extract_loop_hints_from_outscop 4 outscop_file
+
 let extract_parallel_hint_from_outscop outscop_file =
   match extract_parallel_hints_from_outscop outscop_file with
   | [] -> None
   | hint :: _ -> Some hint
 
-let run_pluto_scop_with_parallel_hint flags inscop =
+let extract_vector_hint_from_outscop outscop_file =
+  match extract_vector_hints_from_outscop outscop_file with
+  | [] -> None
+  | hint :: _ -> Some hint
+
+let run_pluto_scop_with_loop_hint extractor flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
@@ -372,7 +390,7 @@ let run_pluto_scop_with_parallel_hint flags inscop =
     else
       None
   in
-  let hints = extract_parallel_hints_from_outscop outscop_file in
+  let hints = extractor outscop_file in
   match read_outscop () with
   | Some outscop -> Okk (outscop, hints)
   | None ->
@@ -383,6 +401,12 @@ let run_pluto_scop_with_parallel_hint flags inscop =
              (Printf.sprintf "scheduler failed with exit code %d" exc))
       ) else
         Err (coqstring_of_camlstring ("scheduler failed"))
+
+let run_pluto_scop_with_parallel_hint flags inscop =
+  run_pluto_scop_with_loop_hint extract_parallel_hints_from_outscop flags inscop
+
+let run_pluto_scop_with_vector_hint flags inscop =
+  run_pluto_scop_with_loop_hint extract_vector_hints_from_outscop flags inscop
 
 let run_pluto_bridge flags inscop =
   match implicit_pluto_control_file_error () with
@@ -471,6 +495,18 @@ let affine_only_parallel_flags =
     "--rar";
   ]
 
+let affine_only_vector_flags =
+  [
+    "--nointratileopt";
+    "--nodiamond-tile";
+    "--prevector";
+    "--smartfuse";
+    "--nounrolljam";
+    "--noparallel";
+    "--notile";
+    "--rar";
+  ]
+
 let tile_only_parallel_flags =
   [
     "--identity";
@@ -487,8 +523,23 @@ let tile_only_parallel_flags =
     "--rar";
   ]
 
+let tile_only_vector_flags =
+  [
+    "--identity";
+    "--tile";
+    "--nointratileopt";
+    "--nodiamond-tile";
+    "--prevector";
+    "--nounrolljam";
+    "--noparallel";
+    "--rar";
+  ]
+
 let tile_only_parallel_second_level_flags =
   tile_only_parallel_flags @ ["--second-level-tile"]
+
+let tile_only_vector_second_level_flags =
+  tile_only_vector_flags @ ["--second-level-tile"]
 
 let diamond_phase_flags () =
   [
@@ -522,16 +573,37 @@ let diamond_phase_parallel_flags () =
   @
   (if full_diamond_tiling_enabled ()
    then ["--diamond-tile"; "--full-diamond-tile"]
-   else ["--diamond-tile"])
+  else ["--diamond-tile"])
 
 let diamond_phase_parallel_with_iss_flags () =
   "--iss" :: diamond_phase_parallel_flags ()
+
+let diamond_phase_vector_flags () =
+  [
+    "--tile";
+    "--nointratileopt";
+    "--prevector";
+    "--smartfuse";
+    "--nounrolljam";
+    "--noparallel";
+    "--rar";
+  ]
+  @
+  (if full_diamond_tiling_enabled ()
+   then ["--diamond-tile"; "--full-diamond-tile"]
+   else ["--diamond-tile"])
+
+let diamond_phase_vector_with_iss_flags () =
+  "--iss" :: diamond_phase_vector_flags ()
 
 let diamond_phase_with_iss_flags () =
   "--iss" :: diamond_phase_flags ()
 
 let affine_with_iss_parallel_flags =
   ["--iss"] @ affine_only_parallel_flags
+
+let affine_with_iss_vector_flags =
+  ["--iss"] @ affine_only_vector_flags
 
 let iss_identity_bridge_flags =
   [
@@ -557,6 +629,11 @@ let affine_only_scop_scheduler_with_parallel_hint inscop =
     (with_pluto_extra_flags affine_only_parallel_flags)
     inscop
 
+let affine_only_scop_scheduler_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags affine_only_vector_flags)
+    inscop
+
 let tile_only_scop_scheduler_with_parallel_hint inscop =
   let flags =
     if second_level_tiling_enabled ()
@@ -565,12 +642,25 @@ let tile_only_scop_scheduler_with_parallel_hint inscop =
   in
   run_pluto_scop_with_parallel_hint (with_pluto_extra_flags flags) inscop
 
+let tile_only_scop_scheduler_with_vector_hint inscop =
+  let flags =
+    if second_level_tiling_enabled ()
+    then tile_only_vector_second_level_flags
+    else tile_only_vector_flags
+  in
+  run_pluto_scop_with_vector_hint (with_pluto_extra_flags flags) inscop
+
 let affine_only_scop_scheduler_with_iss inscop =
   run_pluto_scop (with_pluto_extra_flags affine_with_iss_flags) inscop
 
 let affine_only_scop_scheduler_with_iss_with_parallel_hint inscop =
   run_pluto_scop_with_parallel_hint
     (with_pluto_extra_flags affine_with_iss_parallel_flags)
+    inscop
+
+let affine_only_scop_scheduler_with_iss_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags affine_with_iss_vector_flags)
     inscop
 
 let iss_identity_bridge_from_scop inscop =
@@ -643,6 +733,16 @@ let run_pluto_phase_pipeline_with_parallel_hint inscop =
         | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
       end
 
+let run_pluto_phase_pipeline_with_vector_hint inscop =
+  match affine_only_scop_scheduler inscop with
+  | Err msg -> Err msg
+  | Okk midscop ->
+      begin
+        match tile_only_scop_scheduler_with_vector_hint midscop with
+        | Err msg -> Err msg
+        | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
+      end
+
 let run_pluto_diamond_parallel_hint inscop =
   match run_pluto_scop_with_parallel_hint
           (with_pluto_extra_flags (diamond_phase_parallel_flags ()))
@@ -653,6 +753,20 @@ let run_pluto_diamond_parallel_hint inscop =
 let run_pluto_diamond_parallel_hint_with_iss inscop =
   match run_pluto_scop_with_parallel_hint
           (with_pluto_extra_flags (diamond_phase_parallel_with_iss_flags ()))
+          inscop with
+  | Err msg -> Err msg
+  | Okk (_outscop, hint) -> Okk hint
+
+let run_pluto_diamond_vector_hint inscop =
+  match run_pluto_scop_with_vector_hint
+          (with_pluto_extra_flags (diamond_phase_vector_flags ()))
+          inscop with
+  | Err msg -> Err msg
+  | Okk (_outscop, hint) -> Okk hint
+
+let run_pluto_diamond_vector_hint_with_iss inscop =
+  match run_pluto_scop_with_vector_hint
+          (with_pluto_extra_flags (diamond_phase_vector_with_iss_flags ()))
           inscop with
   | Err msg -> Err msg
   | Okk (_outscop, hint) -> Okk hint
@@ -693,6 +807,16 @@ let run_pluto_phase_pipeline_with_iss_with_parallel_hint inscop =
   | Okk midscop ->
       begin
         match tile_only_scop_scheduler_with_parallel_hint midscop with
+        | Err msg -> Err msg
+        | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
+      end
+
+let run_pluto_phase_pipeline_with_iss_with_vector_hint inscop =
+  match affine_only_scop_scheduler_with_iss inscop with
+  | Err msg -> Err msg
+  | Okk midscop ->
+      begin
+        match tile_only_scop_scheduler_with_vector_hint midscop with
         | Err msg -> Err msg
         | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
       end

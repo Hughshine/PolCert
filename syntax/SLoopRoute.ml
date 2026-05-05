@@ -59,11 +59,15 @@ type selection =
 let has_parallel_current (cfg : SLoopConfig.config) =
   Option.is_some cfg.parallel_current_dim
 
+let has_vector_current (cfg : SLoopConfig.config) =
+  Option.is_some cfg.vector_current_dim
+
 let explicit_phase_control_selected (cfg : SLoopConfig.config) =
   cfg.force_identity
   || cfg.force_notile
   || cfg.force_iss
   || cfg.force_parallel
+  || cfg.force_vector
   || cfg.force_diamond_tile
 
 let standalone_actions (cfg : SLoopConfig.config) =
@@ -157,6 +161,10 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--parallel-strict cannot be combined with standalone validation actions"
       else if has_parallel_current cfg then
         Error "--parallel-current cannot be combined with standalone validation actions"
+      else if cfg.force_vector_strict then
+        Error "--vector-strict cannot be combined with standalone validation actions"
+      else if has_vector_current cfg then
+        Error "--vector-current cannot be combined with standalone validation actions"
       else if cfg.force_band_tiling_experiment then
         Error
           "--band-tiling-experiment only applies to the default non-ISS full tiled optimization route"
@@ -175,12 +183,28 @@ let normalize (cfg : SLoopConfig.config) =
   | [] ->
       if has_parallel_current cfg && cfg.extract_only then
         Error "--parallel-current cannot be combined with --extract-only"
+      else if has_vector_current cfg && cfg.extract_only then
+        Error "--vector-current cannot be combined with --extract-only"
       else if cfg.force_parallel_strict && not cfg.force_parallel then
         Error "--parallel-strict requires --parallel"
+      else if cfg.force_vector_strict && not cfg.force_vector then
+        Error "--vector-strict requires --vector"
       else if cfg.force_parallel && cfg.force_identity && not cfg.pluto_tile_seen then
         Error "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint"
+      else if cfg.force_vector && cfg.force_identity && not cfg.pluto_tile_seen then
+        Error "--vector/--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint"
       else if cfg.force_parallel && has_parallel_current cfg then
         Error "--parallel cannot be combined with --parallel-current"
+      else if cfg.force_parallel && cfg.force_vector then
+        Error "--parallel cannot be combined with --vector/--prevector"
+      else if cfg.force_parallel && has_vector_current cfg then
+        Error "--parallel cannot be combined with --vector-current"
+      else if cfg.force_vector && has_parallel_current cfg then
+        Error "--vector/--prevector cannot be combined with --parallel-current"
+      else if cfg.force_vector && has_vector_current cfg then
+        Error "--vector/--prevector cannot be combined with --vector-current"
+      else if has_parallel_current cfg && has_vector_current cfg then
+        Error "--parallel-current cannot be combined with --vector-current"
       else if cfg.force_band_tiling_experiment
               && cfg.force_legacy_generic_tiling
       then
@@ -191,7 +215,10 @@ let normalize (cfg : SLoopConfig.config) =
                   || cfg.force_iss
                   || cfg.force_parallel
                   || cfg.force_parallel_strict
-                  || has_parallel_current cfg)
+                  || cfg.force_vector
+                  || cfg.force_vector_strict
+                  || has_parallel_current cfg
+                  || has_vector_current cfg)
       then
         Error
           "--band-tiling-experiment is now only a compatibility alias for the default non-ISS full tiled route"
@@ -201,7 +228,10 @@ let normalize (cfg : SLoopConfig.config) =
                   || cfg.force_iss
                   || cfg.force_parallel
                   || cfg.force_parallel_strict
-                  || has_parallel_current cfg)
+                  || cfg.force_vector
+                  || cfg.force_vector_strict
+                  || has_parallel_current cfg
+                  || has_vector_current cfg)
       then
         Error
           "--legacy-generic-tiling only supports the default non-ISS full tiled route"
