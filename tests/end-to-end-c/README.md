@@ -54,6 +54,12 @@ For the heavier perf-oriented pair, run:
 opam exec -- make test-end-to-end-c-perf
 ```
 
+For a targeted checked vectorization smoke test, run:
+
+```bash
+opam exec -- make test-end-to-end-c-matmul-vector
+```
+
 For the generated 62-case suite, first materialize the `polopt` outputs and
 then run:
 
@@ -81,9 +87,14 @@ It now records both:
 
 - exact stdout equality
 - numeric drift summaries (`max_abs_diff`, `max_rel_diff`)
+- whether optimized output contains `parallel for` or `vector for`
 
 So if a future case uses tolerances, the numeric difference is still reported
 instead of being silently hidden.
+
+Cases containing either `parallel for` or `vector for` are compiled with OpenMP
+enabled before comparing the baseline and optimized executables. `vector for`
+lowers to `#pragma omp simd`.
 
 `--timeout-seconds` covers both the `polopt` invocation and the compiled
 baseline / optimized executables, so a hung test binary now fails the case

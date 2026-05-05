@@ -15,6 +15,9 @@ from runner_common import (
     evaluate_outputs,
     extract_optimized_loop,
     fail_run,
+    has_parallel_loop,
+    has_vector_loop,
+    loop_requires_openmp,
     recreate_dir,
     run,
     timed_run,
@@ -64,6 +67,7 @@ def main() -> int:
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--benchmark-repeats", type=int, default=3)
     ap.add_argument("--require-parallelized", action="store_true")
+    ap.add_argument("--require-vectorized", action="store_true")
     ap.add_argument("--keep-going", action="store_true")
     args = ap.parse_args()
 
@@ -115,7 +119,8 @@ def main() -> int:
         raise SystemExit(f"[{case_name}] polopt failed")
 
     optimized_loop = extract_optimized_loop(proc.stdout)
-    parallelized_loop = "parallel for" in optimized_loop
+    parallelized_loop = has_parallel_loop(optimized_loop)
+    vectorized_loop = has_vector_loop(optimized_loop)
     write_text(out_dir / "optimized.loop", optimized_loop)
     if args.require_parallelized and not parallelized_loop:
         write_text(
@@ -125,6 +130,14 @@ def main() -> int:
         if args.keep_going:
             return 1
         raise SystemExit(f"[{case_name}] no parallel for emitted")
+    if args.require_vectorized and not vectorized_loop:
+        write_text(
+            out_dir / "status.txt",
+            "result=fail\nstage=vectorize\nvectorized_loop=false\n",
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] no vector for emitted")
     optimized_kernel = transpile_loop_text(optimized_loop)
     optimized_src = render_source(template, optimized_kernel)
     write_text(out_dir / "optimized.kernel.c", optimized_kernel)
@@ -132,7 +145,7 @@ def main() -> int:
 
     baseline_exe = out_dir / "baseline.exe"
     optimized_exe = out_dir / "optimized.exe"
-    compile_with_openmp = openmp or parallelized_loop
+    compile_with_openmp = openmp or loop_requires_openmp(input_loop) or loop_requires_openmp(optimized_loop)
     baseline_build = compile_c(out_dir / "baseline.c", baseline_exe, openmp=compile_with_openmp)
     optimized_build = compile_c(out_dir / "optimized.c", optimized_exe, openmp=compile_with_openmp)
     write_text(out_dir / "baseline.build.stderr.txt", baseline_build.stderr)
@@ -222,6 +235,8 @@ def main() -> int:
         "outputs_match": outputs_match,
         "exact_match": exact_match,
         "parallelized_loop": parallelized_loop,
+        "vectorized_loop": vectorized_loop,
+        "openmp": compile_with_openmp,
         "numeric_comparable": comparison["numeric_comparable"],
         "value_count_match": comparison["value_count_match"],
         "max_abs_diff": comparison["max_abs_diff"],
@@ -237,11 +252,13 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nvectorized_loop={}\nopenmp={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             str(outputs_match).lower(),
             str(exact_match).lower(),
             str(parallelized_loop).lower(),
+            str(vectorized_loop).lower(),
+            str(compile_with_openmp).lower(),
             str(bool(comparison["numeric_comparable"])).lower(),
             str(bool(comparison["value_count_match"])).lower(),
             comparison["max_abs_diff"],
@@ -263,6 +280,7 @@ def main() -> int:
         f"[E2E] {case_name}: ok "
         f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x "
         f"parallelized_loop={str(parallelized_loop).lower()} "
+        f"vectorized_loop={str(vectorized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
         f"max_abs_diff={comparison['max_abs_diff']} "
         f"max_rel_diff={comparison['max_rel_diff']}"

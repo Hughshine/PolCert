@@ -10,13 +10,14 @@ import re
 from typing import Iterable
 
 from loop_to_c import split_top_level_comma, transpile_loop_text
+from runner_common import loop_requires_openmp
 
 
 LOOP_RE = re.compile(
-    r"^\s*(?:parallel\s+)?for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.*)\)\s*\{\s*$"
+    r"^\s*(?:(?:parallel|vector)\s+)?for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.*)\)\s*\{\s*$"
 )
 TOKEN_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
-KEYWORDS = {"context", "for", "in", "range", "if", "skip", "parallel"}
+KEYWORDS = {"context", "for", "in", "range", "if", "skip", "parallel", "vector"}
 MATH_NAMES = {"sqrt", "ceil", "floor", "max", "min", "abs"}
 CASE_VALUE_OVERRIDES: dict[str, dict[str, int]] = {
     "advect3d": {"nx": 20, "ny": 20, "nz": 20},
@@ -475,7 +476,7 @@ def build_harness(
     )
     baseline_kernel = rewrite_array_accesses(transpile_loop_text(input_loop), arrays)
     optimized_kernel = rewrite_array_accesses(transpile_loop_text(optimized_loop), arrays)
-    openmp = "parallel for" in optimized_loop or "parallel for" in input_loop
+    openmp = loop_requires_openmp(optimized_loop) or loop_requires_openmp(input_loop)
     return HarnessInfo(
         case_name=case_name,
         params=params,

@@ -15,6 +15,8 @@ from runner_common import (
     evaluate_outputs,
     extract_optimized_loop,
     fail_run,
+    has_parallel_loop,
+    has_vector_loop,
     recreate_dir,
     run,
     timed_run,
@@ -37,6 +39,7 @@ def main() -> int:
     ap.add_argument("--timeout-seconds", type=int, default=300)
     ap.add_argument("--omp-threads", type=int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
+    ap.add_argument("--require-vectorized", action="store_true")
     ap.add_argument("--abs-tolerance", type=float, default=DEFAULT_ABS_TOLERANCE)
     ap.add_argument("--rel-tolerance", type=float, default=DEFAULT_REL_TOLERANCE)
     ap.add_argument("--tier", default=DEFAULT_TIER)
@@ -96,13 +99,21 @@ def main() -> int:
     write_text(out_dir / "optimized.loop", optimized_loop)
     write_text(out_dir / "baseline.kernel.c", info.baseline_kernel)
     write_text(out_dir / "optimized.kernel.c", info.optimized_kernel)
-    parallelized_loop = "parallel for" in optimized_loop
+    parallelized_loop = has_parallel_loop(optimized_loop)
+    vectorized_loop = has_vector_loop(optimized_loop)
     if args.require_parallelized and not parallelized_loop:
         write_text(
             out_dir / "status.txt",
             "result=fail\nstage=parallelize\nparallelized_loop=false\n",
         )
         print(f"[E2E-GEN] {case_name}: no parallel for emitted")
+        return 1
+    if args.require_vectorized and not vectorized_loop:
+        write_text(
+            out_dir / "status.txt",
+            "result=fail\nstage=vectorize\nvectorized_loop=false\n",
+        )
+        print(f"[E2E-GEN] {case_name}: no vector for emitted")
         return 1
     write_text(out_dir / "baseline.c", render_program_source(info, optimized=False))
     write_text(out_dir / "optimized.c", render_program_source(info, optimized=True))
@@ -208,6 +219,7 @@ def main() -> int:
         "openmp": info.openmp,
         "omp_threads": args.omp_threads,
         "parallelized_loop": parallelized_loop,
+        "vectorized_loop": vectorized_loop,
         "optimized_loop_source": (
             "input"
             if args.use_input_loop_as_optimized
@@ -219,7 +231,7 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nvectorized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             args.pipeline_name,
             (
@@ -232,6 +244,7 @@ def main() -> int:
             str(bool(comparison["numeric_comparable"])).lower(),
             str(bool(comparison["value_count_match"])).lower(),
             str(parallelized_loop).lower(),
+            str(vectorized_loop).lower(),
             args.omp_threads,
             comparison["max_abs_diff"],
             comparison["max_rel_diff"],
@@ -256,6 +269,7 @@ def main() -> int:
         f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s "
         f"speedup={speedup:.3f}x pipeline={args.pipeline_name or 'adhoc'} "
         f"parallelized_loop={str(parallelized_loop).lower()} "
+        f"vectorized_loop={str(vectorized_loop).lower()} "
         f"exact_match={str(exact_match).lower()} "
         f"numeric_within_tolerance={str(numeric_within_tolerance).lower()} "
         f"max_abs_diff={comparison['max_abs_diff']} "

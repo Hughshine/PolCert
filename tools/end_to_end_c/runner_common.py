@@ -11,6 +11,18 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OPT_MARKER = "== Optimized Loop ==\n"
 
 
+def has_parallel_loop(loop_text: str) -> bool:
+    return "parallel for" in loop_text
+
+
+def has_vector_loop(loop_text: str) -> bool:
+    return "vector for" in loop_text
+
+
+def loop_requires_openmp(loop_text: str) -> bool:
+    return has_parallel_loop(loop_text) or has_vector_loop(loop_text)
+
+
 def run(
     cmd: list[str],
     *,
