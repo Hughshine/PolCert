@@ -74,6 +74,7 @@ REG_MATMUL = ROOT / "tests" / "polopt-regression" / "inputs" / "matmul.loop"
 FUSION1 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion1.loop"
 FUSION2 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion2.loop"
 FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
+FUSION7 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion7.loop"
 FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
@@ -465,7 +466,17 @@ CHECKS = [
     Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
-    Check("reject-identity-tile", ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
+    Check(
+        "identity-tiled",
+        ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        FUSION7,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
+    Check("reject-identity-tile-iss", ["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--identity --tile --iss is not supported"),
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
 ]

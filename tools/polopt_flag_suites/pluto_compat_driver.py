@@ -469,12 +469,17 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("Pluto enables --parallel by default; pass --noparallel or --parallel explicitly")
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
-    if state.identity and not state.notile_seen:
-        raise Reject("--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route")
-    if state.identity and state.tile_seen:
-        raise Reject("--identity --tile: Pluto can tile identity schedules, but polopt has no checked identity+tiling route yet")
+    identity_tiled = state.identity and state.tile_seen and state.tile
     if state.identity and state.parallel:
         raise Reject("--parallel requires a Pluto scheduling phase and cannot be combined with --identity")
+    if identity_tiled and state.iss:
+        raise Reject("--identity --tile --iss is not supported in the checked polopt subset")
+    if identity_tiled and state.second_level_tile:
+        raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
+    if identity_tiled and state.diamond_tile:
+        raise Reject("--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity")
+    if state.identity and not state.notile_seen and not identity_tiled:
+        raise Reject("--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route")
     if state.second_level_tile and not state.tile:
         raise Reject("--second-level-tile requires tiling and cannot be combined with --notile")
     if state.second_level_tile and state.identity:
@@ -507,7 +512,9 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
             raise Reject("--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity")
 
     args: list[str] = []
-    if state.identity:
+    if identity_tiled:
+        args.extend(["--identity", "--tile"])
+    elif state.identity:
         if state.iss:
             args.append("--iss")
         args.append("--identity")
@@ -531,7 +538,9 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
     args: list[str] = ["--pluto-compat"]
     if state.identity:
         args.append("--identity")
-        if not state.tile:
+        if state.tile_seen and state.tile:
+            args.append("--tile")
+        elif not state.tile:
             args.append("--notile")
     elif state.tile:
         args.append("--tile")

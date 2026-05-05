@@ -33,6 +33,14 @@ Parameter phase_scop_scheduler: OpenScop -> result (OpenScop * OpenScop).
     affine mid-point and the final tiled OpenScop. *)
 Definition run_pluto_phase_pipeline := phase_scop_scheduler.
 
+Parameter identity_tiling_phase_scop_scheduler:
+  OpenScop -> result (OpenScop * OpenScop).
+(** Variant of the phase pipeline for Pluto [--identity --tile].  The returned
+    midpoint is the source OpenScop, while the final OpenScop is the tile-only
+    Pluto output. *)
+Definition run_pluto_identity_tiling_pipeline :=
+  identity_tiling_phase_scop_scheduler.
+
 Parameter phase_scop_scheduler_with_iss:
   OpenScop -> result (OpenScop * OpenScop).
 (** Variant of the external Pluto phase pipeline that enables ISS before the

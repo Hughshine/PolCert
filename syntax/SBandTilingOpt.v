@@ -196,6 +196,22 @@ Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   else
     SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
 
+Definition opt_identity_tiled (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
+  let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
+  if SPolOpt.CoreOpt.has_nonscalar_stmt pol then
+    match SPolOpt.CoreOpt.export_for_phase_scheduler pol with
+    | Some before_scop =>
+        try_phase_pipeline_from_source_pol_band
+          pol
+          SPolOpt.CoreOpt.run_pluto_identity_tiling_pipeline
+          before_scop
+    | None =>
+        SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
+    end
+  else
+    SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
+
 Definition opt_diamond (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
   let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in

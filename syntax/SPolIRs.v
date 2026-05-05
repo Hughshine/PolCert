@@ -20,6 +20,8 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
   Module Loop := Loop SInstr.
   Parameter scop_scheduler : OpenScop -> result OpenScop.
   Parameter phase_scop_scheduler : OpenScop -> result (OpenScop * OpenScop).
+  Parameter identity_tiling_phase_scop_scheduler :
+    OpenScop -> result (OpenScop * OpenScop).
   Parameter phase_scop_scheduler_with_iss :
     OpenScop -> result (OpenScop * OpenScop).
   Parameter diamond_phase_scop_scheduler :
@@ -94,6 +96,8 @@ Module SPolIRs <: POLIRS with Module Instr := SInstr.
   Definition export_for_pluto_phase_pipeline := export_for_phase_scheduler.
   Definition to_phase_openscop := export_for_phase_scheduler.
   Definition run_pluto_phase_pipeline := phase_scop_scheduler.
+  Definition run_pluto_identity_tiling_pipeline :=
+    identity_tiling_phase_scop_scheduler.
   Definition run_pluto_phase_pipeline_with_iss :=
     phase_scop_scheduler_with_iss.
   Definition run_pluto_diamond_phase_pipeline :=

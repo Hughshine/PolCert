@@ -55,6 +55,7 @@ type 'loop sequential_handlers = {
   seq_optimize_iss_affine : 'loop -> 'loop * bool;
   seq_optimize_iss_default : 'loop -> 'loop * bool;
   seq_optimize_identity : 'loop -> 'loop * bool;
+  seq_optimize_identity_tiled : 'loop -> 'loop * bool;
   seq_optimize_affine : 'loop -> 'loop * bool;
   seq_optimize_legacy : 'loop -> 'loop * bool;
   seq_optimize_default : 'loop -> 'loop * bool;
@@ -74,7 +75,10 @@ let run_selected_optimization (cfg : SLoopCli.config) handlers loop =
     else
       handlers.seq_optimize_iss_default loop
   else if cfg.force_identity then
-    handlers.seq_optimize_identity loop
+    if cfg.pluto_tile_seen then
+      handlers.seq_optimize_identity_tiled loop
+    else
+      handlers.seq_optimize_identity loop
   else if cfg.force_notile then
     handlers.seq_optimize_affine loop
   else if cfg.force_legacy_generic_tiling then

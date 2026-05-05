@@ -99,6 +99,8 @@ Definition export_for_phase_scheduler :=
   PolIRs.export_for_phase_scheduler.
 Definition run_pluto_phase_pipeline :=
   PolIRs.run_pluto_phase_pipeline.
+Definition run_pluto_identity_tiling_pipeline :=
+  PolIRs.run_pluto_identity_tiling_pipeline.
 Definition run_pluto_phase_pipeline_with_iss :=
   PolIRs.run_pluto_phase_pipeline_with_iss.
 Definition run_pluto_diamond_phase_pipeline :=

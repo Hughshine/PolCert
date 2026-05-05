@@ -2479,6 +2479,7 @@ let sequential_handlers = {
   seq_optimize_iss_affine = optimize_with_iss_affine;
   seq_optimize_iss_default = SPolOpt.opt_with_iss;
   seq_optimize_identity = SPolOpt.opt_identity;
+  seq_optimize_identity_tiled = SBandTilingOpt.opt_identity_tiled;
   seq_optimize_affine = SPolOpt.opt_affine;
   seq_optimize_legacy = SPolOpt.opt;
   seq_optimize_default = SBandTilingOpt.opt;

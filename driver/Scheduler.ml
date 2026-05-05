@@ -516,6 +516,11 @@ let run_pluto_phase_pipeline inscop =
               Okk (midscop, outscop)
       end
 
+let run_pluto_identity_tiling_pipeline inscop =
+  match tile_only_scop_scheduler inscop with
+  | Err msg -> Err msg
+  | Okk outscop -> Okk (inscop, outscop)
+
 let run_pluto_diamond_phase_pipeline inscop =
   run_pluto_scop_with_midpoint_and_posttile_dump
     (with_pluto_extra_flags (diamond_phase_flags ()))
