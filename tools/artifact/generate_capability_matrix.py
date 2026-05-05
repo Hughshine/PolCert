@@ -29,6 +29,8 @@ SUPPORTED = [
     Capability("--notile", "supported", "extracted affine-only checked route", "pluto-compat affine-only; Affine_opt_prepared_correct", "keep"),
     Capability("--identity --notile", "supported", "extracted no-Pluto identity extraction/codegen route", "pluto-compat identity-notile; Identity_opt_prepared_correct", "keep"),
     Capability("--identity --tile", "supported-narrow", "checked identity schedule plus tile-only Pluto route; gives a tiling effect when the source-order band is directly tileable", "pluto-compat identity-tiled; Opt_identity_tiled_band_correct", "add composed identity-tile routes only when they map to an extracted theorem-facing pass"),
+    Capability("tile.sizes", "supported-legacy-control-file", "Pluto reads this old working-directory file to choose tile sizes; PolOpt accepts it because the checked tiling route validates the produced tile-size witness", "pluto-compat optimizer-implicit-tile-sizes-file", "prefer an explicit file option for hermetic artifact runs"),
+    Capability(".fst", "supported-legacy-control-file", "Pluto reads this old working-directory file to force a fusion/distribution partition; PolOpt accepts schedules that pass the checked affine validator", "pluto-compat optimizer-implicit-fst-file", "prefer an explicit --fusion-structure FILE interface for hermetic artifact runs"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "checked second-level tiling route, including explicit-current and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-parallel", "broaden fixtures"),
     Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
@@ -92,6 +94,7 @@ def check_rows() -> list[dict[str, object]]:
                 "effect_absent": list(check.effect_absent),
                 "differs_from_args": [list(args) for args in check.differs_from_args],
                 "implicit_control_file": check.implicit_control_file,
+                "implicit_control_file_content": check.implicit_control_file_content,
                 "fixture": str(check.fixture.relative_to(ROOT)),
             }
         )

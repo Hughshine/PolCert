@@ -26,6 +26,7 @@ class Check:
     effect_absent: tuple[str, ...] = ()
     differs_from_args: tuple[tuple[str, ...], ...] = ()
     implicit_control_file: str | None = None
+    implicit_control_file_content: str = "16\n"
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -468,20 +469,27 @@ CHECKS = [
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check(
-        "reject-implicit-tile-sizes-file",
+        "optimizer-implicit-tile-sizes-file",
         MATMUL_TILED,
         MATMUL,
-        False,
-        "implicit Pluto control file tile.sizes is not supported",
+        True,
+        "== Optimized Loop ==",
+        "polopt args: <default>",
+        effect_needles=("16 *", "/ 16"),
+        differs_from_args=(tuple(MATMUL_TILED),),
         implicit_control_file="tile.sizes",
+        implicit_control_file_content="16\n16\n16\n",
     ),
     Check(
-        "reject-implicit-fst-file",
-        MATMUL_TILED,
-        MATMUL,
-        False,
-        "implicit Pluto control file .fst is not supported",
+        "optimizer-implicit-fst-file",
+        FUSION_NOTILE_SMART,
+        FUSION1,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         implicit_control_file=".fst",
+        implicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
     ),
     Check(
         "reject-implicit-precut-file",
@@ -732,7 +740,7 @@ def run_check(check: Check, timeout: int) -> str | None:
     if implicit_path is not None:
         if implicit_path.exists():
             return f"{check.name}: refusing to overwrite existing {implicit_path}"
-        implicit_path.write_text("16\n")
+        implicit_path.write_text(check.implicit_control_file_content)
     try:
         proc = run_polopt_compat(check.args, check.fixture, timeout)
     except subprocess.TimeoutExpired:

@@ -81,7 +81,7 @@ let read_file path =
        with End_of_file -> ());
       Buffer.contents buf)
 
-let implicit_pluto_control_files = ["tile.sizes"; ".fst"; ".precut"]
+let implicit_pluto_control_files = [".precut"]
 
 let implicit_pluto_control_file_error () =
   match List.find_opt Sys.file_exists implicit_pluto_control_files with
