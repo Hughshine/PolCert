@@ -358,10 +358,6 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--second-level-tile requires tiling and cannot be combined with --notile")
     if state.second_level_tile and state.identity:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
-    if state.second_level_tile and state.parallel:
-        raise Reject("--second-level-tile is not yet supported with --parallel")
-    if state.multipar and state.diamond_tile:
-        raise Reject("--multipar is not yet supported with --diamond-tile in the checked polopt route")
     oracle_flags = state.oracle_flags or []
     has_tile_size_value = any(
         flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")

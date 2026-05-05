@@ -1071,11 +1071,33 @@ let try_extracted_diamond_parallel_current use_iss loop dim =
   with
   | CertcheckerConfig.CertCheckerFailure _ -> None
 
+let try_extracted_diamond_parallel_many use_iss loop dims =
+  try
+    let dims = List.map nat_of_int dims in
+    let (pl, ok) =
+      (if use_iss then
+         SParallelPolOpt.opt_parallel_current_many_diamond_with_iss
+       else
+         SParallelPolOpt.opt_parallel_current_many_diamond)
+        loop
+        dims
+    in
+    if ok then Some pl else None
+  with
+  | CertcheckerConfig.CertCheckerFailure _ -> None
+
 let diamond_parallel_candidate_dims hint_dim =
   let fallback_dims = int_range 0 8 in
   match hint_dim with
   | Some d -> d :: List.filter (fun x -> x <> d) fallback_dims
   | None -> fallback_dims
+
+let diamond_multipar_candidate_dims hinted_dims strict =
+  let hinted_dims = unique_ints hinted_dims in
+  if strict then
+    hinted_dims
+  else
+    unique_ints (hinted_dims @ int_range 0 8)
 
 let try_diamond_parallel_codegen use_iss loop hint_dim strict =
   let dims =
@@ -1099,6 +1121,16 @@ let try_diamond_parallel_codegen use_iss loop hint_dim strict =
         end
   in
   go dims
+
+let try_diamond_multipar_codegen use_iss loop hinted_dims strict =
+  let dims = diamond_multipar_candidate_dims hinted_dims strict in
+  match dims with
+  | [] -> None
+  | _ ->
+      begin match try_extracted_diamond_parallel_many use_iss loop dims with
+      | Some pl -> Some (pl, hinted_dims <> [])
+      | None -> None
+      end
 
 let checked_affine_schedule_or_fail pol =
   let (pol', ok) = SPolOpt.CoreOpt.checked_affine_schedule pol in
@@ -2149,11 +2181,21 @@ let optimize_with_iss_affine_parallel_hint cfg loop =
 let optimize_with_diamond_parallel_hint cfg loop =
   let hint = pluto_diamond_parallel_hint cfg loop in
   debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-  match try_diamond_parallel_codegen
-          cfg.force_iss
-          loop
-          (first_hint_dim hint)
-          cfg.force_parallel_strict
+  let try_codegen =
+    if cfg.force_multipar then
+      try_diamond_multipar_codegen
+        cfg.force_iss
+        loop
+        (hint_dims hint)
+        cfg.force_parallel_strict
+    else
+      try_diamond_parallel_codegen
+        cfg.force_iss
+        loop
+        (first_hint_dim hint)
+        cfg.force_parallel_strict
+  in
+  match try_codegen
   with
   | Some (pl, used_hint) -> (pl, used_hint)
   | None -> (tag_loop_for_parallel_pretty loop, false)
@@ -2277,17 +2319,21 @@ let optimize_with_phase_aligned_pluto_parallel_hint cfg loop =
           (tag_loop_for_parallel_pretty loop, false)
         else
           let pol_mid = import_faithful_spol_or_fail "mid_affine" pol mid_scop in
-          let witness : PlutoTilingValidator.witness =
-            PlutoTilingValidator.extract_witness_from_scops
-              ~before_path:"mid_affine"
-              ~after_path:"after_tiled"
+          let artifact =
+            tiling_artifact_from_scops_or_fail
+              ~second_level:cfg.force_second_level_tile
+              ~before_label:"mid_affine"
+              ~after_label:"after_tiled"
               mid_scop
               after_scop
           in
-          let ws = PhaseTiling.convert_witness witness in
+          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
           let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
           let pol_after_sched =
-            import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+            import_schedule_only_spol_or_fail
+              "after_tiled"
+              canonical_after
+              artifact.artifact_after_scop
           in
           let (pol_mid_val, pol_after_val) =
             normalize_stiling_validator_inputs pol_mid pol_after_sched
@@ -2364,17 +2410,21 @@ let optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop =
           let pol_mid =
             import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
           in
-          let witness : PlutoTilingValidator.witness =
-            PlutoTilingValidator.extract_witness_from_scops
-              ~before_path:"mid_affine_iss"
-              ~after_path:"after_tiled"
+          let artifact =
+            tiling_artifact_from_scops_or_fail
+              ~second_level:cfg.force_second_level_tile
+              ~before_label:"mid_affine_iss"
+              ~after_label:"after_tiled"
               mid_scop
               after_scop
           in
-          let ws = PhaseTiling.convert_witness witness in
+          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
           let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
           let pol_after_sched =
-            import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
+            import_schedule_only_spol_or_fail
+              "after_tiled"
+              canonical_after
+              artifact.artifact_after_scop
           in
           let (pol_mid_val, pol_after_val) =
             normalize_stiling_validator_inputs pol_mid pol_after_sched

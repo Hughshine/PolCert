@@ -211,10 +211,6 @@ let normalize (cfg : SLoopConfig.config) =
       else if cfg.force_second_level_tile && cfg.force_notile then
         Error
           "--second-level-tile requires tiling and cannot be combined with --notile"
-      else if cfg.force_second_level_tile && cfg.force_parallel then
-        Error "--second-level-tile is not yet supported with --parallel"
-      else if cfg.force_second_level_tile && has_parallel_current cfg then
-        Error "--second-level-tile is not yet supported with --parallel-current"
       else if cfg.force_diamond_tile && cfg.force_identity then
         Error
           "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity"

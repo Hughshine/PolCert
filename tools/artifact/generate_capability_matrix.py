@@ -29,8 +29,8 @@ SUPPORTED = [
     Capability("--notile", "supported", "extracted affine-only checked route", "pluto-compat affine-only; Affine_opt_prepared_correct", "keep"),
     Capability("--identity --notile", "supported", "extracted no-Pluto identity extraction/codegen route", "pluto-compat identity-notile; Identity_opt_prepared_correct", "keep"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
-    Capability("--second-level-tile", "supported", "sequential checked second-level tiling route", "second-level suite", "extend composition tests"),
-    Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
+    Capability("--second-level-tile", "supported", "checked second-level tiling route, including explicit-current and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-parallel", "broaden fixtures"),
+    Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
     Capability("--parallel-current d", "supported", "explicit checked parallel dimension", "parallel-current suite; Opt_parallel_current_correct", "keep separate from Pluto compatibility"),
     Capability("--diamond-tile", "supported-narrow", "extracted sequential non-ISS single-level four-phase diamond route", "diamond suite; Opt_diamond_band_correct", "extend rejected compositions"),
     Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
@@ -39,6 +39,7 @@ SUPPORTED = [
     Capability("--diamond-tile --second-level-tile", "supported-narrow", "second-level Pluto diamond output is checked by the same diamond route with second-level witness extraction enabled", "pluto-compat diamond-second-level; Opt_diamond_band_correct", "add broader second-level diamond fixtures"),
     Capability("--diamond-tile --iss --second-level-tile", "supported-narrow", "ISS bridge validation composes with second-level diamond witness extraction", "pluto-compat diamond-iss-second-level; Opt_diamond_band_with_iss_correct", "add broader ISS+second-level diamond fixtures"),
     Capability("--diamond-tile --parallel", "supported-narrow", "Pluto supplies the parallel hint; polopt routes the selected dimension through the checked diamond parallel-current validator with raw-codegen fallback when cleanup would make traces non-affine", "pluto-compat diamond-parallel; pluto-compat diamond-parallel-jacobi-batch; Opt_parallel_current_diamond_correct", "polish singleton-loop cleanup output"),
+    Capability("--diamond-tile --parallel --multipar", "supported-narrow", "the extracted diamond pipeline can feed a list of candidate current dimensions into the checked multi-cert parallel codegen route", "pluto-compat diamond-parallel-multipar; checked_annotated_codegen_many_correct_general", "broaden diamond multipar fixtures and add strict-mode checks"),
     Capability("--diamond-tile --iss --parallel", "supported-narrow", "ISS bridge validation composes with the Pluto-hinted diamond parallel-current route", "pluto-compat diamond-iss-parallel; Opt_parallel_current_diamond_with_iss_correct", "broaden ISS fixtures beyond the single-statement batch stencil"),
     Capability("--diamond-tile --parallel-current d", "supported-narrow", "diamond route validates the four-phase diamond boundary before explicit current-space parallel certification; positive support includes the single-statement batch stencil and batched two-statement Jacobi via checked raw-codegen fallback", "parallel-current diamond-current-combined-effect; parallel-current diamond-current-jacobi-batch-positive; Opt_parallel_current_diamond_correct", "polish singleton-loop cleanup output"),
 ]
@@ -100,7 +101,7 @@ def build_matrix() -> dict[str, object]:
         "summary": {
             "capability_rows": len(table_rows()),
             "compatibility_checks": len(compat_suite.CHECKS),
-            "diamond_supported_route": "sequential non-ISS single-level four-phase route",
+            "diamond_supported_route": "sequential, parallel, multipar, ISS, and second-level four-phase routes",
             "pluto_style_entry": "./polopt --pluto-compat",
         },
     }

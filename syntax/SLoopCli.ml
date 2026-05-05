@@ -298,10 +298,6 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--second-level-tile requires tiling and cannot be combined with --notile";
     if cfg.force_second_level_tile && cfg.force_identity then
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
-    if cfg.force_second_level_tile && cfg.force_parallel then
-      pluto_reject prog "--second-level-tile is not yet supported with --parallel";
-    if cfg.force_multipar && cfg.force_diamond_tile then
-      pluto_reject prog "--multipar is not yet supported with --diamond-tile in the checked polopt route";
     if
       (pluto_extra_has_prefix "--cache-size=" cfg
        || pluto_extra_has_prefix "--data-element-size=" cfg)

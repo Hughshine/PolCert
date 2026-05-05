@@ -39,15 +39,31 @@
       "needle": "--second-level-tile requires tiling and cannot be combined with --notile"
     },
     {
-      "name": "second-level-tile-rejects-parallel-current",
+      "name": "second-level-tile-parallel-current",
       "fixture": "matmul-init",
       "args": [
         "--second-level-tile",
         "--parallel-current",
         "0"
       ],
-      "expect": "failure",
-      "needle": "--second-level-tile is not yet supported with --parallel-current"
+      "expect": "success",
+      "needle": "parallel for",
+      "differs_from_args": [
+        "--second-level-tile"
+      ]
+    },
+    {
+      "name": "second-level-tile-parallel",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile",
+        "--parallel"
+      ],
+      "expect": "success",
+      "needle": "parallel for",
+      "differs_from_args": [
+        "--second-level-tile"
+      ]
     }
   ]
 }

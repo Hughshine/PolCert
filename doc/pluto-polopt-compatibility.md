@@ -209,8 +209,8 @@ These flags do not need to be trusted for correctness if `polopt` validates the 
 | `tile.sizes` | Unsupported as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into isolated Pluto cwd, and validate actual generated tile sizes. |
 | `--ft`, `--lt` | Unsupported | Pluto's partial tiling-level controls are under-specified in current route. | Possible, but more than surface. | Extend tiling witness extraction to partial bands/sub-bands and add tests. |
 | bare `--identity` or `--identity --tile` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface/composition gap. | Add an `IdentityTiled` route: extract identity schedule, run tile-only Pluto phase, validate tiling. |
-| `--second-level-tile --parallel` | Unsupported | Route rejected although scheduler code has a flag recipe for parallel second-level tiling. | Composition gap. | Compose second-level tiling witness validation with parallel-loop validation. Add route and tests. |
-| `--second-level-tile --parallel-current d` | Unsupported | Route normalization rejects the explicit-current parallel composition too. | Composition gap. | Compose second-level tiling validation with explicit-current parallel validation. |
+| `--second-level-tile --parallel` | Supported | The phase-aligned route now extracts the second-level tiling artifact, validates it, then feeds the validated post-tiling program to the checked parallel validator/codegen path. | Already supported. | Broaden fixtures beyond `nodep` and `matmul-init`. |
+| `--second-level-tile --parallel-current d` | Supported | Explicit-current parallel certification composes after the checked second-level tiling route. | Already supported. | Keep in second-level suite. |
 
 Tile size control is likely easy from a proof perspective if the validator already proves tiling for arbitrary positive sizes. Partial tiling and identity+tiling need more route and witness work.
 
@@ -221,12 +221,12 @@ Tile size control is likely easy from a proof perspective if the validator alrea
 | `--parallel`, `--parallelize` | Supported for one Pluto-hinted parallel loop by default | Current route validates one loop and emits checked parallel code. | Already supported. | Keep. |
 | `--noparallel` | Supported as route control/no-op | Sequential routes use it. | Already supported. | Keep. |
 | `--innerpar` | Compatible no-op | Current checked `--parallel` tiled recipe already keeps a canonical inner-parallel style. | Already acceptable. | Keep explanatory note. |
-| `--multipar` | Supported on non-diamond checked `--parallel` routes, up to two certified current dimensions | The driver passes the flag to Pluto, parses all OpenScop parallel loop hints, then lets the extracted validator filter certifiable dimensions before calling the extracted multi-cert parallel codegen route. The cap of two matches Pluto's current OpenMP pragma extraction. | Already supported for ordinary non-diamond parallel routes; still a composition gap for diamond and second-level parallel routes. | Extend the same multi-cert route through diamond and second-level compositions once those parallel compositions are available. |
+| `--multipar` | Supported on checked `--parallel` routes, up to two certified current dimensions | The driver passes the flag to Pluto, parses all OpenScop parallel loop hints, then lets the extracted validator filter certifiable dimensions before calling the extracted multi-cert parallel codegen route. The cap of two matches Pluto's current OpenMP pragma extraction. | Already supported for ordinary, second-level, and diamond parallel routes. | Broaden fixtures and add strict-mode checks. |
 | `--forceparallel` | Unsupported | Current Pluto source accepts the flag but does not use it. | Not useful until Pluto implements it. | Keep rejecting or treat as error explaining it has no effective use site. |
 | `--parallel-current d` | Supported as `polopt` extension, not a Pluto flag | Explicit checked parallel dimension. | Already supported. | Keep separate from Pluto compatibility mode. |
 | `--parallel --parallel-strict` | Supported as `polopt` extension | Requires certified parallel loop to match Pluto hint. | Already supported. | Keep. |
 
-The remaining `--multipar` work is compositional rather than a parser gap: diamond and second-level parallel routes still need to call the same multi-cert parallel codegen path after their own checked schedule validation.
+The remaining `--multipar` work is no longer a route-closure gap for the main checked surface. The residual scope is broader regression coverage and any future attempt to go beyond Pluto's current two-pragma OpenMP extraction behavior.
 
 ## Diamond Tiling and Diamond Combinations
 
@@ -311,7 +311,7 @@ to expand the supported surface.
 6. Treat semantic extensions as separate projects.
    - unroll-jam
    - vector pragmas or vector loop annotations
-   - unbounded or diamond/second-level multipar/nested OpenMP
+   - unbounded multipar/nested OpenMP beyond Pluto's current two-pragma extraction behavior
    - scalar privatization if it changes memory behavior
 
 7. Keep stale flags rejected.
@@ -330,7 +330,7 @@ make test-pluto-compat-suite
 Current result:
 
 ```text
-[pluto-compat-suite] OK (39 checks)
+[pluto-compat-suite] OK (42 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:
@@ -344,6 +344,6 @@ For rejected flags, the acceptance criterion is a stable, specific reason. A gen
 
 ## Short Summary
 
-The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, second-level tiling, ISS, one-loop parallelization, non-diamond `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, and full-diamond mode.
+The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, second-level tiling, ISS, one-loop parallelization, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, and full-diamond mode.
 
-Most missing Pluto optimizer knobs are either surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, remaining multipar compositions, and any scalar-privatization feature that changes memory behavior. Frontend and backend flags should remain outside the optimizer compatibility surface.
+Most missing Pluto optimizer knobs are either surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, unbounded multipar beyond Pluto's current extraction model, and any scalar-privatization feature that changes memory behavior. Frontend and backend flags should remain outside the optimizer compatibility surface.
