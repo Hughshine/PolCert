@@ -276,7 +276,6 @@ let known_rejection_reason = function
   | "--readscop" -> Some "frontend is polopt's verified loop extractor, not Pluto OpenScop input"
   | "--dumpscop" -> Some "Pluto OpenScop dumps are an oracle-debug interface, not a polopt input/output mode"
   | "--version" -> Some "CLI version reporting is outside the optimizer-compatibility surface"
-  | "--scalpriv" -> Some "scalar privatization is a Candl-only dependence-pruning mode and needs a checked PolOpt memory-rewrite or scalar-privatization route"
   | "--bee" -> Some "Bee pragmas are Pluto codegen output, while polopt uses its own codegen"
   | "--cloogsh" -> Some "Cloog codegen tuning is outside the polopt checked route"
   | "--indent" -> Some "formatting is outside the optimizer-validation route"
@@ -393,6 +392,8 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--lastwriter and --nolastwriter are both present; this driver rejects contradictory dependence controls";
     if cfg.pluto_isldep_seen && cfg.pluto_candldep_seen then
       pluto_reject prog "--isldep and --candldep are both present; Pluto accepts only one dependence tester";
+    if (pluto_extra_has "--scalpriv" cfg) && not cfg.pluto_candldep_seen then
+      pluto_reject prog "--scalpriv requires --candldep in the checked polopt subset";
     if (pluto_extra_has "--lastwriter" cfg) && cfg.pluto_candldep_seen then
       pluto_reject prog "--lastwriter is only supported with Pluto's ISL dependence tester, not --candldep";
     if not (cfg.pluto_intratileopt_seen || cfg.pluto_no_intratileopt_seen) then
@@ -610,6 +611,13 @@ let parse_args () : config =
           cfg.pluto_candldep_seen <- true;
           add_pluto_extra_flag cfg "--candldep";
           add_pluto_note cfg "--candldep passed through to Pluto's checked scheduler oracle";
+          go (i + 1)
+      | "--scalpriv" ->
+          enable_pluto_compat cfg;
+          if not (pluto_has_working_candldep ()) then
+            pluto_reject Sys.argv.(0) "--scalpriv: selected Pluto Candl importer aborts on a dependent probe; requires the Candl dependence-type import fix";
+          add_pluto_extra_flag cfg "--scalpriv";
+          add_pluto_note cfg "--scalpriv passed through only with --candldep; PolOpt still validates the output schedule under the original scalar storage semantics";
           go (i + 1)
       | (("--glpk" | "--gurobi" | "--lp" | "--dfp" | "--ilp" | "--lpcolor"
          | "--clusterscc" | "--typedfuse" | "--hybridfuse" | "--delayedcut") as flag) ->

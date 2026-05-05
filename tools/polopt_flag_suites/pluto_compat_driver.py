@@ -88,9 +88,7 @@ META_OPTIONS = {
     "--version": "CLI version reporting is outside the optimizer-compatibility surface",
 }
 
-DEPENDENCE_SOLVER_OPTIONS = {
-    "--scalpriv": "scalar privatization is a Candl-only dependence-pruning mode and needs a checked PolOpt memory-rewrite or scalar-privatization route",
-}
+DEPENDENCE_SOLVER_OPTIONS = {}
 
 DFP_OPTIONS = {
 }
@@ -395,6 +393,11 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.candldep_seen = True
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
+        elif flag == "--scalpriv":
+            if not pluto_has_working_candldep():
+                raise Reject("--scalpriv: selected Pluto Candl importer aborts on a dependent probe; requires the Candl dependence-type import fix")
+            state.add_oracle_flag(flag)
+            state.add_note("--scalpriv passed through only with --candldep; PolOpt still validates the output schedule under the original scalar storage semantics")
         elif flag == "--noprevector":
             state.no_prevector_seen = True
             state.add_note("--noprevector accepted because polopt does not use Pluto codegen vector marking")
@@ -452,6 +455,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--lastwriter and --nolastwriter are both present; this wrapper rejects contradictory dependence controls")
     if state.isldep_seen and state.candldep_seen:
         raise Reject("--isldep and --candldep are both present; Pluto accepts only one dependence tester")
+    if "--scalpriv" in oracle_flags and not state.candldep_seen:
+        raise Reject("--scalpriv requires --candldep in the checked polopt subset")
     if "--lastwriter" in oracle_flags and state.candldep_seen:
         raise Reject("--lastwriter is only supported with Pluto's ISL dependence tester, not --candldep")
     if not (state.intratileopt_seen or state.no_intratileopt_seen):

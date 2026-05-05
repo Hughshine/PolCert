@@ -45,6 +45,7 @@ TUNING_NOTILE_FAST_LIN = ["--notile", "--smartfuse", "--fast-lin-ind-check", "--
 TUNING_NOTILE_LASTWRITER = ["--notile", "--smartfuse", "--lastwriter", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_NOLASTWRITER = ["--notile", "--smartfuse", "--nolastwriter", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_CANDLDEP = ["--notile", "--smartfuse", "--candldep", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_CANDLDEP_SCALPRIV = ["--notile", "--smartfuse", "--candldep", "--scalpriv", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_PIPSOLVE = ["--notile", "--smartfuse", "--pipsolve", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_ISL_ACCESSWISE = ["--notile", "--smartfuse", "--isldepaccesswise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_ISL_STMTWISE = ["--notile", "--smartfuse", "--isldepstmtwise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -74,6 +75,7 @@ FUSION1 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion1.loop"
 FUSION2 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion2.loop"
 FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
 FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
+SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
@@ -460,7 +462,7 @@ CHECKS = [
     Check("reject-ft-without-lt", [*FLAGS, "--ft=0", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--ft and --lt must be supplied together"),
     Check("reject-pet", ["--pet", *FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, False, "frontend is polopt's verified loop extractor"),
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
-    Check("reject-scalpriv", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "scalar privatization is a Candl-only dependence-pruning mode"),
+    Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-identity-tile", ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
@@ -608,6 +610,15 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --candldep",
+                ),
+                Check(
+                    "optimizer-candldep-scalpriv-affine",
+                    TUNING_NOTILE_CANDLDEP_SCALPRIV,
+                    SCALPRIV,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --candldep --scalpriv",
+                    effect_needles=("b[i0] = a",),
                 ),
                 Check(
                     "reject-candldep-lastwriter",
