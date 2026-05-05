@@ -289,6 +289,22 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
   else
     pure pol.
 
+Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =>
+        CoreOpt.checked_affine_schedule pol
+    | Some before_scop =>
+        try_phase_pipeline_from_source_pol_poly
+          pol
+          CoreOpt.run_pluto_identity_tiling_pipeline
+          before_scop
+    end
+  else
+    pure pol.
+
 Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
   : imp PolyLang.t :=
@@ -333,6 +349,13 @@ Definition parallel_current_prepared_from_poly
     (d : nat)
   : imp (result ParallelCodegenCore.ParallelLoop.t) :=
   BIND pol' <- phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol' d.
+
+Definition parallel_current_identity_tiled_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
 Definition parallel_current_diamond_prepared_from_poly
@@ -380,6 +403,14 @@ Definition Opt_parallel_current_identity_result
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   parallel_current_identity_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_identity_tiled_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_tiled_prepared_from_poly pol d.
 
 Definition Opt_parallel_current_affine_result
     (loop : LoopIR.t)
@@ -442,6 +473,13 @@ Definition Opt_parallel_current_identity
     (d : nat)
   : imp ParallelCodegenCore.ParallelLoop.t :=
   BIND res <- Opt_parallel_current_identity_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_identity_tiled
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_parallel_current_identity_tiled_result loop d -;
   res_to_alarm parallel_dummy res.
 
 Definition Opt_parallel_current_affine

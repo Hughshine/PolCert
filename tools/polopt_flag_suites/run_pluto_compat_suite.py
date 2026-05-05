@@ -40,6 +40,9 @@ MATMUL_TILED_INTRATILE = [*FLAGS_INTRATILE, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
+IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
+IDENTITY_TILED_PARALLEL = ["--identity", "--tile", "--parallel", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
+IDENTITY_TILED_MULTIPAR = ["--identity", "--tile", "--parallel", "--multipar", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
 FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_NOFUSE = ["--notile", "--nofuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_MAXFUSE = ["--notile", "--maxfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -553,13 +556,33 @@ CHECKS = [
     ),
     Check(
         "identity-tiled",
-        ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        IDENTITY_TILED,
         FUSION7,
         True,
         "== Optimized Loop ==",
         "polopt args: --identity --tile",
         effect_needles=("32 *", "/ 32"),
         differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
+    Check(
+        "identity-tiled-parallel",
+        IDENTITY_TILED_PARALLEL,
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --parallel",
+        effect_needles=("parallel for i1", "32 *", "/ 32"),
+        differs_from_args=(tuple(IDENTITY_TILED),),
+    ),
+    Check(
+        "identity-tiled-multipar",
+        IDENTITY_TILED_MULTIPAR,
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --multipar",
+        effect_needles=("parallel for i0", "parallel for i1", "32 *", "/ 32"),
+        differs_from_args=(tuple(IDENTITY_TILED_PARALLEL),),
     ),
     Check(
         "identity-tiled-iss",
@@ -765,6 +788,10 @@ ROUTE_BINDINGS = {
         "identity tiling route must use the extracted SBandTilingOpt.opt_identity_tiled entry",
     "seq_optimize_iss_identity_tiled = SBandTilingOpt.opt_identity_tiled_with_iss":
         "ISS identity tiling route must use the extracted theorem-facing SBandTilingOpt entry",
+    "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
+        "identity tiling plus Pluto-hinted parallel route must dispatch to the checked identity-tiled parallel wrapper",
+    "cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled":
+        "explicit-current identity tiling route must use the extracted SParallelPolOpt theorem-facing entry",
     "seq_optimize_affine = SPolOpt.opt_affine":
         "affine route must use the extracted SPolOpt.opt_affine entry",
 }

@@ -493,8 +493,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
     identity_tiled = state.identity and state.tile_seen and state.tile
-    if state.identity and state.parallel:
-        raise Reject("--parallel requires a Pluto scheduling phase and cannot be combined with --identity")
+    if state.identity and state.parallel and not identity_tiled:
+        raise Reject("--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
     if identity_tiled and state.second_level_tile:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
     if identity_tiled and state.diamond_tile:
@@ -552,8 +552,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
             args.append("--full-diamond-tile")
         elif state.diamond_tile:
             args.append("--diamond-tile")
-        if state.parallel:
-            args.append("--parallel")
+    if state.parallel:
+        args.append("--parallel")
     return args
 
 

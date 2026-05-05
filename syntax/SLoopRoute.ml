@@ -177,8 +177,8 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--parallel-current cannot be combined with --extract-only"
       else if cfg.force_parallel_strict && not cfg.force_parallel then
         Error "--parallel-strict requires --parallel"
-      else if cfg.force_parallel && cfg.force_identity then
-        Error "--parallel requires a Pluto scheduling phase and cannot be combined with --identity"
+      else if cfg.force_parallel && cfg.force_identity && not cfg.pluto_tile_seen then
+        Error "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint"
       else if cfg.force_parallel && has_parallel_current cfg then
         Error "--parallel cannot be combined with --parallel-current"
       else if cfg.force_band_tiling_experiment

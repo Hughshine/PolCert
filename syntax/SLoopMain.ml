@@ -2133,6 +2133,83 @@ let optimize_affine_only_with_pluto_parallel_hint cfg loop =
             (fallback, false)
         end
 
+let optimize_identity_tiled_with_pluto_parallel_hint cfg loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
+  | Err _ ->
+      (tag_loop_for_parallel_pretty loop, false)
+  | Okk (after_scop, hint) ->
+      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
+      let (tiling_res, tiling_ok) =
+        tiling_forward_scops
+          ~second_level:false
+          ~before_label:"identity_before"
+          ~after_label:"identity_tiled"
+          before_scop
+          after_scop
+      in
+      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+        Printf.eprintf
+          "[debug-parallel] identity tiled validate=%b(ok=%b)\n"
+          tiling_res tiling_ok;
+      if not (tiling_ok && tiling_res) then
+        (tag_loop_for_parallel_pretty loop, false)
+      else
+        let artifact =
+          tiling_artifact_from_scops_or_fail
+            ~second_level:false
+            ~before_label:"identity_before"
+            ~after_label:"identity_tiled"
+            before_scop
+            after_scop
+        in
+        let ws = PhaseTiling.convert_witness artifact.artifact_witness in
+        let canonical_after = build_canonical_tiled_after_spol pol ws in
+        let pol_after_sched =
+          import_schedule_only_spol_or_fail
+            "identity_tiled"
+            canonical_after
+            artifact.artifact_after_scop
+        in
+        let (pol_before_val, pol_after_val) =
+          normalize_stiling_validator_inputs pol pol_after_sched
+        in
+        let pol_after = normalize_spol_codegen_input pol_after_val in
+        let (res, ok) =
+          checked_tiling_validate_with_canonical
+            pol_before_val
+            pol_after_val
+            ws
+        in
+        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
+          Printf.eprintf
+            "[debug-parallel] identity checked_tiling_validate=%b(ok=%b)\n"
+            res ok;
+        debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
+        if not (ok && res) then
+          (tag_loop_for_parallel_pretty loop, false)
+        else
+          let hinted_dims = hint_dims hint in
+          let try_codegen =
+            if cfg.force_multipar then
+              try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
+            else
+              try_pluto_parallel_codegen
+                pol_after
+                (first_hint_dim hint)
+                cfg.force_parallel_strict
+          in
+          begin match try_codegen with
+          | Some (pl, used_hint) -> (pl, used_hint)
+          | None ->
+              let (fallback, _ok) =
+                tagged_prepared_codegen
+                  (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
+              in
+              (fallback, false)
+          end
+
 let optimize_with_iss_affine_parallel_hint cfg loop =
   let pol = extract_strengthened_poly loop in
   let before_scop = poly_to_openscop pol in
@@ -2488,6 +2565,7 @@ let sequential_handlers = {
 
 let hinted_parallel_handlers = {
   hint_optimize_diamond = optimize_with_diamond_parallel_hint;
+  hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint;
   hint_optimize_iss_affine = optimize_with_iss_affine_parallel_hint;
   hint_optimize_iss_default = optimize_with_iss_phase_aligned_pluto_parallel_hint;
   hint_optimize_affine = optimize_affine_only_with_pluto_parallel_hint;
@@ -2497,6 +2575,7 @@ let hinted_parallel_handlers = {
 let current_parallel_handlers = {
   cur_optimize_diamond = SParallelPolOpt.opt_parallel_current_diamond;
   cur_optimize_diamond_iss = SParallelPolOpt.opt_parallel_current_diamond_with_iss;
+  cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled;
   cur_optimize_iss_identity = SParallelPolOpt.opt_parallel_current_identity_with_iss;
   cur_optimize_iss_affine = SParallelPolOpt.opt_parallel_current_affine_with_iss;
   cur_optimize_iss_default = SParallelPolOpt.opt_parallel_current_with_iss;

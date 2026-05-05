@@ -4,6 +4,7 @@
     "positive": "fixtures/positive.loop",
     "diamond-example-inner-batch": "fixtures/diamond-example-inner-batch.loop",
     "jacobi-batch": "fixtures/jacobi-batch.loop",
+    "matmul-init": "../second_level_tiling/fixtures/matmul-init.loop",
     "dependent": "fixtures/dependent.loop"
   },
   "checks": [
@@ -104,6 +105,24 @@
       "needle": "parallel for",
       "differs_from_args": [
         "--iss"
+      ]
+    },
+    {
+      "name": "identity-tiled-current-combined-effect",
+      "fixture": "matmul-init",
+      "args": [
+        "--identity-tiled",
+        "--parallel-current",
+        "1"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for i1",
+        "32 *",
+        "/ 32"
+      ],
+      "differs_from_args": [
+        "--identity-tiled"
       ]
     },
     {

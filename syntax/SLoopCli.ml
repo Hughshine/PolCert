@@ -49,7 +49,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --pluto-compat [--explain] [--dry-run] <Pluto-like optimizer flags> <file.loop>\n"
@@ -73,6 +73,8 @@ let usage prog =
       "  --profile-stages  : print OCaml-side stage timings for the default no-parallel\n";
       "                      theorem-aligned routes (`--identity`, `--notile`, or default)\n";
       "  --identity        : no Pluto phase, just checked extraction/strengthen/codegen\n";
+      "  --identity-tiled  : native theorem-facing identity schedule plus checked Pluto\n";
+      "                      tile-only route; can compose with --parallel-current\n";
       "  --notile          : stop after affine scheduling validation\n";
       "  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n";
       "                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n";
@@ -116,6 +118,7 @@ let usage prog =
       Printf.sprintf "  %s --iss --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --notile file.loop               # affine-only checked path\n" prog;
       Printf.sprintf "  %s --identity file.loop             # identity/no-schedule path\n" prog;
+      Printf.sprintf "  %s --identity-tiled --parallel-current 1 file.loop\n" prog;
       Printf.sprintf "  %s --validate-affine-openscop before.scop mid.scop\n" prog;
       Printf.sprintf "  %s --validate-tiling-openscop mid.scop after.scop\n" prog;
       Printf.sprintf "  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n" prog;
@@ -374,9 +377,9 @@ let pluto_polopt_args cfg =
     if cfg.force_notile then args := !args @ ["--notile"];
     if cfg.force_second_level_tile then args := !args @ ["--second-level-tile"];
     if cfg.force_full_diamond_tile then args := !args @ ["--full-diamond-tile"]
-    else if cfg.force_diamond_tile then args := !args @ ["--diamond-tile"];
-    if cfg.force_parallel then args := !args @ ["--parallel"]
+    else if cfg.force_diamond_tile then args := !args @ ["--diamond-tile"]
   end;
+  if cfg.force_parallel then args := !args @ ["--parallel"];
   !args
 
 let print_pluto_explain cfg =
@@ -430,8 +433,8 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "Pluto enables --parallel by default; pass --noparallel or --parallel explicitly";
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
-    if cfg.force_identity && cfg.force_parallel then
-      pluto_reject prog "--parallel requires a Pluto scheduling phase and cannot be combined with --identity";
+    if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then
+      pluto_reject prog "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
     if cfg.force_identity && cfg.force_second_level_tile then
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.force_diamond_tile then
@@ -556,6 +559,11 @@ let parse_args () : config =
       | "--extract-only" -> cfg.extract_only <- true; go (i + 1)
       | "--profile-stages" -> cfg.profile_stages <- true; go (i + 1)
       | "--identity" -> cfg.force_identity <- true; go (i + 1)
+      | "--identity-tiled" ->
+          cfg.force_identity <- true;
+          cfg.pluto_tile_seen <- true;
+          cfg.force_notile <- false;
+          go (i + 1)
       | "--tile" ->
           enable_pluto_compat cfg;
           cfg.pluto_tile_seen <- true;

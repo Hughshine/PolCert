@@ -196,6 +196,22 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     syntax/SLoopIss.cmi \
     lib/Camlcoq.cmi
 
+# These modules have no .mli file.  Their .cmi files are produced as a
+# side effect of compiling the implementation, so spell that out for
+# parallel builds that see the hand-written .cmi dependencies above.
+lib/Camlcoq.cmi: lib/Camlcoq.cmx
+extraction/ImpureConfig.cmi: extraction/ImpureConfig.cmx
+extraction/SParallelPolOpt.cmi: extraction/SParallelPolOpt.cmx
+driver/Scheduler.cmi: driver/Scheduler.cmx
+syntax/PlutoTilingValidator.cmi: syntax/PlutoTilingValidator.cmx
+syntax/SLoopCli.cmi: syntax/SLoopCli.cmx
+syntax/SLoopCommon.cmi: syntax/SLoopCommon.cmx
+syntax/SLoopConfig.cmi: syntax/SLoopConfig.cmx
+syntax/SLoopDispatch.cmi: syntax/SLoopDispatch.cmx
+syntax/SLoopIss.cmi: syntax/SLoopIss.cmx
+syntax/SLoopProfile.cmi: syntax/SLoopProfile.cmx
+syntax/SLoopRoute.cmi: syntax/SLoopRoute.cmx
+
 endif
 
 # End of part that assumes .depend.extr already exists
