@@ -246,7 +246,7 @@ That is not just a solver knob if the final schedule relies on each iteration ha
 | `--second-level-tile --parallel` | Supported | The phase-aligned route now extracts the second-level tiling artifact, validates it, then feeds the validated post-tiling program to the checked parallel validator/codegen path. | Already supported. | Broaden fixtures beyond `nodep` and `matmul-init`. |
 | `--second-level-tile --parallel-current d` | Supported | Explicit-current parallel certification composes after the checked second-level tiling route. | Already supported. | Keep in second-level suite. |
 
-Tile size control is likely easy from a proof perspective if the validator already proves tiling for arbitrary positive sizes. Partial tiling still needs broader effect fixtures, and mixed identity+tiling compositions need route-specific theorem coverage.
+Tile size control is likely easy from a proof perspective if the validator already proves tiling for arbitrary positive sizes. Partial tiling still needs broader effect fixtures, and mixed identity+tiling compositions need route-specific theorem coverage. A direct `--identity --tile --second-level-tile` experiment over 458 current `.loop` files found no positive second-level effect case: the route could be made to execute, but it fell back to identity or ordinary identity tiling. It therefore remains rejected until a route produces a validated second-level shape rather than merely accepting the flags.
 
 ## Parallel Controls
 
