@@ -514,7 +514,16 @@ CHECKS = [
         effect_needles=("32 *", "/ 32"),
         differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
     ),
-    Check("reject-identity-tile-iss", ["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--identity --tile --iss is not supported"),
+    Check(
+        "identity-tiled-iss",
+        ["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        FUSION7,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
 ]
@@ -707,6 +716,8 @@ ROUTE_BINDINGS = {
         "identity route must use the extracted SPolOpt.opt_identity entry",
     "seq_optimize_identity_tiled = SBandTilingOpt.opt_identity_tiled":
         "identity tiling route must use the extracted SBandTilingOpt.opt_identity_tiled entry",
+    "seq_optimize_iss_identity_tiled = SBandTilingOpt.opt_identity_tiled_with_iss":
+        "ISS identity tiling route must use the extracted theorem-facing SBandTilingOpt entry",
     "seq_optimize_affine = SPolOpt.opt_affine":
         "affine route must use the extracted SPolOpt.opt_affine entry",
 }

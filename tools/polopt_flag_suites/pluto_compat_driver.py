@@ -472,8 +472,6 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     identity_tiled = state.identity and state.tile_seen and state.tile
     if state.identity and state.parallel:
         raise Reject("--parallel requires a Pluto scheduling phase and cannot be combined with --identity")
-    if identity_tiled and state.iss:
-        raise Reject("--identity --tile --iss is not supported in the checked polopt subset")
     if identity_tiled and state.second_level_tile:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
     if identity_tiled and state.diamond_tile:
@@ -513,6 +511,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
 
     args: list[str] = []
     if identity_tiled:
+        if state.iss:
+            args.append("--iss")
         args.extend(["--identity", "--tile"])
     elif state.identity:
         if state.iss:

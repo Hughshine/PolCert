@@ -196,9 +196,8 @@ Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   else
     SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
 
-Definition opt_identity_tiled (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
-  BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
-  let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
+Definition opt_identity_tiled_from_poly
+    (pol: SPolIRs.PolyLang.t) : imp SPolIRs.Loop.t :=
   if SPolOpt.CoreOpt.has_nonscalar_stmt pol then
     match SPolOpt.CoreOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
@@ -206,6 +205,50 @@ Definition opt_identity_tiled (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
           pol
           SPolOpt.CoreOpt.run_pluto_identity_tiling_pipeline
           before_scop
+    | None =>
+        SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
+    end
+  else
+    SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol.
+
+Definition opt_identity_tiled (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
+  let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
+  opt_identity_tiled_from_poly pol.
+
+Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
+    (pol: SPolIRs.PolyLang.t)
+    (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
+  match SPolOpt.CoreOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =>
+      if SPolOpt.CoreOpt.ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf <- SPolOpt.CoreOpt.ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          match SPolOpt.CoreOpt.export_for_phase_scheduler pol_iss with
+          | Some iss_scop =>
+              try_phase_pipeline_from_source_pol_band
+                pol_iss
+                SPolOpt.CoreOpt.run_pluto_identity_tiling_pipeline
+                iss_scop
+          | None =>
+              SPolOpt.CoreOpt.PrepareCore.prepared_codegen pol_iss
+          end
+        else
+          opt_identity_tiled_from_poly pol
+      else
+        opt_identity_tiled_from_poly pol
+  | _ =>
+      opt_identity_tiled_from_poly pol
+  end.
+
+Definition opt_identity_tiled_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND pol0 <- res_to_alarm SPolIRs.PolyLang.dummy (SPolOpt.CoreOpt.Extractor.extractor loop) -;
+  let pol := SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
+  if SPolOpt.CoreOpt.has_nonscalar_stmt pol then
+    match SPolOpt.CoreOpt.export_for_phase_scheduler pol with
+    | Some before_scop =>
+        try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
+          pol before_scop
     | None =>
         SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
     end

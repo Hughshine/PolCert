@@ -51,6 +51,7 @@ let run_standalone_action (cfg : SLoopCli.config) handlers =
 type 'loop sequential_handlers = {
   seq_optimize_diamond : 'loop -> 'loop * bool;
   seq_optimize_diamond_iss : 'loop -> 'loop * bool;
+  seq_optimize_iss_identity_tiled : 'loop -> 'loop * bool;
   seq_optimize_iss_identity : 'loop -> 'loop * bool;
   seq_optimize_iss_affine : 'loop -> 'loop * bool;
   seq_optimize_iss_default : 'loop -> 'loop * bool;
@@ -69,7 +70,10 @@ let run_selected_optimization (cfg : SLoopCli.config) handlers loop =
       handlers.seq_optimize_diamond loop
   else if cfg.force_iss then
     if cfg.force_identity then
-      handlers.seq_optimize_iss_identity loop
+      if cfg.pluto_tile_seen then
+        handlers.seq_optimize_iss_identity_tiled loop
+      else
+        handlers.seq_optimize_iss_identity loop
     else if cfg.force_notile then
       handlers.seq_optimize_iss_affine loop
     else

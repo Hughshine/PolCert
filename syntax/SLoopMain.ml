@@ -2475,6 +2475,7 @@ let standalone_handlers = {
 let sequential_handlers = {
   seq_optimize_diamond = SBandTilingOpt.opt_diamond;
   seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss;
+  seq_optimize_iss_identity_tiled = SBandTilingOpt.opt_identity_tiled_with_iss;
   seq_optimize_iss_identity = optimize_with_iss_identity;
   seq_optimize_iss_affine = optimize_with_iss_affine;
   seq_optimize_iss_default = SPolOpt.opt_with_iss;

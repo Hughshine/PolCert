@@ -409,14 +409,16 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel then
       pluto_reject prog "--parallel requires a Pluto scheduling phase and cannot be combined with --identity";
-    if cfg.force_identity && cfg.force_iss && cfg.pluto_tile_seen then
-      pluto_reject prog "--identity --tile --iss is not supported in the checked polopt subset";
     if cfg.force_identity && cfg.force_second_level_tile then
       pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.force_diamond_tile then
       pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.pluto_tile_seen then
-      add_pluto_note cfg "--identity --tile uses the checked identity-tiling route";
+      add_pluto_note cfg
+        (if cfg.force_iss then
+           "--identity --tile --iss uses the checked ISS plus identity-tiling route"
+         else
+           "--identity --tile uses the checked identity-tiling route");
     if cfg.force_identity && (not cfg.pluto_notile_seen) && (not cfg.pluto_tile_seen) then
       pluto_reject prog "--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route";
     if cfg.force_second_level_tile && cfg.force_notile then

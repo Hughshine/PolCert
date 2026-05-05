@@ -218,6 +218,44 @@ Definition identity_tiling_opt_prepared_from_poly_band
   else
     PrepareCore.prepared_codegen pol.
 
+Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
+    (pol: PolyLang.t)
+    (before_scop: OpenScop): imp LoopIR.t :=
+  match BaseOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =>
+      if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf <- ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          match BaseOpt.export_for_phase_scheduler pol_iss with
+          | Some iss_scop =>
+              try_phase_pipeline_from_source_pol_band
+                pol_iss
+                BaseOpt.run_pluto_identity_tiling_pipeline
+                iss_scop
+          | None =>
+              PrepareCore.prepared_codegen pol_iss
+          end
+        else
+          identity_tiling_opt_prepared_from_poly_band pol
+      else
+        identity_tiling_opt_prepared_from_poly_band pol
+  | _ =>
+      identity_tiling_opt_prepared_from_poly_band pol
+  end.
+
+Definition identity_tiling_opt_prepared_from_poly_with_iss_band
+    (pol: PolyLang.t): imp LoopIR.t :=
+  if BaseOpt.has_nonscalar_stmt pol then
+    match BaseOpt.export_for_phase_scheduler pol with
+    | Some before_scop =>
+        try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
+          pol before_scop
+    | None =>
+        BaseOpt.affine_only_opt_prepared_from_poly pol
+    end
+  else
+    PrepareCore.prepared_codegen pol.
+
 Definition phase_diamond_opt_prepared_from_poly_no_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
   if BaseOpt.has_nonscalar_stmt pol then
@@ -253,6 +291,12 @@ Definition identity_tiling_opt_prepared_band
   BIND pol0 <- res_to_alarm PolyLang.dummy (BaseOpt.Extractor.extractor loop) -;
   let pol := BaseOpt.Strengthen.strengthen_pprog pol0 in
   identity_tiling_opt_prepared_from_poly_band pol.
+
+Definition identity_tiling_opt_prepared_with_iss_band
+    (loop: LoopIR.t): imp LoopIR.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (BaseOpt.Extractor.extractor loop) -;
+  let pol := BaseOpt.Strengthen.strengthen_pprog pol0 in
+  identity_tiling_opt_prepared_from_poly_with_iss_band pol.
 
 Definition phase_diamond_opt_prepared_band
     (loop: LoopIR.t): imp LoopIR.t :=
@@ -493,10 +537,96 @@ Proof.
     exists st'. split; auto. apply State.eq_refl.
 Qed.
 
+Lemma try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct:
+  forall pol before_scop st st',
+    PolyLang.wf_pprog_affine pol ->
+    WHEN loop' <-
+      try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
+        pol before_scop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      State.eq st' st''.
+Proof.
+  intros pol before_scop st st' Hwf loop' Hopt Hloop.
+  unfold try_checked_iss_identity_tiling_phase_pipeline_from_poly_band in Hopt.
+  destruct (BaseOpt.infer_iss_from_source_scop pol before_scop) as [iss_opt|msg]
+    eqn:Hiss_infer.
+  - destruct iss_opt as [[pol_iss w]|].
+    + destruct (ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w)
+        eqn:Hiss_check.
+      * bind_imp_destruct Hopt iss_wf Hiss_wf.
+        destruct iss_wf.
+        -- pose proof
+             (BaseOpt.check_wf_polyprog_affine_correct
+                pol_iss _ Hiss_wf eq_refl)
+             as Hwf_iss.
+           destruct (BaseOpt.export_for_phase_scheduler pol_iss)
+             as [iss_scop|] eqn:Hiss_scop.
+           ++ pose proof
+                (try_phase_pipeline_from_source_pol_band_correct
+                   pol_iss
+                   BaseOpt.run_pluto_identity_tiling_pipeline
+                   iss_scop st st' Hwf_iss loop' Hopt Hloop)
+                as Hiss_corr.
+              destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
+              pose proof
+                (ISSValidatorCorrectCore
+                   .checked_iss_complete_cut_shape_validate_semantics_correct
+                   pol pol_iss w st st_iss Hiss_check Hiss_sem)
+                as Hback.
+              destruct Hback as [st_src [Hsrc_sem Heq_src]].
+              exists st_src.
+              split; auto.
+              eapply State.eq_trans; eauto.
+           ++ pose proof
+                (PrepareCore.prepared_codegen_correct
+                   pol_iss st st' loop' Hopt Hwf_iss Hloop)
+                as Hiss_sem.
+              pose proof
+                (ISSValidatorCorrectCore
+                   .checked_iss_complete_cut_shape_validate_semantics_correct
+                   pol pol_iss w st st' Hiss_check Hiss_sem)
+                as Hback.
+              destruct Hback as [st_src [Hsrc_sem Heq_src]].
+              exists st_src.
+              split; auto.
+        -- eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
+      * eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
+    + eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
+  - eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
+Qed.
+
+Lemma identity_tiling_opt_prepared_from_poly_with_iss_band_correct:
+  forall pol st st',
+    PolyLang.wf_pprog_affine pol ->
+    WHEN loop' <- identity_tiling_opt_prepared_from_poly_with_iss_band pol THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      State.eq st' st''.
+Proof.
+  intros pol st st' Hwf loop' Hopt Hloop.
+  unfold identity_tiling_opt_prepared_from_poly_with_iss_band in Hopt.
+  destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
+  - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
+    + eapply try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct; eauto.
+    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
+  - pose proof
+      (PrepareCore.prepared_codegen_correct
+         pol st st' loop' Hopt Hwf Hloop)
+      as Hsem.
+    exists st'. split; auto. apply State.eq_refl.
+Qed.
+
 Definition Opt_prepared_band := phase_pipeline_opt_prepared_band.
 Definition Opt_band := Opt_prepared_band.
 Definition Opt_prepared_identity_tiled_band := identity_tiling_opt_prepared_band.
 Definition Opt_identity_tiled_band := Opt_prepared_identity_tiled_band.
+Definition Opt_prepared_identity_tiled_band_with_iss :=
+  identity_tiling_opt_prepared_with_iss_band.
+Definition Opt_identity_tiled_band_with_iss :=
+  Opt_prepared_identity_tiled_band_with_iss.
 
 Theorem Opt_prepared_band_correct:
   forall loop st st',
@@ -578,6 +708,54 @@ Theorem Opt_identity_tiled_band_correct:
 Proof.
   intros.
   eapply Opt_prepared_identity_tiled_band_correct; eauto.
+Qed.
+
+Theorem Opt_prepared_identity_tiled_band_with_iss_correct:
+  forall loop st st',
+    WHEN loop' <- Opt_prepared_identity_tiled_band_with_iss loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\
+      State.eq st' st''.
+Proof.
+  intros loop st st' loop' Hopt Hloop.
+  unfold Opt_prepared_identity_tiled_band_with_iss,
+    identity_tiling_opt_prepared_with_iss_band in Hopt.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
+       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
+    as Hwf_pol.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_band_correct
+       pol st st' Hwf_pol loop' Hopt Hloop)
+    as Hpol.
+  destruct Hpol as [st_str [Hstr_sem Heq_str]].
+  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  pose proof
+    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
+    as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans.
+  - exact Heq_str.
+  - exact Heq_src.
+Qed.
+
+Theorem Opt_identity_tiled_band_with_iss_correct:
+  forall loop st st',
+    WHEN loop' <- Opt_identity_tiled_band_with_iss loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\
+      State.eq st' st''.
+Proof.
+  intros.
+  eapply Opt_prepared_identity_tiled_band_with_iss_correct; eauto.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_band_correct:
