@@ -61,12 +61,17 @@ The current assessment is based on these concrete checks.
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
   - default GLPK-enabled Pluto baseline result: `82 / 82` checks passed
+- Flag-effect exploration:
+  - `tools/artifact/explore_flag_effects.py` compares `polopt --pluto-compat --explain` optimized loops for paired Pluto-style flag sets and writes JSON or Markdown evidence
+  - `--group lp-dfp` found non-matmul effects for DFP, typed fusion, and hybrid fusion, but no `--delayedcut` effect beyond ordinary DFP over the 125 input fixtures it searched
+  - `--group dependence-solver --max-fixtures 30` found no stdout optimized-loop effect for `--pipsolve`, `--candldep`, `--isldepaccesswise`, `--isldepstmtwise`, or `--isldepcoalesce`
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
 - Executed artifact smoke check:
   - `make artifact-check`
   - result: py-compile, proof report, capability matrix, Pluto-compatible suite, second-level suite, and diamond suite all passed
+  - extended mode: `python3 tools/artifact/run_artifact_check.py --mode extended` adds the flag-effect exploration after the ordinary proof and suite checks
 
 One important correction: Pluto's `--help` is not reliable for defaults in this build. The help text says some features are disabled by default, but `lib/program.cpp` initializes `tile=1`, `parallel=1`, `diamondtile=1`, `intratileopt=1`, `prevector=1`, `unrolljam=1`, and `smartfuse`.
 
@@ -186,12 +191,12 @@ The vector path deliberately follows the checked parallel route: recover or choo
 |---|---|---|---|---|
 | `--typedfuse` | Supported on the pinned baseline | The pinned Pluto baseline advertises GLPK/DFP support; the suite validates both the shifted `matmul.loop` case and a non-matmul `adi.loop` case where typed fusion collapses the skewed loop nest into direct `0..N` bands. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden beyond the current dense-kernel fixtures. |
 | `--hybridfuse` | Supported on the pinned baseline | Same binary capability requirement as typed fusion; the suite validates the DFP-style `matmul.loop` case and the same non-matmul `adi.loop` effect. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden beyond the current dense-kernel fixtures. |
-| `--delayedcut` | Supported on the pinned baseline | DFP-only option; the suite validates `--glpk --dfp --delayedcut` on the representative affine `matmul.loop` case. The current fixture search did not find an additional optimized-loop difference beyond ordinary DFP. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Keep searching for a fixture where delayed cuts differ from DFP without relying on logs. |
+| `--delayedcut` | Supported on the pinned baseline | DFP-only option; the suite validates `--glpk --dfp --delayedcut` on the representative affine `matmul.loop` case. `explore_flag_effects.py --group lp-dfp` searched 125 input fixtures and did not find an additional optimized-loop difference beyond ordinary DFP. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Keep searching for a delayed-cut-specific fixture outside the current input set or with a targeted DFP stress case. |
 | `--dfp`, `--lp`, `--ilp`, `--lpcolor`, `--clusterscc` | Supported on the pinned baseline | The pinned Pluto baseline advertises these LP/DFP controls, and native compatibility tests validate representative affine cases. | Already supported when the selected Pluto binary advertises the option. | Keep runtime rejection for alternate Pluto binaries that lack LP/DFP support. |
 | `--glpk` | Supported on the pinned baseline | The PolCert Dockerfile rebuilds Pluto with `--enable-glpk --with-glpk-prefix=/usr`; the checker requires `--glpk`, `--lp`, and `--dfp` in `pluto --help`. | Already supported when the selected Pluto binary advertises `--glpk`. | Treat as oracle solver selection; validator remains the correctness gate. |
 | `--gurobi` | Conditional support | Not available in the current container. | Supported only if a selected Pluto binary advertises `--gurobi`. | Same as `--glpk`, but requires a Gurobi-enabled build. |
 
-This category is now default artifact behavior for GLPK-backed Pluto. If DFP or typed fusion only changes which affine schedule Pluto finds, the existing affine validator is the central correctness check. The suite checks a visible schedule effect on `matmul.loop`: `--glpk`, `--glpk --ilp`, `--glpk --lp`, `--glpk --lpcolor`, and `--glpk --clusterscc` select the direct `M,N,K` loop order, while `--glpk --dfp`, `--typedfuse --glpk`, `--glpk --hybridfuse`, and `--glpk --dfp --delayedcut` produce the shifted DFP-style loop nest. It also checks non-matmul effects: `--glpk --dfp` changes statement placement on `corcol.loop`, and `--typedfuse --glpk` plus `--glpk --hybridfuse` change the `adi.loop` nest to direct `0..N` bands. The remaining work is finding a delayed-cut-specific fixture and broader non-dense kernels.
+This category is now default artifact behavior for GLPK-backed Pluto. If DFP or typed fusion only changes which affine schedule Pluto finds, the existing affine validator is the central correctness check. The suite checks a visible schedule effect on `matmul.loop`: `--glpk`, `--glpk --ilp`, `--glpk --lp`, `--glpk --lpcolor`, and `--glpk --clusterscc` select the direct `M,N,K` loop order, while `--glpk --dfp`, `--typedfuse --glpk`, `--glpk --hybridfuse`, and `--glpk --dfp --delayedcut` produce the shifted DFP-style loop nest. It also checks non-matmul effects: `--glpk --dfp` changes statement placement on `corcol.loop`, and `--typedfuse --glpk` plus `--glpk --hybridfuse` change the `adi.loop` nest to direct `0..N` bands. The flag-effect tool found those same effects automatically. It also gives the current negative evidence for delayed cuts: no stdout optimized-loop difference from ordinary DFP over the 125 input fixtures in its default search set.
 
 ## Fusion and Scheduling Objective Knobs
 
@@ -224,7 +229,7 @@ This category is now default artifact behavior for GLPK-backed Pluto. If DFP or 
 
 These flags do not need to be trusted for correctness if `polopt` validates the output schedule. The main risks are representation gaps and untested schedule shapes.
 
-Effect-oriented search over the current `.loop` fixtures did not find a stable output-shape difference for `--candldep`, `--pipsolve`, `--isldepaccesswise`, `--isldepstmtwise`, or `--isldepcoalesce` after filtering out Pluto warnings and assertion text. These flags remain covered by pass-through and validation tests. Their remaining test TODO is to construct dependence-sensitive fixtures where the alternate dependence engine or granularity changes the schedule without relying on stderr differences.
+Effect-oriented search over the first 30 input fixtures did not find a stdout optimized-loop difference for `--candldep`, `--pipsolve`, `--isldepaccesswise`, `--isldepstmtwise`, or `--isldepcoalesce`. The tool compares stdout only, so Pluto warnings such as the ISL context warning do not count as effects. These flags remain covered by pass-through and validation tests. Their remaining test TODO is to construct dependence-sensitive fixtures where the alternate dependence engine or granularity changes the schedule.
 
 `--candldep` should not be deleted from Pluto in this fork. It is still exposed by `tool/main.cpp`, it is mutually exclusive with `--isldep`, and it is the only Pluto path that makes `--scalpriv` meaningful. The abort was caused by two local importer omissions in `tool/osl_pluto.c`, not by an intentionally deprecated code path. Keeping it is useful because it lets PolOpt validate schedules produced by both Pluto dependence engines.
 

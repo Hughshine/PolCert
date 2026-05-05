@@ -71,6 +71,7 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 "-m",
                 "py_compile",
                 "tools/artifact/run_artifact_check.py",
+                "tools/artifact/explore_flag_effects.py",
                 "tools/artifact/explore_identity_compositions.py",
                 "tools/artifact/generate_capability_matrix.py",
                 "tools/artifact/proof_report.py",
@@ -158,9 +159,30 @@ def full_checks() -> list[tuple[str, list[str], int | None]]:
     ]
 
 
+def extended_checks(out_dir: Path) -> list[tuple[str, list[str], int | None]]:
+    return [
+        (
+            "flag-effect-exploration",
+            [
+                sys.executable,
+                "tools/artifact/explore_flag_effects.py",
+                "--json-out",
+                str(out_dir / "flag-effects.json"),
+                "--markdown-out",
+                str(out_dir / "flag-effects.md"),
+                "--limit-per-pair",
+                "2",
+                "--timeout",
+                "20",
+            ],
+            1800,
+        )
+    ]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["smoke", "full"], default="smoke")
+    ap.add_argument("--mode", choices=["smoke", "full", "extended"], default="smoke")
     ap.add_argument("--output-root", default="/tmp/polcert-artifact-check")
     ap.add_argument("--diamond-timeout-seconds", type=int, default=180)
     args = ap.parse_args()
@@ -168,8 +190,10 @@ def main() -> int:
     out_dir = Path(args.output_root).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     checks = base_checks(out_dir, args.diamond_timeout_seconds)
-    if args.mode == "full":
+    if args.mode in ("full", "extended"):
         checks.extend(full_checks())
+    if args.mode == "extended":
+        checks.extend(extended_checks(out_dir))
 
     results: list[CheckResult] = []
     for name, command, timeout in checks:
