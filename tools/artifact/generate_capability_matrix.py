@@ -32,7 +32,7 @@ SUPPORTED = [
     Capability("--second-level-tile", "supported", "checked second-level tiling route, including explicit-current and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-parallel", "broaden fixtures"),
     Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
     Capability("--parallel-current d", "supported", "explicit checked parallel dimension", "parallel-current suite; Opt_parallel_current_correct", "keep separate from Pluto compatibility"),
-    Capability("--diamond-tile", "supported-narrow", "extracted sequential non-ISS single-level four-phase diamond route", "diamond suite; Opt_diamond_band_correct", "extend rejected compositions"),
+    Capability("--diamond-tile", "supported-narrow", "extracted four-phase diamond route with sequential, ISS, second-level, parallel, and multipar compositions", "diamond suite; pluto-compat diamond combinations; Opt_diamond_band_correct", "broaden effect fixtures and polish raw-codegen fallback output"),
     Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
     Capability("--diamond-tile --iss", "supported-narrow", "ISS bridge validation is composed before the single-level four-phase diamond route", "pluto-compat diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+diamond fixtures"),
     Capability("--full-diamond-tile --iss", "supported-narrow", "full-diamond producer mode over the same checked ISS+diamond route", "pluto-compat full-diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+full-diamond fixtures"),
@@ -58,6 +58,8 @@ def table_rows() -> list[Capability]:
         rows.append(Capability(flag, "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden fixtures for additional effect cases"))
     for flag, reason in sorted(compat.SUPPORTED_VALUE_OPTIONS.items()):
         rows.append(Capability(flag + " <n>", "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden value/effect fixtures"))
+    for flag, reason in sorted(compat.CONDITIONAL_LP_SOLVER_OPTIONS.items()):
+        rows.append(Capability(flag, "supported-conditional-oracle-tuning", reason, "default suite rejects when the pinned Pluto lacks LP/DFP support; GLPK-enabled suite accepts and validates representative affine cases", "publish or select a GLPK-enabled Pluto baseline before treating as default artifact support"))
 
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
         rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))
@@ -68,7 +70,7 @@ def table_rows() -> list[Capability]:
     for flag, reason in sorted(compat.UNSUPPORTED_OPTIMIZER_OPTIONS.items()):
         rows.append(Capability(flag, "surface-gap", reason, "native compat rejection", "pass through as oracle tuning only after regression coverage"))
     for flag, reason in sorted(compat.DEPENDENCE_SOLVER_OPTIONS.items()):
-        rows.append(Capability(flag, "surface-gap", reason, "native compat rejection", "pass through as oracle tuning, then validate output schedules"))
+        rows.append(Capability(flag, "validator-or-semantic-gap", reason, "native compat rejection", "implement a checked PolOpt equivalent before pass-through"))
     for flag, reason in sorted(compat.STALE_OR_NON_PLUTO_OPTIONS.items()):
         rows.append(Capability(flag, "stale-or-non-pluto", reason, "native compat rejection", "do not expose as optimizer compatibility"))
     return rows

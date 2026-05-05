@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +43,8 @@ class PlutoFlagState:
     multipar: bool = False
     innerpar_seen: bool = False
     no_parallel_seen: bool = False
+    isldep_seen: bool = False
+    candldep_seen: bool = False
     intratileopt_seen: bool = False
     no_intratileopt_seen: bool = False
     no_prevector_seen: bool = False
@@ -85,26 +89,10 @@ META_OPTIONS = {
 }
 
 DEPENDENCE_SOLVER_OPTIONS = {
-    "--candldep": "Candl dependence testing is not exposed through the checked polopt route",
-    "--isldepaccesswise": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
-    "--isldepstmtwise": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
-    "--isldepcoalesce": "ISL dependence-analysis tuning is not exposed through the checked polopt route",
-    "--nolastwriter": "last-writer dependence mode is not exposed through the checked polopt route",
-    "--pipsolve": "PIP solver selection is not exposed through the checked polopt route",
-    "--scalpriv": "Candl scalar privatization is not exposed through the checked polopt route",
+    "--scalpriv": "scalar privatization is a Candl-only dependence-pruning mode and needs a checked PolOpt memory-rewrite or scalar-privatization route",
 }
 
 DFP_OPTIONS = {
-    "--clusterscc": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--delayedcut": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--dfp": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--glpk": "current Pluto build has no GLPK support and polopt has no checked DFP route",
-    "--gurobi": "current Pluto build has no Gurobi support and polopt has no checked DFP route",
-    "--hybridfuse": "hybrid fusion depends on DFP/typed fusion, which is outside the checked polopt route",
-    "--ilp": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--lp": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--lpcolor": "DFP/typed-fusion options require a Pluto LP build and no checked polopt route exists",
-    "--typedfuse": "typed fusion depends on DFP, which is outside the checked polopt route",
 }
 
 CODEGEN_OPTIONS = {
@@ -115,9 +103,7 @@ CODEGEN_OPTIONS = {
     "--unrolljam": "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route",
 }
 
-UNSUPPORTED_OPTIMIZER_OPTIONS = {
-    "--forceparallel": "Pluto accepts this flag, but the current source has no effective use site",
-}
+UNSUPPORTED_OPTIMIZER_OPTIONS = {}
 
 SUPPORTED_OPTIMIZER_OPTIONS = {
     "--smartfuse": "Pluto smart fusion policy is passed to the checked scheduler oracle",
@@ -128,15 +114,119 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--flic": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--fast-lin-ind-check": "Pluto fast linear-independence search is passed to the checked scheduler oracle",
     "--determine-tile-size": "Pluto automatic tile-size selection is passed to the checked scheduler oracle",
+    "--candldep": "Pluto Candl dependence analysis is passed through when the selected Pluto binary passes the Candl importer smoke probe",
     "--lastwriter": "Pluto last-writer dependence mode is passed to the checked scheduler oracle",
+    "--nolastwriter": "Pluto default transitive dependence mode is passed to the checked scheduler oracle",
+    "--isldepaccesswise": "Pluto ISL access-wise dependence extraction is passed to the checked scheduler oracle",
+    "--isldepstmtwise": "Pluto ISL statement-wise dependence extraction is passed to the checked scheduler oracle",
+    "--isldepcoalesce": "Pluto ISL dependence coalescing is passed to the checked scheduler oracle",
+    "--pipsolve": "Pluto PIP solver selection is passed to the checked scheduler oracle",
     "--intratileopt": "Pluto intra-tile schedule rewriting is passed to the checked scheduler oracle",
     "--multipar": "Pluto multi-degree parallel extraction is passed to the checked scheduler oracle",
 }
 
 SUPPORTED_VALUE_OPTIONS = {
     "--cache-size": "Pluto cache-size tile model parameter is passed to the checked scheduler oracle",
+    "--coeff-bound": "Pluto affine coefficient bound is passed to the checked scheduler oracle",
     "--data-element-size": "Pluto data-element-size tile model parameter is passed to the checked scheduler oracle",
+    "--forceparallel": "Pluto force-parallel bit-vector is passed through; this pinned Pluto source has no effective use site",
+    "--ft": "Pluto first tiled hyperplane level is passed to the checked scheduler oracle",
+    "--lt": "Pluto last tiled hyperplane level is passed to the checked scheduler oracle",
 }
+
+NONNEGATIVE_VALUE_OPTIONS = {"--forceparallel", "--ft", "--lt"}
+
+CONDITIONAL_LP_SOLVER_OPTIONS = {
+    "--clusterscc": "Pluto DFP SCC clustering is passed through when the selected Pluto binary advertises LP/DFP support",
+    "--delayedcut": "Pluto DFP delayed-cut mode is passed through when the selected Pluto binary has GLPK or Gurobi support",
+    "--dfp": "Pluto DFP scheduler mode is passed through when the selected Pluto binary advertises LP/DFP support",
+    "--glpk": "Pluto GLPK solver selection is passed through when the selected Pluto binary advertises --glpk",
+    "--gurobi": "Pluto Gurobi solver selection is passed through when the selected Pluto binary advertises --gurobi",
+    "--hybridfuse": "Pluto hybrid fusion is passed through when the selected Pluto binary has GLPK or Gurobi support",
+    "--ilp": "Pluto DFP ILP mode is passed through when the selected Pluto binary advertises LP/DFP support",
+    "--lp": "Pluto LP relaxation mode is passed through when the selected Pluto binary advertises --lp",
+    "--lpcolor": "Pluto LP-coloring mode is passed through when the selected Pluto binary advertises LP/DFP support",
+    "--typedfuse": "Pluto typed fusion is passed through when the selected Pluto binary has GLPK or Gurobi support",
+}
+
+LP_SOLVER_OPTIONS = set(CONDITIONAL_LP_SOLVER_OPTIONS)
+
+LP_SOLVER_DEPENDENT_OPTIONS = {"--typedfuse", "--hybridfuse", "--delayedcut"}
+
+
+def pluto_help_text() -> str:
+    pluto = Path(os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto"))
+    try:
+        proc = subprocess.run(
+            [str(pluto), "--help"],
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return proc.stdout + proc.stderr
+
+
+PLUTO_HELP = pluto_help_text()
+
+
+def pluto_supports_option(flag: str) -> bool:
+    return flag in PLUTO_HELP
+
+
+def pluto_has_lp_solver_support() -> bool:
+    return pluto_supports_option("--glpk") or pluto_supports_option("--gurobi")
+
+
+_PLUTO_CANDLDEP_WORKS: bool | None = None
+
+
+def pluto_has_working_candldep() -> bool:
+    global _PLUTO_CANDLDEP_WORKS
+    if _PLUTO_CANDLDEP_WORKS is not None:
+        return _PLUTO_CANDLDEP_WORKS
+
+    pluto = Path(os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto"))
+    source = (
+        "void candl_probe(int N, int A[]) {\n"
+        "int i;\n"
+        "#pragma scop\n"
+        "for (i = 1; i < N; i++) {\n"
+        "  A[i] = A[i - 1] + 1;\n"
+        "}\n"
+        "#pragma endscop\n"
+        "}\n"
+    )
+    with tempfile.TemporaryDirectory(prefix="polcert-candldep-probe-") as tmp:
+        src = Path(tmp) / "probe.c"
+        out = Path(tmp) / "out.c"
+        src.write_text(source)
+        try:
+            proc = subprocess.run(
+                [
+                    str(pluto),
+                    "--candldep",
+                    "--notile",
+                    "--noprevector",
+                    "--nounrolljam",
+                    "--nodiamond-tile",
+                    "--noparallel",
+                    "-o",
+                    str(out),
+                    str(src),
+                ],
+                text=True,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            _PLUTO_CANDLDEP_WORKS = False
+            return False
+    _PLUTO_CANDLDEP_WORKS = proc.returncode == 0
+    return _PLUTO_CANDLDEP_WORKS
 
 STALE_OR_NON_PLUTO_OPTIONS = {
     "--dump-iss-bridge": "this flag is not accepted by the current Pluto binary",
@@ -149,7 +239,6 @@ STALE_OR_NON_PLUTO_OPTIONS = {
 
 ACCEPTED_NOOPS = {
     "--debug",
-    "--isldep",
     "--islsolve",
     "--moredebug",
     "--nocloogbacktrack",
@@ -297,6 +386,15 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.intratileopt_seen = True
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
+        elif flag == "--isldep":
+            state.isldep_seen = True
+            state.add_note("--isldep accepted as Pluto's default dependence tester for the checked polopt route")
+        elif flag == "--candldep":
+            if not pluto_has_working_candldep():
+                raise Reject("--candldep: selected Pluto Candl importer aborts on a dependent probe; requires the Candl dependence-type import fix")
+            state.candldep_seen = True
+            state.add_oracle_flag(flag)
+            state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
         elif flag == "--noprevector":
             state.no_prevector_seen = True
             state.add_note("--noprevector accepted because polopt does not use Pluto codegen vector marking")
@@ -306,13 +404,24 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
+        elif flag in LP_SOLVER_OPTIONS:
+            if not pluto_supports_option(flag):
+                raise Reject(f"{flag}: current Pluto binary does not advertise this LP/DFP option")
+            if flag in LP_SOLVER_DEPENDENT_OPTIONS and not pluto_has_lp_solver_support():
+                raise Reject(f"{flag}: requires a GLPK- or Gurobi-enabled Pluto binary")
+            state.add_oracle_flag(flag)
+            state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
         elif flag in SUPPORTED_VALUE_OPTIONS:
             assert value is not None
             try:
                 parsed = int(value)
             except ValueError as exc:
+                if flag in NONNEGATIVE_VALUE_OPTIONS:
+                    raise Reject(f"{flag}: value must be a non-negative integer") from exc
                 raise Reject(f"{flag}: value must be a positive integer") from exc
-            if parsed <= 0:
+            if flag in NONNEGATIVE_VALUE_OPTIONS and parsed < 0:
+                raise Reject(f"{flag}: value must be a non-negative integer")
+            if flag not in NONNEGATIVE_VALUE_OPTIONS and parsed <= 0:
                 raise Reject(f"{flag}: value must be a positive integer")
             state.add_oracle_flag(f"{flag}={value}")
             state.add_note(f"{flag}={value} passed through to Pluto's checked scheduler oracle")
@@ -338,6 +447,13 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this wrapper rejects contradictory phase controls")
     if state.intratileopt_seen and state.no_intratileopt_seen:
         raise Reject("--intratileopt and --nointratileopt are both present; this wrapper rejects contradictory tile-schedule controls")
+    oracle_flags = state.oracle_flags or []
+    if "--lastwriter" in oracle_flags and "--nolastwriter" in oracle_flags:
+        raise Reject("--lastwriter and --nolastwriter are both present; this wrapper rejects contradictory dependence controls")
+    if state.isldep_seen and state.candldep_seen:
+        raise Reject("--isldep and --candldep are both present; Pluto accepts only one dependence tester")
+    if "--lastwriter" in oracle_flags and state.candldep_seen:
+        raise Reject("--lastwriter is only supported with Pluto's ISL dependence tester, not --candldep")
     if not (state.intratileopt_seen or state.no_intratileopt_seen):
         raise Reject("Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly")
     if not state.no_prevector_seen:
@@ -358,7 +474,6 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--second-level-tile requires tiling and cannot be combined with --notile")
     if state.second_level_tile and state.identity:
         raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
-    oracle_flags = state.oracle_flags or []
     has_tile_size_value = any(
         flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")
         for flag in oracle_flags
@@ -367,6 +482,18 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset")
     if has_tile_size_value and (state.identity or not state.tile):
         raise Reject("--cache-size/--data-element-size require a tiled route in the checked polopt subset")
+
+    ft_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--ft=")]
+    lt_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--lt=")]
+    if bool(ft_values) != bool(lt_values):
+        raise Reject("--ft and --lt must be supplied together in the checked polopt subset")
+    if ft_values and lt_values:
+        ft = int(ft_values[-1])
+        lt = int(lt_values[-1])
+        if ft > lt:
+            raise Reject("--ft must be less than or equal to --lt")
+        if state.identity or not state.tile:
+            raise Reject("--ft/--lt require a tiled route in the checked polopt subset")
 
     if state.diamond_tile:
         if not state.tile:

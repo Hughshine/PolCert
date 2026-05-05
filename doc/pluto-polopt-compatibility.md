@@ -1,6 +1,6 @@
 # Pluto-Polopt Compatibility Surface
 
-Date: 2026-05-04
+Date: 2026-05-05
 
 Audience: PolCert developers who need to align `polopt` with Pluto as the reference optimizer.
 
@@ -43,6 +43,17 @@ The current assessment is based on these concrete checks.
   - version: `polcert-pluto-baseline-7cb0892-1-gac5ea83`
   - `config.h` has no `GLPK` or `GUROBI`
   - Pluto's own `./test.sh` passed after building `test_libpluto` and `unit_tests`: `65 / 65`
+- GLPK-enabled Pluto probe:
+  - local rebuild directory: `/tmp/pluto-glpk.7yMuKk`
+  - configure command: `./configure --enable-glpk --with-glpk-prefix=/usr`
+  - build result: `build_exit=0`
+  - `config.h` contains `#define GLPK 1`
+  - `ldd tool/pluto` shows `libglpk.so.40`
+- Candl probe:
+  - original `/pluto/tool/pluto --candldep` aborted on `matmul.c`, `fusion1.c`, and Candl's `scalpriv.c`
+  - root cause: `tool/osl_pluto.c:deps_read` converted Candl dependence types with fall-through, so recognized Candl dependences became `PLUTO_DEP_UNDEFINED`
+  - fix applied in the Pluto checkout: add `break` statements and import `OSL_DEPENDENCE_RAW_SCALPRIV` as a Pluto RAW dependence
+  - after rebuilding `/pluto`, `--candldep` and `--candldep --scalpriv` return successfully on `matmul.c`, `fusion1.c`, `nodep.c`, and Candl's `scalpriv.c`
 - Current `polopt` route inspection:
   - `syntax/SLoopRoute.ml`: route normalization and explicit rejections
   - `driver/Scheduler.ml`: actual Pluto flag recipes sent by `polopt`
@@ -50,7 +61,8 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - result: `39 / 39` checks passed
+  - default non-GLPK Pluto result: `58 / 58` checks passed
+  - GLPK-enabled Pluto result with `POLCERT_PLUTO=/tmp/pluto-glpk.7yMuKk/tool/pluto`: `59 / 59` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -98,6 +110,14 @@ The supported surface is already nontrivial.
 | `--cache-size <n>`, `--data-element-size <n>` | Passed through to Pluto's checked scheduler oracle when paired with `--determine-tile-size` on tiled routes. | native compat `optimizer-cache-size` and `optimizer-data-element-size`; differ from automatic tile-size baseline |
 | `--intratileopt` | Passed through to Pluto's checked scheduler oracle as the explicit alternative to `--nointratileopt`. | native compat `optimizer-intratileopt`; standalone affine+tiling validators pass on intratileopt fixtures |
 | `--lastwriter` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-lastwriter-affine`; differs from default dependence mode baseline |
+| `--nolastwriter` | Passed through to Pluto's checked scheduler oracle and rejected if combined with `--lastwriter`. | native compat `optimizer-nolastwriter-affine` |
+| `--candldep` | Conditionally passed through when the selected Pluto binary passes a dependent Candl smoke probe. The current `/pluto` baseline has the Candl importer fix. | direct Pluto Candl smoke checks; native compat `optimizer-candldep-affine`; rejects `--candldep --lastwriter` and `--isldep --candldep` |
+| `--isldepaccesswise`, `--isldepstmtwise`, `--isldepcoalesce` | Passed through to Pluto's checked scheduler oracle. | native compat dependence-tuning checks; direct Pluto smoke checks on `matmul.c`, `fusion1.c`, and `nodep.c` |
+| `--pipsolve` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-pipsolve-affine`; direct Pluto smoke checks on `matmul.c`, `fusion1.c`, and `nodep.c` |
+| `--coeff-bound <n>` | Passed through to Pluto's checked scheduler oracle as a positive integer value. | native compat `optimizer-coeff-bound-affine`; direct Pluto smoke checks |
+| `--ft <n>`, `--lt <n>` | Passed through together on tiled routes as non-negative partial tiling-level controls. | native compat `partial-tiling-levels`; direct Pluto smoke checks |
+| `--forceparallel <bitvec>` | Passed through as a non-negative value. The pinned Pluto source accepts it but has no effective use site. | native compat `optimizer-forceparallel-pass-through`; Pluto source grep |
+| `--glpk`, `--lp`, `--dfp`, `--ilp`, `--lpcolor`, `--clusterscc`, `--typedfuse`, `--hybridfuse`, `--delayedcut` | Conditionally passed through when the selected Pluto binary advertises the required LP/DFP support. | default suite rejects missing support; GLPK-enabled suite validates representative affine cases |
 | `--rar` | Compatible with current scheduler recipes. | scheduler flags |
 | `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. | native compat suite |
 
@@ -153,17 +173,20 @@ These are not proof limitations. They are interface-boundary choices.
 
 These are mostly not "missing Pluto optimization". They are backend features. Supporting `--prevector` and `--unrolljam` as transformations would require real work, especially for `--unrolljam`.
 
+TODO: keep positive `--prevector` and `--unrolljam` rejected until `polopt` has verified results for them. A realistic vector path is analogous to the checked parallel route: recover or choose a vectorizable loop, validate the preconditions, and emit a checked vector annotation or vector loop form. A realistic unroll-jam path is a separate checked post pass over `polopt`'s loop IR, with factor handling, remainder generation, and a semantic preservation theorem. The disabling flags `--noprevector` and `--nounrolljam` remain accepted because they are how callers turn off Pluto's default codegen-side behavior for the current checked routes.
+
 ## DFP and Typed Fusion
 
 | Pluto flag | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
-| `--typedfuse` | Unsupported | Current Pluto build lacks GLPK/Gurobi, and `polopt` has no typed-fusion route. | Yes in principle. | Build Pluto with an LP solver, pass the flag during the affine oracle phase, then validate the resulting affine schedule. Add typed-fusion cases. |
-| `--hybridfuse` | Unsupported | Depends on typed fusion and DFP. | Yes in principle. | Same as `--typedfuse`, plus tests for hybrid behavior. |
-| `--delayedcut` | Unsupported | DFP-only option. | Yes in principle. | Same as DFP route. |
-| `--dfp`, `--lp`, `--ilp`, `--lpcolor`, `--clusterscc` | Unsupported | Current binary does not expose these because GLPK/Gurobi are not enabled. | Yes if the Pluto build changes. | Enable LP solver support, mirror Pluto normalization rules, add schedule-validation tests. |
-| `--glpk`, `--gurobi` | Unsupported | Current build has neither solver. | Build-dependent. | Treat as oracle solver selection only. Validation should not trust the solver. |
+| `--typedfuse` | Conditional support | The default pinned `/pluto/tool/pluto` lacks LP/DFP support, but a GLPK-enabled rebuild accepts and validates a representative affine case. | Supported when `POLCERT_PLUTO` points to a GLPK/Gurobi-enabled Pluto. | Keep the runtime probe. Broaden effect fixtures beyond acceptance. |
+| `--hybridfuse` | Conditional support | Same binary capability requirement as typed fusion. Targeted GLPK-enabled tests pass through and validate. | Supported when `POLCERT_PLUTO` points to a GLPK/Gurobi-enabled Pluto. | Add native suite case if a small effect fixture is found. |
+| `--delayedcut` | Conditional support | DFP-only option. Targeted GLPK-enabled tests pass through and validate. | Supported when `POLCERT_PLUTO` points to a GLPK/Gurobi-enabled Pluto. | Add effect fixture. |
+| `--dfp`, `--lp`, `--ilp`, `--lpcolor`, `--clusterscc` | Conditional support | These flags are unrecognized by the default binary and accepted by the GLPK-enabled rebuild. | Supported when the selected Pluto binary advertises the option. | Publish or select a GLPK-enabled Pluto baseline if this should be default artifact behavior. |
+| `--glpk` | Conditional support | `libglpk` is installed, and the GLPK rebuild links `libglpk.so.40`; the default pinned binary does not. | Supported when the selected Pluto binary advertises `--glpk`. | Treat as oracle solver selection; validator remains the correctness gate. |
+| `--gurobi` | Conditional support | Not available in the current container. | Supported only if a selected Pluto binary advertises `--gurobi`. | Same as `--glpk`, but requires a Gurobi-enabled build. |
 
-This category is likely a surface/build gap before it is a proof gap. If DFP only changes which affine schedule Pluto finds, the existing affine validator should be the central correctness check. Work is still needed because DFP may produce schedule shapes that current import/canonicalization has not seen.
+This category is now a binary-capability gap before it is a validation gap. If DFP or typed fusion only changes which affine schedule Pluto finds, the existing affine validator is the central correctness check. The remaining work is not pass-through plumbing; it is effect-oriented coverage and deciding whether the artifact baseline should ship a GLPK-enabled Pluto.
 
 ## Fusion and Scheduling Objective Knobs
 
@@ -175,10 +198,10 @@ This category is likely a surface/build gap before it is a proof gap. If DFP onl
 | `--per-cc-obj` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `pca.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
 | `.fst` / `.precut` | Unsupported as public interface | Pluto can read working-directory files that force fusion or partial schedules. This is implicit global state. | Possible, but should not be implicit. | Add explicit `--fusion-structure FILE` or `--precut FILE`, copy into an isolated Pluto working directory, validate the output. |
 | `--nodepbound` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `fusion2.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and check interactions with tiling/diamond routes. |
-| `--coeff-bound` | Unsupported | Search-bound tuning with a value. | Possibly surface gap. | Add value parsing and pass to affine phase; validate output. |
+| `--coeff-bound` | Supported as oracle tuning | Search-bound tuning with a positive integer value. | Already supported for checked routes whose produced schedule validates. | Broaden effect fixtures; current acceptance tests confirm pass-through and validation. |
 | `--fast-lin-ind-check`, `--flic` | Supported as oracle tuning | Native compatibility mode appends either alias to Pluto scheduler calls; `costfunc.loop` demonstrates a schedule/codegen difference from smartfuse baseline. | Already supported for checked routes whose produced schedule validates. | Keep both aliases covered; broaden beyond the current cost-function case. |
 
-The strongest remaining candidate in this group is value-based `--coeff-bound`. It should not require new proof principles if the output remains an affine schedule accepted by the current affine validator, but it still needs value parsing, conflict checks, and effect-oriented fixtures before being marked supported.
+`--coeff-bound` should not require new proof principles if the output remains an affine schedule accepted by the current affine validator. The remaining work is effect-oriented coverage: find cases where changing the bound changes Pluto's selected schedule.
 
 ## Dependence and Solver Knobs
 
@@ -186,14 +209,22 @@ The strongest remaining candidate in this group is value-based `--coeff-bound`. 
 |---|---|---|---|---|
 | `--isldep` | Compatible no-op | Pluto uses ISL dependence analysis by default. | Already acceptable. | Keep as no-op or pass-through. |
 | `--islsolve` | Compatible no-op | Pluto uses ISL ILP solving by default. | Already acceptable. | Keep as no-op or pass-through. |
-| `--candldep` | Unsupported | Current route has not tested Candl-derived schedules. | Yes, as oracle tuning. | Pass to Pluto, keep validation as the correctness gate, add Candl cases. |
-| `--pipsolve` | Unsupported | Solver selection not exposed. | Yes, as oracle tuning. | Pass to Pluto and validate. |
+| `--candldep` | Supported conditionally | Candl is Pluto's alternate dependence tester. The old abort was a Pluto importer bug, not a PolOpt validator problem: `deps_read` missed `break`s when mapping Candl dependence types and did not handle `OSL_DEPENDENCE_RAW_SCALPRIV`. The current Pluto checkout has this fix and passes a dependent Candl smoke probe. | Yes, as oracle tuning. | Keep the runtime smoke probe. Pass `--candldep` to Pluto only when the selected binary does not abort, reject `--isldep --candldep`, and reject `--lastwriter --candldep` to match Pluto's own rule. |
+| `--pipsolve` | Supported as oracle tuning | Solver selection changes Pluto's internal ILP solving path. It does not bypass PolOpt validation. | Already supported for checked routes whose produced schedule validates. | Broaden effect fixtures. |
 | `--lastwriter` | Supported as oracle tuning | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a schedule/codegen difference from the default dependence mode. | Already supported for checked routes whose produced schedule validates. | Broaden fixtures and reject unsafe combinations such as Candl if exposed later. |
-| `--nolastwriter` | Unsupported | It is Pluto's current default-off mode in this build, and no effect-oriented fixture has been added. | Possible as a no-op, but low priority. | Accept only if no-op/default flags are being normalized more broadly. |
-| `--isldepaccesswise`, `--isldepstmtwise`, `--isldepcoalesce` | Unsupported | Dependence-analysis tuning not tested. | Likely yes. | Pass through as oracle tuning, add regression cases. |
-| `--scalpriv` | Unsupported | Candl scalar privatization mode. | Unclear. | First test whether Pluto output stays inside current loop/source model. If scalar privatization changes memory behavior, a validator/codegen extension may be needed. |
+| `--nolastwriter` | Supported as oracle tuning | This is Pluto's transitive-dependence mode and the current default. The driver now accepts it explicitly and rejects `--lastwriter --nolastwriter`. | Already supported. | Add effect-oriented checks only if a case makes the explicit flag differ from another normalized ordering. |
+| `--isldepaccesswise`, `--isldepstmtwise`, `--isldepcoalesce` | Supported as oracle tuning | These tune ISL dependence extraction granularity/coalescing. Direct Pluto tests returned schedules on `matmul.c`, `fusion1.c`, and `nodep.c`; PolOpt still validates the resulting schedule. | Already supported for checked routes whose produced schedule validates. | Broaden effect fixtures and document any Pluto warnings, such as the ISL context warning seen with statement-wise extraction. |
+| `--scalpriv` | Unsupported / TODO | Scalar privatization is a Candl-only dependence-pruning mode. Without `--candldep`, Pluto still prints `compute_deps (isl)` and the flag is inert. With fixed `--candldep`, Pluto no longer aborts, but Candl may remove or weaken scalar-carried dependences without materializing private scalar storage in PolOpt's IR. | Yes, but not as blind pass-through yet. | Add a checked scalar-privatization route or a validator condition that proves the scalar storage rewrite is unnecessary. Until then keep rejecting the flag and document the intended Coq pass. |
 
 These flags do not need to be trusted for correctness if `polopt` validates the output schedule. The main risks are representation gaps and untested schedule shapes.
+
+`--candldep` should not be deleted from Pluto in this fork. It is still exposed by `tool/main.cpp`, it is mutually exclusive with `--isldep`, and it is the only Pluto path that makes `--scalpriv` meaningful. The abort was caused by two local importer omissions in `tool/osl_pluto.c`, not by an intentionally deprecated code path. Keeping it is useful because it lets PolOpt validate schedules produced by both Pluto dependence engines.
+
+`--lastwriter` in Pluto means "remove transitive dependences by keeping the last conflicting access" for RAW/WAW and related flow computations. In `lib/program.cpp`, the false case computes dependences from any earlier conflicting access. The true case uses `isl_union_map_compute_flow` to keep the last writer or last read where appropriate. This can expose more scheduling freedom because fewer transitive dependences constrain the affine scheduler, but the produced schedule is still rechecked by PolOpt. Pluto rejects `--lastwriter --candldep`, so PolOpt rejects the same combination.
+
+Scalar privatization means replacing a reused scalar storage location with logically separate private instances so that dependences through that scalar do not serialize otherwise independent iterations. Candl implements it by finding scalar variables whose def-use chain is dominated within a loop level and then pruning loop-carried dependences on those scalars. The key source path is `candl/source/dependence.c`: `candl_dependence_analyze_scalars` records `(scalar, loop)` pairs, and `candl_dependence_prune_with_privatization` removes or rewrites loop-carried scalar dependences, sometimes marking residual RAW dependences as `OSL_DEPENDENCE_RAW_SCALPRIV`.
+
+That is not just a solver knob if the final schedule relies on each iteration having a private scalar instance. A correct PolOpt implementation should either generate a real scalar-private form, prove that the accepted schedule does not need a storage rewrite, or reject the case. The likely Coq TODO is a scalar-private post pass over the loop IR: identify loop-local scalar temporaries, rename them to per-iteration storage or local declarations, prove semantic preservation under the privatization precondition, and expose `--scalpriv` only through that checked route.
 
 ## Tiling Controls
 
@@ -207,7 +238,7 @@ These flags do not need to be trusted for correctness if `polopt` validates the 
 | `--determine-tile-size` | Supported as oracle tuning on tiled routes | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a final loop difference from fixed-size tiling. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and test interactions with diamond/second-level routes. |
 | `--cache-size`, `--data-element-size` | Supported with `--determine-tile-size` on tiled routes | Native compatibility mode parses positive integer values, appends them to Pluto scheduler calls, and rejects them when `--determine-tile-size` or a tiled route is absent. | Already supported for checked routes whose produced tile witness validates. | Broaden value choices and non-matmul fixtures. |
 | `tile.sizes` | Unsupported as implicit file | Pluto reads this from the working directory. Implicit files are poor compiler interface. | Yes with explicit file input. | Add `--tile-sizes FILE`, copy into isolated Pluto cwd, and validate actual generated tile sizes. |
-| `--ft`, `--lt` | Unsupported | Pluto's partial tiling-level controls are under-specified in current route. | Possible, but more than surface. | Extend tiling witness extraction to partial bands/sub-bands and add tests. |
+| `--ft`, `--lt` | Supported together on tiled routes | Pluto's first/last tiled hyperplane levels are passed through as non-negative values. The driver rejects one-sided or descending ranges. | Already supported for checked routes whose produced tiling witness validates. | Broaden effect fixtures and add out-of-range rejection tests if Pluto's error behavior is too abrupt. |
 | bare `--identity` or `--identity --tile` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface/composition gap. | Add an `IdentityTiled` route: extract identity schedule, run tile-only Pluto phase, validate tiling. |
 | `--second-level-tile --parallel` | Supported | The phase-aligned route now extracts the second-level tiling artifact, validates it, then feeds the validated post-tiling program to the checked parallel validator/codegen path. | Already supported. | Broaden fixtures beyond `nodep` and `matmul-init`. |
 | `--second-level-tile --parallel-current d` | Supported | Explicit-current parallel certification composes after the checked second-level tiling route. | Already supported. | Keep in second-level suite. |
@@ -222,7 +253,7 @@ Tile size control is likely easy from a proof perspective if the validator alrea
 | `--noparallel` | Supported as route control/no-op | Sequential routes use it. | Already supported. | Keep. |
 | `--innerpar` | Compatible no-op | Current checked `--parallel` tiled recipe already keeps a canonical inner-parallel style. | Already acceptable. | Keep explanatory note. |
 | `--multipar` | Supported on checked `--parallel` routes, up to two certified current dimensions | The driver passes the flag to Pluto, parses all OpenScop parallel loop hints, then lets the extracted validator filter certifiable dimensions before calling the extracted multi-cert parallel codegen route. The cap of two matches Pluto's current OpenMP pragma extraction. | Already supported for ordinary, second-level, and diamond parallel routes. | Broaden fixtures and add strict-mode checks. |
-| `--forceparallel` | Unsupported | Current Pluto source accepts the flag but does not use it. | Not useful until Pluto implements it. | Keep rejecting or treat as error explaining it has no effective use site. |
+| `--forceparallel` | Supported pass-through/no-effect compatibility flag | Current Pluto source accepts the value but has no effective use site. | Already accepted as surface compatibility. | Keep explaining that no optimization effect is expected in the pinned Pluto source. |
 | `--parallel-current d` | Supported as `polopt` extension, not a Pluto flag | Explicit checked parallel dimension. | Already supported. | Keep separate from Pluto compatibility mode. |
 | `--parallel --parallel-strict` | Supported as `polopt` extension | Requires certified parallel loop to match Pluto hint. | Already supported. | Keep. |
 
@@ -230,26 +261,27 @@ The remaining `--multipar` work is no longer a route-closure gap for the main ch
 
 ## Diamond Tiling and Diamond Combinations
 
-`--diamond-tile` is supported, but only on one route:
-
-```text
-default full tiled + sequential + non-ISS + single-level tiling
-```
-
-`--full-diamond-tile` is supported on the same route.
+`--diamond-tile` and `--full-diamond-tile` are no longer single-route support.
+The current native compatibility suite covers sequential, ISS, second-level,
+parallel, and multipar compositions over the phase-aligned diamond route. The
+remaining work is breadth of fixtures and output polish, not route closure.
 
 | Combination | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
 | `--diamond-tile` | Supported | Phase-aligned route validates before -> mid affine, mid -> posttile tiling, and posttile -> after affine. | Already supported. | Keep suite coverage. |
 | `--full-diamond-tile` | Supported | Same checked route with stronger Pluto producer mode. | Already supported. | Add more full-diamond cases beyond smoke. |
-| `--diamond-tile --parallel` | Unsupported | Current diamond route forces `--noparallel`. | Composition gap. | Run diamond phase validation, then validate a final parallel loop on the resulting schedule. Add OpenMP codegen checks. |
-| `--diamond-tile --parallel-current d` | Unsupported | Same issue, with explicit dimension. | Composition gap. | Compose diamond phase validation with explicit-current parallel validator. |
-| `--diamond-tile --iss` | Unsupported | ISS changes statement structure before affine scheduling. Current diamond witness path assumes the non-ISS phase shape. | Composition gap. | Sequence ISS split validation, diamond affine validation, tiling validation, and final affine validation. Add bridge mapping from split statements to diamond witnesses. |
-| `--diamond-tile --second-level-tile` | Unsupported | Current diamond phase validator handles one tiling boundary. | Composition gap. | Validate mid -> first-tile and first-tile -> second-tile separately, or generalize tiling validation to multi-level tiling witnesses. |
+| `--diamond-tile --parallel` | Supported narrow | Diamond validation composes with the checked Pluto-hinted parallel route. | Already supported for current fixtures. | Broaden OpenMP/codegen fixtures and keep strict-mode checks separate. |
+| `--diamond-tile --multipar` | Supported narrow | The diamond route can feed candidate current dimensions into checked multi-cert parallel codegen. | Already supported for current fixtures. | Broaden beyond the current batch fixtures. |
+| `--diamond-tile --parallel-current d` | Supported as native PolOpt extension | Explicit-current certification composes after diamond validation. | Already supported outside the Pluto flag surface. | Keep as a theorem-facing entry point. |
+| `--diamond-tile --iss` | Supported narrow | ISS bridge validation composes before the diamond affine and tiling phases. | Already supported for current fixtures. | Add broader ISS fixtures beyond the current stencil-like cases. |
+| `--diamond-tile --second-level-tile` | Supported narrow | Second-level tiling witness extraction is enabled inside the same diamond phase route. | Already supported for current fixtures. | Add effect fixtures for more schedule shapes. |
 | `--diamond-tile --notile` | Unsupported | Pluto itself disables diamond when tiling is off. | Correct rejection. | Keep rejecting. |
 | `--diamond-tile --identity` | Unsupported | Diamond requires Pluto scheduling and tiling phase. | Correct rejection for current route. | Only reconsider if an identity-diamond route has a clear Pluto meaning and tests. |
 
-The diamond gap is not "diamond is unsupported". The gap is composition with ISS, parallel, and second-level tiling.
+The diamond gap is not "diamond is unsupported". The remaining gap is stronger
+coverage: more fixtures for full-diamond, second-level, ISS, and multipar
+interactions, plus any cleanup needed for singleton-loop raw-codegen fallback
+output.
 
 ## Stale or Current-Pluto-Unsupported Flags
 
@@ -271,50 +303,27 @@ These are not `polopt` deficiencies.
 
 The first artifact step is now in place: `./polopt --pluto-compat` is the
 native Pluto-style filtered entry point, implemented in the OCaml driver and
-tested by `make test-pluto-compat-suite`. The remaining implementation work is
-to expand the supported surface.
+tested by `make test-pluto-compat-suite`. The supported surface now includes
+core affine/fusion knobs, partial tiling controls, parallel and multipar routes,
+diamond compositions, conditional LP/DFP-family flags, and conditional Candl
+dependence testing.
 
-1. Define a `PlutoCompat` flag module.
-   - Parse Pluto-like flags.
-   - Normalize according to Pluto's actual rules, not only `--help`.
-   - Emit structured capability decisions.
-
-2. Keep a capability table in code.
+1. Keep a capability table in code.
    - Each entry should have status, reason, and route mapping.
    - Rejection messages should match tests.
 
-3. Map supported flags to existing routes.
-   - ordinary tiled
-   - affine-only
-   - identity with `--notile`
-   - ISS
-   - second-level tiling
-   - parallel
-   - diamond and full diamond
-
-4. Add near-term surface-gap support.
-   - `--nofuse`
-   - `--maxfuse`
-   - `--per-cc-obj`
-   - `--candldep`
-   - `--pipsolve`
-   - `--lastwriter`
+2. Add remaining route-level surface gaps.
    - bare `--identity` / `--identity --tile`
-   - explicit tile-size file or positive tile-size controls
+   - explicit `tile.sizes` file input instead of implicit working-directory state
+   - explicit `.fst` / `.precut` file input instead of implicit working-directory state
 
-5. Add composition routes after surface gaps are stable.
-   - diamond + parallel
-   - diamond + second-level tiling
-   - second-level tiling + parallel
-   - diamond + ISS
-
-6. Treat semantic extensions as separate projects.
+3. Treat semantic extensions as separate projects.
    - unroll-jam
    - vector pragmas or vector loop annotations
    - unbounded multipar/nested OpenMP beyond Pluto's current two-pragma extraction behavior
-   - scalar privatization if it changes memory behavior
+   - scalar privatization, because it can change the required scalar storage discipline
 
-7. Keep stale flags rejected.
+4. Keep stale flags rejected.
    - The rejection should say "current Pluto does not support this flag", not "polopt does not support this optimization".
 
 ## Testing Plan
@@ -327,10 +336,17 @@ Current smoke command:
 make test-pluto-compat-suite
 ```
 
-Current result:
+Current result with the default non-GLPK Pluto:
 
 ```text
-[pluto-compat-suite] OK (42 checks)
+[pluto-compat-suite] OK (58 checks)
+```
+
+Current result with the GLPK-enabled Pluto rebuild:
+
+```text
+POLCERT_PLUTO=/tmp/pluto-glpk.7yMuKk/tool/pluto python3 tools/polopt_flag_suites/run_pluto_compat_suite.py --timeout 30
+[pluto-compat-suite] OK (59 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:
@@ -344,6 +360,6 @@ For rejected flags, the acceptance criterion is a stable, specific reason. A gen
 
 ## Short Summary
 
-The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, second-level tiling, ISS, one-loop parallelization, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, and full-diamond mode.
+The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, second-level tiling, ISS, one-loop parallelization, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, and conditional LP/DFP-family pass-through when the selected Pluto binary has GLPK/Gurobi support.
 
-Most missing Pluto optimizer knobs are either surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, unbounded multipar beyond Pluto's current extraction model, and any scalar-privatization feature that changes memory behavior. Frontend and backend flags should remain outside the optimizer compatibility surface.
+Most missing Pluto optimizer knobs are now either binary-capability gaps, surface gaps, or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, unbounded multipar beyond Pluto's current extraction model, and any scalar-privatization feature that changes memory behavior. Frontend and backend flags should remain outside the optimizer compatibility surface.

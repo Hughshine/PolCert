@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
 from dataclasses import dataclass
 from pathlib import Path
+
+import pluto_compat_driver as compat
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,6 +43,19 @@ TUNING_NOTILE_PER_CC = ["--notile", "--smartfuse", "--per-cc-obj", "--nointratil
 TUNING_NOTILE_FLIC = ["--notile", "--smartfuse", "--flic", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_FAST_LIN = ["--notile", "--smartfuse", "--fast-lin-ind-check", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_LASTWRITER = ["--notile", "--smartfuse", "--lastwriter", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_NOLASTWRITER = ["--notile", "--smartfuse", "--nolastwriter", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_CANDLDEP = ["--notile", "--smartfuse", "--candldep", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_PIPSOLVE = ["--notile", "--smartfuse", "--pipsolve", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_ISL_ACCESSWISE = ["--notile", "--smartfuse", "--isldepaccesswise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_ISL_STMTWISE = ["--notile", "--smartfuse", "--isldepstmtwise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_ISL_COALESCE = ["--notile", "--smartfuse", "--isldepcoalesce", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_COEFF_BOUND = ["--notile", "--smartfuse", "--coeff-bound=10", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_FORCEPARALLEL = ["--notile", "--smartfuse", "--forceparallel=1", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_GLPK = ["--notile", "--smartfuse", "--glpk", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_LP = ["--notile", "--smartfuse", "--glpk", "--lp", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_DFP = ["--notile", "--smartfuse", "--glpk", "--dfp", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_TYPEDFUSE = ["--notile", "--typedfuse", "--glpk", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+MATMUL_TILED_PARTIAL_LEVELS = [*FLAGS, "--ft=0", "--lt=1", "--nodiamond-tile", "--noparallel"]
 JACOBI_NODIAMOND = [*FLAGS, "--nodiamond-tile", "--noparallel"]
 JACOBI_NODIAMOND_ISS = [*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]
 JACOBI_DIAMOND = [*FLAGS, "--diamond-tile", "--noparallel"]
@@ -184,7 +200,71 @@ CHECKS = [
         effect_needles=("for i0 in range(0, M)",),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
+    Check(
+        "optimizer-nolastwriter-affine",
+        TUNING_NOTILE_NOLASTWRITER,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --nolastwriter",
+    ),
+    Check(
+        "optimizer-pipsolve-affine",
+        TUNING_NOTILE_PIPSOLVE,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --pipsolve",
+    ),
+    Check(
+        "optimizer-isldepaccesswise-affine",
+        TUNING_NOTILE_ISL_ACCESSWISE,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --isldepaccesswise",
+    ),
+    Check(
+        "optimizer-isldepstmtwise-affine",
+        TUNING_NOTILE_ISL_STMTWISE,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --isldepstmtwise",
+    ),
+    Check(
+        "optimizer-isldepcoalesce-affine",
+        TUNING_NOTILE_ISL_COALESCE,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --isldepcoalesce",
+    ),
+    Check(
+        "optimizer-coeff-bound-affine",
+        TUNING_NOTILE_COEFF_BOUND,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --coeff-bound=10",
+    ),
+    Check(
+        "optimizer-forceparallel-pass-through",
+        TUNING_NOTILE_FORCEPARALLEL,
+        REG_MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --forceparallel=1",
+    ),
     Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
+    Check(
+        "partial-tiling-levels",
+        MATMUL_TILED_PARTIAL_LEVELS,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --ft=0 --lt=1",
+    ),
     Check(
         "second-level",
         [*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"],
@@ -359,14 +439,128 @@ CHECKS = [
     Check("reject-prevector", ["--tile", "--prevector", "--nodiamond-tile", "--noparallel"], MATMUL, False, "prevectorization is a Pluto codegen/post-transform effect"),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
     Check("reject-intratile-conflict", ["--tile", "--intratileopt", "--nointratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory tile-schedule controls"),
+    Check("reject-lastwriter-conflict", ["--notile", "--lastwriter", "--nolastwriter", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory dependence controls"),
+    Check("reject-ft-without-lt", [*FLAGS, "--ft=0", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--ft and --lt must be supplied together"),
     Check("reject-pet", ["--pet", *FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, False, "frontend is polopt's verified loop extractor"),
-    Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "typed fusion depends on DFP"),
+    Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
+    Check("reject-scalpriv", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "scalar privatization is a Candl-only dependence-pruning mode"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-identity-tile", ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
 ]
+
+
+def pluto_help_text() -> str:
+    pluto = Path(os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto"))
+    try:
+        proc = subprocess.run(
+            [str(pluto), "--help"],
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return proc.stdout + proc.stderr
+
+
+def pluto_supports_option(flag: str) -> bool:
+    return flag in pluto_help_text()
+
+
+def pluto_has_lp_solver_support() -> bool:
+    help_text = pluto_help_text()
+    return "--glpk" in help_text or "--gurobi" in help_text
+
+
+def active_checks() -> list[Check]:
+    checks = list(CHECKS)
+    if pluto_has_lp_solver_support():
+        checks = [check for check in checks if check.name != "reject-typedfuse"]
+        checks.extend(
+            [
+                Check(
+                    "optimizer-glpk-affine",
+                    TUNING_NOTILE_GLPK,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk",
+                ),
+                Check(
+                    "optimizer-lp-affine",
+                    TUNING_NOTILE_LP,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --lp",
+                ),
+                Check(
+                    "optimizer-dfp-affine",
+                    TUNING_NOTILE_DFP,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --dfp",
+                ),
+                Check(
+                    "optimizer-typedfuse-affine",
+                    TUNING_NOTILE_TYPEDFUSE,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --typedfuse --glpk",
+                ),
+            ]
+        )
+    else:
+        checks.extend(
+            [
+                Check("reject-glpk-without-solver-build", ["--notile", "--glpk", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "does not advertise this LP/DFP option"),
+                Check("reject-lp-without-solver-build", ["--notile", "--lp", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "does not advertise this LP/DFP option"),
+            ]
+        )
+    if compat.pluto_has_working_candldep():
+        checks.extend(
+            [
+                Check(
+                    "optimizer-candldep-affine",
+                    TUNING_NOTILE_CANDLDEP,
+                    REG_MATMUL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --candldep",
+                ),
+                Check(
+                    "reject-candldep-lastwriter",
+                    ["--notile", "--smartfuse", "--candldep", "--lastwriter", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+                    REG_MATMUL,
+                    False,
+                    "--lastwriter is only supported with Pluto's ISL dependence tester",
+                ),
+                Check(
+                    "reject-isldep-candldep",
+                    ["--notile", "--smartfuse", "--isldep", "--candldep", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+                    REG_MATMUL,
+                    False,
+                    "--isldep and --candldep are both present",
+                ),
+            ]
+        )
+    else:
+        checks.append(
+            Check(
+                "reject-candldep-broken-importer",
+                ["--notile", "--candldep", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+                MATMUL,
+                False,
+                "selected Pluto Candl importer aborts on a dependent probe",
+            )
+        )
+    return checks
 
 
 ROUTE_BINDINGS = {
@@ -463,13 +657,14 @@ def main(argv: list[str]) -> int:
     if not POLOPT.exists():
         print(f"[pluto-compat-suite] missing polopt: {POLOPT}", file=sys.stderr)
         return 2
-    missing = [check.fixture for check in CHECKS if not check.fixture.exists()]
+    checks = active_checks()
+    missing = [check.fixture for check in checks if not check.fixture.exists()]
     if missing:
         print("[pluto-compat-suite] missing fixtures:", file=sys.stderr)
         for path in missing:
             print(path, file=sys.stderr)
         return 2
-    for check in CHECKS:
+    for check in checks:
         failure = run_check(check, timeout)
         print(f"[pluto-compat-suite] {check.name}: {'PASS' if failure is None else 'FAIL'}")
         if failure is not None:
@@ -480,7 +675,7 @@ def main(argv: list[str]) -> int:
         for failure in failures:
             print(failure)
         return 1
-    print(f"[pluto-compat-suite] OK ({len(CHECKS)} checks)")
+    print(f"[pluto-compat-suite] OK ({len(checks)} checks)")
     return 0
 
 
