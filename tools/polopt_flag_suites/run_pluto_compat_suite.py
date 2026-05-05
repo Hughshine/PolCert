@@ -90,6 +90,8 @@ FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
+ADI = ROOT / "tests" / "polopt-regression" / "inputs" / "adi.loop"
+CORCOL = ROOT / "tests" / "polopt-regression" / "inputs" / "corcol.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 NODEP = ROOT / "tests" / "polopt-regression" / "inputs" / "nodep.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
@@ -742,6 +744,36 @@ def active_checks() -> list[Check]:
                     "pluto oracle flags: --typedfuse --glpk",
                     effect_needles=("for i1 in range(i0, (N + i0))", "(-1 * i0)"),
                     differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+                ),
+                Check(
+                    "optimizer-dfp-corcol-effect",
+                    TUNING_NOTILE_DFP,
+                    CORCOL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --dfp",
+                    effect_needles=("if ((1 <= N && 2 <= M))", "symmat[i1][i0] = symmat[i0][i1];"),
+                    differs_from_args=(tuple(TUNING_NOTILE_GLPK),),
+                ),
+                Check(
+                    "optimizer-typedfuse-adi-effect",
+                    TUNING_NOTILE_TYPEDFUSE,
+                    ADI,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --typedfuse --glpk",
+                    effect_needles=("for i1 in range(0, N)", "X[i2][i1]"),
+                    differs_from_args=(tuple(TUNING_NOTILE_GLPK),),
+                ),
+                Check(
+                    "optimizer-hybridfuse-adi-effect",
+                    TUNING_NOTILE_HYBRIDFUSE,
+                    ADI,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --hybridfuse",
+                    effect_needles=("for i1 in range(0, N)", "X[i2][i1]"),
+                    differs_from_args=(tuple(TUNING_NOTILE_GLPK),),
                 ),
             ]
         )

@@ -60,7 +60,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - default GLPK-enabled Pluto baseline result: `79 / 79` checks passed
+  - default GLPK-enabled Pluto baseline result: `82 / 82` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -184,14 +184,14 @@ The vector path deliberately follows the checked parallel route: recover or choo
 
 | Pluto flag | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
-| `--typedfuse` | Supported on the pinned baseline | The pinned Pluto baseline advertises GLPK/DFP support; the suite validates a representative affine case with a visible shifted loop nest. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Keep the runtime probe. Broaden effect fixtures beyond `matmul.loop`. |
-| `--hybridfuse` | Supported on the pinned baseline | Same binary capability requirement as typed fusion; the suite validates a representative affine case with the DFP-style loop nest. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden effect fixtures beyond `matmul.loop`. |
-| `--delayedcut` | Supported on the pinned baseline | DFP-only option; the suite validates `--glpk --dfp --delayedcut` on a representative affine case. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden effect fixtures beyond `matmul.loop`. |
+| `--typedfuse` | Supported on the pinned baseline | The pinned Pluto baseline advertises GLPK/DFP support; the suite validates both the shifted `matmul.loop` case and a non-matmul `adi.loop` case where typed fusion collapses the skewed loop nest into direct `0..N` bands. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden beyond the current dense-kernel fixtures. |
+| `--hybridfuse` | Supported on the pinned baseline | Same binary capability requirement as typed fusion; the suite validates the DFP-style `matmul.loop` case and the same non-matmul `adi.loop` effect. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Broaden beyond the current dense-kernel fixtures. |
+| `--delayedcut` | Supported on the pinned baseline | DFP-only option; the suite validates `--glpk --dfp --delayedcut` on the representative affine `matmul.loop` case. The current fixture search did not find an additional optimized-loop difference beyond ordinary DFP. | Already supported when the selected Pluto binary advertises GLPK or Gurobi. | Keep searching for a fixture where delayed cuts differ from DFP without relying on logs. |
 | `--dfp`, `--lp`, `--ilp`, `--lpcolor`, `--clusterscc` | Supported on the pinned baseline | The pinned Pluto baseline advertises these LP/DFP controls, and native compatibility tests validate representative affine cases. | Already supported when the selected Pluto binary advertises the option. | Keep runtime rejection for alternate Pluto binaries that lack LP/DFP support. |
 | `--glpk` | Supported on the pinned baseline | The PolCert Dockerfile rebuilds Pluto with `--enable-glpk --with-glpk-prefix=/usr`; the checker requires `--glpk`, `--lp`, and `--dfp` in `pluto --help`. | Already supported when the selected Pluto binary advertises `--glpk`. | Treat as oracle solver selection; validator remains the correctness gate. |
 | `--gurobi` | Conditional support | Not available in the current container. | Supported only if a selected Pluto binary advertises `--gurobi`. | Same as `--glpk`, but requires a Gurobi-enabled build. |
 
-This category is now default artifact behavior for GLPK-backed Pluto. If DFP or typed fusion only changes which affine schedule Pluto finds, the existing affine validator is the central correctness check. The suite checks a visible schedule effect on `matmul.loop`: `--glpk`, `--glpk --ilp`, `--glpk --lp`, `--glpk --lpcolor`, and `--glpk --clusterscc` select the direct `M,N,K` loop order, while `--glpk --dfp`, `--typedfuse --glpk`, `--glpk --hybridfuse`, and `--glpk --dfp --delayedcut` produce the shifted DFP-style loop nest. The remaining work is finding non-matmul effect fixtures.
+This category is now default artifact behavior for GLPK-backed Pluto. If DFP or typed fusion only changes which affine schedule Pluto finds, the existing affine validator is the central correctness check. The suite checks a visible schedule effect on `matmul.loop`: `--glpk`, `--glpk --ilp`, `--glpk --lp`, `--glpk --lpcolor`, and `--glpk --clusterscc` select the direct `M,N,K` loop order, while `--glpk --dfp`, `--typedfuse --glpk`, `--glpk --hybridfuse`, and `--glpk --dfp --delayedcut` produce the shifted DFP-style loop nest. It also checks non-matmul effects: `--glpk --dfp` changes statement placement on `corcol.loop`, and `--typedfuse --glpk` plus `--glpk --hybridfuse` change the `adi.loop` nest to direct `0..N` bands. The remaining work is finding a delayed-cut-specific fixture and broader non-dense kernels.
 
 ## Fusion and Scheduling Objective Knobs
 
@@ -359,7 +359,7 @@ make test-vector-current-suite
 Current result with the pinned GLPK-enabled Pluto baseline:
 
 ```text
-[pluto-compat-suite] OK (79 checks)
+[pluto-compat-suite] OK (82 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:

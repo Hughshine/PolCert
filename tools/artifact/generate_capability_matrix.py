@@ -71,7 +71,7 @@ def table_rows() -> list[Capability]:
     for flag, reason in sorted(compat.SUPPORTED_VALUE_OPTIONS.items()):
         rows.append(Capability(flag + " <n>", "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden value/effect fixtures"))
     for flag, reason in sorted(compat.CONDITIONAL_LP_SOLVER_OPTIONS.items()):
-        rows.append(Capability(flag, "supported-oracle-tuning-with-runtime-probe", reason, "pinned GLPK-enabled Pluto baseline accepts and validates representative affine cases; alternate Pluto binaries are rejected if they lack the advertised option", "broaden non-matmul effect fixtures"))
+        rows.append(Capability(flag, "supported-oracle-tuning-with-runtime-probe", reason, "pinned GLPK-enabled Pluto baseline accepts and validates representative affine cases, including non-matmul DFP/typed/hybrid checks where applicable; alternate Pluto binaries are rejected if they lack the advertised option", "broaden delayed-cut-specific and non-dense-kernel effect fixtures"))
 
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
         rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))
@@ -90,7 +90,7 @@ def table_rows() -> list[Capability]:
 
 def check_rows() -> list[dict[str, object]]:
     rows = []
-    for check in compat_suite.CHECKS:
+    for check in compat_suite.active_checks():
         rows.append(
             {
                 "name": check.name,
@@ -117,7 +117,7 @@ def build_matrix() -> dict[str, object]:
         "compatibility_checks": check_rows(),
         "summary": {
             "capability_rows": len(table_rows()),
-            "compatibility_checks": len(compat_suite.CHECKS),
+            "compatibility_checks": len(compat_suite.active_checks()),
             "diamond_supported_route": "sequential, parallel, multipar, ISS, and second-level four-phase routes",
             "pluto_style_entry": "./polopt --pluto-compat",
         },
