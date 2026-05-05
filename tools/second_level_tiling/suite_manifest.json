@@ -26,7 +26,17 @@
         "--identity"
       ],
       "expect": "failure",
-      "needle": "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity"
+      "needle": "--second-level-tile with --identity requires --tile"
+    },
+    {
+      "name": "second-level-tile-rejects-identity-tiled",
+      "fixture": "matmul-init",
+      "args": [
+        "--second-level-tile",
+        "--identity-tiled"
+      ],
+      "expect": "failure",
+      "needle": "verified identity codegen route does not yet preserve Pluto's second-level tile order"
     },
     {
       "name": "second-level-tile-rejects-notile",

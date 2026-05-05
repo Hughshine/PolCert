@@ -71,6 +71,7 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 "-m",
                 "py_compile",
                 "tools/artifact/run_artifact_check.py",
+                "tools/artifact/explore_identity_compositions.py",
                 "tools/artifact/generate_capability_matrix.py",
                 "tools/artifact/proof_report.py",
                 "tools/diamond_tiling/run_pluto_diamond_suite.py",
@@ -102,6 +103,16 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 str(out_dir / "capability-matrix.md"),
             ],
             60,
+        ),
+        (
+            "identity-composition-exploration",
+            [
+                sys.executable,
+                "tools/artifact/explore_identity_compositions.py",
+                "--output-root",
+                str(out_dir / "identity-compositions"),
+            ],
+            120,
         ),
         (
             "pluto-compat-suite",

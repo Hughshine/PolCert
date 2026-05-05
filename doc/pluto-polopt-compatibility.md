@@ -50,6 +50,9 @@ The current assessment is based on these concrete checks.
   - root cause: `tool/osl_pluto.c:deps_read` converted Candl dependence types with fall-through, so recognized Candl dependences became `PLUTO_DEP_UNDEFINED`
   - fix applied in the Pluto checkout: add `break` statements and import `OSL_DEPENDENCE_RAW_SCALPRIV` as a Pluto RAW dependence
   - after rebuilding `/pluto`, `--candldep` and `--candldep --scalpriv` return successfully on `matmul.c`, `fusion1.c`, `nodep.c`, and Candl's `scalpriv.c`
+- `--ufactor` probe:
+  - direct Pluto on extracted `matmul.loop` shows `--ufactor=3` changes the automatic tile-size model from a 64-sized tile to a 63-sized tile under `--determine-tile-size --cache-size=32768 --data-element-size=8 --nounrolljam`
+  - the same flag is still rejected when `--determine-tile-size` is absent because its remaining Pluto meaning is the unsupported unroll-jam factor
 - Current `polopt` route inspection:
   - `syntax/SLoopRoute.ml`: route normalization and explicit rejections
   - `driver/Scheduler.ml`: actual Pluto flag recipes sent by `polopt`
@@ -57,7 +60,7 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - default GLPK-enabled Pluto baseline result: `74 / 74` checks passed
+  - default GLPK-enabled Pluto baseline result: `79 / 79` checks passed
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
@@ -108,6 +111,7 @@ The supported surface is already nontrivial.
 | `--flic`, `--fast-lin-ind-check` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-flic-affine` and `optimizer-fast-lin-ind-check-affine`; differ from smartfuse baseline |
 | `--determine-tile-size` | Passed through to Pluto's checked scheduler oracle on tiled routes. | native compat `optimizer-determine-tile-size`; differs from fixed-size tiling baseline |
 | `--cache-size <n>`, `--data-element-size <n>` | Passed through to Pluto's checked scheduler oracle when paired with `--determine-tile-size` on tiled routes. | native compat `optimizer-cache-size` and `optimizer-data-element-size`; differ from automatic tile-size baseline |
+| `--ufactor <n>` with `--determine-tile-size` | Passed through as Pluto's tile-size-model rounding factor while `--nounrolljam` keeps unroll-jam disabled. | native compat `optimizer-ufactor-tile-model`; direct Pluto `matmul.loop` probe changes a tile size from 64 to 63 for `--ufactor=3` |
 | `--intratileopt` | Passed through to Pluto's checked scheduler oracle as the explicit alternative to `--nointratileopt`. | native compat `optimizer-intratileopt`; standalone affine+tiling validators pass on intratileopt fixtures |
 | `--lastwriter` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-lastwriter-affine`; differs from default dependence mode baseline |
 | `--nolastwriter` | Passed through to Pluto's checked scheduler oracle and rejected if combined with `--lastwriter`. | native compat `optimizer-nolastwriter-affine` |
@@ -166,13 +170,13 @@ These are not proof limitations. They are interface-boundary choices.
 | `--noprevector` | Compatible no-op | Disables checked vector annotation. | Already acceptable. | Keep as no-op with explanation. |
 | `--unrolljam` | Unsupported | Pluto performs loop-body rewriting after codegen. This is not a schedule-only oracle effect. | Yes, but requires new validation/proof. | Implement checked unroll-and-jam as a `polopt` transformation or add a validator for Pluto's unrolled AST/code. |
 | `--nounrolljam` | Compatible no-op | Current checked recipes already disable Pluto unroll-jam. | Already acceptable. | Keep as no-op with explanation. |
-| `--ufactor` | Unsupported | Only meaningful with `--unrolljam`. | Depends on unroll-jam support. | Add after checked unroll-jam exists. |
+| `--ufactor` without `--determine-tile-size` | Unsupported | With automatic tile-size selection absent and `--nounrolljam` required, the remaining Pluto meaning is the unsupported unroll-jam factor. | Depends on unroll-jam support. | Keep rejecting this form. If checked unroll-jam is added, reuse the same positive-integer parser for the post pass. |
 | `--cloogsh`, `--cloogf`, `--cloogl` | Unsupported | These tune Cloog code generation, which `polopt` does not use as trusted output. | Not as optimizer flags. | Only expose equivalent `polopt` codegen knobs if needed. |
 | `--nocloogbacktrack` | Compatible no-op in native compatibility mode | It only constrains Pluto/Cloog code generation, which `polopt` discards. Accepting it avoids rejecting a harmless disabling flag. | Already acceptable as no-op. | Keep the native note explicit so users do not infer Cloog output is validated. |
 | `--codegen-context` | Unsupported | This shapes Pluto/Cloog generated bounds. `polopt` regenerates code itself. | Possible as a `polopt` codegen knob. | Add a checked codegen context option if the loop language needs it. |
 | `--bee`, `--indent`, `-o` | Unsupported in native compatibility mode | These are backend/output concerns. | Possible under `polopt` names. | Add `polopt` output formatting/path options separately from optimizer compatibility. |
 
-These are mostly not "missing Pluto optimization". They are backend features. A direct Pluto probe on `matmul.loop` shows that `--prevector` adds an OpenScop `<loop>` extension with directive `4`; PolOpt now imports that directive as a checked vector annotation. The same probe did not change the dumped schedule for `--unrolljam`, but the Pluto source applies unroll-jam to the CLAST/codegen path and records unroll metadata when hyperplanes are marked. Supporting unroll-jam as a positive result would therefore require a checked `polopt` codegen feature, not just oracle pass-through.
+These are mostly not "missing Pluto optimization". They are backend features. A direct Pluto probe on `matmul.loop` shows that `--prevector` adds an OpenScop `<loop>` extension with directive `4`; PolOpt now imports that directive as a checked vector annotation. The same probe did not change the dumped schedule for `--unrolljam`, but the Pluto source applies unroll-jam to the CLAST/codegen path and records unroll metadata when hyperplanes are marked. Supporting unroll-jam as a positive result would therefore require a checked `polopt` codegen feature, not just oracle pass-through. `--ufactor` is split accordingly: it is supported as an automatic tile-size-model parameter when `--determine-tile-size` is present, but it remains rejected as an unroll-jam factor.
 
 The vector path deliberately follows the checked parallel route: recover or choose a vectorizable loop, validate the doall precondition, and emit a checked vector annotation. This is sound for Pluto-style prevectorization because Pluto's vector marker is derived from parallel loop analysis. A realistic unroll-jam path is separate: it needs a checked post pass over `polopt`'s loop IR, with factor handling, remainder generation, and a semantic preservation theorem. The disabling flags `--noprevector` and `--nounrolljam` remain accepted because they are how callers turn off Pluto's default codegen-side behavior for checked routes.
 
@@ -241,15 +245,17 @@ That is not just a solver knob if the final schedule relies on each iteration ha
 | `--nointratileopt` | Compatible no-op | Current checked recipes disable this Pluto rewrite unless `--intratileopt` is explicitly selected. | Already acceptable. | Keep as no-op with explanation and reject contradictory use with `--intratileopt`. |
 | `--determine-tile-size` | Supported as oracle tuning on tiled routes | Native compatibility mode appends it to Pluto scheduler calls; `matmul.loop` demonstrates a final loop difference from fixed-size tiling. | Already supported for checked routes whose produced tile witness validates. | Broaden fixtures and test interactions with diamond/second-level routes. |
 | `--cache-size`, `--data-element-size` | Supported with `--determine-tile-size` on tiled routes | Native compatibility mode parses positive integer values, appends them to Pluto scheduler calls, and rejects them when `--determine-tile-size` or a tiled route is absent. | Already supported for checked routes whose produced tile witness validates. | Broaden value choices and non-matmul fixtures. |
+| `--ufactor` | Supported with `--determine-tile-size` on tiled routes | Pluto's automatic tile-size model rounds candidate sizes to a multiple of `ufactor`, even when `--nounrolljam` disables the post-codegen unroll-jam transform. Native compatibility mode therefore passes `--ufactor` only in this tile-size-model context. | Already supported for checked routes whose produced tile witness validates. | Keep rejecting `--ufactor` without `--determine-tile-size` until checked unroll-jam exists. |
 | `tile.sizes`, `--tile-sizes-file FILE` | Supported as Pluto legacy implicit file and explicit PolOpt compatibility input | Pluto reads this file from the working directory and uses its positive integers as first-level tile sizes. With `--second-level-tile`, later integers are second:first tile-size ratios. PolOpt can now install that file explicitly for the Pluto oracle call and remove it afterward. The checked tiling validator rechecks the produced tile-size witness. | native compat `optimizer-implicit-tile-sizes-file`, `optimizer-explicit-tile-sizes-file` | Prefer the explicit file option in artifact scripts. |
 | `--ft`, `--lt` | Supported together on tiled routes | Pluto's first/last tiled hyperplane levels are passed through as non-negative values. The driver rejects one-sided or descending ranges. | Already supported for checked routes whose produced tiling witness validates. | Broaden effect fixtures and add out-of-range rejection tests because some valid-looking values trigger Pluto tiling assertions on small programs. |
 | bare `--identity` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface gap. | Keep requiring either `--identity --notile` or `--identity --tile`. |
 | `--identity --tile --iss` | Supported narrow | A Coq route composes checked ISS complete-cut validation with checked identity tiling over the split program. | Already supported; current positive fixture shows tiling under `--iss` but not an ISS-sensitive extra effect. | Construct a fixture where ISS uniquely enables identity tiling, if Pluto has such a case. |
-| `--identity --tile` with diamond/second-level composition | Unsupported composition | Parallel composition is now supported by validating identity tiling first and then running checked parallel codegen. Diamond and second-level forms still need a meaningful Pluto output shape and route-specific tests. | Composition gap. | Add each composition only when it can map to an existing extracted pass or a new Coq pass/theorem. |
+| `--identity --tile --second-level-tile` | Unsupported route/codegen gap | Direct Pluto can produce a valid second-level identity tiling: `tools/artifact/explore_identity_compositions.py` shows `fusion7` has a Pluto 256/32 output and `polcert --second-level-tile` validates the SCOP refinement. The currently exposed identity route still rejects it because the theorem-facing band route does not preserve that second-level code shape; a generic route experiment preserved semantic validation but produced a degenerate current-view loop order instead of Pluto's outer-first 256/32 loop nest. | Codegen/canonical-order gap, not an oracle gap. | Add a verified raw-order or outer-first second-level codegen route before accepting the flag. |
+| `--identity --tile --diamond-tile` | Unsupported no-effect composition | Direct Pluto still emits phase dumps accepted by the four-phase validator, but the focused `wavefront` exploration shows the `--identity --tile --diamond-tile` C output is identical to `--identity --tile`: without Pluto's affine/skew scheduling phase, diamond adds no route-specific optimization effect. | Correct rejection for now. | Only reconsider if an identity-diamond fixture shows a distinct diamond effect and maps to a theorem-facing route. |
 | `--second-level-tile --parallel` | Supported | The phase-aligned route now extracts the second-level tiling artifact, validates it, then feeds the validated post-tiling program to the checked parallel validator/codegen path. | Already supported. | Broaden fixtures beyond `nodep` and `matmul-init`. |
 | `--second-level-tile --parallel-current d` | Supported | Explicit-current parallel certification composes after the checked second-level tiling route. | Already supported. | Keep in second-level suite. |
 
-Tile size control is likely easy from a proof perspective if the validator already proves tiling for arbitrary positive sizes. Partial tiling still needs broader effect fixtures, and mixed identity+tiling compositions need route-specific theorem coverage. A direct `--identity --tile --second-level-tile` experiment over 458 current `.loop` files found no positive second-level effect case: the route could be made to execute, but it fell back to identity or ordinary identity tiling. It therefore remains rejected until a route produces a validated second-level shape rather than merely accepting the flags.
+Tile size control is likely easy from a proof perspective if the validator already proves tiling for arbitrary positive sizes. Partial tiling still needs broader effect fixtures, and mixed identity+tiling compositions need route-specific theorem coverage. The current identity-composition evidence is reproducible with `python3 tools/artifact/explore_identity_compositions.py --output-root /tmp/polcert-identity-compositions`: identity+second-level is blocked by verified codegen/canonical-order handling, while identity+diamond is blocked because Pluto's identity diamond output is not distinct from ordinary identity tiling on the focused positive diamond-style fixture.
 
 ## Parallel Controls
 
@@ -322,8 +328,10 @@ dependence testing.
 2. Add remaining route-level surface gaps.
    - bare `--identity` policy remains explicit: require `--identity --notile`
      or `--identity --tile`
-   - mixed `--identity --tile` compositions with diamond or second-level
-     tiling
+   - `--identity --tile --second-level-tile` needs verified outer-first
+     second-level codegen/current-view support
+   - `--identity --tile --diamond-tile` needs a distinct Pluto effect fixture
+     before it should be accepted
    - an ISS-sensitive `--identity --tile --iss` fixture, if one exists
    - broader tests for explicit `--tile-sizes-file`, `--fusion-structure`, and
      `--precut-file` beyond the current regression fixtures
@@ -351,7 +359,7 @@ make test-vector-current-suite
 Current result with the pinned GLPK-enabled Pluto baseline:
 
 ```text
-[pluto-compat-suite] OK (76 checks)
+[pluto-compat-suite] OK (79 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:
@@ -365,6 +373,6 @@ For rejected flags, the acceptance criterion is a stable, specific reason. A gen
 
 ## Short Summary
 
-The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, Pluto `tile.sizes` tile-size control via implicit and explicit `--tile-sizes-file` input, Pluto `.fst` fusion-structure control via implicit and explicit `--fusion-structure` input, Pluto `.precut` partial-transformation control via implicit and explicit `--precut-file` input, identity tiling with checked ISS and Pluto-hinted parallel/multipar composition, second-level tiling, ISS, one-loop parallelization, checked vector annotation for Pluto `--prevector`, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, conservative `--candldep --scalpriv` pass-through, and LP/DFP-family pass-through on the pinned GLPK-enabled Pluto baseline.
+The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, Pluto `tile.sizes` tile-size control via implicit and explicit `--tile-sizes-file` input, automatic tile-size-model controls including `--cache-size`, `--data-element-size`, and `--ufactor` under `--determine-tile-size`, Pluto `.fst` fusion-structure control via implicit and explicit `--fusion-structure` input, Pluto `.precut` partial-transformation control via implicit and explicit `--precut-file` input, identity tiling with checked ISS and Pluto-hinted parallel/multipar composition, second-level tiling, ISS, one-loop parallelization, checked vector annotation for Pluto `--prevector`, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, conservative `--candldep --scalpriv` pass-through, and LP/DFP-family pass-through on the pinned GLPK-enabled Pluto baseline.
 
-Most missing Pluto optimizer knobs are now surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, vector/codegen effects, unbounded multipar beyond Pluto's current extraction model, and full scalar privatization when the accepted schedule needs private scalar storage. Frontend and backend flags should remain outside the optimizer compatibility surface.
+Most missing Pluto optimizer knobs are now surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, unbounded multipar beyond Pluto's current extraction model, and full scalar privatization when the accepted schedule needs private scalar storage. Frontend and backend flags should remain outside the optimizer compatibility surface.

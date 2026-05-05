@@ -235,9 +235,15 @@ let normalize (cfg : SLoopConfig.config) =
       then
         Error
           "--legacy-generic-tiling only supports the default non-ISS full tiled route"
+      else if cfg.force_second_level_tile
+              && cfg.force_identity
+              && cfg.pluto_tile_seen
+      then
+        Error
+          "--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order"
       else if cfg.force_second_level_tile && cfg.force_identity then
         Error
-          "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity"
+          "--second-level-tile with --identity requires --tile"
       else if cfg.force_second_level_tile && cfg.force_notile then
         Error
           "--second-level-tile requires tiling and cannot be combined with --notile"

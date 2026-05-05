@@ -281,12 +281,17 @@ let output_value_options = [
 let tile_size_value_options = [
   "--cache-size";
   "--data-element-size";
+  "--ufactor";
 ]
+
+let tile_size_value_prefixes =
+  List.map (fun flag -> flag ^ "=") tile_size_value_options
 
 let positive_oracle_value_options = [
   "--cache-size";
   "--coeff-bound";
   "--data-element-size";
+  "--ufactor";
 ]
 
 let nonnegative_oracle_value_options = [
@@ -362,6 +367,9 @@ let pluto_extra_has flag cfg =
 
 let pluto_extra_has_prefix prefix cfg =
   List.exists (fun flag -> starts_with flag prefix) cfg.pluto_extra_flags
+
+let pluto_extra_has_any_prefix prefixes cfg =
+  List.exists (fun prefix -> pluto_extra_has_prefix prefix cfg) prefixes
 
 let rec find_map f = function
   | [] -> None
@@ -459,8 +467,10 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
     if cfg.force_identity && cfg.force_vector && not cfg.pluto_tile_seen then
       pluto_reject prog "--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
-    if cfg.force_identity && cfg.force_second_level_tile then
-      pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
+    if cfg.force_identity && cfg.force_second_level_tile && cfg.pluto_tile_seen then
+      pluto_reject prog "--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order";
+    if cfg.force_identity && cfg.force_second_level_tile && not cfg.pluto_tile_seen then
+      pluto_reject prog "--second-level-tile with --identity requires --tile";
     if cfg.force_identity && cfg.force_diamond_tile then
       pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.pluto_tile_seen then
@@ -473,20 +483,20 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route";
     if cfg.force_second_level_tile && cfg.force_notile then
       pluto_reject prog "--second-level-tile requires tiling and cannot be combined with --notile";
-    if cfg.force_second_level_tile && cfg.force_identity then
-      pluto_reject prog "--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity";
+    if cfg.force_second_level_tile && cfg.force_identity && cfg.pluto_tile_seen then
+      pluto_reject prog "--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order";
+    if cfg.force_second_level_tile && cfg.force_identity && not cfg.pluto_tile_seen then
+      pluto_reject prog "--second-level-tile with --identity requires --tile";
     if
-      (pluto_extra_has_prefix "--cache-size=" cfg
-       || pluto_extra_has_prefix "--data-element-size=" cfg)
+      pluto_extra_has_any_prefix tile_size_value_prefixes cfg
       && not (pluto_extra_has "--determine-tile-size" cfg)
     then
-      pluto_reject prog "--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset";
+      pluto_reject prog "--cache-size/--data-element-size/--ufactor require --determine-tile-size in the checked polopt subset";
     if
-      (pluto_extra_has_prefix "--cache-size=" cfg
-       || pluto_extra_has_prefix "--data-element-size=" cfg)
+      pluto_extra_has_any_prefix tile_size_value_prefixes cfg
       && (cfg.force_notile || cfg.force_identity)
     then
-      pluto_reject prog "--cache-size/--data-element-size require a tiled route in the checked polopt subset";
+      pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route in the checked polopt subset";
     if
       (pluto_extra_has_prefix "--ft=" cfg)
       <> (pluto_extra_has_prefix "--lt=" cfg)

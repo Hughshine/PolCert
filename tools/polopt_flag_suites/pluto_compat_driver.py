@@ -145,6 +145,7 @@ SUPPORTED_VALUE_OPTIONS = {
     "--forceparallel": "Pluto force-parallel bit-vector is passed through; this pinned Pluto source has no effective use site",
     "--ft": "Pluto first tiled hyperplane level is passed to the checked scheduler oracle",
     "--lt": "Pluto last tiled hyperplane level is passed to the checked scheduler oracle",
+    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; unroll-jam itself remains disabled",
 }
 
 NONNEGATIVE_VALUE_OPTIONS = {"--forceparallel", "--ft", "--lt"}
@@ -508,23 +509,25 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if state.identity and state.vector and not identity_tiled:
         raise Reject("--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
     if identity_tiled and state.second_level_tile:
-        raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
+        raise Reject("--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order")
     if identity_tiled and state.diamond_tile:
         raise Reject("--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity")
     if state.identity and not state.notile_seen and not identity_tiled:
         raise Reject("--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route")
     if state.second_level_tile and not state.tile:
         raise Reject("--second-level-tile requires tiling and cannot be combined with --notile")
-    if state.second_level_tile and state.identity:
-        raise Reject("--second-level-tile requires a tiled Pluto phase and cannot be combined with --identity")
+    if state.second_level_tile and state.identity and not identity_tiled:
+        raise Reject("--second-level-tile with --identity requires --tile")
     has_tile_size_value = any(
-        flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")
+        flag.startswith("--cache-size=")
+        or flag.startswith("--data-element-size=")
+        or flag.startswith("--ufactor=")
         for flag in oracle_flags
     )
     if has_tile_size_value and "--determine-tile-size" not in oracle_flags:
-        raise Reject("--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset")
+        raise Reject("--cache-size/--data-element-size/--ufactor require --determine-tile-size in the checked polopt subset")
     if has_tile_size_value and (state.identity or not state.tile):
-        raise Reject("--cache-size/--data-element-size require a tiled route in the checked polopt subset")
+        raise Reject("--cache-size/--data-element-size/--ufactor require a tiled route in the checked polopt subset")
 
     ft_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--ft=")]
     lt_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--lt=")]

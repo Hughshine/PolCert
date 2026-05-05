@@ -42,6 +42,7 @@ MATMUL_TILED_INTRATILE = [*FLAGS_INTRATILE, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_DETERMINE_UFACTOR = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--data-element-size=8", "--ufactor=3", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED_PARALLEL = ["--identity", "--tile", "--parallel", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
 IDENTITY_TILED_MULTIPAR = ["--identity", "--tile", "--parallel", "--multipar", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
@@ -146,6 +147,16 @@ CHECKS = [
         "pluto oracle flags: --smartfuse --determine-tile-size --data-element-size=16",
         effect_needles=("1024 *",),
         differs_from_args=(tuple(MATMUL_TILED_DETERMINE),),
+    ),
+    Check(
+        "optimizer-ufactor-tile-model",
+        MATMUL_TILED_DETERMINE_UFACTOR,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --determine-tile-size --cache-size=32768 --data-element-size=8 --ufactor=3",
+        effect_needles=("63 *",),
+        differs_from_args=(tuple(MATMUL_TILED_DETERMINE_CACHE),),
     ),
     Check(
         "affine-only",
@@ -494,7 +505,9 @@ CHECKS = [
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
     Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
+    Check("reject-ufactor-without-determine", [*FLAGS, "--ufactor=3", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
+    Check("reject-identity-second-level", ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "verified identity codegen route does not yet preserve Pluto's second-level tile order"),
     Check(
         "optimizer-implicit-tile-sizes-file",
         MATMUL_TILED,

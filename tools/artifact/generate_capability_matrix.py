@@ -57,6 +57,8 @@ SUPPORTED = [
 DIAMOND_COMBINATIONS = [
     Capability("--diamond-tile --notile", "correct-rejection", "diamond requires a tiling phase", "route rejection", "keep rejecting"),
     Capability("--diamond-tile --identity", "correct-rejection", "diamond requires Pluto scheduling/skew plus tiling", "route rejection", "keep rejecting unless a meaningful identity-diamond route is designed"),
+    Capability("--identity --tile --second-level-tile", "validator-codegen-gap", "direct Pluto can produce a second-level identity tile and polcert validates the SCOP, but the verified identity codegen route does not yet preserve Pluto's outer-first second-level tile order", "tools/artifact/explore_identity_compositions.py; native and compat rejection tests", "add verified raw-order or outer-first second-level codegen before accepting"),
+    Capability("--identity --tile --diamond-tile", "correct-rejection", "direct Pluto's identity diamond output is not distinct from ordinary identity tiling on the focused wavefront probe", "tools/artifact/explore_identity_compositions.py; compat rejection", "keep rejecting unless a distinct identity-diamond effect fixture appears"),
 ]
 
 
