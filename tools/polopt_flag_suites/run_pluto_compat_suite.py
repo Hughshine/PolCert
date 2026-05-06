@@ -60,6 +60,7 @@ TUNING_NOTILE_LASTWRITER = ["--notile", "--smartfuse", "--lastwriter", "--nointr
 TUNING_NOTILE_NOLASTWRITER = ["--notile", "--smartfuse", "--nolastwriter", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_CANDLDEP = ["--notile", "--smartfuse", "--candldep", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_CANDLDEP_SCALPRIV = ["--notile", "--smartfuse", "--candldep", "--scalpriv", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
+TUNING_NOTILE_CANDLDEP_SCALPRIV_PARALLEL = ["--notile", "--smartfuse", "--candldep", "--scalpriv", "--parallel", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--rar"]
 TUNING_NOTILE_PIPSOLVE = ["--notile", "--smartfuse", "--pipsolve", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_ISL_ACCESSWISE = ["--notile", "--smartfuse", "--isldepaccesswise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 TUNING_NOTILE_ISL_STMTWISE = ["--notile", "--smartfuse", "--isldepstmtwise", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -898,6 +899,16 @@ def active_checks() -> list[Check]:
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --candldep --scalpriv",
                     effect_needles=("b[i0] = a",),
+                ),
+                Check(
+                    "optimizer-candldep-scalpriv-parallel-conservative",
+                    TUNING_NOTILE_CANDLDEP_SCALPRIV_PARALLEL,
+                    SCALPRIV,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --candldep --scalpriv",
+                    effect_needles=("b[i0] = a", "[alarm] optimization triggered a checked fallback or warning"),
+                    effect_absent=("parallel for",),
                 ),
                 Check(
                     "reject-candldep-lastwriter",
