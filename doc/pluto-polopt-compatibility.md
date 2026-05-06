@@ -53,6 +53,10 @@ The current assessment is based on these concrete checks.
 - `--ufactor` probe:
   - direct Pluto on extracted `matmul.loop` shows `--ufactor=3` changes the automatic tile-size model from a 64-sized tile to a 63-sized tile under `--determine-tile-size --cache-size=32768 --data-element-size=8 --nounrolljam`
   - the same flag is still rejected when `--determine-tile-size` is absent because its remaining Pluto meaning is the unsupported unroll-jam factor
+- `--unrolljam` probe:
+  - `tools/artifact/explore_codegen_gaps.py` runs direct Pluto on extracted `matmul.loop` with `--unrolljam --ufactor=4` and `--nounrolljam`
+  - the two Pluto runs produce identical `.afterscheduling.scop` files but different generated C, with `+=4` unrolled loops and remainder loops in the `--unrolljam` output
+  - native `polopt --pluto-compat --unrolljam` rejects the request, because this is a codegen rewrite rather than a schedule or tiling witness
 - Current `polopt` route inspection:
   - `syntax/SLoopRoute.ml`: route normalization and explicit rejections
   - `driver/Scheduler.ml`: actual Pluto flag recipes sent by `polopt`
@@ -76,7 +80,7 @@ The current assessment is based on these concrete checks.
   - over 63 regression `.loop` fixtures, `--identity --tile` and `--identity --tile --iss` both succeeded with identical optimized loops; no ISS-only or ISS-different identity-tiling fixture was found in that bounded corpus
 - Executed artifact smoke check:
   - `make artifact-check`
-  - result: py-compile, proof report, capability matrix, Pluto-compatible suite, second-level suite, and diamond suite all passed
+  - result: py-compile, proof report, capability matrix, codegen-gap exploration, Pluto-compatible suite, second-level suite, and diamond suite all passed
   - extended mode: `python3 tools/artifact/run_artifact_check.py --mode extended` adds the flag-effect exploration after the ordinary proof and suite checks
 
 One important correction: Pluto's `--help` is not reliable for defaults in this build. The help text says some features are disabled by default, but `lib/program.cpp` initializes `tile=1`, `parallel=1`, `diamondtile=1`, `intratileopt=1`, `prevector=1`, `unrolljam=1`, and `smartfuse`.
@@ -181,7 +185,7 @@ These are not proof limitations. They are interface-boundary choices.
 |---|---|---|---|---|
 | `--prevector` | Supported narrow | Pluto records vector loops as OpenScop loop directives. PolOpt parses directive bit `4`, then reuses the checked parallel/doall certificate to emit `vector for`. If Pluto's hinted current dimension is not certifiable, non-strict mode scans for a certifiable current dimension and reports a checked warning. | Already supported by the checked vector annotation route. | Add specialized vector checkers only if future semantics need fixed-width SIMD, reductions, or backend-specific pragmas. |
 | `--noprevector` | Compatible no-op | Disables checked vector annotation. | Already acceptable. | Keep as no-op with explanation. |
-| `--unrolljam` | Unsupported | Pluto performs loop-body rewriting after codegen. This is not a schedule-only oracle effect. | Yes, but requires new validation/proof. | Implement checked unroll-and-jam as a `polopt` transformation or add a validator for Pluto's unrolled AST/code. |
+| `--unrolljam` | Unsupported | Pluto performs loop-body rewriting after codegen. The artifact probe shows the after-scheduling OpenScop is unchanged while final C is unrolled and given remainder loops, so this is not a schedule-only oracle effect. | Yes, but requires new validation/proof. | Implement checked unroll-and-jam as a `polopt` transformation or add a validator for Pluto's unrolled AST/code. |
 | `--nounrolljam` | Compatible no-op | Current checked recipes already disable Pluto unroll-jam. | Already acceptable. | Keep as no-op with explanation. |
 | `--ufactor` without `--determine-tile-size` | Unsupported | With automatic tile-size selection absent and `--nounrolljam` required, the remaining Pluto meaning is the unsupported unroll-jam factor. | Depends on unroll-jam support. | Keep rejecting this form. If checked unroll-jam is added, reuse the same positive-integer parser for the post pass. |
 | `--cloogsh`, `--cloogf`, `--cloogl` | Unsupported | These tune Cloog code generation, which `polopt` does not use as trusted output. | Not as optimizer flags. | Only expose equivalent `polopt` codegen knobs if needed. |
@@ -189,7 +193,7 @@ These are not proof limitations. They are interface-boundary choices.
 | `--codegen-context` | Unsupported | This shapes Pluto/Cloog generated bounds. `polopt` regenerates code itself. | Possible as a `polopt` codegen knob. | Add a checked codegen context option if the loop language needs it. |
 | `--bee`, `--indent`, `-o` | Unsupported in native compatibility mode | These are backend/output concerns. | Possible under `polopt` names. | Add `polopt` output formatting/path options separately from optimizer compatibility. |
 
-These are mostly not "missing Pluto optimization". They are backend features. A direct Pluto probe on `matmul.loop` shows that `--prevector` adds an OpenScop `<loop>` extension with directive `4`; PolOpt now imports that directive as a checked vector annotation. The same probe did not change the dumped schedule for `--unrolljam`, but the Pluto source applies unroll-jam to the CLAST/codegen path and records unroll metadata when hyperplanes are marked. Supporting unroll-jam as a positive result would therefore require a checked `polopt` codegen feature, not just oracle pass-through. `--ufactor` is split accordingly: it is supported as an automatic tile-size-model parameter when `--determine-tile-size` is present, but it remains rejected as an unroll-jam factor.
+These are mostly not "missing Pluto optimization". They are backend features. A direct Pluto probe on `matmul.loop` shows that `--prevector` adds an OpenScop `<loop>` extension with directive `4`; PolOpt now imports that directive as a checked vector annotation. The unroll-jam probe is different: Pluto's after-scheduling OpenScop is byte-identical with and without `--unrolljam`, but the generated C differs by unrolling/jamming two loops and adding remainder loops. Supporting unroll-jam as a positive result would therefore require a checked `polopt` codegen feature, not just oracle pass-through. `--ufactor` is split accordingly: it is supported as an automatic tile-size-model parameter when `--determine-tile-size` is present, but it remains rejected as an unroll-jam factor.
 
 The vector path deliberately follows the checked parallel route: recover or choose a vectorizable loop, validate the doall precondition, and emit a checked vector annotation. This is sound for Pluto-style prevectorization because Pluto's vector marker is derived from parallel loop analysis. A realistic unroll-jam path is separate: it needs a checked post pass over `polopt`'s loop IR, with factor handling, remainder generation, and a semantic preservation theorem. The disabling flags `--noprevector` and `--nounrolljam` remain accepted because they are how callers turn off Pluto's default codegen-side behavior for checked routes.
 

@@ -77,7 +77,10 @@ def table_rows() -> list[Capability]:
     for flag, reason in sorted(compat.FRONTEND_OPTIONS.items()):
         rows.append(Capability(flag, "out-of-optimizer-surface", reason, "native compat rejection", "keep as separate importer/debug mode if needed"))
     for flag, reason in sorted(compat.CODEGEN_OPTIONS.items()):
-        rows.append(Capability(flag, "validator-or-codegen-gap", reason, "native compat rejection", "implement checked PolOpt equivalent, not Pluto pass-through"))
+        evidence = "native compat rejection"
+        if flag == "--unrolljam":
+            evidence = "native compat rejection; codegen-gap exploration shows unchanged after-scheduling scop but changed generated C"
+        rows.append(Capability(flag, "validator-or-codegen-gap", reason, evidence, "implement checked PolOpt equivalent, not Pluto pass-through"))
     for flag, reason in sorted(compat.DFP_OPTIONS.items()):
         rows.append(Capability(flag, "surface-or-build-gap", reason, "native compat rejection", "enable solver build and validate produced affine schedules"))
     for flag, reason in sorted(compat.UNSUPPORTED_OPTIMIZER_OPTIONS.items()):
