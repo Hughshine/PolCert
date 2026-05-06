@@ -508,8 +508,6 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
     if state.identity and state.vector and not identity_tiled:
         raise Reject("--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint")
-    if identity_tiled and state.second_level_tile:
-        raise Reject("--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order")
     if identity_tiled and state.diamond_tile:
         raise Reject("--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity")
     if state.identity and not state.notile_seen and not identity_tiled:
@@ -552,6 +550,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         if state.iss:
             args.append("--iss")
         args.extend(["--identity", "--tile"])
+        if state.second_level_tile:
+            args.append("--second-level-tile")
     elif state.identity:
         if state.iss:
             args.append("--iss")
