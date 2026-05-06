@@ -43,6 +43,7 @@ SUPPORTED = [
     Capability("--parallel-current d", "supported", "explicit checked parallel dimension; native --identity-tiled --parallel-current d exposes the identity-tiling plus explicit-current theorem route", "parallel-current suite; identity-tiled-current-combined-effect; Opt_parallel_current_correct; Opt_parallel_current_identity_tiled_result_correct", "keep separate from Pluto compatibility"),
     Capability("--prevector / --vector", "supported-component-verified", "Pluto vector hints are parsed from OpenScop loop directive bit 4 and checked with the same doall certificate used by parallelization; output is annotated as vector for", "pluto-compat prevector and default-prevector; checked_vector_annotated_codegen_correct_general; vector-current suite", "add specialized vector checkers only if future SIMD/reduction semantics need them"),
     Capability("--vector-current d", "supported", "explicit checked vector dimension over the current-space program; reuses the parallel/doall validator and emits vector for", "vector-current suite; checked_vector_annotated_codegen_correct_general", "keep as theorem-facing entry"),
+    Capability("--unrolljam", "supported-narrow", "mapped to a checked PolOpt post pass that fully unrolls statically constant-bounded loops in the final sequential Loop IR; variable-bound Pluto unroll-jam remains rejected", "pluto-compat const-unrolljam-constant-loop; reject-unrolljam-variable-loop; LoopUnroll.const_unroll_correct", "extend toward factor-based variable-bound unroll-jam only with a new semantic preservation theorem"),
     Capability("--diamond-tile", "supported-narrow", "extracted four-phase diamond route with sequential, ISS, second-level, parallel, and multipar compositions", "diamond suite; pluto-compat diamond combinations; Opt_diamond_band_correct", "broaden effect fixtures and polish raw-codegen fallback output"),
     Capability("--full-diamond-tile", "supported-narrow", "stronger producer mode over the same extracted checked diamond route", "pluto-compat full-diamond; Opt_diamond_band_correct", "add more full-diamond cases"),
     Capability("--diamond-tile --iss", "supported-narrow", "ISS bridge validation is composed before the single-level four-phase diamond route", "pluto-compat diamond-iss; Opt_diamond_band_with_iss_correct", "add broader ISS+diamond fixtures"),
@@ -126,9 +127,9 @@ def build_matrix() -> dict[str, object]:
             "pluto_style_entry": "./polopt --pluto-compat",
             "remaining_semantic_gaps": [
                 {
-                    "request": "--unrolljam",
-                    "reason": "Pluto changes generated C after the OpenScop scheduling artifact; PolOpt needs a checked loop/codegen post pass rather than pass-through.",
-                    "required_work": "Implement factor handling, repeated-body/remainder generation, and a semantic preservation theorem.",
+                    "request": "general variable-bound --unrolljam",
+                    "reason": "The checked subset currently fully unrolls only statically constant-bounded loops. Pluto's general unroll-jam changes generated C after the OpenScop scheduling artifact.",
+                    "required_work": "Implement factor handling, variable-bound repeated-body/remainder generation, and a semantic preservation theorem.",
                 },
                 {
                     "request": "full --candldep --scalpriv",

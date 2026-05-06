@@ -50,6 +50,7 @@ class PlutoFlagState:
     intratileopt_seen: bool = False
     no_intratileopt_seen: bool = False
     no_prevector_seen: bool = False
+    unrolljam_seen: bool = False
     no_unrolljam_seen: bool = False
     oracle_flags: list[str] | None = None
     control_files: list[tuple[str, str]] | None = None
@@ -113,7 +114,6 @@ CODEGEN_OPTIONS = {
     "--bee": "Bee pragmas are Pluto codegen output, while polopt uses its own codegen",
     "--cloogsh": "Cloog codegen tuning is outside the polopt checked route",
     "--indent": "formatting is outside the optimizer-validation route",
-    "--unrolljam": "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route",
 }
 
 UNSUPPORTED_OPTIMIZER_OPTIONS = {}
@@ -432,7 +432,10 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--prevector selects the checked vector annotation route")
         elif flag == "--nounrolljam":
             state.no_unrolljam_seen = True
-            state.add_note("--nounrolljam accepted because polopt does not use Pluto unroll-jam output")
+            state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
+        elif flag == "--unrolljam":
+            state.unrolljam_seen = True
+            state.add_note("--unrolljam selects polopt's checked constant-bound unroll post pass; general Pluto unroll-jam remains rejected when the pass does not apply")
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
@@ -460,7 +463,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag in ACCEPTED_NOOPS:
             state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
         elif flag == "--unroll":
-            raise Reject("--unroll: Pluto only accepts this as an abbreviation for --unrolljam; unroll-jam is not a checked polopt route")
+            raise Reject("--unroll: use explicit --unrolljam for polopt's checked constant-bound unroll subset")
         elif flag in VALUE_OPTIONS:
             if flag in ("--cloogf", "--cloogl", "--codegen-context", "-o"):
                 raise Reject(f"{flag}: output/codegen shaping is outside the polopt checked route")
@@ -481,6 +484,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--intratileopt and --nointratileopt are both present; this wrapper rejects contradictory tile-schedule controls")
     if state.prevector_seen and state.no_prevector_seen:
         raise Reject("--prevector and --noprevector are both present; this wrapper rejects contradictory vector controls")
+    if state.unrolljam_seen and state.no_unrolljam_seen:
+        raise Reject("--unrolljam and --nounrolljam are both present; this wrapper rejects contradictory unroll controls")
     oracle_flags = state.oracle_flags or []
     if "--lastwriter" in oracle_flags and "--nolastwriter" in oracle_flags:
         raise Reject("--lastwriter and --nolastwriter are both present; this wrapper rejects contradictory dependence controls")
@@ -495,12 +500,14 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if not state.no_prevector_seen:
         state.vector = True
         state.add_note("Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel")
-    if not state.no_unrolljam_seen:
-        raise Reject("Pluto enables --unrolljam by default; pass --nounrolljam because polopt does not use Pluto unroll-jam output")
+    if not (state.no_unrolljam_seen or state.unrolljam_seen):
+        raise Reject("Pluto enables --unrolljam by default; pass --nounrolljam or explicit --unrolljam")
     if not state.parallel and not state.no_parallel_seen:
         raise Reject("Pluto enables --parallel by default; pass --noparallel or --parallel explicitly")
     if state.vector and state.parallel:
         raise Reject("--prevector/--vector cannot be combined with --parallel in the current checked annotation surface")
+    if state.unrolljam_seen and (state.vector or state.parallel):
+        raise Reject("--unrolljam currently applies only to sequential Loop IR routes in polopt")
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
     identity_tiled = state.identity and state.tile_seen and state.tile
@@ -571,6 +578,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         args.append("--parallel")
     if state.vector:
         args.append("--vector")
+    if state.unrolljam_seen:
+        args.append("--const-unroll")
     return args
 
 
@@ -601,7 +610,7 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
     else:
         args.append("--noparallel")
     args.append("--prevector" if state.vector else "--noprevector")
-    args.append("--nounrolljam")
+    args.append("--unrolljam" if state.unrolljam_seen else "--nounrolljam")
     if state.no_intratileopt_seen:
         args.append("--nointratileopt")
     if state.oracle_flags:

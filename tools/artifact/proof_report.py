@@ -105,6 +105,13 @@ TOP_LEVEL_ROUTES = [
         ],
     },
     {
+        "route": "checked constant-bound unroll post pass",
+        "cli": "polopt --const-unroll <file.loop> / polopt --pluto-compat --unrolljam on constant-bounded loops",
+        "theorem_file": "polygen/LoopUnroll.v",
+        "theorem_names": ["const_unroll_correct"],
+        "note": "This is the checked subset behind Pluto-compatible --unrolljam; general variable-bound factor unroll-jam remains separate.",
+    },
+    {
         "route": "checked ISS plus diamond plus parallel current",
         "cli": "polopt --iss --diamond-tile --parallel-current <dim> <file.loop>",
         "theorem_file": "driver/ParallelPolOptCorrect.v",

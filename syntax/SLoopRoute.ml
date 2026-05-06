@@ -171,6 +171,8 @@ let normalize (cfg : SLoopConfig.config) =
       else if cfg.force_legacy_generic_tiling then
         Error
           "--legacy-generic-tiling only applies to the default non-ISS full tiled optimization route"
+      else if cfg.force_const_unroll then
+        Error "--const-unroll cannot be combined with standalone validation actions"
       else if cfg.force_second_level_tile
               && match action with
                  | ExtractTilingWitness _ | ValidateTiling _ -> false
@@ -185,6 +187,8 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--parallel-current cannot be combined with --extract-only"
       else if has_vector_current cfg && cfg.extract_only then
         Error "--vector-current cannot be combined with --extract-only"
+      else if cfg.force_const_unroll && cfg.extract_only then
+        Error "--const-unroll cannot be combined with --extract-only"
       else if cfg.force_parallel_strict && not cfg.force_parallel then
         Error "--parallel-strict requires --parallel"
       else if cfg.force_vector_strict && not cfg.force_vector then
@@ -205,6 +209,13 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--vector/--prevector cannot be combined with --vector-current"
       else if has_parallel_current cfg && has_vector_current cfg then
         Error "--parallel-current cannot be combined with --vector-current"
+      else if cfg.force_const_unroll
+              && (cfg.force_parallel
+                  || cfg.force_vector
+                  || has_parallel_current cfg
+                  || has_vector_current cfg)
+      then
+        Error "--const-unroll currently applies only to sequential Loop IR routes"
       else if cfg.force_band_tiling_experiment
               && cfg.force_legacy_generic_tiling
       then

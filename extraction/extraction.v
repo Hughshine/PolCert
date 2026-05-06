@@ -21,6 +21,7 @@ Require Import Memdata.
 (* Require Import Machregs. *)
 
 Require Import PolOpt.
+Require Import LoopUnroll.
 Require Import ParallelLoop.
 Require Import ParallelCodegen.
 
@@ -217,6 +218,7 @@ Require Import TPolOpt.
 Require Import TTilingCanonicalOpt.
 Require Import SPolOpt.
 Require Import SParallelPolOpt.
+Require Import SLoopUnroll.
 Require Import STilingOpt.
 Require Import STilingCanonicalOpt.
 Require Import STilingBandSched.
@@ -227,4 +229,4 @@ Require Import TPolValidator.
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)
 
-Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn ParallelLoop ParallelCodegen CPolOpt TPolIRs TPolOpt TTilingCanonicalOpt SPolIRs SPolOpt SParallelPolOpt STilingOpt STilingCanonicalOpt STilingBandSched SBandTilingOpt TPolValidator.
+Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn ParallelLoop ParallelCodegen LoopUnroll CPolOpt TPolIRs TPolOpt TTilingCanonicalOpt SPolIRs SPolOpt SParallelPolOpt SLoopUnroll STilingOpt STilingCanonicalOpt STilingBandSched SBandTilingOpt TPolValidator.

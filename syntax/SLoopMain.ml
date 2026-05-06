@@ -3146,6 +3146,16 @@ let run_selected_vector_current_optimization cfg loop dim =
     loop
     dim
 
+let apply_const_unroll_postpass cfg loop =
+  if cfg.force_const_unroll then begin
+    if not (SLoopUnroll.const_unroll_changed loop) then
+      frontend_failf
+        "--unrolljam currently applies only when the final sequential Loop IR contains a statically constant-bounded loop; general Pluto unroll-jam remains unsupported";
+    SLoopUnroll.const_unroll loop
+  end
+  else
+    loop
+
 let () =
   try
     Gc.set { (Gc.get()) with
@@ -3174,6 +3184,7 @@ let () =
         end;
         if cfg.profile_stages then begin
           let (optimized, ok) = profile_selected_optimization cfg loop in
+          let optimized = apply_const_unroll_postpass cfg optimized in
           if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
           print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized);
           exit 0
@@ -3215,6 +3226,7 @@ let () =
               print_section "Optimized Loop" (string_of_parallel_loop optimized)
             else
               let (optimized, ok) = run_selected_optimization cfg loop in
+              let optimized = apply_const_unroll_postpass cfg optimized in
               if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
               print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
         end

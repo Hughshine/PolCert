@@ -465,16 +465,17 @@ Recommended implementation order:
 2. `advect3d` codegen performance repair
 3. Pluto bug reproducibility track
 4. diamond-tiling fixture broadening
-5. checked unroll-jam post pass
+5. factor-based variable-bound unroll-jam post pass
 6. checked scalar-private storage rewrite
 
 Rationale:
 
 - The first four strengthen the artifact story without changing the core
   semantic model.
-- Checked unroll-jam and full scalar privatization are real semantic/codegen
-  extensions. They should be implemented only as theorem-facing PolOpt
-  transformations, not as Pluto pass-through.
+- The checked constant-bound unroll post pass is now present. General
+  variable-bound unroll-jam and full scalar privatization remain real
+  semantic/codegen extensions. They should be implemented only as
+  theorem-facing PolOpt transformations, not as Pluto pass-through.
 
 ## 6. Definition Of Success For The Next Iteration
 
@@ -487,7 +488,8 @@ the following:
 - contain at least one strong Pluto-bug case study
 - keep diamond, second-level, vector, parallel, and multipar compatibility
   routes under executable artifact checks
-- explicitly reject the two remaining semantic gaps (`--unrolljam` and full
+- accept the checked constant-bound `--unrolljam` subset and explicitly reject
+  the remaining semantic gaps (general variable-bound unroll-jam and full
   scalar privatization) until their checked transformations exist
 
 At that point, the artifact is no longer only "proved and correct on loop

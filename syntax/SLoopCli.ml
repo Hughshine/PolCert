@@ -13,6 +13,7 @@ type config = SLoopConfig.config = {
   mutable force_full_diamond_tile : bool;
   mutable force_band_tiling_experiment : bool;
   mutable force_legacy_generic_tiling : bool;
+  mutable force_const_unroll : bool;
   mutable force_parallel : bool;
   mutable force_parallel_strict : bool;
   mutable force_multipar : bool;
@@ -35,6 +36,7 @@ type config = SLoopConfig.config = {
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_prevector_seen : bool;
   mutable pluto_no_prevector_seen : bool;
+  mutable pluto_unrolljam_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
   mutable pluto_extra_flags : string list;
   mutable pluto_control_files : (string * string) list;
@@ -53,7 +55,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --pluto-compat [--explain] [--dry-run] <Pluto-like optimizer flags> <file.loop>\n"
@@ -94,6 +96,8 @@ let usage prog =
       "                             non-ISS full tiled path\n";
       "  --legacy-generic-tiling : use the historical generic ordinary-tiling validator path\n";
       "                            instead of the default band-aware path\n";
+      "  --const-unroll    : checked post pass that fully unrolls statically constant\n";
+      "                       loop bounds in the final sequential Loop IR\n";
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
       "                       loop hints; supported on both the default and `--iss` pipelines,\n";
       "                       with or without `--notile`\n";
@@ -308,7 +312,6 @@ let known_rejection_reason = function
   | "--bee" -> Some "Bee pragmas are Pluto codegen output, while polopt uses its own codegen"
   | "--cloogsh" -> Some "Cloog codegen tuning is outside the polopt checked route"
   | "--indent" -> Some "formatting is outside the optimizer-validation route"
-  | "--unrolljam" -> Some "unroll-jam is a Pluto post-codegen transform, not a checked polopt schedule route"
   | "--dump-iss-bridge" -> Some "this flag is not accepted by the current Pluto binary"
   | "--lbtile" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
   | "--multipipe" -> Some "this flag appears in stale scripts but is not accepted by the current Pluto binary"
@@ -404,6 +407,7 @@ let pluto_polopt_args cfg =
   end;
   if cfg.force_parallel then args := !args @ ["--parallel"];
   if cfg.force_vector then args := !args @ ["--vector"];
+  if cfg.force_const_unroll then args := !args @ ["--const-unroll"];
   !args
 
 let print_pluto_explain cfg =
@@ -443,6 +447,8 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--intratileopt and --nointratileopt are both present; this driver rejects contradictory tile-schedule controls";
     if cfg.pluto_prevector_seen && cfg.pluto_no_prevector_seen then
       pluto_reject prog "--prevector and --noprevector are both present; this driver rejects contradictory vector controls";
+    if cfg.pluto_unrolljam_seen && cfg.pluto_no_unrolljam_seen then
+      pluto_reject prog "--unrolljam and --nounrolljam are both present; this driver rejects contradictory unroll controls";
     if (pluto_extra_has "--lastwriter" cfg) && (pluto_extra_has "--nolastwriter" cfg) then
       pluto_reject prog "--lastwriter and --nolastwriter are both present; this driver rejects contradictory dependence controls";
     if cfg.pluto_isldep_seen && cfg.pluto_candldep_seen then
@@ -458,12 +464,17 @@ let validate_pluto_compat prog cfg =
       add_pluto_note cfg
         "Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel"
     end;
-    if not cfg.pluto_no_unrolljam_seen then
-      pluto_reject prog "Pluto enables --unrolljam by default; pass --nounrolljam because polopt does not use Pluto unroll-jam output";
+    if not (cfg.pluto_no_unrolljam_seen || cfg.pluto_unrolljam_seen) then
+      pluto_reject prog "Pluto enables --unrolljam by default; pass --nounrolljam or explicit --unrolljam";
     if (not cfg.force_parallel) && not cfg.pluto_no_parallel_seen then
       pluto_reject prog "Pluto enables --parallel by default; pass --noparallel or --parallel explicitly";
     if cfg.force_vector && cfg.force_parallel then
       pluto_reject prog "--prevector/--vector cannot be combined with --parallel in the current checked annotation surface";
+    if
+      cfg.force_const_unroll
+      && (cfg.force_parallel || cfg.force_vector || cfg.parallel_current_dim <> None || cfg.vector_current_dim <> None)
+    then
+      pluto_reject prog "--unrolljam currently applies only to sequential Loop IR routes in polopt";
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then
@@ -541,6 +552,7 @@ let parse_args () : config =
       force_full_diamond_tile = false;
       force_band_tiling_experiment = false;
       force_legacy_generic_tiling = false;
+      force_const_unroll = false;
       force_parallel = false;
       force_parallel_strict = false;
       force_multipar = false;
@@ -563,6 +575,7 @@ let parse_args () : config =
       pluto_no_intratileopt_seen = false;
       pluto_prevector_seen = false;
       pluto_no_prevector_seen = false;
+      pluto_unrolljam_seen = false;
       pluto_no_unrolljam_seen = false;
       pluto_extra_flags = [];
       pluto_control_files = [];
@@ -637,6 +650,9 @@ let parse_args () : config =
           go (i + 1)
       | "--band-tiling-experiment" -> cfg.force_band_tiling_experiment <- true; go (i + 1)
       | "--legacy-generic-tiling" -> cfg.force_legacy_generic_tiling <- true; go (i + 1)
+      | "--const-unroll" ->
+          cfg.force_const_unroll <- true;
+          go (i + 1)
       | "--parallel" | "--parallelize" ->
           cfg.force_parallel <- true;
           cfg.pluto_parallel_seen <- true;
@@ -731,7 +747,13 @@ let parse_args () : config =
       | "--nounrolljam" ->
           enable_pluto_compat cfg;
           cfg.pluto_no_unrolljam_seen <- true;
-          add_pluto_note cfg "--nounrolljam accepted because polopt does not use Pluto unroll-jam output";
+          add_pluto_note cfg "--nounrolljam accepted; no checked unroll post pass is requested";
+          go (i + 1)
+      | "--unrolljam" ->
+          enable_pluto_compat cfg;
+          cfg.pluto_unrolljam_seen <- true;
+          cfg.force_const_unroll <- true;
+          add_pluto_note cfg "--unrolljam selects polopt's checked constant-bound unroll post pass; general Pluto unroll-jam remains rejected when the pass does not apply";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"
@@ -773,7 +795,7 @@ let parse_args () : config =
           add_pluto_note cfg (flag ^ " accepted as a no-op for the checked polopt route");
           go (i + 1)
       | "--unroll" ->
-          pluto_reject Sys.argv.(0) "--unroll: Pluto only accepts this as an abbreviation for --unrolljam; unroll-jam is not a checked polopt route"
+          pluto_reject Sys.argv.(0) "--unroll: use explicit --unrolljam for polopt's checked constant-bound unroll subset"
       | "--parallel-current" ->
           if i + 1 >= Array.length Sys.argv then invalid_non_negative_int Sys.argv.(0);
           let dim =

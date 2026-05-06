@@ -92,6 +92,7 @@ FUSION6 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion6.loop"
 FUSION7 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion7.loop"
 FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
+CONST_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "const_unroll.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 ADI = ROOT / "tests" / "polopt-regression" / "inputs" / "adi.loop"
@@ -513,7 +514,22 @@ CHECKS = [
         effect_needles=("vector for",),
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
-    Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
+    Check(
+        "const-unrolljam-constant-loop",
+        ["--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
+        CONST_UNROLL,
+        True,
+        "a[3] = 3;",
+        "polopt args: --notile --const-unroll",
+        effect_absent=("for i0 in range",),
+    ),
+    Check(
+        "reject-unrolljam-variable-loop",
+        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--rar", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        False,
+        "statically constant-bounded loop",
+    ),
     Check(
         "reject-default-prevector-parallel",
         ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--parallel"],
@@ -537,7 +553,7 @@ CHECKS = [
     Check("reject-stale-sched", ["--sched", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
     Check("reject-stale-variables-not-global", ["--variables_not_global", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
     Check("reject-stale-output", ["--output", *MATMUL_TILED], MATMUL, False, "current Pluto binary uses -o"),
-    Check("reject-unroll-abbrev", ["--unroll", *MATMUL_TILED], MATMUL, False, "abbreviation for --unrolljam"),
+    Check("reject-unroll-abbrev", ["--unroll", *MATMUL_TILED], MATMUL, False, "use explicit --unrolljam"),
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
     Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),

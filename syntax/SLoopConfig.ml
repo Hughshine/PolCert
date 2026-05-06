@@ -13,6 +13,7 @@ type config = {
   mutable force_full_diamond_tile : bool;
   mutable force_band_tiling_experiment : bool;
   mutable force_legacy_generic_tiling : bool;
+  mutable force_const_unroll : bool;
   mutable force_parallel : bool;
   mutable force_parallel_strict : bool;
   mutable force_multipar : bool;
@@ -35,6 +36,7 @@ type config = {
   mutable pluto_no_intratileopt_seen : bool;
   mutable pluto_prevector_seen : bool;
   mutable pluto_no_prevector_seen : bool;
+  mutable pluto_unrolljam_seen : bool;
   mutable pluto_no_unrolljam_seen : bool;
   mutable pluto_extra_flags : string list;
   mutable pluto_control_files : (string * string) list;
