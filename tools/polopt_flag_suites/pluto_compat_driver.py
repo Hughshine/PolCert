@@ -145,7 +145,7 @@ SUPPORTED_VALUE_OPTIONS = {
     "--forceparallel": "Pluto force-parallel bit-vector is passed through; this pinned Pluto source has no effective use site",
     "--ft": "Pluto first tiled hyperplane level is passed to the checked scheduler oracle",
     "--lt": "Pluto last tiled hyperplane level is passed to the checked scheduler oracle",
-    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; with checked --unrolljam it is accepted only for the constant-bound post-pass subset",
+    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; with checked --unrolljam it is used by the verified LoopUnroll post pass",
 }
 
 NONNEGATIVE_VALUE_OPTIONS = {"--forceparallel", "--ft", "--lt"}
@@ -435,7 +435,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
         elif flag == "--unrolljam":
             state.unrolljam_seen = True
-            state.add_note("--unrolljam selects polopt's checked constant-bound unroll post pass; general Pluto unroll-jam remains rejected when the pass does not apply")
+            state.add_note("--unrolljam selects polopt's checked unroll post pass: constant-bound loops are fully unrolled, otherwise a verified factor peel-unroll is used on sequential Loop IR")
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
@@ -543,7 +543,7 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling")
     if has_ufactor and not has_determine_tile_size and state.unrolljam_seen:
         state.add_note(
-            "--ufactor is not passed to Pluto's scheduler oracle here; checked constant-bound --unrolljam uses the verified LoopUnroll post pass"
+            "--ufactor is not passed to Pluto's scheduler oracle here; checked --unrolljam uses the verified LoopUnroll post pass"
         )
 
     ft_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--ft=")]

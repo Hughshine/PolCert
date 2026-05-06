@@ -3146,12 +3146,36 @@ let run_selected_vector_current_optimization cfg loop dim =
     loop
     dim
 
+let pluto_unroll_factor cfg =
+  match pluto_extra_value "--ufactor=" cfg with
+  | Some value ->
+      begin
+        try max 1 (int_of_string value)
+        with Failure _ -> 8
+      end
+  | None -> 8
+
 let apply_const_unroll_postpass cfg loop =
   if cfg.force_const_unroll then begin
-    if not (SLoopUnroll.const_unroll_changed loop) then
+    let const_changed = SLoopUnroll.const_unroll_changed loop in
+    let loop =
+      if const_changed then SLoopUnroll.const_unroll loop else loop
+    in
+    if cfg.pluto_unrolljam_seen then begin
+      let fuel = nat_of_int (pluto_unroll_factor cfg) in
+      if SLoopUnroll.peel_unroll_changed fuel loop then
+        SLoopUnroll.peel_unroll fuel loop
+      else if const_changed then
+        loop
+      else
+        frontend_failf
+          "--unrolljam could not find a sequential Loop IR loop to peel-unroll";
+    end
+    else if const_changed then
+      loop
+    else
       frontend_failf
-        "--unrolljam currently applies only when the final sequential Loop IR contains a statically constant-bounded loop; general Pluto unroll-jam remains unsupported";
-    SLoopUnroll.const_unroll loop
+        "--const-unroll currently applies only when the final sequential Loop IR contains a statically constant-bounded loop"
   end
   else
     loop

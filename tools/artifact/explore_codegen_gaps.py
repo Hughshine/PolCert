@@ -69,26 +69,32 @@ def run_pluto_codegen(scop: Path, out_dir: Path, mode: str, unrolljam: bool) -> 
     }
 
 
-def run_polopt_rejection() -> dict[str, object]:
+def run_polopt_checked_unroll() -> dict[str, object]:
     proc = run(
         [
             str(POLOPT),
             "--pluto-compat",
+            "--explain",
             "--tile",
             "--smartfuse",
             "--nointratileopt",
             "--noprevector",
             "--unrolljam",
+            "--ufactor=4",
             "--nodiamond-tile",
             "--noparallel",
             str(MATMUL),
         ]
     )
+    stdout = proc.stdout
     return {
         "exit": proc.returncode,
         "stdout": proc.stdout[-1000:],
         "stderr": proc.stderr[-1000:],
-        "rejected": proc.returncode != 0 and "--unrolljam" in proc.stderr,
+        "accepted": proc.returncode == 0,
+        "checked_factor_note_present": "checked post flags: --ufactor=4" in stdout,
+        "guarded_peel_marker_present": "if ((0 + 1) <= ((K + 31) / 32))" in stdout,
+        "residual_loop_marker_present": "for i0 in range(((((0 + 1) + 1) + 1) + 1), ((K + 31) / 32))" in stdout,
     }
 
 
@@ -106,7 +112,7 @@ def main() -> int:
     code_differs = nounroll["c_text"] != unroll["c_text"]
     unroll_has_factor = "+=4" in str(unroll["c_text"])
     unroll_has_remainder = "for (;t4<=" in str(unroll["c_text"]) or "for (; t4<=" in str(unroll["c_text"])
-    rejection = run_polopt_rejection()
+    polopt_unroll = run_polopt_checked_unroll()
 
     result = {
         "mode": "pluto-codegen-gap-unrolljam",
@@ -117,7 +123,7 @@ def main() -> int:
         "generated_c_differs": code_differs,
         "unroll_factor_marker_present": unroll_has_factor,
         "remainder_loop_marker_present": unroll_has_remainder,
-        "polopt_unrolljam_rejection": rejection,
+        "polopt_checked_unrolljam": polopt_unroll,
         "output_root": str(out_dir),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
@@ -129,7 +135,10 @@ def main() -> int:
         and code_differs
         and unroll_has_factor
         and unroll_has_remainder
-        and bool(rejection["rejected"])
+        and bool(polopt_unroll["accepted"])
+        and bool(polopt_unroll["checked_factor_note_present"])
+        and bool(polopt_unroll["guarded_peel_marker_present"])
+        and bool(polopt_unroll["residual_loop_marker_present"])
     )
     return 0 if ok else 1
 

@@ -94,6 +94,7 @@ FUSION7 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion7.loop"
 FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 CONST_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "const_unroll.loop"
+MIXED_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "mixed_unroll.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 ADI = ROOT / "tests" / "polopt-regression" / "inputs" / "adi.loop"
@@ -534,11 +535,22 @@ CHECKS = [
         effect_absent=("for i0 in range",),
     ),
     Check(
-        "reject-unrolljam-variable-loop",
-        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--rar", "--nodiamond-tile", "--noparallel"],
-        MATMUL,
-        False,
-        "statically constant-bounded loop",
+        "peel-unrolljam-ufactor-variable-loop",
+        ["--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=3", "--nodiamond-tile", "--noparallel", "--rar"],
+        SCALPRIV,
+        True,
+        "for i0 in range((((0 + 1) + 1) + 1), N)",
+        "checked post flags: --ufactor=3",
+        effect_needles=("if ((0 + 1) <= N)", "b[(0 + 1)] = a;"),
+    ),
+    Check(
+        "mixed-const-and-peel-unrolljam",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel"],
+        MIXED_UNROLL,
+        True,
+        "for i0 in range(((0 + 1) + 1), N)",
+        "checked post flags: --ufactor=2",
+        effect_needles=("c[0] = 0;", "c[1] = 1;", "if ((0 + 1) <= N)", "b[(0 + 1)] = (0 + 1);"),
     ),
     Check(
         "reject-default-prevector-parallel",

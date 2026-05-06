@@ -544,7 +544,7 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling";
     if has_ufactor && not has_determine_tile_size && cfg.force_const_unroll then
       add_pluto_note cfg
-        "--ufactor is not passed to Pluto's scheduler oracle here; checked constant-bound --unrolljam uses the verified LoopUnroll post pass";
+        "--ufactor is not passed to Pluto's scheduler oracle here; checked --unrolljam uses the verified LoopUnroll post pass";
     if
       (pluto_extra_has_prefix "--ft=" cfg)
       <> (pluto_extra_has_prefix "--lt=" cfg)
@@ -787,7 +787,7 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_unrolljam_seen <- true;
           cfg.force_const_unroll <- true;
-          add_pluto_note cfg "--unrolljam selects polopt's checked constant-bound unroll post pass; general Pluto unroll-jam remains rejected when the pass does not apply";
+          add_pluto_note cfg "--unrolljam selects polopt's checked unroll post pass: constant-bound loops are fully unrolled, otherwise a verified factor peel-unroll is used on sequential Loop IR";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"
