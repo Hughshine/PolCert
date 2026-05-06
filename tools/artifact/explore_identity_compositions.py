@@ -45,6 +45,17 @@ IDENTITY_TILE_ARGS = [
     "--noparallel",
 ]
 
+IDENTITY_DIAMOND_ARGS = [
+    "--pluto-compat",
+    "--identity",
+    "--tile",
+    "--diamond-tile",
+    "--nointratileopt",
+    "--noprevector",
+    "--nounrolljam",
+    "--noparallel",
+]
+
 
 def run(cmd: list[str], *, cwd: pathlib.Path = ROOT, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -225,6 +236,99 @@ def explore_diamond(case: Case, out_dir: pathlib.Path) -> dict[str, object]:
     }
 
 
+def explore_identity_diamond_search(limit: int | None, out_dir: pathlib.Path) -> dict[str, object]:
+    fixtures = sorted((ROOT / "tests/polopt-regression/inputs").glob("*.loop"))
+    if limit is not None:
+        fixtures = fixtures[:limit]
+
+    search_root = out_dir / "identity-diamond-search"
+    search_root.mkdir(parents=True, exist_ok=True)
+    interesting = []
+    counts = {
+        "ordinary_failed": 0,
+        "diamond_failed": 0,
+        "distinct_output_validated": 0,
+        "distinct_output_unvalidated": 0,
+        "same_output_no_phase_check": 0,
+        "export_failed": 0,
+        "timeouts": 0,
+    }
+    for fixture in fixtures:
+        case = Case(fixture.stem, fixture)
+        fixture_root = search_root / fixture.stem
+        fixture_root.mkdir(parents=True, exist_ok=True)
+        try:
+            scop = export_scop(case, fixture_root)
+            ordinary = run_pluto(
+                scop,
+                ["--identity", "--tile", "--nodiamond-tile", *COMMON_DISABLED],
+                fixture_root,
+                f"{case.name}.identity.tile",
+            )
+            diamond = run_pluto(
+                scop,
+                ["--identity", "--tile", "--diamond-tile", *COMMON_DISABLED],
+                fixture_root,
+                f"{case.name}.identity.diamond",
+            )
+        except subprocess.TimeoutExpired:
+            counts["timeouts"] += 1
+            continue
+        except RuntimeError:
+            counts["export_failed"] += 1
+            continue
+
+        if int(ordinary["exit"]) != 0:
+            counts["ordinary_failed"] += 1
+            continue
+        if int(diamond["exit"]) != 0:
+            counts["diamond_failed"] += 1
+            continue
+
+        differs = ordinary["c_text"] != diamond["c_text"]
+        validation = None
+        if differs:
+            try:
+                validation = validate_diamond(scop, diamond["mid"], diamond["post"], diamond["after"])
+            except subprocess.TimeoutExpired:
+                counts["timeouts"] += 1
+                validation = {"ok": False, "reason": "diamond phase validation timed out"}
+            if bool(validation.get("ok")):
+                counts["distinct_output_validated"] += 1
+                status = "distinct-output-validated"
+            else:
+                counts["distinct_output_unvalidated"] += 1
+                status = "distinct-output-unvalidated"
+        else:
+            counts["same_output_no_phase_check"] += 1
+            status = None
+
+        if status is not None and len(interesting) < 20:
+            interesting.append(
+                {
+                    "fixture": str(fixture.relative_to(ROOT)),
+                    "status": status,
+                    "pluto_diamond_c": classify_c(str(diamond["c_text"])),
+                    "validation": validation,
+                    "ordinary_head": str(ordinary["c_text"])[:300],
+                    "diamond_head": str(diamond["c_text"])[:300],
+                }
+            )
+
+    return {
+        "mode": "identity-diamond-sensitive-search",
+        "fixtures_checked": len(fixtures),
+        "interesting_definition": "interesting means direct Pluto --identity --tile --diamond-tile differs from --identity --tile; phase validation is run only for distinct-output candidates",
+        "counts": counts,
+        "interesting": interesting,
+        "output_root": str(search_root),
+        "polopt_route_rejection": run_polopt_fixture(
+            IDENTITY_DIAMOND_ARGS,
+            CASES["wavefront"].loop,
+        ),
+    }
+
+
 def explore_identity_iss_search(limit: int | None) -> dict[str, object]:
     fixtures = sorted((ROOT / "tests/polopt-regression/inputs").glob("*.loop"))
     if limit is not None:
@@ -293,6 +397,12 @@ def main() -> int:
         default=None,
         help="limit the regression fixtures searched for ISS-sensitive identity tiling",
     )
+    ap.add_argument(
+        "--identity-diamond-limit",
+        type=int,
+        default=None,
+        help="limit the regression fixtures searched for identity-sensitive diamond tiling",
+    )
     args = ap.parse_args()
 
     if not POLOPT.exists() or not POLCERT.exists() or not PLUTO.exists():
@@ -309,6 +419,7 @@ def main() -> int:
     results = [
         explore_second_level(CASES["fusion7"], out_dir),
         explore_diamond(CASES["wavefront"], out_dir),
+        explore_identity_diamond_search(args.identity_diamond_limit, out_dir),
         explore_identity_iss_search(args.identity_iss_limit),
     ]
     print(json.dumps({"output_root": str(out_dir), "results": results}, indent=2, sort_keys=True))

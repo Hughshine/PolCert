@@ -59,7 +59,7 @@ SUPPORTED = [
 DIAMOND_COMBINATIONS = [
     Capability("--diamond-tile --notile", "correct-rejection", "diamond requires a tiling phase", "route rejection", "keep rejecting"),
     Capability("--diamond-tile --identity", "correct-rejection", "diamond requires Pluto scheduling/skew plus tiling", "route rejection", "keep rejecting unless a meaningful identity-diamond route is designed"),
-    Capability("--identity --tile --diamond-tile", "correct-rejection", "direct Pluto's identity diamond output is not distinct from ordinary identity tiling on the focused wavefront probe", "tools/artifact/explore_identity_compositions.py; compat rejection", "keep rejecting unless a distinct identity-diamond effect fixture appears"),
+    Capability("--identity --tile --diamond-tile", "correct-rejection", "direct Pluto's identity diamond output is not distinct from ordinary identity tiling on the 63-fixture regression corpus; the focused wavefront phase dump validates but exposes no route-specific output effect", "tools/artifact/explore_identity_compositions.py; compat rejection", "keep rejecting unless a distinct identity-diamond effect fixture appears"),
 ]
 
 
