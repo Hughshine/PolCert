@@ -347,7 +347,12 @@ let parse_nonnegative_int_value prog flag value =
 let add_pluto_value_flag prog cfg flag value =
   let value = parse_positive_int_value prog flag value in
   add_pluto_extra_flag cfg (flag ^ "=" ^ value);
-  add_pluto_note cfg (flag ^ "=" ^ value ^ " passed through to Pluto's checked scheduler oracle")
+  if String.equal flag "--ufactor" then
+    add_pluto_note cfg
+      (flag ^ "=" ^ value
+       ^ " accepted as Pluto's unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size")
+  else
+    add_pluto_note cfg (flag ^ "=" ^ value ^ " passed through to Pluto's checked scheduler oracle")
 
 let add_pluto_nonnegative_value_flag prog cfg flag value =
   let value = parse_nonnegative_int_value prog flag value in
@@ -373,6 +378,16 @@ let pluto_extra_has_prefix prefix cfg =
 
 let pluto_extra_has_any_prefix prefixes cfg =
   List.exists (fun prefix -> pluto_extra_has_prefix prefix cfg) prefixes
+
+let pluto_ufactor_prefix = "--ufactor="
+
+let pluto_scheduler_extra_flags cfg =
+  if cfg.force_const_unroll && not (pluto_extra_has "--determine-tile-size" cfg) then
+    List.filter
+      (fun flag -> not (starts_with flag pluto_ufactor_prefix))
+      cfg.pluto_extra_flags
+  else
+    cfg.pluto_extra_flags
 
 let rec find_map f = function
   | [] -> None
@@ -412,14 +427,25 @@ let pluto_polopt_args cfg =
 
 let print_pluto_explain cfg =
   let args = pluto_polopt_args cfg in
+  let scheduler_flags = pluto_scheduler_extra_flags cfg in
+  let post_flags =
+    if cfg.force_const_unroll && not (pluto_extra_has "--determine-tile-size" cfg) then
+      List.filter (fun flag -> starts_with flag pluto_ufactor_prefix) cfg.pluto_extra_flags
+    else
+      []
+  in
   print_endline "[pluto-compat] accepted";
   print_endline
     ("[pluto-compat] polopt args: "
      ^ (match args with [] -> "<default>" | _ -> String.concat " " args));
-  if cfg.pluto_extra_flags <> [] then
+  if scheduler_flags <> [] then
     print_endline
       ("[pluto-compat] pluto oracle flags: "
-       ^ String.concat " " cfg.pluto_extra_flags);
+       ^ String.concat " " scheduler_flags);
+  if post_flags <> [] then
+    print_endline
+      ("[pluto-compat] checked post flags: "
+       ^ String.concat " " post_flags);
   if cfg.pluto_control_files <> [] then
     print_endline
       ("[pluto-compat] pluto control files: "
@@ -501,16 +527,24 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--second-level-tile requires tiling and cannot be combined with --notile";
     if cfg.force_second_level_tile && cfg.force_identity && not cfg.pluto_tile_seen then
       pluto_reject prog "--second-level-tile with --identity requires --tile";
+    let has_cache_or_data_size =
+      pluto_extra_has_prefix "--cache-size=" cfg
+      || pluto_extra_has_prefix "--data-element-size=" cfg
+    in
+    let has_ufactor = pluto_extra_has_prefix pluto_ufactor_prefix cfg in
+    let has_determine_tile_size = pluto_extra_has "--determine-tile-size" cfg in
+    if has_cache_or_data_size && not has_determine_tile_size then
+      pluto_reject prog "--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset";
+    if has_ufactor && not has_determine_tile_size && not cfg.force_const_unroll then
+      pluto_reject prog "--ufactor without --determine-tile-size requires --unrolljam in the checked polopt subset";
     if
-      pluto_extra_has_any_prefix tile_size_value_prefixes cfg
-      && not (pluto_extra_has "--determine-tile-size" cfg)
-    then
-      pluto_reject prog "--cache-size/--data-element-size/--ufactor require --determine-tile-size in the checked polopt subset";
-    if
-      pluto_extra_has_any_prefix tile_size_value_prefixes cfg
+      (has_cache_or_data_size || (has_ufactor && has_determine_tile_size))
       && (cfg.force_notile || cfg.force_identity)
     then
-      pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route in the checked polopt subset";
+      pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling";
+    if has_ufactor && not has_determine_tile_size && cfg.force_const_unroll then
+      add_pluto_note cfg
+        "--ufactor is not passed to Pluto's scheduler oracle here; checked constant-bound --unrolljam uses the verified LoopUnroll post pass";
     if
       (pluto_extra_has_prefix "--ft=" cfg)
       <> (pluto_extra_has_prefix "--lt=" cfg)
@@ -940,5 +974,5 @@ let configure_scheduler_modes (cfg : config) =
      else if cfg.force_diamond_tile
      then Scheduler.DiamondTiling
      else Scheduler.NoDiamondTiling);
-  Scheduler.set_pluto_extra_flags cfg.pluto_extra_flags;
+  Scheduler.set_pluto_extra_flags (pluto_scheduler_extra_flags cfg);
   Scheduler.set_pluto_control_files cfg.pluto_control_files

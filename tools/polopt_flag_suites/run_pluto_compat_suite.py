@@ -44,6 +44,7 @@ MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_UFACTOR = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--data-element-size=8", "--ufactor=3", "--nodiamond-tile", "--noparallel"]
+CONST_UNROLL_UFACTOR = ["--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=3", "--nodiamond-tile", "--noparallel", "--rar"]
 IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED_SECOND_LEVEL = ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED_SECOND_LEVEL_ISS = ["--identity", "--tile", "--iss", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
@@ -524,6 +525,15 @@ CHECKS = [
         effect_absent=("for i0 in range",),
     ),
     Check(
+        "const-unrolljam-ufactor-constant-loop",
+        CONST_UNROLL_UFACTOR,
+        CONST_UNROLL,
+        True,
+        "a[3] = 3;",
+        "checked post flags: --ufactor=3",
+        effect_absent=("for i0 in range",),
+    ),
+    Check(
         "reject-unrolljam-variable-loop",
         ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--rar", "--nodiamond-tile", "--noparallel"],
         MATMUL,
@@ -557,7 +567,7 @@ CHECKS = [
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
     Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
-    Check("reject-ufactor-without-determine", [*FLAGS, "--ufactor=3", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
+    Check("reject-ufactor-without-determine-or-unrolljam", [*FLAGS, "--ufactor=3", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires --unrolljam"),
     Check(
         "reject-missing-explicit-tile-sizes-file",
         [*MATMUL_TILED, "--tile-sizes-file", "/tmp/polcert-missing-control-file"],

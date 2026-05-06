@@ -58,6 +58,18 @@ def float_from_meta(meta: dict[str, object], key: str, default: float = 0.0) -> 
     return float(value)
 
 
+def has_loop_header(loop_text: str) -> bool:
+    for line in loop_text.splitlines():
+        stripped = line.strip()
+        if (
+            stripped.startswith("for ")
+            or stripped.startswith("parallel for ")
+            or stripped.startswith("vector for ")
+        ):
+            return True
+    return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -83,6 +95,7 @@ def main() -> int:
     polopt_args = list_from_meta(meta, "polopt_args")
     benchmark = bool_from_meta(meta, "benchmark", default=True)
     openmp = bool_from_meta(meta, "openmp", default=False)
+    require_unrolled = bool_from_meta(meta, "require_unrolled", default=False)
     abs_tolerance = float_from_meta(meta, "abs_tolerance", default=0.0)
     rel_tolerance = float_from_meta(meta, "rel_tolerance", default=0.0)
 
@@ -138,6 +151,14 @@ def main() -> int:
         if args.keep_going:
             return 1
         raise SystemExit(f"[{case_name}] no vector for emitted")
+    if require_unrolled and has_loop_header(optimized_loop):
+        write_text(
+            out_dir / "status.txt",
+            "result=fail\nstage=unroll\nunrolled_loop=false\n",
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] loop header remained after required unroll")
     optimized_kernel = transpile_loop_text(optimized_loop)
     optimized_src = render_source(template, optimized_kernel)
     write_text(out_dir / "optimized.kernel.c", optimized_kernel)

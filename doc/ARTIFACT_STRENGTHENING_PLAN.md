@@ -472,8 +472,9 @@ Rationale:
 
 - The first four strengthen the artifact story without changing the core
   semantic model.
-- The checked constant-bound unroll post pass is now present. General
-  variable-bound unroll-jam and full scalar privatization remain real
+- The checked constant-bound unroll post pass is now present, including
+  `--ufactor` acceptance on that subset and a whole-C compile/run smoke case.
+  General variable-bound unroll-jam and full scalar privatization remain real
   semantic/codegen extensions. They should be implemented only as
   theorem-facing PolOpt transformations, not as Pluto pass-through.
 
@@ -488,9 +489,11 @@ the following:
 - contain at least one strong Pluto-bug case study
 - keep diamond, second-level, vector, parallel, and multipar compatibility
   routes under executable artifact checks
-- accept the checked constant-bound `--unrolljam` subset and explicitly reject
-  the remaining semantic gaps (general variable-bound unroll-jam and full
-  scalar privatization) until their checked transformations exist
+- accept the checked constant-bound `--unrolljam` subset, including
+  `--ufactor` as a compatibility flag on that subset, compile/run its generated
+  C in artifact-check, and explicitly reject the remaining semantic gaps
+  (general variable-bound unroll-jam and full scalar privatization) until their
+  checked transformations exist
 
 At that point, the artifact is no longer only "proved and correct on loop
 fragments". It starts to look like a genuinely usable verified polyhedral

@@ -145,7 +145,7 @@ SUPPORTED_VALUE_OPTIONS = {
     "--forceparallel": "Pluto force-parallel bit-vector is passed through; this pinned Pluto source has no effective use site",
     "--ft": "Pluto first tiled hyperplane level is passed to the checked scheduler oracle",
     "--lt": "Pluto last tiled hyperplane level is passed to the checked scheduler oracle",
-    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; unroll-jam itself remains disabled",
+    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; with checked --unrolljam it is accepted only for the constant-bound post-pass subset",
 }
 
 NONNEGATIVE_VALUE_OPTIONS = {"--forceparallel", "--ft", "--lt"}
@@ -459,7 +459,13 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             if flag not in NONNEGATIVE_VALUE_OPTIONS and parsed <= 0:
                 raise Reject(f"{flag}: value must be a positive integer")
             state.add_oracle_flag(f"{flag}={value}")
-            state.add_note(f"{flag}={value} passed through to Pluto's checked scheduler oracle")
+            if flag == "--ufactor":
+                state.add_note(
+                    f"{flag}={value} accepted as Pluto's unroll/tile factor; "
+                    "it is passed to the scheduler oracle only with --determine-tile-size"
+                )
+            else:
+                state.add_note(f"{flag}={value} passed through to Pluto's checked scheduler oracle")
         elif flag in ACCEPTED_NOOPS:
             state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
         elif flag == "--unroll":
@@ -523,16 +529,22 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--second-level-tile requires tiling and cannot be combined with --notile")
     if state.second_level_tile and state.identity and not identity_tiled:
         raise Reject("--second-level-tile with --identity requires --tile")
-    has_tile_size_value = any(
-        flag.startswith("--cache-size=")
-        or flag.startswith("--data-element-size=")
-        or flag.startswith("--ufactor=")
+    has_cache_or_data_size = any(
+        flag.startswith("--cache-size=") or flag.startswith("--data-element-size=")
         for flag in oracle_flags
     )
-    if has_tile_size_value and "--determine-tile-size" not in oracle_flags:
-        raise Reject("--cache-size/--data-element-size/--ufactor require --determine-tile-size in the checked polopt subset")
-    if has_tile_size_value and (state.identity or not state.tile):
-        raise Reject("--cache-size/--data-element-size/--ufactor require a tiled route in the checked polopt subset")
+    has_ufactor = any(flag.startswith("--ufactor=") for flag in oracle_flags)
+    has_determine_tile_size = "--determine-tile-size" in oracle_flags
+    if has_cache_or_data_size and not has_determine_tile_size:
+        raise Reject("--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset")
+    if has_ufactor and not has_determine_tile_size and not state.unrolljam_seen:
+        raise Reject("--ufactor without --determine-tile-size requires --unrolljam in the checked polopt subset")
+    if (has_cache_or_data_size or (has_ufactor and has_determine_tile_size)) and (state.identity or not state.tile):
+        raise Reject("--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling")
+    if has_ufactor and not has_determine_tile_size and state.unrolljam_seen:
+        state.add_note(
+            "--ufactor is not passed to Pluto's scheduler oracle here; checked constant-bound --unrolljam uses the verified LoopUnroll post pass"
+        )
 
     ft_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--ft=")]
     lt_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--lt=")]
@@ -581,6 +593,13 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if state.unrolljam_seen:
         args.append("--const-unroll")
     return args
+
+
+def scheduler_oracle_flags_for_state(state: PlutoFlagState) -> list[str]:
+    oracle_flags = list(state.oracle_flags or [])
+    if state.unrolljam_seen and "--determine-tile-size" not in oracle_flags:
+        oracle_flags = [flag for flag in oracle_flags if not flag.startswith("--ufactor=")]
+    return oracle_flags
 
 
 def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
@@ -641,12 +660,18 @@ def main(argv: list[str]) -> int:
             " ".join(polopt_args) if polopt_args else "<default>",
             flush=True,
         )
-        if state.oracle_flags:
+        scheduler_oracle_flags = scheduler_oracle_flags_for_state(state)
+        post_flags = []
+        if state.unrolljam_seen and "--determine-tile-size" not in (state.oracle_flags or []):
+            post_flags = [flag for flag in (state.oracle_flags or []) if flag.startswith("--ufactor=")]
+        if scheduler_oracle_flags:
             print(
                 "[pluto-compat] pluto oracle flags:",
-                " ".join(state.oracle_flags),
+                " ".join(scheduler_oracle_flags),
                 flush=True,
             )
+        if post_flags:
+            print("[pluto-compat] checked post flags:", " ".join(post_flags), flush=True)
         if state.control_files:
             print(
                 "[pluto-compat] pluto control files:",

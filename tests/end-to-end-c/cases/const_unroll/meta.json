@@ -1,0 +1,17 @@
+{
+  "loop": "const_unroll.loop",
+  "polopt_args": [
+    "--pluto-compat",
+    "--notile",
+    "--nointratileopt",
+    "--noprevector",
+    "--unrolljam",
+    "--ufactor=3",
+    "--nodiamond-tile",
+    "--noparallel",
+    "--rar"
+  ],
+  "benchmark": false,
+  "openmp": false,
+  "require_unrolled": true
+}
