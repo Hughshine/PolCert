@@ -69,6 +69,9 @@ The current assessment is based on these concrete checks.
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
   - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
+- Identity composition exploration:
+  - `tools/artifact/explore_identity_compositions.py` now records identity second-level, identity diamond, and identity+ISS-sensitive searches
+  - over 63 regression `.loop` fixtures, `--identity --tile` and `--identity --tile --iss` both succeeded with identical optimized loops; no ISS-only or ISS-different identity-tiling fixture was found in that bounded corpus
 - Executed artifact smoke check:
   - `make artifact-check`
   - result: py-compile, proof report, capability matrix, Pluto-compatible suite, second-level suite, and diamond suite all passed
@@ -255,7 +258,7 @@ That is not just a solver knob if the final schedule relies on each iteration ha
 | `tile.sizes`, `--tile-sizes-file FILE` | Supported as Pluto legacy implicit file and explicit PolOpt compatibility input | Pluto reads this file from the working directory and uses its positive integers as first-level tile sizes. With `--second-level-tile`, later integers are second:first tile-size ratios. PolOpt can now install that file explicitly for the Pluto oracle call and remove it afterward. The checked tiling validator rechecks the produced tile-size witness. | native compat `optimizer-implicit-tile-sizes-file`, `optimizer-explicit-tile-sizes-file`, `optimizer-explicit-tile-sizes-file-nodep`; suite checks explicit-file cleanup | Prefer the explicit file option in artifact scripts. |
 | `--ft`, `--lt` | Supported together on tiled routes | Pluto's first/last tiled hyperplane levels are passed through as non-negative values. The driver rejects one-sided or descending ranges. | Already supported for checked routes whose produced tiling witness validates. | Broaden effect fixtures and add out-of-range rejection tests because some valid-looking values trigger Pluto tiling assertions on small programs. |
 | bare `--identity` | Unsupported in Pluto-compatible mode | Current Pluto keeps tiling enabled by default, while `polopt --identity` means no tiling. | Surface gap. | Keep requiring either `--identity --notile` or `--identity --tile`. |
-| `--identity --tile --iss` | Supported narrow | A Coq route composes checked ISS complete-cut validation with checked identity tiling over the split program. | Already supported; current positive fixture shows tiling under `--iss` but not an ISS-sensitive extra effect. | Construct a fixture where ISS uniquely enables identity tiling, if Pluto has such a case. |
+| `--identity --tile --iss` | Supported narrow | A Coq route composes checked ISS complete-cut validation with checked identity tiling over the split program. | Already supported; current positive fixture shows tiling under `--iss`. A bounded artifact search over 63 regression fixtures found no ISS-only or ISS-different identity-tiling case. | Revisit only if a new Pluto/input corpus exposes a distinct ISS-sensitive identity-tiling effect. |
 | `--identity --tile --second-level-tile` | Unsupported route/codegen gap | Direct Pluto can produce a valid second-level identity tiling: `tools/artifact/explore_identity_compositions.py` shows `fusion7` has a Pluto 256/32 output and `polcert --second-level-tile` validates the SCOP refinement. The currently exposed identity route still rejects it because the theorem-facing band route does not preserve that second-level code shape; a generic route experiment preserved semantic validation but produced a degenerate current-view loop order instead of Pluto's outer-first 256/32 loop nest. | Codegen/canonical-order gap, not an oracle gap. | Add a verified raw-order or outer-first second-level codegen route before accepting the flag. |
 | `--identity --tile --diamond-tile` | Unsupported no-effect composition | Direct Pluto still emits phase dumps accepted by the four-phase validator, but the focused `wavefront` exploration shows the `--identity --tile --diamond-tile` C output is identical to `--identity --tile`: without Pluto's affine/skew scheduling phase, diamond adds no route-specific optimization effect. | Correct rejection for now. | Only reconsider if an identity-diamond fixture shows a distinct diamond effect and maps to a theorem-facing route. |
 | `--second-level-tile --parallel` | Supported | The phase-aligned route now extracts the second-level tiling artifact, validates it, then feeds the validated post-tiling program to the checked parallel validator/codegen path. | Already supported. | Broaden fixtures beyond `nodep` and `matmul-init`. |
@@ -338,7 +341,9 @@ dependence testing.
      second-level codegen/current-view support
    - `--identity --tile --diamond-tile` needs a distinct Pluto effect fixture
      before it should be accepted
-   - an ISS-sensitive `--identity --tile --iss` fixture, if one exists
+   - an ISS-sensitive `--identity --tile --iss` fixture is not currently known;
+     the artifact exploration checked 63 regression fixtures and found no
+     ISS-only or ISS-different identity-tiling case
    - broader tests for explicit `--tile-sizes-file`, `--fusion-structure`, and
      `--precut-file` beyond the current regression fixtures are now present for
      `nodep` and `fusion2`; continue broadening if new control-file patterns are

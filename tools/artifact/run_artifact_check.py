@@ -113,7 +113,7 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 "--output-root",
                 str(out_dir / "identity-compositions"),
             ],
-            120,
+            180,
         ),
         (
             "pluto-compat-suite",

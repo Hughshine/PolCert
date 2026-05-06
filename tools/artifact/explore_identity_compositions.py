@@ -34,6 +34,17 @@ CASES = {
     "wavefront": Case("wavefront", ROOT / "tests/polopt-regression/inputs/wavefront.loop"),
 }
 
+IDENTITY_TILE_ARGS = [
+    "--pluto-compat",
+    "--identity",
+    "--tile",
+    "--nointratileopt",
+    "--noprevector",
+    "--nounrolljam",
+    "--nodiamond-tile",
+    "--noparallel",
+]
+
 
 def run(cmd: list[str], *, cwd: pathlib.Path = ROOT, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -44,6 +55,12 @@ def run(cmd: list[str], *, cwd: pathlib.Path = ROOT, timeout: int = 30) -> subpr
         check=False,
         timeout=timeout,
     )
+
+
+def optimized_loop_text(output: str) -> str:
+    marker = "== Optimized Loop =="
+    pos = output.find(marker)
+    return output[pos:] if pos >= 0 else output
 
 
 def export_scop(case: Case, out_dir: pathlib.Path) -> pathlib.Path:
@@ -101,6 +118,24 @@ def run_polopt(args: list[str], case: Case) -> dict[str, object]:
         "stderr_first_line": stderr_lines[0] if stderr_lines else "",
         "stderr_tail": proc.stderr[-2000:],
     }
+
+
+def run_polopt_fixture(args: list[str], loop: pathlib.Path, timeout: int = 30) -> dict[str, object]:
+    try:
+        proc = run([str(POLOPT), *args, str(loop)], timeout=timeout)
+        output = proc.stdout + proc.stderr
+        return {
+            "exit": proc.returncode,
+            "optimized": optimized_loop_text(output),
+            "timed_out": False,
+        }
+    except subprocess.TimeoutExpired as exc:
+        output = (exc.stdout or "") + (exc.stderr or "")
+        return {
+            "exit": 124,
+            "optimized": optimized_loop_text(output),
+            "timed_out": True,
+        }
 
 
 def classify_c(text: str) -> dict[str, bool]:
@@ -176,9 +211,74 @@ def explore_diamond(case: Case, out_dir: pathlib.Path) -> dict[str, object]:
     }
 
 
+def explore_identity_iss_search(limit: int | None) -> dict[str, object]:
+    fixtures = sorted((ROOT / "tests/polopt-regression/inputs").glob("*.loop"))
+    if limit is not None:
+        fixtures = fixtures[:limit]
+
+    interesting = []
+    counts = {
+        "both_success_same_output": 0,
+        "both_success_different_output": 0,
+        "iss_only_success": 0,
+        "noiss_only_success": 0,
+        "both_failed": 0,
+        "timeouts": 0,
+    }
+    for fixture in fixtures:
+        noiss = run_polopt_fixture(IDENTITY_TILE_ARGS, fixture)
+        iss = run_polopt_fixture([*IDENTITY_TILE_ARGS, "--iss"], fixture)
+        if noiss["timed_out"] or iss["timed_out"]:
+            counts["timeouts"] += 1
+
+        noiss_ok = noiss["exit"] == 0
+        iss_ok = iss["exit"] == 0
+        status = None
+        if noiss_ok and iss_ok:
+            if noiss["optimized"] == iss["optimized"]:
+                counts["both_success_same_output"] += 1
+            else:
+                counts["both_success_different_output"] += 1
+                status = "both-success-different-output"
+        elif (not noiss_ok) and iss_ok:
+            counts["iss_only_success"] += 1
+            status = "iss-only-success"
+        elif noiss_ok and not iss_ok:
+            counts["noiss_only_success"] += 1
+            status = "noiss-only-success"
+        else:
+            counts["both_failed"] += 1
+
+        if status is not None and len(interesting) < 20:
+            interesting.append(
+                {
+                    "fixture": str(fixture.relative_to(ROOT)),
+                    "status": status,
+                    "noiss_exit": noiss["exit"],
+                    "iss_exit": iss["exit"],
+                    "noiss_head": str(noiss["optimized"])[:300],
+                    "iss_head": str(iss["optimized"])[:300],
+                }
+            )
+
+    return {
+        "mode": "identity-iss-sensitive-search",
+        "fixtures_checked": len(fixtures),
+        "interesting_definition": "interesting means ISS-only success, no-ISS-only success, or both routes succeeding with different optimized loops",
+        "counts": counts,
+        "interesting": interesting,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--output-root", type=pathlib.Path)
+    ap.add_argument(
+        "--identity-iss-limit",
+        type=int,
+        default=None,
+        help="limit the regression fixtures searched for ISS-sensitive identity tiling",
+    )
     args = ap.parse_args()
 
     if not POLOPT.exists() or not POLCERT.exists() or not PLUTO.exists():
@@ -195,6 +295,7 @@ def main() -> int:
     results = [
         explore_second_level(CASES["fusion7"], out_dir),
         explore_diamond(CASES["wavefront"], out_dir),
+        explore_identity_iss_search(args.identity_iss_limit),
     ]
     print(json.dumps({"output_root": str(out_dir), "results": results}, indent=2, sort_keys=True))
     if tmp is not None:
