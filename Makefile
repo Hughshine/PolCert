@@ -168,7 +168,7 @@ POLCERT_SRC = Base.v Convert.v \
 
 # Putting everything together (in driver/)
 
-DRIVER=PolOpt.v PolOptCanonicalTiling.v PolOptBandTiling.v ParallelPolOpt.v ParallelPolOptCorrect.v PolOptCorrect.v PolOptPrepared.v CPolOpt.v TPolOpt.v TTilingCanonicalOpt.v TPolValidator.v
+DRIVER=PolOpt.v PolOptIdentityGenericISS.v PolOptCanonicalTiling.v PolOptBandTiling.v ParallelPolOpt.v ParallelPolOptCorrect.v PolOptCorrect.v PolOptPrepared.v CPolOpt.v TPolOpt.v TTilingCanonicalOpt.v TPolValidator.v
 
 SAMPLES=CSample1.v CSample2.v CSample3.v ExtractorSmoke.v
 

@@ -197,6 +197,59 @@ Definition has_nonscalar_stmt (pol: PolyLang.t) : bool :=
   let '((pis, _), _) := pol in
   existsb (fun pi => negb (Nat.eqb pi.(PolyLang.pi_depth) O)) pis.
 
+Definition identity_tiling_generic_opt_prepared_from_poly
+    (pol: PolyLang.t): imp LoopIR.t :=
+  if has_nonscalar_stmt pol then
+    match export_for_phase_scheduler pol with
+    | None =>
+        affine_only_opt_prepared_from_poly pol
+    | Some before_scop =>
+        try_phase_pipeline_from_source_pol
+          pol
+          run_pluto_identity_tiling_pipeline
+          before_scop
+    end
+  else
+    PrepareCore.prepared_codegen pol.
+
+Definition try_checked_iss_identity_tiling_generic_phase_pipeline_from_poly
+    (pol: PolyLang.t)
+    (before_scop: OpenScop): imp LoopIR.t :=
+  match infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =>
+      if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf <- ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          match export_for_phase_scheduler pol_iss with
+          | Some iss_scop =>
+              try_phase_pipeline_from_source_pol
+                pol_iss
+                run_pluto_identity_tiling_pipeline
+                iss_scop
+          | None =>
+              PrepareCore.prepared_codegen pol_iss
+          end
+        else
+          identity_tiling_generic_opt_prepared_from_poly pol
+      else
+        identity_tiling_generic_opt_prepared_from_poly pol
+  | _ =>
+      identity_tiling_generic_opt_prepared_from_poly pol
+  end.
+
+Definition identity_tiling_generic_opt_prepared_from_poly_with_iss
+    (pol: PolyLang.t): imp LoopIR.t :=
+  if has_nonscalar_stmt pol then
+    match export_for_phase_scheduler pol with
+    | None =>
+        affine_only_opt_prepared_from_poly pol
+    | Some before_scop =>
+        try_checked_iss_identity_tiling_generic_phase_pipeline_from_poly
+          pol before_scop
+    end
+  else
+    PrepareCore.prepared_codegen pol.
+
 Definition try_checked_iss_phase_pipeline_from_poly
     (pol: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
@@ -269,6 +322,17 @@ Definition identity_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
   let pol := Strengthen.strengthen_pprog pol0 in
   identity_opt_prepared_from_poly pol.
+
+Definition identity_tiling_generic_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
+  let pol := Strengthen.strengthen_pprog pol0 in
+  identity_tiling_generic_opt_prepared_from_poly pol.
+
+Definition identity_tiling_generic_opt_prepared_with_iss
+    (loop: LoopIR.t): imp LoopIR.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
+  let pol := Strengthen.strengthen_pprog pol0 in
+  identity_tiling_generic_opt_prepared_from_poly_with_iss pol.
 
 Definition affine_only_opt_prepared (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (Extractor.extractor loop) -;
@@ -566,6 +630,28 @@ Proof.
       * eapply affine_opt_prepared_from_poly_correct; eauto.
     + eapply affine_opt_prepared_from_poly_correct; eauto.
   - eapply affine_opt_prepared_from_poly_correct; eauto.
+Qed.
+
+Lemma identity_tiling_generic_opt_prepared_from_poly_correct:
+  forall pol st st',
+    PolyLang.wf_pprog_affine pol ->
+    WHEN loop' <- identity_tiling_generic_opt_prepared_from_poly pol THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\
+      State.eq st' st''.
+Proof.
+  intros pol st st' Hwf loop' Hopt Hloop.
+  unfold identity_tiling_generic_opt_prepared_from_poly in Hopt.
+  destruct (has_nonscalar_stmt pol) eqn:Hnonscalar.
+  - destruct (export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
+    + eapply try_phase_pipeline_from_source_pol_correct; eauto.
+    + eapply affine_opt_prepared_from_poly_correct; eauto.
+  - pose proof
+      (PrepareCore.prepared_codegen_correct
+         pol st st' loop' Hopt Hwf Hloop)
+      as Hsem.
+    exists st'. split; auto. apply State.eq_refl.
 Qed.
 
 Close Scope impure_scope.

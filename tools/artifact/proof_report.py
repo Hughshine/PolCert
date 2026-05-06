@@ -35,6 +35,23 @@ TOP_LEVEL_ROUTES = [
         "theorem_names": ["Identity_opt_prepared_correct"],
     },
     {
+        "route": "checked generic identity second-level tiling route",
+        "cli": "polopt --identity-tiled --second-level-tile <file.loop>",
+        "theorem_file": "driver/PolOptCorrect.v",
+        "theorem_names": ["Identity_tiling_generic_opt_prepared_correct"],
+        "note": "The extracted route is selected only when second-level tiling is enabled.",
+    },
+    {
+        "route": "checked ISS plus generic identity second-level tiling route",
+        "cli": "polopt --iss --identity-tiled --second-level-tile <file.loop>",
+        "theorem_file": "driver/PolOptIdentityGenericISS.v",
+        "theorem_names": [
+            "identity_tiling_generic_opt_prepared_from_poly_with_iss_correct",
+            "identity_tiling_generic_opt_prepared_with_iss_correct",
+        ],
+        "note": "The proof is kept outside extraction so ISS semantic proof dependencies do not pollute extracted OCaml.",
+    },
+    {
         "route": "affine-only route",
         "cli": "polopt --notile <file.loop>",
         "theorem_file": "driver/PolOptCorrect.v",

@@ -45,6 +45,8 @@ MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=3
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_UFACTOR = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--data-element-size=8", "--ufactor=3", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
+IDENTITY_TILED_SECOND_LEVEL = ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
+IDENTITY_TILED_SECOND_LEVEL_ISS = ["--identity", "--tile", "--iss", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
 IDENTITY_TILED_PARALLEL = ["--identity", "--tile", "--parallel", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
 IDENTITY_TILED_MULTIPAR = ["--identity", "--tile", "--parallel", "--multipar", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
 FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -547,7 +549,26 @@ CHECKS = [
         "no such file",
     ),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
-    Check("reject-identity-second-level", ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "verified identity codegen route does not yet preserve Pluto's second-level tile order"),
+    Check(
+        "identity-second-level",
+        IDENTITY_TILED_SECOND_LEVEL,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --second-level-tile",
+        effect_needles=("/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple(IDENTITY_TILED),),
+    ),
+    Check(
+        "identity-second-level-iss",
+        IDENTITY_TILED_SECOND_LEVEL_ISS,
+        FUSION7,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --identity --tile --second-level-tile",
+        effect_needles=("/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple(["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
     Check(
         "optimizer-implicit-tile-sizes-file",
         MATMUL_TILED,
@@ -914,10 +935,18 @@ ROUTE_BINDINGS = {
         "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
     "seq_optimize_identity = SPolOpt.opt_identity":
         "identity route must use the extracted SPolOpt.opt_identity entry",
-    "seq_optimize_identity_tiled = SBandTilingOpt.opt_identity_tiled":
-        "identity tiling route must use the extracted SBandTilingOpt.opt_identity_tiled entry",
-    "seq_optimize_iss_identity_tiled = SBandTilingOpt.opt_identity_tiled_with_iss":
-        "ISS identity tiling route must use the extracted theorem-facing SBandTilingOpt entry",
+    "seq_optimize_identity_tiled = optimize_identity_tiled":
+        "identity tiling route must dispatch through the helper that selects band-aware or generic checked tiling",
+    "SPolOpt.opt_identity_tiled_generic loop":
+        "second-level identity tiling must use the extracted generic theorem-facing entry",
+    "SBandTilingOpt.opt_identity_tiled loop":
+        "ordinary identity tiling must still use the extracted band-aware theorem-facing entry",
+    "seq_optimize_iss_identity_tiled = optimize_iss_identity_tiled":
+        "ISS identity tiling route must dispatch through the helper that selects band-aware or generic checked tiling",
+    "SPolOpt.opt_identity_tiled_generic_with_iss loop":
+        "ISS second-level identity tiling must use the extracted generic ISS theorem-facing entry",
+    "SBandTilingOpt.opt_identity_tiled_with_iss loop":
+        "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
     "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
         "identity tiling plus Pluto-hinted parallel route must dispatch to the checked identity-tiled parallel wrapper",
     "cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled":

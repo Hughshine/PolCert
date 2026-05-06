@@ -22,6 +22,13 @@ Definition proved_opt_with_iss : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
 Definition proved_identity_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
   CoreOpt.identity_opt_prepared.
 
+Definition proved_identity_tiling_generic_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreOpt.identity_tiling_generic_opt_prepared.
+
+Definition proved_identity_tiling_generic_opt_with_iss
+    : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreOpt.identity_tiling_generic_opt_prepared_with_iss.
+
 Definition proved_affine_opt : SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
   CoreOpt.affine_opt_prepared.
 
@@ -33,6 +40,13 @@ Definition opt_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
 
 Definition opt_identity (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_identity_opt loop.
+
+Definition opt_identity_tiled_generic (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  proved_identity_tiling_generic_opt loop.
+
+Definition opt_identity_tiled_generic_with_iss
+    (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  proved_identity_tiling_generic_opt_with_iss loop.
 
 Definition opt_affine (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   proved_affine_opt loop.

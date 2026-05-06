@@ -3049,15 +3049,27 @@ let standalone_handlers = {
   sa_run_iss_pluto_live_suite = run_iss_pluto_live_suite;
 }
 
+let optimize_identity_tiled loop =
+  if Scheduler.second_level_tiling_enabled () then
+    SPolOpt.opt_identity_tiled_generic loop
+  else
+    SBandTilingOpt.opt_identity_tiled loop
+
+let optimize_iss_identity_tiled loop =
+  if Scheduler.second_level_tiling_enabled () then
+    SPolOpt.opt_identity_tiled_generic_with_iss loop
+  else
+    SBandTilingOpt.opt_identity_tiled_with_iss loop
+
 let sequential_handlers = {
   seq_optimize_diamond = SBandTilingOpt.opt_diamond;
   seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss;
-  seq_optimize_iss_identity_tiled = SBandTilingOpt.opt_identity_tiled_with_iss;
+  seq_optimize_iss_identity_tiled = optimize_iss_identity_tiled;
   seq_optimize_iss_identity = optimize_with_iss_identity;
   seq_optimize_iss_affine = optimize_with_iss_affine;
   seq_optimize_iss_default = SPolOpt.opt_with_iss;
   seq_optimize_identity = SPolOpt.opt_identity;
-  seq_optimize_identity_tiled = SBandTilingOpt.opt_identity_tiled;
+  seq_optimize_identity_tiled = optimize_identity_tiled;
   seq_optimize_affine = SPolOpt.opt_affine;
   seq_optimize_legacy = SPolOpt.opt;
   seq_optimize_default = SBandTilingOpt.opt;

@@ -392,7 +392,10 @@ let pluto_polopt_args cfg =
   let args = ref [] in
   if cfg.force_iss then args := !args @ ["--iss"];
   if cfg.force_identity then
-    args := !args @ (if cfg.pluto_tile_seen then ["--identity"; "--tile"] else ["--identity"])
+    begin
+      args := !args @ (if cfg.pluto_tile_seen then ["--identity"; "--tile"] else ["--identity"]);
+      if cfg.force_second_level_tile then args := !args @ ["--second-level-tile"]
+    end
   else begin
     if cfg.force_notile then args := !args @ ["--notile"];
     if cfg.force_second_level_tile then args := !args @ ["--second-level-tile"];
@@ -467,15 +470,17 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
     if cfg.force_identity && cfg.force_vector && not cfg.pluto_tile_seen then
       pluto_reject prog "--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint";
-    if cfg.force_identity && cfg.force_second_level_tile && cfg.pluto_tile_seen then
-      pluto_reject prog "--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order";
     if cfg.force_identity && cfg.force_second_level_tile && not cfg.pluto_tile_seen then
       pluto_reject prog "--second-level-tile with --identity requires --tile";
     if cfg.force_identity && cfg.force_diamond_tile then
       pluto_reject prog "--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity";
     if cfg.force_identity && cfg.pluto_tile_seen then
       add_pluto_note cfg
-        (if cfg.force_iss then
+        (if cfg.force_iss && cfg.force_second_level_tile then
+           "--identity --tile --iss --second-level-tile uses the checked ISS plus generic second-level identity-tiling route"
+         else if cfg.force_second_level_tile then
+           "--identity --tile --second-level-tile uses the checked generic second-level identity-tiling route"
+         else if cfg.force_iss then
            "--identity --tile --iss uses the checked ISS plus identity-tiling route"
          else
            "--identity --tile uses the checked identity-tiling route");
@@ -483,8 +488,6 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt's no-tiling identity route";
     if cfg.force_second_level_tile && cfg.force_notile then
       pluto_reject prog "--second-level-tile requires tiling and cannot be combined with --notile";
-    if cfg.force_second_level_tile && cfg.force_identity && cfg.pluto_tile_seen then
-      pluto_reject prog "--identity --tile --second-level-tile is rejected because the verified identity codegen route does not yet preserve Pluto's second-level tile order";
     if cfg.force_second_level_tile && cfg.force_identity && not cfg.pluto_tile_seen then
       pluto_reject prog "--second-level-tile with --identity requires --tile";
     if

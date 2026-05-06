@@ -29,14 +29,22 @@
       "needle": "--second-level-tile with --identity requires --tile"
     },
     {
-      "name": "second-level-tile-rejects-identity-tiled",
+      "name": "second-level-tile-identity-tiled",
       "fixture": "matmul-init",
       "args": [
         "--second-level-tile",
         "--identity-tiled"
       ],
-      "expect": "failure",
-      "needle": "verified identity codegen route does not yet preserve Pluto's second-level tile order"
+      "expect": "success",
+      "needle": "== Optimized Loop ==",
+      "needles": [
+        "/ 256",
+        "8 *",
+        "32 *"
+      ],
+      "differs_from_args": [
+        "--identity-tiled"
+      ]
     },
     {
       "name": "second-level-tile-rejects-notile",

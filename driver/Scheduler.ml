@@ -699,7 +699,27 @@ let run_pluto_phase_pipeline inscop =
 let run_pluto_identity_tiling_pipeline inscop =
   match tile_only_scop_scheduler inscop with
   | Err msg -> Err msg
-  | Okk outscop -> Okk (inscop, outscop)
+  | Okk outscop ->
+      if second_level_tiling_enabled () then
+        begin
+          try
+            let artifact =
+              PlutoTilingValidator.extract_phase_artifact_from_scops
+                ~tiling_mode:PlutoTilingValidator.SecondLevel
+                ~before_path:"identity_before"
+                ~after_path:"identity_tiled"
+                inscop
+                outscop
+            in
+            Okk (inscop, artifact.artifact_after_scop)
+          with
+          | PlutoTilingValidator.ValidationError msg ->
+              Err (coqstring_of_camlstring msg)
+          | exn ->
+              Err (coqstring_of_camlstring (Printexc.to_string exn))
+        end
+      else
+        Okk (inscop, outscop)
 
 let run_pluto_diamond_phase_pipeline inscop =
   run_pluto_scop_with_midpoint_and_posttile_dump

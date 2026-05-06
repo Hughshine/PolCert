@@ -161,7 +161,10 @@ def explore_second_level(case: Case, out_dir: pathlib.Path) -> dict[str, object]
         out_dir,
         f"{case.name}.identity.second",
     )
-    polopt_reject = run_polopt(["--identity-tiled", "--second-level-tile"], case)
+    polopt_ordinary = run_polopt(["--identity-tiled"], case)
+    polopt_second = run_polopt(["--identity-tiled", "--second-level-tile"], case)
+    polopt_ordinary_iss = run_polopt(["--identity-tiled", "--iss"], case)
+    polopt_second_iss = run_polopt(["--identity-tiled", "--iss", "--second-level-tile"], case)
     legacy = run_polopt(["--legacy-generic-tiling", "--second-level-tile"], case)
     return {
         "case": case.name,
@@ -169,7 +172,18 @@ def explore_second_level(case: Case, out_dir: pathlib.Path) -> dict[str, object]
         "pluto_second_level_c": classify_c(str(second["c_text"])),
         "pluto_differs_from_identity_tile": ordinary["c_text"] != second["c_text"],
         "polcert_second_level_validation": validate_second_level(scop, second["after"]),
-        "polopt_identity_second_level": polopt_reject,
+        "polopt_identity_second_level": polopt_second,
+        "polopt_identity_second_level_supported": polopt_second["exit"] == 0,
+        "polopt_identity_second_level_c": classify_c(str(polopt_second["stdout"])),
+        "polopt_identity_second_level_differs_from_identity_tile": (
+            polopt_ordinary["stdout"] != polopt_second["stdout"]
+        ),
+        "polopt_identity_second_level_iss": polopt_second_iss,
+        "polopt_identity_second_level_iss_supported": polopt_second_iss["exit"] == 0,
+        "polopt_identity_second_level_iss_c": classify_c(str(polopt_second_iss["stdout"])),
+        "polopt_identity_second_level_iss_differs_from_identity_tile_iss": (
+            polopt_ordinary_iss["stdout"] != polopt_second_iss["stdout"]
+        ),
         "polopt_legacy_generic_second_level_c": classify_c(legacy["stdout"]),
     }
 
