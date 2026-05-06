@@ -15,7 +15,10 @@ Module Loop := PolIRs.Loop.
 Module Subst := LoopSingletonCleanup PolIRs.
 
 Definition succ_expr (e: Loop.expr) : Loop.expr :=
-  Loop.Sum e (Loop.Constant 1).
+  match e with
+  | Loop.Constant c => Loop.Constant (c + 1)
+  | _ => Loop.Sum e (Loop.Constant 1)
+  end.
 
 Fixpoint peel_unroll_stmt_list
     (fuel: nat) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
@@ -89,6 +92,13 @@ Proof.
     + constructor.
 Qed.
 
+Lemma succ_expr_correct :
+  forall env e,
+    Loop.eval_expr env (succ_expr e) = Loop.eval_expr env e + 1.
+Proof.
+  intros env e. destruct e; simpl; lia.
+Qed.
+
 Lemma peel_unroll_stmt_list_semantics :
   forall fuel cur ub body env mem1 mem2,
     Loop.loop_semantics
@@ -104,17 +114,18 @@ Proof.
       Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true <->
       curv < ubv).
     {
-      subst curv ubv. simpl. rewrite Z.leb_le. lia.
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
     }
     assert (Htest_false :
       Loop.eval_test env (Loop.LE (succ_expr cur) ub) = false <->
       curv >= ubv).
     {
-      subst curv ubv. simpl. rewrite Z.leb_gt. lia.
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
     }
     split; intros Hsem.
     + inversion_clear Hsem.
       apply IH in H0.
+      rename H0 into Htail.
       destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
       * apply Loop.LLoop.
         rewrite <- Heqcurv, <- Hequbv.
@@ -125,7 +136,11 @@ Proof.
              Hguard: Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true |- _ =>
                apply Subst.subst_stmt_at_semantics in Hbody;
                simpl in Hbody;
-               inversion_clear H0;
+               inversion Htail; subst; clear Htail;
+               simpl in *;
+               try rewrite succ_expr_correct in *;
+               try rewrite <- Heqcurv in *;
+               try rewrite <- Hequbv in *;
                econstructor; eauto
            end.
         -- match goal with
@@ -137,12 +152,15 @@ Proof.
            | Hguard: Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true |- _ =>
                apply Htest_true in Hguard; lia
            end.
-        -- inversion H0; subst; clear H0.
-           match goal with
-           | Hiter: _ |- _ =>
-               simpl in Hiter;
-               rewrite Zrange_empty in Hiter by lia;
-               inversion Hiter; subst
+        -- inversion Htail; subst; clear Htail.
+           simpl in *;
+           try rewrite succ_expr_correct in *;
+           try rewrite <- Heqcurv in *;
+           try rewrite <- Hequbv in *;
+           try rewrite Zrange_empty in * by lia;
+           repeat match goal with
+           | Hiter: Instr.IterSem.iter_semantics _ nil _ _ |- _ =>
+               inversion Hiter; subst; clear Hiter
            end.
            apply Loop.LLoop.
            simpl.
@@ -170,7 +188,7 @@ Proof.
            ++ apply Htest_true. exact Hlt.
         -- apply IH.
            apply Loop.LLoop.
-           simpl.
+           simpl. rewrite succ_expr_correct.
            rewrite <- Heqcurv, <- Hequbv.
            match goal with
            | Htail: Instr.IterSem.iter_semantics _ (Zrange (curv + 1) ubv) _ _ |- _ =>
@@ -189,7 +207,7 @@ Proof.
            apply Htest_false. exact Hge.
         -- apply IH.
            apply Loop.LLoop.
-           simpl.
+           simpl. rewrite succ_expr_correct.
            rewrite Zrange_empty by lia.
            constructor.
 Qed.

@@ -93,8 +93,8 @@ def run_polopt_checked_unroll() -> dict[str, object]:
         "stderr": proc.stderr[-1000:],
         "accepted": proc.returncode == 0,
         "checked_factor_note_present": "checked post flags: --ufactor=4" in stdout,
-        "guarded_peel_marker_present": "if ((0 + 1) <= ((K + 31) / 32))" in stdout,
-        "residual_loop_marker_present": "for i0 in range(((((0 + 1) + 1) + 1) + 1), ((K + 31) / 32))" in stdout,
+        "guarded_peel_marker_present": "if (1 <= ((K + 31) / 32))" in stdout,
+        "residual_loop_marker_present": "for i0 in range(4, ((K + 31) / 32))" in stdout,
     }
 
 
