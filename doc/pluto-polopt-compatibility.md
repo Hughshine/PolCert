@@ -1,6 +1,6 @@
 # Pluto-Polopt Compatibility Surface
 
-Date: 2026-05-05
+Date: 2026-05-06
 
 Audience: PolCert developers who need to align `polopt` with Pluto as the reference optimizer.
 
@@ -342,7 +342,7 @@ LP/DFP-family flags, and conditional Candl dependence testing.
    - Each entry should have status, reason, and route mapping.
    - Rejection messages should match tests.
 
-2. Add remaining route-level surface gaps.
+2. Keep the route-level edge cases explicit.
    - bare `--identity` policy remains explicit: require `--identity --notile`
      or `--identity --tile`
    - `--identity --tile --diamond-tile` needs a distinct Pluto effect fixture
@@ -358,9 +358,10 @@ LP/DFP-family flags, and conditional Candl dependence testing.
 
 3. Treat semantic extensions as separate projects.
    - unroll-jam
-   - vector pragmas or vector loop annotations
-   - unbounded multipar/nested OpenMP beyond Pluto's current two-pragma extraction behavior
-   - scalar privatization, because it can change the required scalar storage discipline
+   - scalar privatization when the accepted schedule needs private scalar
+     storage
+   - nested OpenMP beyond Pluto's current two-pragma extraction behavior, if a
+     future Pluto build exposes more than the current checked multipar surface
 
 4. Keep stale flags rejected.
    - The rejection should say "current Pluto does not support this flag", not "polopt does not support this optimization".
@@ -379,7 +380,7 @@ make test-vector-current-suite
 Current result with the pinned GLPK-enabled Pluto baseline:
 
 ```text
-[pluto-compat-suite] OK (96 checks)
+[pluto-compat-suite] OK (97 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:
@@ -395,4 +396,8 @@ For rejected flags, the acceptance criterion is a stable, specific reason. A gen
 
 The current `polopt` surface already covers the core checked subset: affine scheduling, ordinary tiling, Pluto `tile.sizes` tile-size control via implicit and explicit `--tile-sizes-file` input, automatic tile-size-model controls including `--cache-size`, `--data-element-size`, and `--ufactor` under `--determine-tile-size`, Pluto `.fst` fusion-structure control via implicit and explicit `--fusion-structure` input, Pluto `.precut` partial-transformation control via implicit and explicit `--precut-file` input, identity tiling with checked ISS, second-level, ISS+second-level, and Pluto-hinted parallel/multipar composition, second-level tiling, ISS, one-loop parallelization, checked vector annotation for Pluto `--prevector`, `--multipar` parallelization up to two certified dimensions, sequential diamond tiling, full-diamond mode, conditional Candl dependence testing, conservative `--candldep --scalpriv` pass-through, and LP/DFP-family pass-through on the pinned GLPK-enabled Pluto baseline.
 
-Most missing Pluto optimizer knobs are now surface gaps or composition gaps. The clearest proof/semantic gaps are `--unrolljam`, unbounded multipar beyond Pluto's current extraction model, and full scalar privatization when the accepted schedule needs private scalar storage. Frontend and backend flags should remain outside the optimizer compatibility surface.
+The remaining unsatisfied optimizer-facing semantic gaps are now narrow and
+specific: checked `--unrolljam` requires a PolOpt loop/codegen post pass, and
+full scalar privatization requires a checked scalar-private storage rewrite
+before accepting schedules that depend on privatized scalar instances. Frontend
+and backend flags should remain outside the optimizer compatibility surface.

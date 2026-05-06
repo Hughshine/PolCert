@@ -389,22 +389,41 @@ just a prose note.
 
 ### Goal
 
-Add a credible path from the current artifact to checked diamond tiling support.
+Keep the checked diamond tiling path artifact-grade as its surrounding Pluto
+flag surface grows.
 
-This should be treated as a parallel workstream, not as a blocker for the
-whole-C harness or codegen-performance work.
+This is no longer a design-only workstream. The current implementation has a
+checked phase-aligned diamond route and native Pluto-compatible tests for the
+main route combinations. The remaining work is fixture breadth and output
+polish, not route closure.
 
-### Current design conclusion
+### Current status
 
-The existing notes already point to a clear architecture:
+The implemented route follows the architecture from the design notes:
 
-- diamond tiling should not be modeled as a brand-new tiling theorem family
-- the key new object is a diamond-aware affine midpoint artifact
-- the existing tiling relation can then be reused for `mid_diamond -> after`
-- the right summary is not "default affine + ordinary tiling"
-- the right summary is "diamond-aware affine midpoint + ordinary tiling"
-- stronger paper-level claims about concurrent start / load balance remain a
-  separate target
+- import and validate the diamond-aware affine midpoint
+- validate the `mid_diamond -> posttile` tiling boundary with the existing
+  tiling relation
+- validate the final post-tile affine cleanup boundary
+- regenerate code through the PolOpt code generator
+
+The executable coverage now includes:
+
+- sequential `--diamond-tile`
+- `--full-diamond-tile`
+- ISS plus diamond
+- second-level diamond
+- Pluto-hinted parallel diamond
+- Pluto-hinted multipar diamond
+- native explicit-current diamond parallelization
+
+The artifact hook is:
+
+```bash
+opam exec -- make test-diamond-tiling-suite
+```
+
+The default `artifact-check` also runs the diamond suite.
 
 Relevant existing notes:
 
@@ -413,48 +432,30 @@ Relevant existing notes:
 - `doc/pluto-comprehensive/tiling-validation-design.md`
 - `doc/DIAMOND_TILING_IMPLEMENTATION_TODO.md`
 
-### Concrete tasks
+### Remaining tasks
 
-1. Stabilize the `PolOpt` phase-artifact boundary for:
-   - second-level tiling
-   - diamond-aware midpoint import
-2. Add explicit diamond test cases:
-   - `jacobi-1d-imper.c --diamond-tile`
-   - `diamond-tile-example.c`
-3. Determine the minimal imported artifact required:
-   - ordinary affine midpoint when diamond is off
-   - diamond-aware midpoint when diamond is on
-   - tiled after artifact
-4. Extend the current importer/runtime path before touching the Coq kernel:
-   - OpenScop parsing for the needed annotations/extensions
-   - midpoint/after artifact extraction
-5. Only then add the checked theorem-aligned route:
-   - `before -> mid_diamond` via affine validation
-   - `mid_diamond -> after` via existing tiling relation/checker
+1. Broaden effect fixtures for:
+   - `--full-diamond-tile`
+   - `--diamond-tile --iss`
+   - `--diamond-tile --second-level-tile`
+   - `--diamond-tile --parallel --multipar`
+2. Add strict-mode checks for Pluto-hinted diamond parallel routes, so the
+   suite distinguishes "hint accepted" from "checked fallback".
+3. Polish raw-codegen fallback output for singleton-loop cleanup cases where
+   the checked raw route is correct but less readable.
+4. Keep identity-diamond rejected unless a distinct Pluto output effect is
+   found. The current bounded search over the regression corpus found
+   `--identity --tile --diamond-tile` identical to ordinary identity tiling.
 
-The explicit non-goal for the first milestone is:
+### Non-goals
 
-- do not claim that the ordinary current affine midpoint is already enough
-  whenever `--diamond-tile` is on
+- Do not claim identity-diamond support without a route-specific output effect.
+- Do not turn diamond tests into performance claims.
+- Do not broaden beyond Pluto's current two-pragma multipar extraction until
+  there is a checked frontend/codegen reason to do so.
 
-### Immediate next deliverable
-
-Turn the existing design notes into a concrete implementation checklist and
-fixture plan. This is now tracked in:
-
-- `doc/DIAMOND_TILING_IMPLEMENTATION_TODO.md`
-
-### Scope control
-
-The first target is sequential correctness only.
-
-Do not expand the initial target to include:
-
-- load-balance claims
-- maximal parallelism claims
-- full diamond-specific performance theorems
-
-Those belong to a later paper story, not to the first artifact integration.
+Any stronger scheduling, load-balance, or performance claim belongs to a later
+paper story, not to this artifact-coverage track.
 
 ## 5. Priority Order
 
@@ -463,14 +464,17 @@ Recommended implementation order:
 1. whole-C end-to-end wrapper/harness
 2. `advect3d` codegen performance repair
 3. Pluto bug reproducibility track
-4. diamond-tiling integration
+4. diamond-tiling fixture broadening
+5. checked unroll-jam post pass
+6. checked scalar-private storage rewrite
 
 Rationale:
 
-- The first three strengthen the artifact story immediately without requiring
-  new proof families.
-- Diamond tiling is the most valuable next coverage extension, but also the one
-  most likely to perturb the current phase boundary.
+- The first four strengthen the artifact story without changing the core
+  semantic model.
+- Checked unroll-jam and full scalar privatization are real semantic/codegen
+  extensions. They should be implemented only as theorem-facing PolOpt
+  transformations, not as Pluto pass-through.
 
 ## 6. Definition Of Success For The Next Iteration
 
@@ -481,7 +485,10 @@ the following:
 - show real runtime speedups of optimized code
 - no longer treat `advect3d` as an outlier compile-time case
 - contain at least one strong Pluto-bug case study
-- expose a concrete, implementation-ready diamond-tiling integration plan
+- keep diamond, second-level, vector, parallel, and multipar compatibility
+  routes under executable artifact checks
+- explicitly reject the two remaining semantic gaps (`--unrolljam` and full
+  scalar privatization) until their checked transformations exist
 
 At that point, the artifact is no longer only "proved and correct on loop
 fragments". It starts to look like a genuinely usable verified polyhedral

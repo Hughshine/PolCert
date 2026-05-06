@@ -39,7 +39,7 @@ SUPPORTED = [
     Capability(".precut / --precut-file FILE", "supported-legacy-and-explicit-control-file", "Pluto reads this old working-directory file as a partial transformation to complete; PolOpt can now install it explicitly for the oracle call and accepts produced schedules that pass checked affine and tiling validators", "pluto-compat optimizer-implicit-precut-file; optimizer-explicit-precut-file; optimizer-explicit-precut-file-fusion2; explicit-file cleanup check", "keep explicit option as preferred artifact interface"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "checked second-level tiling route, including ISS, explicit-current, and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-iss; pluto-compat second-level-parallel", "broaden fixtures"),
-    Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, but hint selection is still an OCaml wrapper", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "add a top-level Coq route for the Pluto hint oracle or keep --parallel-current as theorem-facing entry"),
+    Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, with Pluto used only to choose candidate current dimensions", "pluto-compat parallel; pluto-compat parallel-multipar; parallel tests", "keep --parallel-current as the theorem-facing explicit entry and broaden hint-selection fixtures"),
     Capability("--parallel-current d", "supported", "explicit checked parallel dimension; native --identity-tiled --parallel-current d exposes the identity-tiling plus explicit-current theorem route", "parallel-current suite; identity-tiled-current-combined-effect; Opt_parallel_current_correct; Opt_parallel_current_identity_tiled_result_correct", "keep separate from Pluto compatibility"),
     Capability("--prevector / --vector", "supported-component-verified", "Pluto vector hints are parsed from OpenScop loop directive bit 4 and checked with the same doall certificate used by parallelization; output is annotated as vector for", "pluto-compat prevector and default-prevector; checked_vector_annotated_codegen_correct_general; vector-current suite", "add specialized vector checkers only if future SIMD/reduction semantics need them"),
     Capability("--vector-current d", "supported", "explicit checked vector dimension over the current-space program; reuses the parallel/doall validator and emits vector for", "vector-current suite; checked_vector_annotated_codegen_correct_general", "keep as theorem-facing entry"),
@@ -124,6 +124,18 @@ def build_matrix() -> dict[str, object]:
             "compatibility_checks": len(compat_suite.active_checks()),
             "diamond_supported_route": "sequential, parallel, multipar, ISS, and second-level four-phase routes",
             "pluto_style_entry": "./polopt --pluto-compat",
+            "remaining_semantic_gaps": [
+                {
+                    "request": "--unrolljam",
+                    "reason": "Pluto changes generated C after the OpenScop scheduling artifact; PolOpt needs a checked loop/codegen post pass rather than pass-through.",
+                    "required_work": "Implement factor handling, repeated-body/remainder generation, and a semantic preservation theorem.",
+                },
+                {
+                    "request": "full --candldep --scalpriv",
+                    "reason": "Current support is conservative oracle tuning; schedules that rely on privatized scalar instances need a checked storage rewrite.",
+                    "required_work": "Materialize private scalar storage or an equivalent loop-local representation and prove preservation under the scalar-privatization precondition.",
+                },
+            ],
         },
     }
 
@@ -142,6 +154,17 @@ def write_markdown(matrix: dict[str, object]) -> str:
     for row in matrix["capabilities"]:  # type: ignore[index]
         lines.append(
             f"| `{row['request']}` | {row['status']} | {row['reason']} | {row['evidence']} | {row['next_step']} |"
+        )
+    lines.extend([
+        "",
+        "## Remaining Semantic Gaps",
+        "",
+        "| Request | Reason | Required work |",
+        "|---|---|---|",
+    ])
+    for gap in matrix["summary"]["remaining_semantic_gaps"]:  # type: ignore[index]
+        lines.append(
+            f"| `{gap['request']}` | {gap['reason']} | {gap['required_work']} |"
         )
     lines.extend(["", "## Compatibility Checks", "", "| Check | Expectation | Fixture | Args | Effect oracle |", "|---|---|---|---|---|"])
     for row in matrix["compatibility_checks"]:  # type: ignore[index]
