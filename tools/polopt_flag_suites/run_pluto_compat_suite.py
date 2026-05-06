@@ -38,6 +38,7 @@ FLAGS_INTRATILE = ["--tile", "--smartfuse", "--intratileopt", "--noprevector", "
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_PREVECTOR = [*FLAGS_PREVECTOR, "--nodiamond-tile", "--noparallel"]
+MATMUL_TILED_DEFAULT_PREVECTOR = ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_INTRATILE = [*FLAGS_INTRATILE, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE = [*FLAGS, "--determine-tile-size", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--nodiamond-tile", "--noparallel"]
@@ -499,15 +500,52 @@ CHECKS = [
         effect_needles=("vector for",),
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
+    Check(
+        "default-prevector",
+        MATMUL_TILED_DEFAULT_PREVECTOR,
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --vector",
+        effect_needles=("vector for",),
+        differs_from_args=(tuple(MATMUL_TILED),),
+    ),
     Check("reject-unrolljam", ["--tile", "--unrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "unroll-jam is a Pluto post-codegen transform"),
+    Check(
+        "reject-default-prevector-parallel",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--parallel"],
+        MATMUL,
+        False,
+        "--prevector/--vector cannot be combined with --parallel",
+    ),
+    Check(
+        "reject-prevector-conflict",
+        ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--noprevector", "--nounrolljam", "--rar", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        False,
+        "contradictory vector controls",
+    ),
     Check("reject-intratile-conflict", ["--tile", "--intratileopt", "--nointratileopt", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory tile-schedule controls"),
     Check("reject-lastwriter-conflict", ["--notile", "--lastwriter", "--nolastwriter", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "contradictory dependence controls"),
     Check("reject-ft-without-lt", [*FLAGS, "--ft=0", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--ft and --lt must be supplied together"),
     Check("reject-pet", ["--pet", *FLAGS, "--nodiamond-tile", "--noparallel"], MATMUL, False, "frontend is polopt's verified loop extractor"),
+    Check("reject-stale-multipipe", ["--multipipe", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
+    Check("reject-stale-lbtile", ["--lbtile", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
+    Check("reject-stale-sched", ["--sched", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
+    Check("reject-stale-variables-not-global", ["--variables_not_global", *MATMUL_TILED], MATMUL, False, "not accepted by the current Pluto binary"),
+    Check("reject-stale-output", ["--output", *MATMUL_TILED], MATMUL, False, "current Pluto binary uses -o"),
+    Check("reject-unroll-abbrev", ["--unroll", *MATMUL_TILED], MATMUL, False, "abbreviation for --unrolljam"),
     Check("reject-typedfuse", ["--tile", "--typedfuse", "--nodiamond-tile", "--noparallel"], MATMUL, False, "requires a GLPK- or Gurobi-enabled Pluto binary"),
     Check("reject-scalpriv-without-candldep", ["--notile", "--scalpriv", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--scalpriv requires --candldep"),
     Check("reject-cache-without-determine", [*FLAGS, "--cache-size=32768", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
     Check("reject-ufactor-without-determine", [*FLAGS, "--ufactor=3", "--nodiamond-tile", "--noparallel"], MATMUL, False, "require --determine-tile-size"),
+    Check(
+        "reject-missing-explicit-tile-sizes-file",
+        [*MATMUL_TILED, "--tile-sizes-file", "/tmp/polcert-missing-control-file"],
+        MATMUL,
+        False,
+        "no such file",
+    ),
     Check("reject-bare-identity", ["--identity", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "use --identity --notile"),
     Check("reject-identity-second-level", ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, False, "verified identity codegen route does not yet preserve Pluto's second-level tile order"),
     Check(
@@ -535,6 +573,18 @@ CHECKS = [
         explicit_control_file_content="16\n16\n16\n",
     ),
     Check(
+        "optimizer-explicit-tile-sizes-file-nodep",
+        MATMUL_TILED,
+        NODEP,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: tile.sizes<=",
+        effect_needles=("for i0 in range(0, 13)", "8 *"),
+        differs_from_args=(tuple(MATMUL_TILED),),
+        explicit_control_flag="--tile-sizes-file",
+        explicit_control_file_content="8\n8\n8\n",
+    ),
+    Check(
         "optimizer-implicit-fst-file",
         FUSION_NOTILE_SMART,
         FUSION1,
@@ -552,6 +602,18 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto control files: .fst<=",
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+        explicit_control_flag="--fusion-structure",
+        explicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
+    ),
+    Check(
+        "optimizer-explicit-fst-file-fusion2",
+        FUSION_NOTILE_SMART,
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: .fst<=",
+        effect_needles=("for i1 in range(i0, (i0 + 100))",),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         explicit_control_flag="--fusion-structure",
         explicit_control_file_content="2\n1\n0\n0\n1\n1\n0\n",
@@ -576,6 +638,18 @@ CHECKS = [
         "== Optimized Loop ==",
         "pluto control files: .precut<=",
         effect_needles=("if (4 <= N)", "if (6 <= N)"),
+        differs_from_args=(tuple(FUSION_NOTILE_SMART),),
+        explicit_control_flag="--precut-file",
+        explicit_control_file_content="2\n1\n2 4\n0 0 0 0\n0 1 0 0\n1\n0\n2 4\n0 0 0 1\n0 1 0 0\n1\n0\n",
+    ),
+    Check(
+        "optimizer-explicit-precut-file-fusion2",
+        FUSION_NOTILE_SMART,
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "pluto control files: .precut<=",
+        effect_needles=("for i1 in range(0, 100)", "B[i0][i1]"),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
         explicit_control_flag="--precut-file",
         explicit_control_file_content="2\n1\n2 4\n0 0 0 0\n0 1 0 0\n1\n0\n2 4\n0 0 0 1\n0 1 0 0\n1\n0\n",
@@ -886,7 +960,20 @@ def run_polopt_compat(
     return subprocess.run(cmd, cwd=str(cwd), text=True, capture_output=True, timeout=timeout + 5, check=False)
 
 
+def explicit_control_target(flag: str | None) -> str | None:
+    if flag is None:
+        return None
+    if flag == "--tile-sizes-file":
+        return "tile.sizes"
+    if flag in ("--fusion-structure", "--fst-file"):
+        return ".fst"
+    if flag in ("--precut", "--precut-file"):
+        return ".precut"
+    return None
+
+
 def run_check(check: Check, timeout: int) -> str | None:
+    control_target = explicit_control_target(check.explicit_control_flag)
     if check.explicit_control_flag:
         with tempfile.TemporaryDirectory(prefix="polopt-compat-explicit-") as tmp:
             control_path = Path(tmp) / "control.in"
@@ -914,6 +1001,11 @@ def run_check(check: Check, timeout: int) -> str | None:
             return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
     optimized = optimized_loop(output)
+    if control_target is not None and (ROOT / control_target).exists():
+        return (
+            f"{check.name}: explicit control file target {control_target!r} "
+            "was left in the repository root after the oracle run"
+        )
     if check.success:
         if proc.returncode != 0:
             return f"{check.name}: expected success, got exit {proc.returncode}\n{output}"
