@@ -363,6 +363,32 @@ Proof.
       * apply IH. exact Htail.
 Qed.
 
+Lemma Zrange_app :
+  forall lb mid ub,
+    lb <= mid ->
+    mid <= ub ->
+    Zrange lb ub = Zrange lb mid ++ Zrange mid ub.
+Proof.
+  intros lb mid ub Hlbmid Hmidub.
+  assert (Hmid: exists n, mid = lb + Z.of_nat n).
+  {
+    exists (Z.to_nat (mid - lb)).
+    rewrite Z2Nat.id by lia. lia.
+  }
+  clear Hlbmid.
+  destruct Hmid as [n Hmid]. subst mid.
+  revert lb ub Hmidub.
+  induction n as [|n IH]; intros lb ub Hmidub.
+  - replace (lb + Z.of_nat 0) with lb in * by lia.
+    rewrite (Zrange_empty lb lb) by lia.
+    reflexivity.
+  - replace (lb + Z.of_nat (S n)) with (lb + 1 + Z.of_nat n) in * by lia.
+    rewrite Zrange_begin by lia.
+    rewrite (Zrange_begin lb (lb + 1 + Z.of_nat n)) by lia.
+    simpl. f_equal.
+    apply IH. lia.
+Qed.
+
 Lemma seq_two_semantics :
   forall st1 st2 env mem1 mem3,
     Loop.loop_semantics
