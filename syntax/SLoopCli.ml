@@ -787,7 +787,7 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_unrolljam_seen <- true;
           cfg.force_const_unroll <- true;
-          add_pluto_note cfg "--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused";
+          add_pluto_note cfg "--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused through a per-candidate local validator";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"

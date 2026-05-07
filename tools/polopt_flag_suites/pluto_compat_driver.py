@@ -435,7 +435,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
         elif flag == "--unrolljam":
             state.unrolljam_seen = True
-            state.add_note("--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused when the extracted jam validator accepts")
+            state.add_note("--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused through a per-candidate local validator")
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")

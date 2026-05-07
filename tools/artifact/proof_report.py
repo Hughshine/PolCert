@@ -109,7 +109,7 @@ TOP_LEVEL_ROUTES = [
         "cli": "polopt --const-unroll <file.loop> / polopt --pluto-compat --unrolljam [--ufactor N] on sequential Loop IR",
         "theorem_file": "polygen/LoopUnroll.v",
         "theorem_names": ["const_unroll_correct", "block_unroll_correct"],
-        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use block/remainder unrolling, and same-bound sibling loops are jam-fused only after the extracted jam validator accepts the original current band.",
+        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use block/remainder unrolling, and each same-bound sibling-loop fusion candidate is checked before being jam-fused.",
     },
     {
         "route": "loop-native same-bound sibling jam theorem",
@@ -123,7 +123,14 @@ TOP_LEVEL_ROUTES = [
         "cli": "internal post pass used after checked block unroll",
         "theorem_file": "src/LoopJamLower.v",
         "theorem_names": ["try_jam_pair_exact_sound"],
-        "note": "The extracted lowerer fuses syntactically same-bound sibling loops; the driver only emits the true jammed shape when the extracted jam validator accepts the original current band.",
+        "note": "The extracted lowerer fuses syntactically same-bound sibling loops only through the checked pair path used by the driver.",
+    },
+    {
+        "route": "per-candidate sibling-loop jam validator",
+        "cli": "internal validator called by extracted --unrolljam lowerer for each same-bound sibling-loop candidate",
+        "theorem_file": "src/LoopJamValidator.v",
+        "theorem_names": ["checked_loop_jam_pair_sound", "checked_loop_jam_pair_at_depth_sound"],
+        "note": "The validator extracts the unjammed local pair and the jammed local pair at the candidate depth, using an abstract affine bound when the real block bound contains non-affine division, then uses the affine validator to certify the local schedule reordering.",
     },
     {
         "route": "verified Loop cleanup post pass",

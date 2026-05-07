@@ -1,20 +1,27 @@
 Require Import Bool.
 Require Import List.
+Require Import ZArith.
 Import ListNotations.
 
+Require Import ImpureAlarmConfig.
+Require Import Result.
+Require Import Vpl.Impure.
 Require Import LoopSingletonCleanup.
 Require Import LoopUnroll.
 Require Import LoopJamNative.
+Require Import LoopJamValidator.
 Require Import PolIRs.
 
 Module LoopJamLower (PolIRs : POLIRS).
 
 Module Loop := PolIRs.Loop.
 Module Instr := PolIRs.Instr.
+Module Ty := PolIRs.Ty.
 Module State := Instr.State.
 Module Subst := LoopSingletonCleanup PolIRs.
 Module Unroll := LoopUnroll PolIRs.
 Module Native := LoopJamNative PolIRs.
+Module Validator := LoopJamValidator PolIRs.
 
 Definition seq2 := Native.seq2.
 Definition jammed_two_loop := Native.jammed_two_loop.
@@ -24,11 +31,33 @@ Definition same_loop_boundsb
     (lb1 ub1 lb2 ub2 : Loop.expr) : bool :=
   Subst.expr_eqb lb1 lb2 && Subst.expr_eqb ub1 ub2.
 
+Fixpoint same_testb (t1 t2 : Loop.test) : bool :=
+  match t1, t2 with
+  | Loop.LE a1 b1, Loop.LE a2 b2 =>
+      Subst.expr_eqb a1 a2 && Subst.expr_eqb b1 b2
+  | Loop.EQ a1 b1, Loop.EQ a2 b2 =>
+      Subst.expr_eqb a1 a2 && Subst.expr_eqb b1 b2
+  | Loop.And a1 b1, Loop.And a2 b2 =>
+      same_testb a1 a2 && same_testb b1 b2
+  | Loop.Or a1 b1, Loop.Or a2 b2 =>
+      same_testb a1 a2 && same_testb b1 b2
+  | Loop.Not t1', Loop.Not t2' =>
+      same_testb t1' t2'
+  | Loop.TConstantTest b1, Loop.TConstantTest b2 =>
+      Bool.eqb b1 b2
+  | _, _ => false
+  end.
+
 Definition try_jam_pair (st1 st2 : Loop.stmt) : option Loop.stmt :=
   match st1, st2 with
   | Loop.Loop lb1 ub1 body1, Loop.Loop lb2 ub2 body2 =>
       if same_loop_boundsb lb1 ub1 lb2 ub2
       then Some (jammed_two_loop lb1 ub1 body1 body2)
+      else None
+  | Loop.Guard tst1 (Loop.Loop lb1 ub1 body1),
+    Loop.Guard tst2 (Loop.Loop lb2 ub2 body2) =>
+      if same_testb tst1 tst2 && same_loop_boundsb lb1 ub1 lb2 ub2
+      then Some (Loop.Guard tst1 (jammed_two_loop lb1 ub1 body1 body2))
       else None
   | _, _ => None
   end.
@@ -194,5 +223,221 @@ Proof.
   inversion Hjam; subst fused; clear Hjam.
   eapply Native.jammed_two_loop_instance_refines_unjammed; eauto.
 Qed.
+
+Definition checked_pair_accepts
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth : nat) (body1 body2 : Loop.stmt) : imp bool :=
+  BIND cert_res <-
+    Validator.checked_loop_jam_pair_at_depth
+      varctxt vars depth body1 body2 -;
+  match cert_res with
+  | Okk _ => pure true
+  | Err _ => pure false
+  end.
+
+Definition checked_try_jam_pair
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth : nat) (st1 st2 : Loop.stmt) : imp (option Loop.stmt) :=
+  match st1, st2 with
+  | Loop.Loop lb1 ub1 body1, Loop.Loop lb2 ub2 body2 =>
+      if same_loop_boundsb lb1 ub1 lb2 ub2
+      then
+        BIND ok <- checked_pair_accepts varctxt vars depth body1 body2 -;
+        if ok
+        then pure (Some (jammed_two_loop lb1 ub1 body1 body2))
+        else pure None
+      else pure None
+  | Loop.Guard tst1 (Loop.Loop lb1 ub1 body1),
+    Loop.Guard tst2 (Loop.Loop lb2 ub2 body2) =>
+      if same_testb tst1 tst2 && same_loop_boundsb lb1 ub1 lb2 ub2
+      then
+        BIND ok <- checked_pair_accepts varctxt vars depth body1 body2 -;
+        if ok
+        then pure (Some (Loop.Guard tst1 (jammed_two_loop lb1 ub1 body1 body2)))
+        else pure None
+      else pure None
+  | _, _ => pure None
+  end.
+
+Fixpoint checked_jam_stmt_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel : nat) (st : Loop.stmt) {struct fuel}
+    : imp (Loop.stmt * bool) :=
+  match fuel with
+  | O => pure (st, false)
+  | S fuel' =>
+      match st with
+      | Loop.Loop lb ub body =>
+          BIND body_res <-
+            checked_jam_stmt_fuel varctxt vars (S depth) fuel' body -;
+          let '(body', changed) := body_res in
+          pure (Loop.Loop lb ub body', changed)
+      | Loop.Instr _ _ => pure (st, false)
+      | Loop.Seq sts =>
+          BIND sts_res <-
+            checked_jam_stmt_list_fuel varctxt vars depth fuel' sts -;
+          let '(sts', changed) := sts_res in
+          pure (Loop.Seq sts', changed)
+      | Loop.Guard tst body =>
+          BIND body_res <-
+            checked_jam_stmt_fuel varctxt vars depth fuel' body -;
+          let '(body', changed) := body_res in
+          pure (Loop.Guard tst body', changed)
+      end
+  end
+with checked_jam_stmt_list_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel : nat) (sts : Loop.stmt_list) {struct fuel}
+    : imp (Loop.stmt_list * bool) :=
+  match fuel with
+  | O => pure (sts, false)
+  | S fuel' =>
+      match sts with
+      | Loop.SNil => pure (Loop.SNil, false)
+      | Loop.SCons st Loop.SNil =>
+          BIND st_res <-
+            checked_jam_stmt_fuel varctxt vars depth fuel' st -;
+          let '(st', changed) := st_res in
+          pure (Loop.SCons st' Loop.SNil, changed)
+      | Loop.SCons st1 (Loop.SCons st2 rest) =>
+          BIND st1_res <-
+            checked_jam_stmt_fuel varctxt vars depth fuel' st1 -;
+          let '(st1', changed1) := st1_res in
+          BIND st2_res <-
+            checked_jam_stmt_fuel varctxt vars depth fuel' st2 -;
+          let '(st2', changed2) := st2_res in
+          BIND fused_opt <-
+            checked_try_jam_pair varctxt vars depth st1' st2' -;
+          match fused_opt with
+          | Some fused =>
+              BIND rest_res <-
+                checked_jam_stmt_list_fuel
+                  varctxt vars depth fuel' (Loop.SCons fused rest) -;
+              let '(sts', changed_rest) := rest_res in
+              pure (sts', true || changed1 || changed2 || changed_rest)
+          | None =>
+              BIND tail_res <-
+                checked_jam_stmt_list_fuel
+                  varctxt vars depth fuel' (Loop.SCons st2' rest) -;
+              let '(tail', changed_tail) := tail_res in
+              pure (Loop.SCons st1' tail',
+                    changed1 || changed2 || changed_tail)
+          end
+      end
+  end.
+
+Definition checked_jam_stmt
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth : nat) (st : Loop.stmt) : imp (Loop.stmt * bool) :=
+  checked_jam_stmt_fuel
+    varctxt vars depth (S (stmt_size st + stmt_size st)) st.
+
+Fixpoint checked_unrolljam_stmt_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel factor : nat) (st : Loop.stmt) {struct fuel}
+    : imp Loop.stmt :=
+  match fuel with
+  | O => pure st
+  | S fuel' =>
+      match st with
+      | Loop.Loop lb ub body =>
+          BIND jammed_res <-
+            checked_jam_stmt
+              varctxt vars depth
+              (Unroll.block_unroll_stmt factor lb ub body) -;
+          let '(jammed, _) := jammed_res in
+          checked_descend_unrolljam_stmt_fuel
+            varctxt vars depth fuel' factor jammed
+      | Loop.Instr _ _ => pure st
+      | Loop.Seq sts =>
+          BIND sts' <-
+            checked_unrolljam_stmt_list_fuel
+              varctxt vars depth fuel' factor sts -;
+          pure (Loop.Seq sts')
+      | Loop.Guard tst body =>
+          BIND body' <-
+            checked_unrolljam_stmt_fuel
+              varctxt vars depth fuel' factor body -;
+          pure (Loop.Guard tst body')
+      end
+  end
+with checked_unrolljam_stmt_list_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel factor : nat) (sts : Loop.stmt_list) {struct fuel}
+    : imp Loop.stmt_list :=
+  match fuel with
+  | O => pure sts
+  | S fuel' =>
+      match sts with
+      | Loop.SNil => pure Loop.SNil
+      | Loop.SCons st sts' =>
+          BIND st' <-
+            checked_unrolljam_stmt_fuel
+              varctxt vars depth fuel' factor st -;
+          BIND sts'' <-
+            checked_unrolljam_stmt_list_fuel
+              varctxt vars depth fuel' factor sts' -;
+          pure (Loop.SCons st' sts'')
+      end
+  end
+with checked_descend_unrolljam_stmt_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel factor : nat) (st : Loop.stmt) {struct fuel}
+    : imp Loop.stmt :=
+  match fuel with
+  | O => pure st
+  | S fuel' =>
+      match st with
+      | Loop.Loop lb ub body =>
+          BIND body' <-
+            checked_unrolljam_stmt_fuel
+              varctxt vars (S depth) fuel' factor body -;
+          pure (Loop.Loop lb ub body')
+      | Loop.Instr _ _ => pure st
+      | Loop.Seq sts =>
+          BIND sts' <-
+            checked_descend_unrolljam_stmt_list_fuel
+              varctxt vars depth fuel' factor sts -;
+          pure (Loop.Seq sts')
+      | Loop.Guard tst body =>
+          BIND body' <-
+            checked_descend_unrolljam_stmt_fuel
+              varctxt vars depth fuel' factor body -;
+          pure (Loop.Guard tst body')
+      end
+  end
+with checked_descend_unrolljam_stmt_list_fuel
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (depth fuel factor : nat) (sts : Loop.stmt_list) {struct fuel}
+    : imp Loop.stmt_list :=
+  match fuel with
+  | O => pure sts
+  | S fuel' =>
+      match sts with
+      | Loop.SNil => pure Loop.SNil
+      | Loop.SCons st sts' =>
+          BIND st' <-
+            checked_descend_unrolljam_stmt_fuel
+              varctxt vars depth fuel' factor st -;
+          BIND sts'' <-
+            checked_descend_unrolljam_stmt_list_fuel
+              varctxt vars depth fuel' factor sts' -;
+          pure (Loop.SCons st' sts'')
+      end
+  end.
+
+Definition checked_unrolljam_stmt
+    (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
+    (factor : nat) (st : Loop.stmt) : imp Loop.stmt :=
+  checked_unrolljam_stmt_fuel
+    varctxt vars 0
+    (S (stmt_size st + stmt_size st + stmt_size st))
+    factor st.
+
+Definition checked_unrolljam_loop
+    (factor : nat) (prog : Loop.t) : imp Loop.t :=
+  let '(st, ctxt, vars) := prog in
+  BIND st' <- checked_unrolljam_stmt ctxt vars factor st -;
+  pure (st', ctxt, vars).
 
 End LoopJamLower.

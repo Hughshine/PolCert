@@ -1,4 +1,6 @@
 Require Import SPolIRs.
+Require Import ImpureAlarmConfig.
+Require Import Vpl.Impure.
 Require Import LoopJamLower.
 
 Module CoreLoopJamLower := LoopJamLower SPolIRs.
@@ -22,3 +24,7 @@ Definition unrolljam_stmt : nat -> SPolIRs.Loop.stmt -> SPolIRs.Loop.stmt :=
 
 Definition unrolljam_loop : nat -> SPolIRs.Loop.t -> SPolIRs.Loop.t :=
   CoreLoopJamLower.unrolljam_loop.
+
+Definition checked_unrolljam_loop :
+  nat -> SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreLoopJamLower.checked_unrolljam_loop.
