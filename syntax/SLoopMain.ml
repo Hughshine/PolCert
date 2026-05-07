@@ -3155,6 +3155,21 @@ let pluto_unroll_factor cfg =
       end
   | None -> 8
 
+let checked_unrolljam_fusion_guard loop fuel =
+  let plan : SLoopJamValidator.CoreLoopJamValidator.JamCore.jam_plan =
+    {
+      SLoopJamValidator.CoreLoopJamValidator.JamCore.jam_outer_dim = nat_of_int 0;
+      jam_factor = fuel;
+    }
+  in
+  let (cert_res, cert_ok) =
+    SLoopJamValidator.checked_loop_jam_current loop plan
+  in
+  cert_ok &&
+  match cert_res with
+  | Okk _ -> true
+  | Err _ -> false
+
 let apply_const_unroll_postpass cfg loop =
   if cfg.force_const_unroll then begin
     let cleanup_loop loop =
@@ -3167,7 +3182,11 @@ let apply_const_unroll_postpass cfg loop =
     if cfg.pluto_unrolljam_seen then begin
       let fuel = nat_of_int (pluto_unroll_factor cfg) in
       if SLoopUnroll.block_unroll_changed fuel loop then
-        cleanup_loop (SLoopUnroll.block_unroll fuel loop)
+        let block_unrolled = cleanup_loop (SLoopUnroll.block_unroll fuel loop) in
+        if checked_unrolljam_fusion_guard loop fuel then
+          cleanup_loop (SLoopJamLower.unrolljam_loop fuel loop)
+        else
+          block_unrolled
       else if const_changed then
         loop
       else

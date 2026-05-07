@@ -105,11 +105,25 @@ TOP_LEVEL_ROUTES = [
         ],
     },
     {
-        "route": "checked constant-bound and block/remainder unroll post pass with cleanup",
+        "route": "checked unroll-jam post pass with cleanup",
         "cli": "polopt --const-unroll <file.loop> / polopt --pluto-compat --unrolljam [--ufactor N] on sequential Loop IR",
         "theorem_file": "polygen/LoopUnroll.v",
         "theorem_names": ["const_unroll_correct", "block_unroll_correct"],
-        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use a verified block/remainder unroll over ordinary Loop IR, followed by verified cleanup.",
+        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use block/remainder unrolling, and same-bound sibling loops are jam-fused only after the extracted jam validator accepts the original current band.",
+    },
+    {
+        "route": "loop-native same-bound sibling jam theorem",
+        "cli": "internal theorem-facing route used by checked --unrolljam fusion",
+        "theorem_file": "src/LoopJamNative.v",
+        "theorem_names": ["jammed_two_loop_instance_refines_unjammed"],
+        "note": "The theorem proves that a jammed same-range sibling-loop instance list refines the original unjammed sibling loops under the trace cross-permutability certificate.",
+    },
+    {
+        "route": "extracted sibling-loop jam lowerer",
+        "cli": "internal post pass used after checked block unroll",
+        "theorem_file": "src/LoopJamLower.v",
+        "theorem_names": ["try_jam_pair_exact_sound"],
+        "note": "The extracted lowerer fuses syntactically same-bound sibling loops; the driver only emits the true jammed shape when the extracted jam validator accepts the original current band.",
     },
     {
         "route": "verified Loop cleanup post pass",
