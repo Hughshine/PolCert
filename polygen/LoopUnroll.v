@@ -501,6 +501,100 @@ Proof.
   simpl in H. exact H.
 Qed.
 
+Definition block_iter_expr
+    (factor offset: nat) (lb: Loop.expr) : Loop.expr :=
+  add_const_expr
+    (Loop.Sum (Subst.lift_expr lb) (Loop.Mult (Z.of_nat factor) (Loop.Var 0)))
+    (Z.of_nat offset).
+
+Fixpoint block_offset_stmt_list
+    (fuel factor offset: nat) (lb: Loop.expr) (body: Loop.stmt)
+    : Loop.stmt_list :=
+  match fuel with
+  | O => Loop.SNil
+  | S fuel' =>
+      Loop.SCons
+        (Subst.subst_stmt_at 0
+          (block_iter_expr factor offset lb)
+          (insert_stmt_at 1 body))
+        (block_offset_stmt_list fuel' factor (S offset) lb body)
+  end.
+
+Lemma block_iter_expr_correct :
+  forall factor offset lb j env,
+    Loop.eval_expr (j :: env) (block_iter_expr factor offset lb) =
+    Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset.
+Proof.
+  intros factor offset lb j env.
+  unfold block_iter_expr.
+  rewrite add_const_expr_correct.
+  simpl. rewrite Subst.lift_expr_correct. lia.
+Qed.
+
+Lemma block_offset_stmt_list_semantics :
+  forall fuel factor offset lb body j env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (block_offset_stmt_list fuel factor offset lb body))
+      (j :: env) mem1 mem2 <->
+    Instr.IterSem.iter_semantics
+      (fun x => Loop.loop_semantics body (x :: env))
+      (Zrange
+        (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset)
+        (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset + Z.of_nat fuel))
+      mem1 mem2.
+Proof.
+  induction fuel as [|fuel IH]; intros factor offset lb body j env mem1 mem2; simpl.
+  - rewrite Zrange_empty by lia.
+    split; intros Hsem; inversion_clear Hsem; constructor.
+  - remember (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset) as base.
+    replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.pos (Pos.of_succ_nat offset))
+      with (base + 1) by (subst base; lia).
+    replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat offset + Z.pos (Pos.of_succ_nat fuel))
+      with (base + 1 + Z.of_nat fuel) by (subst base; lia).
+    rewrite Zrange_begin by lia.
+    replace (base + Z.pos (Pos.of_succ_nat fuel))
+      with (base + 1 + Z.of_nat fuel) by lia.
+    split; intros Hsem.
+    + inversion_clear Hsem.
+      apply Subst.subst_stmt_at_semantics in H.
+      rewrite block_iter_expr_correct in H.
+      rewrite <- Heqbase in H.
+      match type of H with
+      | Loop.loop_semantics _ _ ?m1 ?m2 =>
+          pose proof (proj1 insert_stmt_at_correct body [base] j env m1 m2)
+            as Hinsert;
+          simpl in Hinsert;
+          apply Hinsert in H
+      end.
+      apply IH in H0.
+      replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset))
+        with (base + 1) in H0 by (subst base; lia).
+      replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset) + Z.of_nat fuel)
+        with (base + 1 + Z.of_nat fuel) in H0 by (subst base; lia).
+      econstructor.
+      * exact H.
+      * exact H0.
+    + inversion_clear Hsem.
+      eapply Loop.LSeq.
+      * apply Subst.subst_stmt_at_semantics.
+        rewrite block_iter_expr_correct.
+        rewrite <- Heqbase.
+        match type of H with
+        | Loop.loop_semantics _ _ ?m1 ?m2 =>
+            pose proof (proj1 insert_stmt_at_correct body [base] j env m1 m2)
+              as Hinsert;
+            simpl in Hinsert;
+            apply <- Hinsert in H
+        end.
+        exact H.
+      * apply IH.
+        replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset))
+          with (base + 1) by (subst base; lia).
+        replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset) + Z.of_nat fuel)
+          with (base + 1 + Z.of_nat fuel) by (subst base; lia).
+        exact H0.
+Qed.
+
 Lemma checked_peel_steps_semantics :
   forall steps cur ub body env mem1 mem2,
     check_peel_steps cur steps = true ->
