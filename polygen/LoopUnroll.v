@@ -1,4 +1,5 @@
 Require Import List.
+Require Import Bool.
 Require Import Lia.
 Require Import ZArith.
 Import ListNotations.
@@ -20,18 +21,92 @@ Definition succ_expr (e: Loop.expr) : Loop.expr :=
   | _ => Loop.Sum e (Loop.Constant 1)
   end.
 
-Fixpoint peel_unroll_stmt_list
-    (fuel: nat) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
+Lemma expr_eqb_refl :
+  forall e,
+    Subst.expr_eqb e e = true.
+Proof.
+  induction e; simpl.
+  - apply Z.eqb_refl.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite Z.eqb_refl, IHe. reflexivity.
+  - rewrite IHe, Z.eqb_refl. reflexivity.
+  - rewrite IHe, Z.eqb_refl. reflexivity.
+  - apply Nat.eqb_refl.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+Qed.
+
+Fixpoint prefix_peel_steps (fuel: nat) (cur: Loop.expr) : list Loop.expr :=
   match fuel with
-  | O =>
-      Loop.SCons (Loop.Loop cur ub body) Loop.SNil
+  | O => nil
   | S fuel' =>
+      cur :: prefix_peel_steps fuel' (succ_expr cur)
+  end.
+
+Fixpoint check_peel_steps (expected: Loop.expr) (steps: list Loop.expr) : bool :=
+  match steps with
+  | nil => true
+  | step :: steps' =>
+      Subst.expr_eqb step expected &&
+      check_peel_steps (succ_expr expected) steps'
+  end.
+
+Fixpoint lower_peel_steps
+    (expected ub: Loop.expr) (body: Loop.stmt) (steps: list Loop.expr)
+    : Loop.stmt_list :=
+  match steps with
+  | nil =>
+      Loop.SCons (Loop.Loop expected ub body) Loop.SNil
+  | step :: steps' =>
       Loop.SCons
         (Loop.Guard
-           (Loop.LE (succ_expr cur) ub)
-           (Subst.subst_stmt_at 0 cur body))
-        (peel_unroll_stmt_list fuel' (succ_expr cur) ub body)
+           (Loop.LE (succ_expr step) ub)
+           (Subst.subst_stmt_at 0 step body))
+        (lower_peel_steps (succ_expr expected) ub body steps')
   end.
+
+Inductive peel_plan : Type :=
+| PeelPrefix : list Loop.expr -> peel_plan.
+
+Definition prefix_peel_plan (fuel: nat) (cur: Loop.expr) : peel_plan :=
+  PeelPrefix (prefix_peel_steps fuel cur).
+
+Definition check_peel_plan
+    (cur _ub: Loop.expr) (plan: peel_plan) : bool :=
+  match plan with
+  | PeelPrefix steps => check_peel_steps cur steps
+  end.
+
+Definition lower_peel_plan_stmt_list
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
+  match plan with
+  | PeelPrefix steps => lower_peel_steps cur ub body steps
+  end.
+
+Definition peel_unroll_stmt_list
+    (fuel: nat) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
+  lower_peel_plan_stmt_list (prefix_peel_plan fuel cur) cur ub body.
+
+Lemma prefix_peel_steps_checked :
+  forall fuel cur,
+    check_peel_steps cur (prefix_peel_steps fuel cur) = true.
+Proof.
+  induction fuel as [|fuel IH]; intros cur; simpl.
+  - reflexivity.
+  - rewrite expr_eqb_refl. apply IH.
+Qed.
+
+Example check_peel_steps_accepts_prefix_example :
+  check_peel_steps
+    (Loop.Var 0)
+    (prefix_peel_steps 2 (Loop.Var 0)) = true.
+Proof. reflexivity. Qed.
+
+Example check_peel_steps_rejects_skipped_prefix_example :
+  check_peel_steps
+    (Loop.Var 0)
+    [succ_expr (Loop.Var 0)] = false.
+Proof. reflexivity. Qed.
 
 Fixpoint seq_values (vals: list Z) (body: Loop.stmt) : Loop.stmt_list :=
   match vals with
@@ -99,59 +174,55 @@ Proof.
   intros env e. destruct e; simpl; lia.
 Qed.
 
-Lemma peel_unroll_stmt_list_semantics :
-  forall fuel cur ub body env mem1 mem2,
+Lemma checked_peel_steps_semantics :
+  forall steps cur ub body env mem1 mem2,
+    check_peel_steps cur steps = true ->
     Loop.loop_semantics
-      (Loop.Seq (peel_unroll_stmt_list fuel cur ub body))
+      (Loop.Seq (lower_peel_steps cur ub body steps))
       env mem1 mem2 <->
     Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
 Proof.
-  induction fuel as [|fuel IH]; intros cur ub body env mem1 mem2; simpl.
+  induction steps as [|step steps IH]; intros cur ub body env mem1 mem2 Hcheck; simpl in *.
   - apply seq_single_loop_semantics.
-  - remember (Loop.eval_expr env cur) as curv.
+  - apply andb_true_iff in Hcheck as [Hstep Hrest].
+    pose proof (Subst.expr_eqb_correct _ _ Hstep env) as Hstep_eval.
+    remember (Loop.eval_expr env cur) as curv.
     remember (Loop.eval_expr env ub) as ubv.
     assert (Htest_true :
-      Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true <->
+      Loop.eval_test env (Loop.LE (succ_expr step) ub) = true <->
       curv < ubv).
     {
-      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Hstep_eval.
+      rewrite Z.leb_le. lia.
     }
     assert (Htest_false :
-      Loop.eval_test env (Loop.LE (succ_expr cur) ub) = false <->
+      Loop.eval_test env (Loop.LE (succ_expr step) ub) = false <->
       curv >= ubv).
     {
-      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
+      subst curv ubv. simpl. rewrite succ_expr_correct. rewrite Hstep_eval.
+      rewrite Z.leb_gt. lia.
     }
     split; intros Hsem.
     + inversion_clear Hsem.
-      apply IH in H0.
+      eapply (proj1 (IH (succ_expr cur) ub body env _ _ Hrest)) in H0.
       rename H0 into Htail.
       destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
       * apply Loop.LLoop.
         rewrite <- Heqcurv, <- Hequbv.
         rewrite Zrange_begin by lia.
-        inversion H; subst; clear H.
-        -- match goal with
-           | Hbody: Loop.loop_semantics (Subst.subst_stmt_at 0 cur body) env _ _,
-             Hguard: Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true |- _ =>
-               apply Subst.subst_stmt_at_semantics in Hbody;
-               simpl in Hbody;
-               inversion Htail; subst; clear Htail;
-               simpl in *;
-               try rewrite succ_expr_correct in *;
-               try rewrite <- Heqcurv in *;
-               try rewrite <- Hequbv in *;
-               econstructor; eauto
-           end.
-        -- match goal with
-           | Hguard: Loop.eval_test env (Loop.LE (succ_expr cur) ub) = false |- _ =>
-               apply Htest_false in Hguard; lia
-           end.
-      * inversion H; subst; clear H.
-        -- match goal with
-           | Hguard: Loop.eval_test env (Loop.LE (succ_expr cur) ub) = true |- _ =>
-               apply Htest_true in Hguard; lia
-           end.
+        inversion_clear H as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Subst.subst_stmt_at_semantics in Hbody.
+           simpl in Hbody.
+           rewrite Hstep_eval in Hbody.
+           inversion Htail; subst; clear Htail;
+           simpl in *;
+           try rewrite succ_expr_correct in *;
+           try rewrite <- Heqcurv in *;
+           try rewrite <- Hequbv in *;
+           econstructor; eauto.
+        -- apply Htest_false in Hguard. lia.
+      * inversion_clear H as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Htest_true in Hguard. lia.
         -- inversion Htail; subst; clear Htail.
            simpl in *;
            try rewrite succ_expr_correct in *;
@@ -180,13 +251,13 @@ Proof.
         -- apply Loop.LGuardTrue.
            ++ apply Subst.subst_stmt_at_semantics.
               simpl.
-              rewrite <- Heqcurv.
+              rewrite Hstep_eval.
               match goal with
               | Hbody: Loop.loop_semantics body (curv :: env) _ _ |- _ =>
                   exact Hbody
               end.
            ++ apply Htest_true. exact Hlt.
-        -- apply IH.
+        -- eapply (proj2 (IH (succ_expr cur) ub body env _ _ Hrest)).
            apply Loop.LLoop.
            simpl. rewrite succ_expr_correct.
            rewrite <- Heqcurv, <- Hequbv.
@@ -205,11 +276,57 @@ Proof.
         eapply Loop.LSeq.
         -- apply Loop.LGuardFalse.
            apply Htest_false. exact Hge.
-        -- apply IH.
+        -- eapply (proj2 (IH (succ_expr cur) ub body env _ _ Hrest)).
            apply Loop.LLoop.
            simpl. rewrite succ_expr_correct.
            rewrite Zrange_empty by lia.
            constructor.
+Qed.
+
+Lemma checked_peel_plan_stmt_list_semantics :
+  forall plan cur ub body env mem1 mem2,
+    check_peel_plan cur ub plan = true ->
+    Loop.loop_semantics
+      (Loop.Seq (lower_peel_plan_stmt_list plan cur ub body))
+      env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros [steps] cur ub body env mem1 mem2 Hcheck.
+  simpl in *.
+  apply checked_peel_steps_semantics. exact Hcheck.
+Qed.
+
+Definition checked_lower_peel_plan_stmt
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : option Loop.stmt :=
+  if check_peel_plan cur ub plan
+  then Some (Loop.Seq (lower_peel_plan_stmt_list plan cur ub body))
+  else None.
+
+Theorem checked_lower_peel_plan_stmt_correct :
+  forall plan cur ub body st env mem1 mem2,
+    checked_lower_peel_plan_stmt plan cur ub body = Some st ->
+    Loop.loop_semantics st env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros plan cur ub body st env mem1 mem2 Hlower.
+  unfold checked_lower_peel_plan_stmt in Hlower.
+  destruct (check_peel_plan cur ub plan) eqn:Hcheck; try discriminate.
+  inversion Hlower; subst; clear Hlower.
+  apply checked_peel_plan_stmt_list_semantics. exact Hcheck.
+Qed.
+
+Lemma peel_unroll_stmt_list_semantics :
+  forall fuel cur ub body env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (peel_unroll_stmt_list fuel cur ub body))
+      env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros fuel cur ub body env mem1 mem2.
+  unfold peel_unroll_stmt_list.
+  apply checked_peel_plan_stmt_list_semantics.
+  unfold check_peel_plan, prefix_peel_plan.
+  apply prefix_peel_steps_checked.
 Qed.
 
 Fixpoint const_unroll_stmt (st: Loop.stmt) : Loop.stmt :=
