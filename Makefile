@@ -239,7 +239,7 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-vector-current-suite test-second-level-tile-suite test-pluto-compat-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity
+.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-vector-current-suite test-second-level-tile-suite test-pluto-compat-suite test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite unrolljam-effect-corpus artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -394,6 +394,10 @@ test-pluto-bug-matmul-parallel-hint: polopt polcert.ini
 
 test-diamond-tiling-suite: polopt polcert
 	python3 tools/diamond_tiling/run_pluto_diamond_suite.py
+
+unrolljam-effect-corpus: polopt
+	python3 tools/artifact/explore_unrolljam_effect_corpus.py \
+		--output-root /tmp/polcert-unrolljam-effect-corpus
 
 artifact-check: polopt polcert
 	python3 tools/artifact/run_artifact_check.py --mode smoke

@@ -74,6 +74,7 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 "tools/artifact/explore_codegen_gaps.py",
                 "tools/artifact/explore_flag_effects.py",
                 "tools/artifact/explore_identity_compositions.py",
+                "tools/artifact/explore_unrolljam_effect_corpus.py",
                 "tools/artifact/generate_capability_matrix.py",
                 "tools/artifact/proof_report.py",
                 "tools/end_to_end_c/loop_to_c.py",
@@ -118,6 +119,16 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
                 str(out_dir / "codegen-gaps"),
             ],
             60,
+        ),
+        (
+            "unrolljam-effect-corpus",
+            [
+                sys.executable,
+                "tools/artifact/explore_unrolljam_effect_corpus.py",
+                "--output-root",
+                str(out_dir / "unrolljam-effect-corpus"),
+            ],
+            180,
         ),
         (
             "identity-composition-exploration",
