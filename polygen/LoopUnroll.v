@@ -21,6 +21,12 @@ Definition succ_expr (e: Loop.expr) : Loop.expr :=
   | _ => Loop.Sum e (Loop.Constant 1)
   end.
 
+Definition pred_expr (e: Loop.expr) : Loop.expr :=
+  match e with
+  | Loop.Constant c => Loop.Constant (c - 1)
+  | _ => Loop.Sum e (Loop.Constant (-1))
+  end.
+
 Lemma expr_eqb_refl :
   forall e,
     Subst.expr_eqb e e = true.
@@ -65,8 +71,25 @@ Fixpoint lower_peel_steps
         (lower_peel_steps (succ_expr expected) ub body steps')
   end.
 
+Fixpoint suffix_peel_stmt
+    (fuel: nat) (lb ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match fuel with
+  | O => Loop.Loop lb ub body
+  | S fuel' =>
+      let last := pred_expr ub in
+      Loop.Seq
+        (Loop.SCons
+          (suffix_peel_stmt fuel' lb last body)
+          (Loop.SCons
+            (Loop.Guard
+              (Loop.LE (succ_expr lb) ub)
+              (Subst.subst_stmt_at 0 last body))
+            Loop.SNil))
+  end.
+
 Inductive peel_plan : Type :=
-| PeelPrefix : list Loop.expr -> peel_plan.
+| PeelPrefix : list Loop.expr -> peel_plan
+| PeelSuffix : nat -> peel_plan.
 
 Definition prefix_peel_plan (fuel: nat) (cur: Loop.expr) : peel_plan :=
   PeelPrefix (prefix_peel_steps fuel cur).
@@ -75,12 +98,21 @@ Definition check_peel_plan
     (cur _ub: Loop.expr) (plan: peel_plan) : bool :=
   match plan with
   | PeelPrefix steps => check_peel_steps cur steps
+  | PeelSuffix _ => true
   end.
 
 Definition lower_peel_plan_stmt_list
     (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt_list :=
   match plan with
   | PeelPrefix steps => lower_peel_steps cur ub body steps
+  | PeelSuffix fuel => Loop.SCons (suffix_peel_stmt fuel cur ub body) Loop.SNil
+  end.
+
+Definition lower_peel_plan_stmt
+    (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match plan with
+  | PeelPrefix steps => Loop.Seq (lower_peel_steps cur ub body steps)
+  | PeelSuffix fuel => suffix_peel_stmt fuel cur ub body
   end.
 
 Definition peel_unroll_stmt_list
@@ -106,6 +138,13 @@ Example check_peel_steps_rejects_skipped_prefix_example :
   check_peel_steps
     (Loop.Var 0)
     [succ_expr (Loop.Var 0)] = false.
+Proof. reflexivity. Qed.
+
+Example check_peel_plan_accepts_suffix_example :
+  check_peel_plan
+    (Loop.Var 0)
+    (Loop.Var 1)
+    (PeelSuffix 2) = true.
 Proof. reflexivity. Qed.
 
 Fixpoint seq_values (vals: list Z) (body: Loop.stmt) : Loop.stmt_list :=
@@ -167,11 +206,95 @@ Proof.
     + constructor.
 Qed.
 
+Lemma seq_single_stmt_semantics :
+  forall st env mem1 mem2,
+    Loop.loop_semantics
+      (Loop.Seq (Loop.SCons st Loop.SNil))
+      env mem1 mem2 <->
+    Loop.loop_semantics st env mem1 mem2.
+Proof.
+  intros st env mem1 mem2.
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    inversion H0; subst; clear H0.
+    exact H.
+  - eapply Loop.LSeq.
+    + exact Hsem.
+    + constructor.
+Qed.
+
 Lemma succ_expr_correct :
   forall env e,
     Loop.eval_expr env (succ_expr e) = Loop.eval_expr env e + 1.
 Proof.
   intros env e. destruct e; simpl; lia.
+Qed.
+
+Lemma pred_expr_correct :
+  forall env e,
+    Loop.eval_expr env (pred_expr e) = Loop.eval_expr env e - 1.
+Proof.
+  intros env e. destruct e; simpl; lia.
+Qed.
+
+Lemma iter_semantics_app :
+  forall (A: Type) (P: A -> State.t -> State.t -> Prop) xs ys mem1 mem2 mem3,
+    Instr.IterSem.iter_semantics P xs mem1 mem2 ->
+    Instr.IterSem.iter_semantics P ys mem2 mem3 ->
+    Instr.IterSem.iter_semantics P (xs ++ ys) mem1 mem3.
+Proof.
+  intros A P xs ys mem1 mem2 mem3 Hxs Hys.
+  induction Hxs.
+  - simpl. exact Hys.
+  - simpl. econstructor; eauto.
+Qed.
+
+Lemma iter_semantics_app_inv :
+  forall (A: Type) (P: A -> State.t -> State.t -> Prop) xs ys mem1 mem3,
+    Instr.IterSem.iter_semantics P (xs ++ ys) mem1 mem3 ->
+    exists mem2,
+      Instr.IterSem.iter_semantics P xs mem1 mem2 /\
+      Instr.IterSem.iter_semantics P ys mem2 mem3.
+Proof.
+  induction xs as [|x xs IH]; intros ys mem1 mem3 Hsem; simpl in Hsem.
+  - exists mem1. split; [constructor|exact Hsem].
+  - inversion_clear Hsem.
+    apply IH in H0 as [mem2 [Hxs Hys]].
+    exists mem2. split; [econstructor; eauto|exact Hys].
+Qed.
+
+Lemma iter_semantics_single_inv :
+  forall (A: Type) (P: A -> State.t -> State.t -> Prop) x mem1 mem2,
+    Instr.IterSem.iter_semantics P [x] mem1 mem2 ->
+    P x mem1 mem2.
+Proof.
+  intros A P x mem1 mem2 Hsem.
+  inversion_clear Hsem.
+  inversion H0; subst; clear H0.
+  exact H.
+Qed.
+
+Lemma seq_two_semantics :
+  forall st1 st2 env mem1 mem3,
+    Loop.loop_semantics
+      (Loop.Seq (Loop.SCons st1 (Loop.SCons st2 Loop.SNil)))
+      env mem1 mem3 <->
+    exists mem2,
+      Loop.loop_semantics st1 env mem1 mem2 /\
+      Loop.loop_semantics st2 env mem2 mem3.
+Proof.
+  intros st1 st2 env mem1 mem3.
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    inversion_clear H0.
+    inversion H2; subst; clear H2.
+    exists mem2. split; assumption.
+  - destruct Hsem as [mem2 [Hst1 Hst2]].
+    eapply Loop.LSeq.
+    + exact Hst1.
+    + eapply Loop.LSeq.
+      * exact Hst2.
+      * constructor.
 Qed.
 
 Lemma checked_peel_steps_semantics :
@@ -283,6 +406,94 @@ Proof.
            constructor.
 Qed.
 
+Lemma suffix_peel_stmt_semantics :
+  forall fuel lb ub body env mem1 mem2,
+    Loop.loop_semantics (suffix_peel_stmt fuel lb ub body) env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop lb ub body) env mem1 mem2.
+Proof.
+  induction fuel as [|fuel IH]; intros lb ub body env mem1 mem2; simpl.
+  - reflexivity.
+  - remember (Loop.eval_expr env lb) as lbv.
+    remember (Loop.eval_expr env ub) as ubv.
+    assert (Htest_true :
+      Loop.eval_test env (Loop.LE (succ_expr lb) ub) = true <->
+      lbv < ubv).
+    {
+      subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
+    }
+    assert (Htest_false :
+      Loop.eval_test env (Loop.LE (succ_expr lb) ub) = false <->
+      lbv >= ubv).
+    {
+      subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
+    }
+    split; intros Hsem.
+    + apply seq_two_semantics in Hsem as [mem_mid [Hprefix Hlast]].
+      apply IH in Hprefix.
+      destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+      * apply Loop.LLoop.
+        rewrite <- Heqlbv, <- Hequbv.
+        replace (Zrange lbv ubv) with (Zrange lbv (ubv - 1) ++ [ubv - 1])
+          by (symmetry; apply Zrange_end; lia).
+        inversion_clear Hprefix.
+        inversion_clear Hlast as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Subst.subst_stmt_at_semantics in Hbody.
+           simpl in Hbody.
+           rewrite pred_expr_correct in Hbody.
+           rewrite <- Hequbv in Hbody.
+           simpl in H.
+           rewrite pred_expr_correct in H.
+           rewrite <- Heqlbv, <- Hequbv in H.
+           eapply iter_semantics_app.
+           ++ exact H.
+           ++ econstructor; [exact Hbody|constructor].
+        -- apply Htest_false in Hguard. lia.
+      * inversion_clear Hprefix.
+        simpl in H.
+        rewrite pred_expr_correct in H.
+        rewrite <- Heqlbv, <- Hequbv in H.
+        rewrite Zrange_empty in H by lia.
+        inversion H; subst; clear H.
+        inversion_clear Hlast as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+        -- apply Htest_true in Hguard. lia.
+        -- apply Loop.LLoop.
+           simpl.
+           rewrite Zrange_empty by lia.
+           constructor.
+    + inversion_clear Hsem.
+      destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+      * rewrite <- Heqlbv, <- Hequbv in H.
+        replace (Zrange lbv ubv) with (Zrange lbv (ubv - 1) ++ [ubv - 1]) in H
+          by (symmetry; apply Zrange_end; lia).
+        apply iter_semantics_app_inv in H as [mem_mid [Hprefix Hlast]].
+        apply iter_semantics_single_inv in Hlast as Hbody.
+        apply seq_two_semantics.
+        exists mem_mid. split.
+        -- apply IH.
+           apply Loop.LLoop.
+           simpl. rewrite pred_expr_correct.
+           rewrite <- Heqlbv, <- Hequbv.
+           exact Hprefix.
+        -- apply Loop.LGuardTrue.
+           ++ apply Subst.subst_stmt_at_semantics.
+              simpl. rewrite pred_expr_correct.
+              rewrite <- Hequbv.
+              exact Hbody.
+           ++ apply Htest_true. exact Hlt.
+      * rewrite <- Heqlbv, <- Hequbv in H.
+        rewrite Zrange_empty in H by lia.
+        inversion H; subst; clear H.
+        apply seq_two_semantics.
+        eexists. split.
+        -- apply IH.
+           apply Loop.LLoop.
+           simpl. rewrite pred_expr_correct.
+           rewrite Zrange_empty by lia.
+           constructor.
+        -- apply Loop.LGuardFalse.
+           apply Htest_false. exact Hge.
+Qed.
+
 Lemma checked_peel_plan_stmt_list_semantics :
   forall plan cur ub body env mem1 mem2,
     check_peel_plan cur ub plan = true ->
@@ -291,15 +502,31 @@ Lemma checked_peel_plan_stmt_list_semantics :
       env mem1 mem2 <->
     Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
 Proof.
-  intros [steps] cur ub body env mem1 mem2 Hcheck.
-  simpl in *.
-  apply checked_peel_steps_semantics. exact Hcheck.
+  intros plan cur ub body env mem1 mem2 Hcheck.
+  destruct plan as [steps|fuel]; simpl in *.
+  - apply checked_peel_steps_semantics. exact Hcheck.
+  - rewrite seq_single_stmt_semantics.
+    apply suffix_peel_stmt_semantics.
+Qed.
+
+Lemma checked_peel_plan_stmt_semantics :
+  forall plan cur ub body env mem1 mem2,
+    check_peel_plan cur ub plan = true ->
+    Loop.loop_semantics
+      (lower_peel_plan_stmt plan cur ub body)
+      env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop cur ub body) env mem1 mem2.
+Proof.
+  intros plan cur ub body env mem1 mem2 Hcheck.
+  destruct plan as [steps|fuel]; simpl in *.
+  - apply checked_peel_steps_semantics. exact Hcheck.
+  - apply suffix_peel_stmt_semantics.
 Qed.
 
 Definition checked_lower_peel_plan_stmt
     (plan: peel_plan) (cur ub: Loop.expr) (body: Loop.stmt) : option Loop.stmt :=
   if check_peel_plan cur ub plan
-  then Some (Loop.Seq (lower_peel_plan_stmt_list plan cur ub body))
+  then Some (lower_peel_plan_stmt plan cur ub body)
   else None.
 
 Theorem checked_lower_peel_plan_stmt_correct :
@@ -312,7 +539,7 @@ Proof.
   unfold checked_lower_peel_plan_stmt in Hlower.
   destruct (check_peel_plan cur ub plan) eqn:Hcheck; try discriminate.
   inversion Hlower; subst; clear Hlower.
-  apply checked_peel_plan_stmt_list_semantics. exact Hcheck.
+  apply checked_peel_plan_stmt_semantics. exact Hcheck.
 Qed.
 
 Lemma peel_unroll_stmt_list_semantics :
