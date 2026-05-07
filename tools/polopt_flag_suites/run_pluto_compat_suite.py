@@ -535,22 +535,22 @@ CHECKS = [
         effect_absent=("for i0 in range",),
     ),
     Check(
-        "peel-unrolljam-ufactor-variable-loop",
+        "block-unrolljam-ufactor-variable-loop",
         ["--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=3", "--nodiamond-tile", "--noparallel", "--rar"],
         SCALPRIV,
         True,
-        "for i0 in range(0, (N + -3))",
+        "for i0 in range(0, ((N + (-1 * 0)) / 3))",
         "checked post flags: --ufactor=3",
-        effect_needles=("if (1 <= (N + -2))", "b[(N + -1)] = a;"),
+        effect_needles=("b[((0 + (3 * i0)) + 2)] = a;", "for i0 in range((0 + (3 * ((N + (-1 * 0)) / 3))), N)", "b[i0] = a;"),
     ),
     Check(
-        "mixed-const-and-peel-unrolljam",
+        "mixed-const-and-block-unrolljam",
         ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel"],
         MIXED_UNROLL,
         True,
-        "for i0 in range(0, (N + -2))",
+        "for i0 in range(0, ((N + (-1 * 0)) / 2))",
         "checked post flags: --ufactor=2",
-        effect_needles=("c[0] = 0;", "c[1] = 1;", "if (1 <= (N + -1))", "b[(N + -1)] = (N + -1);"),
+        effect_needles=("c[0] = 0;", "c[1] = 1;", "b[((0 + (2 * i0)) + 1)] = ((0 + (2 * i0)) + 1);", "for i0 in range((0 + (2 * ((N + (-1 * 0)) / 2))), N)", "b[i0] = i0;"),
     ),
     Check(
         "reject-default-prevector-parallel",
@@ -1035,7 +1035,9 @@ def run_polopt_compat(
         *args,
         str(fixture),
     ]
-    return subprocess.run(cmd, cwd=str(cwd), text=True, capture_output=True, timeout=timeout + 5, check=False)
+    env = os.environ.copy()
+    env.setdefault("COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini"))
+    return subprocess.run(cmd, cwd=str(cwd), env=env, text=True, capture_output=True, timeout=timeout + 5, check=False)
 
 
 def explicit_control_target(flag: str | None) -> str | None:

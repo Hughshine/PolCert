@@ -93,8 +93,8 @@ def run_polopt_checked_unroll() -> dict[str, object]:
         "stderr": proc.stderr[-1000:],
         "accepted": proc.returncode == 0,
         "checked_factor_note_present": "checked post flags: --ufactor=4" in stdout,
-        "guarded_peel_marker_present": "if (1 <= ((K + 31) / 32))" in stdout,
-        "residual_loop_marker_present": "for i0 in range(0, (((K + 31) / 32) + -4))" in stdout,
+        "block_offset_marker_present": "(4 * i" in stdout and "+ 3)]" in stdout,
+        "checked_remainder_loop_marker_present": "for i" in stdout and " / 4)))" in stdout,
     }
 
 
@@ -137,8 +137,8 @@ def main() -> int:
         and unroll_has_remainder
         and bool(polopt_unroll["accepted"])
         and bool(polopt_unroll["checked_factor_note_present"])
-        and bool(polopt_unroll["guarded_peel_marker_present"])
-        and bool(polopt_unroll["residual_loop_marker_present"])
+        and bool(polopt_unroll["block_offset_marker_present"])
+        and bool(polopt_unroll["checked_remainder_loop_marker_present"])
     )
     return 0 if ok else 1
 

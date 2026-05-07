@@ -389,6 +389,88 @@ Proof.
     apply IH. lia.
 Qed.
 
+Lemma Zrange_0_nat :
+  forall n,
+    Zrange 0 (Z.of_nat n) = map Z.of_nat (n_range n).
+Proof.
+  intro n.
+  unfold Zrange.
+  replace (Z.to_nat (Z.of_nat n - 0)) with n by lia.
+  apply map_ext. intro x. lia.
+Qed.
+
+Fixpoint block_value_ranges
+    (fuel factor: nat) (lb: Z) (js: list Z) : list Z :=
+  match js with
+  | nil => nil
+  | j :: js' =>
+      Zrange
+        (lb + Z.of_nat factor * j)
+        (lb + Z.of_nat factor * j + Z.of_nat fuel) ++
+      block_value_ranges fuel factor lb js'
+  end.
+
+Lemma block_value_ranges_app :
+  forall fuel factor lb xs ys,
+    block_value_ranges fuel factor lb (xs ++ ys) =
+    block_value_ranges fuel factor lb xs ++
+    block_value_ranges fuel factor lb ys.
+Proof.
+  induction xs as [|x xs IH]; intros ys; simpl.
+  - reflexivity.
+  - rewrite IH, app_assoc. reflexivity.
+Qed.
+
+Lemma block_value_ranges_concat :
+  forall fuel factor lb js,
+    block_value_ranges fuel factor lb js =
+    concat
+      (map
+        (fun j =>
+          Zrange
+            (lb + Z.of_nat factor * j)
+            (lb + Z.of_nat factor * j + Z.of_nat fuel))
+        js).
+Proof.
+  induction js as [|j js IH]; simpl.
+  - reflexivity.
+  - rewrite IH. reflexivity.
+Qed.
+
+Lemma block_value_ranges_range_nat :
+  forall factor lb n,
+    (0 < factor)%nat ->
+    block_value_ranges factor factor lb (map Z.of_nat (n_range n)) =
+    Zrange lb (lb + Z.of_nat factor * Z.of_nat n).
+Proof.
+  induction n as [|n IH]; intros Hfactor.
+  - simpl.
+    replace (lb + Z.of_nat factor * Z.of_nat 0) with lb by lia.
+    rewrite Zrange_empty by lia. reflexivity.
+  - simpl n_range.
+    rewrite map_app.
+    rewrite block_value_ranges_app.
+    rewrite IH by exact Hfactor.
+    simpl.
+    rewrite app_nil_r.
+    replace (lb + Z.of_nat factor * Z.of_nat n + Z.of_nat factor)
+      with (lb + Z.of_nat factor * Z.of_nat (S n)) by lia.
+    symmetry. apply Zrange_app; lia.
+Qed.
+
+Lemma block_value_ranges_range :
+  forall factor lb q,
+    (0 < factor)%nat ->
+    0 <= q ->
+    block_value_ranges factor factor lb (Zrange 0 q) =
+    Zrange lb (lb + Z.of_nat factor * q).
+Proof.
+  intros factor lb q Hfactor Hq.
+  replace q with (Z.of_nat (Z.to_nat q)) by (rewrite Z2Nat.id; lia).
+  rewrite Zrange_0_nat.
+  apply block_value_ranges_range_nat. exact Hfactor.
+Qed.
+
 Lemma seq_two_semantics :
   forall st1 st2 env mem1 mem3,
     Loop.loop_semantics
@@ -639,6 +721,220 @@ Proof.
         replace (Loop.eval_expr env lb + Z.of_nat factor * j + Z.of_nat (S offset) + Z.of_nat fuel)
           with (base + 1 + Z.of_nat fuel) by (subst base; lia).
         exact H0.
+Qed.
+
+Definition block_main_loop_stmt
+    (factor: nat) (lb q: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  Loop.Loop
+    (Loop.Constant 0)
+    q
+    (Loop.Seq (block_offset_stmt_list factor factor 0 lb body)).
+
+Lemma block_main_loop_stmt_semantics :
+  forall factor lb q body env mem1 mem2,
+    (0 < factor)%nat ->
+    0 <= Loop.eval_expr env q ->
+    Loop.loop_semantics
+      (block_main_loop_stmt factor lb q body) env mem1 mem2 <->
+    Instr.IterSem.iter_semantics
+      (fun x => Loop.loop_semantics body (x :: env))
+      (Zrange
+        (Loop.eval_expr env lb)
+        (Loop.eval_expr env lb + Z.of_nat factor * Loop.eval_expr env q))
+      mem1 mem2.
+Proof.
+  intros factor lb q body env mem1 mem2 Hfactor Hqnonneg.
+  unfold block_main_loop_stmt.
+  set (lbv := Loop.eval_expr env lb).
+  set (qv := Loop.eval_expr env q).
+  set (f := Z.of_nat factor).
+  split; intros Hsem.
+  - inversion_clear Hsem.
+    simpl in H.
+    fold qv in H.
+    assert (Hblocks :
+      Instr.IterSem.iter_semantics
+        (fun j =>
+          Instr.IterSem.iter_semantics
+            (fun x => Loop.loop_semantics body (x :: env))
+            (Zrange (lbv + f * j) (lbv + f * j + Z.of_nat factor)))
+        (Zrange 0 qv) mem1 mem2).
+    {
+      eapply Instr.IterSem.iter_semantics_map; [|exact H].
+      intros j st1 st2 _ Hbody.
+      apply block_offset_stmt_list_semantics in Hbody.
+      simpl in Hbody.
+      fold lbv f in Hbody.
+      replace (lbv + f * j + 0) with (lbv + f * j) in Hbody by lia.
+      exact Hbody.
+    }
+    subst f.
+    apply iter_semantics_concat_map in Hblocks.
+    rewrite <- block_value_ranges_concat in Hblocks.
+    rewrite block_value_ranges_range in Hblocks by (try exact Hfactor; exact Hqnonneg).
+    exact Hblocks.
+  - subst f.
+    rewrite <- block_value_ranges_range in Hsem by (try exact Hfactor; exact Hqnonneg).
+    rewrite block_value_ranges_concat in Hsem.
+    apply <- iter_semantics_concat_map in Hsem.
+    apply Loop.LLoop.
+    simpl. fold qv.
+    eapply Instr.IterSem.iter_semantics_map; [|exact Hsem].
+    intros j st1 st2 _ Hbody.
+    apply block_offset_stmt_list_semantics.
+    simpl. fold lbv.
+    replace (lbv + Z.of_nat factor * j + 0)
+      with (lbv + Z.of_nat factor * j) by lia.
+    exact Hbody.
+Qed.
+
+Definition diff_expr (lb ub: Loop.expr) : Loop.expr :=
+  Loop.Sum ub (Loop.Mult (-1) lb).
+
+Definition block_count_expr
+    (factor: nat) (lb ub: Loop.expr) : Loop.expr :=
+  match factor with
+  | O => Loop.Constant 0
+  | S _ => Loop.Div (diff_expr lb ub) (Z.of_nat factor)
+  end.
+
+Definition block_tail_start_expr
+    (factor: nat) (lb q: Loop.expr) : Loop.expr :=
+  Loop.Sum lb (Loop.Mult (Z.of_nat factor) q).
+
+Definition block_unroll_stmt
+    (factor: nat) (lb ub: Loop.expr) (body: Loop.stmt) : Loop.stmt :=
+  match factor with
+  | O => Loop.Loop lb ub body
+  | S _ =>
+      let q := block_count_expr factor lb ub in
+      let tail_lb := block_tail_start_expr factor lb q in
+      Loop.Guard
+        (Loop.LE (succ_expr lb) ub)
+        (Loop.Seq
+          (Loop.SCons
+            (block_main_loop_stmt factor lb q body)
+            (Loop.SCons (Loop.Loop tail_lb ub body) Loop.SNil)))
+  end.
+
+Lemma diff_expr_correct :
+  forall env lb ub,
+    Loop.eval_expr env (diff_expr lb ub) =
+    Loop.eval_expr env ub - Loop.eval_expr env lb.
+Proof.
+  intros env lb ub. unfold diff_expr. simpl. lia.
+Qed.
+
+Lemma block_tail_start_expr_correct :
+  forall env factor lb q,
+    Loop.eval_expr env (block_tail_start_expr factor lb q) =
+    Loop.eval_expr env lb + Z.of_nat factor * Loop.eval_expr env q.
+Proof.
+  intros env factor lb q. unfold block_tail_start_expr. simpl. lia.
+Qed.
+
+Theorem block_unroll_stmt_semantics :
+  forall factor lb ub body env mem1 mem2,
+    (0 < factor)%nat ->
+    Loop.loop_semantics (block_unroll_stmt factor lb ub body) env mem1 mem2 <->
+    Loop.loop_semantics (Loop.Loop lb ub body) env mem1 mem2.
+Proof.
+  intros factor lb ub body env mem1 mem2 Hfactor.
+  destruct factor as [|factor']; [lia|].
+  set (factor := S factor') in *.
+  simpl block_unroll_stmt.
+  set (q := block_count_expr factor lb ub).
+  set (tail_lb := block_tail_start_expr factor lb q).
+  set (lbv := Loop.eval_expr env lb).
+  set (ubv := Loop.eval_expr env ub).
+  set (f := Z.of_nat factor).
+  assert (Hfpos : 0 < f) by (subst f factor; lia).
+  assert (Htest_true :
+    Loop.eval_test env (Loop.LE (succ_expr lb) ub) = true <->
+    lbv < ubv).
+  {
+    subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_le. lia.
+  }
+  assert (Htest_false :
+    Loop.eval_test env (Loop.LE (succ_expr lb) ub) = false <->
+    lbv >= ubv).
+  {
+    subst lbv ubv. simpl. rewrite succ_expr_correct. rewrite Z.leb_gt. lia.
+  }
+  assert (Hq_eval :
+    Loop.eval_expr env q = (ubv - lbv) / f).
+  {
+    subst q f factor lbv ubv. unfold block_count_expr, diff_expr. simpl.
+    reflexivity.
+  }
+  assert (Htail_eval :
+    Loop.eval_expr env tail_lb = lbv + f * Loop.eval_expr env q).
+  {
+    subst tail_lb f factor lbv. apply block_tail_start_expr_correct.
+  }
+  split; intros Hsem.
+  - inversion_clear Hsem as [| | | ? ? ? ? ? Hseq Hguard | ? ? ? ? Hguard |].
+    + apply Htest_true in Hguard.
+      apply seq_two_semantics in Hseq as [mem_mid [Hmain Htail]].
+      assert (Hqnonneg : 0 <= Loop.eval_expr env q).
+      {
+        rewrite Hq_eval. apply Z.div_pos; lia.
+      }
+      apply block_main_loop_stmt_semantics in Hmain; [|lia|exact Hqnonneg].
+      inversion_clear Htail.
+      simpl in H.
+      fold lbv in H. fold ubv in H. fold f in H. fold q in H.
+      apply Loop.LLoop.
+      fold lbv. fold ubv.
+      replace (Zrange lbv ubv)
+        with (Zrange lbv (lbv + f * Loop.eval_expr env q) ++
+              Zrange (lbv + f * Loop.eval_expr env q) ubv).
+      * eapply iter_semantics_app; eauto.
+      * symmetry. apply Zrange_app.
+        -- rewrite Hq_eval. assert (0 <= (ubv - lbv) / f) by (apply Z.div_pos; lia). lia.
+        -- rewrite Hq_eval. pose proof (Z.mul_div_le (ubv - lbv) f Hfpos). lia.
+    + apply Htest_false in Hguard.
+      apply Loop.LLoop.
+      simpl.
+      fold lbv. fold ubv.
+      rewrite Zrange_empty by lia.
+      constructor.
+  - inversion_clear Hsem.
+    destruct (Z_lt_ge_dec lbv ubv) as [Hlt|Hge].
+    + fold lbv in H. fold ubv in H.
+      assert (Hqnonneg : 0 <= Loop.eval_expr env q).
+      {
+        rewrite Hq_eval. apply Z.div_pos; lia.
+      }
+      assert (Hmid_le : lbv + f * Loop.eval_expr env q <= ubv).
+      {
+        rewrite Hq_eval. pose proof (Z.mul_div_le (ubv - lbv) f Hfpos). lia.
+      }
+      assert (Hlb_mid : lbv <= lbv + f * Loop.eval_expr env q).
+      {
+        rewrite Hq_eval.
+        assert (Hdiv_nonneg : 0 <= (ubv - lbv) / f) by (apply Z.div_pos; lia).
+        lia.
+      }
+      replace (Zrange lbv ubv)
+        with (Zrange lbv (lbv + f * Loop.eval_expr env q) ++
+              Zrange (lbv + f * Loop.eval_expr env q) ubv) in H
+        by (symmetry; apply Zrange_app; lia).
+      apply iter_semantics_app_inv in H as [mem_mid [Hmain Htail]].
+      apply Loop.LGuardTrue.
+      * apply seq_two_semantics.
+        exists mem_mid. split.
+        -- apply block_main_loop_stmt_semantics; [lia|exact Hqnonneg|].
+           exact Hmain.
+        -- apply Loop.LLoop.
+           simpl. fold lbv. fold ubv. fold f. fold q.
+           exact Htail.
+      * apply Htest_true. exact Hlt.
+    + fold lbv in H. fold ubv in H.
+      rewrite Zrange_empty in H by lia.
+      inversion H; subst; clear H.
+      apply Loop.LGuardFalse.
+      apply Htest_false. exact Hge.
 Qed.
 
 Lemma checked_peel_steps_semantics :
@@ -988,6 +1284,37 @@ Definition suffix_peel_unroll_stmt_changed : nat -> Loop.stmt -> bool :=
 Definition suffix_peel_unroll_stmt_list_changed : nat -> Loop.stmt_list -> bool :=
   peel_unroll_stmt_list_changed.
 
+Fixpoint block_unroll_stmt_rec (fuel: nat) (st: Loop.stmt) : Loop.stmt :=
+  match fuel with
+  | O => st
+  | S _ =>
+      match st with
+      | Loop.Loop lb ub body =>
+          block_unroll_stmt fuel lb ub (block_unroll_stmt_rec fuel body)
+      | Loop.Instr i es => Loop.Instr i es
+      | Loop.Seq sts => Loop.Seq (block_unroll_stmt_list_rec fuel sts)
+      | Loop.Guard t body => Loop.Guard t (block_unroll_stmt_rec fuel body)
+      end
+  end
+with block_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match fuel with
+  | O => sts
+  | S _ =>
+      match sts with
+      | Loop.SNil => Loop.SNil
+      | Loop.SCons st sts' =>
+          Loop.SCons
+            (block_unroll_stmt_rec fuel st)
+            (block_unroll_stmt_list_rec fuel sts')
+      end
+  end.
+
+Definition block_unroll_stmt_changed : nat -> Loop.stmt -> bool :=
+  peel_unroll_stmt_changed.
+
+Definition block_unroll_stmt_list_changed : nat -> Loop.stmt_list -> bool :=
+  peel_unroll_stmt_list_changed.
+
 Scheme stmt_ind_mut := Induction for Loop.stmt Sort Prop
 with stmt_list_ind_mut := Induction for Loop.stmt_list Sort Prop.
 Combined Scheme stmt_stmt_list_ind from stmt_ind_mut, stmt_list_ind_mut.
@@ -1107,6 +1434,58 @@ Proof.
     + apply <- H in H1. apply <- H0 in H2. econstructor; eauto.
 Qed.
 
+Theorem block_unroll_stmt_rec_correct :
+  forall fuel,
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (block_unroll_stmt_rec fuel st) env mem1 mem2 <->
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (block_unroll_stmt_list_rec fuel sts)) env mem1 mem2 <->
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
+Proof.
+  intro fuel.
+  apply stmt_stmt_list_ind; intros; destruct fuel as [|fuel']; simpl.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + change (Loop.loop_semantics
+          (block_unroll_stmt (S fuel') e e0 (block_unroll_stmt_rec (S fuel') s))
+          env mem1 mem2) in Hsem.
+      apply block_unroll_stmt_semantics in Hsem; [|lia].
+      inversion_clear Hsem.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 _ Hbody.
+      apply H. exact Hbody.
+    + inversion_clear Hsem.
+      change (Loop.loop_semantics
+          (block_unroll_stmt (S fuel') e e0 (block_unroll_stmt_rec (S fuel') s))
+          env mem1 mem2).
+      apply block_unroll_stmt_semantics; [lia|].
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 _ Hbody.
+      apply <- H. exact Hbody.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply <- H. exact Hsem.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply <- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply <- H in H1. apply <- H0 in H2. econstructor; eauto.
+Qed.
+
 Lemma peel_unroll_stmt_semantics :
   forall fuel st env mem1 mem2,
     Loop.loop_semantics (peel_unroll_stmt fuel st) env mem1 mem2 <->
@@ -1118,6 +1497,12 @@ Lemma suffix_peel_unroll_stmt_semantics :
     Loop.loop_semantics (suffix_peel_unroll_stmt fuel st) env mem1 mem2 <->
     Loop.loop_semantics st env mem1 mem2.
 Proof. intros. apply suffix_peel_unroll_stmt_correct. Qed.
+
+Lemma block_unroll_stmt_rec_semantics :
+  forall fuel st env mem1 mem2,
+    Loop.loop_semantics (block_unroll_stmt_rec fuel st) env mem1 mem2 <->
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply block_unroll_stmt_rec_correct. Qed.
 
 Lemma const_unroll_stmt_semantics :
   forall st env mem1 mem2,
@@ -1148,6 +1533,14 @@ Definition suffix_peel_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
 Definition suffix_peel_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
   let '(st, _, _) := prog in
   suffix_peel_unroll_stmt_changed fuel st.
+
+Definition block_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
+  let '(st, ctxt, vars) := prog in
+  (block_unroll_stmt_rec fuel st, ctxt, vars).
+
+Definition block_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
+  let '(st, _, _) := prog in
+  block_unroll_stmt_changed fuel st.
 
 Theorem const_unroll_correct :
   forall prog mem1 mem2,
@@ -1219,6 +1612,30 @@ Proof.
     + exact H1.
     + exact H2.
     + eapply suffix_peel_unroll_stmt_semantics. exact H3.
+Qed.
+
+Theorem block_unroll_correct :
+  forall fuel prog mem1 mem2,
+    Loop.semantics (block_unroll fuel prog) mem1 mem2 <->
+    Loop.semantics prog mem1 mem2.
+Proof.
+  intros fuel prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply block_unroll_stmt_rec_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply block_unroll_stmt_rec_semantics. exact H3.
 Qed.
 
 End LoopUnroll.
