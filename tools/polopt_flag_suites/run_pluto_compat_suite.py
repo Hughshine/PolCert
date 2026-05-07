@@ -30,6 +30,7 @@ class Check:
     implicit_control_file_content: str = "16\n"
     explicit_control_flag: str | None = None
     explicit_control_file_content: str = "16\n"
+    env: dict[str, str] | None = None
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -553,6 +554,16 @@ CHECKS = [
         effect_needles=("c[0] = 0;", "c[1] = 1;", "b[((2 * i0) + 1)] = ((2 * i0) + 1);", "for i0 in range((2 * (N / 2)), N)", "b[i0] = i0;"),
     ),
     Check(
+        "unrolljam-empty-selector-policy",
+        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=4", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "checked post flags: --ufactor=4",
+        effect_absent=("(4 * i", "+ 3))", " / 4)))"),
+        env={"POLCERT_UNROLLJAM_POLICY": "none"},
+    ),
+    Check(
         "reject-default-prevector-parallel",
         ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--parallel"],
         MATMUL,
@@ -1027,6 +1038,7 @@ def run_polopt_compat(
     fixture: Path,
     timeout: int,
     cwd: Path = ROOT,
+    env_extra: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     cmd = [
         str(POLOPT),
@@ -1037,6 +1049,8 @@ def run_polopt_compat(
     ]
     env = os.environ.copy()
     env.setdefault("COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini"))
+    if env_extra:
+        env.update(env_extra)
     return subprocess.run(cmd, cwd=str(cwd), env=env, text=True, capture_output=True, timeout=timeout + 5, check=False)
 
 
@@ -1063,6 +1077,7 @@ def run_check(check: Check, timeout: int) -> str | None:
                     [*check.args, check.explicit_control_flag, str(control_path)],
                     check.fixture,
                     timeout,
+                    env_extra=check.env,
                 )
             except subprocess.TimeoutExpired:
                 return f"{check.name}: native polopt compatibility mode timed out"
@@ -1071,12 +1086,12 @@ def run_check(check: Check, timeout: int) -> str | None:
             cwd = Path(tmp)
             (cwd / check.implicit_control_file).write_text(check.implicit_control_file_content)
             try:
-                proc = run_polopt_compat(check.args, check.fixture, timeout, cwd=cwd)
+                proc = run_polopt_compat(check.args, check.fixture, timeout, cwd=cwd, env_extra=check.env)
             except subprocess.TimeoutExpired:
                 return f"{check.name}: native polopt compatibility mode timed out"
     else:
         try:
-            proc = run_polopt_compat(check.args, check.fixture, timeout)
+            proc = run_polopt_compat(check.args, check.fixture, timeout, env_extra=check.env)
         except subprocess.TimeoutExpired:
             return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr

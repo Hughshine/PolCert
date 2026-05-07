@@ -25,6 +25,19 @@ Definition unrolljam_stmt : nat -> SPolIRs.Loop.stmt -> SPolIRs.Loop.stmt :=
 Definition unrolljam_loop : nat -> SPolIRs.Loop.t -> SPolIRs.Loop.t :=
   CoreLoopJamLower.unrolljam_loop.
 
+Definition unrolljam_candidate : Type :=
+  CoreLoopJamLower.unrolljam_candidate.
+
+Definition make_unrolljam_candidate (depth : nat) : unrolljam_candidate :=
+  {| CoreLoopJamLower.uj_depth := depth |}.
+
+Definition unrolljam_all_depths_plan : nat -> list unrolljam_candidate :=
+  CoreLoopJamLower.unrolljam_all_depths_plan.
+
+Definition checked_unrolljam_loop_with_plan :
+  list unrolljam_candidate -> nat -> SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
+  CoreLoopJamLower.checked_unrolljam_loop_with_plan.
+
 Definition checked_unrolljam_loop :
   nat -> SPolIRs.Loop.t -> imp SPolIRs.Loop.t :=
   CoreLoopJamLower.checked_unrolljam_loop.

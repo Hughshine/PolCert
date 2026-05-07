@@ -3155,6 +3155,52 @@ let pluto_unroll_factor cfg =
       end
   | None -> 8
 
+module UnrollJamLoop = SPolIRs.SPolIRs.Loop
+
+let unrolljam_policy_name () =
+  match Sys.getenv_opt "POLCERT_UNROLLJAM_POLICY" with
+  | Some "none" -> "none"
+  | Some "checked-all-depths" -> "checked-all-depths"
+  | Some value ->
+      frontend_failf
+        "unknown POLCERT_UNROLLJAM_POLICY=%s; expected none or checked-all-depths"
+        value
+  | None -> "checked-all-depths"
+
+let unrolljam_loop_depths loop =
+  let rec insert_depth depth depths =
+    if List.mem depth depths then depths else depth :: depths
+  in
+  let rec stmt depth depths = function
+    | UnrollJamLoop.Loop (_, _, body) ->
+        stmt (depth + 1) (insert_depth depth depths) body
+    | UnrollJamLoop.Instr (_, _) -> depths
+    | UnrollJamLoop.Seq sts -> stmt_list depth depths sts
+    | UnrollJamLoop.Guard (_, body) -> stmt depth depths body
+  and stmt_list depth depths = function
+    | UnrollJamLoop.SNil -> depths
+    | UnrollJamLoop.SCons (st, rest) ->
+        stmt_list depth (stmt depth depths st) rest
+  in
+  let ((st, _ctxt), _vars) = loop in
+  List.sort compare (stmt 0 [] st)
+
+let unrolljam_plan_of_depths depths =
+  List.map
+    (fun depth -> SLoopJamLower.make_unrolljam_candidate (nat_of_int depth))
+    depths
+
+let select_unrolljam_plan _cfg loop =
+  (* This is the untrusted policy hook. It only selects candidate depths; the
+     extracted Coq pass still checks every selected transformation. A Pluto
+     profitability-compatible selector should be installed here once its
+     candidate model is reflected at Loop IR granularity. *)
+  match unrolljam_policy_name () with
+  | "none" -> []
+  | "checked-all-depths" ->
+      unrolljam_plan_of_depths (unrolljam_loop_depths loop)
+  | _ -> assert false
+
 let apply_const_unroll_postpass cfg loop =
   if cfg.force_const_unroll then begin
     let cleanup_loop loop =
@@ -3168,8 +3214,12 @@ let apply_const_unroll_postpass cfg loop =
       let fuel = nat_of_int (pluto_unroll_factor cfg) in
       if SLoopUnroll.block_unroll_changed fuel loop then
         let block_unrolled = cleanup_loop (SLoopUnroll.block_unroll fuel loop) in
+        let unrolljam_plan = select_unrolljam_plan cfg loop in
         let (checked_unrolljammed, checked_ok) =
-          SLoopJamLower.checked_unrolljam_loop fuel loop
+          SLoopJamLower.checked_unrolljam_loop_with_plan
+            unrolljam_plan
+            fuel
+            loop
         in
         let checked_unrolljammed = cleanup_loop checked_unrolljammed in
         if checked_ok && checked_unrolljammed <> block_unrolled then
