@@ -13,6 +13,9 @@
   ],
   "benchmark": false,
   "openmp": false,
+  "polopt_env": {
+    "POLCERT_UNROLLJAM_POLICY": "checked-all-depths"
+  },
   "optimized_loop_needles": [
     "for i0 in range(0, (N / 3))",
     "for i1 in range(0, (M / 3))",

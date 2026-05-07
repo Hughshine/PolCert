@@ -13,5 +13,8 @@
   ],
   "benchmark": false,
   "openmp": false,
+  "polopt_env": {
+    "POLCERT_UNROLLJAM_POLICY": "checked-all-depths"
+  },
   "require_unrolled": true
 }

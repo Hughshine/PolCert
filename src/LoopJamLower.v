@@ -76,25 +76,37 @@ with stmt_list_size (sts : Loop.stmt_list) : nat :=
   end.
 
 Record unrolljam_candidate : Type := {
-  uj_depth : nat
+  uj_depth : nat;
+  uj_path : option (list nat)
 }.
 
 Definition unrolljam_plan : Type := list unrolljam_candidate.
 
-Definition unrolljam_candidate_selects_depthb
-    (depth : nat) (cand : unrolljam_candidate) : bool :=
-  Nat.eqb depth (uj_depth cand).
+Fixpoint nat_list_eqb (xs ys : list nat) : bool :=
+  match xs, ys with
+  | [], [] => true
+  | x :: xs', y :: ys' => Nat.eqb x y && nat_list_eqb xs' ys'
+  | _, _ => false
+  end.
 
-Definition unrolljam_plan_selects_depthb
-    (depth : nat) (plan : unrolljam_plan) : bool :=
-  existsb (unrolljam_candidate_selects_depthb depth) plan.
+Definition unrolljam_candidate_selects_loopb
+    (depth : nat) (path : list nat) (cand : unrolljam_candidate) : bool :=
+  Nat.eqb depth (uj_depth cand) &&
+  match uj_path cand with
+  | None => true
+  | Some cand_path => nat_list_eqb path cand_path
+  end.
+
+Definition unrolljam_plan_selects_loopb
+    (depth : nat) (path : list nat) (plan : unrolljam_plan) : bool :=
+  existsb (unrolljam_candidate_selects_loopb depth path) plan.
 
 Fixpoint unrolljam_depth_plan_from
     (fuel start : nat) : unrolljam_plan :=
   match fuel with
   | O => []
   | S fuel' =>
-      {| uj_depth := start |} ::
+      {| uj_depth := start; uj_path := None |} ::
       unrolljam_depth_plan_from fuel' (S start)
   end.
 
@@ -102,11 +114,22 @@ Definition unrolljam_all_depths_plan (fuel : nat) : unrolljam_plan :=
   unrolljam_depth_plan_from fuel 0.
 
 Example empty_unrolljam_plan_rejects_depth_example :
-  unrolljam_plan_selects_depthb 0 [] = false.
+  unrolljam_plan_selects_loopb 0 [] [] = false.
 Proof. reflexivity. Qed.
 
 Example singleton_unrolljam_plan_accepts_depth_example :
-  unrolljam_plan_selects_depthb 2 [{| uj_depth := 2 |}] = true.
+  unrolljam_plan_selects_loopb
+    2 [0; 1] [{| uj_depth := 2; uj_path := None |}] = true.
+Proof. reflexivity. Qed.
+
+Example path_unrolljam_plan_accepts_matching_path_example :
+  unrolljam_plan_selects_loopb
+    2 [0; 1] [{| uj_depth := 2; uj_path := Some [0; 1] |}] = true.
+Proof. reflexivity. Qed.
+
+Example path_unrolljam_plan_rejects_mismatched_path_example :
+  unrolljam_plan_selects_loopb
+    2 [1; 0] [{| uj_depth := 2; uj_path := Some [0; 1] |}] = false.
 Proof. reflexivity. Qed.
 
 Fixpoint jam_stmt_fuel (fuel : nat) (st : Loop.stmt) {struct fuel}
@@ -369,14 +392,15 @@ Definition checked_jam_stmt
 Fixpoint checked_unrolljam_stmt_with_plan_fuel
     (plan : unrolljam_plan)
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
-    (depth fuel factor : nat) (st : Loop.stmt) {struct fuel}
+    (depth : nat) (path : list nat) (fuel factor : nat)
+    (st : Loop.stmt) {struct fuel}
     : imp Loop.stmt :=
   match fuel with
   | O => pure st
   | S fuel' =>
       match st with
       | Loop.Loop lb ub body =>
-          if unrolljam_plan_selects_depthb depth plan
+          if unrolljam_plan_selects_loopb depth path plan
           then
             BIND jammed_res <-
               checked_jam_stmt
@@ -384,29 +408,30 @@ Fixpoint checked_unrolljam_stmt_with_plan_fuel
                 (Unroll.block_unroll_stmt factor lb ub body) -;
             let '(jammed, _) := jammed_res in
             checked_descend_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars depth fuel' factor jammed
+              plan varctxt vars depth path fuel' factor jammed
           else
             BIND body' <-
               checked_unrolljam_stmt_with_plan_fuel
-                plan varctxt vars (S depth) fuel' factor body -;
+                plan varctxt vars (S depth) (path ++ [0]) fuel' factor body -;
             pure (Loop.Loop lb ub body')
       | Loop.Instr _ _ => pure st
       | Loop.Seq sts =>
           BIND sts' <-
             checked_unrolljam_stmt_list_with_plan_fuel
-              plan varctxt vars depth fuel' factor sts -;
+              plan varctxt vars depth path 0 fuel' factor sts -;
           pure (Loop.Seq sts')
       | Loop.Guard tst body =>
           BIND body' <-
             checked_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars depth fuel' factor body -;
+              plan varctxt vars depth (path ++ [0]) fuel' factor body -;
           pure (Loop.Guard tst body')
       end
   end
 with checked_unrolljam_stmt_list_with_plan_fuel
     (plan : unrolljam_plan)
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
-    (depth fuel factor : nat) (sts : Loop.stmt_list) {struct fuel}
+    (depth : nat) (path : list nat) (index fuel factor : nat)
+    (sts : Loop.stmt_list) {struct fuel}
     : imp Loop.stmt_list :=
   match fuel with
   | O => pure sts
@@ -416,17 +441,18 @@ with checked_unrolljam_stmt_list_with_plan_fuel
       | Loop.SCons st sts' =>
           BIND st' <-
             checked_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars depth fuel' factor st -;
+              plan varctxt vars depth (path ++ [index]) fuel' factor st -;
           BIND sts'' <-
             checked_unrolljam_stmt_list_with_plan_fuel
-              plan varctxt vars depth fuel' factor sts' -;
+              plan varctxt vars depth path (S index) fuel' factor sts' -;
           pure (Loop.SCons st' sts'')
       end
   end
 with checked_descend_unrolljam_stmt_with_plan_fuel
     (plan : unrolljam_plan)
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
-    (depth fuel factor : nat) (st : Loop.stmt) {struct fuel}
+    (depth : nat) (path : list nat) (fuel factor : nat)
+    (st : Loop.stmt) {struct fuel}
     : imp Loop.stmt :=
   match fuel with
   | O => pure st
@@ -435,25 +461,26 @@ with checked_descend_unrolljam_stmt_with_plan_fuel
       | Loop.Loop lb ub body =>
           BIND body' <-
             checked_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars (S depth) fuel' factor body -;
+              plan varctxt vars (S depth) (path ++ [0]) fuel' factor body -;
           pure (Loop.Loop lb ub body')
       | Loop.Instr _ _ => pure st
       | Loop.Seq sts =>
           BIND sts' <-
             checked_descend_unrolljam_stmt_list_with_plan_fuel
-              plan varctxt vars depth fuel' factor sts -;
+              plan varctxt vars depth path 0 fuel' factor sts -;
           pure (Loop.Seq sts')
       | Loop.Guard tst body =>
           BIND body' <-
             checked_descend_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars depth fuel' factor body -;
+              plan varctxt vars depth (path ++ [0]) fuel' factor body -;
           pure (Loop.Guard tst body')
       end
   end
 with checked_descend_unrolljam_stmt_list_with_plan_fuel
     (plan : unrolljam_plan)
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
-    (depth fuel factor : nat) (sts : Loop.stmt_list) {struct fuel}
+    (depth : nat) (path : list nat) (index fuel factor : nat)
+    (sts : Loop.stmt_list) {struct fuel}
     : imp Loop.stmt_list :=
   match fuel with
   | O => pure sts
@@ -463,10 +490,10 @@ with checked_descend_unrolljam_stmt_list_with_plan_fuel
       | Loop.SCons st sts' =>
           BIND st' <-
             checked_descend_unrolljam_stmt_with_plan_fuel
-              plan varctxt vars depth fuel' factor st -;
+              plan varctxt vars depth (path ++ [index]) fuel' factor st -;
           BIND sts'' <-
             checked_descend_unrolljam_stmt_list_with_plan_fuel
-              plan varctxt vars depth fuel' factor sts' -;
+              plan varctxt vars depth path (S index) fuel' factor sts' -;
           pure (Loop.SCons st' sts'')
       end
   end.
@@ -476,7 +503,7 @@ Definition checked_unrolljam_stmt_with_plan
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
     (factor : nat) (st : Loop.stmt) : imp Loop.stmt :=
   checked_unrolljam_stmt_with_plan_fuel
-    plan varctxt vars 0
+    plan varctxt vars 0 []
     (S (stmt_size st + stmt_size st + stmt_size st))
     factor st.
 

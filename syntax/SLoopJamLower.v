@@ -29,7 +29,11 @@ Definition unrolljam_candidate : Type :=
   CoreLoopJamLower.unrolljam_candidate.
 
 Definition make_unrolljam_candidate (depth : nat) : unrolljam_candidate :=
-  {| CoreLoopJamLower.uj_depth := depth |}.
+  CoreLoopJamLower.Build_unrolljam_candidate depth None.
+
+Definition make_unrolljam_candidate_at_path
+    (depth : nat) (path : list nat) : unrolljam_candidate :=
+  CoreLoopJamLower.Build_unrolljam_candidate depth (Some path).
 
 Definition unrolljam_all_depths_plan : nat -> list unrolljam_candidate :=
   CoreLoopJamLower.unrolljam_all_depths_plan.

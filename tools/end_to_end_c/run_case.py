@@ -51,6 +51,18 @@ def list_from_meta(meta: dict[str, object], key: str) -> list[str]:
     return list(value)
 
 
+def str_dict_from_meta(meta: dict[str, object], key: str) -> dict[str, str]:
+    value = meta.get(key, {})
+    if not isinstance(value, dict):
+        raise ValueError(f"{key} must be a string dictionary")
+    result: dict[str, str] = {}
+    for item_key, item_value in value.items():
+        if not isinstance(item_key, str) or not isinstance(item_value, str):
+            raise ValueError(f"{key} must be a string dictionary")
+        result[item_key] = item_value
+    return result
+
+
 def require_markers(loop_text: str, markers: list[str], *, present: bool) -> str | None:
     for marker in markers:
         found = marker in loop_text
@@ -119,8 +131,10 @@ def main() -> int:
     write_text(out_dir / "baseline.c", baseline_src)
 
     polopt_cmd = [str(polopt), *polopt_args, *args.polopt_arg, str(loop_path)]
+    polopt_env = os.environ.copy()
+    polopt_env.update(str_dict_from_meta(meta, "polopt_env"))
     try:
-        proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds)
+        proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds, env=polopt_env)
     except subprocess.TimeoutExpired:
         write_text(
             out_dir / "status.txt",

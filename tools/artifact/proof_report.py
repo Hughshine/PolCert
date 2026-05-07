@@ -109,7 +109,7 @@ TOP_LEVEL_ROUTES = [
         "cli": "polopt --const-unroll <file.loop> / polopt --pluto-compat --unrolljam [--ufactor N] on sequential Loop IR",
         "theorem_file": "polygen/LoopUnroll.v",
         "theorem_names": ["const_unroll_correct", "block_unroll_correct"],
-        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use block/remainder unrolling, and an untrusted depth-plan selector only controls which candidate loops are attempted. Each same-bound sibling-loop fusion candidate is still checked before being jam-fused.",
+        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled under the theorem-facing selector; variable-bound loops use block/remainder unrolling, and an untrusted depth/path selector only controls which candidate loops are attempted. Each same-bound sibling-loop fusion candidate is still checked before being jam-fused.",
     },
     {
         "route": "loop-native same-bound sibling jam theorem",

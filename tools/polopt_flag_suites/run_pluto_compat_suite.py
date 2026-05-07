@@ -525,6 +525,7 @@ CHECKS = [
         "a[3] = 3;",
         "polopt args: --notile --const-unroll",
         effect_absent=("for i0 in range",),
+        env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
     ),
     Check(
         "const-unrolljam-ufactor-constant-loop",
@@ -534,6 +535,7 @@ CHECKS = [
         "a[3] = 3;",
         "checked post flags: --ufactor=3",
         effect_absent=("for i0 in range",),
+        env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
     ),
     Check(
         "block-unrolljam-ufactor-variable-loop",
@@ -543,6 +545,7 @@ CHECKS = [
         "for i0 in range(0, (N / 3))",
         "checked post flags: --ufactor=3",
         effect_needles=("b[((3 * i0) + 2)] = a;", "for i0 in range((3 * (N / 3)), N)", "b[i0] = a;"),
+        env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
     ),
     Check(
         "mixed-const-and-block-unrolljam",
@@ -552,6 +555,7 @@ CHECKS = [
         "for i0 in range(0, (N / 2))",
         "checked post flags: --ufactor=2",
         effect_needles=("c[0] = 0;", "c[1] = 1;", "b[((2 * i0) + 1)] = ((2 * i0) + 1);", "for i0 in range((2 * (N / 2)), N)", "b[i0] = i0;"),
+        env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
     ),
     Check(
         "unrolljam-empty-selector-policy",

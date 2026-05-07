@@ -3156,16 +3156,25 @@ let pluto_unroll_factor cfg =
   | None -> 8
 
 module UnrollJamLoop = SPolIRs.SPolIRs.Loop
+module UnrollJamInstr = SPolIRs.SPolIRs.Instr
 
 let unrolljam_policy_name () =
   match Sys.getenv_opt "POLCERT_UNROLLJAM_POLICY" with
   | Some "none" -> "none"
   | Some "checked-all-depths" -> "checked-all-depths"
+  | Some "pluto-profitability" -> "pluto-profitability"
   | Some value ->
       frontend_failf
-        "unknown POLCERT_UNROLLJAM_POLICY=%s; expected none or checked-all-depths"
+        "unknown POLCERT_UNROLLJAM_POLICY=%s; expected none, checked-all-depths, or pluto-profitability"
         value
-  | None -> "checked-all-depths"
+  | None -> "pluto-profitability"
+
+let unrolljam_register_budget = 32
+
+let unrolljam_debug_enabled () =
+  match Sys.getenv_opt "POLCERT_UNROLLJAM_DEBUG" with
+  | Some "1" | Some "true" | Some "yes" -> true
+  | _ -> false
 
 let unrolljam_loop_depths loop =
   let rec insert_depth depth depths =
@@ -3190,15 +3199,320 @@ let unrolljam_plan_of_depths depths =
     (fun depth -> SLoopJamLower.make_unrolljam_candidate (nat_of_int depth))
     depths
 
-let select_unrolljam_plan _cfg loop =
-  (* This is the untrusted policy hook. It only selects candidate depths; the
-     extracted Coq pass still checks every selected transformation. A Pluto
-     profitability-compatible selector should be installed here once its
-     candidate model is reflected at Loop IR granularity. *)
+let unrolljam_plan_of_depth_paths candidates =
+  List.map
+    (fun (depth, path) ->
+       SLoopJamLower.make_unrolljam_candidate_at_path
+         (nat_of_int depth)
+         (List.map nat_of_int path))
+    candidates
+
+let string_of_unrolljam_path path =
+  "[" ^ String.concat "," (List.map string_of_int path) ^ "]"
+
+type unrolljam_loop_env_entry = {
+  loop_depth : int;
+  loop_deps : int list;
+}
+
+let unique_ints xs =
+  List.fold_left
+    (fun acc x -> if List.mem x acc then acc else x :: acc)
+    []
+    xs
+
+let loop_env_lookup env n =
+  nth_or env (Camlcoq.Nat.to_int n) None
+
+let rec loop_expr_depths env = function
+  | UnrollJamLoop.Constant _ -> []
+  | UnrollJamLoop.Var n ->
+      begin match loop_env_lookup env n with
+      | Some entry -> entry.loop_deps
+      | None -> []
+      end
+  | UnrollJamLoop.Sum (a, b)
+  | UnrollJamLoop.Max (a, b)
+  | UnrollJamLoop.Min (a, b) ->
+      unique_ints (loop_expr_depths env a @ loop_expr_depths env b)
+  | UnrollJamLoop.Mult (_, e)
+  | UnrollJamLoop.Div (e, _)
+  | UnrollJamLoop.Mod (e, _) ->
+      loop_expr_depths env e
+
+let loop_env_extend env depth lb ub =
+  let deps =
+    unique_ints (depth :: loop_expr_depths env lb @ loop_expr_depths env ub)
+  in
+  Some { loop_depth = depth; loop_deps = deps } :: env
+
+let rec loop_expr_uses_depth env depth = function
+  | UnrollJamLoop.Constant _ -> false
+  | UnrollJamLoop.Var n ->
+      begin match loop_env_lookup env n with
+      | Some entry -> List.mem depth entry.loop_deps
+      | None -> false
+      end
+  | UnrollJamLoop.Sum (a, b)
+  | UnrollJamLoop.Max (a, b)
+  | UnrollJamLoop.Min (a, b) ->
+      loop_expr_uses_depth env depth a || loop_expr_uses_depth env depth b
+  | UnrollJamLoop.Mult (_, e)
+  | UnrollJamLoop.Div (e, _)
+  | UnrollJamLoop.Mod (e, _) ->
+      loop_expr_uses_depth env depth e
+
+let rec loop_expr_key env = function
+  | UnrollJamLoop.Constant z -> "c:" ^ string_of_z z
+  | UnrollJamLoop.Var n ->
+      begin match loop_env_lookup env n with
+      | Some entry -> Printf.sprintf "l:%d" entry.loop_depth
+      | None -> Printf.sprintf "p:%d" (Camlcoq.Nat.to_int n)
+      end
+  | UnrollJamLoop.Sum (a, b) ->
+      "sum(" ^ loop_expr_key env a ^ "," ^ loop_expr_key env b ^ ")"
+  | UnrollJamLoop.Mult (k, e) ->
+      "mul(" ^ string_of_z k ^ "," ^ loop_expr_key env e ^ ")"
+  | UnrollJamLoop.Div (e, k) ->
+      "div(" ^ loop_expr_key env e ^ "," ^ string_of_z k ^ ")"
+  | UnrollJamLoop.Mod (e, k) ->
+      "mod(" ^ loop_expr_key env e ^ "," ^ string_of_z k ^ ")"
+  | UnrollJamLoop.Max (a, b) ->
+      "max(" ^ loop_expr_key env a ^ "," ^ loop_expr_key env b ^ ")"
+  | UnrollJamLoop.Min (a, b) ->
+      "min(" ^ loop_expr_key env a ^ "," ^ loop_expr_key env b ^ ")"
+
+let affine_slot slots n =
+  nth_or slots (Camlcoq.Nat.to_int n) (UnrollJamLoop.Constant (Camlcoq.Z.of_sint 0))
+
+let rec affine_uses_depth env slots depth = function
+  | UnrollJamInstr.AeConst _ -> false
+  | UnrollJamInstr.AeVar n ->
+      loop_expr_uses_depth env depth (affine_slot slots n)
+  | UnrollJamInstr.AeAdd (a, b)
+  | UnrollJamInstr.AeSub (a, b) ->
+      affine_uses_depth env slots depth a || affine_uses_depth env slots depth b
+  | UnrollJamInstr.AeMul (_, e) ->
+      affine_uses_depth env slots depth e
+
+let rec affine_key env slots = function
+  | UnrollJamInstr.AeConst z -> "ac:" ^ string_of_z z
+  | UnrollJamInstr.AeVar n -> "av:" ^ loop_expr_key env (affine_slot slots n)
+  | UnrollJamInstr.AeAdd (a, b) ->
+      "aa(" ^ affine_key env slots a ^ "," ^ affine_key env slots b ^ ")"
+  | UnrollJamInstr.AeSub (a, b) ->
+      "as(" ^ affine_key env slots a ^ "," ^ affine_key env slots b ^ ")"
+  | UnrollJamInstr.AeMul (k, e) ->
+      "am(" ^ string_of_z k ^ "," ^ affine_key env slots e ^ ")"
+
+let access_uses_depth env slots depth = function
+  | UnrollJamInstr.AcVar _ -> false
+  | UnrollJamInstr.AcArr (_, idxs) ->
+      List.exists (affine_uses_depth env slots depth) idxs
+
+let access_key env slots = function
+  | UnrollJamInstr.AcVar id -> "v:" ^ name_of_ident id
+  | UnrollJamInstr.AcArr (id, idxs) ->
+      "a:" ^ name_of_ident id ^ "[" ^
+      String.concat "," (List.map (affine_key env slots) idxs) ^
+      "]"
+
+let unique_strings xs =
+  List.fold_left
+    (fun acc x -> if List.mem x acc then acc else x :: acc)
+    []
+    xs
+
+let rec read_accesses_expr = function
+  | UnrollJamInstr.ExConst _
+  | UnrollJamInstr.ExFloat _
+  | UnrollJamInstr.ExVar _ -> []
+  | UnrollJamInstr.ExAccess acc -> [acc]
+  | UnrollJamInstr.ExAdd (a, b)
+  | UnrollJamInstr.ExSub (a, b)
+  | UnrollJamInstr.ExMul (a, b)
+  | UnrollJamInstr.ExDiv (a, b)
+  | UnrollJamInstr.ExLe (a, b)
+  | UnrollJamInstr.ExEq (a, b)
+  | UnrollJamInstr.ExAnd (a, b) ->
+      read_accesses_expr a @ read_accesses_expr b
+  | UnrollJamInstr.ExCall (_, args) ->
+      List.concat (List.map read_accesses_expr args)
+  | UnrollJamInstr.ExCond (c, t, f) ->
+      read_accesses_expr c @ read_accesses_expr t @ read_accesses_expr f
+
+let instr_accesses = function
+  | UnrollJamInstr.SSkip -> []
+  | UnrollJamInstr.SAssign (lhs, rhs) -> lhs :: read_accesses_expr rhs
+
+let rec loop_contains_loop = function
+  | UnrollJamLoop.Loop _ -> true
+  | UnrollJamLoop.Instr _ -> false
+  | UnrollJamLoop.Seq sts -> stmt_list_contains_loop sts
+  | UnrollJamLoop.Guard (_, body) -> loop_contains_loop body
+and stmt_list_contains_loop = function
+  | UnrollJamLoop.SNil -> false
+  | UnrollJamLoop.SCons (st, rest) ->
+      loop_contains_loop st || stmt_list_contains_loop rest
+
+let rec collect_access_keys env depth = function
+  | UnrollJamLoop.Loop (lb, ub, body) ->
+      collect_access_keys (loop_env_extend env depth lb ub) (depth + 1) body
+  | UnrollJamLoop.Instr (instr, slots) ->
+      List.map (access_key env slots) (instr_accesses instr)
+  | UnrollJamLoop.Seq sts -> collect_access_keys_list env depth sts
+  | UnrollJamLoop.Guard (_, body) -> collect_access_keys env depth body
+and collect_access_keys_list env depth = function
+  | UnrollJamLoop.SNil -> []
+  | UnrollJamLoop.SCons (st, rest) ->
+      collect_access_keys env depth st @ collect_access_keys_list env depth rest
+
+let rec collect_innermost_access_groups env depth = function
+  | UnrollJamLoop.Loop (lb, ub, body) ->
+      let env' = loop_env_extend env depth lb ub in
+      if loop_contains_loop body then
+        collect_innermost_access_groups env' (depth + 1) body
+      else
+        [collect_access_keys env' (depth + 1) body]
+  | UnrollJamLoop.Instr _ -> []
+  | UnrollJamLoop.Seq sts -> collect_innermost_access_groups_list env depth sts
+  | UnrollJamLoop.Guard (_, body) -> collect_innermost_access_groups env depth body
+and collect_innermost_access_groups_list env depth = function
+  | UnrollJamLoop.SNil -> []
+  | UnrollJamLoop.SCons (st, rest) ->
+      collect_innermost_access_groups env depth st @
+      collect_innermost_access_groups_list env depth rest
+
+let rec collect_invariant_access_keys env slots depth acc =
+  if access_uses_depth env slots depth acc then [] else [access_key env slots acc]
+
+let rec collect_invariant_keys_stmt env next_depth candidate_depth = function
+  | UnrollJamLoop.Loop (lb, ub, body) ->
+      collect_invariant_keys_stmt
+        (loop_env_extend env next_depth lb ub)
+        (next_depth + 1)
+        candidate_depth
+        body
+  | UnrollJamLoop.Instr (instr, slots) ->
+      List.concat
+        (List.map
+           (collect_invariant_access_keys env slots candidate_depth)
+           (instr_accesses instr))
+  | UnrollJamLoop.Seq sts -> collect_invariant_keys_list env next_depth candidate_depth sts
+  | UnrollJamLoop.Guard (_, body) ->
+      collect_invariant_keys_stmt env next_depth candidate_depth body
+and collect_invariant_keys_list env next_depth candidate_depth = function
+  | UnrollJamLoop.SNil -> []
+  | UnrollJamLoop.SCons (st, rest) ->
+      collect_invariant_keys_stmt env next_depth candidate_depth st @
+      collect_invariant_keys_list env next_depth candidate_depth rest
+
+let rec collect_innermost_invariant_groups env depth candidate_depth = function
+  | UnrollJamLoop.Loop (lb, ub, body) ->
+      let env' = loop_env_extend env depth lb ub in
+      if loop_contains_loop body then
+        collect_innermost_invariant_groups env' (depth + 1) candidate_depth body
+      else
+        [collect_invariant_keys_stmt env' (depth + 1) candidate_depth body]
+  | UnrollJamLoop.Instr _ -> []
+  | UnrollJamLoop.Seq sts -> collect_innermost_invariant_groups_list env depth candidate_depth sts
+  | UnrollJamLoop.Guard (_, body) ->
+      collect_innermost_invariant_groups env depth candidate_depth body
+and collect_innermost_invariant_groups_list env depth candidate_depth = function
+  | UnrollJamLoop.SNil -> []
+  | UnrollJamLoop.SCons (st, rest) ->
+      collect_innermost_invariant_groups env depth candidate_depth st @
+      collect_innermost_invariant_groups_list env depth candidate_depth rest
+
+let max_unique_count groups =
+  List.fold_left
+    (fun acc group -> max acc (List.length (unique_strings group)))
+    0
+    groups
+
+let unrolljam_profitability_stats factor env depth lb ub body =
+  if not (loop_contains_loop body) then
+    None
+  else
+    let candidate_env = loop_env_extend env depth lb ub in
+    let access_groups =
+      collect_innermost_access_groups candidate_env (depth + 1) body
+    in
+    let invariant_groups =
+      collect_innermost_invariant_groups candidate_env (depth + 1) depth body
+    in
+    let total_unique = max_unique_count access_groups in
+    let invariant_unique = max_unique_count invariant_groups in
+    let regs =
+      (total_unique * factor) - (invariant_unique * (factor - 1))
+    in
+    Some (total_unique, invariant_unique, regs)
+
+let unrolljam_profitable_at_depth factor env depth lb ub body =
+  match unrolljam_profitability_stats factor env depth lb ub body with
+  | None -> false
+  | Some (total_unique, invariant_unique, regs) ->
+      invariant_unique > 0 &&
+      invariant_unique < total_unique &&
+      unrolljam_register_budget - regs >= 0
+
+let pluto_profitability_candidates factor loop =
+  let ((stmt, varctxt), _vars) = loop in
+  let initial_env = List.map (fun _ -> None) varctxt in
+  let rec insert_candidate cand candidates =
+    if List.mem cand candidates then candidates else cand :: candidates
+  in
+  let rec stmt_candidates env depth path candidates = function
+    | UnrollJamLoop.Loop (lb, ub, body) ->
+        if unrolljam_debug_enabled () then begin
+          match unrolljam_profitability_stats factor env depth lb ub body with
+          | None ->
+              Printf.eprintf
+                "[polcert-unrolljam] depth=%d path=%s profitable=false reason=no-inner-loop\n%!"
+                depth (string_of_unrolljam_path path)
+          | Some (total_unique, invariant_unique, regs) ->
+              Printf.eprintf
+                "[polcert-unrolljam] depth=%d path=%s total=%d invariant=%d regs=%d cost=%d profitable=%b\n%!"
+                depth (string_of_unrolljam_path path)
+                total_unique invariant_unique regs
+                (unrolljam_register_budget - regs)
+                (unrolljam_profitable_at_depth factor env depth lb ub body)
+        end;
+        let candidates =
+          if unrolljam_profitable_at_depth factor env depth lb ub body
+          then insert_candidate (depth, path) candidates
+          else candidates
+        in
+        stmt_candidates
+          (loop_env_extend env depth lb ub)
+          (depth + 1)
+          (path @ [0])
+          candidates
+          body
+    | UnrollJamLoop.Instr _ -> candidates
+    | UnrollJamLoop.Seq sts -> stmt_list_candidates env depth path 0 candidates sts
+    | UnrollJamLoop.Guard (_, body) ->
+        stmt_candidates env depth (path @ [0]) candidates body
+  and stmt_list_candidates env depth path index candidates = function
+    | UnrollJamLoop.SNil -> candidates
+    | UnrollJamLoop.SCons (st, rest) ->
+        let candidates =
+          stmt_candidates env depth (path @ [index]) candidates st
+        in
+        stmt_list_candidates env depth path (index + 1) candidates rest
+  in
+  List.sort compare (stmt_candidates initial_env 0 [] [] stmt)
+
+let select_unrolljam_plan cfg loop =
+  (* This is the untrusted policy hook. It only selects candidate positions;
+     the extracted Coq pass still checks every selected transformation. *)
   match unrolljam_policy_name () with
   | "none" -> []
   | "checked-all-depths" ->
       unrolljam_plan_of_depths (unrolljam_loop_depths loop)
+  | "pluto-profitability" ->
+      unrolljam_plan_of_depth_paths
+        (pluto_profitability_candidates (pluto_unroll_factor cfg) loop)
   | _ -> assert false
 
 let apply_const_unroll_postpass cfg loop =
@@ -3206,9 +3520,17 @@ let apply_const_unroll_postpass cfg loop =
     let cleanup_loop loop =
       SPolOpt.CoreOpt.Prepare.Cleanup.cleanup loop
     in
+    let unrolljam_policy = unrolljam_policy_name () in
+    let apply_const_unroll_first =
+      (not cfg.pluto_unrolljam_seen)
+      || String.equal unrolljam_policy "checked-all-depths"
+    in
     let const_changed = SLoopUnroll.const_unroll_changed loop in
     let loop =
-      if const_changed then cleanup_loop (SLoopUnroll.const_unroll loop) else loop
+      if apply_const_unroll_first && const_changed then
+        cleanup_loop (SLoopUnroll.const_unroll loop)
+      else
+        loop
     in
     if cfg.pluto_unrolljam_seen then begin
       let fuel = nat_of_int (pluto_unroll_factor cfg) in
