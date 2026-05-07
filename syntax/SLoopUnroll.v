@@ -15,6 +15,12 @@ Definition peel_unroll : nat -> SPolIRs.Loop.t -> SPolIRs.Loop.t :=
 Definition peel_unroll_changed : nat -> SPolIRs.Loop.t -> bool :=
   CoreUnroll.peel_unroll_changed.
 
+Definition suffix_peel_unroll : nat -> SPolIRs.Loop.t -> SPolIRs.Loop.t :=
+  CoreUnroll.suffix_peel_unroll.
+
+Definition suffix_peel_unroll_changed : nat -> SPolIRs.Loop.t -> bool :=
+  CoreUnroll.suffix_peel_unroll_changed.
+
 Definition peel_plan : Type :=
   CoreUnroll.peel_plan.
 

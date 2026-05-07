@@ -15,17 +15,21 @@ Module State := PolIRs.State.
 Module Loop := PolIRs.Loop.
 Module Subst := LoopSingletonCleanup PolIRs.
 
-Definition succ_expr (e: Loop.expr) : Loop.expr :=
+Fixpoint add_const_expr (e: Loop.expr) (k: Z) : Loop.expr :=
   match e with
-  | Loop.Constant c => Loop.Constant (c + 1)
-  | _ => Loop.Sum e (Loop.Constant 1)
+  | Loop.Constant c => Loop.Constant (c + k)
+  | Loop.Sum e1 (Loop.Constant c) => add_const_expr e1 (c + k)
+  | _ =>
+      if Z.eqb k 0
+      then e
+      else Loop.Sum e (Loop.Constant k)
   end.
 
+Definition succ_expr (e: Loop.expr) : Loop.expr :=
+  add_const_expr e 1.
+
 Definition pred_expr (e: Loop.expr) : Loop.expr :=
-  match e with
-  | Loop.Constant c => Loop.Constant (c - 1)
-  | _ => Loop.Sum e (Loop.Constant (-1))
-  end.
+  add_const_expr e (-1).
 
 Lemma expr_eqb_refl :
   forall e,
@@ -223,18 +227,42 @@ Proof.
     + constructor.
 Qed.
 
+Lemma add_const_expr_correct :
+  forall env e k,
+    Loop.eval_expr env (add_const_expr e k) = Loop.eval_expr env e + k.
+Proof.
+  intros env e.
+  induction e; intros k; simpl.
+  - lia.
+  - destruct e2; simpl.
+    + rewrite IHe1. lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+    + destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+  - destruct (Z.eqb k 0) eqn:Hk; simpl; [apply Z.eqb_eq in Hk|]; lia.
+Qed.
+
 Lemma succ_expr_correct :
   forall env e,
     Loop.eval_expr env (succ_expr e) = Loop.eval_expr env e + 1.
 Proof.
-  intros env e. destruct e; simpl; lia.
+  intros env e. apply add_const_expr_correct.
 Qed.
 
 Lemma pred_expr_correct :
   forall env e,
     Loop.eval_expr env (pred_expr e) = Loop.eval_expr env e - 1.
 Proof.
-  intros env e. destruct e; simpl; lia.
+  intros env e. unfold pred_expr. rewrite add_const_expr_correct. lia.
 Qed.
 
 Lemma iter_semantics_app :
@@ -603,6 +631,23 @@ with peel_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_lis
       Loop.SCons (peel_unroll_stmt fuel st) (peel_unroll_stmt_list_rec fuel sts')
   end.
 
+Fixpoint suffix_peel_unroll_stmt (fuel: nat) (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop lb ub body =>
+      suffix_peel_stmt fuel lb ub body
+  | Loop.Instr i es => Loop.Instr i es
+  | Loop.Seq sts => Loop.Seq (suffix_peel_unroll_stmt_list_rec fuel sts)
+  | Loop.Guard t body => Loop.Guard t (suffix_peel_unroll_stmt fuel body)
+  end
+with suffix_peel_unroll_stmt_list_rec (fuel: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil => Loop.SNil
+  | Loop.SCons st sts' =>
+      Loop.SCons
+        (suffix_peel_unroll_stmt fuel st)
+        (suffix_peel_unroll_stmt_list_rec fuel sts')
+  end.
+
 Fixpoint peel_unroll_stmt_changed (fuel: nat) (st: Loop.stmt) : bool :=
   match fuel with
   | O => false
@@ -620,6 +665,12 @@ with peel_unroll_stmt_list_changed (fuel: nat) (sts: Loop.stmt_list) : bool :=
   | Loop.SCons st sts' =>
       orb (peel_unroll_stmt_changed fuel st) (peel_unroll_stmt_list_changed fuel sts')
   end.
+
+Definition suffix_peel_unroll_stmt_changed : nat -> Loop.stmt -> bool :=
+  peel_unroll_stmt_changed.
+
+Definition suffix_peel_unroll_stmt_list_changed : nat -> Loop.stmt_list -> bool :=
+  peel_unroll_stmt_list_changed.
 
 Scheme stmt_ind_mut := Induction for Loop.stmt Sort Prop
 with stmt_list_ind_mut := Induction for Loop.stmt_list Sort Prop.
@@ -712,11 +763,45 @@ Proof.
     + apply <- H in H1. apply <- H0 in H2. econstructor; eauto.
 Qed.
 
+Theorem suffix_peel_unroll_stmt_correct :
+  forall fuel,
+  (forall st env mem1 mem2,
+      Loop.loop_semantics (suffix_peel_unroll_stmt fuel st) env mem1 mem2 <->
+      Loop.loop_semantics st env mem1 mem2)
+  /\
+  (forall sts env mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (suffix_peel_unroll_stmt_list_rec fuel sts)) env mem1 mem2 <->
+      Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
+Proof.
+  intro fuel.
+  apply stmt_stmt_list_ind; intros; simpl.
+  - apply suffix_peel_stmt_semantics.
+  - split; intros Hsem; exact Hsem.
+  - split; intros Hsem.
+    + apply H. exact Hsem.
+    + apply <- H. exact Hsem.
+  - split; intros Hsem; inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+    + apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+    + apply Loop.LGuardTrue; [apply <- H; exact Hbody|exact Heq].
+    + apply Loop.LGuardFalse. exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply H in H1. apply H0 in H2. econstructor; eauto.
+    + apply <- H in H1. apply <- H0 in H2. econstructor; eauto.
+Qed.
+
 Lemma peel_unroll_stmt_semantics :
   forall fuel st env mem1 mem2,
     Loop.loop_semantics (peel_unroll_stmt fuel st) env mem1 mem2 <->
     Loop.loop_semantics st env mem1 mem2.
 Proof. intros. apply peel_unroll_stmt_correct. Qed.
+
+Lemma suffix_peel_unroll_stmt_semantics :
+  forall fuel st env mem1 mem2,
+    Loop.loop_semantics (suffix_peel_unroll_stmt fuel st) env mem1 mem2 <->
+    Loop.loop_semantics st env mem1 mem2.
+Proof. intros. apply suffix_peel_unroll_stmt_correct. Qed.
 
 Lemma const_unroll_stmt_semantics :
   forall st env mem1 mem2,
@@ -739,6 +824,14 @@ Definition peel_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
 Definition peel_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
   let '(st, _, _) := prog in
   peel_unroll_stmt_changed fuel st.
+
+Definition suffix_peel_unroll (fuel: nat) (prog: Loop.t) : Loop.t :=
+  let '(st, ctxt, vars) := prog in
+  (suffix_peel_unroll_stmt fuel st, ctxt, vars).
+
+Definition suffix_peel_unroll_changed (fuel: nat) (prog: Loop.t) : bool :=
+  let '(st, _, _) := prog in
+  suffix_peel_unroll_stmt_changed fuel st.
 
 Theorem const_unroll_correct :
   forall prog mem1 mem2,
@@ -786,6 +879,30 @@ Proof.
     + exact H1.
     + exact H2.
     + eapply peel_unroll_stmt_semantics. exact H3.
+Qed.
+
+Theorem suffix_peel_unroll_correct :
+  forall fuel prog mem1 mem2,
+    Loop.semantics (suffix_peel_unroll fuel prog) mem1 mem2 <->
+    Loop.semantics prog mem1 mem2.
+Proof.
+  intros fuel prog mem1 mem2.
+  destruct prog as [[st ctxt] vars]; simpl.
+  split; intros Hsem; inversion_clear Hsem; subst.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply suffix_peel_unroll_stmt_semantics. exact H3.
+  - inversion H; subst.
+    econstructor.
+    + reflexivity.
+    + exact H0.
+    + exact H1.
+    + exact H2.
+    + eapply suffix_peel_unroll_stmt_semantics. exact H3.
 Qed.
 
 End LoopUnroll.

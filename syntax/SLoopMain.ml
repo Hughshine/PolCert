@@ -3163,13 +3163,13 @@ let apply_const_unroll_postpass cfg loop =
     in
     if cfg.pluto_unrolljam_seen then begin
       let fuel = nat_of_int (pluto_unroll_factor cfg) in
-      if SLoopUnroll.peel_unroll_changed fuel loop then
-        SLoopUnroll.peel_unroll fuel loop
+      if SLoopUnroll.suffix_peel_unroll_changed fuel loop then
+        SLoopUnroll.suffix_peel_unroll fuel loop
       else if const_changed then
         loop
       else
         frontend_failf
-          "--unrolljam could not find a sequential Loop IR loop to peel-unroll";
+          "--unrolljam could not find a sequential Loop IR loop to suffix-peel";
     end
     else if const_changed then
       loop
