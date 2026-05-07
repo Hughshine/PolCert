@@ -343,6 +343,26 @@ Proof.
   exact H.
 Qed.
 
+Lemma iter_semantics_concat_map :
+  forall (A B: Type) (P: B -> State.t -> State.t -> Prop)
+    (f: A -> list B) xs mem1 mem2,
+    Instr.IterSem.iter_semantics
+      (fun x => Instr.IterSem.iter_semantics P (f x))
+      xs mem1 mem2 <->
+    Instr.IterSem.iter_semantics P (concat (map f xs)) mem1 mem2.
+Proof.
+  induction xs as [|x xs IH]; intros mem1 mem2; simpl.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem.
+    + inversion_clear Hsem.
+      eapply iter_semantics_app; eauto.
+      apply IH. exact H0.
+    + apply iter_semantics_app_inv in Hsem as [mem_mid [Hhead Htail]].
+      econstructor.
+      * exact Hhead.
+      * apply IH. exact Htail.
+Qed.
+
 Lemma seq_two_semantics :
   forall st1 st2 env mem1 mem3,
     Loop.loop_semantics
