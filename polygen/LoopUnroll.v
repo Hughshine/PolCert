@@ -31,6 +31,47 @@ Definition succ_expr (e: Loop.expr) : Loop.expr :=
 Definition pred_expr (e: Loop.expr) : Loop.expr :=
   add_const_expr e (-1).
 
+Fixpoint insert_expr_at (k: nat) (e: Loop.expr) : Loop.expr :=
+  match e with
+  | Loop.Constant c => Loop.Constant c
+  | Loop.Sum e1 e2 => Loop.Sum (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.Mult n e1 => Loop.Mult n (insert_expr_at k e1)
+  | Loop.Div e1 n => Loop.Div (insert_expr_at k e1) n
+  | Loop.Mod e1 n => Loop.Mod (insert_expr_at k e1) n
+  | Loop.Var n =>
+      if Nat.ltb n k then Loop.Var n else Loop.Var (S n)
+  | Loop.Max e1 e2 => Loop.Max (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.Min e1 e2 => Loop.Min (insert_expr_at k e1) (insert_expr_at k e2)
+  end.
+
+Fixpoint insert_test_at (k: nat) (t: Loop.test) : Loop.test :=
+  match t with
+  | Loop.LE e1 e2 => Loop.LE (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.EQ e1 e2 => Loop.EQ (insert_expr_at k e1) (insert_expr_at k e2)
+  | Loop.And t1 t2 => Loop.And (insert_test_at k t1) (insert_test_at k t2)
+  | Loop.Or t1 t2 => Loop.Or (insert_test_at k t1) (insert_test_at k t2)
+  | Loop.Not t1 => Loop.Not (insert_test_at k t1)
+  | Loop.TConstantTest b => Loop.TConstantTest b
+  end.
+
+Fixpoint insert_stmt_at (k: nat) (st: Loop.stmt) : Loop.stmt :=
+  match st with
+  | Loop.Loop lb ub body =>
+      Loop.Loop
+        (insert_expr_at k lb)
+        (insert_expr_at k ub)
+        (insert_stmt_at (S k) body)
+  | Loop.Instr i es => Loop.Instr i (map (insert_expr_at k) es)
+  | Loop.Seq sts => Loop.Seq (insert_stmt_list_at k sts)
+  | Loop.Guard t body => Loop.Guard (insert_test_at k t) (insert_stmt_at k body)
+  end
+with insert_stmt_list_at (k: nat) (sts: Loop.stmt_list) : Loop.stmt_list :=
+  match sts with
+  | Loop.SNil => Loop.SNil
+  | Loop.SCons st sts' =>
+      Loop.SCons (insert_stmt_at k st) (insert_stmt_list_at k sts')
+  end.
+
 Lemma expr_eqb_refl :
   forall e,
     Subst.expr_eqb e e = true.
@@ -323,6 +364,141 @@ Proof.
     + eapply Loop.LSeq.
       * exact Hst2.
       * constructor.
+Qed.
+
+Lemma insert_expr_at_correct :
+  forall pre inserted suf e,
+    Loop.eval_expr (pre ++ inserted :: suf) (insert_expr_at (length pre) e) =
+    Loop.eval_expr (pre ++ suf) e.
+Proof.
+  intros pre inserted suf e.
+  revert pre inserted suf.
+  induction e; intros pre0 inserted suf; simpl; try reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe. reflexivity.
+  - rewrite IHe. reflexivity.
+  - rewrite IHe. reflexivity.
+  - destruct (Nat.ltb n (length pre0)) eqn:Hlt.
+    + apply Nat.ltb_lt in Hlt.
+      apply Subst.nth_insert_before; auto.
+    + apply Nat.ltb_ge in Hlt.
+      change (nth (S n) (pre0 ++ inserted :: suf) 0 =
+              nth n (pre0 ++ suf) 0).
+      rewrite Subst.nth_insert_after by lia.
+      reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+  - rewrite IHe1, IHe2. reflexivity.
+Qed.
+
+Lemma insert_expr_list_at_correct :
+  forall pre inserted suf es,
+    map (Loop.eval_expr (pre ++ inserted :: suf))
+      (map (insert_expr_at (length pre)) es) =
+    map (Loop.eval_expr (pre ++ suf)) es.
+Proof.
+  intros pre inserted suf es.
+  rewrite map_map.
+  apply map_ext.
+  intro e.
+  apply insert_expr_at_correct.
+Qed.
+
+Lemma insert_test_at_correct :
+  forall pre inserted suf t,
+    Loop.eval_test (pre ++ inserted :: suf) (insert_test_at (length pre) t) =
+    Loop.eval_test (pre ++ suf) t.
+Proof.
+  intros pre inserted suf t.
+  revert pre inserted suf.
+  induction t; intros pre0 inserted suf; simpl; try reflexivity.
+  - rewrite !insert_expr_at_correct. reflexivity.
+  - rewrite !insert_expr_at_correct. reflexivity.
+  - rewrite IHt1, IHt2. reflexivity.
+  - rewrite IHt1, IHt2. reflexivity.
+  - rewrite IHt. reflexivity.
+Qed.
+
+Scheme insert_stmt_ind_mut := Induction for Loop.stmt Sort Prop
+with insert_stmt_list_ind_mut := Induction for Loop.stmt_list Sort Prop.
+Combined Scheme insert_stmt_stmt_list_ind
+  from insert_stmt_ind_mut, insert_stmt_list_ind_mut.
+
+Theorem insert_stmt_at_correct :
+  (forall st pre inserted suf mem1 mem2,
+      Loop.loop_semantics (insert_stmt_at (length pre) st)
+        (pre ++ inserted :: suf) mem1 mem2 <->
+      Loop.loop_semantics st (pre ++ suf) mem1 mem2)
+  /\
+  (forall sts pre inserted suf mem1 mem2,
+      Loop.loop_semantics (Loop.Seq (insert_stmt_list_at (length pre) sts))
+        (pre ++ inserted :: suf) mem1 mem2 <->
+      Loop.loop_semantics (Loop.Seq sts) (pre ++ suf) mem1 mem2).
+Proof.
+  apply insert_stmt_stmt_list_ind; intros; simpl.
+  - split; intros Hsem.
+    + inversion_clear Hsem.
+      rewrite !(insert_expr_at_correct pre inserted suf) in H0.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 Hx Hbody.
+      specialize (H (x :: pre) inserted suf mem3 mem4).
+      change ((x :: pre) ++ inserted :: suf)
+        with (x :: pre ++ inserted :: suf) in Hbody.
+      apply H in Hbody.
+      exact Hbody.
+    + inversion_clear Hsem.
+      rewrite <- !(insert_expr_at_correct pre inserted suf) in H0.
+      apply Loop.LLoop.
+      eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+      intros x mem3 mem4 Hx Hbody.
+      specialize (H (x :: pre) inserted suf mem3 mem4).
+      change ((x :: pre) ++ inserted :: suf)
+        with (x :: pre ++ inserted :: suf).
+      apply <- H in Hbody.
+      exact Hbody.
+  - split; intros Hsem.
+    + inversion Hsem; subst; clear Hsem.
+      econstructor.
+      rewrite (insert_expr_list_at_correct pre inserted suf) in H4.
+      exact H4.
+    + inversion Hsem; subst; clear Hsem.
+      econstructor.
+      rewrite (insert_expr_list_at_correct pre inserted suf).
+      exact H4.
+  - split; intros Hsem.
+    + apply (H pre inserted suf). exact Hsem.
+    + apply <- (H pre inserted suf). exact Hsem.
+  - split; intros Hsem.
+    + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+      * apply Loop.LGuardTrue.
+        -- apply (H pre inserted suf). exact Hbody.
+        -- rewrite (insert_test_at_correct pre inserted suf) in Heq. exact Heq.
+      * apply Loop.LGuardFalse.
+        rewrite (insert_test_at_correct pre inserted suf) in Heq. exact Heq.
+    + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
+      * apply Loop.LGuardTrue.
+        -- apply <- (H pre inserted suf). exact Hbody.
+        -- rewrite (insert_test_at_correct pre inserted suf). exact Heq.
+      * apply Loop.LGuardFalse.
+        rewrite (insert_test_at_correct pre inserted suf). exact Heq.
+  - split; intros Hsem; inversion_clear Hsem; constructor.
+  - split; intros Hsem; inversion_clear Hsem.
+    + apply (H pre inserted suf) in H1.
+      apply (H0 pre inserted suf) in H2.
+      econstructor; eauto.
+    + apply <- (H pre inserted suf) in H1.
+      apply <- (H0 pre inserted suf) in H2.
+      econstructor; eauto.
+Qed.
+
+Lemma insert_stmt_at_semantics :
+  forall st inserted env mem1 mem2,
+    Loop.loop_semantics (insert_stmt_at 0 st) (inserted :: env) mem1 mem2 <->
+    Loop.loop_semantics st env mem1 mem2.
+Proof.
+  intros.
+  specialize (proj1 insert_stmt_at_correct st [] inserted env mem1 mem2) as H.
+  simpl in H. exact H.
 Qed.
 
 Lemma checked_peel_steps_semantics :
