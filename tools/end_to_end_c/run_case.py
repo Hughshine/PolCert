@@ -51,6 +51,16 @@ def list_from_meta(meta: dict[str, object], key: str) -> list[str]:
     return list(value)
 
 
+def require_markers(loop_text: str, markers: list[str], *, present: bool) -> str | None:
+    for marker in markers:
+        found = marker in loop_text
+        if present and not found:
+            return f"missing optimized-loop marker: {marker}"
+        if not present and found:
+            return f"unexpected optimized-loop marker: {marker}"
+    return None
+
+
 def float_from_meta(meta: dict[str, object], key: str, default: float = 0.0) -> float:
     value = meta.get(key, default)
     if not isinstance(value, (int, float)):
@@ -135,6 +145,25 @@ def main() -> int:
     parallelized_loop = has_parallel_loop(optimized_loop)
     vectorized_loop = has_vector_loop(optimized_loop)
     write_text(out_dir / "optimized.loop", optimized_loop)
+    marker_error = require_markers(
+        optimized_loop,
+        list_from_meta(meta, "optimized_loop_needles"),
+        present=True,
+    )
+    if marker_error is None:
+        marker_error = require_markers(
+            optimized_loop,
+            list_from_meta(meta, "optimized_loop_absent"),
+            present=False,
+        )
+    if marker_error is not None:
+        write_text(
+            out_dir / "status.txt",
+            f"result=fail\nstage=optimized-loop-marker\nreason={marker_error}\n",
+        )
+        if args.keep_going:
+            return 1
+        raise SystemExit(f"[{case_name}] {marker_error}")
     if args.require_parallelized and not parallelized_loop:
         write_text(
             out_dir / "status.txt",

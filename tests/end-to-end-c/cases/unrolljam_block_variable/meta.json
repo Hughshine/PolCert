@@ -1,0 +1,23 @@
+{
+  "loop": "unrolljam_block_variable.loop",
+  "polopt_args": [
+    "--pluto-compat",
+    "--identity",
+    "--notile",
+    "--nointratileopt",
+    "--noprevector",
+    "--unrolljam",
+    "--ufactor=3",
+    "--nodiamond-tile",
+    "--noparallel"
+  ],
+  "benchmark": false,
+  "openmp": false,
+  "optimized_loop_needles": [
+    "for i0 in range(0, (N / 3))",
+    "for i1 in range(0, (M / 3))",
+    "A[((3 * i0) + 2)][((3 * i1) + 2)]",
+    "for i0 in range((3 * (N / 3)), N)",
+    "for i1 in range((3 * (M / 3)), M)"
+  ]
+}

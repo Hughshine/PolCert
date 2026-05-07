@@ -155,6 +155,21 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
             120,
         ),
         (
+            "end-to-end-c-unrolljam-block-variable",
+            [
+                sys.executable,
+                "tools/end_to_end_c/run_case.py",
+                "tests/end-to-end-c/cases/unrolljam_block_variable",
+                "--polopt",
+                "./polopt",
+                "--output-root",
+                str(out_dir / "end-to-end-c"),
+                "--benchmark-repeats",
+                "1",
+            ],
+            120,
+        ),
+        (
             "second-level-suite",
             [
                 sys.executable,

@@ -105,11 +105,17 @@ TOP_LEVEL_ROUTES = [
         ],
     },
     {
-        "route": "checked constant-bound and block/remainder unroll post pass",
+        "route": "checked constant-bound and block/remainder unroll post pass with cleanup",
         "cli": "polopt --const-unroll <file.loop> / polopt --pluto-compat --unrolljam [--ufactor N] on sequential Loop IR",
         "theorem_file": "polygen/LoopUnroll.v",
         "theorem_names": ["const_unroll_correct", "block_unroll_correct"],
-        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use a verified block/remainder unroll over ordinary Loop IR.",
+        "note": "This is the checked subset behind Pluto-compatible --unrolljam. Constant-bound loops are fully unrolled; variable-bound loops use a verified block/remainder unroll over ordinary Loop IR, followed by verified cleanup.",
+    },
+    {
+        "route": "verified Loop cleanup post pass",
+        "cli": "internal post pass used after checked unroll",
+        "theorem_file": "polygen/LoopSingletonCleanup.v",
+        "theorem_names": ["cleanup_correct"],
     },
     {
         "route": "checked ISS plus diamond plus parallel current",

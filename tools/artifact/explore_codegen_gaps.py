@@ -93,7 +93,7 @@ def run_polopt_checked_unroll() -> dict[str, object]:
         "stderr": proc.stderr[-1000:],
         "accepted": proc.returncode == 0,
         "checked_factor_note_present": "checked post flags: --ufactor=4" in stdout,
-        "block_offset_marker_present": "(4 * i" in stdout and "+ 3)]" in stdout,
+        "block_offset_marker_present": "(4 * i" in stdout and "+ 3))]" in stdout,
         "checked_remainder_loop_marker_present": "for i" in stdout and " / 4)))" in stdout,
     }
 

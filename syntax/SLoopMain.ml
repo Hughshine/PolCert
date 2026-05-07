@@ -3157,14 +3157,17 @@ let pluto_unroll_factor cfg =
 
 let apply_const_unroll_postpass cfg loop =
   if cfg.force_const_unroll then begin
+    let cleanup_loop loop =
+      SPolOpt.CoreOpt.Prepare.Cleanup.cleanup loop
+    in
     let const_changed = SLoopUnroll.const_unroll_changed loop in
     let loop =
-      if const_changed then SLoopUnroll.const_unroll loop else loop
+      if const_changed then cleanup_loop (SLoopUnroll.const_unroll loop) else loop
     in
     if cfg.pluto_unrolljam_seen then begin
       let fuel = nat_of_int (pluto_unroll_factor cfg) in
       if SLoopUnroll.block_unroll_changed fuel loop then
-        SLoopUnroll.block_unroll fuel loop
+        cleanup_loop (SLoopUnroll.block_unroll fuel loop)
       else if const_changed then
         loop
       else
