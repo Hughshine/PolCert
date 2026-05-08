@@ -62,7 +62,27 @@ def run_check(name: str, command: list[str], out_dir: Path, timeout: int | None)
     )
 
 
-def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str], int | None]]:
+def base_checks(
+    out_dir: Path,
+    diamond_timeout: int,
+    identity_composition_limits: tuple[int, int] | None,
+) -> list[tuple[str, list[str], int | None]]:
+    identity_composition_command = [
+        sys.executable,
+        "tools/artifact/explore_identity_compositions.py",
+        "--output-root",
+        str(out_dir / "identity-compositions"),
+    ]
+    if identity_composition_limits is not None:
+        diamond_limit, iss_limit = identity_composition_limits
+        identity_composition_command.extend(
+            [
+                "--identity-diamond-limit",
+                str(diamond_limit),
+                "--identity-iss-limit",
+                str(iss_limit),
+            ]
+        )
     return [
         (
             "py-compile-artifact-tools",
@@ -132,12 +152,7 @@ def base_checks(out_dir: Path, diamond_timeout: int) -> list[tuple[str, list[str
         ),
         (
             "identity-composition-exploration",
-            [
-                sys.executable,
-                "tools/artifact/explore_identity_compositions.py",
-                "--output-root",
-                str(out_dir / "identity-compositions"),
-            ],
+            identity_composition_command,
             180,
         ),
         (
@@ -289,7 +304,10 @@ def main() -> int:
 
     out_dir = Path(args.output_root).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    checks = base_checks(out_dir, args.diamond_timeout_seconds)
+    # Smoke mode is for artifact health checks, not for exhaustive route search.
+    # Full/extended modes keep the unbounded identity-composition exploration.
+    identity_composition_limits = (16, 16) if args.mode == "smoke" else None
+    checks = base_checks(out_dir, args.diamond_timeout_seconds, identity_composition_limits)
     if args.mode in ("full", "extended"):
         checks.extend(full_checks())
     if args.mode == "extended":

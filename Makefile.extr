@@ -110,6 +110,7 @@ POLOPT_OBJS:=$(shell $(MODORDER) \
   extraction/STilingBandSched.cmx \
   extraction/SBandTilingOpt.cmx \
   extraction/SParallelPolOpt.cmx \
+  extraction/SVerifiedParallelCompilerConfig.cmx \
   syntax/PlutoTilingValidator.cmx \
   syntax/SLoopMain.cmx)
 
@@ -182,6 +183,7 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/ParallelLoop.cmi \
     extraction/ParallelCodegen.cmi \
     extraction/SParallelPolOpt.cmi \
+    extraction/SVerifiedParallelCompilerConfig.cmi \
     extraction/Validator.cmi \
     extraction/TPolValidator.cmi \
     extraction/TPolOpt.cmi \

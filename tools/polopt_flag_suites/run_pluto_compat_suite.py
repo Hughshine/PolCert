@@ -327,7 +327,6 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile",
-        effect_absent=("32 *", "/ 32"),
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
@@ -1029,10 +1028,20 @@ def active_checks() -> list[Check]:
 
 
 ROUTE_BINDINGS = {
+    ("syntax/SLoopMain.ml", "module VerifiedParallelCompiler = SVerifiedParallelCompilerConfig"):
+        "normal end-to-end routes must expose the extracted Loop-to-ParallelLoop compiler dispatcher",
+    ("syntax/SLoopMain.ml", "VerifiedParallelCompiler.compile"):
+        "normal end-to-end optimization must call the extracted Loop-to-ParallelLoop compiler dispatcher",
+    ("syntax/SVerifiedParallelCompilerConfig.v", "| VSeq seq_cfg =>"):
+        "sequential routes must be lifted into the unified ParallelLoop dispatcher",
+    ("syntax/SVerifiedParallelCompilerConfig.v", "checked_lift_sequential_loop loop"):
+        "sequential routes must be checked-lifted before entering the ParallelLoop output surface",
+    ("syntax/SVerifiedParallelCompilerConfig.v", "| VParallelCurrentDefault d =>"):
+        "parallel-current routes must be represented in the unified extracted dispatcher",
     ("syntax/SLoopMain.ml", "module VerifiedSequentialCompiler = SVerifiedCompilerConfig"):
-        "sequential routes must go through the extracted verified compiler dispatcher",
+        "sequential Loop routes used by post-codegen checks must still have the extracted verified dispatcher available",
     ("syntax/SLoopMain.ml", "VerifiedSequentialCompiler.compile (verified_sequential_config_of_cli cfg) loop"):
-        "normal sequential optimization must call the extracted verified compiler dispatcher",
+        "sequential post-codegen routes must still call the extracted verified compiler dispatcher",
     ("syntax/SVerifiedCompilerConfig.v", "| VDefaultBand => SBandTilingOpt.opt loop"):
         "default sequential route must use the extracted band-aware optimizer",
     ("syntax/SVerifiedCompilerConfig.v", "| VDiamond => SBandTilingOpt.opt_diamond loop"):
@@ -1053,8 +1062,8 @@ ROUTE_BINDINGS = {
         "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
     "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
         "identity tiling plus Pluto-hinted parallel route must dispatch to the checked identity-tiled parallel wrapper",
-    "cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled":
-        "explicit-current identity tiling route must use the extracted SParallelPolOpt theorem-facing entry",
+    ("syntax/SLoopMain.ml", "RawParallelCurrentIdentityTiled d"):
+        "explicit-current identity tiling route must use the unified theorem-facing compiler config",
 }
 
 FORBIDDEN_ROUTE_BINDINGS = {

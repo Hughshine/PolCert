@@ -13,6 +13,7 @@ module ParallelLoopIR = ParallelCodegenCore.ParallelLoop
 module ParallelBaseLoop = ParallelLoopIR.BaseLoop
 module ParallelInstr = SPolIRs.SPolIRs.Instr
 module VerifiedSequentialCompiler = SVerifiedCompilerConfig
+module VerifiedParallelCompiler = SVerifiedParallelCompilerConfig
 
 let pluto_tiling_mode second_level =
   if second_level
@@ -90,18 +91,15 @@ let string_of_parallel_loop_expr env e =
 let parallel_slot_expr slots n =
   nth_or slots (Camlcoq.Nat.to_int n) (ParallelBaseLoop.Constant (Camlcoq.Z.of_sint 0))
 
+let loop_slots_of_parallel slots =
+  List.map ParallelCodegenCore.erase_expr slots
+
 let string_of_parallel_affine env slots aff =
-  let rec go = function
-    | ParallelInstr.AeConst z -> string_of_z z
-    | ParallelInstr.AeVar n -> string_of_parallel_loop_expr env (parallel_slot_expr slots n)
-    | ParallelInstr.AeAdd (a, b) -> Printf.sprintf "(%s + %s)" (go a) (go b)
-    | ParallelInstr.AeSub (a, b) -> Printf.sprintf "(%s - %s)" (go a) (go b)
-    | ParallelInstr.AeMul (k, e) ->
-        if Camlcoq.Z.eq k Camlcoq.Z.zero then "0"
-        else if Camlcoq.Z.eq k Camlcoq.Z.one then go e
-        else Printf.sprintf "(%s * %s)" (string_of_z k) (go e)
-  in
-  go aff
+  string_of_parallel_loop_expr env
+    (ParallelCodegenCore.tag_expr
+       (SLoopSymbolicSimpl.display_affine_expr
+          (loop_slots_of_parallel slots)
+          aff))
 
 let string_of_parallel_access env slots = function
   | ParallelInstr.AcVar id -> name_of_ident id
@@ -113,6 +111,17 @@ let string_of_parallel_access env slots = function
 
 let string_of_parallel_instr_expr env slots expr =
   let rec go = function
+    | expr ->
+        begin match
+          SLoopSymbolicSimpl.display_instr_expr
+            (loop_slots_of_parallel slots)
+            expr
+        with
+        | Some e ->
+            string_of_parallel_loop_expr env (ParallelCodegenCore.tag_expr e)
+        | None -> go_raw expr
+        end
+  and go_raw = function
     | ParallelInstr.ExConst z -> string_of_z z
     | ParallelInstr.ExFloat lit -> Camlcoq.camlstring_of_coqstring lit
     | ParallelInstr.ExVar n -> string_of_parallel_loop_expr env (parallel_slot_expr slots n)
@@ -3123,13 +3132,111 @@ let verified_sequential_config_of_cli cfg =
     RawDefaultBand
 
 let run_selected_optimization cfg loop =
+  VerifiedParallelCompiler.compile
+    (VerifiedParallelCompiler.RawSeq (verified_sequential_config_of_cli cfg))
+    loop
+
+let run_selected_sequential_loop_optimization cfg loop =
   VerifiedSequentialCompiler.compile (verified_sequential_config_of_cli cfg) loop
 
+let verified_parallel_current_config_of_cli cfg dim =
+  let d = nat_of_int dim in
+  let open VerifiedParallelCompiler in
+  if cfg.force_diamond_tile then
+    if cfg.force_iss then RawParallelCurrentDiamondISS d
+    else RawParallelCurrentDiamond d
+  else if cfg.force_identity && cfg.pluto_tile_seen && not cfg.force_iss then
+    RawParallelCurrentIdentityTiled d
+  else if cfg.force_iss then
+    if cfg.force_identity then
+      RawParallelCurrentIdentityISS d
+    else if cfg.force_notile then
+      RawParallelCurrentAffineISS d
+    else
+      RawParallelCurrentDefaultISS d
+  else if cfg.force_identity then
+    RawParallelCurrentIdentity d
+  else if cfg.force_notile then
+    RawParallelCurrentAffine d
+  else
+    RawParallelCurrentDefault d
+
+let parallel_hint_dims_of_cli cfg loop =
+  if cfg.force_diamond_tile then
+    hint_dims (pluto_diamond_parallel_hint cfg loop)
+  else if cfg.force_identity && cfg.pluto_tile_seen then
+    let pol = extract_strengthened_poly loop in
+    let before_scop = poly_to_openscop pol in
+    begin match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
+    | Err _ -> []
+    | Okk (_, hint) -> hint_dims hint
+    end
+  else if cfg.force_iss then
+    if cfg.force_notile then
+      let pol = extract_strengthened_poly loop in
+      let before_scop = poly_to_openscop pol in
+      begin match
+        Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint
+          before_scop
+      with
+      | Err _ -> []
+      | Okk (_, hint) -> hint_dims hint
+      end
+    else
+      begin match pluto_phase_scops_with_iss_and_parallel_hint loop with
+      | None -> []
+      | Some (_, _, _, _, hint) -> hint_dims hint
+      end
+  else if cfg.force_notile then
+    let pol = extract_strengthened_poly loop in
+    let before_scop = poly_to_openscop pol in
+    begin match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
+    | Err _ -> []
+    | Okk (_, hint) -> hint_dims hint
+    end
+  else
+    begin match pluto_phase_scops_with_parallel_hint loop with
+    | None -> []
+    | Some (_, _, _, _, hint) -> hint_dims hint
+    end
+
+let try_verified_parallel_current_compile cfg loop dim =
+  try
+    let (pl, ok) =
+      VerifiedParallelCompiler.compile
+        (verified_parallel_current_config_of_cli cfg dim)
+        loop
+    in
+    if ok then Some pl else None
+  with
+  | CertcheckerConfig.CertCheckerFailure _ -> None
+
+let run_verified_hinted_parallel_optimization cfg loop =
+  let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
+  let candidates =
+    if cfg.force_parallel_strict then
+      hinted_dims
+    else
+      unique_ints (hinted_dims @ int_range 0 16)
+  in
+  let rec go = function
+    | [] -> (tag_loop_for_parallel_pretty loop, false)
+    | dim :: rest ->
+        begin match try_verified_parallel_current_compile cfg loop dim with
+        | Some pl -> (pl, List.mem dim hinted_dims)
+        | None -> go rest
+        end
+  in
+  go candidates
+
 let run_selected_parallel_optimization cfg loop =
-  SLoopDispatch.run_selected_parallel_optimization
-    cfg
-    hinted_parallel_handlers
-    loop
+  if cfg.force_multipar then
+    SLoopDispatch.run_selected_parallel_optimization
+      cfg
+      hinted_parallel_handlers
+      loop
+  else
+    run_verified_hinted_parallel_optimization cfg loop
 
 let run_selected_vector_optimization cfg loop =
   SLoopDispatch.run_selected_parallel_optimization
@@ -3138,11 +3245,9 @@ let run_selected_vector_optimization cfg loop =
     loop
 
 let run_selected_parallel_current_optimization cfg loop dim =
-  SLoopDispatch.run_selected_parallel_current_optimization
-    cfg
-    current_parallel_handlers
+  VerifiedParallelCompiler.compile
+    (verified_parallel_current_config_of_cli cfg dim)
     loop
-    dim
 
 let run_selected_vector_current_optimization cfg loop dim =
   SLoopDispatch.run_selected_parallel_current_optimization
@@ -3637,10 +3742,24 @@ let () =
               if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
               print_section "Optimized Loop" (string_of_parallel_loop optimized)
             else
-              let (optimized, ok) = run_selected_optimization cfg loop in
-              let optimized = apply_const_unroll_postpass cfg optimized in
+              let (optimized, ok) =
+                if cfg.force_const_unroll then
+                  let (optimized_loop, route_ok) =
+                    run_selected_sequential_loop_optimization cfg loop
+                  in
+                  let optimized_loop =
+                    apply_const_unroll_postpass cfg optimized_loop
+                  in
+                  let (optimized_parallel, lift_ok) =
+                    VerifiedParallelCompiler.checked_lift_sequential_loop
+                      optimized_loop
+                  in
+                  (optimized_parallel, route_ok && lift_ok)
+                else
+                  run_selected_optimization cfg loop
+              in
               if not ok then prerr_endline "[alarm] optimization triggered a checked fallback or warning";
-              print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
+              print_section "Optimized Loop" (string_of_parallel_loop optimized)
         end
       end
     | InvalidStandaloneFlags ->

@@ -172,6 +172,19 @@ TOP_LEVEL_ROUTES = [
         "note": "The OCaml sequential path calls extracted syntax/SVerifiedCompilerConfig.v. This proof-side wrapper mirrors the same enumerated raw/verified configuration over theorem-carrying route definitions; the Coq file notes how to replace it with a compositional pass list later.",
     },
     {
+        "route": "unified Loop-to-ParallelLoop compiler config wrapper",
+        "cli": "normal polopt sequential route and explicit --parallel-current route",
+        "theorem_file": "driver/VerifiedParallelCompilerConfig.v",
+        "theorem_names": [
+            "compile_correct",
+            "compile_verified_correct",
+            "compile_seq_verified_correct",
+            "checked_sequential_current_annotated_codegen_correct",
+            "compile_unsupported_no_result",
+        ],
+        "note": "This wrapper gives a single Loop -> ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen, with raw fallback when cleaned codegen is not trace-safe; explicit parallel-current configs keep the existing ParMode route theorems.",
+    },
+    {
         "route": "checked ISS plus diamond plus parallel current",
         "cli": "polopt --iss --diamond-tile --parallel-current <dim> <file.loop>",
         "theorem_file": "driver/ParallelPolOptCorrect.v",
