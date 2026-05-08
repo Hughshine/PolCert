@@ -42,7 +42,7 @@ Extract Inlined Constant CoqAddOn.zPrRaw => "CoqPr.zPrRaw'".
 
 Extract Inductive sumbool => "bool" [ "true" "false" ].
 
-Extract Inlined Constant topo_sort_untrusted => "(fun l -> (Topo.coq_toposort l, true))".
+Extract Inlined Constant topo_sort_untrusted => "(fun l -> CoreAlarmed.Base.pure (Topo.coq_toposort l))".
 
 Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlString.
@@ -216,6 +216,9 @@ Require Import Ctyping.
 Require Import CPolOpt.
 Require Import TPolOpt.
 Require Import TTilingCanonicalOpt.
+(* VerifiedCompilerConfig is theorem-facing and imports correctness modules.
+   Keep it out of extraction; executable CLI route filtering lives in
+   syntax/SLoopRoute.ml and syntax/SLoopDispatch.ml. *)
 Require Import SPolOpt.
 Require Import SParallelPolOpt.
 Require Import SJamValidator.

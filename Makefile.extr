@@ -200,17 +200,29 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
 # side effect of compiling the implementation, so spell that out for
 # parallel builds that see the hand-written .cmi dependencies above.
 lib/Camlcoq.cmi: lib/Camlcoq.cmx
+	@true
 extraction/ImpureConfig.cmi: extraction/ImpureConfig.cmx
+	@true
 extraction/SParallelPolOpt.cmi: extraction/SParallelPolOpt.cmx
+	@true
 driver/Scheduler.cmi: driver/Scheduler.cmx
+	@true
 syntax/PlutoTilingValidator.cmi: syntax/PlutoTilingValidator.cmx
+	@true
 syntax/SLoopCli.cmi: syntax/SLoopCli.cmx
+	@true
 syntax/SLoopCommon.cmi: syntax/SLoopCommon.cmx
+	@true
 syntax/SLoopConfig.cmi: syntax/SLoopConfig.cmx
+	@true
 syntax/SLoopDispatch.cmi: syntax/SLoopDispatch.cmx
+	@true
 syntax/SLoopIss.cmi: syntax/SLoopIss.cmx
+	@true
 syntax/SLoopProfile.cmi: syntax/SLoopProfile.cmx
+	@true
 syntax/SLoopRoute.cmi: syntax/SLoopRoute.cmx
+	@true
 
 endif
 

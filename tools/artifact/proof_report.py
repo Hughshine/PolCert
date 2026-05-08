@@ -161,6 +161,17 @@ TOP_LEVEL_ROUTES = [
         "note": "The extracted pretty path lowers pure integer instruction expressions through the current Loop slots, simplifies the resulting Loop expression, and prints that theorem-backed expression instead of the raw slot-expanded syntax.",
     },
     {
+        "route": "enumerated verified compiler config wrapper",
+        "cli": "internal compiler wrapper: check_config followed by compile_verified",
+        "theorem_file": "driver/VerifiedCompilerConfig.v",
+        "theorem_names": [
+            "compile_correct",
+            "compile_verified_correct",
+            "compile_unsupported_no_result",
+        ],
+        "note": "The theorem-facing wrapper rejects unsupported raw configurations before dispatching to the existing route-specific correctness theorems. It is intentionally enumerated and kept out of extraction because it imports correctness modules; the file notes how to replace it with a compositional pass list later.",
+    },
+    {
         "route": "checked ISS plus diamond plus parallel current",
         "cli": "polopt --iss --diamond-tile --parallel-current <dim> <file.loop>",
         "theorem_file": "driver/ParallelPolOptCorrect.v",
