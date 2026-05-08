@@ -139,6 +139,13 @@ TOP_LEVEL_ROUTES = [
         "theorem_names": ["cleanup_correct"],
     },
     {
+        "route": "positive-literal stride range lowering",
+        "cli": "front-end lowering for .loop syntax range(lb, ub, step) where step is a positive integer literal",
+        "theorem_file": "polygen/LoopStride.v",
+        "theorem_names": ["stride_loop_stmt_semantics"],
+        "note": "The extracted front end lowers stride loops to an affine over-approximation plus affine guard, so the verified extractor still sees an affine SCoP and codegen can recover the compact ceil-divided loop bound.",
+    },
+    {
         "route": "checked ISS plus diamond plus parallel current",
         "cli": "polopt --iss --diamond-tile --parallel-current <dim> <file.loop>",
         "theorem_file": "driver/ParallelPolOptCorrect.v",

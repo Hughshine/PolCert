@@ -61,7 +61,7 @@ let stmt_of_list = function
 let rec stmt_depth = function
   | Assign _ -> 0
   | If (_, body) -> stmt_list_depth body
-  | For (_, _, _, body) -> 1 + stmt_list_depth body
+  | For (_, _, _, _, body) -> 1 + stmt_list_depth body
 
 and stmt_list_depth body =
   List.fold_left (fun acc st -> max acc (stmt_depth st)) 0 body
@@ -174,14 +174,25 @@ let rec elab_stmt env seen = function
   | If (tst, body) ->
       let body' = stmt_of_list (List.map (elab_stmt env seen) body) in
       Loop.Guard (elab_test env tst, body')
-  | For (iter, lb, ub, body) ->
+  | For (iter, lb, ub, step, body) ->
       if List.mem iter (loop_env env)
       then errorf "loop iterator %s shadows an existing loop/context variable" iter;
       let lb' = elab_loop_aff env lb in
       let ub' = elab_loop_aff env ub in
       let env' = { env with loops = env.loops @ [iter] } in
       let body' = stmt_of_list (List.map (elab_stmt env' seen) body) in
-      Loop.Loop (lb', ub', body')
+      begin match step with
+      | None -> Loop.Loop (lb', ub', body')
+      | Some step_aff ->
+          begin match const_affine step_aff with
+          | Some n when n > 0 ->
+              SLoopStride.stride_loop (nat_of_int n) lb' ub' body'
+          | Some _ ->
+              errorf "range step must be a positive integer literal"
+          | None ->
+              errorf "range step must be a positive integer literal"
+          end
+      end
 
 let elaborate (prog : program) : IR.Loop.t =
   ensure_unique "context" prog.context;

@@ -96,6 +96,9 @@ FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 CONST_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "const_unroll.loop"
 MIXED_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "mixed_unroll.loop"
+STRIDE_EVEN = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_even.loop"
+STRIDE_BAD_ZERO = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_bad_zero.loop"
+STRIDE_BAD_SYMBOLIC = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_bad_symbolic.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
 COSTFUNC = ROOT / "tests" / "polopt-regression" / "inputs" / "costfunc.loop"
 ADI = ROOT / "tests" / "polopt-regression" / "inputs" / "adi.loop"
@@ -526,6 +529,29 @@ CHECKS = [
         "polopt args: --notile --const-unroll",
         effect_absent=("for i0 in range",),
         env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
+    ),
+    Check(
+        "stride-loop-positive-literal",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        STRIDE_EVEN,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity",
+        effect_needles=("for i0 in range(0, ((N + 1) / 2))", "a[(2 * i0)] = ((2 * i0) + 1);"),
+    ),
+    Check(
+        "reject-stride-zero",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        STRIDE_BAD_ZERO,
+        False,
+        "range step must be a positive integer literal",
+    ),
+    Check(
+        "reject-stride-symbolic",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        STRIDE_BAD_SYMBOLIC,
+        False,
+        "range step must be a positive integer literal",
     ),
     Check(
         "const-unrolljam-ufactor-constant-loop",

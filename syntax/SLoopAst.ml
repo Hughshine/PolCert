@@ -33,7 +33,7 @@ type test =
 type stmt =
   | Assign of access * expr
   | If of test * stmt list
-  | For of string * affine * affine * stmt list
+  | For of string * affine * affine * affine option * stmt list
 
 type program = {
   context : string list;

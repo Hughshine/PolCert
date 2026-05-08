@@ -265,9 +265,14 @@ and parse_for st =
   let lb = parse_affine st in
   expect_token st Comma ", in range";
   let ub = parse_affine st in
+  let step =
+    match accept st (function Comma -> true | _ -> false) with
+    | None -> None
+    | Some _ -> Some (parse_affine st)
+  in
   expect_token st RParen ") after range";
   let body = parse_block st in
-  For (iter, lb, ub, body)
+  For (iter, lb, ub, step, body)
 
 and parse_if st =
   ignore (bump st);

@@ -5,9 +5,11 @@ import argparse
 import pathlib
 
 
-def split_top_level_comma(text: str) -> tuple[str, str]:
+def split_top_level_commas(text: str) -> list[str]:
     depth = 0
     bracket = 0
+    parts: list[str] = []
+    start = 0
     for i, ch in enumerate(text):
         if ch == "(":
             depth += 1
@@ -18,8 +20,10 @@ def split_top_level_comma(text: str) -> tuple[str, str]:
         elif ch == "]":
             bracket -= 1
         elif ch == "," and depth == 0 and bracket == 0:
-            return text[:i].strip(), text[i + 1 :].strip()
-    raise ValueError(f"could not split top-level range arguments: {text!r}")
+            parts.append(text[start:i].strip())
+            start = i + 1
+    parts.append(text[start:].strip())
+    return parts
 
 
 def transpile_line(line: str) -> list[str]:
@@ -47,8 +51,16 @@ def transpile_line(line: str) -> list[str]:
             raise ValueError(f"unsupported loop syntax: {line!r}")
         var, tail = rest.split(marker, 1)
         inner = tail[:-3]
-        lb, ub = split_top_level_comma(inner)
-        loop_line = f"{indent}for (long long {var.strip()} = {lb}; {var.strip()} < {ub}; ++{var.strip()}) {{"
+        parts = split_top_level_commas(inner)
+        if len(parts) == 2:
+            lb, ub = parts
+            step = "1"
+        elif len(parts) == 3:
+            lb, ub, step = parts
+        else:
+            raise ValueError(f"unsupported range arity: {line!r}")
+        incr = f"++{var.strip()}" if step == "1" else f"{var.strip()} += {step}"
+        loop_line = f"{indent}for (long long {var.strip()} = {lb}; {var.strip()} < {ub}; {incr}) {{"
         if is_parallel:
             return [f"{indent}#pragma omp parallel for", loop_line]
         if is_vector:
