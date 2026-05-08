@@ -26,6 +26,13 @@ def split_top_level_commas(text: str) -> list[str]:
     return parts
 
 
+def parse_int_literal(text: str) -> int | None:
+    try:
+        return int(text.strip(), 10)
+    except ValueError:
+        return None
+
+
 def transpile_line(line: str) -> list[str]:
     stripped = line.strip()
     if not stripped:
@@ -59,8 +66,16 @@ def transpile_line(line: str) -> list[str]:
             lb, ub, step = parts
         else:
             raise ValueError(f"unsupported range arity: {line!r}")
-        incr = f"++{var.strip()}" if step == "1" else f"{var.strip()} += {step}"
-        loop_line = f"{indent}for (long long {var.strip()} = {lb}; {var.strip()} < {ub}; {incr}) {{"
+        step_lit = parse_int_literal(step)
+        if step_lit == 0:
+            raise ValueError(f"zero range step: {line!r}")
+        if step_lit is not None and step_lit < 0:
+            cond = f"{var.strip()} > {ub}"
+            incr = f"--{var.strip()}" if step_lit == -1 else f"{var.strip()} += {step}"
+        else:
+            cond = f"{var.strip()} < {ub}"
+            incr = f"++{var.strip()}" if step == "1" else f"{var.strip()} += {step}"
+        loop_line = f"{indent}for (long long {var.strip()} = {lb}; {cond}; {incr}) {{"
         if is_parallel:
             return [f"{indent}#pragma omp parallel for", loop_line]
         if is_vector:

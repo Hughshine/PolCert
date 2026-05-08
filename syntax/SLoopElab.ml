@@ -85,9 +85,18 @@ let slot_exprs env =
       | None -> errorf "internal error: missing slot binding for %s" name)
     (slot_env env)
 
-let const_affine = function
+let rec const_affine = function
   | Int n -> Some n
-  | _ -> None
+  | Name _ -> None
+  | Add (a, b) ->
+      Option.bind (const_affine a) (fun x ->
+        Option.map (fun y -> x + y) (const_affine b))
+  | Sub (a, b) ->
+      Option.bind (const_affine a) (fun x ->
+        Option.map (fun y -> x - y) (const_affine b))
+  | Mul (a, b) ->
+      Option.bind (const_affine a) (fun x ->
+        Option.map (fun y -> x * y) (const_affine b))
 
 let const_expr = function
   | IntLit n -> Some n
@@ -187,10 +196,14 @@ let rec elab_stmt env seen = function
           begin match const_affine step_aff with
           | Some n when n > 0 ->
               SLoopStride.stride_loop (nat_of_int n) lb' ub' body'
+          | Some n when n < 0 ->
+              if n = min_int
+              then errorf "range step literal is out of supported range"
+              else SLoopStride.down_stride_loop (nat_of_int (-n)) lb' ub' body'
           | Some _ ->
-              errorf "range step must be a positive integer literal"
+              errorf "range step must be a nonzero integer literal"
           | None ->
-              errorf "range step must be a positive integer literal"
+              errorf "range step must be a nonzero integer literal"
           end
       end
 

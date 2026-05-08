@@ -14,6 +14,7 @@ SCAN_DIRS = [
     "src",
     "driver",
     "polygen",
+    "syntax",
     "common",
     "cfrontend",
     "cparser",
@@ -144,6 +145,20 @@ TOP_LEVEL_ROUTES = [
         "theorem_file": "polygen/LoopStride.v",
         "theorem_names": ["stride_loop_stmt_semantics"],
         "note": "The extracted front end lowers stride loops to an affine over-approximation plus affine guard, so the verified extractor still sees an affine SCoP and codegen can recover the compact ceil-divided loop bound.",
+    },
+    {
+        "route": "negative-literal stride range lowering",
+        "cli": "front-end lowering for .loop syntax range(lb, ub, step) where step is a negative integer literal",
+        "theorem_file": "polygen/LoopStride.v",
+        "theorem_names": ["down_stride_loop_stmt_semantics"],
+        "note": "The extracted front end mirrors the positive-stride route by using a unit candidate loop, the affine iterator lb - step*k, and the affine guard ub + 1 <= iterator.",
+    },
+    {
+        "route": "verified symbolic expression display simplification",
+        "cli": "internal post-output simplifier used by .loop pretty printing",
+        "theorem_file": "syntax/SLoopSymbolicSimpl.v",
+        "theorem_names": ["display_affine_expr_correct", "display_instr_expr_correct"],
+        "note": "The extracted pretty path lowers pure integer instruction expressions through the current Loop slots, simplifies the resulting Loop expression, and prints that theorem-backed expression instead of the raw slot-expanded syntax.",
     },
     {
         "route": "checked ISS plus diamond plus parallel current",

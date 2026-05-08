@@ -30,17 +30,7 @@ let string_of_loop_expr env e =
 let slot_expr slots n = nth_or slots (Camlcoq.Nat.to_int n) (Loop.Constant (Camlcoq.Z.of_sint 0))
 
 let string_of_affine env slots aff =
-  let rec go = function
-    | Instr.AeConst z -> string_of_z z
-    | Instr.AeVar n -> string_of_loop_expr env (slot_expr slots n)
-    | Instr.AeAdd (a, b) -> Printf.sprintf "(%s + %s)" (go a) (go b)
-    | Instr.AeSub (a, b) -> Printf.sprintf "(%s - %s)" (go a) (go b)
-    | Instr.AeMul (k, e) ->
-        if z_eq k z0 then "0"
-        else if z_eq k z1 then go e
-        else Printf.sprintf "(%s * %s)" (string_of_z k) (go e)
-  in
-  go aff
+  string_of_loop_expr env (SLoopSymbolicSimpl.display_affine_expr slots aff)
 
 let string_of_access env slots = function
   | Instr.AcVar id -> name_of_ident id
@@ -52,6 +42,13 @@ let string_of_access env slots = function
 
 let string_of_instr_expr env slots expr =
   let rec go = function
+    | expr ->
+        begin match SLoopSymbolicSimpl.display_instr_expr slots expr with
+        | Some e -> string_of_loop_expr env e
+        | None ->
+            go_raw expr
+        end
+  and go_raw = function
     | Instr.ExConst z -> string_of_z z
     | Instr.ExFloat lit -> Camlcoq.camlstring_of_coqstring lit
     | Instr.ExVar n -> string_of_loop_expr env (slot_expr slots n)

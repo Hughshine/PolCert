@@ -97,6 +97,7 @@ SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 CONST_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "const_unroll.loop"
 MIXED_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "mixed_unroll.loop"
 STRIDE_EVEN = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_even.loop"
+STRIDE_DOWN = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_down.loop"
 STRIDE_BAD_ZERO = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_bad_zero.loop"
 STRIDE_BAD_SYMBOLIC = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_bad_symbolic.loop"
 PCA = ROOT / "tests" / "polopt-regression" / "inputs" / "pca.loop"
@@ -299,7 +300,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --coeff-bound=1",
-        effect_needles=("A[((2 * i0) + 0)]", "B[((2 * 1) + 1)]"),
+        effect_needles=("A[(2 * i0)] = 1;", "B[3] = A[3];"),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
@@ -540,18 +541,27 @@ CHECKS = [
         effect_needles=("for i0 in range(0, ((N + 1) / 2))", "a[(2 * i0)] = ((2 * i0) + 1);"),
     ),
     Check(
+        "stride-loop-negative-literal",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        STRIDE_DOWN,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity",
+        effect_needles=("for i0 in range(0, ((N + 1) / 2))", "a[(N + ((-2 * i0) + -1))] = (N + ((-2 * i0) + 6));"),
+    ),
+    Check(
         "reject-stride-zero",
         ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
         STRIDE_BAD_ZERO,
         False,
-        "range step must be a positive integer literal",
+        "range step must be a nonzero integer literal",
     ),
     Check(
         "reject-stride-symbolic",
         ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
         STRIDE_BAD_SYMBOLIC,
         False,
-        "range step must be a positive integer literal",
+        "range step must be a nonzero integer literal",
     ),
     Check(
         "const-unrolljam-ufactor-constant-loop",
