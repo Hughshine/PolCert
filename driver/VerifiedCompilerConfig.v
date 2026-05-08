@@ -4,6 +4,7 @@ Require Import ImpureAlarmConfig.
 Require Import PolIRs.
 Require Import PolOptCorrect.
 Require Import PolOptBandTiling.
+Require Import PolOptIdentityGenericISS.
 Require Import Result.
 Require Import Vpl.Impure.
 
@@ -14,6 +15,7 @@ Module VerifiedCompilerConfig (PolIRs: POLIRS).
 
 Module CoreCorrect := PolOptCorrect PolIRs.
 Module BandCorrect := PolOptBandTiling PolIRs.
+Module IdentityGenericISSCorrect := PolOptIdentityGenericISS PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module State := PolIRs.State.
 
@@ -23,6 +25,7 @@ Inductive raw_config : Type :=
 | RawDefault
 | RawDefaultBand
 | RawIdentitySecondLevel
+| RawIdentitySecondLevelISS
 | RawIdentityBand
 | RawIdentityBandISS
 | RawISS
@@ -36,6 +39,7 @@ Inductive verified_config : Type :=
 | VDefault
 | VDefaultBand
 | VIdentitySecondLevel
+| VIdentitySecondLevelISS
 | VIdentityBand
 | VIdentityBandISS
 | VISS
@@ -49,6 +53,7 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawDefault => Okk VDefault
   | RawDefaultBand => Okk VDefaultBand
   | RawIdentitySecondLevel => Okk VIdentitySecondLevel
+  | RawIdentitySecondLevelISS => Okk VIdentitySecondLevelISS
   | RawIdentityBand => Okk VIdentityBand
   | RawIdentityBandISS => Okk VIdentityBandISS
   | RawISS => Okk VISS
@@ -71,6 +76,9 @@ Definition compile_verified (cfg: verified_config) (loop: LoopIR.t)
   | VDefaultBand => BandCorrect.Opt_band loop
   | VIdentitySecondLevel =>
       CoreCorrect.Core.identity_tiling_generic_opt_prepared loop
+  | VIdentitySecondLevelISS =>
+      IdentityGenericISSCorrect.BaseOpt
+        .identity_tiling_generic_opt_prepared_with_iss loop
   | VIdentityBand => BandCorrect.Opt_identity_tiled_band loop
   | VIdentityBandISS => BandCorrect.Opt_identity_tiled_band_with_iss loop
   | VISS => CoreCorrect.Core.Opt_with_iss loop
@@ -99,6 +107,8 @@ Proof.
   - eapply CoreCorrect.Opt_correct; eauto.
   - eapply BandCorrect.Opt_band_correct; eauto.
   - eapply CoreCorrect.Identity_tiling_generic_opt_prepared_correct; eauto.
+  - eapply IdentityGenericISSCorrect
+      .identity_tiling_generic_opt_prepared_with_iss_correct; eauto.
   - eapply BandCorrect.Opt_identity_tiled_band_correct; eauto.
   - eapply BandCorrect.Opt_identity_tiled_band_with_iss_correct; eauto.
   - eapply CoreCorrect.Opt_with_iss_correct; eauto.

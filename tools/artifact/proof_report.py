@@ -169,7 +169,7 @@ TOP_LEVEL_ROUTES = [
             "compile_verified_correct",
             "compile_unsupported_no_result",
         ],
-        "note": "The theorem-facing wrapper rejects unsupported raw configurations before dispatching to the existing route-specific correctness theorems. It is intentionally enumerated and kept out of extraction because it imports correctness modules; the file notes how to replace it with a compositional pass list later.",
+        "note": "The OCaml sequential path calls extracted syntax/SVerifiedCompilerConfig.v. This proof-side wrapper mirrors the same enumerated raw/verified configuration over theorem-carrying route definitions; the Coq file notes how to replace it with a compositional pass list later.",
     },
     {
         "route": "checked ISS plus diamond plus parallel current",

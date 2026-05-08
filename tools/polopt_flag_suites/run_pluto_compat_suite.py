@@ -1029,39 +1029,56 @@ def active_checks() -> list[Check]:
 
 
 ROUTE_BINDINGS = {
-    "seq_optimize_diamond = SBandTilingOpt.opt_diamond":
+    ("syntax/SLoopMain.ml", "module VerifiedSequentialCompiler = SVerifiedCompilerConfig"):
+        "sequential routes must go through the extracted verified compiler dispatcher",
+    ("syntax/SLoopMain.ml", "VerifiedSequentialCompiler.compile (verified_sequential_config_of_cli cfg) loop"):
+        "normal sequential optimization must call the extracted verified compiler dispatcher",
+    ("syntax/SVerifiedCompilerConfig.v", "| VDefaultBand => SBandTilingOpt.opt loop"):
+        "default sequential route must use the extracted band-aware optimizer",
+    ("syntax/SVerifiedCompilerConfig.v", "| VDiamond => SBandTilingOpt.opt_diamond loop"):
         "diamond route must use the extracted SBandTilingOpt.opt_diamond entry",
-    "seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss":
+    ("syntax/SVerifiedCompilerConfig.v", "| VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop"):
         "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
-    "seq_optimize_identity = SPolOpt.opt_identity":
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentity => SPolOpt.opt_identity loop"):
         "identity route must use the extracted SPolOpt.opt_identity entry",
-    "seq_optimize_identity_tiled = optimize_identity_tiled":
-        "identity tiling route must dispatch through the helper that selects band-aware or generic checked tiling",
-    "SPolOpt.opt_identity_tiled_generic loop":
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentitySecondLevel => SPolOpt.opt_identity_tiled_generic loop"):
         "second-level identity tiling must use the extracted generic theorem-facing entry",
-    "SBandTilingOpt.opt_identity_tiled loop":
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBand => SBandTilingOpt.opt_identity_tiled loop"):
         "ordinary identity tiling must still use the extracted band-aware theorem-facing entry",
-    "seq_optimize_iss_identity_tiled = optimize_iss_identity_tiled":
-        "ISS identity tiling route must dispatch through the helper that selects band-aware or generic checked tiling",
-    "SPolOpt.opt_identity_tiled_generic_with_iss loop":
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentitySecondLevelISS =>"):
+        "ISS second-level identity tiling must be represented in the extracted dispatcher",
+    ("syntax/SVerifiedCompilerConfig.v", "SPolOpt.opt_identity_tiled_generic_with_iss loop"):
         "ISS second-level identity tiling must use the extracted generic ISS theorem-facing entry",
-    "SBandTilingOpt.opt_identity_tiled_with_iss loop":
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop"):
         "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
     "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
         "identity tiling plus Pluto-hinted parallel route must dispatch to the checked identity-tiled parallel wrapper",
     "cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled":
         "explicit-current identity tiling route must use the extracted SParallelPolOpt theorem-facing entry",
-    "seq_optimize_affine = SPolOpt.opt_affine":
-        "affine route must use the extracted SPolOpt.opt_affine entry",
+}
+
+FORBIDDEN_ROUTE_BINDINGS = {
+    ("syntax/SLoopMain.ml", "SLoopDispatch.run_selected_optimization cfg sequential_handlers loop"):
+        "normal sequential optimization must not bypass SVerifiedCompilerConfig",
+    ("syntax/SLoopMain.ml", "let sequential_handlers ="):
+        "the old sequential handler table should not remain as the normal dispatch path",
 }
 
 
 def check_route_bindings() -> list[str]:
-    source = (ROOT / "syntax" / "SLoopMain.ml").read_text()
     failures = []
     for needle, reason in ROUTE_BINDINGS.items():
-        if needle not in source:
-            failures.append(f"route binding missing: {needle!r}; {reason}")
+        if isinstance(needle, tuple):
+            relpath, pattern = needle
+        else:
+            relpath, pattern = "syntax/SLoopMain.ml", needle
+        source = (ROOT / relpath).read_text()
+        if pattern not in source:
+            failures.append(f"route binding missing in {relpath}: {pattern!r}; {reason}")
+    for (relpath, pattern), reason in FORBIDDEN_ROUTE_BINDINGS.items():
+        source = (ROOT / relpath).read_text()
+        if pattern in source:
+            failures.append(f"forbidden route binding in {relpath}: {pattern!r}; {reason}")
     return failures
 
 

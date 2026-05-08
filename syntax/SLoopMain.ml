@@ -12,6 +12,7 @@ module ParallelCodegenCore = ParallelCodegen.ParallelCodegen(SPolIRs.SPolIRs)
 module ParallelLoopIR = ParallelCodegenCore.ParallelLoop
 module ParallelBaseLoop = ParallelLoopIR.BaseLoop
 module ParallelInstr = SPolIRs.SPolIRs.Instr
+module VerifiedSequentialCompiler = SVerifiedCompilerConfig
 
 let pluto_tiling_mode second_level =
   if second_level
@@ -3049,32 +3050,6 @@ let standalone_handlers = {
   sa_run_iss_pluto_live_suite = run_iss_pluto_live_suite;
 }
 
-let optimize_identity_tiled loop =
-  if Scheduler.second_level_tiling_enabled () then
-    SPolOpt.opt_identity_tiled_generic loop
-  else
-    SBandTilingOpt.opt_identity_tiled loop
-
-let optimize_iss_identity_tiled loop =
-  if Scheduler.second_level_tiling_enabled () then
-    SPolOpt.opt_identity_tiled_generic_with_iss loop
-  else
-    SBandTilingOpt.opt_identity_tiled_with_iss loop
-
-let sequential_handlers = {
-  seq_optimize_diamond = SBandTilingOpt.opt_diamond;
-  seq_optimize_diamond_iss = SBandTilingOpt.opt_diamond_with_iss;
-  seq_optimize_iss_identity_tiled = optimize_iss_identity_tiled;
-  seq_optimize_iss_identity = optimize_with_iss_identity;
-  seq_optimize_iss_affine = optimize_with_iss_affine;
-  seq_optimize_iss_default = SPolOpt.opt_with_iss;
-  seq_optimize_identity = SPolOpt.opt_identity;
-  seq_optimize_identity_tiled = optimize_identity_tiled;
-  seq_optimize_affine = SPolOpt.opt_affine;
-  seq_optimize_legacy = SPolOpt.opt;
-  seq_optimize_default = SBandTilingOpt.opt;
-}
-
 let hinted_parallel_handlers = {
   hint_optimize_diamond = optimize_with_diamond_parallel_hint;
   hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint;
@@ -3117,8 +3092,38 @@ let current_vector_handlers = {
   cur_optimize_default = SParallelPolOpt.opt_vector_current;
 }
 
+let verified_sequential_config_of_cli cfg =
+  let open VerifiedSequentialCompiler in
+  if cfg.force_diamond_tile then
+    if cfg.force_iss then RawDiamondISS else RawDiamond
+  else if cfg.force_iss then
+    if cfg.force_identity then
+      if cfg.pluto_tile_seen then
+        if cfg.force_second_level_tile
+        then RawIdentitySecondLevelISS
+        else RawIdentityBandISS
+      else
+        RawUnsupported
+    else if cfg.force_notile then
+      RawUnsupported
+    else
+      RawISS
+  else if cfg.force_identity then
+    if cfg.pluto_tile_seen then
+      if cfg.force_second_level_tile
+      then RawIdentitySecondLevel
+      else RawIdentityBand
+    else
+      RawIdentity
+  else if cfg.force_notile then
+    RawAffine
+  else if cfg.force_legacy_generic_tiling then
+    RawDefault
+  else
+    RawDefaultBand
+
 let run_selected_optimization cfg loop =
-  SLoopDispatch.run_selected_optimization cfg sequential_handlers loop
+  VerifiedSequentialCompiler.compile (verified_sequential_config_of_cli cfg) loop
 
 let run_selected_parallel_optimization cfg loop =
   SLoopDispatch.run_selected_parallel_optimization
