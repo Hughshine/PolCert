@@ -173,7 +173,7 @@ TOP_LEVEL_ROUTES = [
     },
     {
         "route": "unified Loop-to-ParallelLoop compiler config wrapper",
-        "cli": "normal polopt sequential route and explicit --parallel-current route",
+        "cli": "normal polopt sequential route, explicit --parallel-current route, and non-multipar Pluto-hinted --parallel route",
         "theorem_file": "driver/VerifiedParallelCompilerConfig.v",
         "theorem_names": [
             "compile_correct",
@@ -182,7 +182,7 @@ TOP_LEVEL_ROUTES = [
             "checked_sequential_current_annotated_codegen_correct",
             "compile_unsupported_no_result",
         ],
-        "note": "This wrapper gives a single Loop -> ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen, with raw fallback when cleaned codegen is not trace-safe; explicit parallel-current configs keep the existing ParMode route theorems.",
+        "note": "This wrapper gives a single Loop -> ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen, with raw fallback when cleaned codegen is not trace-safe; explicit parallel-current configs keep the existing ParMode route theorems. Non-multipar Pluto-hinted --parallel is a candidate-selection layer over the same checked current-dimension compiler, while --multipar remains a separate checked multi-certificate route.",
     },
     {
         "route": "checked ISS plus diamond plus parallel current",
