@@ -84,9 +84,9 @@ Module GeneralValidator := TilingCore.TilingVal.
 Module TPrepare := TilingCore.TPrepare.
 
 (** Affine-only validator API. *)
-Definition observation := TransformCore.observation.
+Definition observation := PolIRs.State.t -> PolIRs.State.t -> Prop.
 Definition identity_observation := TransformCore.identity_observation.
-Definition state_relation := TransformCore.state_relation.
+Definition state_relation := PolIRs.State.t -> PolIRs.State.t -> Prop.
 Definition same_state_relation := TransformCore.same_state_relation.
 Definition compose_state_relation := TransformCore.compose_state_relation.
 Definition relation_included := TransformCore.relation_included.

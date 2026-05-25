@@ -27,7 +27,7 @@ Module AffineCore := AffineValidator PolIRs.
 
 Definition state_relation := State.t -> State.t -> Prop.
 
-Definition observation := state_relation.
+Definition observation := State.t -> State.t -> Prop.
 
 (** Existing validators use full-state equality.  The argument order is
     target-state first, source-state second, matching [AffineValidator]'s
