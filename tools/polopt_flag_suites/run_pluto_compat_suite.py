@@ -206,6 +206,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --nodepbound",
+        effect_needles=("for i2 in range((i0 + -1), i0)", "B[i2][i3]"),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
@@ -215,6 +216,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --per-cc-obj",
+        effect_needles=("for i1 in range((i0 + 1), (m + 1))", "mean[m] = 0.0;"),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
@@ -224,6 +226,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --flic",
+        effect_needles=("for i1 in range(1, N)", "a[i0][i1] ="),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
@@ -233,6 +236,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --fast-lin-ind-check",
+        effect_needles=("for i1 in range(1, N)", "a[i0][i1] ="),
         differs_from_args=(tuple(FUSION_NOTILE_SMART),),
     ),
     Check(
@@ -381,6 +385,16 @@ CHECKS = [
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"]),),
     ),
     Check(
+        "second-level-parallel-matmul-init",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --second-level-tile --parallel",
+        effect_needles=("parallel for i1", "/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"]),),
+    ),
+    Check(
         "second-level-parallel-multipar",
         [*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar", "--second-level-tile"],
         NODEP,
@@ -500,6 +514,15 @@ CHECKS = [
         "polopt args: --full-diamond-tile",
         effect_needles=("% 4", "32 *"),
         differs_from_args=(tuple(JACOBI_NODIAMOND),),
+    ),
+    Check(
+        "full-diamond-batch",
+        [*FLAGS, "--full-diamond-tile", "--noparallel"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --full-diamond-tile",
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
     ),
     Check(
         "full-diamond-iss",
@@ -674,6 +697,16 @@ CHECKS = [
         "identity-second-level",
         IDENTITY_TILED_SECOND_LEVEL,
         MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --second-level-tile",
+        effect_needles=("/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple(IDENTITY_TILED),),
+    ),
+    Check(
+        "identity-second-level-matmul-init",
+        IDENTITY_TILED_SECOND_LEVEL,
+        MATMUL_INIT,
         True,
         "== Optimized Loop ==",
         "polopt args: --identity --tile --second-level-tile",
@@ -1000,6 +1033,16 @@ def active_checks() -> list[Check]:
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --glpk --hybridfuse",
                     effect_needles=("for i1 in range(0, N)", "X[i2][i1]"),
+                    differs_from_args=(tuple(TUNING_NOTILE_GLPK),),
+                ),
+                Check(
+                    "optimizer-delayedcut-corcol-effect",
+                    TUNING_NOTILE_DELAYEDCUT,
+                    CORCOL,
+                    True,
+                    "== Optimized Loop ==",
+                    "pluto oracle flags: --smartfuse --glpk --dfp --delayedcut",
+                    effect_needles=("if ((1 <= N && 2 <= M))", "symmat[i1][i0] = symmat[i0][i1];"),
                     differs_from_args=(tuple(TUNING_NOTILE_GLPK),),
                 ),
             ]
