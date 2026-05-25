@@ -853,6 +853,11 @@ compatible according to `StorageCompatibilityWitness`.  These wrappers still
 compose the pass under the feature-specific semantic refinement; for floating
 point, bit-exact and relaxed-reassociation reductions must remain different
 semantic claims.
+`checked_reduction_merge_commutative_compatible_non_escape_value_view_correct`
+adds the reusable private non-escape witness for privatized reductions:
+partial accumulator cells must be disjoint from the finite context escape set.
+This reuses `PrivateStorageWitness.check_private_non_escapeb_sound` rather
+than introducing a reduction-specific escape relation.
 
 ### 8. Copy Protocol
 

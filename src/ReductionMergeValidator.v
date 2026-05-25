@@ -9,6 +9,7 @@ Require Import TransformContract.
 Require Import StateView.
 Require Import ViewPipeline.
 Require Import InstanceProjectionWitness.
+Require Import PrivateStorageWitness.
 Require Import ReductionMergeWitness.
 Require Import ReductionMergeValueWitness.
 Require Import ReductionAlgebraWitness.
@@ -223,6 +224,31 @@ Record reduction_merge_commutative_compatible_value_view_contract
       (reduction_accumulator_storage_mapping
          public_accumulator partial_accumulators)
       public_specs accumulator_specs;
+}.
+
+Record reduction_merge_commutative_compatible_non_escape_value_view_contract
+    (value: Type)
+    (merge_op: value -> value -> value)
+    (identity: value)
+    (input_view output_view: View.view)
+    (source_domain: list logical_instance)
+    (chunks: reduction_chunks)
+    (partial_accumulators merge_order: list MemCell)
+    (public_accumulator: MemCell)
+    (public_specs accumulator_specs: list storage_spec)
+    (escaped_cells: list MemCell)
+    (initial_value final_value: value)
+    (accumulator_values: list (reduction_accumulator_value value))
+    (carrier: list value)
+    (source_view after: PolyLang.t) : Prop := {
+  rmccnesvc_compatible_base :
+    reduction_merge_commutative_compatible_value_view_contract
+      value merge_op identity input_view output_view source_domain chunks
+      partial_accumulators merge_order public_accumulator
+      public_specs accumulator_specs
+      initial_value final_value accumulator_values carrier source_view after;
+  rmccnesvc_non_escape :
+    private_non_escape_obligations partial_accumulators escaped_cells;
 }.
 
 Definition reduction_pipeline_final_view
@@ -590,6 +616,71 @@ Proof.
        before source_view after ok
        Hvalue_eqb Hret Hok Hmerge Hvalue Halgebra Hsemantics)
     as [Hvalue_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_reduction_merge_commutative_compatible_non_escape_value_view_correct :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (merge_op: value -> value -> value)
+         identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs escaped_cells
+         initial_value final_value accumulator_values carrier
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_reduction_source_view before source_view) ok ->
+    ok = true ->
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    @check_reduction_value_mergeb
+      value value_eqb merge_op initial_value final_value
+      merge_order accumulator_values = true ->
+    @check_reduction_commutative_lawb
+      value value_eqb merge_op identity carrier = true ->
+    check_storage_compatibilityb
+      (reduction_accumulator_storage_mapping
+         public_accumulator partial_accumulators)
+      public_specs accumulator_specs = true ->
+    check_private_non_escapeb partial_accumulators escaped_cells = true ->
+    reduction_source_view_refines_view
+      input_view output_view source_view after ->
+    reduction_merge_commutative_compatible_non_escape_value_view_contract
+      value merge_op identity input_view output_view source_domain chunks
+      partial_accumulators merge_order public_accumulator
+      public_specs accumulator_specs escaped_cells
+      initial_value final_value accumulator_values carrier source_view after /\
+    View.view_refinement
+      input_view
+      (reduction_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb merge_op identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs escaped_cells
+         initial_value final_value accumulator_values carrier
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hmerge Hvalue Halgebra Hstorage
+         Hnon_escape Hsemantics.
+  pose proof
+    (check_private_non_escapeb_sound
+       partial_accumulators escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_reduction_merge_commutative_compatible_value_view_correct
+       value value_eqb merge_op identity input_view output_view
+       source_domain chunks partial_accumulators merge_order
+       public_accumulator public_specs accumulator_specs
+       initial_value final_value accumulator_values carrier
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hmerge Hvalue Halgebra Hstorage Hsemantics)
+    as [Hcompatible_contract Hview].
   split.
   - constructor; assumption.
   - exact Hview.

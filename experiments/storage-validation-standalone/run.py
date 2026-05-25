@@ -1046,6 +1046,9 @@ def validate_reduction_privatization() -> List[str]:
     require(all(public_specs[public_cell] == accumulator_specs[private_cell]
                 for private_cell, public_cell in storage_mapping.items()),
             "reduction accumulator storage spec mismatch")
+    escaped_cells = {public_accumulator, ("A",)}
+    require(set(partial_accumulators).isdisjoint(escaped_cells),
+            "reduction private accumulator escapes fragment")
 
     require(identity in carrier, "reduction identity is outside the finite carrier")
     require(all(merge(x, y) in carrier for x in carrier for y in carrier),
@@ -1079,6 +1082,7 @@ def validate_reduction_privatization() -> List[str]:
         "iteration chunks are disjoint and exactly cover the source reduction domain",
         "private accumulators are fresh per chunk",
         "private accumulators are storage-compatible with the public reduction cell",
+        "private accumulators are disjoint from the context escape set",
         "merge order consumes every private accumulator exactly once",
         "merge-order accumulator values fold to the final reduction value",
         "merge operator is closed, associative, commutative, and has an identity on the finite carrier",
@@ -1675,6 +1679,14 @@ def reject_reduction_incompatible_accumulator_storage() -> None:
     require(all(public_specs[public_cell] == accumulator_specs[private_cell]
                 for private_cell, public_cell in storage_mapping.items()),
             "reduction accumulator storage spec mismatch")
+
+
+@add_negative("reduction_accumulator_escape", "reduction_privatization")
+def reject_reduction_accumulator_escape() -> None:
+    partial_accumulators = [("local", 0), ("local", 1)]
+    escaped_cells = {("sum",), ("local", 1)}
+    require(set(partial_accumulators).isdisjoint(escaped_cells),
+            "reduction private accumulator escapes fragment")
 
 
 @add_negative("reduction_non_associative_law", "reduction_privatization")
