@@ -467,8 +467,8 @@ sub-options, instead of several unrelated booleans.
 Not every currently rejected combination should become legal. The right next
 questions are:
 
-- should the multi-current route go beyond Pluto's current two-pragma OpenMP
-  extraction surface?
+- which additional multi-current fixtures are useful now that the checked
+  route can annotate every certified candidate dimension?
 - should standalone tiling witness/validation actions grow a diamond-aware
   mode, or should diamond remain a loop-to-loop optimizer family only?
 - which storage-changing families should move first to a generalized state

@@ -451,8 +451,10 @@ Relevant existing notes:
 
 - Do not claim identity-diamond support without a route-specific output effect.
 - Do not turn diamond tests into performance claims.
-- Do not broaden beyond Pluto's current two-pragma multipar extraction until
-  there is a checked frontend/codegen reason to do so.
+- Do not turn the checked multi-current route into a performance or OpenMP
+  scheduling claim. It may annotate every certified candidate dimension, but
+  the artifact claim remains semantic preservation plus observed optimization
+  effects in the regression suite.
 
 Any stronger scheduling, load-balance, or performance claim belongs to a later
 paper story, not to this artifact-coverage track.

@@ -294,9 +294,9 @@ Tile size control is likely easy from a proof perspective if the validator alrea
 | `--forceparallel` | Supported pass-through/no-effect compatibility flag | Current Pluto source accepts the value but has no effective use site. | Already accepted as surface compatibility. | Keep explaining that no optimization effect is expected in the pinned Pluto source. |
 | `--parallel-current d` | Supported as `polopt` extension, not a Pluto flag | Explicit checked parallel dimension. | Already supported. | Keep separate from Pluto compatibility mode. |
 | `--parallel --parallel-strict` | Supported as `polopt` extension | Requires certified parallel loop to match Pluto hint. | Already supported. | Keep. |
-| `--identity --tile --parallel`, `--identity --tile --parallel --multipar` | Supported narrow | The route validates ordinary identity tiling and then uses checked one- or two-dimension parallel codegen over the validated current-space program. The Pluto-compatible hinted route now dispatches through the verified wrapper; the explicit-current native route remains useful for targeted theorem-facing tests because `--parallel-current` is not a Pluto flag. | Positive fixtures show tiling plus `parallel for` effects; one-current route has `Opt_parallel_current_identity_tiled_result_correct`; multipar route has `Opt_parallel_current_many_identity_tiled_correct`; parallel-current suite includes `identity-tiled-current-combined-effect`. | Broaden fixtures. |
+| `--identity --tile --parallel`, `--identity --tile --parallel --multipar` | Supported narrow | The route validates ordinary identity tiling and then uses checked one-current or multi-current parallel codegen over the validated current-space program. The Pluto-compatible hinted route now dispatches through the verified wrapper; the explicit-current native route remains useful for targeted theorem-facing tests because `--parallel-current` is not a Pluto flag. | Positive fixtures show tiling plus `parallel for` effects; one-current route has `Opt_parallel_current_identity_tiled_result_correct`; multipar route has `Opt_parallel_current_many_identity_tiled_correct`; parallel-current suite includes `identity-tiled-current-combined-effect`. | Broaden fixtures. |
 
-The remaining `--multipar` work is no longer a route-closure gap for the main checked surface. The residual scope is broader regression coverage and any future attempt to go beyond Pluto's current two-pragma OpenMP extraction behavior.
+The remaining `--multipar` work is no longer a route-closure gap for the main checked surface. The residual scope is broader regression coverage and any future runtime/backend interpretation beyond the current checked `ParallelLoop` annotations.
 
 ## Diamond Tiling and Diamond Combinations
 
@@ -372,8 +372,8 @@ LP/DFP-family flags, and conditional Candl dependence testing.
      into ordinary unit-stride loops with affine index reconstruction
    - scalar privatization when the accepted schedule needs private scalar
      storage
-   - nested OpenMP beyond Pluto's current two-pragma extraction behavior, if a
-     future Pluto build exposes more than the current checked multipar surface
+   - runtime/backend policies for nested OpenMP beyond the current checked
+     `ParallelLoop` annotation semantics
 
 4. Keep stale flags rejected.
    - The rejection should say "current Pluto does not support this flag", not "polopt does not support this optimization".
