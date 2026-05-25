@@ -24,7 +24,7 @@ target language with checked `ParMode` annotations.
 
 ## Executable `polopt` shape
 
-A normal optimizer run has this shape:
+A normal schedule, tiling, or parallel optimizer run has this shape:
 
 ```text
 .loop text
@@ -49,20 +49,23 @@ The important route families are:
 - explicit one-current parallel configs such as `RawParallelCurrentDefault d`;
 - Pluto-hinted one-current parallel configs selected by `--parallel`;
 - Pluto-hinted multi-current parallel configs selected by `--parallel --multipar`
-  and represented by the `RawParallelCurrentMany*` constructors;
-- checked vector annotations, which reuse the doall/parallel certificate family;
-- checked Loop-level post passes such as literal-stride lowering, symbolic
-  display simplification, and the supported unroll/jam subset.
+  and represented by the `RawParallelCurrentMany*` constructors.
+
+Vector and unroll/jam are checked adjacent routes, not constructors of
+`VerifiedParallelCompilerConfig.raw_config`. Vector routes reuse the doall
+certificate and the checked vector codegen lemmas. The supported unroll/jam
+route is a checked Loop-level postpass applied by the OCaml driver around the
+sequential Loop optimizer result before lifting/printing.
 
 ## Pluto-compatible CLI
 
 `./polopt --pluto-compat ... file.loop` accepts Pluto-style flags, rejects
 unsupported combinations with explicit reasons, and dispatches the accepted
-combination to the extracted checked route. Supported state-preserving families
-include ordinary tiling, second-level tiling, ISS combinations, diamond and
-full-diamond routes, checked parallelization, `--multipar` up to the current
-multi-current certificate surface, checked vector annotation, and the checked
-unroll/jam subset.
+combination to the relevant checked route. The unified wrapper covers ordinary
+tiling, second-level tiling, ISS combinations, diamond and full-diamond routes,
+checked parallelization, and `--multipar` up to the current multi-current
+certificate surface. Adjacent checked routes cover vector annotation and the
+supported unroll/jam subset.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
 parallel-loop hints, builds a list of candidate current dimensions, and calls a
@@ -70,8 +73,10 @@ parallel-loop hints, builds a list of candidate current dimensions, and calls a
 
 ## Proof and artifact evidence
 
-The pushed `end-to-end` state tagged
-`state-eq-polyhedral-verification-complete-2026-05-25` passed:
+The last full code-artifact smoke was run on the pushed `end-to-end` state at
+commit `72deba1`, tagged
+`state-eq-polyhedral-verification-complete-2026-05-25`. Later `end-to-end`
+commits may be documentation-only. That code state passed:
 
 ```sh
 make -j4 artifact-check
@@ -83,12 +88,14 @@ compatibility suite with 113 checks.
 
 ## Boundary
 
-The current theorem family is state-preserving. It covers schedule/tiling/ISS
-and checked annotation routes that preserve the same observable storage under
-`State.eq`. It deliberately does not cover storage-changing transformations such
-as scalar privatization, array contraction, layout remapping, or overlapped /
-reuse-based tiling. Those need a separate state relation rather than another
-flag in the current wrapper.
+The current theorem family is state-preserving. The unified wrapper covers
+schedule, tiling, ISS, diamond, second-level, and checked parallel annotation
+routes that preserve the same observable storage under `State.eq`; adjacent
+checked vector and unroll/jam routes use their own theorem-backed components. It
+deliberately does not cover storage-changing transformations such as scalar
+privatization, array contraction, layout remapping, or overlapped / reuse-based
+tiling. Those need a separate state relation rather than another flag in the
+current wrapper.
 
 Untrusted or non-theorem parts remain outside the Coq theorem: Pluto's search
 heuristics, textual parsing and printing, OpenScop engineering, and witness

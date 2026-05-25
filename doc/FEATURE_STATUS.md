@@ -115,15 +115,21 @@ Status:
 Proof objects:
 
 - `driver/ParallelPolOpt.v`
-- `driver/ParallelPolOptCorrect.v`
-- `Opt_parallel_current_correct`
-- `Opt_parallel_current_with_iss_correct`
+- `src/ParallelCodegen.v`
+- `checked_vector_current_annotated_codegen`
+- `checked_vector_current_annotated_codegen_correct`
+- `checked_vector_annotated_codegen_correct_general`
 
 Relevant components:
 
 - `src/ParallelValidator.v`
 - `src/ParallelCodegen.v`
 - `driver/ParallelPolOpt.v`
+
+The vector route reuses the same doall certificate family as checked
+parallelization, but emitted `vector for` annotations are justified by the vector
+codegen correctness lemmas rather than by the ordinary parallel route theorem
+alone.
 
 ### Additional tiling-family selectors
 
