@@ -3222,6 +3222,81 @@ let parallel_hint_dims_of_cli cfg loop =
     | Some (_, _, _, _, hint) -> hint_dims hint
     end
 
+let max_hint_dim_exclusive dims =
+  List.fold_left
+    (fun acc dim -> if dim < 0 then acc else max_int acc (dim + 1))
+    0
+    dims
+
+let max_scop_scattering_out_dim scop =
+  List.fold_left
+    (fun acc stmt ->
+      max_int
+        acc
+        (int_of_nat
+           (OpenScop.out_dim_nb
+              (OpenScop.meta (OpenScop.scattering stmt)))))
+    0
+    (OpenScop.statements scop)
+
+let source_current_depth_of_loop loop =
+  let pol = extract_strengthened_poly loop in
+  max_current_depth_spol_pprog pol
+
+let parallel_candidate_hi_of_cli cfg loop hinted_dims =
+  let with_hints hi = max_int hi (max_hint_dim_exclusive hinted_dims) in
+  let default_hi = with_hints 16 in
+  try
+    if cfg.force_diamond_tile then
+      default_hi
+    else if cfg.force_identity && cfg.pluto_tile_seen && not cfg.force_iss then
+      let pol = extract_strengthened_poly loop in
+      let before_scop = poly_to_openscop pol in
+      begin match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
+      | Err _ -> default_hi
+      | Okk (after_scop, _) ->
+          with_hints (max_scop_scattering_out_dim after_scop)
+      end
+    else if cfg.force_iss then
+      if cfg.force_notile then
+        let pol = extract_strengthened_poly loop in
+        let before_scop = poly_to_openscop pol in
+        begin match
+          Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint
+            before_scop
+        with
+        | Err _ -> default_hi
+        | Okk (mid_scop, _) ->
+            with_hints (max_scop_scattering_out_dim mid_scop)
+        end
+      else
+        begin match pluto_phase_scops_with_iss_and_parallel_hint loop with
+        | None -> default_hi
+        | Some (_, _, _, after_scop, _) ->
+            with_hints (max_scop_scattering_out_dim after_scop)
+        end
+    else if cfg.force_notile then
+      let pol = extract_strengthened_poly loop in
+      let before_scop = poly_to_openscop pol in
+      begin match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
+      | Err _ -> default_hi
+      | Okk (mid_scop, _) ->
+          with_hints (max_scop_scattering_out_dim mid_scop)
+      end
+    else if cfg.force_identity then
+      with_hints (source_current_depth_of_loop loop)
+    else
+      begin match pluto_phase_scops_with_parallel_hint loop with
+      | None -> default_hi
+      | Some (_, _, _, after_scop, _) ->
+          with_hints (max_scop_scattering_out_dim after_scop)
+      end
+  with _ -> default_hi
+
+let parallel_candidate_dims_of_cli cfg loop hinted_dims =
+  unique_ints
+    (hinted_dims @ int_range 0 (parallel_candidate_hi_of_cli cfg loop hinted_dims))
+
 let try_verified_parallel_current_compile cfg loop dim =
   try
     let (pl, ok) =
@@ -3254,7 +3329,7 @@ let run_verified_hinted_parallel_optimization cfg loop =
     if cfg.force_parallel_strict then
       hinted_dims
     else
-      unique_ints (hinted_dims @ int_range 0 16)
+      parallel_candidate_dims_of_cli cfg loop hinted_dims
   in
   let rec go = function
     | [] -> (tag_loop_for_parallel_pretty loop, false)
@@ -3272,20 +3347,25 @@ let run_verified_hinted_multipar_parallel_optimization cfg loop =
     if cfg.force_parallel_strict then
       hinted_dims
     else
-      unique_ints (hinted_dims @ int_range 0 16)
+      parallel_candidate_dims_of_cli cfg loop hinted_dims
+  in
+  let hinted_result =
+    match hinted_dims with
+    | [] -> None
+    | _ -> try_verified_parallel_current_many_compile cfg loop hinted_dims
   in
   let hinted_accepted =
-    match hinted_dims with
-    | [] -> false
-    | _ ->
-        begin match try_verified_parallel_current_many_compile cfg loop hinted_dims with
-        | Some _ -> true
-        | None -> false
-        end
+    match hinted_result with
+    | Some _ -> true
+    | None -> false
   in
   match try_verified_parallel_current_many_compile cfg loop candidates with
   | Some pl -> (pl, hinted_accepted)
-  | None -> (tag_loop_for_parallel_pretty loop, false)
+  | None ->
+      begin match hinted_result with
+      | Some pl -> (pl, true)
+      | None -> (tag_loop_for_parallel_pretty loop, false)
+      end
 
 let run_selected_parallel_optimization cfg loop =
   if cfg.force_multipar then
