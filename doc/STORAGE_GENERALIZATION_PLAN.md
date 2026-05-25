@@ -1291,6 +1291,21 @@ consumers in the tile target trace.  This is still a finite witness over
 already-derived dependencies and trace order; deriving those dependencies from
 the concrete schedule/access semantics remains future work.
 
+`src/OverlapStorageWitness.v` adds the write-storage role side condition:
+
+```text
+check_overlap_storageb private_cells commit_cells targets writes = true ->
+overlap_storage_obligations private_cells commit_cells targets writes
+```
+
+The witness aligns the target-instance list with a finite write-cell list,
+proves that every `Internal` target writes a declared tile-private cell, proves
+that every `Commit` target writes a declared public commit cell, and proves
+that commit write cells are duplicate-free.  This is the storage counterpart
+of commit exact cover: internal/halo recomputation may be duplicated only
+because its writes are private, while public commits have unique observable
+write cells.
+
 `src/InstanceProjectionValidator.v` exposes
 `checked_instance_projection_view_correct`, which follows the same composition
 pattern as private/copy/reuse: return the finite projection obligations, keep
@@ -1331,12 +1346,17 @@ checked_overlap_private_ordered_closure_view_correct:
   tile-local dependence-closure and producer-order witness
   private/tile-local separation witness
   semantic overlap refinement
+
+checked_overlap_private_ordered_closure_compatible_value_storage_view_correct:
+  all of the compatible/value overlap obligations
+  internal writes are private and commit writes are public/unique
+  semantic overlap refinement
 ```
 
 This keeps two facts separate: duplicated target instances are justified by
 the projection/commit witness; tile-local recomputation is justified by a
-closure witness; materialized halo or tile buffers require storage separation
-and an output view that hides or commits them.
+closure witness; materialized halo or tile buffers require storage separation,
+role-to-write-cell evidence, and an output view that hides or commits them.
 
 ## Integration Rule
 

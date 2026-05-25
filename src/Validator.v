@@ -38,6 +38,7 @@ Require Import InstanceProjectionWitness.
 Require Import InstanceProjectionValidator.
 Require Import OverlapClosureWitness.
 Require Import OverlapValueWitness.
+Require Import OverlapStorageWitness.
 Require Import OverlapTilingValidator.
 Require Import VersionCommitWitness.
 Require Import VersionCommitValueWitness.
@@ -731,6 +732,19 @@ Definition storage_check_overlap_valueb_sound :=
   check_overlap_valueb_sound.
 Definition storage_overlap_value_obligations :=
   overlap_value_obligations.
+Definition storage_overlap_write := overlap_write.
+Definition storage_check_overlap_storageb :=
+  check_overlap_storageb.
+Definition storage_check_overlap_storageb_sound :=
+  check_overlap_storageb_sound.
+Definition storage_overlap_storage_obligations :=
+  overlap_storage_obligations.
+Definition storage_overlap_storage_internal_write_private :=
+  overlap_storage_internal_write_private.
+Definition storage_overlap_storage_commit_write_public :=
+  overlap_storage_commit_write_public.
+Definition storage_overlap_storage_commit_cells_nodup :=
+  overlap_storage_commit_cells_nodup.
 Definition storage_overlap_source_view_refines_view :=
   OverlapTilingCore.overlap_source_view_refines_view.
 Definition storage_overlap_no_private_view_contract :=
@@ -749,6 +763,8 @@ Definition storage_overlap_private_ordered_closure_compatible_view_contract :=
   OverlapTilingCore.overlap_private_ordered_closure_compatible_view_contract.
 Definition storage_overlap_private_ordered_closure_compatible_value_view_contract :=
   OverlapTilingCore.overlap_private_ordered_closure_compatible_value_view_contract.
+Definition storage_overlap_private_ordered_closure_compatible_value_storage_view_contract :=
+  OverlapTilingCore.overlap_private_ordered_closure_compatible_value_storage_view_contract.
 Definition storage_checked_overlap_no_private_view_correct :=
   OverlapTilingCore.checked_overlap_no_private_view_correct.
 Definition storage_checked_overlap_private_view_correct :=
@@ -765,6 +781,8 @@ Definition storage_checked_overlap_private_ordered_closure_compatible_view_corre
   OverlapTilingCore.checked_overlap_private_ordered_closure_compatible_view_correct.
 Definition storage_checked_overlap_private_ordered_closure_compatible_value_view_correct :=
   OverlapTilingCore.checked_overlap_private_ordered_closure_compatible_value_view_correct.
+Definition storage_checked_overlap_private_ordered_closure_compatible_value_storage_view_correct :=
+  OverlapTilingCore.checked_overlap_private_ordered_closure_compatible_value_storage_view_correct.
 Definition storage_version_commit_mapping :=
   version_commit_mapping.
 Definition storage_version_value_entry := version_value_entry.

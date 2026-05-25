@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
 import argparse
 from pathlib import Path
 
@@ -947,13 +947,19 @@ def validate_overlapped_tiling() -> List[str]:
     source_domain = t_domain | b_domain
     tile_ranges = [(l, min(l + tile, n - 2)) for l in range(2, n - 2, tile)]
     target_instances: List[Tuple[int, str, int, str]] = []
+    write_entries: List[Tuple[Tuple[int, str, int, str], Tuple[Any, ...]]] = []
+    private_cells = set()
+    commit_cells = set()
     commits: List[Tuple[str, int]] = []
     for tile_id, (l, r) in enumerate(tile_ranges):
         local_t_points = set(range(max(1, l - halo), min(n - 1, r + halo)))
         tile_trace: List[Tuple[str, int]] = []
         for i in sorted(local_t_points):
-            role = "commit" if l <= i < r else "internal"
-            target_instances.append((tile_id, "T", i, "internal"))
+            target = (tile_id, "T", i, "internal")
+            private_cell = ("LocalT", tile_id, i)
+            target_instances.append(target)
+            write_entries.append((target, private_cell))
+            private_cells.add(private_cell)
             tile_trace.append(("T", i))
             require(("T", i) in source_domain, "overlap computes an invalid T instance")
             require(all(0 <= q < n for q in (i - 1, i, i + 1)), "halo read out of input bounds")
@@ -969,10 +975,26 @@ def validate_overlapped_tiling() -> List[str]:
                         "tile producer does not precede consumer")
             tile_trace.append(("B", i))
             require(("B", i) in source_domain, "overlap computes an invalid B instance")
+            target = (tile_id, "B", i, "commit")
+            commit_cell = ("B", i)
+            write_entries.append((target, commit_cell))
+            commit_cells.add(commit_cell)
 
     require(set(commits) == b_domain, "commits do not cover every source output")
     require(len(commits) == len(b_domain), "more than one tile commits a source output")
     require(len(target_instances) > len(source_domain), "target did not actually duplicate work")
+    require([target for target, _cell in write_entries] == target_instances,
+            "overlap write entries do not align with target instances")
+    require(all((role == "internal" and cell in private_cells) or
+                (role == "commit" and cell in commit_cells)
+                for (_tile_id, _stmt, _i, role), cell in write_entries),
+            "overlap write role does not match private/commit storage")
+    commit_write_cells = [
+        cell for (_target_tile, _stmt, _i, role), cell in write_entries
+        if role == "commit"
+    ]
+    require(len(commit_write_cells) == len(set(commit_write_cells)),
+            "overlap commit write cells are not unique")
 
     a = {i: i for i in range(n)}
     source_t = {i: a[i - 1] + a[i] + a[i + 1] for i in range(1, n - 1)}
@@ -991,6 +1013,8 @@ def validate_overlapped_tiling() -> List[str]:
         "commit instances form an exact cover of source live-out instances",
         "tile-local dependence closure covers every committed B computation",
         "tile-local producers precede their consumers in the target trace",
+        "internal target writes go to tile-private cells",
+        "commit target writes go to public commit cells exactly once",
         "duplicated halo/internal writes are tile-local and invisible",
     ]
 
@@ -1649,6 +1673,33 @@ def reject_overlap_bad_producer_order() -> None:
     for dep in {1, 2, 3}:
         require(positions[("T", dep)] < consumer_pos,
                 "tile producer does not precede consumer")
+
+
+@add_negative("overlap_internal_write_public_cell", "overlapped_tiling")
+def reject_overlap_internal_write_public_cell() -> None:
+    private_cells = {("LocalT", 0, 1)}
+    commit_cells = {("B", 2)}
+    write_entries = [
+        ((0, "T", 1, "internal"), ("B", 2)),
+    ]
+    require(all((role == "internal" and cell in private_cells) or
+                (role == "commit" and cell in commit_cells)
+                for (_tile_id, _stmt, _i, role), cell in write_entries),
+            "overlap write role does not match private/commit storage")
+
+
+@add_negative("overlap_duplicate_commit_write_cell", "overlapped_tiling")
+def reject_overlap_duplicate_commit_write_cell() -> None:
+    write_entries = [
+        ((0, "B", 2, "commit"), ("B", 2)),
+        ((1, "B", 2, "commit"), ("B", 2)),
+    ]
+    commit_write_cells = [
+        cell for (_target_tile, _stmt, _i, role), cell in write_entries
+        if role == "commit"
+    ]
+    require(len(commit_write_cells) == len(set(commit_write_cells)),
+            "overlap commit write cells are not unique")
 
 
 @add_negative("overlapping_reduction_chunks", "reduction_privatization")
