@@ -106,6 +106,7 @@ ADI = ROOT / "tests" / "polopt-regression" / "inputs" / "adi.loop"
 CORCOL = ROOT / "tests" / "polopt-regression" / "inputs" / "corcol.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 NODEP = ROOT / "tests" / "polopt-regression" / "inputs" / "nodep.loop"
+TRIPLE_NODEP = ROOT / "tests" / "polopt-regression" / "inputs" / "triple-nodep.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
 DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
 JACOBI_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "jacobi-batch.loop"
@@ -373,6 +374,16 @@ CHECKS = [
         effect_needles=("parallel for i0",),
         effect_absent=("parallel for i2",),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar"]),),
+    ),
+    Check(
+        "parallel-multipar-three-dims",
+        ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--rar", "--parallel", "--multipar", "--innerpar"],
+        TRIPLE_NODEP,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --multipar",
+        effect_needles=("parallel for i0", "parallel for i1", "parallel for i2"),
+        differs_from_args=(tuple(["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--rar", "--parallel", "--innerpar"]),),
     ),
     Check(
         "second-level-parallel",

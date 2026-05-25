@@ -1125,8 +1125,6 @@ let try_checked_parallel_current_codegen_many pol dims =
   let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
   let rec collect accepted_dims accepted_certs = function
     | [] -> (List.rev accepted_dims, List.rev accepted_certs)
-    | _ when List.length accepted_dims >= 2 ->
-        (List.rev accepted_dims, List.rev accepted_certs)
     | dim :: rest ->
         let (cert_res, cert_ok) =
           ParallelValidatorCore.checked_parallelize_current current (nat_of_int dim)
@@ -3246,6 +3244,7 @@ let source_current_depth_of_loop loop =
 let parallel_candidate_hi_of_cli cfg loop hinted_dims =
   let with_hints hi = max_int hi (max_hint_dim_exclusive hinted_dims) in
   let default_hi = with_hints 16 in
+  let with_route_hi hi = max_int default_hi (with_hints hi) in
   try
     if cfg.force_diamond_tile then
       default_hi
@@ -3255,7 +3254,7 @@ let parallel_candidate_hi_of_cli cfg loop hinted_dims =
       begin match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
       | Err _ -> default_hi
       | Okk (after_scop, _) ->
-          with_hints (max_scop_scattering_out_dim after_scop)
+          with_route_hi (max_scop_scattering_out_dim after_scop)
       end
     else if cfg.force_iss then
       if cfg.force_notile then
@@ -3267,13 +3266,13 @@ let parallel_candidate_hi_of_cli cfg loop hinted_dims =
         with
         | Err _ -> default_hi
         | Okk (mid_scop, _) ->
-            with_hints (max_scop_scattering_out_dim mid_scop)
+            with_route_hi (max_scop_scattering_out_dim mid_scop)
         end
       else
         begin match pluto_phase_scops_with_iss_and_parallel_hint loop with
         | None -> default_hi
         | Some (_, _, _, after_scop, _) ->
-            with_hints (max_scop_scattering_out_dim after_scop)
+            with_route_hi (max_scop_scattering_out_dim after_scop)
         end
     else if cfg.force_notile then
       let pol = extract_strengthened_poly loop in
@@ -3281,15 +3280,15 @@ let parallel_candidate_hi_of_cli cfg loop hinted_dims =
       begin match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
       | Err _ -> default_hi
       | Okk (mid_scop, _) ->
-          with_hints (max_scop_scattering_out_dim mid_scop)
+          with_route_hi (max_scop_scattering_out_dim mid_scop)
       end
     else if cfg.force_identity then
-      with_hints (source_current_depth_of_loop loop)
+      with_route_hi (source_current_depth_of_loop loop)
     else
       begin match pluto_phase_scops_with_parallel_hint loop with
       | None -> default_hi
       | Some (_, _, _, after_scop, _) ->
-          with_hints (max_scop_scattering_out_dim after_scop)
+          with_route_hi (max_scop_scattering_out_dim after_scop)
       end
   with _ -> default_hi
 

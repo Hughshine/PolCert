@@ -101,8 +101,8 @@ let usage prog =
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
       "                       loop hints; supported on both the default and `--iss` pipelines,\n";
       "                       with or without `--notile`\n";
-      "                       In Pluto-compatible mode, --multipar enables up to two\n";
-      "                       checked parallel dimensions when the validator accepts them\n";
+      "                       In Pluto-compatible mode, --multipar enables checked\n";
+      "                       parallel dimensions when the validator accepts them\n";
       "  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n";
       "                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n";
       "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
@@ -697,7 +697,7 @@ let parse_args () : config =
           cfg.force_multipar <- true;
           cfg.pluto_parallel_seen <- true;
           add_pluto_extra_flag cfg "--multipar";
-          add_pluto_note cfg "--multipar enables up to two checked parallel dimensions when available";
+          add_pluto_note cfg "--multipar enables checked parallel dimensions when available";
           go (i + 1)
       | "--noparallel" ->
           enable_pluto_compat cfg;

@@ -84,7 +84,7 @@ make -j4 artifact-check
 
 That smoke includes the proof report, capability matrix, generated-C stride and
 unroll/jam checks, the second-level suite, the diamond suite, and the Pluto
-compatibility suite with 113 checks.
+compatibility suite with 114 checks.
 
 ## Boundary
 

@@ -71,36 +71,23 @@ Definition parallel_codegen_cert_of_validator_cert
   {| ParallelCodegenCore.ParallelValidator.certified_dim :=
        cert.(ValidatorCore.ParallelCore.certified_dim) |}.
 
-Fixpoint collect_parallel_current_codegen_certs_limited
+Fixpoint collect_parallel_current_codegen_certs
     (pp : PolyLang.t)
-    (remaining : nat)
     (dims : list nat)
   : imp (list ParallelCodegenCore.ParallelValidator.parallel_cert) :=
-  match remaining with
-  | O => pure nil
-  | S remaining' =>
-      match dims with
-      | nil => pure nil
-      | cons d dims' =>
-          BIND cert_res <-
-            ValidatorCore.checked_parallelize_current pp (parallel_plan_of_dim d) -;
-          match cert_res with
-          | Okk cert =>
-              BIND certs <-
-                collect_parallel_current_codegen_certs_limited
-                  pp remaining' dims' -;
-              pure (cons (parallel_codegen_cert_of_validator_cert cert) certs)
-          | Err _ =>
-              collect_parallel_current_codegen_certs_limited pp remaining dims'
-          end
+  match dims with
+  | nil => pure nil
+  | cons d dims' =>
+      BIND cert_res <-
+        ValidatorCore.checked_parallelize_current pp (parallel_plan_of_dim d) -;
+      match cert_res with
+      | Okk cert =>
+          BIND certs <- collect_parallel_current_codegen_certs pp dims' -;
+          pure (cons (parallel_codegen_cert_of_validator_cert cert) certs)
+      | Err _ =>
+          collect_parallel_current_codegen_certs pp dims'
       end
   end.
-
-Definition collect_parallel_current_codegen_certs
-    (pp : PolyLang.t)
-    (dims : list nat)
-  : imp (list ParallelCodegenCore.ParallelValidator.parallel_cert) :=
-  collect_parallel_current_codegen_certs_limited pp 2 dims.
 
 Definition checked_parallel_current_many_annotated_codegen_at
     (pol : PolyLang.t)

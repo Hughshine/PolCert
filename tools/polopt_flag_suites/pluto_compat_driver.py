@@ -386,7 +386,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.parallel_seen = True
             state.multipar = True
             state.add_oracle_flag(flag)
-            state.add_note("--multipar enables up to two checked parallel dimensions when available")
+            state.add_note("--multipar enables checked parallel dimensions when available")
         elif flag == "--noparallel":
             state.parallel = False
             state.no_parallel_seen = True
