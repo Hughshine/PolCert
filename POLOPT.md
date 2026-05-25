@@ -11,12 +11,13 @@ so the optimization decisions come from Pluto; the difference is that
 extraction, validation, code generation, and cleanup are integrated into proved
 pipelines.
 
-There are currently four practically important `polopt` families:
+There are four practically important theorem-facing `polopt` families:
 
-- default theorem-aligned affine+tiling pipeline
-- optional theorem-aligned ISS+affine+tiling pipeline (`--iss`)
-- theorem-aligned explicit-dimension parallel pipelines (`--parallel-current`)
-- experimental Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`)
+- checked affine+tiling routes, including the default sequential route
+- checked ISS+affine+tiling routes (`--iss`)
+- checked explicit-dimension parallel routes (`--parallel-current`)
+- checked Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`, and
+  `--parallel --multipar`)
 
 The actual public CLI surface is slightly richer than that four-family summary.
 In the normalized flag model, a user-visible run is built from:
@@ -40,6 +41,7 @@ In the normalized flag model, a user-visible run is built from:
   - sequential
   - `--parallel`
   - `--parallel --parallel-strict`
+  - `--parallel --multipar`
   - `--parallel-current d`
 
 The detailed legality / rejection matrix lives in
@@ -99,7 +101,7 @@ itself cover transformations such as:
 - index-set splitting
 - transformations whose correctness would require a stronger structural
   validator than the current checked affine+tiling path
-- CLI-driven parallel code generation routes
+- storage-changing transformations such as scalar privatization or array contraction
 
 Three important extensions now sit beside that default path:
 
@@ -109,9 +111,9 @@ Three important extensions now sit beside that default path:
 - `--parallel-current`
   - switches to theorem-aligned explicit-dimension parallel routes
   - these routes are proved in `ParallelPolOptCorrect.v`
-- `--parallel`, `--parallel-strict`
-  - expose Pluto-hinted verified parallel certification / code generation routes
-  - these remain experimental CLI routes
+- `--parallel`, `--parallel-strict`, `--parallel --multipar`
+  - expose Pluto-hinted checked parallel certification / code generation routes
+  - dispatch through the unified `Loop -> ParallelLoop` compiler wrapper
 
 ## Native Pluto-style filtered mode
 
@@ -364,11 +366,18 @@ What changed:
 
 - the optimized current-space outer dimension is certified parallel and emitted as `parallel for`
 - this route is theorem-aligned for explicit dimensions: the optimizer theorem is not inferred from Pluto hints
-- the `--parallel` / `--parallel-strict` routes remain separate hint-driven experimental frontends
+- the `--parallel` / `--parallel-strict` routes use Pluto hints, while `--parallel-current` fixes the dimension explicitly
 
 ## What is proved
 
-The final optimizer definitions and theorems are in
+The main theorem-facing compiler wrapper is in
+[driver/VerifiedParallelCompilerConfig.v](./driver/VerifiedParallelCompilerConfig.v):
+
+- wrapper: `compile : raw_config -> Loop.t -> imp ParallelLoop.t`
+- theorem: `compile_correct`
+- verified-config theorem: `compile_verified_correct`
+
+Sequential route-local definitions and theorems are in
 [driver/PolOpt.v](./driver/PolOpt.v) and
 [driver/PolOptCorrect.v](./driver/PolOptCorrect.v):
 
@@ -431,9 +440,11 @@ The repository also contains verified parallel components:
 
 Interpretation:
 
-- `--parallel-current d` is theorem-aligned and uses the proved explicit-dimension parallel pipeline
-- `--parallel` / `--parallel-strict` are still the experimental Pluto-hinted parallel routes
-- none of the parallel routes change the default `Opt_correct` theorem object; they have their own proof objects
+- `--parallel-current d` uses the checked explicit-dimension parallel pipeline
+- `--parallel` / `--parallel-strict` use Pluto-hinted checked one-current routes
+- `--parallel --multipar` uses checked multi-current configs
+- all of these routes are selected by the unified wrapper theorem rather than by
+  changing the sequential `Opt_correct` theorem object
 - the route-family flag model itself is documented in
   [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
 
@@ -450,6 +461,7 @@ Important user-facing modes are:
 ./polopt --parallel file.loop
 ./polopt --parallel --parallel-strict file.loop
 ./polopt --parallel-current 0 file.loop
+./polopt --parallel --multipar file.loop
 ./polopt --second-level-tile file.loop
 ```
 
@@ -461,17 +473,16 @@ Interpretation:
 - `--notile`: affine-only checked path
 - `--identity`: no Pluto scheduling phase
 - `--parallel-current d`: theorem-aligned explicit-dimension parallel route
-- `--parallel`, `--parallel-strict`: Pluto-hinted experimental verified parallel routes
-- `--second-level-tile`: experimental second-level tiling extension for the
+- `--parallel`, `--parallel-strict`, `--parallel --multipar`: Pluto-hinted checked parallel routes
+- `--second-level-tile`: checked second-level tiling route for the
   tiled validation path
 
 ## What the default theorem does not cover
 
-`Opt_correct` does not by itself say anything about:
-
-- the optional `--iss` pipeline
-- the explicit-dimension parallel theorem objects
-- the experimental Pluto-hinted parallel CLI routes
+`Opt_correct` is a route-local sequential theorem. The wrapper theorem
+`VerifiedParallelCompilerConfig.compile_correct` is the end-to-end theorem that
+packages accepted sequential, ISS, explicit-current parallel, and Pluto-hinted
+parallel configs. Neither theorem says anything about:
 - textual `.loop` parsing / elaboration
 - Pluto itself
 - OpenScop textual parsing / printing details
@@ -557,8 +568,9 @@ Interpretation:
   checked phase-aligned tiling route under the supported Pluto setup, with
   verified extraction / validation / code generation around them
 - this should still not be read as support for the full Pluto transformation
-  space: the default theorem path is narrower than Pluto's full feature set, and
-  ISS / parallel are handled by separate routes
+  space: the checked state-preserving wrapper covers the supported schedule,
+  tiling, ISS, and annotation routes, while storage-changing transformations
+  remain outside the current `State.eq` theorem family
 
 One practical exception is performance on `advect3d`:
 

@@ -82,6 +82,9 @@ produce and validate it?
 - `--parallel-strict`
   - refine `--parallel`: require the certified loop to match Pluto's hinted
     dimension
+- `--multipar`
+  - refine `--parallel`: use Pluto's multi-parallel hints and certify a list of
+    current dimensions through the checked multi-current route
 - `--parallel-current d`
   - use the theorem-aligned explicit-dimension parallel route
 - `--vector`, `--prevector`
@@ -143,6 +146,7 @@ The practically important user-visible route shapes are:
 | `./polopt --full-diamond-tile file.loop` | Diamond route with stronger producer mode |
 | `./polopt --parallel file.loop` | Pluto-hinted parallel route |
 | `./polopt --parallel --parallel-strict file.loop` | Pluto-hinted route with strict hinted-dimension requirement |
+| `./polopt --parallel --multipar file.loop` | Pluto-hinted multi-current checked parallel route |
 | `./polopt --parallel-current d file.loop` | Explicit-dimension theorem-aligned parallel route |
 | `./polopt --iss --parallel-current d file.loop` | ISS + explicit-dimension parallel route |
 | `./polopt --vector file.loop` | Pluto-hinted checked vector route |
@@ -152,16 +156,17 @@ Two important details:
 
 - `--full-diamond-tile` implies `--diamond-tile`
 - `--parallel-strict` only makes sense as a refinement of `--parallel`
+- `--multipar` only makes sense as a refinement of `--parallel`
 - `--vector-strict` only makes sense as a refinement of `--vector`
 
 The table above lists the important shapes, not every legal combination. In
 particular:
 
-- `--parallel` supports:
-  - default full tiled
-  - `--notile`
-  - `--iss`
-  - `--iss --notile`
+- `--parallel` supports the checked Pluto-hinted one-current route on the
+  normal affine/tiling, ISS, identity-tiling, second-level, and diamond-family
+  compositions covered by the current wrapper
+- `--parallel --multipar` follows the same hinted family but certifies a list of
+  current dimensions through `RawParallelCurrentMany*` configs
 - `--parallel-current d` supports:
   - default full tiled
   - `--notile`
@@ -224,25 +229,23 @@ Reason:
 - `--identity` creates no Pluto scheduling artifact at all
 - `--notile` stops before any tiling phase exists
 
-### 3.3 `--diamond-tile` is currently a narrow sequential family
+### 3.3 `--diamond-tile` chooses a distinct phase family
 
 Rejected combinations:
 
-- `--diamond-tile --iss`
-- `--diamond-tile --parallel`
-- `--diamond-tile --parallel-current d`
 - `--diamond-tile --second-level-tile`
 - `--diamond-tile --band-tiling-experiment`
 - `--diamond-tile --legacy-generic-tiling`
 
 Reason:
 
-- diamond currently means a dedicated sequential phase family:
+- diamond means a dedicated phase family:
   - `affine(before, mid)`
   - `tiling(mid, posttile)`
   - optional `affine(posttile, after)`
-- that family is not yet wired together with ISS, the theorem-aligned explicit
-  parallel routes, or the Pluto-hinted parallel routes
+- the current route map includes checked sequential, ISS-aware, and parallel
+  diamond compositions, but diamond remains mutually exclusive with other
+  tiling-family selectors
 
 ### 3.4 `--parallel` and `--parallel-current` choose different parallel families
 
@@ -250,15 +253,18 @@ Rejected combinations:
 
 - `--parallel --parallel-current d`
 - `--parallel-strict` without `--parallel`
+- `--multipar` without `--parallel`
 
 Reason:
 
 - `--parallel` means "follow Pluto's hinted dimension if certification/codegen
   can make that work"
+- `--multipar` refines that same family by asking for a checked list of hinted
+  current dimensions
 - `--parallel-current d` means "use the proved explicit-dimension route for
   current dimension `d`"
-- those are different route families, so the frontend forces the user to pick
-  one
+- hinted and explicit-current selection are different route families, so the
+  frontend forces the user to pick one
 
 ### 3.5 Legacy ordinary-tiling selectors are intentionally narrow
 
@@ -289,7 +295,7 @@ The frontend makes the route choice in roughly this order:
    parallel family.
 4. Otherwise, if `--vector` or `--prevector` is present, use the Pluto-hinted
    vector family.
-5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
+5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family; `--multipar` selects the multi-current variant inside that family.
 6. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
 7. Otherwise, choose among:
    - default route
@@ -312,12 +318,12 @@ The current support boundary is:
 - explicit-dimension parallel route
   - theorem-aligned
 - Pluto-hinted parallel route
-  - experimental but user-facing
+  - checked and user-facing, including the `--multipar` multi-current variant
 - second-level tiling
-  - supported as a separate tiling family on sequential full tiled runs
+  - supported as a checked tiling family
 - diamond tiling
-  - supported as a theorem-backed, opt-in sequential route
-  - currently not composed with ISS, parallel, or second-level tiling
+  - supported as a theorem-backed opt-in route, with current ISS/parallel
+    compositions documented in `doc/pluto-polopt-compatibility.md`
 
 When in doubt, treat `--iss`, `--second-level-tile`, `--diamond-tile`,
 `--parallel`, and `--parallel-current` as selectors for distinct pipeline
@@ -338,8 +344,8 @@ after a cleanup:
   flags require a tiling artifact that does not exist on those routes
 - `--parallel` and `--parallel-current` should remain distinct, because they
   choose different mechanisms for selecting the loop to parallelize
-- `--diamond-tile` should continue to reject combinations whose composed proof
-  story does not exist yet
+- storage-changing or overlap/reuse-style requests should remain rejected until
+  the proof uses a state relation broader than `State.eq`
 
 These are semantic constraints, not parser accidents.
 
@@ -461,12 +467,12 @@ sub-options, instead of several unrelated booleans.
 Not every currently rejected combination should become legal. The right next
 questions are:
 
-- should diamond compose with `--iss`?
-- should diamond compose with `--parallel-current` before it composes with the
-  Pluto-hinted parallel family?
-- should second-level tiling compose with explicit-current parallelization?
+- should the multi-current route go beyond Pluto's current two-pragma OpenMP
+  extraction surface?
 - should standalone tiling witness/validation actions grow a diamond-aware
   mode, or should diamond remain a loop-to-loop optimizer family only?
+- which storage-changing families should move first to a generalized state
+  relation?
 
 These are proof-architecture questions, not just CLI questions. The flag model
 should follow the supported proof combinations, not lead them.
@@ -487,12 +493,13 @@ practice.
 
 The safest way to read `polopt` today is:
 
-- `file.loop`, `--iss`, and `--parallel-current d` are theorem-aligned user
-  routes with dedicated proof objects
-- `--parallel` / `--parallel-strict` are verified components exposed through an
-  experimental CLI family
+- accepted `file.loop` routes dispatch through the unified
+  `Loop -> ParallelLoop` compiler wrapper
+- `--iss`, `--parallel-current d`, `--parallel`, `--parallel-strict`, and
+  `--parallel --multipar` are theorem-facing checked routes when accepted
 - `--second-level-tile` and diamond flags are checked extensions of the tiled
-  pipeline, but not the default theorem object
+  pipeline, with the current supported compositions documented in
+  `doc/pluto-polopt-compatibility.md`
 - standalone validation actions are artifact checkers, not optimization routes
 
 When in doubt, first decide:

@@ -79,16 +79,16 @@ It checks whether the schedule change preserves the polyhedral dependence semant
 ### 2. I have a loop nest and want the optimizer to do the full pipeline
 
 Use [`polopt`](./POLOPT.md).
-By default it runs the theorem-aligned affine+tiling optimization pipeline.
-It also exposes:
+By default it runs the checked affine+tiling route through the unified
+`Loop -> ParallelLoop` compiler wrapper. It also exposes:
 
-- an optional theorem-aligned ISS path via `--iss`
-- a theorem-aligned explicit-dimension parallel path via `--parallel-current`
-- a theorem-aligned explicit-dimension vector annotation path via `--vector-current`
-- experimental Pluto-hinted parallel routes via `--parallel` and
-  `--parallel-strict`
-- experimental Pluto-hinted vector annotation via `--vector` / `--prevector`
-- experimental checked tiling-family selectors such as `--second-level-tile`,
+- an optional checked ISS path via `--iss`
+- checked explicit-dimension parallel paths via `--parallel-current`
+- checked Pluto-hinted parallel paths via `--parallel`, `--parallel-strict`,
+  and `--parallel --multipar`
+- checked explicit-dimension vector annotation via `--vector-current`
+- checked Pluto-hinted vector annotation via `--vector` / `--prevector`
+- checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
 - the ordinary-tiling compatibility selector `--legacy-generic-tiling`
 - CLI-side profiling / inspection flags such as `--profile-stages`,
@@ -99,20 +99,22 @@ It also exposes:
 ## Status
 
 - The verified optimization core lives in [driver/PolOpt.v](./driver/PolOpt.v).
-- The default optimizer definition is `Opt = Opt_prepared`.
-- The default end-to-end theorem is `Opt_correct`.
-- The ISS-enabled optimizer definition is `Opt_with_iss`.
-- The ISS-enabled end-to-end theorem is `Opt_with_iss_correct`.
-- The explicit-dimension parallel optimizer theorems live in
-  [driver/ParallelPolOptCorrect.v](./driver/ParallelPolOptCorrect.v).
+- The main theorem-facing wrapper is
+  `VerifiedParallelCompilerConfig.compile`.
+- The wrapper theorem is `VerifiedParallelCompilerConfig.compile_correct`.
+- Sequential routes still have route-local theorems such as `Opt_correct` and
+  `Opt_with_iss_correct`, then lift into `ParallelLoop.t` through the wrapper.
+- Explicit and Pluto-hinted parallel routes, including `--multipar`, dispatch
+  through checked one- or multi-current configs in
+  [driver/VerifiedParallelCompilerConfig.v](./driver/VerifiedParallelCompilerConfig.v).
 - `polopt` now supports:
-  - the default verified affine+tiling route
-  - the optional verified ISS+affine+tiling route (`--iss`)
-  - a theorem-aligned explicit-dimension parallel route (`--parallel-current`)
-  - a theorem-aligned explicit-dimension vector route (`--vector-current`)
-  - experimental Pluto-hinted parallel routes (`--parallel`,
-    `--parallel-strict`)
-  - experimental Pluto-hinted vector annotation (`--vector`, `--prevector`)
+  - the default checked affine+tiling route
+  - the optional checked ISS+affine+tiling route (`--iss`)
+  - checked explicit-dimension parallel routes (`--parallel-current`)
+  - checked Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`,
+    `--parallel --multipar`)
+  - checked explicit-dimension vector routes (`--vector-current`)
+  - checked Pluto-hinted vector annotation (`--vector`, `--prevector`)
 - `polcert` now supports:
   - direct affine validation
   - phase-aligned tiling validation

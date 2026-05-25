@@ -3,6 +3,15 @@
 This note is the short answer to "what is currently user-facing, what is
 proved, and what interface does it use?"
 
+## Headline compiler wrapper
+
+The main theorem-facing optimizer wrapper is
+`VerifiedParallelCompilerConfig.compile : raw_config -> Loop.t -> imp ParallelLoop.t`.
+It returns `ParallelLoop.t`; sequential routes are lifted as all-sequential
+annotations, and checked parallel routes preserve checked `parallel for`
+annotations. The wrapper theorem is `compile_correct`, with
+`compile_verified_correct` for already-accepted configs.
+
 ## `polopt`
 
 ### Default mode
@@ -58,21 +67,22 @@ Status:
 This route is centered on the verified ISS structural validator rather than the
 default end-to-end optimizer theorem.
 
-### Experimental parallel modes
+### Pluto-hinted checked parallel modes
 
 Commands:
 
 ```sh
 ./polopt --parallel file.loop
 ./polopt --parallel --parallel-strict file.loop
+./polopt --parallel --multipar file.loop
 ```
 
 Status:
 
-- CLI-exposed
-- backed by verified parallel certification / code generation components
-- still experimental
-- not the default theorem-aligned optimizer path
+- CLI-exposed checked routes through the unified compiler wrapper
+- backed by verified parallel certification and code generation components
+- `--parallel-strict` requires the certified loop to match Pluto's hint
+- `--multipar` uses checked multi-current configs (`RawParallelCurrentMany*`)
 
 ### Explicit-dimension parallel mode
 
@@ -129,14 +139,14 @@ Commands:
 Status:
 
 - `--second-level-tile`
-  - experimental checked second-level tiling family
-  - only valid on full tiled optimization routes and tiling witness/validation
-    actions
+  - checked second-level tiling family
+  - valid on supported full tiled optimization routes and tiling
+    witness/validation actions
 - `--diamond-tile` / `--full-diamond-tile`
-  - theorem-backed opt-in sequential diamond route family
-  - currently only supported on the default non-ISS full tiled route
-  - reject ISS, Pluto-hinted parallel, explicit-current parallel, second-level,
-    and legacy-generic ordinary tiling
+  - theorem-backed opt-in diamond phase route family
+  - supported by the current route map for sequential, ISS-aware, and checked
+    parallel compositions documented in `doc/pluto-polopt-compatibility.md`
+  - still distinct from second-level and legacy-generic ordinary tiling
 - `--legacy-generic-tiling`
   - compatibility selector for the historical generic ordinary-tiling validator
   - only supported on the default non-ISS full tiled route
@@ -161,7 +171,7 @@ Status:
   routes
 - they cannot be mixed with route selectors or tiling-family selectors such as
   `--identity`, `--notile`, `--iss`, `--parallel`, `--parallel-strict`,
-  `--diamond-tile`, `--parallel-current`, `--band-tiling-experiment`, or
+  `--diamond-tile`, `--parallel-current`, `--multipar`, `--band-tiling-experiment`, or
   `--legacy-generic-tiling`
 - `--second-level-tile` is only meaningful here for tiling witness extraction
   and tiling validation
