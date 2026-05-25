@@ -1,4 +1,5 @@
 Require Import String.
+Require Import List.
 
 Require Import ImpureAlarmConfig.
 Require Import Result.
@@ -23,6 +24,15 @@ Inductive raw_config : Type :=
 | RawParallelCurrentIdentityISS (d: nat)
 | RawParallelCurrentAffineISS (d: nat)
 | RawParallelCurrentDefaultISS (d: nat)
+| RawParallelCurrentManyIdentity (dims: list nat)
+| RawParallelCurrentManyIdentityTiled (dims: list nat)
+| RawParallelCurrentManyAffine (dims: list nat)
+| RawParallelCurrentManyDefault (dims: list nat)
+| RawParallelCurrentManyDiamond (dims: list nat)
+| RawParallelCurrentManyDiamondISS (dims: list nat)
+| RawParallelCurrentManyIdentityISS (dims: list nat)
+| RawParallelCurrentManyAffineISS (dims: list nat)
+| RawParallelCurrentManyDefaultISS (dims: list nat)
 | RawUnsupported.
 
 Inductive verified_config : Type :=
@@ -35,7 +45,16 @@ Inductive verified_config : Type :=
 | VParallelCurrentDiamondISS (d: nat)
 | VParallelCurrentIdentityISS (d: nat)
 | VParallelCurrentAffineISS (d: nat)
-| VParallelCurrentDefaultISS (d: nat).
+| VParallelCurrentDefaultISS (d: nat)
+| VParallelCurrentManyIdentity (dims: list nat)
+| VParallelCurrentManyIdentityTiled (dims: list nat)
+| VParallelCurrentManyAffine (dims: list nat)
+| VParallelCurrentManyDefault (dims: list nat)
+| VParallelCurrentManyDiamond (dims: list nat)
+| VParallelCurrentManyDiamondISS (dims: list nat)
+| VParallelCurrentManyIdentityISS (dims: list nat)
+| VParallelCurrentManyAffineISS (dims: list nat)
+| VParallelCurrentManyDefaultISS (dims: list nat).
 
 Definition check_config (cfg: raw_config) : result verified_config :=
   match cfg with
@@ -53,6 +72,15 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawParallelCurrentIdentityISS d => Okk (VParallelCurrentIdentityISS d)
   | RawParallelCurrentAffineISS d => Okk (VParallelCurrentAffineISS d)
   | RawParallelCurrentDefaultISS d => Okk (VParallelCurrentDefaultISS d)
+  | RawParallelCurrentManyIdentity dims => Okk (VParallelCurrentManyIdentity dims)
+  | RawParallelCurrentManyIdentityTiled dims => Okk (VParallelCurrentManyIdentityTiled dims)
+  | RawParallelCurrentManyAffine dims => Okk (VParallelCurrentManyAffine dims)
+  | RawParallelCurrentManyDefault dims => Okk (VParallelCurrentManyDefault dims)
+  | RawParallelCurrentManyDiamond dims => Okk (VParallelCurrentManyDiamond dims)
+  | RawParallelCurrentManyDiamondISS dims => Okk (VParallelCurrentManyDiamondISS dims)
+  | RawParallelCurrentManyIdentityISS dims => Okk (VParallelCurrentManyIdentityISS dims)
+  | RawParallelCurrentManyAffineISS dims => Okk (VParallelCurrentManyAffineISS dims)
+  | RawParallelCurrentManyDefaultISS dims => Okk (VParallelCurrentManyDefaultISS dims)
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
 
@@ -160,6 +188,24 @@ Definition compile_verified
       SParallelPolOpt.opt_parallel_current_affine_with_iss loop d
   | VParallelCurrentDefaultISS d =>
       SParallelPolOpt.opt_parallel_current_with_iss loop d
+  | VParallelCurrentManyIdentity dims =>
+      SParallelPolOpt.opt_parallel_current_many_identity loop dims
+  | VParallelCurrentManyIdentityTiled dims =>
+      SParallelPolOpt.opt_parallel_current_many_identity_tiled loop dims
+  | VParallelCurrentManyAffine dims =>
+      SParallelPolOpt.opt_parallel_current_many_affine loop dims
+  | VParallelCurrentManyDefault dims =>
+      SParallelPolOpt.opt_parallel_current_many loop dims
+  | VParallelCurrentManyDiamond dims =>
+      SParallelPolOpt.opt_parallel_current_many_diamond loop dims
+  | VParallelCurrentManyDiamondISS dims =>
+      SParallelPolOpt.opt_parallel_current_many_diamond_with_iss loop dims
+  | VParallelCurrentManyIdentityISS dims =>
+      SParallelPolOpt.opt_parallel_current_many_identity_with_iss loop dims
+  | VParallelCurrentManyAffineISS dims =>
+      SParallelPolOpt.opt_parallel_current_many_affine_with_iss loop dims
+  | VParallelCurrentManyDefaultISS dims =>
+      SParallelPolOpt.opt_parallel_current_many_with_iss loop dims
   end.
 
 Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)

@@ -3161,6 +3161,28 @@ let verified_parallel_current_config_of_cli cfg dim =
   else
     RawParallelCurrentDefault d
 
+let verified_parallel_current_many_config_of_cli cfg dims =
+  let dims = List.map nat_of_int (unique_ints dims) in
+  let open VerifiedParallelCompiler in
+  if cfg.force_diamond_tile then
+    if cfg.force_iss then RawParallelCurrentManyDiamondISS dims
+    else RawParallelCurrentManyDiamond dims
+  else if cfg.force_identity && cfg.pluto_tile_seen && not cfg.force_iss then
+    RawParallelCurrentManyIdentityTiled dims
+  else if cfg.force_iss then
+    if cfg.force_identity then
+      RawParallelCurrentManyIdentityISS dims
+    else if cfg.force_notile then
+      RawParallelCurrentManyAffineISS dims
+    else
+      RawParallelCurrentManyDefaultISS dims
+  else if cfg.force_identity then
+    RawParallelCurrentManyIdentity dims
+  else if cfg.force_notile then
+    RawParallelCurrentManyAffine dims
+  else
+    RawParallelCurrentManyDefault dims
+
 let parallel_hint_dims_of_cli cfg loop =
   if cfg.force_diamond_tile then
     hint_dims (pluto_diamond_parallel_hint cfg loop)
@@ -3211,6 +3233,21 @@ let try_verified_parallel_current_compile cfg loop dim =
   with
   | CertcheckerConfig.CertCheckerFailure _ -> None
 
+let try_verified_parallel_current_many_compile cfg loop dims =
+  let dims = unique_ints dims in
+  if dims = [] then
+    None
+  else
+    try
+      let (pl, ok) =
+        VerifiedParallelCompiler.compile
+          (verified_parallel_current_many_config_of_cli cfg dims)
+          loop
+      in
+      if ok then Some pl else None
+    with
+    | CertcheckerConfig.CertCheckerFailure _ -> None
+
 let run_verified_hinted_parallel_optimization cfg loop =
   let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
   let candidates =
@@ -3229,12 +3266,30 @@ let run_verified_hinted_parallel_optimization cfg loop =
   in
   go candidates
 
+let run_verified_hinted_multipar_parallel_optimization cfg loop =
+  let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
+  let candidates =
+    if cfg.force_parallel_strict then
+      hinted_dims
+    else
+      unique_ints (hinted_dims @ int_range 0 16)
+  in
+  let hinted_accepted =
+    match hinted_dims with
+    | [] -> false
+    | _ ->
+        begin match try_verified_parallel_current_many_compile cfg loop hinted_dims with
+        | Some _ -> true
+        | None -> false
+        end
+  in
+  match try_verified_parallel_current_many_compile cfg loop candidates with
+  | Some pl -> (pl, hinted_accepted)
+  | None -> (tag_loop_for_parallel_pretty loop, false)
+
 let run_selected_parallel_optimization cfg loop =
   if cfg.force_multipar then
-    SLoopDispatch.run_selected_parallel_optimization
-      cfg
-      hinted_parallel_handlers
-      loop
+    run_verified_hinted_multipar_parallel_optimization cfg loop
   else
     run_verified_hinted_parallel_optimization cfg loop
 
