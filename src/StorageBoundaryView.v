@@ -5,6 +5,7 @@ Require Import ImpureAlarmConfig.
 Require Import PolyBase.
 Require Import PolIRs.
 Require Import CellView.
+Require Import StorageWitness.
 Require Import StateObservation.
 Require Import ViewPipeline.
 Require Import ReuseConflictWitness.
@@ -161,6 +162,82 @@ Record storage_boundary_refinement_contract
       (storage_boundary_output_view mapping source_cells)
       source_view after;
 }.
+
+Record storage_boundary_transform_contract
+    (mapping: reuse_mapping)
+    (source_cells: list MemCell)
+    (logical_specs physical_specs: list storage_spec)
+    (before after: PolyLang.t) : Prop := {
+  sbtc_boundary_view :
+    storage_boundary_view_contract
+      mapping source_cells logical_specs physical_specs;
+  sbtc_access_remap :
+    Observation.Storage.pprog_same_instance_access_remap
+      (ReuseView.reuse_boundary_cell_relation mapping source_cells)
+      before after;
+  sbtc_view_refinement :
+    View.view_refinement
+      (storage_boundary_output_view mapping source_cells)
+      (storage_boundary_output_view mapping source_cells)
+      before after;
+}.
+
+Theorem storage_boundary_transform_contract_generic :
+  forall mapping source_cells logical_specs physical_specs
+         (boundary_contract:
+            storage_boundary_view_contract
+              mapping source_cells logical_specs physical_specs)
+         before after,
+    Observation.Storage.pprog_same_instance_access_remap
+      (ReuseView.reuse_boundary_cell_relation mapping source_cells)
+      before after ->
+    View.view_refinement
+      (storage_boundary_output_view mapping source_cells)
+      (storage_boundary_output_view mapping source_cells)
+      before after ->
+    Observation.generic_cell_view_transform_contract
+      (storage_boundary_contract_generic_cell_view
+         mapping source_cells logical_specs physical_specs boundary_contract)
+      before after.
+Proof.
+  intros mapping source_cells logical_specs physical_specs boundary_contract
+         before after Haccess Hview.
+  constructor.
+  - exact Haccess.
+  - rewrite storage_boundary_contract_generic_cell_view_rel.
+    exact Hview.
+Qed.
+
+Theorem checked_storage_boundary_transform_contract_correct :
+  forall mapping source_cells logical_specs physical_specs before after,
+    check_storage_boundary_viewb
+      mapping source_cells logical_specs physical_specs = true ->
+    Observation.Storage.pprog_same_instance_access_remap
+      (ReuseView.reuse_boundary_cell_relation mapping source_cells)
+      before after ->
+    View.view_refinement
+      (storage_boundary_output_view mapping source_cells)
+      (storage_boundary_output_view mapping source_cells)
+      before after ->
+    exists contract,
+      storage_boundary_transform_contract
+        mapping source_cells logical_specs physical_specs before after /\
+      Observation.generic_cell_view_transform_contract
+        (storage_boundary_contract_generic_cell_view
+           mapping source_cells logical_specs physical_specs contract)
+        before after.
+Proof.
+  intros mapping source_cells logical_specs physical_specs before after
+         Hboundary Haccess Hview.
+  pose proof
+    (check_storage_boundary_viewb_sound
+       mapping source_cells logical_specs physical_specs Hboundary)
+    as Hboundary_contract.
+  exists Hboundary_contract.
+  split.
+  - constructor; assumption.
+  - eapply storage_boundary_transform_contract_generic; eauto.
+Qed.
 
 Definition storage_boundary_pipeline_final_view
     (mapping: reuse_mapping)

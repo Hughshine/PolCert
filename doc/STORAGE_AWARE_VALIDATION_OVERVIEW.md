@@ -414,7 +414,10 @@ The taxonomy points to three theorem families.
    reuse, and double buffering belong here.  `ViewPipeline.v` is the common
    composition spine for the current exploratory variants of this family, and
    `generic_state_view` keeps the endpoint view carrier shared across validator
-   functor instances.
+   functor instances.  `StorageBoundaryView` now also exposes a
+   `storage_boundary_transform_contract` bridge into
+   `generic_cell_view_transform_contract`, so a finite boundary map can be used
+   as the common access-remap/view-refinement object in later pass composition.
 3. Trace/instance theorems:
    the target trace projects to the source trace, with roles for internal,
    helper, commit, or merge instances.  Overlap tiling, copy protocols, packing,

@@ -7,6 +7,7 @@ Require Import CTy.
 Require Import StateObservation.
 Require Import LayoutRemapValidator.
 Require Import PrivateStorageValidator.
+Require Import ScalarExpansionValidator.
 Require Import ReuseStateView.
 Require Import StorageBoundaryView.
 
@@ -109,6 +110,8 @@ Module CPrivateStorageValidator :=
   PrivateStorageValidator CPolIRs CStateObserver.
 Module CPrivateStorageWitness :=
   CPrivateStorageValidator.Witness.
+Module CScalarExpansionValidator :=
+  ScalarExpansionValidator CPolIRs CStateObserver.
 Module CReuseStateView :=
   ReuseStateView CPolIRs CStateObserver.
 Module CStorageBoundaryView :=
