@@ -211,3 +211,55 @@ Proof.
   - apply check_copy_trace_mappingb_sound.
     exact Htrace.
 Qed.
+
+Record copy_mapping_local_declaration_obligations
+    (mapping: copy_cell_mapping)
+    (local_cells: list MemCell) : Prop := {
+  cmld_mapping_locals_declared :
+    forall cell,
+      In cell (copy_mapping_locals mapping) ->
+      In cell local_cells;
+}.
+
+Definition check_copy_mapping_local_declarationb
+    (mapping: copy_cell_mapping)
+    (local_cells: list MemCell) : bool :=
+  mem_cells_subsetb (copy_mapping_locals mapping) local_cells.
+
+Lemma check_copy_mapping_local_declarationb_sound :
+  forall mapping local_cells,
+    check_copy_mapping_local_declarationb mapping local_cells = true ->
+    copy_mapping_local_declaration_obligations mapping local_cells.
+Proof.
+  intros mapping local_cells Hcheck.
+  constructor.
+  intros cell Hin.
+  unfold check_copy_mapping_local_declarationb in Hcheck.
+  eapply mem_cells_subsetb_sound; eauto.
+Qed.
+
+Lemma copy_mapping_declared_local_public_disjoint :
+  forall mapping local_cells public_cells frame_cells cell,
+    copy_mapping_local_declaration_obligations mapping local_cells ->
+    private_separation_obligations local_cells public_cells frame_cells ->
+    In cell (copy_mapping_locals mapping) ->
+    ~ In cell public_cells.
+Proof.
+  intros mapping local_cells public_cells frame_cells cell Hdecl Hsep Hin.
+  eapply pso_private_public_disjoint.
+  - exact Hsep.
+  - eapply cmld_mapping_locals_declared; eauto.
+Qed.
+
+Lemma copy_mapping_declared_local_frame_disjoint :
+  forall mapping local_cells public_cells frame_cells cell,
+    copy_mapping_local_declaration_obligations mapping local_cells ->
+    private_separation_obligations local_cells public_cells frame_cells ->
+    In cell (copy_mapping_locals mapping) ->
+    ~ In cell frame_cells.
+Proof.
+  intros mapping local_cells public_cells frame_cells cell Hdecl Hsep Hin.
+  eapply pso_private_frame_disjoint.
+  - exact Hsep.
+  - eapply cmld_mapping_locals_declared; eauto.
+Qed.

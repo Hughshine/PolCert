@@ -573,10 +573,22 @@ def validate_scratchpad_packing() -> List[str]:
         local_mapping = {("Bp", k): ("B", kk + k) for k in range(tile)}
         public_specs = {("B", kk + k): (8, 8) for k in range(tile)}
         local_specs = {("Bp", k): (8, 8) for k in range(tile)}
+        declared_local_cells = {("Bp", k) for k in range(tile)}
+        declared_bounds = {"Bp": (tile,)}
+
+        def in_declared_bounds(cell: Tuple[str, int]) -> bool:
+            array, index = cell
+            extents = declared_bounds[array]
+            return 0 <= index < extents[0]
+
         require(len(set(local_mapping.keys())) == len(local_mapping),
                 "local buffer cells are not injective")
         require(len(set(local_mapping.values())) == len(local_mapping),
                 "public cells mapped to local buffer are not injective")
+        require(set(local_mapping.keys()) <= declared_local_cells,
+                "copy mapping local cell is not declared")
+        require(all(in_declared_bounds(local) for local in declared_local_cells),
+                "scratchpad local cell falls outside declared bounds")
         require(all(public_specs[public] == local_specs[local]
                     for local, public in local_mapping.items()),
                 "scratchpad local storage spec mismatch")
@@ -597,6 +609,8 @@ def validate_scratchpad_packing() -> List[str]:
         "copy-in covers every later local read",
         "local buffer address k consistently maps to source B[kk+k]",
         "public-to-local copy mapping is injective during each tile",
+        "copy mapping local cells belong to the declared local-buffer set",
+        "declared local-buffer cells are within local array bounds",
         "local buffer cells are storage-compatible with represented public cells",
         "local buffer lifetime is tile-scoped and fresh between tiles",
     ]
@@ -1525,6 +1539,21 @@ def reject_scratchpad_incompatible_local_storage() -> None:
     require(all(public_specs[public] == local_specs[local]
                 for local, public in local_mapping.items()),
             "scratchpad local storage spec mismatch")
+
+
+@add_negative("scratchpad_local_out_of_bounds", "scratchpad_packing")
+def reject_scratchpad_local_out_of_bounds() -> None:
+    tile = 4
+    declared_bounds = {"Bp": (tile - 1,)}
+    declared_local_cells = {("Bp", k) for k in range(tile)}
+
+    def in_declared_bounds(cell: Tuple[str, int]) -> bool:
+        array, index = cell
+        extents = declared_bounds[array]
+        return 0 <= index < extents[0]
+
+    require(all(in_declared_bounds(local) for local in declared_local_cells),
+            "scratchpad local cell falls outside declared bounds")
 
 
 @add_negative("missing_copy_out", "scratchpad_copy_out")
