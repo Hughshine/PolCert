@@ -178,7 +178,10 @@ that the trace events are mapped by the declared expansion entries.
 evidence to the scalar-privatization public-view wrappers: a checked storage
 core plus an ordered CInstr trace can build the value-core obligations used by
 the pure and bounded scalar privatization refinement theorems, without making
-the final theorem expose the trace as its endpoint relation.
+the final theorem expose the trace as its endpoint relation.  The cleaner
+bridge wrappers derive the scalar-expansion event list directly from the
+ordered value trace, so callers do not need to pass a separate event list plus
+an equality proof.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list

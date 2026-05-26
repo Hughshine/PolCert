@@ -1441,7 +1441,10 @@ outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to
 that shape is `CInstrScalarExpansionValidatorBridge.v`: it packages a checked
 scalar-privatization storage core together with a CInstr-derived ordered value
-trace into the existing pure/bounded public-view refinement wrappers.
+trace into the existing pure/bounded public-view refinement wrappers.  The
+cleanest bridge form derives the scalar-expansion event list from the ordered
+value trace itself, which keeps the theorem interface closer to "checked core
+plus semantic trace implies public-view refinement."
 
 ### Reduction Privatization
 

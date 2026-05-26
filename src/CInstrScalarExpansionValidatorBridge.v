@@ -78,6 +78,37 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem cinstr_trace_pure_scalar_privatization_value_events_correct :
+  forall hidden_cells private_cells source_domain source_cells entries
+         value_trace before source_view after ok,
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    Scalar.check_scalar_privatization_coreb
+      hidden_cells private_cells source_domain source_cells entries
+      (scalar_expansion_value_trace_events value_trace) = true ->
+    cscalar_expansion_value_trace_simulates entries value_trace ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    Scalar.scalar_privatization_value_core_obligations
+      Values.val hidden_cells private_cells source_domain source_cells
+      entries (scalar_expansion_value_trace_events value_trace)
+      value_trace /\
+    Scalar.pure_scalar_privatization_refinement
+      hidden_cells before after.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries
+         value_trace before source_view after ok
+         Hret Hok Hcore Htrace Hprivate.
+  eapply cinstr_trace_pure_scalar_privatization_value_correct.
+  - exact Hret.
+  - exact Hok.
+  - exact Hcore.
+  - exact Htrace.
+  - reflexivity.
+  - exact Hprivate.
+Qed.
+
 Theorem cinstr_trace_bounded_pure_scalar_privatization_value_correct :
   forall hidden_cells private_cells source_domain source_cells entries events
          value_trace private_bounds source_specs private_specs escaped_cells
@@ -130,6 +161,41 @@ Proof.
     + exact Hcompatible.
     + exact Hnon_escape.
   - exact Hview.
+Qed.
+
+Theorem cinstr_trace_bounded_pure_scalar_privatization_value_events_correct :
+  forall hidden_cells private_cells source_domain source_cells entries
+         value_trace private_bounds source_specs private_specs escaped_cells
+         before source_view after ok,
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    Scalar.check_bounded_pure_scalar_privatizationb
+      hidden_cells private_cells source_domain source_cells entries
+      (scalar_expansion_value_trace_events value_trace)
+      private_bounds source_specs private_specs escaped_cells = true ->
+    cscalar_expansion_value_trace_simulates entries value_trace ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    Scalar.bounded_value_pure_scalar_privatization_obligations
+      Values.val hidden_cells private_cells source_domain source_cells
+      entries (scalar_expansion_value_trace_events value_trace)
+      value_trace private_bounds source_specs private_specs
+      escaped_cells /\
+    Scalar.pure_scalar_privatization_refinement
+      hidden_cells before after.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries
+         value_trace private_bounds source_specs private_specs escaped_cells
+         before source_view after ok
+         Hret Hok Hbounded Htrace Hprivate.
+  eapply cinstr_trace_bounded_pure_scalar_privatization_value_correct.
+  - exact Hret.
+  - exact Hok.
+  - exact Hbounded.
+  - exact Htrace.
+  - reflexivity.
+  - exact Hprivate.
 Qed.
 
 End CInstrScalarExpansionValidatorBridge.
