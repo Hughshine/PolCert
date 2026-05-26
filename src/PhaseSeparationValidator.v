@@ -12,6 +12,7 @@ Require Import PhaseSeparationWitness.
 Require Import PhaseValueWitness.
 Require Import PhaseProjectionWitness.
 Require Import StorageCompatibilityWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -137,6 +138,30 @@ Record phase_projection_compatible_value_view_contract
       source_view after;
   ppcvvc_storage_compatible :
     storage_compatibility_obligations mapping source_specs final_specs;
+}.
+
+Record phase_projection_bounded_compatible_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (entry_live source_liveouts: list MemCell)
+    (entry_values: list (phase_cell_value value))
+    (steps: list phase_step)
+    (value_steps: list (phase_value_step value))
+    (mapping: phase_projection_mapping)
+    (projection_values: list (phase_projection_value_entry value))
+    (source_specs final_specs: list storage_spec)
+    (final_bounds: list array_bounds)
+    (source_view after: PolyLang.t) : Prop := {
+  ppbcvvc_value_base :
+    phase_projection_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_view after;
+  ppbcvvc_storage_compatible :
+    storage_compatibility_obligations mapping source_specs final_specs;
+  ppbcvvc_target_bounds :
+    storage_bounds_obligations
+      final_bounds (phase_projection_targets mapping);
 }.
 
 Definition phase_pipeline_final_view
@@ -369,6 +394,91 @@ Proof.
   split.
   - constructor; assumption.
   - exact Hview.
+Qed.
+
+Theorem checked_phase_projection_bounded_compatible_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_phase_source_view before source_view) ok ->
+    ok = true ->
+    check_phase_protocolb entry_live steps = true ->
+    check_phase_value_protocolb
+      value value_eqb entry_live entry_values steps value_steps = true ->
+    check_phase_projectionb
+      source_liveouts
+      (phase_protocol_final_live entry_live steps)
+      mapping = true ->
+    check_phase_projection_valueb
+      value value_eqb mapping projection_values = true ->
+    check_storage_compatibilityb mapping source_specs final_specs = true ->
+    check_storage_boundsb final_bounds
+      (phase_projection_targets mapping) = true ->
+    phase_source_view_refines_view
+      input_view output_view source_view after ->
+    phase_projection_bounded_compatible_value_view_contract
+      value input_view output_view entry_live source_liveouts entry_values
+      steps value_steps mapping projection_values
+      source_specs final_specs final_bounds source_view after /\
+    View.view_refinement
+      input_view
+      (phase_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hphase Hvalue Hprojection Hprojection_values
+         Hstorage Hbounds Hsemantics.
+  pose proof
+    (check_storage_compatibilityb_sound
+       mapping source_specs final_specs Hstorage)
+    as Hstorage_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       final_bounds (phase_projection_targets mapping) Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (checked_phase_projection_value_view_correct
+       value value_eqb input_view output_view
+       entry_live source_liveouts entry_values steps value_steps
+       mapping projection_values before source_view after ok
+       Hvalue_eqb Hret Hok Hphase Hvalue Hprojection
+       Hprojection_values Hsemantics)
+    as [Hvalue_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem phase_projection_mapped_target_within_bounds :
+  forall (value: Type) input_view output_view entry_live source_liveouts
+         entry_values steps value_steps mapping projection_values
+         source_specs final_specs final_bounds source_view after
+         source_cell target_cell,
+    phase_projection_bounded_compatible_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds source_view after ->
+    phase_projection_cell_relation mapping target_cell source_cell ->
+    cell_within_declared_bounds final_bounds target_cell.
+Proof.
+  intros value input_view output_view entry_live source_liveouts
+         entry_values steps value_steps mapping projection_values
+         source_specs final_specs final_bounds source_view after
+         source_cell target_cell Hcontract Hrel.
+  destruct Hcontract as [_ _ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_projection_targets mapping); eauto.
+  unfold phase_projection_cell_relation in Hrel.
+  eapply phase_projection_pair_target_in_targets; eauto.
 Qed.
 
 End PhaseSeparationValidator.

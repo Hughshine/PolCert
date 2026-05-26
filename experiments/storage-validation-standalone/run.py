@@ -1276,6 +1276,12 @@ def validate_double_buffering() -> List[str]:
             "phase projection reuses a physical final cell")
     require(set(projection.values()) <= final_live,
             "phase projection target is not final-live")
+    declared_final_bounds = {
+        "cur": (n,),
+    }
+    require(all(0 <= target_cell[1] < declared_final_bounds[target_cell[0]][0]
+                for target_cell in projection.values()),
+            "phase projection target falls outside declared bounds")
     projection_values = [
         (source_cell, target_cell,
          full[t_max, source_cell[2]], final_snapshot[target_cell])
@@ -1298,6 +1304,7 @@ def validate_double_buffering() -> List[str]:
         "final phase projection covers every logical live-out",
         "phase projection values match final physical buffer cells",
         "final phase physical cells are storage-compatible with logical live-outs",
+        "final phase physical cells are within declared buffer bounds",
     ]
 
 
@@ -2058,6 +2065,19 @@ def reject_double_buffer_incompatible_projection_storage() -> None:
     require(all(source_specs[src] == final_specs[dst]
                 for src, dst in projection.items()),
             "phase projection storage spec mismatch")
+
+
+@add_negative("double_buffer_projection_out_of_bounds", "double_buffering")
+def reject_double_buffer_projection_out_of_bounds() -> None:
+    declared_final_bounds = {
+        "cur": (4,),
+    }
+    projection = {
+        ("A", 2, 0): ("cur", 4),
+    }
+    require(all(0 <= target_cell[1] < declared_final_bounds[target_cell[0]][0]
+                for target_cell in projection.values()),
+            "phase projection target falls outside declared bounds")
 
 
 @add_negative("composition_bad_intermediate_public", "storage_view_composition")
