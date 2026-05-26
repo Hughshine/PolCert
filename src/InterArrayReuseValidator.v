@@ -181,6 +181,112 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_bounded_inter_array_reuse_public_refinement :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs before source_view after ok,
+    mayReturn (check_inter_array_source_view before source_view) ok ->
+    ok = true ->
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    check_storage_boundsb physical_bounds
+      (reuse_mapping_targets mapping) = true ->
+    inter_array_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (inter_array_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs before source_view after ok
+         Hret Hok Hreuse Hbounds Hsemantics.
+  pose proof
+    (checked_bounded_inter_array_reuse_view_correct
+       input_view output_view mapping physical_bounds intervals conflicts
+       logical_specs physical_specs before source_view after ok
+       Hret Hok Hreuse Hbounds Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record bounded_inter_array_reuse_params := {
+  biarp_input_view : View.view;
+  biarp_output_view : View.view;
+  biarp_mapping : reuse_mapping;
+  biarp_physical_bounds : list array_bounds;
+  biarp_intervals : list live_interval;
+  biarp_conflicts : conflict_pairs;
+  biarp_logical_specs : list storage_spec;
+  biarp_physical_specs : list storage_spec;
+  biarp_source_view : PolyLang.t;
+}.
+
+Definition bounded_inter_array_reuse_input_view
+    (params: bounded_inter_array_reuse_params) : View.view :=
+  biarp_input_view params.
+
+Definition bounded_inter_array_reuse_output_view
+    (params: bounded_inter_array_reuse_params) : View.view :=
+  inter_array_pipeline_final_view (biarp_output_view params).
+
+Definition bounded_inter_array_reuse_check
+    (params: bounded_inter_array_reuse_params)
+    (before after: PolyLang.t) : imp bool :=
+  check_inter_array_source_view before (biarp_source_view params).
+
+Definition bounded_inter_array_reuse_side_condition
+    (params: bounded_inter_array_reuse_params)
+    (before after: PolyLang.t) : Prop :=
+  check_inter_array_reuseb
+    (biarp_mapping params)
+    (biarp_intervals params)
+    (biarp_conflicts params)
+    (biarp_logical_specs params)
+    (biarp_physical_specs params) = true /\
+  check_storage_boundsb
+    (biarp_physical_bounds params)
+    (reuse_mapping_targets (biarp_mapping params)) = true /\
+  inter_array_source_view_refines_view
+    (biarp_input_view params)
+    (biarp_output_view params)
+    (biarp_source_view params)
+    after.
+
+Theorem bounded_inter_array_reuse_family_sound :
+  forall params before after ok,
+    mayReturn
+      (bounded_inter_array_reuse_check params before after) ok ->
+    ok = true ->
+    bounded_inter_array_reuse_side_condition params before after ->
+    View.view_refinement
+      (bounded_inter_array_reuse_input_view params)
+      (bounded_inter_array_reuse_output_view params)
+      before after.
+Proof.
+  intros params before after ok Hret Hok Hside.
+  destruct params as
+    [input_view output_view mapping physical_bounds intervals conflicts
+     logical_specs physical_specs source_view].
+  simpl in *.
+  destruct Hside as [Hreuse [Hbounds Hsemantics]].
+  eapply checked_bounded_inter_array_reuse_public_refinement; eauto.
+Qed.
+
+Definition bounded_inter_array_reuse_family
+    : View.checked_parameterized_view_transform_family
+        bounded_inter_array_reuse_params := {|
+  generic_cpvtf_input_view :=
+    bounded_inter_array_reuse_input_view;
+  generic_cpvtf_output_view :=
+    bounded_inter_array_reuse_output_view;
+  generic_cpvtf_check :=
+    bounded_inter_array_reuse_check;
+  generic_cpvtf_side_condition :=
+    bounded_inter_array_reuse_side_condition;
+  generic_cpvtf_check_sound :=
+    bounded_inter_array_reuse_family_sound;
+|}.
+
 Theorem bounded_inter_array_reuse_mapping_target_within_bounds :
   forall input_view output_view mapping physical_bounds intervals conflicts
          logical_specs physical_specs source_view after

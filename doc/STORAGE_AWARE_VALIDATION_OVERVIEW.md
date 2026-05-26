@@ -102,6 +102,7 @@ Related skeletons include
 `ReuseConflictWitness.v`, `LifetimeConflictWitness.v`,
 `ReuseValueWitness.v`, `StorageCompatibilityWitness.v`,
 `InterArrayReuseWitness.v`, `InterArrayReuseValidator.v`,
+`StorageReuseFamilyCompose.v`,
 `ReuseStateView.v`, `StorageBoundaryView.v`, `ReuseConflictValidator.v`,
 `InstanceProjectionWitness.v`,
 `InstanceProjectionValidator.v`, `OverlapClosureWitness.v`,
@@ -327,8 +328,13 @@ cells that share one physical cell cannot overlap in their live intervals.
 `InterArrayReuseValidator.v` gives that composed finite witness the same
 `view_refinement` endpoint theorem shape as the other storage features.  Its
 bounded variant additionally requires the shared physical image of the reuse
-map to lie inside declared buffer bounds, while still leaving the concrete
-boundary projection as the supplied output view.
+map to lie inside declared buffer bounds.  The bounded route now also has a
+public-refinement-only facade and a `bounded_inter_array_reuse_family` instance
+of the shared parameterized view-transform family.  `StorageReuseFamilyCompose.v`
+uses that family with bounded scalar promotion through the generic pair-compose
+theorem, showing that a reuse-class storage pass and a scalar-storage pass can
+compose as one public-view refinement while still leaving the concrete boundary
+projection as the supplied output view.
 `ReuseStateView.v` turns a boundary reuse map into an observer-backed reuse
 projection view, and now also exposes a `cell_view` for a declared live-out
 boundary whose target-public cells are exactly the mapped image.

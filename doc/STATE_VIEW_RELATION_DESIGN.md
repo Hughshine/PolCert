@@ -1720,9 +1720,13 @@ distinct physical cells, and two distinct logical cells sharing one physical
 cell therefore cannot live-overlap.  `InterArrayReuseValidator.v` now packages
 that witness under `checked_inter_array_reuse_view_correct`, so the composed
 reuse facts can participate in the same source-view pipeline theorem as layout,
-version commit, and conflict-safe reuse.  This is still a reuse view with array
-names included in the lifetime relation; deriving the live intervals and
-rewritten accesses from concrete code remains outside this finite witness.
+version commit, and conflict-safe reuse.  Its bounded route also exposes a
+public-refinement facade and a parameterized family instance, and
+`StorageReuseFamilyCompose.v` composes that family with bounded scalar
+promotion through the generic family composition hook.  This is still a reuse
+view with array names included in the lifetime relation; deriving the live
+intervals and rewritten accesses from concrete code remains outside this finite
+witness.
 
 ### Double Buffering and Ping-Pong Buffers
 
