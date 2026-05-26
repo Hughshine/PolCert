@@ -11,6 +11,7 @@ Require Import ReuseConflictWitness.
 Require Import LifetimeConflictWitness.
 Require Import ReuseValueWitness.
 Require Import StorageCompatibilityWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -181,6 +182,51 @@ Record compatible_live_conflict_reuse_value_view_contract
     storage_compatibility_obligations
       mapping logical_specs physical_specs;
   clcrvvc_semantic_refinement :
+    reuse_source_view_refines_view
+      input_view output_view source_view after;
+}.
+
+Record bounded_conflict_reuse_view_contract
+    (input_view output_view: View.view)
+    (mapping: reuse_mapping)
+    (physical_bounds: list array_bounds)
+    (conflicts: conflict_pairs)
+    (source_view after: PolyLang.t) : Prop := {
+  bcrvc_reuse :
+    conflict_safe_reuse_obligations mapping conflicts;
+  bcrvc_target_bounds :
+    storage_bounds_obligations
+      physical_bounds (reuse_mapping_targets mapping);
+  bcrvc_semantic_refinement :
+    reuse_source_view_refines_view
+      input_view output_view source_view after;
+}.
+
+Record bounded_compatible_live_conflict_reuse_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (mapping: reuse_mapping)
+    (logical_specs physical_specs: list storage_spec)
+    (physical_bounds: list array_bounds)
+    (intervals: list live_interval)
+    (conflicts: conflict_pairs)
+    (entries: list (reuse_value_entry value))
+    (source_view after: PolyLang.t) : Prop := {
+  bclcrvvc_live_conflicts :
+    live_conflict_obligations intervals conflicts;
+  bclcrvvc_reuse :
+    conflict_safe_reuse_obligations mapping conflicts;
+  bclcrvvc_live_reuse_safe :
+    live_overlaps_reuse_separated mapping intervals;
+  bclcrvvc_value :
+    reuse_value_obligations value mapping entries;
+  bclcrvvc_storage_compatible :
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs;
+  bclcrvvc_target_bounds :
+    storage_bounds_obligations
+      physical_bounds (reuse_mapping_targets mapping);
+  bclcrvvc_semantic_refinement :
     reuse_source_view_refines_view
       input_view output_view source_view after;
 }.
@@ -483,6 +529,145 @@ Proof.
   split.
   - constructor; assumption.
   - exact Hview.
+Qed.
+
+Theorem checked_bounded_conflict_reuse_view_correct :
+  forall input_view output_view mapping physical_bounds conflicts
+         before source_view after ok,
+    mayReturn (check_reuse_source_view before source_view) ok ->
+    ok = true ->
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    check_storage_boundsb physical_bounds
+      (reuse_mapping_targets mapping) = true ->
+    reuse_source_view_refines_view
+      input_view output_view source_view after ->
+    bounded_conflict_reuse_view_contract
+      input_view output_view mapping physical_bounds conflicts
+      source_view after /\
+    View.view_refinement
+      input_view
+      (reuse_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros input_view output_view mapping physical_bounds conflicts
+         before source_view after ok Hret Hok Hreuse Hbounds Hsemantics.
+  pose proof
+    (check_conflict_safe_reuseb_sound mapping conflicts Hreuse)
+    as Hreuse_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       physical_bounds (reuse_mapping_targets mapping) Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (checked_conflict_reuse_view_correct
+       input_view output_view mapping conflicts
+       before source_view after ok Hret Hok Hreuse Hsemantics)
+    as [_ Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_bounded_compatible_live_conflict_reuse_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_reuse_source_view before source_view) ok ->
+    ok = true ->
+    check_live_conflictb intervals conflicts = true ->
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    check_reuse_valueb value value_eqb mapping entries = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    check_storage_boundsb physical_bounds
+      (reuse_mapping_targets mapping) = true ->
+    reuse_source_view_refines_view
+      input_view output_view source_view after ->
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after /\
+    View.view_refinement
+      input_view
+      (reuse_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hlive Hreuse Hvalue Hcompat Hbounds Hsemantics.
+  pose proof
+    (check_live_conflictb_sound intervals conflicts Hlive)
+    as Hlive_obligations.
+  pose proof
+    (check_conflict_safe_reuseb_sound mapping conflicts Hreuse)
+    as Hreuse_obligations.
+  pose proof
+    (live_conflict_and_conflict_safe_reuse_sound
+       mapping conflicts intervals Hlive_obligations Hreuse_obligations)
+    as Hlive_reuse_safe.
+  pose proof
+    (check_reuse_valueb_sound
+       value value_eqb Hvalue_eqb mapping entries Hvalue)
+    as Hvalue_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hcompat)
+    as Hcompat_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       physical_bounds (reuse_mapping_targets mapping) Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (checked_compatible_live_conflict_reuse_value_view_correct
+       value value_eqb input_view output_view mapping
+       logical_specs physical_specs intervals conflicts entries
+       before source_view after ok Hvalue_eqb Hret Hok
+       Hlive Hreuse Hvalue Hcompat Hsemantics)
+    as [_ Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem bounded_reuse_mapping_target_within_bounds :
+  forall input_view output_view mapping physical_bounds conflicts
+         source_view after logical_cell physical_cell,
+    bounded_conflict_reuse_view_contract
+      input_view output_view mapping physical_bounds conflicts
+      source_view after ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    cell_within_declared_bounds physical_bounds physical_cell.
+Proof.
+  intros input_view output_view mapping physical_bounds conflicts
+         source_view after logical_cell physical_cell Hcontract Hlookup.
+  destruct Hcontract as [_ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := reuse_mapping_targets mapping); eauto.
+  exact (reuse_lookup_target_in_targets
+           mapping logical_cell physical_cell Hlookup).
+Qed.
+
+Theorem bounded_compatible_live_reuse_mapping_target_within_bounds :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after logical_cell physical_cell,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    cell_within_declared_bounds physical_bounds physical_cell.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after
+         logical_cell physical_cell Hcontract Hlookup.
+  destruct Hcontract as [_ _ _ _ _ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := reuse_mapping_targets mapping); eauto.
+  exact (reuse_lookup_target_in_targets
+           mapping logical_cell physical_cell Hlookup).
 Qed.
 
 End ReuseConflictValidator.

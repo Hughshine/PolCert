@@ -135,6 +135,13 @@ Fixpoint reuse_mapping_sources (mapping: reuse_mapping) : list MemCell :=
       logical_cell :: reuse_mapping_sources tail
   end.
 
+Fixpoint reuse_mapping_targets (mapping: reuse_mapping) : list MemCell :=
+  match mapping with
+  | [] => []
+  | (_, physical_cell) :: tail =>
+      physical_cell :: reuse_mapping_targets tail
+  end.
+
 Lemma reuse_mapping_pair_source_in_sources :
   forall mapping logical_cell physical_cell,
     In (logical_cell, physical_cell) mapping ->
@@ -145,6 +152,37 @@ Proof.
   - contradiction.
   - destruct Hin as [Heq | Hin_tail].
     + inversion Heq; subst.
+      left. reflexivity.
+    + right.
+      eapply IH; eauto.
+Qed.
+
+Lemma reuse_mapping_pair_target_in_targets :
+  forall mapping logical_cell physical_cell,
+    In (logical_cell, physical_cell) mapping ->
+    In physical_cell (reuse_mapping_targets mapping).
+Proof.
+  induction mapping as [|[logical_head physical_head] tail IH];
+    intros logical_cell physical_cell Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      left. reflexivity.
+    + right.
+      eapply IH; eauto.
+Qed.
+
+Lemma reuse_lookup_target_in_targets :
+  forall mapping logical_cell physical_cell,
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    In physical_cell (reuse_mapping_targets mapping).
+Proof.
+  induction mapping as [|[logical_head physical_head] tail IH];
+    intros logical_cell physical_cell Hlookup; simpl in Hlookup |- *.
+  - discriminate.
+  - destruct (mem_cell_strict_eqb logical_cell logical_head)
+      eqn:Heq.
+    + inversion Hlookup; subst.
       left. reflexivity.
     + right.
       eapply IH; eauto.

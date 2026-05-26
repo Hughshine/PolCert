@@ -825,6 +825,21 @@ def validate_array_contraction() -> List[str]:
         require(phys(v1) != phys(v2),
                 f"conflicting values {v1} and {v2} share {phys(v1)}")
 
+    full_reuse_mapping = {source_cell: phys(source_cell) for source_cell in values}
+    declared_physical_bounds = {
+        "A2": (2, n),
+    }
+
+    def in_declared_bounds(array: str, index: Tuple[int, ...]) -> bool:
+        extents = declared_physical_bounds[array]
+        return len(index) == len(extents) and all(
+            0 <= component < extent for component, extent in zip(index, extents)
+        )
+
+    require(all(in_declared_bounds("A2", target_cell)
+                for target_cell in full_reuse_mapping.values()),
+            "reuse target physical cell falls outside declared bounds")
+
     source_liveouts = {(t_max, i) for i in range(n)}
     boundary_mapping = {source_cell: phys(source_cell) for source_cell in source_liveouts}
     require(set(boundary_mapping.keys()) == source_liveouts,
@@ -841,6 +856,7 @@ def validate_array_contraction() -> List[str]:
     return [
         "non-injective map rho(t,i) = (t mod 2,i) is allowed only for non-conflicting values",
         "explicit live intervals cover every overlap conflict under the schedule",
+        "every reused physical buffer cell is within declared rolling-buffer bounds",
         "reuse boundary mapping covers every observable source live-out",
         "reused physical boundary cells are storage-compatible with represented logical cells",
         "reuse boundary values match the projected physical cells",
@@ -905,6 +921,19 @@ def validate_inter_array_reuse() -> List[str]:
                 "shared buffer cells have overlapping live ranges",
             )
 
+    declared_shared_bounds = {
+        "Buf": (n,),
+    }
+
+    def in_declared_shared_bounds(cell: Tuple[str, int]) -> bool:
+        array, index = cell
+        extent = declared_shared_bounds[array][0]
+        return 0 <= index < extent
+
+    require(all(in_declared_shared_bounds(physical_cell)
+                for physical_cell in shared_mapping.values()),
+            "shared buffer cell falls outside declared bounds")
+
     storage_specs = {
         "T1": {"size": 8, "align": 8},
         "T2": {"size": 8, "align": 8},
@@ -916,6 +945,7 @@ def validate_inter_array_reuse() -> List[str]:
     return [
         "logical arrays mapped to one buffer have non-overlapping live ranges",
         "shared physical buffer cells are used only by non-overlapping lifetimes",
+        "shared physical buffer cells are within declared Buf bounds",
         "reused cells are size/alignment compatible with the shared buffer",
         "all accesses in each lifetime interval are rewritten consistently",
     ]
@@ -1713,6 +1743,19 @@ def reject_contraction_incompatible_storage() -> None:
             "reuse boundary storage spec mismatch")
 
 
+@add_negative("contraction_target_out_of_bounds", "array_contraction")
+def reject_contraction_target_out_of_bounds() -> None:
+    declared_physical_bounds = {
+        "A2": (2, 4),
+    }
+    target_cell = (2, 0)
+    extents = declared_physical_bounds["A2"]
+    require(len(target_cell) == len(extents) and
+            all(0 <= component < extent
+                for component, extent in zip(target_cell, extents)),
+            "reuse target physical cell falls outside declared bounds")
+
+
 @add_negative("inter_array_live_overlap", "inter_array_reuse")
 def reject_inter_array_live_overlap() -> None:
     t1_live = (0, 3)
@@ -1755,6 +1798,22 @@ def reject_inter_array_incompatible_storage() -> None:
     for logical in ("T1", "T2"):
         require(storage_specs[logical] == storage_specs["Buf"],
                 f"{logical} is not storage-compatible with Buf")
+
+
+@add_negative("inter_array_shared_buffer_out_of_bounds", "inter_array_reuse")
+def reject_inter_array_shared_buffer_out_of_bounds() -> None:
+    declared_shared_bounds = {
+        "Buf": (4,),
+    }
+    shared_mapping = {
+        ("T1", 0): ("Buf", 0),
+        ("T2", 4): ("Buf", 4),
+    }
+    for _logical_cell, physical_cell in shared_mapping.items():
+        array, index = physical_cell
+        extent = declared_shared_bounds[array][0]
+        require(0 <= index < extent,
+                "shared buffer cell falls outside declared bounds")
 
 
 @add_negative("missing_expansion_copy_out", "array_expansion_versioning")

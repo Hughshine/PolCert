@@ -680,6 +680,12 @@ Definition storage_scratchpad_copy_mapping_local_within_declared_bounds :=
   ScratchpadCopyCore.scratchpad_copy_mapping_local_within_declared_bounds.
 Definition storage_reuse_mapping := reuse_mapping.
 Definition storage_conflict_pairs := conflict_pairs.
+Definition storage_reuse_mapping_sources :=
+  reuse_mapping_sources.
+Definition storage_reuse_mapping_targets :=
+  reuse_mapping_targets.
+Definition storage_reuse_lookup_target_in_targets :=
+  reuse_lookup_target_in_targets.
 Definition storage_live_interval := live_interval.
 Definition storage_check_live_conflictb :=
   check_live_conflictb.
@@ -727,8 +733,14 @@ Definition storage_inter_array_source_view_refines_view :=
   InterArrayReuseCore.inter_array_source_view_refines_view.
 Definition storage_inter_array_reuse_view_contract :=
   InterArrayReuseCore.inter_array_reuse_view_contract.
+Definition storage_bounded_inter_array_reuse_view_contract :=
+  InterArrayReuseCore.bounded_inter_array_reuse_view_contract.
 Definition storage_checked_inter_array_reuse_view_correct :=
   InterArrayReuseCore.checked_inter_array_reuse_view_correct.
+Definition storage_checked_bounded_inter_array_reuse_view_correct :=
+  InterArrayReuseCore.checked_bounded_inter_array_reuse_view_correct.
+Definition storage_bounded_inter_array_reuse_mapping_target_within_bounds :=
+  InterArrayReuseCore.bounded_inter_array_reuse_mapping_target_within_bounds.
 Definition storage_check_conflict_safe_reuseb :=
   check_conflict_safe_reuseb.
 Definition storage_check_conflict_safe_reuseb_sound :=
@@ -763,6 +775,10 @@ Definition storage_compatible_live_conflict_reuse_view_contract :=
   ReuseConflictCore.compatible_live_conflict_reuse_view_contract.
 Definition storage_compatible_live_conflict_reuse_value_view_contract :=
   ReuseConflictCore.compatible_live_conflict_reuse_value_view_contract.
+Definition storage_bounded_conflict_reuse_view_contract :=
+  ReuseConflictCore.bounded_conflict_reuse_view_contract.
+Definition storage_bounded_compatible_live_conflict_reuse_value_view_contract :=
+  ReuseConflictCore.bounded_compatible_live_conflict_reuse_value_view_contract.
 Definition storage_checked_conflict_reuse_view_correct :=
   ReuseConflictCore.checked_conflict_reuse_view_correct.
 Definition storage_checked_conflict_reuse_value_view_correct :=
@@ -777,6 +793,14 @@ Definition storage_checked_compatible_live_conflict_reuse_view_correct :=
   ReuseConflictCore.checked_compatible_live_conflict_reuse_view_correct.
 Definition storage_checked_compatible_live_conflict_reuse_value_view_correct :=
   ReuseConflictCore.checked_compatible_live_conflict_reuse_value_view_correct.
+Definition storage_checked_bounded_conflict_reuse_view_correct :=
+  ReuseConflictCore.checked_bounded_conflict_reuse_view_correct.
+Definition storage_checked_bounded_compatible_live_conflict_reuse_value_view_correct :=
+  ReuseConflictCore.checked_bounded_compatible_live_conflict_reuse_value_view_correct.
+Definition storage_bounded_reuse_mapping_target_within_bounds :=
+  ReuseConflictCore.bounded_reuse_mapping_target_within_bounds.
+Definition storage_bounded_compatible_live_reuse_mapping_target_within_bounds :=
+  ReuseConflictCore.bounded_compatible_live_reuse_mapping_target_within_bounds.
 Definition storage_logical_instance := logical_instance.
 Definition storage_projected_instance := projected_instance.
 Definition storage_check_instance_projectionb :=
