@@ -1438,7 +1438,10 @@ same current private-value map as the generic scalar-expansion value-flow
 checker, yielding both value-flow obligations and declared-entry event mapping
 for the whole trace.  This is still below the final user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
-witness hidden as one discharged semantic side condition.
+witness hidden as one discharged semantic side condition.  The first bridge to
+that shape is `CInstrScalarExpansionValidatorBridge.v`: it packages a checked
+scalar-privatization storage core together with a CInstr-derived ordered value
+trace into the existing pure/bounded public-view refinement wrappers.
 
 ### Reduction Privatization
 
