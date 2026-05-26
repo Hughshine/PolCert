@@ -218,17 +218,22 @@ interface: `OverlapTilingValidator` has a public-only facade for its strongest
 ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
 as `overlap_private_ordered_bounded_non_escape_family`, and
 `StorageOverlapFamilyCompose.v` composes that instance-count-changing family
-with bounded scalar promotion through the same generic hook.  The versioned
+with bounded scalar promotion through the same generic hook and exports a
+`public_semantic_refinement` endpoint.  The versioned
 storage route now has the same shape: `VersionCommitValidator` projects the
 fully bounded/non-escape read+commit theorem to a public-only facade, packages
 it as `version_commit_read_fully_bounded_non_escape_family`, and
 `StorageVersionFamilyCompose.v` composes that array-expansion-style family with
-bounded scalar promotion through the generic hook.  Reduction privatization now
+bounded scalar promotion through the generic hook with the same paper-facing
+endpoint.  Reduction privatization now
 uses the same facade discipline: `ReductionMergeValidator` projects the
 commutative bounded/non-escape value theorem to public-view refinement, packages
 the merge/value/algebra/storage obligations as
 `reduction_merge_commutative_bounded_non_escape_family`, and
-`StorageReductionFamilyCompose.v` composes it with bounded scalar promotion.
+`StorageReductionFamilyCompose.v` composes it with bounded scalar promotion
+under `public_semantic_refinement`.  The older inter-array reuse composition now
+has the same public-semantic wrapper as the general conflict-reuse composition,
+so the top theorem surface is uniform across reuse variants.
 
 ## What a View Must Explain
 
@@ -874,6 +879,13 @@ the boundary selector maps the buffer back to the live source array
 ```
 
 This is contraction across array names.
+
+Current mechanized status: the bounded inter-array family already packages the
+live-overlap, reuse-boundary, storage-compatibility, boundary-value, and bounds
+obligations.  Its composition theorem now has both the internal
+`view_refinement` form and the paper-facing
+`bounded_inter_array_reuse_then_scalar_promotion_public_semantic_refinement`
+form, matching the general conflict-reuse route.
 
 ### Double Buffering and Ping-Pong Buffers
 

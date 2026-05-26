@@ -166,19 +166,25 @@ recomputation route is now packaged the same way through
 which carries target projection, ordered tile-local closure, value equivalence,
 private/commit writes, compatibility, bounds, and non-escape witnesses while
 exporting only public-view refinement.  `StorageOverlapFamilyCompose.v` checks
-the corresponding overlap-then-scalar-promotion composition.  The
+the corresponding overlap-then-scalar-promotion composition and exposes the
+endpoint as `public_semantic_refinement`.  The
 array-expansion/version route now follows the same facade rule through
 `VersionCommitValidator.version_commit_read_fully_bounded_non_escape_family`,
 which carries commit selection, read-version selection, produced versions, value
 evidence, compatibility, bounds, and produced-version non-escape while exposing
 only the public-view refinement endpoint.  `StorageVersionFamilyCompose.v`
-checks version-then-scalar-promotion composition through the same generic hook.
+checks version-then-scalar-promotion composition through the same generic hook
+with the same paper-facing endpoint.  Inter-array reuse now has the same
+public-semantic composition theorem in addition to the lower-level
+`view_refinement` theorem, so both cross-array sharing and general conflict-safe
+reuse expose a matching top-level shape.
 The reduction-privatization route is also packaged as
 `ReductionMergeValidator.reduction_merge_commutative_bounded_non_escape_family`:
 the parameter record carries chunks, private accumulator cells, merge order,
 value fold evidence, finite carrier algebra witnesses, storage compatibility,
 bounds, and non-escape, while `StorageReductionFamilyCompose.v` proves the same
-reduction-then-scalar-promotion composition shape.
+reduction-then-scalar-promotion composition shape through
+`public_semantic_refinement`.
 `StorageWitness.v` now has the analogous access-level composition hook:
 `pprog_same_instance_access_remap_compose` composes two target-to-source
 cell-relation remaps through the same intermediate access cells.  This keeps
@@ -383,8 +389,8 @@ public-refinement-only facade and a `bounded_inter_array_reuse_family` instance
 of the shared parameterized view-transform family.  `StorageReuseFamilyCompose.v`
 uses that family with bounded scalar promotion through the generic pair-compose
 theorem, showing that a reuse-class storage pass and a scalar-storage pass can
-compose as one public-view refinement while still leaving the concrete boundary
-projection as the supplied output view.
+compose as one public semantic refinement while still leaving the concrete
+boundary projection as the supplied output view.
 `ReuseStateView.v` turns a boundary reuse map into an observer-backed reuse
 projection view, and now also exposes a `cell_view` for a declared live-out
 boundary whose target-public cells are exactly the mapped image.
@@ -560,6 +566,16 @@ feature-specific instruction or trace simulation proofs.
 | P9 phase separation | `PhaseSeparationWitness.check_phase_protocolb_sound`; `PhaseSeparationWitness.phase_protocol_cells`; `PhaseValueWitness.check_phase_value_protocolb_sound`; `PhaseValueWitness.check_phase_value_protocolb_final_snapshot`; `PhaseProjectionWitness.check_phase_projectionb_sound`; `PhaseProjectionWitness.check_phase_projection_valueb_sound`; `PhaseProjectionWitness.phase_projection_sources_covered`; `PhaseProjectionWitness.phase_projection_boundary_obligations`; `StorageCompatibilityWitness.check_storage_compatibilityb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `PrivateStorageWitness.check_private_non_escapeb_sound`; `StorageBoundaryView.checked_storage_boundary_refinement_correct`; `PhaseSeparationValidator.checked_phase_separation_bounded_view_correct`; `PhaseSeparationValidator.checked_phase_separation_bounded_non_escape_view_correct`; `PhaseSeparationValidator.checked_phase_projection_bounded_compatible_value_view_correct`; `PhaseSeparationValidator.checked_phase_projection_bounded_compatible_non_escape_value_view_correct`; `PhaseSeparationValidator.checked_phase_projection_bounded_compatible_non_escape_value_public_refinement`; `PhaseSeparationValidator.phase_projection_bounded_compatible_non_escape_value_family`; `StoragePhaseFamilyCompose.bounded_phase_projection_then_scalar_promotion_public_semantic_refinement`; `PhaseSeparationValidator.phase_protocol_entry_live_cell_within_bounds`; `PhaseSeparationValidator.phase_protocol_read_cell_within_bounds`; `PhaseSeparationValidator.phase_protocol_write_cell_within_bounds`; `PhaseSeparationValidator.phase_protocol_next_live_cell_within_bounds`; `PhaseSeparationValidator.phase_protocol_entry_live_cell_not_escaped`; `PhaseSeparationValidator.phase_protocol_read_cell_not_escaped`; `PhaseSeparationValidator.phase_protocol_write_cell_not_escaped`; `PhaseSeparationValidator.phase_protocol_next_live_cell_not_escaped`; `PhaseSeparationValidator.phase_projection_mapped_target_within_bounds` | reads are visible, writes do not overwrite live cells, next-live cells are covered, entry/read/write/next-live protocol cells can be required to lie within declared buffer bounds, and for fragment-private ping-pong/local phase protocols those same protocol cells can be required not to escape; next-live values come from phase writes or entry-live values, the checked value protocol yields a final snapshot matching final-live cells, final source live-outs are exactly projected to final phase-live cells, projected boundary values match, projected final phase cells can be required size/alignment-compatible with represented live-outs, projected final phase cells can also be checked against declared bounds, and the final projection now yields the shared reusable boundary-view obligations used by storage-backed endpoint relations; the strongest phase route packages protocol bounds/non-escape and projection compatibility/bounds/value evidence as one parameterized public-view family, and its composition example exports `public_semantic_refinement` rather than only the compact internal `view_refinement` connective | deriving the phase/swap projection, storage specs, declared buffer bounds, escaped-cell sets, and target code phase arithmetic |
 | P10 frame preservation | `FramePreservationWitness.check_frame_preservationb_sound`; per-cell corollaries such as `FramePreservationWitness.frame_preservation_write_not_frame`; `FrameValueWitness.check_frame_valueb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `FramePreservationValidator.checked_frame_preservation_value_view_correct`; `FramePreservationValidator.checked_frame_preservation_bounded_value_view_correct`; `FramePreservationValidator.checked_frame_preservation_bounded_value_public_refinement`; `FramePreservationValidator.frame_preservation_bounded_value_family`; `StorageFrameFamilyCompose.bounded_frame_preservation_then_scalar_promotion_public_semantic_refinement`; `FramePreservationValidator.frame_preservation_frame_cell_value_preserved`; `FramePreservationValidator.frame_preservation_write_within_allowed_bounds`; `FramePreservationValidator.frame_preservation_frame_cell_within_bounds` | writes are included in the allowed-write set; allowed writes are disjoint from frame cells; each fragment write is therefore outside the context frame; aligned frame before/after values are equal for every listed frame cell; allowed-write cells and context-frame cells can be checked against declared array bounds; fragment writes inherit the allowed-write bounds; the bounded value route now has a public-only facade and parameterized family instance, so contextual frame preservation can compose through the same public semantic theorem interface as storage transformations | deriving the write set, declared bounds, and frame snapshots from concrete instruction semantics |
 | overlap-specific composition | `OverlapTilingValidator.checked_overlap_*_view_correct`; `OverlapStorageWitness.check_overlap_storageb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `PrivateStorageWitness.check_private_non_escapeb_sound`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_value_storage_view_correct`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_correct`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_public_refinement`; `OverlapTilingValidator.overlap_private_ordered_bounded_non_escape_family`; `StorageOverlapFamilyCompose.bounded_overlap_then_scalar_promotion_refinement`; `OverlapTilingValidator.overlap_internal_write_within_private_bounds`; `OverlapTilingValidator.overlap_commit_write_within_commit_bounds`; `OverlapTilingValidator.overlap_internal_write_not_escaped` | duplicated/internal instances project to source instances and commits are unique; optional tile-local closure and private separation; internal writes target tile-private cells and commit writes target public commit cells; private/commit write-cell regions can be checked against declared bounds, role-specific writes inherit the corresponding bounds fact, and tile-private internal writes can be required not to escape the fragment; the strongest overlap/private route now has a public-only facade and parameterized family instance, so instance-duplication transformations compose through the same public-view family theorem as storage-only passes | recomputed-value equivalence and deriving concrete target write cells, storage specs, declared bounds, and escaped-cell sets from codegen |
+
+The public-facing composition surface has now been normalized for the older
+family-compose files as well: inter-array reuse, overlap/private recomputation,
+version commit/read, and reduction merge all keep their lower-level
+`view_refinement` theorems but also export `public_semantic_refinement`
+wrappers.  The new theorem names are
+`bounded_inter_array_reuse_then_scalar_promotion_public_semantic_refinement`,
+`bounded_overlap_then_scalar_promotion_public_semantic_refinement`,
+`bounded_version_commit_then_scalar_promotion_public_semantic_refinement`, and
+`bounded_reduction_merge_then_scalar_promotion_public_semantic_refinement`.
 
 ## Theorem Families
 
