@@ -10,6 +10,7 @@ Require Import StateView.
 Require Import ViewPipeline.
 Require Import FramePreservationWitness.
 Require Import FrameValueWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -76,6 +77,24 @@ Record frame_preservation_value_view_contract
       source_view after;
   fpvvc_frame_values :
     frame_value_obligations value frame_cells frame_entries;
+}.
+
+Record frame_preservation_bounded_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (frame_cells write_cells allowed_write_cells: list MemCell)
+    (frame_entries: list (frame_value_entry value))
+    (allowed_write_bounds frame_bounds: list array_bounds)
+    (source_view after: PolyLang.t) : Prop := {
+  fpbvvc_base :
+    frame_preservation_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      source_view after;
+  fpbvvc_allowed_write_bounds :
+    storage_bounds_obligations allowed_write_bounds allowed_write_cells;
+  fpbvvc_frame_bounds :
+    storage_bounds_obligations frame_bounds frame_cells;
 }.
 
 Definition frame_pipeline_final_view
@@ -157,6 +176,57 @@ Proof.
   - exact Hrefinement.
 Qed.
 
+Theorem checked_frame_preservation_bounded_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view frame_cells write_cells allowed_write_cells
+         frame_entries allowed_write_bounds frame_bounds
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (check_frame_source_view before source_view) ok ->
+    ok = true ->
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    check_frame_valueb value value_eqb frame_cells frame_entries = true ->
+    check_storage_boundsb allowed_write_bounds allowed_write_cells = true ->
+    check_storage_boundsb frame_bounds frame_cells = true ->
+    frame_source_view_refines_view
+      input_view output_view source_view after ->
+    frame_preservation_bounded_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      allowed_write_bounds frame_bounds source_view after /\
+    View.view_refinement
+      input_view
+      (frame_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view frame_cells write_cells
+         allowed_write_cells frame_entries allowed_write_bounds frame_bounds
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hframe Hvalues Hallowed_bounds Hframe_bounds
+         Hsemantics.
+  pose proof
+    (checked_frame_preservation_value_view_correct
+       value value_eqb input_view output_view
+       frame_cells write_cells allowed_write_cells frame_entries
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hframe Hvalues Hsemantics)
+    as [Hbase Hview].
+  pose proof
+    (check_storage_boundsb_sound
+       allowed_write_bounds allowed_write_cells Hallowed_bounds)
+    as Hallowed_bounds_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       frame_bounds frame_cells Hframe_bounds)
+    as Hframe_bounds_obligations.
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
 Theorem frame_preservation_frame_cell_value_preserved :
   forall (value: Type) input_view output_view
          frame_cells write_cells allowed_write_cells frame_entries
@@ -176,6 +246,69 @@ Proof.
          Hcontract Hin.
   destruct Hcontract as [_ Hvalues].
   eapply frame_value_cell_preserved; eauto.
+Qed.
+
+Theorem frame_preservation_allowed_write_within_bounds :
+  forall (value: Type) input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell,
+    frame_preservation_bounded_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      allowed_write_bounds frame_bounds source_view after ->
+    In cell allowed_write_cells ->
+    cell_within_declared_bounds allowed_write_bounds cell.
+Proof.
+  intros value input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell
+         Hcontract Hin.
+  destruct Hcontract as [_ Hallowed_bounds _].
+  eapply storage_bounds_cell_within; eauto.
+Qed.
+
+Theorem frame_preservation_write_within_allowed_bounds :
+  forall (value: Type) input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell,
+    frame_preservation_bounded_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      allowed_write_bounds frame_bounds source_view after ->
+    In cell write_cells ->
+    cell_within_declared_bounds allowed_write_bounds cell.
+Proof.
+  intros value input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell
+         Hcontract Hwrite.
+  destruct Hcontract as [Hbase Hallowed_bounds _].
+  destruct Hbase as [Hframe_contract _].
+  destruct Hframe_contract as [Hframe _ _].
+  destruct Hframe as [_ Hwrites_allowed _].
+  eapply storage_bounds_cell_within.
+  - exact Hallowed_bounds.
+  - apply Hwrites_allowed.
+    exact Hwrite.
+Qed.
+
+Theorem frame_preservation_frame_cell_within_bounds :
+  forall (value: Type) input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell,
+    frame_preservation_bounded_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      allowed_write_bounds frame_bounds source_view after ->
+    In cell frame_cells ->
+    cell_within_declared_bounds frame_bounds cell.
+Proof.
+  intros value input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         allowed_write_bounds frame_bounds source_view after cell
+         Hcontract Hin.
+  destruct Hcontract as [_ _ Hframe_bounds].
+  eapply storage_bounds_cell_within; eauto.
 Qed.
 
 End FramePreservationValidator.
