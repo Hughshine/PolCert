@@ -1379,7 +1379,15 @@ different private cells.  This is still a finite witness layer, not a full
 instruction-level simulation of the value computed into the private cell.
 `ScalarExpansionValidator.checked_scalar_expansion_view_correct` connects this
 finite layer to the existing private-erasure endpoint theorem under the same
-semantic refinement premise used by `PrivateStorageValidator`.
+semantic refinement premise used by `PrivateStorageValidator`.  The theorem
+now also requires the expanded source scalar cells themselves to be hidden by
+the endpoint view.  That is the no-copy-out case: if the original scalar remains
+observable after the region, the pass needs an explicit boundary commit rather
+than pure privatization.  The more readable wrapper
+`ScalarExpansionValidator.checked_pure_scalar_privatization_correct` exposes
+that intended top theorem directly: a checked pure scalar privatization yields
+public-view refinement, where both the old source temporary and the new target
+private cells are erased from the endpoint observation.
 
 ### Reduction Privatization
 
@@ -1950,15 +1958,21 @@ private-storage reasoning to scalar expansion: every dynamic
 events use that same selected cell, selected private cells are fresh, and the
 expanded private trace is write-before-read.  `ScalarExpansionValidator` then
 packages those facts with `PrivateStorageValidator`'s private-erasure view
-refinement theorem, so the witness is not an isolated checker.
+refinement theorem, so the witness is not an isolated checker.  It also checks
+that the source scalar cells replaced by the expansion are hidden by the
+endpoint view; otherwise the target would stop updating a source-visible cell.
 The stronger
 `checked_scalar_expansion_bounded_compatible_non_escape_view_correct` theorem
 adds three reusable storage side conditions to the same endpoint theorem:
 expanded private cells must lie within declared private bounds, each
 source/private expansion entry must have compatible finite storage specs, and
 the private cells must be disjoint from the escaped-cell set.  Its corollaries
-make these facts usable at the event level: every expansion event's private
-cell is in bounds and does not escape.
+make these facts usable at the event level: every expansion event's source cell
+is hidden, and every expansion event's private cell is in bounds and does not
+escape.
+The wrapper `checked_bounded_pure_scalar_privatization_correct` keeps the same
+public-view refinement conclusion but bundles the core, bounds, compatibility,
+and non-escape checks behind one scalar-privatization-facing checker.
 `check_private_separationb` captures the reusable separation side condition:
 private cells are duplicate-free and disjoint from public/frame cells.
 `PrivateBoundaryWitness.check_private_boundaryb_sound` adds the boundary-copy

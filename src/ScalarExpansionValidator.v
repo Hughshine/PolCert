@@ -35,6 +35,24 @@ Module Private := PrivateStorageValidator PolIRs Observer.
 Module Witness := Private.Witness.
 Module View := Private.View.
 
+Definition pure_scalar_privatization_view
+    (hidden_cells: list MemCell) : View.view :=
+  Private.private_erasure_view
+    (Witness.hidden_identity_cell_view hidden_cells).
+
+Definition pure_scalar_privatization_final_view
+    (hidden_cells: list MemCell) : View.view :=
+  Private.private_pipeline_final_view
+    (Witness.hidden_identity_cell_view hidden_cells).
+
+Definition pure_scalar_privatization_refinement
+    (hidden_cells: list MemCell)
+    (before after: Private.PolyLang.t) : Prop :=
+  View.view_refinement
+    (pure_scalar_privatization_view hidden_cells)
+    (pure_scalar_privatization_final_view hidden_cells)
+    before after.
+
 Fixpoint scalar_expansion_storage_mapping
     (entries: list scalar_expansion_entry) : reuse_mapping :=
   match entries with
@@ -67,6 +85,9 @@ Record scalar_expansion_view_contract
   sevc_scalar_expansion :
     scalar_expansion_obligations
       source_domain source_cells private_cells entries events;
+  sevc_source_hidden :
+    Witness.private_cells_hidden
+      (scalar_expansion_source_cells entries) hidden_cells;
   sevc_private_hidden :
     Witness.private_cells_hidden private_cells hidden_cells;
   sevc_semantic_refinement :
@@ -99,12 +120,127 @@ Record scalar_expansion_bounded_compatible_non_escape_view_contract
     private_non_escape_obligations private_cells escaped_cells;
 }.
 
+Record scalar_privatization_core_obligations
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event) : Prop := {
+  spco_scalar_expansion :
+    scalar_expansion_obligations
+      source_domain source_cells private_cells entries events;
+  spco_source_hidden :
+    Witness.private_cells_hidden
+      (scalar_expansion_source_cells entries) hidden_cells;
+  spco_private_hidden :
+    Witness.private_cells_hidden private_cells hidden_cells;
+}.
+
+Definition check_scalar_privatization_coreb
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event) : bool :=
+  mem_cells_subsetb private_cells hidden_cells &&
+  mem_cells_subsetb (scalar_expansion_source_cells entries) hidden_cells &&
+  check_scalar_expansionb
+    source_domain source_cells private_cells entries events.
+
+Lemma check_scalar_privatization_coreb_sound :
+  forall hidden_cells private_cells source_domain source_cells entries events,
+    check_scalar_privatization_coreb
+      hidden_cells private_cells source_domain source_cells entries events =
+    true ->
+    scalar_privatization_core_obligations
+      hidden_cells private_cells source_domain source_cells entries events.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         Hcheck.
+  unfold check_scalar_privatization_coreb in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as ((Hprivate_hidden & Hsource_hidden) & Hscalar).
+  constructor.
+  - apply check_scalar_expansionb_sound.
+    exact Hscalar.
+  - apply Witness.private_cells_hidden_sound.
+    exact Hsource_hidden.
+  - apply Witness.private_cells_hidden_sound.
+    exact Hprivate_hidden.
+Qed.
+
+Record bounded_pure_scalar_privatization_obligations
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event)
+    (private_bounds: list array_bounds)
+    (source_specs private_specs: list storage_spec)
+    (escaped_cells: list MemCell) : Prop := {
+  bpspo_core :
+    scalar_privatization_core_obligations
+      hidden_cells private_cells source_domain source_cells entries events;
+  bpspo_private_bounds :
+    storage_bounds_obligations private_bounds private_cells;
+  bpspo_storage_compatible :
+    storage_compatibility_obligations
+      (scalar_expansion_storage_mapping entries)
+      source_specs private_specs;
+  bpspo_non_escape :
+    private_non_escape_obligations private_cells escaped_cells;
+}.
+
+Definition check_bounded_pure_scalar_privatizationb
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event)
+    (private_bounds: list array_bounds)
+    (source_specs private_specs: list storage_spec)
+    (escaped_cells: list MemCell) : bool :=
+  check_scalar_privatization_coreb
+    hidden_cells private_cells source_domain source_cells entries events &&
+  check_storage_boundsb private_bounds private_cells &&
+  check_storage_compatibilityb
+    (scalar_expansion_storage_mapping entries)
+    source_specs private_specs &&
+  check_private_non_escapeb private_cells escaped_cells.
+
+Lemma check_bounded_pure_scalar_privatizationb_sound :
+  forall hidden_cells private_cells source_domain source_cells entries events
+         private_bounds source_specs private_specs escaped_cells,
+    check_bounded_pure_scalar_privatizationb
+      hidden_cells private_cells source_domain source_cells entries events
+      private_bounds source_specs private_specs escaped_cells = true ->
+    bounded_pure_scalar_privatization_obligations
+      hidden_cells private_cells source_domain source_cells entries events
+      private_bounds source_specs private_specs escaped_cells.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         private_bounds source_specs private_specs escaped_cells Hcheck.
+  unfold check_bounded_pure_scalar_privatizationb in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as (((Hcore & Hbounds) & Hcompatible) & Hnon_escape).
+  constructor.
+  - apply check_scalar_privatization_coreb_sound.
+    exact Hcore.
+  - apply check_storage_boundsb_sound.
+    exact Hbounds.
+  - apply check_storage_compatibilityb_sound.
+    exact Hcompatible.
+  - apply check_private_non_escapeb_sound.
+    exact Hnon_escape.
+Qed.
+
 Theorem checked_scalar_expansion_view_correct :
   forall hidden_cells private_cells source_domain source_cells entries events
          before source_view after ok,
     mayReturn (Private.check_private_source_view before source_view) ok ->
     ok = true ->
     mem_cells_subsetb private_cells hidden_cells = true ->
+    mem_cells_subsetb (scalar_expansion_source_cells entries) hidden_cells = true ->
     check_scalar_expansionb
       source_domain source_cells private_cells entries events = true ->
     Private.private_source_view_refines_view
@@ -121,7 +257,8 @@ Theorem checked_scalar_expansion_view_correct :
       before after.
 Proof.
   intros hidden_cells private_cells source_domain source_cells entries events
-         before source_view after ok Hret Hok Hhidden Hscalar Hprivate.
+         before source_view after ok Hret Hok Hhidden Hsource_hidden
+         Hscalar Hprivate.
   pose proof
     (check_scalar_expansionb_sound
        source_domain source_cells private_cells entries events Hscalar)
@@ -129,6 +266,10 @@ Proof.
   pose proof
     (Witness.private_cells_hidden_sound private_cells hidden_cells Hhidden)
     as Hprivate_hidden.
+  pose proof
+    (Witness.private_cells_hidden_sound
+       (scalar_expansion_source_cells entries) hidden_cells Hsource_hidden)
+    as Hsource_cells_hidden.
   split.
   - constructor; assumption.
   - eapply Private.checked_hidden_private_expansion_view_correct.
@@ -136,6 +277,45 @@ Proof.
     + exact Hok.
     + exact Hhidden.
     + exact Hprivate.
+Qed.
+
+Theorem checked_pure_scalar_privatization_correct :
+  forall hidden_cells private_cells source_domain source_cells entries events
+         before source_view after ok,
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    check_scalar_privatization_coreb
+      hidden_cells private_cells source_domain source_cells entries events =
+    true ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    scalar_privatization_core_obligations
+      hidden_cells private_cells source_domain source_cells entries events /\
+    pure_scalar_privatization_refinement hidden_cells before after.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         before source_view after ok Hret Hok Hcore Hprivate.
+  pose proof
+    (check_scalar_privatization_coreb_sound
+       hidden_cells private_cells source_domain source_cells entries events
+       Hcore)
+    as Hcore_obligations.
+  unfold check_scalar_privatization_coreb in Hcore.
+  repeat rewrite andb_true_iff in Hcore.
+  destruct Hcore as ((Hprivate_hidden & Hsource_hidden) & Hscalar).
+  pose proof
+    (checked_scalar_expansion_view_correct
+       hidden_cells private_cells source_domain source_cells entries events
+       before source_view after ok
+       Hret Hok Hprivate_hidden Hsource_hidden Hscalar Hprivate)
+    as [_ Hview].
+  split.
+  - exact Hcore_obligations.
+  - unfold pure_scalar_privatization_refinement,
+           pure_scalar_privatization_view,
+           pure_scalar_privatization_final_view.
+    exact Hview.
 Qed.
 
 Theorem scalar_expansion_view_event_uses_declared_private :
@@ -149,8 +329,63 @@ Theorem scalar_expansion_view_event_uses_declared_private :
 Proof.
   intros hidden_cells private_cells source_domain source_cells entries events
          source_view after event Hcontract Hin.
-  destruct Hcontract as [Hscalar _ _].
+  destruct Hcontract as [Hscalar _ _ _].
   eapply scalar_expansion_event_uses_declared_private; eauto.
+Qed.
+
+Lemma scalar_expansion_entry_source_cell_in :
+  forall entries entry,
+    In entry entries ->
+    In (expansion_source_cell entry)
+       (scalar_expansion_source_cells entries).
+Proof.
+  induction entries as [|head tail IH]; intros entry Hin; simpl in *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst. left. reflexivity.
+    + right. apply IH. exact Hin_tail.
+Qed.
+
+Theorem scalar_expansion_view_entry_source_cell_hidden :
+  forall hidden_cells private_cells source_domain source_cells entries events
+         source_view after entry,
+    scalar_expansion_view_contract
+      hidden_cells private_cells source_domain source_cells entries events
+      source_view after ->
+    In entry entries ->
+    In (expansion_source_cell entry) hidden_cells.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [_ Hsource_hidden _ _].
+  eapply Hsource_hidden.
+  eapply scalar_expansion_entry_source_cell_in.
+  exact Hin.
+Qed.
+
+Theorem scalar_expansion_view_event_source_cell_hidden :
+  forall hidden_cells private_cells source_domain source_cells entries events
+         source_view after event,
+    scalar_expansion_view_contract
+      hidden_cells private_cells source_domain source_cells entries events
+      source_view after ->
+    In event events ->
+    In (expansion_event_source_cell event) hidden_cells.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         source_view after event Hcontract Hin.
+  destruct Hcontract as [Hscalar Hsource_hidden _ _].
+  destruct Hscalar as [_ _ _ _ _ Hevents _].
+  unfold scalar_expansion_events_mapped in Hevents.
+  unfold scalar_expansion_event_mapped in Hevents.
+  pose proof (Hevents event Hin) as Hlookup.
+  apply scalar_expansion_lookup_sound in Hlookup.
+  destruct Hlookup as
+    (entry & Hin_entry & _ & Hsource & _).
+  rewrite <- Hsource.
+  eapply Hsource_hidden.
+  eapply scalar_expansion_entry_source_cell_in.
+  exact Hin_entry.
 Qed.
 
 Theorem checked_scalar_expansion_bounded_compatible_non_escape_view_correct :
@@ -160,6 +395,7 @@ Theorem checked_scalar_expansion_bounded_compatible_non_escape_view_correct :
     mayReturn (Private.check_private_source_view before source_view) ok ->
     ok = true ->
     mem_cells_subsetb private_cells hidden_cells = true ->
+    mem_cells_subsetb (scalar_expansion_source_cells entries) hidden_cells = true ->
     check_scalar_expansionb
       source_domain source_cells private_cells entries events = true ->
     check_storage_boundsb private_bounds private_cells = true ->
@@ -184,12 +420,13 @@ Proof.
   intros hidden_cells private_cells source_domain source_cells entries events
          private_bounds source_specs private_specs escaped_cells
          before source_view after ok
-         Hret Hok Hhidden Hscalar Hbounds Hcompatible Hnon_escape Hprivate.
+         Hret Hok Hhidden Hsource_hidden Hscalar Hbounds Hcompatible
+         Hnon_escape Hprivate.
   pose proof
     (checked_scalar_expansion_view_correct
        hidden_cells private_cells source_domain source_cells entries events
        before source_view after ok
-       Hret Hok Hhidden Hscalar Hprivate)
+       Hret Hok Hhidden Hsource_hidden Hscalar Hprivate)
     as [Hbase Hview].
   pose proof
     (check_storage_boundsb_sound
@@ -207,6 +444,53 @@ Proof.
   split.
   - constructor; assumption.
   - exact Hview.
+Qed.
+
+Theorem checked_bounded_pure_scalar_privatization_correct :
+  forall hidden_cells private_cells source_domain source_cells entries events
+         private_bounds source_specs private_specs escaped_cells
+         before source_view after ok,
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    check_bounded_pure_scalar_privatizationb
+      hidden_cells private_cells source_domain source_cells entries events
+      private_bounds source_specs private_specs escaped_cells = true ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    bounded_pure_scalar_privatization_obligations
+      hidden_cells private_cells source_domain source_cells entries events
+      private_bounds source_specs private_specs escaped_cells /\
+    pure_scalar_privatization_refinement hidden_cells before after.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries events
+         private_bounds source_specs private_specs escaped_cells
+         before source_view after ok Hret Hok Hcheck Hprivate.
+  pose proof
+    (check_bounded_pure_scalar_privatizationb_sound
+       hidden_cells private_cells source_domain source_cells entries events
+       private_bounds source_specs private_specs escaped_cells Hcheck)
+    as Hbounded_obligations.
+  unfold check_bounded_pure_scalar_privatizationb in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as (((Hcore & Hbounds) & Hcompatible) & Hnon_escape).
+  unfold check_scalar_privatization_coreb in Hcore.
+  repeat rewrite andb_true_iff in Hcore.
+  destruct Hcore as ((Hprivate_hidden & Hsource_hidden) & Hscalar).
+  pose proof
+    (checked_scalar_expansion_bounded_compatible_non_escape_view_correct
+       hidden_cells private_cells source_domain source_cells entries events
+       private_bounds source_specs private_specs escaped_cells
+       before source_view after ok
+       Hret Hok Hprivate_hidden Hsource_hidden Hscalar Hbounds
+       Hcompatible Hnon_escape Hprivate)
+    as [_ Hview].
+  split.
+  - exact Hbounded_obligations.
+  - unfold pure_scalar_privatization_refinement,
+           pure_scalar_privatization_view,
+           pure_scalar_privatization_final_view.
+    exact Hview.
 Qed.
 
 Theorem scalar_expansion_event_private_cell_within_bounds :
