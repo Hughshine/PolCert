@@ -19,6 +19,7 @@ Require Import StorageBoundsWitness.
 Require Import PaddingLayoutValidator.
 Require Import PrivateStorageWitness.
 Require Import ScalarExpansionWitness.
+Require Import ScalarExpansionValueWitness.
 Require Import PrivateBoundaryWitness.
 Require Import ScalarPromotionWitness.
 Require Import ScalarPromotionValueWitness.
@@ -413,6 +414,16 @@ Definition storage_scalar_expansion_event_uses_declared_private :=
   scalar_expansion_event_uses_declared_private.
 Definition storage_scalar_expansion_events_same_key_same_private :=
   scalar_expansion_events_same_key_same_private.
+Definition storage_scalar_expansion_value_event :=
+  scalar_expansion_value_event.
+Definition storage_scalar_expansion_value_trace :=
+  scalar_expansion_value_trace.
+Definition storage_check_scalar_expansion_value_traceb :=
+  @check_scalar_expansion_value_traceb.
+Definition storage_check_scalar_expansion_value_traceb_sound :=
+  check_scalar_expansion_value_traceb_sound.
+Definition storage_scalar_expansion_value_obligations :=
+  scalar_expansion_value_obligations.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=

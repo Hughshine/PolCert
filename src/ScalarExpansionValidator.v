@@ -9,6 +9,7 @@ Require Import PrivateStorageWitness.
 Require Import PrivateStorageValidator.
 Require Import InstanceProjectionWitness.
 Require Import ScalarExpansionWitness.
+Require Import ScalarExpansionValueWitness.
 Require Import ReuseConflictWitness.
 Require Import StorageBoundsWitness.
 Require Import StorageCompatibilityWitness.
@@ -191,6 +192,71 @@ Record bounded_pure_scalar_privatization_obligations
     private_non_escape_obligations private_cells escaped_cells;
 }.
 
+Record scalar_privatization_value_core_obligations
+    (value: Type)
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event)
+    (value_trace: scalar_expansion_value_trace value) : Prop := {
+  spvco_core :
+    scalar_privatization_core_obligations
+      hidden_cells private_cells source_domain source_cells entries events;
+  spvco_value_flow :
+    scalar_expansion_value_obligations value value_trace;
+  spvco_value_trace_events :
+    scalar_expansion_value_trace_events value_trace = events;
+}.
+
+Definition check_scalar_privatization_value_coreb
+    {value: Type}
+    (value_eqb: value -> value -> bool)
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry)
+    (events: list scalar_expansion_event)
+    (value_trace: scalar_expansion_value_trace value) : bool :=
+  check_scalar_privatization_coreb
+    hidden_cells private_cells source_domain source_cells entries events &&
+  check_scalar_expansion_value_traceb value_eqb value_trace &&
+  scalar_expansion_events_eqb
+    (scalar_expansion_value_trace_events value_trace)
+    events.
+
+Lemma check_scalar_privatization_value_coreb_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         hidden_cells private_cells source_domain source_cells entries events
+         value_trace,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    check_scalar_privatization_value_coreb
+      value_eqb hidden_cells private_cells source_domain source_cells entries
+      events value_trace = true ->
+    scalar_privatization_value_core_obligations
+      value hidden_cells private_cells source_domain source_cells entries
+      events value_trace.
+Proof.
+  intros value value_eqb hidden_cells private_cells source_domain source_cells
+         entries events value_trace Hvalue_eqb Hcheck.
+  unfold check_scalar_privatization_value_coreb in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as ((Hcore & Hvalue) & Hevents).
+  constructor.
+  - apply check_scalar_privatization_coreb_sound.
+    exact Hcore.
+  - constructor.
+    unfold check_scalar_expansion_value_traceb in Hvalue.
+    apply
+      (check_scalar_expansion_value_trace_fromb_sound value value_eqb).
+    + exact Hvalue_eqb.
+    + exact Hvalue.
+  - apply scalar_expansion_events_eqb_eq.
+    exact Hevents.
+Qed.
+
 Definition check_bounded_pure_scalar_privatizationb
     (hidden_cells private_cells: list MemCell)
     (source_domain: list logical_instance)
@@ -316,6 +382,48 @@ Proof.
            pure_scalar_privatization_view,
            pure_scalar_privatization_final_view.
     exact Hview.
+Qed.
+
+Theorem checked_value_pure_scalar_privatization_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         hidden_cells private_cells source_domain source_cells entries events
+         value_trace before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    check_scalar_privatization_value_coreb
+      value_eqb hidden_cells private_cells source_domain source_cells entries
+      events value_trace = true ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    scalar_privatization_value_core_obligations
+      value hidden_cells private_cells source_domain source_cells entries
+      events value_trace /\
+    pure_scalar_privatization_refinement hidden_cells before after.
+Proof.
+  intros value value_eqb hidden_cells private_cells source_domain source_cells
+         entries events value_trace before source_view after ok
+         Hvalue_eqb Hret Hok Hcheck Hprivate.
+  pose proof
+    (check_scalar_privatization_value_coreb_sound
+       value value_eqb hidden_cells private_cells source_domain source_cells
+       entries events value_trace Hvalue_eqb Hcheck)
+    as Hvalue_obligations.
+  unfold check_scalar_privatization_value_coreb in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as ((Hcore & _Hvalue) & _Hevents).
+  pose proof
+    (checked_pure_scalar_privatization_correct
+       hidden_cells private_cells source_domain source_cells entries events
+       before source_view after ok
+       Hret Hok Hcore Hprivate)
+    as [_ Hview].
+  split.
+  - exact Hvalue_obligations.
+  - exact Hview.
 Qed.
 
 Theorem scalar_expansion_view_event_uses_declared_private :

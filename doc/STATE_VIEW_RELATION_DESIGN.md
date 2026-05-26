@@ -1388,6 +1388,13 @@ than pure privatization.  The more readable wrapper
 that intended top theorem directly: a checked pure scalar privatization yields
 public-view refinement, where both the old source temporary and the new target
 private cells are erased from the endpoint observation.
+`ScalarExpansionValueWitness.v` is the next layer below that theorem.  It
+checks a finite value trace: expansion writes must store the same value as the
+source logical write they replace, and expansion reads must observe the current
+private value and match the represented source read.  The
+`checked_value_pure_scalar_privatization_correct` wrapper keeps the same
+public-view refinement conclusion while making this value-flow evidence an
+explicit checked premise.
 
 ### Reduction Privatization
 
@@ -1973,6 +1980,9 @@ escape.
 The wrapper `checked_bounded_pure_scalar_privatization_correct` keeps the same
 public-view refinement conclusion but bundles the core, bounds, compatibility,
 and non-escape checks behind one scalar-privatization-facing checker.
+The value-flow checker does not yet derive values from C expression semantics;
+it reduces that remaining obligation to producing the finite aligned value
+trace.
 `check_private_separationb` captures the reusable separation side condition:
 private cells are duplicate-free and disjoint from public/frame cells.
 `PrivateBoundaryWitness.check_private_boundaryb_sound` adds the boundary-copy
