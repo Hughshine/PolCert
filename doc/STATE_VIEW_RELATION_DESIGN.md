@@ -1444,7 +1444,13 @@ scalar-privatization storage core together with a CInstr-derived ordered value
 trace into the existing pure/bounded public-view refinement wrappers.  The
 cleanest bridge form derives the scalar-expansion event list from the ordered
 value trace itself, which keeps the theorem interface closer to "checked core
-plus semantic trace implies public-view refinement."
+plus semantic trace implies public-view refinement."  The value-flow relation
+now also subsumes one storage obligation: every private read must find a
+current value in the threaded private-value map, which proves read-after-write
+use-def for the projected private trace.  This allows a smaller static-core
+bridge theorem: static declaration/freshness/visibility checks are combined
+with CInstr trace evidence for event mapping and use-def before yielding the
+same public-view refinement conclusion.
 
 ### Reduction Privatization
 

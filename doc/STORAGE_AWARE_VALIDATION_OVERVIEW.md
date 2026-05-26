@@ -181,7 +181,12 @@ the pure and bounded scalar privatization refinement theorems, without making
 the final theorem expose the trace as its endpoint relation.  The cleaner
 bridge wrappers derive the scalar-expansion event list directly from the
 ordered value trace, so callers do not need to pass a separate event list plus
-an equality proof.
+an equality proof.  The value-flow layer now also proves private use-def:
+because a private read is legal only when its cell has a current value in the
+threaded expansion map, the corresponding private trace is read-after-write
+safe.  The CInstr bridge uses this to offer a smaller static-core theorem where
+declared entries, hidden cells, and freshness are checked, while event mapping
+and use-def come from the ordered CInstr trace.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list

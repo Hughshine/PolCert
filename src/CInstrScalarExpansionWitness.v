@@ -461,3 +461,40 @@ Proof.
     eapply cscalar_expansion_value_trace_events_mapped.
     exact Htrace.
 Qed.
+
+Theorem cscalar_expansion_value_trace_private_use_def :
+  forall entries trace,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  intros entries trace Htrace.
+  apply scalar_expansion_value_trace_private_use_def
+    with (value := Values.val).
+  apply cscalar_expansion_value_trace_sound
+    with (entries := entries).
+  exact Htrace.
+Qed.
+
+Theorem cscalar_expansion_value_trace_sound_mapped_and_usedef :
+  forall entries trace,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    scalar_expansion_value_obligations Values.val trace /\
+    scalar_expansion_events_mapped
+      entries (scalar_expansion_value_trace_events trace) /\
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  intros entries trace Htrace.
+  split.
+  - apply (cscalar_expansion_value_trace_obligations entries).
+    exact Htrace.
+  - split.
+    + unfold cscalar_expansion_value_trace_simulates in Htrace.
+      eapply cscalar_expansion_value_trace_events_mapped.
+      exact Htrace.
+    + eapply cscalar_expansion_value_trace_private_use_def.
+      exact Htrace.
+Qed.

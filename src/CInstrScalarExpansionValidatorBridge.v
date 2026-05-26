@@ -1,9 +1,12 @@
+Require Import Bool.
 Require Import List.
 
 Require Import CInstrScalarExpansionWitness.
+Require Import InstanceProjectionWitness.
 Require Import ImpureAlarmConfig.
 Require Import PolyBase.
 Require Import PolIRs.
+Require Import PrivateStorageWitness.
 Require Import ScalarExpansionValidator.
 Require Import ScalarExpansionValueWitness.
 Require Import ScalarExpansionWitness.
@@ -33,6 +36,129 @@ Module Scalar := ScalarExpansionValidator PolIRs Observer.
 Module Private := Scalar.Private.
 Module Witness := Scalar.Witness.
 Module View := Scalar.View.
+
+Definition check_scalar_privatization_static_coreb
+    (hidden_cells private_cells: list MemCell)
+    (source_domain: list logical_instance)
+    (source_cells: list MemCell)
+    (entries: list scalar_expansion_entry) : bool :=
+  mem_cells_subsetb private_cells hidden_cells &&
+  mem_cells_subsetb (scalar_expansion_source_cells entries) hidden_cells &&
+  logical_instances_subsetb
+    (scalar_expansion_instances entries) source_domain &&
+  mem_cells_subsetb
+    (scalar_expansion_source_cells entries) source_cells &&
+  mem_cells_subsetb
+    (scalar_expansion_private_cells entries) private_cells &&
+  scalar_expansion_keys_nodupb (scalar_expansion_entry_keys entries) &&
+  mem_cells_nodupb (scalar_expansion_private_cells entries).
+
+Lemma check_scalar_privatization_static_coreb_sound :
+  forall hidden_cells private_cells source_domain source_cells entries
+         value_trace,
+    check_scalar_privatization_static_coreb
+      hidden_cells private_cells source_domain source_cells entries = true ->
+    cscalar_expansion_value_trace_simulates entries value_trace ->
+    Scalar.scalar_privatization_core_obligations
+      hidden_cells private_cells source_domain source_cells entries
+      (scalar_expansion_value_trace_events value_trace).
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries
+         value_trace Hcheck Htrace.
+  unfold check_scalar_privatization_static_coreb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcheck Hprivate_unique].
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcheck Hkeys].
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcheck Hprivates].
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcheck Hsources].
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcheck Hinstances].
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hprivate_hidden Hsource_hidden].
+  constructor.
+  - constructor.
+    + intros instance Hin.
+      eapply logical_instances_subsetb_sound; eauto.
+    + intros source_cell Hin.
+      eapply mem_cells_subsetb_sound; eauto.
+    + intros private_cell Hin.
+      eapply mem_cells_subsetb_sound; eauto.
+    + apply scalar_expansion_keys_nodupb_sound.
+      exact Hkeys.
+    + apply mem_cells_nodupb_sound.
+      exact Hprivate_unique.
+    + unfold cscalar_expansion_value_trace_simulates in Htrace.
+      eapply cscalar_expansion_value_trace_events_mapped.
+      exact Htrace.
+    + eapply cscalar_expansion_value_trace_private_use_def.
+      exact Htrace.
+  - apply Witness.private_cells_hidden_sound.
+    exact Hsource_hidden.
+  - apply Witness.private_cells_hidden_sound.
+    exact Hprivate_hidden.
+Qed.
+
+Theorem cinstr_trace_static_pure_scalar_privatization_value_events_correct :
+  forall hidden_cells private_cells source_domain source_cells entries
+         value_trace before source_view after ok,
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    check_scalar_privatization_static_coreb
+      hidden_cells private_cells source_domain source_cells entries = true ->
+    cscalar_expansion_value_trace_simulates entries value_trace ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    Scalar.scalar_privatization_value_core_obligations
+      Values.val hidden_cells private_cells source_domain source_cells
+      entries (scalar_expansion_value_trace_events value_trace)
+      value_trace /\
+    Scalar.pure_scalar_privatization_refinement
+      hidden_cells before after.
+Proof.
+  intros hidden_cells private_cells source_domain source_cells entries
+         value_trace before source_view after ok
+         Hret Hok Hstatic Htrace Hprivate.
+  pose proof
+    (check_scalar_privatization_static_coreb_sound
+       hidden_cells private_cells source_domain source_cells entries
+       value_trace Hstatic Htrace)
+    as Hcore.
+  pose proof
+    (cscalar_expansion_value_trace_obligations
+       entries value_trace Htrace)
+    as Hvalue_obligations.
+  unfold check_scalar_privatization_static_coreb in Hstatic.
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hstatic _Hprivate_unique].
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hstatic _Hkeys].
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hstatic _Hprivates].
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hstatic _Hsources].
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hstatic _Hinstances].
+  apply andb_true_iff in Hstatic.
+  destruct Hstatic as [Hprivate_hidden _Hsource_hidden].
+  pose proof
+    (Private.checked_hidden_private_expansion_view_correct
+       hidden_cells private_cells before source_view after ok
+       Hret Hok Hprivate_hidden Hprivate)
+    as Hview.
+  split.
+  - constructor.
+    + exact Hcore.
+    + exact Hvalue_obligations.
+    + reflexivity.
+  - unfold Scalar.pure_scalar_privatization_refinement,
+           Scalar.pure_scalar_privatization_view,
+           Scalar.pure_scalar_privatization_final_view.
+    exact Hview.
+Qed.
 
 Theorem cinstr_trace_pure_scalar_privatization_value_correct :
   forall hidden_cells private_cells source_domain source_cells entries events

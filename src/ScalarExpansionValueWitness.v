@@ -232,6 +232,127 @@ Fixpoint scalar_expansion_value_trace_values {value: Type}
       value_event :: scalar_expansion_value_trace_values tail
   end.
 
+Definition expanded_values_defined_by {value: Type}
+    (expanded_values: list (MemCell * value))
+    (defined_cells: list MemCell) : Prop :=
+  forall cell current_value,
+    lookup_expanded_value cell expanded_values = Some current_value ->
+    In cell defined_cells.
+
+Lemma expanded_values_defined_by_nil :
+  forall (value: Type) defined_cells,
+    @expanded_values_defined_by value [] defined_cells.
+Proof.
+  intros value defined_cells cell current_value Hlookup.
+  simpl in Hlookup.
+  discriminate.
+Qed.
+
+Lemma expanded_values_defined_by_update :
+  forall (value: Type) expanded_values defined_cells write_cell write_value,
+    @expanded_values_defined_by value expanded_values defined_cells ->
+    @expanded_values_defined_by value
+      (update_expanded_value write_cell write_value expanded_values)
+      (write_cell :: defined_cells).
+Proof.
+  induction expanded_values as [|[cell old_value] tail IH];
+    intros defined_cells write_cell write_value Hdefined
+           query_cell query_value Hlookup; simpl in Hlookup.
+  - destruct (mem_cell_strict_eqb query_cell write_cell) eqn:Heq.
+    + apply mem_cell_strict_eqb_eq in Heq.
+      subst. left. reflexivity.
+    + discriminate.
+  - destruct (mem_cell_strict_eqb write_cell cell) eqn:Hwrite.
+    + simpl in Hlookup.
+      destruct (mem_cell_strict_eqb query_cell cell) eqn:Hquery.
+      * apply mem_cell_strict_eqb_eq in Hquery.
+        apply mem_cell_strict_eqb_eq in Hwrite.
+        subst. left. reflexivity.
+      * right.
+        eapply Hdefined.
+        simpl.
+        rewrite Hquery.
+        exact Hlookup.
+    + simpl in Hlookup.
+      destruct (mem_cell_strict_eqb query_cell cell) eqn:Hquery.
+      * inversion Hlookup; subst.
+        right.
+        eapply Hdefined.
+        simpl.
+        rewrite Hquery.
+        reflexivity.
+      * eapply IH.
+        -- intros old_query old_current Hold.
+           destruct (mem_cell_strict_eqb old_query cell) eqn:Hold_query.
+           ++ apply mem_cell_strict_eqb_eq in Hold_query.
+              subst.
+              eapply Hdefined.
+              simpl.
+              rewrite mem_cell_strict_eq_eqb with (c2 := cell).
+              ** reflexivity.
+              ** reflexivity.
+           ++ eapply Hdefined.
+              simpl.
+              rewrite Hold_query.
+              exact Hold.
+        -- exact Hlookup.
+Qed.
+
+Theorem scalar_expansion_value_trace_private_use_def_from :
+  forall (value: Type) trace expanded_values defined_cells,
+    scalar_expansion_value_trace_simulates_from
+      expanded_values trace ->
+    @expanded_values_defined_by value expanded_values defined_cells ->
+    private_reads_defined
+      defined_cells
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  induction trace as [|[storage_event value_event] tail IH];
+    intros expanded_values defined_cells Hsim Hdefined; simpl in Hsim.
+  - exact I.
+  - destruct value_event as [source_value private_value
+                            | source_value private_value].
+    + destruct Hsim as [Hkind [_ Htail]].
+      destruct storage_event as [event_kind event_instance
+                                 event_source event_private].
+      simpl in *.
+      destruct event_kind; try discriminate.
+      eapply IH.
+      * exact Htail.
+      * apply expanded_values_defined_by_update.
+        exact Hdefined.
+    + destruct Hsim as [Hkind Hread].
+      destruct (lookup_expanded_value
+                  (expansion_event_private_cell storage_event)
+                  expanded_values) as [current_value |] eqn:Hlookup;
+        try contradiction.
+      destruct Hread as [_ [_ Htail]].
+      destruct storage_event as [event_kind event_instance
+                                 event_source event_private].
+      simpl in *.
+      destruct event_kind; try discriminate.
+      split.
+      * eapply Hdefined.
+        exact Hlookup.
+      * eapply IH; eauto.
+Qed.
+
+Theorem scalar_expansion_value_trace_private_use_def :
+  forall (value: Type) (trace: scalar_expansion_value_trace value),
+    scalar_expansion_value_trace_simulates trace ->
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  intros value trace Hsim.
+  unfold scalar_expansion_value_trace_simulates,
+         private_use_def_trace in *.
+  eapply scalar_expansion_value_trace_private_use_def_from.
+  - exact Hsim.
+  - apply expanded_values_defined_by_nil.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
