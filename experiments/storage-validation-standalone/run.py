@@ -282,11 +282,20 @@ def validate_private_copy_boundary() -> List[str]:
     public_liveouts = {"tmp"}
     copyins = [("seed", ("seed_priv", i)) for i in range(n)]
     copyouts = [("tmp", ("tmp_priv", n - 1))]
+    private_trace = [
+        ("write", ("seed_priv", i)) for i in range(n)
+    ] + [
+        ("write", ("tmp_priv", i)) for i in range(n)
+    ] + [
+        ("read", ("tmp_priv", n - 1))
+    ]
 
     require(public_liveins <= {public for public, _private in copyins},
             "private live-in has no copy-in")
     require(public_liveouts <= {public for public, _private in copyouts},
             "private live-out has no copy-out")
+    require(all(cell in private_cells for _event, cell in private_trace),
+            "private trace uses undeclared private cell")
     require({private for _public, private in copyins} <= private_cells,
             "copy-in does not target declared private cells")
     require({private for _public, private in copyouts} <= private_cells,
@@ -336,6 +345,7 @@ def validate_private_copy_boundary() -> List[str]:
         "every required public live-in has a copy-in boundary pair",
         "every required public live-out has a unique copy-out boundary pair",
         "boundary pairs use declared private storage cells",
+        "private trace read/write cells are declared private cells",
         "boundary copy private cells are unique on the private side",
         "copy-in/copy-out boundary values match across public and private cells",
         "boundary public/private cells are storage-compatible for copy-in and copy-out",
@@ -1350,6 +1360,17 @@ def reject_private_aliasing_copyin_private() -> None:
     copyin_privates = [private for _public, private in copyins]
     require(len(copyin_privates) == len(set(copyin_privates)),
             "private copy-in target is not unique")
+
+
+@add_negative("private_trace_undeclared_cell", "private_copy_boundary")
+def reject_private_trace_undeclared_cell() -> None:
+    private_cells = {("seed_priv", 0), ("tmp_priv", 0)}
+    private_trace = [
+        ("write", ("seed_priv", 0)),
+        ("read", ("foreign_priv", 0)),
+    ]
+    require(all(cell in private_cells for _event, cell in private_trace),
+            "private trace uses undeclared private cell")
 
 
 @add_negative("private_bad_copyout_value", "private_copy_boundary")

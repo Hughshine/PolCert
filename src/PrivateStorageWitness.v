@@ -283,6 +283,49 @@ Inductive private_event :=
 | PrivateWrite (cell: MemCell)
 | PrivateRead (cell: MemCell).
 
+Definition private_event_cell (event: private_event) : MemCell :=
+  match event with
+  | PrivateWrite cell => cell
+  | PrivateRead cell => cell
+  end.
+
+Fixpoint private_trace_cells_declared
+    (private_cells: list MemCell)
+    (trace: list private_event) : Prop :=
+  match trace with
+  | [] => True
+  | event :: tail =>
+      In (private_event_cell event) private_cells /\
+      private_trace_cells_declared private_cells tail
+  end.
+
+Fixpoint check_private_trace_cells_declaredb
+    (private_cells: list MemCell)
+    (trace: list private_event) : bool :=
+  match trace with
+  | [] => true
+  | event :: tail =>
+      mem_cell_inb (private_event_cell event) private_cells &&
+      check_private_trace_cells_declaredb private_cells tail
+  end.
+
+Lemma check_private_trace_cells_declaredb_sound :
+  forall private_cells trace,
+    check_private_trace_cells_declaredb private_cells trace = true ->
+    private_trace_cells_declared private_cells trace.
+Proof.
+  intros private_cells trace.
+  induction trace as [|event tail IH]; intros Hcheck; simpl in Hcheck.
+  - exact I.
+  - apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hevent Htail].
+    split.
+    + apply mem_cell_inb_sound.
+      exact Hevent.
+    + apply IH.
+      exact Htail.
+Qed.
+
 Fixpoint private_reads_defined
     (defined_cells: list MemCell)
     (trace: list private_event) : Prop :=
@@ -659,6 +702,39 @@ Proof.
     exact Hnodup.
   - apply check_private_use_def_traceb_sound.
     exact Husedef.
+Qed.
+
+Record private_declared_local_obligations
+    (hidden_cells private_cells: list MemCell)
+    (trace: list private_event) : Prop := {
+  pdlo_local :
+    private_local_obligations hidden_cells private_cells trace;
+  pdlo_trace_cells_declared :
+    private_trace_cells_declared private_cells trace;
+}.
+
+Definition check_private_declared_local_obligationsb
+    (hidden_cells private_cells: list MemCell)
+    (trace: list private_event) : bool :=
+  check_private_local_obligationsb hidden_cells private_cells trace &&
+  check_private_trace_cells_declaredb private_cells trace.
+
+Lemma check_private_declared_local_obligationsb_sound :
+  forall hidden_cells private_cells trace,
+    check_private_declared_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_declared_local_obligations
+      hidden_cells private_cells trace.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  unfold check_private_declared_local_obligationsb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hlocal Hdeclared].
+  constructor.
+  - apply check_private_local_obligationsb_sound.
+    exact Hlocal.
+  - apply check_private_trace_cells_declaredb_sound.
+    exact Hdeclared.
 Qed.
 
 Record private_access_local_obligations
