@@ -116,6 +116,33 @@ under `State.eq` on initial states, the input side can be strengthened to
 This keeps the old proof meaningful while giving storage transformations a
 place to state their intended observation.
 
+## Top-Level Theorem Shape
+
+The final theorem should remain as readable as the current semantic
+refinement theorem.  Feature-specific witnesses are proof obligations, not the
+main result exposed to later passes.  The desired outer shape is:
+
+```text
+if the source and target programs are related by a checked transformation
+and the input states satisfy the input public view,
+then every target execution has a matching source execution
+whose final state satisfies the output public view.
+```
+
+For the existing affine pipeline, both public views collapse to identity, so
+the conclusion is the familiar `State.eq` final-state refinement.  For scalar
+privatization, the output view says that the old source temporary cells and the
+new private target cells are hidden from the context; the visible source cells
+still agree.  The top-level theorem should not make the reader inspect the
+private-cell list, bounds proof, value-flow trace, or non-escape proof unless
+they want to know why the public-view refinement is justified.
+
+This separation is the main proof-engineering rule for the storage route:
+validators may accumulate detailed witness obligations internally, but the
+composed theorem should expose a small semantic relation over public
+observations.  Otherwise the endpoint stops looking like contextual semantic
+refinement and becomes a feature-specific checker theorem.
+
 ## What a View Must Explain
 
 A view is not only a cell projection.  It must explain what the target state
@@ -1401,7 +1428,11 @@ evidence with the value-flow checker.
 bridge: a pair of CInstr assignment semantic steps can produce one expansion
 write/value event, and paired scalar access evaluations can produce one
 expansion read/value event.  It is local by design; the remaining pass-level
-work is to derive such events for an ordered instruction trace.
+work is to derive such events for an ordered instruction trace.  The CInstr
+bridge now exposes the underlying assignment semantics and phrases singleton
+read/write value-flow lemmas over an arbitrary current private-value map, so
+the next proof step can compose many local events instead of restarting from an
+empty trace at each instruction.
 
 ### Reduction Privatization
 

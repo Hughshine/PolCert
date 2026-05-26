@@ -113,6 +113,57 @@ Proof.
   simpl. exact I.
 Qed.
 
+Theorem cassign_scalar_expansion_write_has_cinstr_semantics :
+  forall entries instance envv source_before source_after
+         private_before private_after source_instr private_instr
+         event value_event,
+    cassign_scalar_expansion_write_value_event
+      entries instance envv source_before source_after
+      private_before private_after source_instr private_instr
+      event value_event ->
+    exists source_cell private_cell source_rcells private_rcells,
+      CInstr.semantics
+        source_instr envv [source_cell] source_rcells
+        source_before source_after /\
+      CInstr.semantics
+        private_instr envv [private_cell] private_rcells
+        private_before private_after /\
+      event =
+        cscalar_expansion_write_event instance source_cell private_cell.
+Proof.
+  intros entries instance envv source_before source_after
+         private_before private_after source_instr private_instr
+         event value_event Hwrite.
+  inversion Hwrite; subst.
+  exists source_cell, private_cell, source_rcells, private_rcells.
+  repeat split; try reflexivity.
+  - econstructor; eauto.
+  - econstructor; eauto.
+Qed.
+
+Theorem cassign_scalar_expansion_write_singleton_value_flow_from :
+  forall entries instance envv source_before source_after
+         private_before private_after source_instr private_instr
+         event value_event current_values,
+    cassign_scalar_expansion_write_value_event
+      entries instance envv source_before source_after
+      private_before private_after source_instr private_instr
+      event value_event ->
+    scalar_expansion_value_trace_simulates_from
+      current_values [(event, value_event)].
+Proof.
+  intros entries instance envv source_before source_after
+         private_before private_after source_instr private_instr
+         event value_event current_values Hwrite.
+  inversion Hwrite; subst.
+  simpl.
+  split.
+  - reflexivity.
+  - split.
+    + reflexivity.
+    + exact I.
+Qed.
+
 Theorem cassign_scalar_expansion_write_singleton_value_flow :
   forall entries instance envv source_before source_after
          private_before private_after source_instr private_instr
@@ -127,13 +178,9 @@ Proof.
   intros entries instance envv source_before source_after
          private_before private_after source_instr private_instr
          event value_event Hwrite.
-  inversion Hwrite; subst.
-  simpl.
-  split.
-  - reflexivity.
-  - split.
-    + reflexivity.
-    + exact I.
+  apply cassign_scalar_expansion_write_singleton_value_flow_from
+    with (current_values := []) in Hwrite.
+  exact Hwrite.
 Qed.
 
 Inductive caccess_scalar_expansion_read_value_event
@@ -192,6 +239,37 @@ Proof.
   simpl. exact I.
 Qed.
 
+Theorem caccess_scalar_expansion_read_singleton_value_flow_from :
+  forall entries instance envv source_state private_state
+         source_access private_access ty event value_event
+         current_values current_value,
+    caccess_scalar_expansion_read_value_event
+      entries instance envv source_state private_state
+      source_access private_access ty event value_event ->
+    lookup_expanded_value
+      (expansion_event_private_cell event) current_values =
+      Some current_value ->
+    value_event = ExpansionValueRead current_value current_value ->
+    scalar_expansion_value_trace_simulates_from
+      current_values [(event, value_event)].
+Proof.
+  intros entries instance envv source_state private_state
+         source_access private_access ty event value_event
+         current_values current_value Hread Hlookup Hvalue_event.
+  inversion Hvalue_event; subst.
+  inversion Hread; subst.
+  simpl in Hlookup.
+  simpl.
+  rewrite Hlookup.
+  split.
+  - reflexivity.
+  - split.
+    + reflexivity.
+    + split.
+      * reflexivity.
+      * exact I.
+Qed.
+
 Theorem caccess_scalar_expansion_read_singleton_value_flow_from_current :
   forall entries instance envv source_state private_state
          source_access private_access ty event value_event current_value,
@@ -206,16 +284,12 @@ Proof.
   intros entries instance envv source_state private_state
          source_access private_access ty event value_event current_value
          Hread Hvalue_event.
-  inversion Hvalue_event; subst.
-  inversion Hread; subst.
-  simpl.
-  rewrite mem_cell_strict_eq_eqb with (c2 := private_cell).
-  - split.
+  eapply caccess_scalar_expansion_read_singleton_value_flow_from.
+  - exact Hread.
+  - simpl.
+    rewrite mem_cell_strict_eq_eqb
+      with (c2 := expansion_event_private_cell event).
     + reflexivity.
-    + split.
-      * reflexivity.
-      * split.
-        -- reflexivity.
-        -- exact I.
-  - reflexivity.
+    + reflexivity.
+  - exact Hvalue_event.
 Qed.

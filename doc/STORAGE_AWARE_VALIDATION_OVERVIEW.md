@@ -36,6 +36,13 @@ and what the surrounding context can observe.
 
 In this host worktree, the storage-generalization material is documentation,
 the standalone executable experiment package, and uncommitted Coq skeletons.
+The intended top-level theorem is still a semantic refinement statement:
+checked storage-aware transformation plus an input public-view relation implies
+target executions are matched by source executions whose final states agree
+under an output public-view relation.  The storage-specific witnesses
+(private-cell separation, bounds, value flow, copy discipline, non-escape, and
+commit policy) should remain premises discharged by validators, not the
+primary relation that downstream composition has to understand.
 The first implementation step is `StateView.v`, which packages endpoint
 relations as views and wraps the existing affine/general validators as
 `same_state_view -> identity_view` refinements.  It also exposes a small
@@ -159,7 +166,10 @@ top theorem while also checking private bounds, storage compatibility, and
 non-escape.  `CInstrScalarExpansionWitness.v` is the first concrete
 instruction-facing bridge: paired CInstr assignment steps can justify one
 expansion write/value event, and paired scalar access evaluations can justify
-one expansion read/value event.
+one expansion read/value event.  The bridge also exposes the underlying
+`CInstr.semantics` steps for writes and gives read/write singleton value-flow
+lemmas that work from an arbitrary current private-value map, which is the
+shape needed for later pass-level trace composition.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list
