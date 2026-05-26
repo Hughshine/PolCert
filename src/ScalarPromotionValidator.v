@@ -449,6 +449,191 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_scalar_promotion_bounded_compatible_non_escape_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn
+      (check_promotion_source_view before source_view) ok ->
+    ok = true ->
+    check_scalar_promotionb
+      source_cell scalar_cell source_liveout trace = true ->
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    check_storage_compatibilityb
+      [(source_cell, scalar_cell)] logical_specs scalar_specs = true ->
+    check_storage_boundsb source_bounds [source_cell] = true ->
+    check_storage_boundsb scalar_bounds [scalar_cell] = true ->
+    check_private_non_escapeb [scalar_cell] escaped_cells = true ->
+    check_private_separationb
+      [scalar_cell] public_cells frame_cells = true ->
+    promotion_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (promotion_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hpromotion Hvalue Hcompat
+         Hsource_bounds Hscalar_bounds Hnon_escape Hseparation Hsemantics.
+  pose proof
+    (checked_scalar_promotion_bounded_compatible_non_escape_value_view_correct
+       value value_eqb input_view output_view
+       source_cell scalar_cell source_liveout trace value_trace
+       logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+       public_cells frame_cells before source_view after ok
+       Hvalue_eqb Hret Hok Hpromotion Hvalue Hcompat
+       Hsource_bounds Hscalar_bounds Hnon_escape Hseparation Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record scalar_promotion_bounded_compatible_non_escape_value_params
+    (value: Type) := {
+  spbcnevp_input_view : View.view;
+  spbcnevp_output_view : View.view;
+  spbcnevp_source_cell : MemCell;
+  spbcnevp_scalar_cell : MemCell;
+  spbcnevp_source_liveout : bool;
+  spbcnevp_trace : list scalar_promotion_event;
+  spbcnevp_value_trace : scalar_promotion_value_trace value;
+  spbcnevp_logical_specs : list storage_spec;
+  spbcnevp_scalar_specs : list storage_spec;
+  spbcnevp_source_bounds : list array_bounds;
+  spbcnevp_scalar_bounds : list array_bounds;
+  spbcnevp_escaped_cells : list MemCell;
+  spbcnevp_public_cells : list MemCell;
+  spbcnevp_frame_cells : list MemCell;
+  spbcnevp_source_view : PolyLang.t;
+}.
+
+Definition scalar_promotion_bounded_compatible_non_escape_value_input_view
+    {value: Type}
+    (params:
+      scalar_promotion_bounded_compatible_non_escape_value_params value)
+    : View.view :=
+  spbcnevp_input_view value params.
+
+Definition scalar_promotion_bounded_compatible_non_escape_value_output_view
+    {value: Type}
+    (params:
+      scalar_promotion_bounded_compatible_non_escape_value_params value)
+    : View.view :=
+  promotion_pipeline_final_view (spbcnevp_output_view value params).
+
+Definition scalar_promotion_bounded_compatible_non_escape_value_check
+    {value: Type}
+    (params:
+      scalar_promotion_bounded_compatible_non_escape_value_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_promotion_source_view before (spbcnevp_source_view value params).
+
+Definition scalar_promotion_bounded_compatible_non_escape_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params:
+      scalar_promotion_bounded_compatible_non_escape_value_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_scalar_promotionb
+    (spbcnevp_source_cell value params)
+    (spbcnevp_scalar_cell value params)
+    (spbcnevp_source_liveout value params)
+    (spbcnevp_trace value params) = true /\
+  check_scalar_value_traceb
+    value_eqb
+    (spbcnevp_value_trace value params) = true /\
+  check_storage_compatibilityb
+    [(spbcnevp_source_cell value params,
+      spbcnevp_scalar_cell value params)]
+    (spbcnevp_logical_specs value params)
+    (spbcnevp_scalar_specs value params) = true /\
+  check_storage_boundsb
+    (spbcnevp_source_bounds value params)
+    [spbcnevp_source_cell value params] = true /\
+  check_storage_boundsb
+    (spbcnevp_scalar_bounds value params)
+    [spbcnevp_scalar_cell value params] = true /\
+  check_private_non_escapeb
+    [spbcnevp_scalar_cell value params]
+    (spbcnevp_escaped_cells value params) = true /\
+  check_private_separationb
+    [spbcnevp_scalar_cell value params]
+    (spbcnevp_public_cells value params)
+    (spbcnevp_frame_cells value params) = true /\
+  promotion_source_view_refines_view
+    (spbcnevp_input_view value params)
+    (spbcnevp_output_view value params)
+    (spbcnevp_source_view value params)
+    after.
+
+Theorem scalar_promotion_bounded_compatible_non_escape_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (scalar_promotion_bounded_compatible_non_escape_value_check
+        params before after)
+      ok ->
+    ok = true ->
+    scalar_promotion_bounded_compatible_non_escape_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (scalar_promotion_bounded_compatible_non_escape_value_input_view params)
+      (scalar_promotion_bounded_compatible_non_escape_value_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view source_cell scalar_cell source_liveout trace
+     value_trace logical_specs scalar_specs source_bounds scalar_bounds
+     escaped_cells public_cells frame_cells source_view].
+  simpl in *.
+  destruct Hside as [Hpromotion Hside].
+  destruct Hside as [Hvalue Hside].
+  destruct Hside as [Hcompat Hside].
+  destruct Hside as [Hsource_bounds Hside].
+  destruct Hside as [Hscalar_bounds Hside].
+  destruct Hside as [Hnon_escape Hside].
+  destruct Hside as [Hseparation Hsemantics].
+  eapply checked_scalar_promotion_bounded_compatible_non_escape_value_public_refinement;
+    eauto.
+Qed.
+
+Definition scalar_promotion_bounded_compatible_non_escape_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (scalar_promotion_bounded_compatible_non_escape_value_params value) := {|
+  generic_cpvtf_input_view :=
+    scalar_promotion_bounded_compatible_non_escape_value_input_view;
+  generic_cpvtf_output_view :=
+    scalar_promotion_bounded_compatible_non_escape_value_output_view;
+  generic_cpvtf_check :=
+    scalar_promotion_bounded_compatible_non_escape_value_check;
+  generic_cpvtf_side_condition :=
+    scalar_promotion_bounded_compatible_non_escape_value_side_condition
+      value_eqb;
+  generic_cpvtf_check_sound :=
+    scalar_promotion_bounded_compatible_non_escape_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem scalar_promotion_source_cell_within_bounds :
   forall (value: Type)
          input_view output_view

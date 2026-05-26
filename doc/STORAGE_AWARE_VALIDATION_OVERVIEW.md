@@ -315,9 +315,16 @@ endpoint while the trace, compatibility, bounds, separation, and non-escape
 proofs remain internal obligations.  Its bounded route is likewise packaged as
 `cscalar_promotion_bounded_family`, so scalar promotion can participate in the
 same parameterized public-view transform family interface as scalar
-privatization.  `ScalarPromotionValidator.v` composes the storage protocol, the
-optional value-flow witness, scalar-private separation, and the remaining
-instruction-level semantic refinement.
+privatization.  The generic scalar-promotion core now has the same family layer:
+`ScalarPromotionValidator.scalar_promotion_bounded_compatible_non_escape_value_family`
+packages the finite protocol, value trace, storage compatibility, source/scalar
+bounds, non-escape, and separation obligations below the CInstr bridge.  It
+also exposes
+`checked_scalar_promotion_bounded_compatible_non_escape_value_public_refinement`,
+so the non-CInstr scalar/register promotion witness can be consumed through the
+same public-view family interface.  `ScalarPromotionValidator.v` composes the
+storage protocol, the optional value-flow witness, scalar-private separation,
+and the remaining instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
 local-read/local-write, and copy-out traces: local reads require earlier local
 definitions, and copy-out destinations are committed at most once.

@@ -1505,6 +1505,12 @@ remains a view refinement rather than a CInstr-specific relation.
 `checked_scalar_promotion_compatible_value_view_correct` adds the finite
 storage-compatibility side condition for the source/scalar pair, matching the
 same size/alignment witness used by reuse and version-selection wrappers.
+The generic core now also exposes
+`checked_scalar_promotion_bounded_compatible_non_escape_value_public_refinement`
+and `scalar_promotion_bounded_compatible_non_escape_value_family`.  That means
+load/read/write/store-back protocol, value flow, compatibility, source/scalar
+bounds, scalar non-escape, and scalar separation can be packaged as a reusable
+public-view family even before CInstr-specific trace derivation is attached.
 
 This is local storage refinement, not a global layout transformation.
 
