@@ -153,7 +153,11 @@ statements: the storage witnesses justify the theorem, but they are not the
 theorem's observable relation.  `StateView` now includes a parameterized
 checked-view family for this facade style: a storage pass may carry witness
 parameters and side conditions, but its compositional interface is still only a
-public input view, a public output view, and a `view_refinement` theorem.
+public input view, a public output view, and a `view_refinement` theorem.  The
+CInstr scalar privatization and scalar promotion bridges now instantiate this
+family with bounded parameter records, making the design concrete for storage
+passes that need trace evidence, declared cells, bounds, compatibility, and
+non-escape side conditions.
 
 ## What a View Must Explain
 

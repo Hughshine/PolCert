@@ -514,4 +514,88 @@ Proof.
   exact Hview.
 Qed.
 
+Record cscalar_privatization_bounded_params := {
+  cspbp_hidden_cells : list MemCell;
+  cspbp_private_cells : list MemCell;
+  cspbp_source_domain : list logical_instance;
+  cspbp_source_cells : list MemCell;
+  cspbp_entries : list scalar_expansion_entry;
+  cspbp_value_trace : scalar_expansion_value_trace Values.val;
+  cspbp_private_bounds : list array_bounds;
+  cspbp_source_specs : list storage_spec;
+  cspbp_private_specs : list storage_spec;
+  cspbp_escaped_cells : list MemCell;
+  cspbp_source_view : Private.PolyLang.t;
+}.
+
+Definition cscalar_privatization_bounded_input_view
+    (params: cscalar_privatization_bounded_params) : View.view :=
+  Scalar.pure_scalar_privatization_view (cspbp_hidden_cells params).
+
+Definition cscalar_privatization_bounded_output_view
+    (params: cscalar_privatization_bounded_params) : View.view :=
+  Scalar.pure_scalar_privatization_final_view (cspbp_hidden_cells params).
+
+Definition cscalar_privatization_bounded_check
+    (params: cscalar_privatization_bounded_params)
+    (before after: Private.PolyLang.t) : imp bool :=
+  Private.check_private_source_view before (cspbp_source_view params).
+
+Definition cscalar_privatization_bounded_side_condition
+    (params: cscalar_privatization_bounded_params)
+    (before after: Private.PolyLang.t) : Prop :=
+  check_bounded_scalar_privatization_static_coreb
+    (cspbp_hidden_cells params)
+    (cspbp_private_cells params)
+    (cspbp_source_domain params)
+    (cspbp_source_cells params)
+    (cspbp_entries params)
+    (cspbp_private_bounds params)
+    (cspbp_source_specs params)
+    (cspbp_private_specs params)
+    (cspbp_escaped_cells params) = true /\
+  cscalar_expansion_value_trace_simulates
+    (cspbp_entries params)
+    (cspbp_value_trace params) /\
+  Private.private_source_view_refines_view
+    (Witness.hidden_identity_cell_view (cspbp_hidden_cells params))
+    (cspbp_source_view params)
+    after.
+
+Theorem cscalar_privatization_bounded_family_sound :
+  forall params before after ok,
+    mayReturn
+      (cscalar_privatization_bounded_check params before after) ok ->
+    ok = true ->
+    cscalar_privatization_bounded_side_condition params before after ->
+    View.view_refinement
+      (cscalar_privatization_bounded_input_view params)
+      (cscalar_privatization_bounded_output_view params)
+      before after.
+Proof.
+  intros params before after ok Hret Hok Hside.
+  destruct params as
+    [hidden_cells private_cells source_domain source_cells entries value_trace
+     private_bounds source_specs private_specs escaped_cells source_view].
+  simpl in *.
+  destruct Hside as [Hbounded [Htrace Hprivate]].
+  eapply cinstr_trace_static_bounded_pure_scalar_privatization_public_refinement;
+    eauto.
+Qed.
+
+Definition cscalar_privatization_bounded_family
+    : View.checked_parameterized_view_transform_family
+        cscalar_privatization_bounded_params := {|
+  View.cpvtf_input_view :=
+    cscalar_privatization_bounded_input_view;
+  View.cpvtf_output_view :=
+    cscalar_privatization_bounded_output_view;
+  View.cpvtf_check :=
+    cscalar_privatization_bounded_check;
+  View.cpvtf_side_condition :=
+    cscalar_privatization_bounded_side_condition;
+  View.cpvtf_check_sound :=
+    cscalar_privatization_bounded_family_sound;
+|}.
+
 End CInstrScalarExpansionValidatorBridge.

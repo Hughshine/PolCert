@@ -198,7 +198,13 @@ refinement conclusion.  The bridge now also provides public-refinement-only
 facade theorems for both the static and generic CInstr trace routes.  These
 theorems deliberately hide the scalar-expansion contract records from the
 composition-facing conclusion, so the endpoint remains the intuitive
-public-view semantic refinement.
+public-view semantic refinement.  The bounded static CInstr route is now also
+packaged as `cscalar_privatization_bounded_family`, an instance of
+`StateView.checked_parameterized_view_transform_family`: the parameter record
+carries the source-view program, hidden/private cells, entries, CInstr value
+trace, bounds, compatibility specs, and non-escape set, while the family
+interface exposes only the public input/output views and a `view_refinement`
+soundness theorem.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list
@@ -246,9 +252,12 @@ the compatible and bounded/non-escape variants, without changing their
 public-view refinement conclusion.  It also exposes public-refinement-only
 facade theorems, so downstream composition can consume only the semantic
 endpoint while the trace, compatibility, bounds, separation, and non-escape
-proofs remain internal obligations.  `ScalarPromotionValidator.v` composes the
-storage protocol, the optional value-flow witness, scalar-private separation,
-and the remaining instruction-level semantic refinement.
+proofs remain internal obligations.  Its bounded route is likewise packaged as
+`cscalar_promotion_bounded_family`, so scalar promotion can participate in the
+same parameterized public-view transform family interface as scalar
+privatization.  `ScalarPromotionValidator.v` composes the storage protocol, the
+optional value-flow witness, scalar-private separation, and the remaining
+instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
 local-read/local-write, and copy-out traces: local reads require earlier local
 definitions, and copy-out destinations are committed at most once.
