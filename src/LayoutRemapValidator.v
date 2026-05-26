@@ -286,6 +286,91 @@ Proof.
     + exact Hlayout.
 Qed.
 
+Theorem checked_declared_layout_remap_correct :
+  forall layouts before source_view after ok,
+    mayReturn (check_layout_source_view before source_view) ok ->
+    ok = true ->
+    Layout.check_pprog_declared_layout_access_remapb
+      layouts source_view after = true ->
+    layout_source_view_refines
+      (declared_layout_cell_relation layouts) source_view after ->
+    Transform.refinement_under
+      (layout_composed_observation
+         (declared_layout_cell_relation layouts))
+      before after.
+Proof.
+  intros layouts before source_view after ok
+         Hcheck Htrue Hremap Hlayout.
+  eapply checked_layout_remap_correct.
+  - exact Hcheck.
+  - exact Htrue.
+  - constructor.
+    + pose proof
+        (Layout.check_pprog_declared_layout_access_remapb_sound
+           layouts source_view after Hremap)
+        as Haccess.
+      exact Haccess.
+    + exact Hlayout.
+Qed.
+
+Theorem checked_declared_layout_remap_relational_correct :
+  forall layouts before source_view after ok,
+    mayReturn (check_layout_source_view before source_view) ok ->
+    ok = true ->
+    Layout.check_pprog_declared_layout_access_remapb
+      layouts source_view after = true ->
+    layout_source_view_relational_refines
+      (declared_layout_cell_relation layouts) source_view after ->
+    Transform.relational_refinement
+      (layout_state_relation
+         (declared_layout_cell_relation layouts))
+      (layout_pipeline_final_relation
+         (declared_layout_cell_relation layouts))
+      before after.
+Proof.
+  intros layouts before source_view after ok
+         Hcheck Htrue Hremap Hlayout.
+  eapply checked_layout_remap_relational_correct.
+  - exact Hcheck.
+  - exact Htrue.
+  - constructor.
+    + pose proof
+        (Layout.check_pprog_declared_layout_access_remapb_sound
+           layouts source_view after Hremap)
+        as Haccess.
+      exact Haccess.
+    + exact Hlayout.
+Qed.
+
+Theorem checked_declared_layout_remap_view_correct :
+  forall layouts before source_view after ok,
+    mayReturn (check_layout_source_view before source_view) ok ->
+    ok = true ->
+    Layout.check_pprog_declared_layout_access_remapb
+      layouts source_view after = true ->
+    layout_source_view_refines_view
+      (declared_layout_cell_relation layouts) source_view after ->
+    View.view_refinement
+      (layout_view
+         (declared_layout_cell_relation layouts))
+      (layout_pipeline_final_view
+         (declared_layout_cell_relation layouts))
+      before after.
+Proof.
+  intros layouts before source_view after ok
+         Hcheck Htrue Hremap Hlayout.
+  eapply checked_layout_remap_view_correct.
+  - exact Hcheck.
+  - exact Htrue.
+  - constructor.
+    + pose proof
+        (Layout.check_pprog_declared_layout_access_remapb_sound
+           layouts source_view after Hremap)
+        as Haccess.
+      exact Haccess.
+    + exact Hlayout.
+Qed.
+
 Lemma identity_layout_source_view_refines_self :
   forall pp,
     layout_source_view_refines
