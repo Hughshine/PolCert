@@ -31,6 +31,24 @@ Arguments PromotionValueGlobalWrite {value}.
 Definition scalar_promotion_value_trace (value: Type) :=
   list (scalar_promotion_event * scalar_promotion_value_event value).
 
+Fixpoint scalar_promotion_value_trace_events {value: Type}
+    (trace: scalar_promotion_value_trace value)
+    : list scalar_promotion_event :=
+  match trace with
+  | [] => []
+  | (storage_event, _) :: tail =>
+      storage_event :: scalar_promotion_value_trace_events tail
+  end.
+
+Fixpoint scalar_promotion_value_trace_values {value: Type}
+    (trace: scalar_promotion_value_trace value)
+    : list (scalar_promotion_value_event value) :=
+  match trace with
+  | [] => []
+  | (_, value_event) :: tail =>
+      value_event :: scalar_promotion_value_trace_values tail
+  end.
+
 Fixpoint scalar_value_trace_simulates_from {value: Type}
     (current_scalar: option value)
     (trace: scalar_promotion_value_trace value) : Prop :=

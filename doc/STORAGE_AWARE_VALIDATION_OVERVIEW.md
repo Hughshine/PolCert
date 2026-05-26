@@ -228,9 +228,13 @@ rejected as interference, and live-out promoted cells require a final store.
 `ScalarPromotionValueWitness.v` adds the first value-flow layer over that
 protocol: a load initializes the scalar to the source value, scalar reads see
 the current scalar, scalar writes update it, and store-back commits the current
-scalar value.  `ScalarPromotionValidator.v` composes the storage protocol, the
-optional value-flow witness, scalar-private separation, and the remaining
-instruction-level semantic refinement.
+scalar value.  `CInstrScalarPromotionWitness.v` now connects this value-flow
+layer to concrete CInstr semantics: load/read/write/store/global-write events
+can be derived from CInstr access, expression-evaluation, and assignment
+steps, and an ordered CInstr-derived trace proves the generic scalar-promotion
+value-flow obligation.  `ScalarPromotionValidator.v` composes the storage
+protocol, the optional value-flow witness, scalar-private separation, and the
+remaining instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
 local-read/local-write, and copy-out traces: local reads require earlier local
 definitions, and copy-out destinations are committed at most once.
