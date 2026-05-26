@@ -37,6 +37,26 @@ validate the schedule/control part from `before` to a storage-neutral
 `view_refinement` from `source_view` to `after` plus finite witness obligations
 for layout, private storage, copy, reuse, commit, reduction, or phase behavior.
 
+The intended top theorem surface should stay as simple as the existing
+schedule-only semantic refinement theorem.  Feature-specific checker families,
+certificate records, intermediate programs, and side conditions are proof
+engineering devices; they should not be the final user-facing statement.  A
+paper-facing theorem should have the shape:
+
+```text
+accepted certificate for source -> target
+target starts from a state related to the source by the input public view
+target executes
+---------------------------------------------------------------
+source can execute and the two final states satisfy the output public view
+```
+
+Equivalently, the conclusion should be a single
+`public_semantic_refinement input_view output_view source target`.  The old
+`State.eq` theorem is the identity-view instance of this statement.  Storage
+passes differ in how they build the two public views and discharge the
+certificate, not in the final semantic endpoint.
+
 ## Problem
 
 The current affine validation route proves a strong fragment-level fact:
@@ -1580,7 +1600,13 @@ private value and match the represented source read.  The
 public-view refinement conclusion while making this value-flow evidence an
 explicit checked premise.  The bounded value wrapper keeps the same conclusion
 and packages bounds, source/private storage compatibility, and non-escape
-evidence with the value-flow checker.
+evidence with the value-flow checker.  The generic bounded value route now has
+a public-only facade and family,
+`checked_bounded_value_pure_scalar_privatization_public_refinement` and
+`scalar_privatization_bounded_value_family`, so scalar privatization/expansion
+can compose through the public semantic family interface without depending on
+CInstr.  `StorageScalarFamilyCompose.v` composes this generic expansion family
+with the generic scalar-promotion family.
 `CInstrScalarExpansionWitness.v` then gives the first concrete instruction
 bridge: a pair of CInstr assignment semantic steps can produce one expansion
 write/value event, and paired scalar access evaluations can produce one
@@ -2224,6 +2250,11 @@ escape.
 The wrapper `checked_bounded_pure_scalar_privatization_correct` keeps the same
 public-view refinement conclusion but bundles the core, bounds, compatibility,
 and non-escape checks behind one scalar-privatization-facing checker.
+The generic bounded value route is now packaged as
+`scalar_privatization_bounded_value_family`, with
+`StorageScalarFamilyCompose.bounded_scalar_privatization_then_scalar_promotion_public_semantic_refinement`
+showing composition with generic scalar promotion under the paper-facing
+semantic endpoint.
 The value-flow checker does not yet derive values from C expression semantics;
 it reduces that remaining obligation to producing the finite aligned value
 trace.

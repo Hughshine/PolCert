@@ -11,6 +11,7 @@ Require Import InstanceProjectionWitness.
 Require Import ScalarExpansionWitness.
 Require Import ScalarExpansionValueWitness.
 Require Import ReuseConflictWitness.
+Require Import StateView.
 Require Import StorageBoundsWitness.
 Require Import StorageCompatibilityWitness.
 
@@ -551,6 +552,143 @@ Proof.
   - exact Hbounded_value_obligations.
   - exact Hview.
 Qed.
+
+Theorem checked_bounded_value_pure_scalar_privatization_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         hidden_cells private_cells source_domain source_cells entries events
+         value_trace private_bounds source_specs private_specs escaped_cells
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (Private.check_private_source_view before source_view) ok ->
+    ok = true ->
+    check_bounded_value_pure_scalar_privatizationb
+      value_eqb hidden_cells private_cells source_domain source_cells entries
+      events value_trace private_bounds source_specs private_specs
+      escaped_cells = true ->
+    Private.private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    pure_scalar_privatization_refinement hidden_cells before after.
+Proof.
+  intros value value_eqb hidden_cells private_cells source_domain source_cells
+         entries events value_trace private_bounds source_specs private_specs
+         escaped_cells before source_view after ok
+         Hvalue_eqb Hret Hok Hcheck Hprivate.
+  pose proof
+    (checked_bounded_value_pure_scalar_privatization_correct
+       value value_eqb hidden_cells private_cells source_domain source_cells
+       entries events value_trace private_bounds source_specs private_specs
+       escaped_cells before source_view after ok
+       Hvalue_eqb Hret Hok Hcheck Hprivate)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record scalar_privatization_bounded_value_params (value: Type) := {
+  spbvp_hidden_cells : list MemCell;
+  spbvp_private_cells : list MemCell;
+  spbvp_source_domain : list logical_instance;
+  spbvp_source_cells : list MemCell;
+  spbvp_entries : list scalar_expansion_entry;
+  spbvp_events : list scalar_expansion_event;
+  spbvp_value_trace : scalar_expansion_value_trace value;
+  spbvp_private_bounds : list array_bounds;
+  spbvp_source_specs : list storage_spec;
+  spbvp_private_specs : list storage_spec;
+  spbvp_escaped_cells : list MemCell;
+  spbvp_source_view : Private.PolyLang.t;
+}.
+
+Definition scalar_privatization_bounded_value_input_view
+    {value: Type}
+    (params: scalar_privatization_bounded_value_params value) : View.view :=
+  pure_scalar_privatization_view (spbvp_hidden_cells value params).
+
+Definition scalar_privatization_bounded_value_output_view
+    {value: Type}
+    (params: scalar_privatization_bounded_value_params value) : View.view :=
+  pure_scalar_privatization_final_view (spbvp_hidden_cells value params).
+
+Definition scalar_privatization_bounded_value_check
+    {value: Type}
+    (params: scalar_privatization_bounded_value_params value)
+    (before after: Private.PolyLang.t) : imp bool :=
+  Private.check_private_source_view before (spbvp_source_view value params).
+
+Definition scalar_privatization_bounded_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: scalar_privatization_bounded_value_params value)
+    (before after: Private.PolyLang.t) : Prop :=
+  check_bounded_value_pure_scalar_privatizationb
+    value_eqb
+    (spbvp_hidden_cells value params)
+    (spbvp_private_cells value params)
+    (spbvp_source_domain value params)
+    (spbvp_source_cells value params)
+    (spbvp_entries value params)
+    (spbvp_events value params)
+    (spbvp_value_trace value params)
+    (spbvp_private_bounds value params)
+    (spbvp_source_specs value params)
+    (spbvp_private_specs value params)
+    (spbvp_escaped_cells value params) = true /\
+  Private.private_source_view_refines_view
+    (Witness.hidden_identity_cell_view (spbvp_hidden_cells value params))
+    (spbvp_source_view value params)
+    after.
+
+Theorem scalar_privatization_bounded_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (scalar_privatization_bounded_value_check params before after)
+      ok ->
+    ok = true ->
+    scalar_privatization_bounded_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (scalar_privatization_bounded_value_input_view params)
+      (scalar_privatization_bounded_value_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [hidden_cells private_cells source_domain source_cells entries events
+     value_trace private_bounds source_specs private_specs escaped_cells
+     source_view].
+  simpl in *.
+  destruct Hside as [Hcheck Hprivate].
+  eapply checked_bounded_value_pure_scalar_privatization_public_refinement;
+    eauto.
+Qed.
+
+Definition scalar_privatization_bounded_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (scalar_privatization_bounded_value_params value) := {|
+  generic_cpvtf_input_view :=
+    scalar_privatization_bounded_value_input_view;
+  generic_cpvtf_output_view :=
+    scalar_privatization_bounded_value_output_view;
+  generic_cpvtf_check :=
+    scalar_privatization_bounded_value_check;
+  generic_cpvtf_side_condition :=
+    scalar_privatization_bounded_value_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    scalar_privatization_bounded_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
 
 Theorem scalar_expansion_view_event_uses_declared_private :
   forall hidden_cells private_cells source_domain source_cells entries events
