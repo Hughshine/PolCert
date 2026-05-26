@@ -1397,6 +1397,11 @@ public-view refinement conclusion while making this value-flow evidence an
 explicit checked premise.  The bounded value wrapper keeps the same conclusion
 and packages bounds, source/private storage compatibility, and non-escape
 evidence with the value-flow checker.
+`CInstrScalarExpansionWitness.v` then gives the first concrete instruction
+bridge: a pair of CInstr assignment semantic steps can produce one expansion
+write/value event, and paired scalar access evaluations can produce one
+expansion read/value event.  It is local by design; the remaining pass-level
+work is to derive such events for an ordered instruction trace.
 
 ### Reduction Privatization
 

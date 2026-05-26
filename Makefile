@@ -170,7 +170,7 @@ POLCERT_SRC = Base.v Convert.v \
   TilingWitness.v TilingList.v TilingRelation.v \
   TilingBoolChecker.v TilingValidator.v TilingBandScheduleValidator.v \
   TilingCanonicalScheduleValidator.v Validator.v \
-  CInstr.v TInstr.v CTy.v
+  CInstr.v CInstrScalarExpansionWitness.v TInstr.v CTy.v
 
 # Putting everything together (in driver/)
 
