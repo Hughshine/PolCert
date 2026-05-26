@@ -287,8 +287,14 @@ in an allowed-write set, and that the allowed-write set is disjoint from frame
 cells.  `FramePreservationValidator.v` now packages this finite side condition
 under `checked_frame_preservation_view_correct`, so a storage-specific output
 view can be composed with a context-frame contract without changing the old
-`State.eq` route.  The missing piece is deriving `write_cells` from concrete
-instruction semantics rather than supplying it as a finite witness.
+`State.eq` route.  The bounded value route is now also exposed as
+`frame_preservation_bounded_value_family`, and `StorageFrameFamilyCompose` states
+the composed endpoint as `public_semantic_refinement`.  That keeps frame
+preservation in the same theorem discipline as storage-changing transformations:
+the top theorem is still semantic refinement under public views, while the
+write-set, frame-value, and bounds witnesses remain side conditions.  The missing
+piece is deriving `write_cells` from concrete instruction semantics rather than
+supplying it as a finite witness.
 
 ### Commit Policy
 

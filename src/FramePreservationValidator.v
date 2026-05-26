@@ -227,6 +227,148 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_frame_preservation_bounded_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view frame_cells write_cells allowed_write_cells
+         frame_entries allowed_write_bounds frame_bounds
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (check_frame_source_view before source_view) ok ->
+    ok = true ->
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    check_frame_valueb value value_eqb frame_cells frame_entries = true ->
+    check_storage_boundsb allowed_write_bounds allowed_write_cells = true ->
+    check_storage_boundsb frame_bounds frame_cells = true ->
+    frame_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (frame_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         frame_cells write_cells allowed_write_cells
+         frame_entries allowed_write_bounds frame_bounds
+         before source_view after ok Hvalue_eqb Hret Hok Hframe Hvalues
+         Hallowed_bounds Hframe_bounds Hsemantics.
+  pose proof
+    (checked_frame_preservation_bounded_value_view_correct
+       value value_eqb input_view output_view
+       frame_cells write_cells allowed_write_cells frame_entries
+       allowed_write_bounds frame_bounds before source_view after ok
+       Hvalue_eqb Hret Hok Hframe Hvalues Hallowed_bounds
+       Hframe_bounds Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record frame_preservation_bounded_value_params (value: Type) := {
+  fpbvp_input_view : View.view;
+  fpbvp_output_view : View.view;
+  fpbvp_frame_cells : list MemCell;
+  fpbvp_write_cells : list MemCell;
+  fpbvp_allowed_write_cells : list MemCell;
+  fpbvp_frame_entries : list (frame_value_entry value);
+  fpbvp_allowed_write_bounds : list array_bounds;
+  fpbvp_frame_bounds : list array_bounds;
+  fpbvp_source_view : PolyLang.t;
+}.
+
+Definition frame_preservation_bounded_value_input_view
+    {value: Type}
+    (params: frame_preservation_bounded_value_params value)
+    : View.view :=
+  fpbvp_input_view value params.
+
+Definition frame_preservation_bounded_value_output_view
+    {value: Type}
+    (params: frame_preservation_bounded_value_params value)
+    : View.view :=
+  frame_pipeline_final_view (fpbvp_output_view value params).
+
+Definition frame_preservation_bounded_value_check
+    {value: Type}
+    (params: frame_preservation_bounded_value_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_frame_source_view before (fpbvp_source_view value params).
+
+Definition frame_preservation_bounded_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: frame_preservation_bounded_value_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_frame_preservationb
+    (fpbvp_frame_cells value params)
+    (fpbvp_write_cells value params)
+    (fpbvp_allowed_write_cells value params) = true /\
+  check_frame_valueb
+    value value_eqb
+    (fpbvp_frame_cells value params)
+    (fpbvp_frame_entries value params) = true /\
+  check_storage_boundsb
+    (fpbvp_allowed_write_bounds value params)
+    (fpbvp_allowed_write_cells value params) = true /\
+  check_storage_boundsb
+    (fpbvp_frame_bounds value params)
+    (fpbvp_frame_cells value params) = true /\
+  frame_source_view_refines_view
+    (fpbvp_input_view value params)
+    (fpbvp_output_view value params)
+    (fpbvp_source_view value params)
+    after.
+
+Theorem frame_preservation_bounded_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (frame_preservation_bounded_value_check params before after)
+      ok ->
+    ok = true ->
+    frame_preservation_bounded_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (frame_preservation_bounded_value_input_view params)
+      (frame_preservation_bounded_value_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view frame_cells write_cells allowed_write_cells
+     frame_entries allowed_write_bounds frame_bounds source_view].
+  simpl in *.
+  destruct Hside as
+    [Hframe [Hvalues [Hallowed_bounds [Hframe_bounds Hsemantics]]]].
+  eapply checked_frame_preservation_bounded_value_public_refinement; eauto.
+Qed.
+
+Definition frame_preservation_bounded_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (frame_preservation_bounded_value_params value) := {|
+  generic_cpvtf_input_view :=
+    frame_preservation_bounded_value_input_view;
+  generic_cpvtf_output_view :=
+    frame_preservation_bounded_value_output_view;
+  generic_cpvtf_check :=
+    frame_preservation_bounded_value_check;
+  generic_cpvtf_side_condition :=
+    frame_preservation_bounded_value_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    frame_preservation_bounded_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem frame_preservation_frame_cell_value_preserved :
   forall (value: Type) input_view output_view
          frame_cells write_cells allowed_write_cells frame_entries
