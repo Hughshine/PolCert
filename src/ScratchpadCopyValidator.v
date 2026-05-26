@@ -274,6 +274,31 @@ Record scratchpad_copy_bounded_fully_declared_compatible_full_view_contract
     storage_bounds_obligations local_bounds local_cells;
 }.
 
+Record scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (source_domain source_liveouts: list logical_instance)
+    (targets: list projected_instance)
+    (expected_commit_targets: list MemCell)
+    (mapping: copy_cell_mapping)
+    (copy_trace: list copy_event)
+    (value_trace: copy_value_trace value)
+    (local_cells public_cells frame_cells: list MemCell)
+    (public_specs local_specs: list storage_spec)
+    (public_bounds local_bounds: list array_bounds)
+    (escaped_cells: list MemCell)
+    (source_view after: PolyLang.t) : Prop := {
+  sccbfdcnef_bounded_base :
+    scratchpad_copy_bounded_fully_declared_compatible_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds source_view after;
+  sccbfdcnef_non_escape :
+    private_non_escape_obligations local_cells escaped_cells;
+}.
+
 Definition scratchpad_pipeline_final_view
     (output_view: View.view) : View.view :=
   Pipeline.pipeline_final_view output_view.
@@ -865,6 +890,78 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn
+      (check_scratchpad_source_view before source_view) ok ->
+    ok = true ->
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    check_copy_protocol_wfb copy_trace = true ->
+    check_copy_commit_coverb expected_commit_targets copy_trace = true ->
+    check_copy_instance_traceb targets copy_trace = true ->
+    check_copy_mappingb mapping copy_trace = true ->
+    check_copy_mapping_declarationb mapping public_cells local_cells = true ->
+    check_copy_value_traceb value_eqb value_trace = true ->
+    check_private_separationb
+      local_cells public_cells frame_cells = true ->
+    check_storage_compatibilityb mapping public_specs local_specs = true ->
+    check_storage_boundsb public_bounds public_cells = true ->
+    check_storage_boundsb local_bounds local_cells = true ->
+    check_private_non_escapeb local_cells escaped_cells = true ->
+    scratchpad_source_view_refines_view
+      input_view output_view source_view after ->
+    scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds escaped_cells
+      source_view after /\
+    View.view_refinement
+      input_view
+      (scratchpad_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hprojection Hcopy Hcommit Hinstance Hmapping Hdeclared
+         Hvalue Hseparation Hstorage Hpublic_bounds Hlocal_bounds
+         Hnon_escape Hsemantics.
+  pose proof
+    (check_private_non_escapeb_sound
+       local_cells escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_scratchpad_copy_bounded_fully_declared_compatible_full_view_correct
+       value value_eqb input_view output_view
+       source_domain source_liveouts targets expected_commit_targets
+       mapping copy_trace value_trace
+       local_cells public_cells frame_cells
+       public_specs local_specs public_bounds local_bounds
+       before source_view after ok Hvalue_eqb Hret Hok
+       Hprojection Hcopy Hcommit Hinstance Hmapping Hdeclared
+       Hvalue Hseparation Hstorage Hpublic_bounds Hlocal_bounds
+       Hsemantics)
+    as [Hbounded_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
 Theorem scratchpad_copy_mapping_local_within_bounds :
   forall (value: Type)
          input_view output_view
@@ -985,6 +1082,67 @@ Proof.
   eapply storage_bounds_cell_within.
   - exact Hlocal_bounds.
   - eapply cmd_mapping_locals_declared; eauto.
+Qed.
+
+Theorem scratchpad_copy_local_cell_not_escaped :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after cell,
+    scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds escaped_cells
+      source_view after ->
+    In cell local_cells ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint; eauto.
+Qed.
+
+Theorem scratchpad_copy_mapping_local_not_escaped :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after cell,
+    scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds escaped_cells
+      source_view after ->
+    In cell (copy_mapping_locals mapping) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after cell Hcontract Hlocal.
+  destruct Hcontract as [Hbounded Hnon_escape].
+  destruct Hbounded as [Hdeclared _ _].
+  destruct Hdeclared as [_ Hmapping_declared].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply cmd_mapping_locals_declared; eauto.
 Qed.
 
 End ScratchpadCopyValidator.
