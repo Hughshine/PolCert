@@ -962,6 +962,212 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn
+      (check_scratchpad_source_view before source_view) ok ->
+    ok = true ->
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    check_copy_protocol_wfb copy_trace = true ->
+    check_copy_commit_coverb expected_commit_targets copy_trace = true ->
+    check_copy_instance_traceb targets copy_trace = true ->
+    check_copy_mappingb mapping copy_trace = true ->
+    check_copy_mapping_declarationb mapping public_cells local_cells = true ->
+    check_copy_value_traceb value_eqb value_trace = true ->
+    check_private_separationb
+      local_cells public_cells frame_cells = true ->
+    check_storage_compatibilityb mapping public_specs local_specs = true ->
+    check_storage_boundsb public_bounds public_cells = true ->
+    check_storage_boundsb local_bounds local_cells = true ->
+    check_private_non_escapeb local_cells escaped_cells = true ->
+    scratchpad_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (scratchpad_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hprojection Hcopy Hcommit Hinstance Hmapping Hdeclared
+         Hvalue Hseparation Hstorage Hpublic_bounds Hlocal_bounds
+         Hnon_escape Hsemantics.
+  pose proof
+    (checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_correct
+       value value_eqb input_view output_view
+       source_domain source_liveouts targets expected_commit_targets
+       mapping copy_trace value_trace
+       local_cells public_cells frame_cells
+       public_specs local_specs public_bounds local_bounds escaped_cells
+       before source_view after ok Hvalue_eqb Hret Hok
+       Hprojection Hcopy Hcommit Hinstance Hmapping Hdeclared
+       Hvalue Hseparation Hstorage Hpublic_bounds Hlocal_bounds
+       Hnon_escape Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record scratchpad_copy_bounded_non_escape_params (value: Type) := {
+  scbnep_input_view : View.view;
+  scbnep_output_view : View.view;
+  scbnep_source_domain : list logical_instance;
+  scbnep_source_liveouts : list logical_instance;
+  scbnep_targets : list projected_instance;
+  scbnep_expected_commit_targets : list MemCell;
+  scbnep_mapping : copy_cell_mapping;
+  scbnep_copy_trace : list copy_event;
+  scbnep_value_trace : copy_value_trace value;
+  scbnep_local_cells : list MemCell;
+  scbnep_public_cells : list MemCell;
+  scbnep_frame_cells : list MemCell;
+  scbnep_public_specs : list storage_spec;
+  scbnep_local_specs : list storage_spec;
+  scbnep_public_bounds : list array_bounds;
+  scbnep_local_bounds : list array_bounds;
+  scbnep_escaped_cells : list MemCell;
+  scbnep_source_view : PolyLang.t;
+}.
+
+Definition scratchpad_copy_bounded_non_escape_input_view {value: Type}
+    (params: scratchpad_copy_bounded_non_escape_params value) : View.view :=
+  scbnep_input_view value params.
+
+Definition scratchpad_copy_bounded_non_escape_output_view {value: Type}
+    (params: scratchpad_copy_bounded_non_escape_params value) : View.view :=
+  scratchpad_pipeline_final_view (scbnep_output_view value params).
+
+Definition scratchpad_copy_bounded_non_escape_check {value: Type}
+    (params: scratchpad_copy_bounded_non_escape_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_scratchpad_source_view before (scbnep_source_view value params).
+
+Definition scratchpad_copy_bounded_non_escape_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: scratchpad_copy_bounded_non_escape_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_instance_projectionb
+    (scbnep_source_domain value params)
+    (scbnep_source_liveouts value params)
+    (scbnep_targets value params) = true /\
+  check_copy_protocol_wfb
+    (scbnep_copy_trace value params) = true /\
+  check_copy_commit_coverb
+    (scbnep_expected_commit_targets value params)
+    (scbnep_copy_trace value params) = true /\
+  check_copy_instance_traceb
+    (scbnep_targets value params)
+    (scbnep_copy_trace value params) = true /\
+  check_copy_mappingb
+    (scbnep_mapping value params)
+    (scbnep_copy_trace value params) = true /\
+  check_copy_mapping_declarationb
+    (scbnep_mapping value params)
+    (scbnep_public_cells value params)
+    (scbnep_local_cells value params) = true /\
+  check_copy_value_traceb
+    value_eqb
+    (scbnep_value_trace value params) = true /\
+  check_private_separationb
+    (scbnep_local_cells value params)
+    (scbnep_public_cells value params)
+    (scbnep_frame_cells value params) = true /\
+  check_storage_compatibilityb
+    (scbnep_mapping value params)
+    (scbnep_public_specs value params)
+    (scbnep_local_specs value params) = true /\
+  check_storage_boundsb
+    (scbnep_public_bounds value params)
+    (scbnep_public_cells value params) = true /\
+  check_storage_boundsb
+    (scbnep_local_bounds value params)
+    (scbnep_local_cells value params) = true /\
+  check_private_non_escapeb
+    (scbnep_local_cells value params)
+    (scbnep_escaped_cells value params) = true /\
+  scratchpad_source_view_refines_view
+    (scbnep_input_view value params)
+    (scbnep_output_view value params)
+    (scbnep_source_view value params)
+    after.
+
+Theorem scratchpad_copy_bounded_non_escape_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (scratchpad_copy_bounded_non_escape_check params before after) ok ->
+    ok = true ->
+    scratchpad_copy_bounded_non_escape_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (scratchpad_copy_bounded_non_escape_input_view params)
+      (scratchpad_copy_bounded_non_escape_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view source_domain source_liveouts targets
+     expected_commit_targets mapping copy_trace value_trace
+     local_cells public_cells frame_cells public_specs local_specs
+     public_bounds local_bounds escaped_cells source_view].
+  simpl in *.
+  destruct Hside as
+    [Hprojection
+     [Hcopy
+      [Hcommit
+       [Hinstance
+        [Hmapping
+         [Hdeclared
+          [Hvalue
+           [Hseparation
+            [Hstorage
+             [Hpublic_bounds
+              [Hlocal_bounds
+               [Hnon_escape Hsemantics]]]]]]]]]]]].
+  eapply
+    checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_public_refinement;
+    eauto.
+Qed.
+
+Definition scratchpad_copy_bounded_non_escape_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (scratchpad_copy_bounded_non_escape_params value) := {|
+  generic_cpvtf_input_view :=
+    scratchpad_copy_bounded_non_escape_input_view;
+  generic_cpvtf_output_view :=
+    scratchpad_copy_bounded_non_escape_output_view;
+  generic_cpvtf_check :=
+    scratchpad_copy_bounded_non_escape_check;
+  generic_cpvtf_side_condition :=
+    scratchpad_copy_bounded_non_escape_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    scratchpad_copy_bounded_non_escape_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem scratchpad_copy_mapping_local_within_bounds :
   forall (value: Type)
          input_view output_view

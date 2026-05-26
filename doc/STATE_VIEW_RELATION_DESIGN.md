@@ -163,7 +163,13 @@ passes that need trace evidence, declared cells, bounds, compatibility, and
 non-escape side conditions.  A concrete scalar-storage composition theorem now
 shows bounded scalar privatization followed by bounded scalar promotion as one
 composed public-view refinement through the generic parameterized family
-composition hook.
+composition hook.  The scratchpad/packing route now follows the same rule:
+`ScratchpadCopyValidator` exposes a public-only facade for the strongest
+bounded/fully-declared/non-escape copy theorem and packages it as
+`scratchpad_copy_bounded_non_escape_family`, while
+`StorageCopyFamilyCompose.v` shows that this copy-mediated family composes with
+bounded scalar promotion without exposing the copy contract as the final
+relation.
 
 ## What a View Must Explain
 
@@ -1290,6 +1296,16 @@ the common view theorem.
 side condition to the same public-to-local remapping: each local buffer cell
 must be size/alignment-compatible with the public cell it temporarily
 represents.
+The current strongest route,
+`checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_correct`,
+also checks declared public/local bounds and proves local-buffer non-escape.
+Its public facade,
+`checked_scratchpad_copy_bounded_fully_declared_compatible_non_escape_public_refinement`,
+projects away the returned contract and exposes only `View.view_refinement`.
+The corresponding `scratchpad_copy_bounded_non_escape_family` carries all copy
+protocol, mapping, value-flow, bounds, compatibility, and non-escape witnesses as
+parameters/side conditions, giving scratchpad/packing the same compositional
+shape as scalar privatization, scalar promotion, and inter-array reuse.
 
 This support cannot be reduced to schedule legality.  The copy protocol is part
 of correctness.
