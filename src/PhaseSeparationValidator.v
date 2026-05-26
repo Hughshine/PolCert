@@ -63,6 +63,20 @@ Record phase_separation_view_contract
       input_view output_view source_view after;
 }.
 
+Record phase_separation_bounded_view_contract
+    (input_view output_view: View.view)
+    (entry_live: list MemCell)
+    (steps: list phase_step)
+    (phase_bounds: list array_bounds)
+    (source_view after: PolyLang.t) : Prop := {
+  psbvc_base :
+    phase_separation_view_contract
+      input_view output_view entry_live steps source_view after;
+  psbvc_protocol_bounds :
+    storage_bounds_obligations
+      phase_bounds (phase_protocol_cells entry_live steps);
+}.
+
 Record phase_separation_value_view_contract
     (value: Type)
     (input_view output_view: View.view)
@@ -233,6 +247,41 @@ Proof.
       (Pipeline.compose_checked_source_view
          input_view output_view before source_view after ok);
       assumption.
+Qed.
+
+Theorem checked_phase_separation_bounded_view_correct :
+  forall input_view output_view entry_live steps phase_bounds
+         before source_view after ok,
+    mayReturn (check_phase_source_view before source_view) ok ->
+    ok = true ->
+    check_phase_protocolb entry_live steps = true ->
+    check_storage_boundsb
+      phase_bounds (phase_protocol_cells entry_live steps) = true ->
+    phase_source_view_refines_view
+      input_view output_view source_view after ->
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after /\
+    View.view_refinement
+      input_view
+      (phase_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds
+         before source_view after ok
+         Hret Hok Hphase Hbounds Hsemantics.
+  pose proof
+    (check_storage_boundsb_sound
+       phase_bounds (phase_protocol_cells entry_live steps) Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (checked_phase_separation_view_correct
+       input_view output_view entry_live steps
+       before source_view after ok Hret Hok Hphase Hsemantics)
+    as [Hbase Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
 Qed.
 
 Theorem checked_phase_separation_value_view_correct :
@@ -479,6 +528,78 @@ Proof.
     with (cells := phase_projection_targets mapping); eauto.
   unfold phase_projection_cell_relation in Hrel.
   eapply phase_projection_pair_target_in_targets; eauto.
+Qed.
+
+Theorem phase_protocol_entry_live_cell_within_bounds :
+  forall input_view output_view entry_live steps phase_bounds
+         source_view after cell,
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after ->
+    In cell entry_live ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  apply phase_protocol_entry_live_in_cells.
+  exact Hin.
+Qed.
+
+Theorem phase_protocol_read_cell_within_bounds :
+  forall input_view output_view entry_live steps phase_bounds
+         source_view after step cell,
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after ->
+    In step steps ->
+    In cell (phase_reads step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds
+         source_view after step cell Hcontract Hstep Hread.
+  destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_read_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_protocol_write_cell_within_bounds :
+  forall input_view output_view entry_live steps phase_bounds
+         source_view after step cell,
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after ->
+    In step steps ->
+    In cell (phase_writes step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds
+         source_view after step cell Hcontract Hstep Hwrite.
+  destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_write_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_protocol_next_live_cell_within_bounds :
+  forall input_view output_view entry_live steps phase_bounds
+         source_view after step cell,
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after ->
+    In step steps ->
+    In cell (phase_next_live step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds
+         source_view after step cell Hcontract Hstep Hnext.
+  destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_next_live_cell_in_cells; eauto.
 Qed.
 
 End PhaseSeparationValidator.

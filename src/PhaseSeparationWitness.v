@@ -28,6 +28,22 @@ Record phase_step := {
   phase_next_live : list MemCell;
 }.
 
+Definition phase_step_cells (step: phase_step) : list MemCell :=
+  phase_reads step ++ phase_writes step ++ phase_next_live step.
+
+Fixpoint phase_protocol_step_cells
+    (steps: list phase_step) : list MemCell :=
+  match steps with
+  | [] => []
+  | step :: tail =>
+      phase_step_cells step ++ phase_protocol_step_cells tail
+  end.
+
+Definition phase_protocol_cells
+    (entry_live: list MemCell)
+    (steps: list phase_step) : list MemCell :=
+  entry_live ++ phase_protocol_step_cells steps.
+
 Definition phase_step_safe
     (entry_live: list MemCell)
     (step: phase_step) : Prop :=
@@ -123,3 +139,87 @@ Definition phase_protocol_final_live
     (fun _ step => phase_next_live step)
     steps
     entry_live.
+
+Lemma phase_protocol_entry_live_in_cells :
+  forall entry_live steps cell,
+    In cell entry_live ->
+    In cell (phase_protocol_cells entry_live steps).
+Proof.
+  intros entry_live steps cell Hin.
+  unfold phase_protocol_cells.
+  apply in_or_app.
+  left. exact Hin.
+Qed.
+
+Lemma phase_protocol_step_cell_in_step_cells :
+  forall steps step cell,
+    In step steps ->
+    In cell (phase_step_cells step) ->
+    In cell (phase_protocol_step_cells steps).
+Proof.
+  induction steps as [|head tail IH]; intros step cell Hstep Hcell;
+    simpl in Hstep |- *.
+  - contradiction.
+  - destruct Hstep as [Heq | Htail].
+    + subst.
+      apply in_or_app.
+      left. exact Hcell.
+    + apply in_or_app.
+      right. eapply IH; eauto.
+Qed.
+
+Lemma phase_protocol_step_cell_in_cells :
+  forall entry_live steps step cell,
+    In step steps ->
+    In cell (phase_step_cells step) ->
+    In cell (phase_protocol_cells entry_live steps).
+Proof.
+  intros entry_live steps step cell Hstep Hcell.
+  unfold phase_protocol_cells.
+  apply in_or_app.
+  right.
+  eapply phase_protocol_step_cell_in_step_cells; eauto.
+Qed.
+
+Theorem phase_protocol_read_cell_in_cells :
+  forall entry_live steps step cell,
+    In step steps ->
+    In cell (phase_reads step) ->
+    In cell (phase_protocol_cells entry_live steps).
+Proof.
+  intros entry_live steps step cell Hstep Hread.
+  eapply phase_protocol_step_cell_in_cells; eauto.
+  unfold phase_step_cells.
+  apply in_or_app.
+  left. exact Hread.
+Qed.
+
+Theorem phase_protocol_write_cell_in_cells :
+  forall entry_live steps step cell,
+    In step steps ->
+    In cell (phase_writes step) ->
+    In cell (phase_protocol_cells entry_live steps).
+Proof.
+  intros entry_live steps step cell Hstep Hwrite.
+  eapply phase_protocol_step_cell_in_cells; eauto.
+  unfold phase_step_cells.
+  apply in_or_app.
+  right.
+  apply in_or_app.
+  left. exact Hwrite.
+Qed.
+
+Theorem phase_protocol_next_live_cell_in_cells :
+  forall entry_live steps step cell,
+    In step steps ->
+    In cell (phase_next_live step) ->
+    In cell (phase_protocol_cells entry_live steps).
+Proof.
+  intros entry_live steps step cell Hstep Hnext.
+  eapply phase_protocol_step_cell_in_cells; eauto.
+  unfold phase_step_cells.
+  apply in_or_app.
+  right.
+  apply in_or_app.
+  right. exact Hnext.
+Qed.

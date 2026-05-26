@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 import argparse
 from pathlib import Path
 
@@ -1374,41 +1374,82 @@ def validate_double_buffering() -> List[str]:
         for i in range(n):
             full[t, i] = full[t - 1, i] + 1
 
-    cur = dict(init)
-    nxt = {i: None for i in range(n)}
+    buffers: List[Dict[int, Optional[int]]] = [
+        dict(init),
+        {i: None for i in range(n)},
+    ]
+    live_buffer = 0
+    entry_live = {("buf", live_buffer, i) for i in range(n)}
+    phase_protocol_cells = set(entry_live)
+    declared_phase_bounds = {
+        "buf": (2, n),
+    }
+
+    def phase_cell_in_declared_bounds(cell: Tuple[str, int, int]) -> bool:
+        array, phase, i = cell
+        phase_extent, i_extent = declared_phase_bounds[array]
+        return 0 <= phase < phase_extent and 0 <= i < i_extent
+
+    require(all(phase_cell_in_declared_bounds(cell) for cell in entry_live),
+            "phase entry-live cell falls outside declared bounds")
     for t in range(1, t_max + 1):
-        entry_snapshot = dict(cur)
+        write_buffer = 1 - live_buffer
+        phase_reads = {("buf", live_buffer, i) for i in range(n)}
+        phase_writes = {("buf", write_buffer, i) for i in range(n)}
+        phase_next_live = set(phase_writes)
+        phase_protocol_cells.update(phase_reads)
+        phase_protocol_cells.update(phase_writes)
+        phase_protocol_cells.update(phase_next_live)
+        require(phase_reads <= entry_live,
+                "phase read is not visible at phase entry")
+        require(phase_writes.isdisjoint(entry_live),
+                "phase write overwrites an entry-live cell")
+        require(phase_next_live <= phase_writes | entry_live,
+                "phase next-live cell is not produced or inherited")
+        require(all(phase_cell_in_declared_bounds(cell)
+                    for cell in phase_reads | phase_writes | phase_next_live),
+                "phase protocol cell falls outside declared bounds")
+        entry_snapshot = dict(buffers[live_buffer])
         writes_this_phase = set()
         write_snapshot: Dict[int, int] = {}
         for i in range(n):
-            nxt[i] = cur[i] + 1
-            write_snapshot[i] = nxt[i]
+            entry_value = buffers[live_buffer][i]
+            require(entry_value is not None, "phase reads an uninitialized buffer cell")
+            buffers[write_buffer][i] = entry_value + 1
+            write_snapshot[i] = buffers[write_buffer][i]
             writes_this_phase.add(i)
         require(writes_this_phase == set(range(n)), "next buffer is not fully defined before swap")
         for i in range(n):
             require(write_snapshot[i] == entry_snapshot[i] + 1,
                     f"next-live value {i} does not flow from phase write")
-        cur, nxt = nxt, cur
-        require(cur == {i: full[t, i] for i in range(n)}, "swap does not expose the current time row")
+        live_buffer = write_buffer
+        entry_live = phase_next_live
+        require(buffers[live_buffer] == {i: full[t, i] for i in range(n)},
+                "swap does not expose the current time row")
 
     expected = {i: full[t_max, i] for i in range(n)}
-    same_dict(expected, cur, "final cur")
+    final_buffer = live_buffer
+    same_dict(expected, buffers[final_buffer], "final cur")
     source_liveouts = {("A", t_max, i) for i in range(n)}
-    final_live = {("cur", i) for i in range(n)}
-    final_snapshot = {("cur", i): cur[i] for i in range(n)}
+    final_live = {("buf", final_buffer, i) for i in range(n)}
+    final_snapshot = {
+        ("buf", final_buffer, i): buffers[final_buffer][i]
+        for i in range(n)
+    }
+    require(all(phase_cell_in_declared_bounds(cell)
+                for cell in phase_protocol_cells),
+            "phase protocol cell falls outside declared bounds")
     require(set(final_snapshot.keys()) == final_live,
             "final phase snapshot does not match final-live cells")
-    projection = {("A", t_max, i): ("cur", i) for i in range(n)}
+    projection = {("A", t_max, i): ("buf", final_buffer, i) for i in range(n)}
     require(set(projection.keys()) == source_liveouts,
             "phase projection does not cover logical live-outs")
     require(len(set(projection.values())) == len(projection),
             "phase projection reuses a physical final cell")
     require(set(projection.values()) <= final_live,
             "phase projection target is not final-live")
-    declared_final_bounds = {
-        "cur": (n,),
-    }
-    require(all(0 <= target_cell[1] < declared_final_bounds[target_cell[0]][0]
+    declared_final_bounds = declared_phase_bounds
+    require(all(phase_cell_in_declared_bounds(target_cell)
                 for target_cell in projection.values()),
             "phase projection target falls outside declared bounds")
     projection_values = [
@@ -1420,7 +1461,7 @@ def validate_double_buffering() -> List[str]:
                 for _source_cell, _target_cell, source_value, target_value in projection_values),
             "phase projection value mismatch")
     source_specs = {("A", t_max, i): (8, 8) for i in range(n)}
-    final_specs = {("cur", i): (8, 8) for i in range(n)}
+    final_specs = {("buf", final_buffer, i): (8, 8) for i in range(n)}
     require(all(source_specs[source_cell] == final_specs[target_cell]
                 for source_cell, target_cell in projection.items()),
             "phase projection storage spec mismatch")
@@ -1428,6 +1469,7 @@ def validate_double_buffering() -> List[str]:
         "next buffer is written before it is read in the following phase",
         "cur buffer remains live until the phase's computation completes",
         "next-live values come from the phase write snapshot",
+        "all phase entry/read/write/next-live cells are within declared buffer bounds",
         "swap implements the projection from physical buffer to logical time",
         "final phase value snapshot matches the final-live physical cells",
         "final phase projection covers every logical live-out",
@@ -2319,6 +2361,22 @@ def reject_double_buffer_projection_out_of_bounds() -> None:
     require(all(0 <= target_cell[1] < declared_final_bounds[target_cell[0]][0]
                 for target_cell in projection.values()),
             "phase projection target falls outside declared bounds")
+
+
+@add_negative("double_buffer_phase_write_out_of_bounds", "double_buffering")
+def reject_double_buffer_phase_write_out_of_bounds() -> None:
+    declared_phase_bounds = {
+        "buf": (2, 4),
+    }
+    phase_writes = {("buf", 1, 4)}
+
+    def phase_cell_in_declared_bounds(cell: Tuple[str, int, int]) -> bool:
+        array, phase, i = cell
+        phase_extent, i_extent = declared_phase_bounds[array]
+        return 0 <= phase < phase_extent and 0 <= i < i_extent
+
+    require(all(phase_cell_in_declared_bounds(cell) for cell in phase_writes),
+            "phase protocol cell falls outside declared bounds")
 
 
 @add_negative("composition_bad_intermediate_public", "storage_view_composition")

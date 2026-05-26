@@ -1127,6 +1127,18 @@ Definition storage_check_phase_protocolb_sound :=
   check_phase_protocolb_sound.
 Definition storage_phase_protocol_final_live :=
   phase_protocol_final_live.
+Definition storage_phase_step_cells :=
+  phase_step_cells.
+Definition storage_phase_protocol_step_cells :=
+  phase_protocol_step_cells.
+Definition storage_phase_protocol_cells :=
+  phase_protocol_cells.
+Definition storage_phase_protocol_read_cell_in_cells :=
+  phase_protocol_read_cell_in_cells.
+Definition storage_phase_protocol_write_cell_in_cells :=
+  phase_protocol_write_cell_in_cells.
+Definition storage_phase_protocol_next_live_cell_in_cells :=
+  phase_protocol_next_live_cell_in_cells.
 Definition storage_phase_projection_mapping :=
   phase_projection_mapping.
 Definition storage_phase_projection_cell_relation :=
@@ -1167,6 +1179,8 @@ Definition storage_phase_source_view_refines_view :=
   PhaseSeparationCore.phase_source_view_refines_view.
 Definition storage_phase_separation_view_contract :=
   PhaseSeparationCore.phase_separation_view_contract.
+Definition storage_phase_separation_bounded_view_contract :=
+  PhaseSeparationCore.phase_separation_bounded_view_contract.
 Definition storage_phase_separation_value_view_contract :=
   PhaseSeparationCore.phase_separation_value_view_contract.
 Definition storage_phase_projection_view_contract :=
@@ -1179,6 +1193,8 @@ Definition storage_phase_projection_bounded_compatible_value_view_contract :=
   PhaseSeparationCore.phase_projection_bounded_compatible_value_view_contract.
 Definition storage_checked_phase_separation_view_correct :=
   PhaseSeparationCore.checked_phase_separation_view_correct.
+Definition storage_checked_phase_separation_bounded_view_correct :=
+  PhaseSeparationCore.checked_phase_separation_bounded_view_correct.
 Definition storage_checked_phase_separation_value_view_correct :=
   PhaseSeparationCore.checked_phase_separation_value_view_correct.
 Definition storage_checked_phase_projection_view_correct :=
@@ -1191,6 +1207,14 @@ Definition storage_checked_phase_projection_bounded_compatible_value_view_correc
   PhaseSeparationCore.checked_phase_projection_bounded_compatible_value_view_correct.
 Definition storage_phase_projection_mapped_target_within_bounds :=
   PhaseSeparationCore.phase_projection_mapped_target_within_bounds.
+Definition storage_phase_protocol_entry_live_cell_within_bounds :=
+  PhaseSeparationCore.phase_protocol_entry_live_cell_within_bounds.
+Definition storage_phase_protocol_read_cell_within_bounds :=
+  PhaseSeparationCore.phase_protocol_read_cell_within_bounds.
+Definition storage_phase_protocol_write_cell_within_bounds :=
+  PhaseSeparationCore.phase_protocol_write_cell_within_bounds.
+Definition storage_phase_protocol_next_live_cell_within_bounds :=
+  PhaseSeparationCore.phase_protocol_next_live_cell_within_bounds.
 
 (** Legacy validator API.  These definitions remain unchanged: the generalized
     contract above only wraps their existing correctness theorem as the
