@@ -201,4 +201,59 @@ Proof.
            mapping logical_cell physical_cell Hlookup).
 Qed.
 
+Theorem bounded_inter_array_overlap_mapped_distinct :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         left right physical_left physical_right,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    In left intervals ->
+    In right intervals ->
+    li_cell left <> li_cell right ->
+    live_interval_overlap left right ->
+    reuse_lookup (li_cell left) mapping = Some physical_left ->
+    reuse_lookup (li_cell right) mapping = Some physical_right ->
+    physical_left <> physical_right.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         left right physical_left physical_right Hcontract
+         Hin_left Hin_right Hcells_distinct Hoverlap
+         Hlookup_left Hlookup_right.
+  destruct Hcontract as [Hreuse _ _ _].
+  exact
+    (inter_array_overlap_mapped_distinct
+       mapping intervals conflicts logical_specs physical_specs
+       left right physical_left physical_right
+       Hreuse Hin_left Hin_right Hcells_distinct Hoverlap
+       Hlookup_left Hlookup_right).
+Qed.
+
+Theorem bounded_inter_array_same_physical_not_live_overlap :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         left right physical_cell,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    In left intervals ->
+    In right intervals ->
+    li_cell left <> li_cell right ->
+    reuse_lookup (li_cell left) mapping = Some physical_cell ->
+    reuse_lookup (li_cell right) mapping = Some physical_cell ->
+    ~ live_interval_overlap left right.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         left right physical_cell Hcontract
+         Hin_left Hin_right Hcells_distinct Hlookup_left Hlookup_right.
+  destruct Hcontract as [Hreuse _ _ _].
+  exact
+    (inter_array_same_physical_not_live_overlap
+       mapping intervals conflicts logical_specs physical_specs
+       left right physical_cell Hreuse
+       Hin_left Hin_right Hcells_distinct Hlookup_left Hlookup_right).
+Qed.
+
 End InterArrayReuseValidator.

@@ -812,6 +812,8 @@ Definition storage_inter_array_reuse_sources_nodup :=
   inter_array_reuse_sources_nodup.
 Definition storage_inter_array_storage_mapping_compatible :=
   inter_array_storage_mapping_compatible.
+Definition storage_inter_array_reuse_boundary_obligations :=
+  inter_array_reuse_boundary_obligations.
 Definition storage_inter_array_live_overlaps_reuse_separated :=
   inter_array_live_overlaps_reuse_separated.
 Definition storage_inter_array_overlap_mapped_distinct :=
@@ -830,6 +832,10 @@ Definition storage_checked_bounded_inter_array_reuse_view_correct :=
   InterArrayReuseCore.checked_bounded_inter_array_reuse_view_correct.
 Definition storage_bounded_inter_array_reuse_mapping_target_within_bounds :=
   InterArrayReuseCore.bounded_inter_array_reuse_mapping_target_within_bounds.
+Definition storage_bounded_inter_array_overlap_mapped_distinct :=
+  InterArrayReuseCore.bounded_inter_array_overlap_mapped_distinct.
+Definition storage_bounded_inter_array_same_physical_not_live_overlap :=
+  InterArrayReuseCore.bounded_inter_array_same_physical_not_live_overlap.
 Definition storage_check_conflict_safe_reuseb :=
   check_conflict_safe_reuseb.
 Definition storage_check_conflict_safe_reuseb_sound :=

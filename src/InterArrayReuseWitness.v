@@ -89,6 +89,18 @@ Proof.
   exact Hmapping_compatible.
 Qed.
 
+Theorem inter_array_reuse_boundary_obligations :
+  forall mapping intervals conflicts logical_specs physical_specs,
+    inter_array_reuse_obligations
+      mapping intervals conflicts logical_specs physical_specs ->
+    reuse_boundary_obligations mapping (reuse_mapping_sources mapping).
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs Hobligations.
+  destruct Hobligations as [_ Hreuse _].
+  eapply conflict_safe_reuse_boundary_obligations.
+  exact Hreuse.
+Qed.
+
 Theorem inter_array_live_overlaps_reuse_separated :
   forall mapping intervals conflicts logical_specs physical_specs,
     inter_array_reuse_obligations
