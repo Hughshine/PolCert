@@ -1096,6 +1096,23 @@ def validate_overlapped_tiling() -> List[str]:
                 (role == "commit" and cell in commit_cells)
                 for (_tile_id, _stmt, _i, role), cell in write_entries),
             "overlap write role does not match private/commit storage")
+    private_bounds = {"LocalT": (len(tile_ranges), n)}
+    commit_bounds = {"B": (n,)}
+
+    def cell_in_declared_bounds(
+            cell: Tuple[Any, ...],
+            bounds: Dict[str, Tuple[int, ...]]) -> bool:
+        array, *indices = cell
+        extents = bounds[array]
+        return len(indices) == len(extents) and all(
+            0 <= index < extent for index, extent in zip(indices, extents))
+
+    require(all(cell_in_declared_bounds(cell, private_bounds)
+                for cell in private_cells),
+            "overlap private write cell falls outside declared bounds")
+    require(all(cell_in_declared_bounds(cell, commit_bounds)
+                for cell in commit_cells),
+            "overlap commit write cell falls outside declared bounds")
     commit_write_cells = [
         cell for (_target_tile, _stmt, _i, role), cell in write_entries
         if role == "commit"
@@ -1122,6 +1139,8 @@ def validate_overlapped_tiling() -> List[str]:
         "tile-local producers precede their consumers in the target trace",
         "internal target writes go to tile-private cells",
         "commit target writes go to public commit cells exactly once",
+        "tile-private overlap write cells are within declared private-buffer bounds",
+        "commit overlap write cells are within declared public-output bounds",
         "duplicated halo/internal writes are tile-local and invisible",
     ]
 
@@ -1950,6 +1969,36 @@ def reject_overlap_duplicate_commit_write_cell() -> None:
     ]
     require(len(commit_write_cells) == len(set(commit_write_cells)),
             "overlap commit write cells are not unique")
+
+
+@add_negative("overlap_private_write_out_of_bounds", "overlapped_tiling")
+def reject_overlap_private_write_out_of_bounds() -> None:
+    private_cells = {("LocalT", 0, 9)}
+    private_bounds = {"LocalT": (1, 8)}
+
+    def cell_in_declared_bounds(cell: Tuple[Any, ...]) -> bool:
+        array, *indices = cell
+        extents = private_bounds[array]
+        return len(indices) == len(extents) and all(
+            0 <= index < extent for index, extent in zip(indices, extents))
+
+    require(all(cell_in_declared_bounds(cell) for cell in private_cells),
+            "overlap private write cell falls outside declared bounds")
+
+
+@add_negative("overlap_commit_write_out_of_bounds", "overlapped_tiling")
+def reject_overlap_commit_write_out_of_bounds() -> None:
+    commit_cells = {("B", 10)}
+    commit_bounds = {"B": (10,)}
+
+    def cell_in_declared_bounds(cell: Tuple[Any, ...]) -> bool:
+        array, *indices = cell
+        extents = commit_bounds[array]
+        return len(indices) == len(extents) and all(
+            0 <= index < extent for index, extent in zip(indices, extents))
+
+    require(all(cell_in_declared_bounds(cell) for cell in commit_cells),
+            "overlap commit write cell falls outside declared bounds")
 
 
 @add_negative("overlapping_reduction_chunks", "reduction_privatization")
