@@ -445,6 +445,22 @@ Proof.
       exact Hin_tail.
 Qed.
 
+Theorem overlap_closure_dependency_consumer_in_targets :
+  forall tiles tile dep,
+    overlap_closure_obligations tiles ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hclosure Htile Hdep.
+  destruct Hclosure as [Hclosed].
+  pose proof (Hclosed tile Htile) as Htile_closed.
+  destruct Htile_closed as [Hconsumer _].
+  apply Hconsumer.
+  exact Hdep.
+Qed.
+
 Theorem overlap_closure_dependency_available :
   forall tiles tile dep,
     overlap_closure_obligations tiles ->
@@ -459,6 +475,40 @@ Proof.
   destruct Hclosure as [Hclosed].
   pose proof (Hclosed tile Htile) as Htile_closed.
   destruct Htile_closed as [_ Havailable].
+  apply Havailable.
+  exact Hdep.
+Qed.
+
+Theorem overlap_ordered_closure_dependency_consumer_in_targets :
+  forall tiles tile dep,
+    overlap_ordered_closure_obligations tiles ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hclosure Htile Hdep.
+  destruct Hclosure as [Hclosed].
+  pose proof (Hclosed tile Htile) as Htile_closed.
+  destruct Htile_closed as [[Hconsumer _] _].
+  apply Hconsumer.
+  exact Hdep.
+Qed.
+
+Theorem overlap_ordered_closure_dependency_available :
+  forall tiles tile dep,
+    overlap_ordered_closure_obligations tiles ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hclosure Htile Hdep.
+  destruct Hclosure as [Hclosed].
+  pose proof (Hclosed tile Htile) as Htile_closed.
+  destruct Htile_closed as [[_ Havailable] _].
   apply Havailable.
   exact Hdep.
 Qed.
