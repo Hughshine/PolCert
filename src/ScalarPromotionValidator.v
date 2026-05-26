@@ -12,6 +12,7 @@ Require Import PrivateStorageWitness.
 Require Import ScalarPromotionWitness.
 Require Import ScalarPromotionValueWitness.
 Require Import StorageCompatibilityWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -138,6 +139,30 @@ Record scalar_promotion_compatible_value_view_contract
   spcvvc_semantic_refinement :
     promotion_source_view_refines_view
       input_view output_view source_view after;
+}.
+
+Record scalar_promotion_bounded_compatible_non_escape_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (source_cell scalar_cell: MemCell)
+    (source_liveout: bool)
+    (trace: list scalar_promotion_event)
+    (value_trace: scalar_promotion_value_trace value)
+    (logical_specs scalar_specs: list storage_spec)
+    (source_bounds scalar_bounds: list array_bounds)
+    (escaped_cells public_cells frame_cells: list MemCell)
+    (source_view after: PolyLang.t) : Prop := {
+  spbcnev_base :
+    scalar_promotion_compatible_value_view_contract
+      value input_view output_view
+      source_cell scalar_cell source_liveout trace value_trace
+      logical_specs scalar_specs public_cells frame_cells source_view after;
+  spbcnev_source_bounds :
+    storage_bounds_obligations source_bounds [source_cell];
+  spbcnev_scalar_bounds :
+    storage_bounds_obligations scalar_bounds [scalar_cell];
+  spbcnev_scalar_non_escape :
+    private_non_escape_obligations [scalar_cell] escaped_cells;
 }.
 
 Definition promotion_pipeline_final_view
@@ -354,6 +379,146 @@ Proof.
   split.
   - constructor; assumption.
   - exact Hview.
+Qed.
+
+Theorem checked_scalar_promotion_bounded_compatible_non_escape_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn
+      (check_promotion_source_view before source_view) ok ->
+    ok = true ->
+    check_scalar_promotionb
+      source_cell scalar_cell source_liveout trace = true ->
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    check_storage_compatibilityb
+      [(source_cell, scalar_cell)] logical_specs scalar_specs = true ->
+    check_storage_boundsb source_bounds [source_cell] = true ->
+    check_storage_boundsb scalar_bounds [scalar_cell] = true ->
+    check_private_non_escapeb [scalar_cell] escaped_cells = true ->
+    check_private_separationb
+      [scalar_cell] public_cells frame_cells = true ->
+    promotion_source_view_refines_view
+      input_view output_view source_view after ->
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after /\
+    View.view_refinement
+      input_view
+      (promotion_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hpromotion Hvalue Hcompat
+         Hsource_bounds Hscalar_bounds Hnon_escape Hseparation Hsemantics.
+  pose proof
+    (check_storage_boundsb_sound
+       source_bounds [source_cell] Hsource_bounds)
+    as Hsource_bounds_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       scalar_bounds [scalar_cell] Hscalar_bounds)
+    as Hscalar_bounds_obligations.
+  pose proof
+    (check_private_non_escapeb_sound
+       [scalar_cell] escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_scalar_promotion_compatible_value_view_correct
+       value value_eqb input_view output_view
+       source_cell scalar_cell source_liveout trace value_trace
+       logical_specs scalar_specs public_cells frame_cells
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hpromotion Hvalue Hcompat
+       Hseparation Hsemantics)
+    as [Hbase Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem scalar_promotion_source_cell_within_bounds :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    cell_within_declared_bounds source_bounds source_cell.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after Hcontract.
+  destruct Hcontract as [_ Hsource_bounds _ _].
+  eapply storage_bounds_cell_within.
+  - exact Hsource_bounds.
+  - simpl; auto.
+Qed.
+
+Theorem scalar_promotion_scalar_cell_within_bounds :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    cell_within_declared_bounds scalar_bounds scalar_cell.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after Hcontract.
+  destruct Hcontract as [_ _ Hscalar_bounds _].
+  eapply storage_bounds_cell_within.
+  - exact Hscalar_bounds.
+  - simpl; auto.
+Qed.
+
+Theorem scalar_promotion_scalar_cell_not_escaped :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    ~ In scalar_cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after Hcontract.
+  destruct Hcontract as [_ _ _ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  simpl; auto.
 Qed.
 
 End ScalarPromotionValidator.
