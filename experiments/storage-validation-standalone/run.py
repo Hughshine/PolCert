@@ -287,6 +287,22 @@ for (i = 0; i < N; i++) {
 def validate_scalar_privatization_expansion() -> List[str]:
     n = 6
     a = {i: 7 + i for i in range(n)}
+    source_domain = {("S", (i,)) for i in range(n)}
+    expandable_source_cells = {("tmp", 0)}
+    private_cells = {("tmp_exp", i) for i in range(n)}
+    expansion_entries = {
+        (("S", (i,)), ("tmp", 0)): ("tmp_exp", i)
+        for i in range(n)
+    }
+    require(set(instance for instance, _source in expansion_entries) <= source_domain,
+            "scalar expansion entry instance is outside the source domain")
+    require(set(source for _instance, source in expansion_entries) <= expandable_source_cells,
+            "scalar expansion entry source cell is not expandable")
+    require(set(expansion_entries.values()) <= private_cells,
+            "scalar expansion entry private cell is undeclared")
+    require(len(expansion_entries) == n, "scalar expansion keys are not unique")
+    require(len(set(expansion_entries.values())) == len(expansion_entries),
+            "expanded private cells are not fresh")
 
     tmp = None
     source_b: Dict[int, int] = {}
@@ -298,18 +314,35 @@ def validate_scalar_privatization_expansion() -> List[str]:
     target_b: Dict[int, int] = {}
     writes = set()
     reads = []
+    expansion_events = []
     for i in range(n):
+        instance = ("S", (i,))
+        source_cell = ("tmp", 0)
+        private_cell = ("tmp_exp", i)
+        require(expansion_entries[(instance, source_cell)] == private_cell,
+                "scalar expansion event uses the wrong private cell")
         tmp_exp[i] = a[i] + 1
         writes.add(("tmp_exp", i))
+        expansion_events.append(("write", instance, source_cell, private_cell))
         require(("tmp_exp", i) in writes, f"tmp_exp[{i}] read before write")
         reads.append(("tmp_exp", i))
+        expansion_events.append(("read", instance, source_cell, private_cell))
         target_b[i] = tmp_exp[i] * 2
 
     require(len(writes) == n, "private cells are not fresh per iteration")
     require(all(r in writes for r in reads), "a private read has no matching private write")
+    defined_private_cells = set()
+    for kind, _instance, _source_cell, private_cell in expansion_events:
+        if kind == "write":
+            defined_private_cells.add(private_cell)
+        else:
+            require(private_cell in defined_private_cells,
+                    "scalar expansion read occurs before its private fill")
     same_dict(source_b, target_b, "B")
     return [
+        "each (source instance, source scalar cell) selects one expanded private cell",
         "private storage map rho(i) = tmp_exp[i] is injective over live private classes",
+        "all scalar expansion events use the declared private cell for their key",
         "each private read is dominated by its same-class write",
         "expanded storage is not live-out or observable except through B",
     ]
@@ -1643,6 +1676,43 @@ def reject_missing_private_fill() -> None:
     tmp_exp: Dict[int, int] = {}
     for i in range(n):
         require(i in tmp_exp, f"tmp_exp[{i}] read before write")
+
+
+@add_negative("scalar_expansion_duplicate_private", "scalar_privatization_expansion")
+def reject_scalar_expansion_duplicate_private() -> None:
+    n = 2
+    expansion_entries = {
+        (("S", (i,)), ("tmp", 0)): ("tmp_exp", 0)
+        for i in range(n)
+    }
+    require(len(set(expansion_entries.values())) == len(expansion_entries),
+            "expanded private cells are not fresh")
+
+
+@add_negative("scalar_expansion_event_mismatch", "scalar_privatization_expansion")
+def reject_scalar_expansion_event_mismatch() -> None:
+    expansion_entries = {
+        (("S", (0,)), ("tmp", 0)): ("tmp_exp", 0),
+    }
+    event = ("read", ("S", (0,)), ("tmp", 0), ("tmp_exp", 1))
+    _kind, instance, source_cell, private_cell = event
+    require(expansion_entries[(instance, source_cell)] == private_cell,
+            "scalar expansion event uses the wrong private cell")
+
+
+@add_negative("scalar_expansion_read_before_fill", "scalar_privatization_expansion")
+def reject_scalar_expansion_read_before_fill() -> None:
+    expansion_events = [
+        ("read", ("S", (0,)), ("tmp", 0), ("tmp_exp", 0)),
+        ("write", ("S", (0,)), ("tmp", 0), ("tmp_exp", 0)),
+    ]
+    defined_private_cells = set()
+    for kind, _instance, _source_cell, private_cell in expansion_events:
+        if kind == "write":
+            defined_private_cells.add(private_cell)
+        else:
+            require(private_cell in defined_private_cells,
+                    "scalar expansion read occurs before its private fill")
 
 
 @add_negative("private_missing_liveout_copy", "private_copy_boundary")

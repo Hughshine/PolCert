@@ -1366,6 +1366,18 @@ view_refinement input_view private_output_view before after
 This support should be semantic.  OpenMP `private` is only one possible
 backend notation for the same idea.
 
+Current exploration status: `ScalarExpansionWitness.v` adds the finite
+renaming layer for this case.  A witness entry maps each
+`(source instance, source scalar cell)` key to a target-private cell.  The
+checker proves that entry instances are inside the source domain, source cells
+are from the expandable scalar set, private cells are declared and duplicate
+free, every expansion event uses the selected private cell for its key, and the
+expanded private trace is write-before-read.  The derived
+`scalar_expansion_events_same_key_same_private` fact is the local consistency
+principle: two events for the same source instance and scalar cell cannot pick
+different private cells.  This is still a finite witness layer, not a full
+instruction-level simulation of the value computed into the private cell.
+
 ### Reduction Privatization
 
 Support goal:
@@ -1929,6 +1941,11 @@ identity relation.  `mem_cells_nodupb` and
 distinct private cells and concrete-cell read-after-write coverage.
 `check_private_access_use_def_traceb` lifts the same idea to access functions
 and proves that every dynamic point instantiates to a valid private cell trace.
+`ScalarExpansionWitness.check_scalar_expansionb_sound` specializes this local
+private-storage reasoning to scalar expansion: every dynamic
+`(instance, source scalar cell)` key selects one declared private cell, all
+events use that same selected cell, selected private cells are fresh, and the
+expanded private trace is write-before-read.
 `check_private_separationb` captures the reusable separation side condition:
 private cells are duplicate-free and disjoint from public/frame cells.
 `PrivateBoundaryWitness.check_private_boundaryb_sound` adds the boundary-copy

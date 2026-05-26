@@ -18,6 +18,7 @@ Require Import LayoutValueWitness.
 Require Import StorageBoundsWitness.
 Require Import PaddingLayoutValidator.
 Require Import PrivateStorageWitness.
+Require Import ScalarExpansionWitness.
 Require Import PrivateBoundaryWitness.
 Require Import ScalarPromotionWitness.
 Require Import ScalarPromotionValueWitness.
@@ -362,6 +363,34 @@ Definition storage_private_access_instances_declared_obligations :=
   private_access_instances_declared_obligations.
 Definition storage_private_access_instances_declared_cell :=
   private_access_instances_declared_cell.
+Definition storage_scalar_expansion_entry :=
+  scalar_expansion_entry.
+Definition storage_scalar_expansion_event_kind :=
+  scalar_expansion_event_kind.
+Definition storage_scalar_expansion_event :=
+  scalar_expansion_event.
+Definition storage_scalar_expansion_event_mapped :=
+  scalar_expansion_event_mapped.
+Definition storage_check_scalar_expansion_event_mappedb :=
+  check_scalar_expansion_event_mappedb.
+Definition storage_check_scalar_expansion_event_mappedb_sound :=
+  check_scalar_expansion_event_mappedb_sound.
+Definition storage_scalar_expansion_events_mapped :=
+  scalar_expansion_events_mapped.
+Definition storage_check_scalar_expansion_events_mappedb :=
+  check_scalar_expansion_events_mappedb.
+Definition storage_check_scalar_expansion_events_mappedb_sound :=
+  check_scalar_expansion_events_mappedb_sound.
+Definition storage_scalar_expansion_obligations :=
+  scalar_expansion_obligations.
+Definition storage_check_scalar_expansionb :=
+  check_scalar_expansionb.
+Definition storage_check_scalar_expansionb_sound :=
+  check_scalar_expansionb_sound.
+Definition storage_scalar_expansion_event_uses_declared_private :=
+  scalar_expansion_event_uses_declared_private.
+Definition storage_scalar_expansion_events_same_key_same_private :=
+  scalar_expansion_events_same_key_same_private.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=
