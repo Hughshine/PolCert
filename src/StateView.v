@@ -146,6 +146,52 @@ Definition view_refinement
     (state_view_rel output_view)
     before after.
 
+(** A paper-facing spelling of [view_refinement].
+
+    The executable validators and composition lemmas use [view_refinement] as the
+    compact connective.  The theorem exposed at the top of a storage-aware
+    pipeline should read like the old semantic refinement theorem, with
+    [State.eq] replaced by explicit public views. *)
+Definition public_semantic_refinement
+    (input_view output_view: view)
+    (before after: PolyLang.t) : Prop :=
+  forall st_target0 st_source0 st_target_after,
+    state_view_rel input_view st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel output_view st_target_after st_source_after.
+
+Theorem public_semantic_refinement_iff :
+  forall input_view output_view before after,
+    public_semantic_refinement input_view output_view before after <->
+    view_refinement input_view output_view before after.
+Proof.
+  unfold public_semantic_refinement, view_refinement.
+  unfold Transform.relational_refinement.
+  tauto.
+Qed.
+
+Theorem view_refinement_to_public_semantic_refinement :
+  forall input_view output_view before after,
+    view_refinement input_view output_view before after ->
+    public_semantic_refinement input_view output_view before after.
+Proof.
+  intros input_view output_view before after Href.
+  apply public_semantic_refinement_iff.
+  exact Href.
+Qed.
+
+Theorem public_semantic_refinement_to_view_refinement :
+  forall input_view output_view before after,
+    public_semantic_refinement input_view output_view before after ->
+    view_refinement input_view output_view before after.
+Proof.
+  intros input_view output_view before after Href.
+  apply public_semantic_refinement_iff.
+  exact Href.
+Qed.
+
 Theorem identity_view_contains_state_eq :
   Transform.observation_contains_state_eq
     (state_view_rel identity_view).
@@ -307,6 +353,47 @@ Proof.
        family transform_params before after ok Hret Hok Hside).
 Qed.
 
+Theorem cpvtf_check_public_semantic_sound :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         transform_params before after ok,
+    mayReturn (cpvtf_check family transform_params before after) ok ->
+    ok = true ->
+    cpvtf_side_condition family transform_params before after ->
+    public_semantic_refinement
+      (cpvtf_input_view family transform_params)
+      (cpvtf_output_view family transform_params)
+      before after.
+Proof.
+  intros params family transform_params before after ok Hret Hok Hside.
+  apply view_refinement_to_public_semantic_refinement.
+  eapply cpvtf_check_sound; eauto.
+Qed.
+
+Theorem cpvtf_check_public_semantic_state_sound :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         transform_params before after ok
+         st_target0 st_source0 st_target_after,
+    mayReturn (cpvtf_check family transform_params before after) ok ->
+    ok = true ->
+    cpvtf_side_condition family transform_params before after ->
+    state_view_rel
+      (cpvtf_input_view family transform_params)
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel
+        (cpvtf_output_view family transform_params)
+        st_target_after st_source_after.
+Proof.
+  intros params family transform_params before after ok
+         st_target0 st_source0 st_target_after
+         Hret Hok Hside Hinput Hsem.
+  eapply cpvtf_check_public_semantic_sound; eauto.
+Qed.
+
 Theorem checked_parameterized_view_transform_family_pair_compose :
   forall params_first params_second
          (first: checked_parameterized_view_transform_family params_first)
@@ -336,6 +423,72 @@ Proof.
   eapply view_refinement_compose.
   - eapply (@cpvtf_check_sound params_second second); eauto.
   - eapply (@cpvtf_check_sound params_first first); eauto.
+Qed.
+
+Theorem checked_parameterized_public_semantic_family_pair_compose :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         first_params second_params before mid after first_ok second_ok,
+    mayReturn
+      (@cpvtf_check params_first first first_params before mid) first_ok ->
+    first_ok = true ->
+    @cpvtf_side_condition params_first first first_params before mid ->
+    mayReturn
+      (@cpvtf_check params_second second second_params mid after) second_ok ->
+    second_ok = true ->
+    @cpvtf_side_condition params_second second second_params mid after ->
+    public_semantic_refinement
+      (compose_view
+        (@cpvtf_input_view params_second second second_params)
+        (@cpvtf_input_view params_first first first_params))
+      (compose_view
+        (@cpvtf_output_view params_second second second_params)
+        (@cpvtf_output_view params_first first first_params))
+      before after.
+Proof.
+  intros params_first params_second first second first_params second_params
+         before mid after first_ok second_ok
+         Hfirst_ret Hfirst_ok Hfirst_side
+         Hsecond_ret Hsecond_ok Hsecond_side.
+  apply view_refinement_to_public_semantic_refinement.
+  eapply checked_parameterized_view_transform_family_pair_compose; eauto.
+Qed.
+
+Theorem checked_parameterized_public_semantic_family_pair_state_sound :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         first_params second_params before mid after first_ok second_ok
+         st_target0 st_source0 st_target_after,
+    mayReturn
+      (@cpvtf_check params_first first first_params before mid) first_ok ->
+    first_ok = true ->
+    @cpvtf_side_condition params_first first first_params before mid ->
+    mayReturn
+      (@cpvtf_check params_second second second_params mid after) second_ok ->
+    second_ok = true ->
+    @cpvtf_side_condition params_second second second_params mid after ->
+    state_view_rel
+      (compose_view
+        (@cpvtf_input_view params_second second second_params)
+        (@cpvtf_input_view params_first first first_params))
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel
+        (compose_view
+          (@cpvtf_output_view params_second second second_params)
+          (@cpvtf_output_view params_first first first_params))
+        st_target_after st_source_after.
+Proof.
+  intros params_first params_second first second first_params second_params
+         before mid after first_ok second_ok
+         st_target0 st_source0 st_target_after
+         Hfirst_ret Hfirst_ok Hfirst_side
+         Hsecond_ret Hsecond_ok Hsecond_side Hinput Hsem.
+  eapply checked_parameterized_public_semantic_family_pair_compose; eauto.
 Qed.
 
 Theorem affine_validate_identity_view_sound :

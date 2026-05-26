@@ -144,6 +144,14 @@ Definition view_included_trans :=
 Definition compose_view_monotone :=
   StateViewCore.compose_view_monotone.
 Definition view_refinement := StateViewCore.view_refinement.
+Definition public_semantic_refinement :=
+  StateViewCore.public_semantic_refinement.
+Definition public_semantic_refinement_iff :=
+  StateViewCore.public_semantic_refinement_iff.
+Definition view_refinement_to_public_semantic_refinement :=
+  StateViewCore.view_refinement_to_public_semantic_refinement.
+Definition public_semantic_refinement_to_view_refinement :=
+  StateViewCore.public_semantic_refinement_to_view_refinement.
 Definition identity_view_contains_state_eq :=
   StateViewCore.identity_view_contains_state_eq.
 Definition same_state_view_included_identity_view :=
@@ -162,6 +170,14 @@ Definition checked_view_transform_family :=
   StateViewCore.checked_view_transform_family.
 Definition checked_view_transform_family_pair_compose :=
   StateViewCore.checked_view_transform_family_pair_compose.
+Definition cpvtf_check_public_semantic_sound :=
+  StateViewCore.cpvtf_check_public_semantic_sound.
+Definition cpvtf_check_public_semantic_state_sound :=
+  StateViewCore.cpvtf_check_public_semantic_state_sound.
+Definition checked_parameterized_public_semantic_family_pair_compose :=
+  StateViewCore.checked_parameterized_public_semantic_family_pair_compose.
+Definition checked_parameterized_public_semantic_family_pair_state_sound :=
+  StateViewCore.checked_parameterized_public_semantic_family_pair_state_sound.
 Definition affine_validate_identity_view_sound :=
   StateViewCore.affine_validate_identity_view_sound.
 Definition affine_identity_view_family :=

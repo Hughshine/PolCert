@@ -25,7 +25,12 @@ carrier has also been lifted to `generic_checked_parameterized_view_transform_fa
 so validators can share the family type when their checker soundness depends on
 extra witness parameters and side conditions.  It also exposes basic inclusion
 algebra for views, so later validators can compose and weaken endpoint
-relations without unfolding them.  `ViewPipeline.v` records the common
+relations without unfolding them.  `StateView.v` also exposes a
+`public_semantic_refinement` spelling of the same endpoint: it expands the
+top-level theorem back into the familiar semantic-refinement quantifiers, with
+`State.eq` generalized to input/output public views.  This is the paper-facing
+shape; `view_refinement` is the compact connective used internally for
+composition.  `ViewPipeline.v` records the common
 composition theorem used by the storage validators.  The pattern is:
 validate the schedule/control part from `before` to a storage-neutral
 `source_view`, then compose that with a feature-specific semantic
@@ -139,6 +144,30 @@ new private target cells are hidden from the context; the visible source cells
 still agree.  The top-level theorem should not make the reader inspect the
 private-cell list, bounds proof, value-flow trace, or non-escape proof unless
 they want to know why the public-view refinement is justified.
+
+Mechanically, this means the final theorem should be presentable as:
+
+```coq
+public_semantic_refinement input_view output_view before after
+```
+
+or, fully expanded:
+
+```coq
+forall st_target0 st_source0 st_target_after,
+  state_view_rel input_view st_target0 st_source0 ->
+  instance_list_semantics after st_target0 st_target_after ->
+  exists st_source_after,
+    instance_list_semantics before st_source0 st_source_after /\
+    state_view_rel output_view st_target_after st_source_after.
+```
+
+This is intentionally isomorphic to `View.view_refinement`.  The difference is
+presentation, not proof strength: `view_refinement` is good for composition
+lemmas, while `public_semantic_refinement` is the theorem statement a reader
+should see at the top of the pipeline.  The old affine theorem is recovered by
+choosing `same_state_view`/`identity_view`, where the final public view is just
+`State.eq`.
 
 This separation is the main proof-engineering rule for the storage route:
 validators may accumulate detailed witness obligations internally, but the
