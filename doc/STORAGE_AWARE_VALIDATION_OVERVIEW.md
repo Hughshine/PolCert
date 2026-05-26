@@ -128,7 +128,15 @@ theorems for every pass ordering.  `StateView` also has a parameterized variant
 for storage passes whose checker soundness depends on extra witness parameters
 and semantic side conditions; this is the generic home for facade theorems that
 hide feature-specific contracts while still composing as public-view
-refinements.
+refinements.  `CInstrScalarStorageFamilyCompose.v` adds the first concrete
+scalar-storage composition theorem: bounded CInstr scalar privatization followed
+by bounded CInstr scalar promotion yields a composed public-view refinement,
+with both features' traces, bounds, compatibility, separation, and non-escape
+facts kept in side conditions.  This theorem currently composes the public
+facade refinements directly; a useful cleanup is to lift the parameterized
+family record itself out of the `StateView` functor, just as `generic_state_view`
+was lifted, so independently instantiated validators can also share the family
+record type.
 `StorageWitness.v` now has the analogous access-level composition hook:
 `pprog_same_instance_access_remap_compose` composes two target-to-source
 cell-relation remaps through the same intermediate access cells.  This keeps

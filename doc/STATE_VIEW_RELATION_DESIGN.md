@@ -157,7 +157,13 @@ public input view, a public output view, and a `view_refinement` theorem.  The
 CInstr scalar privatization and scalar promotion bridges now instantiate this
 family with bounded parameter records, making the design concrete for storage
 passes that need trace evidence, declared cells, bounds, compatibility, and
-non-escape side conditions.
+non-escape side conditions.  A concrete scalar-storage composition theorem now
+shows bounded scalar privatization followed by bounded scalar promotion as one
+composed public-view refinement.  The theorem composes the facade refinements
+directly, which also exposes the next abstraction cleanup: the parameterized
+family record should eventually be lifted outside the `StateView` functor so
+separately instantiated validators can share the family type, not only the view
+carrier.
 
 ## What a View Must Explain
 
