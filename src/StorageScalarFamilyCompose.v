@@ -20,6 +20,82 @@ Module Expansion := ScalarExpansionValidator PolIRs Observer.
 Module Promotion := ScalarPromotionValidator PolIRs.
 Module View := Expansion.View.
 
+Record bounded_scalar_storage_certificate
+    (exp_value promo_value: Type) := {
+  bssc_privatization_params :
+    Expansion.scalar_privatization_bounded_value_params exp_value;
+  bssc_promotion_params :
+    Promotion.scalar_promotion_bounded_compatible_non_escape_value_params
+      promo_value;
+  bssc_mid_program : PolIRs.PolyLang.t;
+}.
+
+Arguments bssc_privatization_params {exp_value promo_value} _.
+Arguments bssc_promotion_params {exp_value promo_value} _.
+Arguments bssc_mid_program {exp_value promo_value} _.
+
+Definition bounded_scalar_storage_certificate_input_view
+    {exp_value promo_value: Type}
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value)
+    : View.view :=
+  View.compose_view
+    (Promotion.scalar_promotion_bounded_compatible_non_escape_value_input_view
+      (bssc_promotion_params certificate))
+    (Expansion.scalar_privatization_bounded_value_input_view
+      (bssc_privatization_params certificate)).
+
+Definition bounded_scalar_storage_certificate_output_view
+    {exp_value promo_value: Type}
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value)
+    : View.view :=
+  View.compose_view
+    (Promotion.scalar_promotion_bounded_compatible_non_escape_value_output_view
+      (bssc_promotion_params certificate))
+    (Expansion.scalar_privatization_bounded_value_output_view
+      (bssc_privatization_params certificate)).
+
+Definition bounded_scalar_storage_certificate_accepted
+    (exp_value promo_value: Type)
+    (exp_value_eqb: exp_value -> exp_value -> bool)
+    (promo_value_eqb: promo_value -> promo_value -> bool)
+    (exp_value_eqb_sound:
+      forall left right,
+        exp_value_eqb left right = true ->
+        left = right)
+    (promo_value_eqb_sound:
+      forall left right,
+        promo_value_eqb left right = true ->
+        left = right)
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value)
+    (before after: PolIRs.PolyLang.t) : Prop :=
+  exists privatization_ok promotion_ok,
+    mayReturn
+      (View.cpvtf_check
+        (Expansion.scalar_privatization_bounded_value_family
+          exp_value exp_value_eqb exp_value_eqb_sound)
+        (bssc_privatization_params certificate)
+        before (bssc_mid_program certificate))
+      privatization_ok /\
+    privatization_ok = true /\
+    View.cpvtf_side_condition
+      (Expansion.scalar_privatization_bounded_value_family
+        exp_value exp_value_eqb exp_value_eqb_sound)
+      (bssc_privatization_params certificate)
+      before (bssc_mid_program certificate) /\
+    mayReturn
+      (View.cpvtf_check
+        (Promotion.scalar_promotion_bounded_compatible_non_escape_value_family
+          promo_value promo_value_eqb promo_value_eqb_sound)
+        (bssc_promotion_params certificate)
+        (bssc_mid_program certificate) after)
+      promotion_ok /\
+    promotion_ok = true /\
+    View.cpvtf_side_condition
+      (Promotion.scalar_promotion_bounded_compatible_non_escape_value_family
+        promo_value promo_value_eqb promo_value_eqb_sound)
+      (bssc_promotion_params certificate)
+      (bssc_mid_program certificate) after.
+
 Theorem bounded_scalar_privatization_then_scalar_promotion_public_semantic_refinement :
   forall (exp_value promo_value: Type)
          (exp_value_eqb: exp_value -> exp_value -> bool)
@@ -94,6 +170,93 @@ Proof.
   - exact Hpromotion_ret.
   - exact Hpromotion_ok.
   - exact Hpromotion_side.
+Qed.
+
+Theorem accepted_bounded_scalar_storage_certificate_public_semantic_refinement :
+  forall (exp_value promo_value: Type)
+         (exp_value_eqb: exp_value -> exp_value -> bool)
+         (promo_value_eqb: promo_value -> promo_value -> bool)
+         (exp_value_eqb_sound:
+           forall left right,
+             exp_value_eqb left right = true ->
+             left = right)
+         (promo_value_eqb_sound:
+           forall left right,
+             promo_value_eqb left right = true ->
+             left = right)
+         (certificate:
+           bounded_scalar_storage_certificate exp_value promo_value)
+         before after,
+    bounded_scalar_storage_certificate_accepted
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound
+      certificate before after ->
+    View.public_semantic_refinement
+      (bounded_scalar_storage_certificate_input_view certificate)
+      (bounded_scalar_storage_certificate_output_view certificate)
+      before after.
+Proof.
+  intros exp_value promo_value exp_value_eqb promo_value_eqb
+         exp_value_eqb_sound promo_value_eqb_sound
+         certificate before after Haccepted.
+  destruct Haccepted as [privatization_ok [promotion_ok Haccepted]].
+  destruct Haccepted as
+    [Hpriv_ret [Hpriv_ok [Hpriv_side
+     [Hpromotion_ret [Hpromotion_ok Hpromotion_side]]]]].
+  destruct certificate as
+    [privatization_params promotion_params mid].
+  simpl in *.
+  exact
+    (bounded_scalar_privatization_then_scalar_promotion_public_semantic_refinement
+       exp_value promo_value exp_value_eqb promo_value_eqb
+       exp_value_eqb_sound promo_value_eqb_sound
+       privatization_params promotion_params
+       before mid after privatization_ok promotion_ok
+       Hpriv_ret Hpriv_ok Hpriv_side
+       Hpromotion_ret Hpromotion_ok Hpromotion_side).
+Qed.
+
+Theorem accepted_bounded_scalar_storage_certificate_state_sound :
+  forall (exp_value promo_value: Type)
+         (exp_value_eqb: exp_value -> exp_value -> bool)
+         (promo_value_eqb: promo_value -> promo_value -> bool)
+         (exp_value_eqb_sound:
+           forall left right,
+             exp_value_eqb left right = true ->
+             left = right)
+         (promo_value_eqb_sound:
+           forall left right,
+             promo_value_eqb left right = true ->
+             left = right)
+         (certificate:
+           bounded_scalar_storage_certificate exp_value promo_value)
+         before after st_target0 st_source0 st_target_after,
+    bounded_scalar_storage_certificate_accepted
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound
+      certificate before after ->
+    View.state_view_rel
+      (bounded_scalar_storage_certificate_input_view certificate)
+      st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      after st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        before st_source0 st_source_after /\
+      View.state_view_rel
+        (bounded_scalar_storage_certificate_output_view certificate)
+        st_target_after st_source_after.
+Proof.
+  intros exp_value promo_value exp_value_eqb promo_value_eqb
+         exp_value_eqb_sound promo_value_eqb_sound
+         certificate before after st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply
+    (accepted_bounded_scalar_storage_certificate_public_semantic_refinement
+       exp_value promo_value exp_value_eqb promo_value_eqb
+       exp_value_eqb_sound promo_value_eqb_sound
+       certificate before after Haccepted);
+    eauto.
 Qed.
 
 End StorageScalarFamilyCompose.

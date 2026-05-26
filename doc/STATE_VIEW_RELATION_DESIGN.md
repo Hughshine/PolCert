@@ -1606,7 +1606,13 @@ a public-only facade and family,
 `scalar_privatization_bounded_value_family`, so scalar privatization/expansion
 can compose through the public semantic family interface without depending on
 CInstr.  `StorageScalarFamilyCompose.v` composes this generic expansion family
-with the generic scalar-promotion family.
+with the generic scalar-promotion family.  It also exposes a certificate-level
+wrapper, `bounded_scalar_storage_certificate_accepted`, whose theorem
+`accepted_bounded_scalar_storage_certificate_state_sound` expands the result
+back to the direct semantic-refinement quantifiers.  That wrapper is the
+intended top-surface shape for scalar storage: the certificate hides the
+intermediate program and the two family checks, while the conclusion talks only
+about input/output public views and source/target executions.
 `CInstrScalarExpansionWitness.v` then gives the first concrete instruction
 bridge: a pair of CInstr assignment semantic steps can produce one expansion
 write/value event, and paired scalar access evaluations can produce one
@@ -2254,7 +2260,11 @@ The generic bounded value route is now packaged as
 `scalar_privatization_bounded_value_family`, with
 `StorageScalarFamilyCompose.bounded_scalar_privatization_then_scalar_promotion_public_semantic_refinement`
 showing composition with generic scalar promotion under the paper-facing
-semantic endpoint.
+semantic endpoint.  The same file now adds
+`accepted_bounded_scalar_storage_certificate_public_semantic_refinement` and
+`accepted_bounded_scalar_storage_certificate_state_sound`, which are one layer
+closer to the final theorem expected in the paper: an accepted scalar-storage
+certificate implies the direct public-view semantic refinement statement.
 The value-flow checker does not yet derive values from C expression semantics;
 it reduces that remaining obligation to producing the finite aligned value
 trace.
