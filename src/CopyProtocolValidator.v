@@ -12,6 +12,7 @@ Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
 Require Import CopyMappingWitness.
 Require Import CopyProtocolValueWitness.
+Require Import StorageCompatibilityWitness.
 Require Import StorageBoundsWitness.
 
 Import ListNotations.
@@ -154,6 +155,33 @@ Record copy_protocol_commit_mapping_bounded_value_view_contract
       mapping trace value_trace source_view after;
   cpcmbvvc_commit_bounds :
     storage_bounds_obligations commit_bounds expected_commit_targets;
+}.
+
+Record copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (expected_commit_targets: list MemCell)
+    (mapping: copy_cell_mapping)
+    (trace: list copy_event)
+    (value_trace: copy_value_trace value)
+    (public_cells local_cells: list MemCell)
+    (public_specs local_specs: list storage_spec)
+    (commit_bounds public_bounds local_bounds: list array_bounds)
+    (source_view after: PolyLang.t) : Prop := {
+  cpdbccmvvc_base :
+    copy_protocol_commit_mapping_bounded_value_view_contract
+      value input_view output_view expected_commit_targets commit_bounds
+      mapping trace value_trace source_view after;
+  cpdbccmvvc_mapping_declared :
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells;
+  cpdbccmvvc_storage_compatible :
+    storage_compatibility_obligations
+      mapping public_specs local_specs;
+  cpdbccmvvc_public_bounds :
+    storage_bounds_obligations public_bounds public_cells;
+  cpdbccmvvc_local_bounds :
+    storage_bounds_obligations local_bounds local_cells;
 }.
 
 Definition copy_pipeline_final_view
@@ -391,6 +419,75 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_copy_protocol_declared_bounded_compatible_commit_mapping_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view expected_commit_targets
+         mapping trace value_trace
+         public_cells local_cells public_specs local_specs
+         commit_bounds public_bounds local_bounds
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_copy_source_view before source_view) ok ->
+    ok = true ->
+    check_copy_protocol_wfb trace = true ->
+    check_copy_commit_coverb expected_commit_targets trace = true ->
+    check_copy_mappingb mapping trace = true ->
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    check_copy_value_traceb value_eqb value_trace = true ->
+    check_storage_compatibilityb
+      mapping public_specs local_specs = true ->
+    check_storage_boundsb commit_bounds expected_commit_targets = true ->
+    check_storage_boundsb public_bounds public_cells = true ->
+    check_storage_boundsb local_bounds local_cells = true ->
+    copy_source_view_refines_view
+      input_view output_view source_view after ->
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after /\
+    View.view_refinement
+      input_view
+      (copy_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         before source_view after ok Hvalue_eqb Hret Hok Hprotocol
+         Hcommit Hmapping Hdeclared Hvalue Hcompatible Hcommit_bounds
+         Hpublic_bounds Hlocal_bounds Hcopy_semantics.
+  pose proof
+    (checked_copy_protocol_commit_mapping_bounded_value_view_correct
+       value value_eqb input_view output_view expected_commit_targets
+       commit_bounds mapping trace value_trace before source_view after ok
+       Hvalue_eqb Hret Hok Hprotocol Hcommit Hmapping Hvalue
+       Hcommit_bounds Hcopy_semantics)
+    as [Hbase Hview].
+  pose proof
+    (check_copy_mapping_declarationb_sound
+       mapping public_cells local_cells Hdeclared)
+    as Hdeclared_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       mapping public_specs local_specs Hcompatible)
+    as Hcompatible_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       public_bounds public_cells Hpublic_bounds)
+    as Hpublic_bounds_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       local_bounds local_cells Hlocal_bounds)
+    as Hlocal_bounds_obligations.
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
 Theorem copy_protocol_expected_commit_target_within_bounds :
   forall (value: Type) input_view output_view
          expected_commit_targets commit_bounds mapping trace value_trace
@@ -428,6 +525,52 @@ Proof.
   - exact Hbounds.
   - apply (proj2 (Hcover cell)).
     exact Hcommitted.
+Qed.
+
+Theorem copy_protocol_mapping_public_within_bounds :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after cell,
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after ->
+    In cell (copy_mapping_publics mapping) ->
+    cell_within_declared_bounds public_bounds cell.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after cell Hcontract Hpublic.
+  destruct Hcontract as [_ Hdeclared _ Hpublic_bounds _].
+  eapply storage_bounds_cell_within.
+  - exact Hpublic_bounds.
+  - eapply cmd_mapping_publics_declared; eauto.
+Qed.
+
+Theorem copy_protocol_mapping_local_within_bounds :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after cell,
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after ->
+    In cell (copy_mapping_locals mapping) ->
+    cell_within_declared_bounds local_bounds cell.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after cell Hcontract Hlocal.
+  destruct Hcontract as [_ Hdeclared _ _ Hlocal_bounds].
+  eapply storage_bounds_cell_within.
+  - exact Hlocal_bounds.
+  - eapply cmd_mapping_locals_declared; eauto.
 Qed.
 
 Theorem checked_copy_protocol_commits_nodup :
