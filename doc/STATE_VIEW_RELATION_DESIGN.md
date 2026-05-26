@@ -192,7 +192,15 @@ passes that need trace evidence, declared cells, bounds, compatibility, and
 non-escape side conditions.  A concrete scalar-storage composition theorem now
 shows bounded scalar privatization followed by bounded scalar promotion as one
 composed public-view refinement through the generic parameterized family
-composition hook.  The scratchpad/packing route now follows the same rule:
+composition hook, and now also exposes a `public_semantic_refinement` facade for
+the same composed endpoint.  The generic private-storage layer now follows the same
+discipline below the CInstr wrapper:
+`PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`
+packages local private use-def, boundary copy-in/copy-out, boundary values,
+storage compatibility, private bounds, and non-escape, while
+`StoragePrivateFamilyCompose.bounded_private_storage_then_scalar_promotion_public_semantic_refinement`
+states the composed endpoint as `public_semantic_refinement`.  The
+scratchpad/packing route now follows the same rule:
 `ScratchpadCopyValidator` exposes a public-only facade for the strongest
 bounded/fully-declared/non-escape copy theorem and packages it as
 `scratchpad_copy_bounded_non_escape_family`, while
@@ -2230,8 +2238,17 @@ private-erasure theorem.
 `checked_boundary_private_unique_compatible_value_expansion_view_correct` adds
 boundary storage compatibility for the same copy-in/copy-out pairs: public and
 private cells must both have finite storage specs, and paired specs must agree
-on size and alignment.  Non-escape, deriving those specs from C types, and full
-instruction-derived value-simulation checkers are future work.
+on size and alignment.  The strongest generic private-storage route now also
+has a public-only facade:
+`checked_bounded_declared_boundary_private_unique_compatible_non_escape_value_expansion_public_refinement`
+adds declared private trace coverage, private bounds, and non-escape, then
+projects away the returned contract.  Its parameterized family,
+`private_bounded_declared_boundary_unique_compatible_non_escape_value_family`,
+is the generic privatization/storage-expansion counterpart to the CInstr scalar
+family: it can compose with later passes through `public_semantic_refinement`
+while keeping local use-def, copy-in/copy-out, value, compatibility, bounds,
+and non-escape details as side conditions.  Deriving storage specs from C types
+and full instruction-derived value-simulation checkers are still future work.
 
 `StateObservation.compose_cell_view` now composes these public views when the
 two passes agree on the shared intermediate public cells:

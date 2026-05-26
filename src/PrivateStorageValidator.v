@@ -858,6 +858,214 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_bounded_declared_boundary_private_unique_compatible_non_escape_value_expansion_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         hidden_cells private_cells escaped_cells public_liveins public_liveouts
+         copyins copyouts copyin_values copyout_values
+         public_specs private_specs bounds
+         trace before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (check_private_source_view before source_view) ok ->
+    ok = true ->
+    Witness.check_private_declared_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    check_private_boundary_private_uniqueb copyins copyouts = true ->
+    check_private_boundary_valueb
+      value_eqb copyins copyouts copyin_values copyout_values = true ->
+    check_storage_compatibilityb
+      (private_boundary_storage_mapping copyins)
+      public_specs private_specs = true ->
+    check_storage_compatibilityb
+      (private_boundary_storage_mapping copyouts)
+      public_specs private_specs = true ->
+    check_private_non_escapeb private_cells escaped_cells = true ->
+    check_storage_boundsb bounds private_cells = true ->
+    private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    View.view_refinement
+      (private_erasure_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      (private_pipeline_final_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      before after.
+Proof.
+  intros value value_eqb
+         hidden_cells private_cells escaped_cells public_liveins public_liveouts
+         copyins copyouts copyin_values copyout_values
+         public_specs private_specs bounds
+         trace before source_view after ok
+         Hvalue_eqb Hret Hok Hdeclared_local Hboundary Hunique
+         Hboundary_values Hcopyins_storage Hcopyouts_storage
+         Hnon_escape Hbounds Hprivate.
+  pose proof
+    (checked_bounded_declared_boundary_private_unique_compatible_non_escape_value_expansion_view_correct
+       value value_eqb hidden_cells private_cells escaped_cells
+       public_liveins public_liveouts copyins copyouts
+       copyin_values copyout_values public_specs private_specs bounds
+       trace before source_view after ok
+       Hvalue_eqb Hret Hok Hdeclared_local Hboundary Hunique
+       Hboundary_values Hcopyins_storage Hcopyouts_storage
+       Hnon_escape Hbounds Hprivate)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+    (value: Type) := {
+  pbdbucnevp_hidden_cells : list MemCell;
+  pbdbucnevp_private_cells : list MemCell;
+  pbdbucnevp_escaped_cells : list MemCell;
+  pbdbucnevp_public_liveins : list MemCell;
+  pbdbucnevp_public_liveouts : list MemCell;
+  pbdbucnevp_copyins : list private_boundary_pair;
+  pbdbucnevp_copyouts : list private_boundary_pair;
+  pbdbucnevp_copyin_values : list (private_boundary_value_entry value);
+  pbdbucnevp_copyout_values : list (private_boundary_value_entry value);
+  pbdbucnevp_public_specs : list storage_spec;
+  pbdbucnevp_private_specs : list storage_spec;
+  pbdbucnevp_bounds : list array_bounds;
+  pbdbucnevp_trace : list private_event;
+  pbdbucnevp_source_view : PolyLang.t;
+}.
+
+Definition private_bounded_declared_boundary_unique_compatible_non_escape_value_input_view
+    {value: Type}
+    (params:
+      private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+        value) : View.view :=
+  private_erasure_view
+    (Witness.hidden_identity_cell_view (pbdbucnevp_hidden_cells value params)).
+
+Definition private_bounded_declared_boundary_unique_compatible_non_escape_value_output_view
+    {value: Type}
+    (params:
+      private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+        value) : View.view :=
+  private_pipeline_final_view
+    (Witness.hidden_identity_cell_view (pbdbucnevp_hidden_cells value params)).
+
+Definition private_bounded_declared_boundary_unique_compatible_non_escape_value_check
+    {value: Type}
+    (params:
+      private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+        value)
+    (before after: PolyLang.t) : imp bool :=
+  check_private_source_view before (pbdbucnevp_source_view value params).
+
+Definition private_bounded_declared_boundary_unique_compatible_non_escape_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params:
+      private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+        value)
+    (before after: PolyLang.t) : Prop :=
+  Witness.check_private_declared_local_obligationsb
+    (pbdbucnevp_hidden_cells value params)
+    (pbdbucnevp_private_cells value params)
+    (pbdbucnevp_trace value params) = true /\
+  check_private_boundaryb
+    (pbdbucnevp_private_cells value params)
+    (pbdbucnevp_public_liveins value params)
+    (pbdbucnevp_public_liveouts value params)
+    (pbdbucnevp_copyins value params)
+    (pbdbucnevp_copyouts value params) = true /\
+  check_private_boundary_private_uniqueb
+    (pbdbucnevp_copyins value params)
+    (pbdbucnevp_copyouts value params) = true /\
+  check_private_boundary_valueb
+    value_eqb
+    (pbdbucnevp_copyins value params)
+    (pbdbucnevp_copyouts value params)
+    (pbdbucnevp_copyin_values value params)
+    (pbdbucnevp_copyout_values value params) = true /\
+  check_storage_compatibilityb
+    (private_boundary_storage_mapping (pbdbucnevp_copyins value params))
+    (pbdbucnevp_public_specs value params)
+    (pbdbucnevp_private_specs value params) = true /\
+  check_storage_compatibilityb
+    (private_boundary_storage_mapping (pbdbucnevp_copyouts value params))
+    (pbdbucnevp_public_specs value params)
+    (pbdbucnevp_private_specs value params) = true /\
+  check_private_non_escapeb
+    (pbdbucnevp_private_cells value params)
+    (pbdbucnevp_escaped_cells value params) = true /\
+  check_storage_boundsb
+    (pbdbucnevp_bounds value params)
+    (pbdbucnevp_private_cells value params) = true /\
+  private_source_view_refines_view
+    (Witness.hidden_identity_cell_view
+      (pbdbucnevp_hidden_cells value params))
+    (pbdbucnevp_source_view value params)
+    after.
+
+Theorem private_bounded_declared_boundary_unique_compatible_non_escape_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (private_bounded_declared_boundary_unique_compatible_non_escape_value_check
+        params before after)
+      ok ->
+    ok = true ->
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (private_bounded_declared_boundary_unique_compatible_non_escape_value_input_view
+        params)
+      (private_bounded_declared_boundary_unique_compatible_non_escape_value_output_view
+        params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [hidden_cells private_cells escaped_cells public_liveins public_liveouts
+     copyins copyouts copyin_values copyout_values public_specs private_specs
+     bounds trace source_view].
+  simpl in *.
+  destruct Hside as [Hdeclared_local Hside].
+  destruct Hside as [Hboundary Hside].
+  destruct Hside as [Hunique Hside].
+  destruct Hside as [Hboundary_values Hside].
+  destruct Hside as [Hcopyins_storage Hside].
+  destruct Hside as [Hcopyouts_storage Hside].
+  destruct Hside as [Hnon_escape Hside].
+  destruct Hside as [Hbounds Hprivate].
+  eapply
+    checked_bounded_declared_boundary_private_unique_compatible_non_escape_value_expansion_public_refinement;
+    eauto.
+Qed.
+
+Definition private_bounded_declared_boundary_unique_compatible_non_escape_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (private_bounded_declared_boundary_unique_compatible_non_escape_value_params
+          value) := {|
+  generic_cpvtf_input_view :=
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_input_view;
+  generic_cpvtf_output_view :=
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_output_view;
+  generic_cpvtf_check :=
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_check;
+  generic_cpvtf_side_condition :=
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_side_condition
+      value_eqb;
+  generic_cpvtf_check_sound :=
+    private_bounded_declared_boundary_unique_compatible_non_escape_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem private_declared_trace_cell_within_bounds :
   forall (value: Type)
          public_view
