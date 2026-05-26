@@ -1197,6 +1197,10 @@ Definition storage_reduction_private_accumulator_within_bounds :=
   ReductionMergeCore.reduction_private_accumulator_within_bounds.
 Definition storage_reduction_merged_accumulator_within_bounds :=
   ReductionMergeCore.reduction_merged_accumulator_within_bounds.
+Definition storage_reduction_private_accumulator_not_escaped :=
+  ReductionMergeCore.reduction_private_accumulator_not_escaped.
+Definition storage_reduction_merged_accumulator_not_escaped :=
+  ReductionMergeCore.reduction_merged_accumulator_not_escaped.
 Definition storage_phase_step := phase_step.
 Definition storage_phase_cell_value := phase_cell_value.
 Definition storage_phase_value_step := phase_value_step.
