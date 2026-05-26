@@ -6,10 +6,10 @@ Require Import StateObservation.
 
 (** Composition witness for concrete CInstr scalar-storage families.
 
-    This theorem composes two public-refinement facade instances: bounded scalar
-    privatization followed by bounded scalar promotion.  It deliberately exposes
-    only composed public views, not the internal scalar-expansion or promotion
-    contract records. *)
+    This theorem composes two parameterized public-refinement family instances:
+    bounded scalar privatization followed by bounded scalar promotion.  It
+    deliberately exposes only composed public views, not the internal
+    scalar-expansion or promotion contract records. *)
 
 Module CInstrScalarStorageFamilyCompose
     (PolIRs: POLIRS)
@@ -41,12 +41,18 @@ Theorem bounded_privatization_then_promotion_public_refinement :
       promotion_params mid after ->
     View.view_refinement
       (View.compose_view
-        (Promotion.cscalar_promotion_bounded_input_view promotion_params)
-        (Expansion.cscalar_privatization_bounded_input_view
+        (View.cpvtf_input_view
+          Promotion.cscalar_promotion_bounded_family
+          promotion_params)
+        (View.cpvtf_input_view
+          Expansion.cscalar_privatization_bounded_family
           privatization_params))
       (View.compose_view
-        (Promotion.cscalar_promotion_bounded_output_view promotion_params)
-        (Expansion.cscalar_privatization_bounded_output_view
+        (View.cpvtf_output_view
+          Promotion.cscalar_promotion_bounded_family
+          promotion_params)
+        (View.cpvtf_output_view
+          Expansion.cscalar_privatization_bounded_family
           privatization_params))
       before after.
 Proof.
@@ -54,19 +60,13 @@ Proof.
          privatization_ok promotion_ok
          Hpriv_ret Hpriv_ok Hpriv_side
          Hpromo_ret Hpromo_ok Hpromo_side.
-  pose proof
-    (Expansion.cscalar_privatization_bounded_family_sound
-       privatization_params before mid privatization_ok
-       Hpriv_ret Hpriv_ok Hpriv_side)
-    as Hpriv.
-  pose proof
-    (Promotion.cscalar_promotion_bounded_family_sound
-       promotion_params mid after promotion_ok
-       Hpromo_ret Hpromo_ok Hpromo_side)
-    as Hpromo.
-  eapply View.view_refinement_compose.
-  - exact Hpromo.
-  - exact Hpriv.
+  eapply View.checked_parameterized_view_transform_family_pair_compose.
+  - exact Hpriv_ret.
+  - exact Hpriv_ok.
+  - exact Hpriv_side.
+  - exact Hpromo_ret.
+  - exact Hpromo_ok.
+  - exact Hpromo_side.
 Qed.
 
 End CInstrScalarStorageFamilyCompose.

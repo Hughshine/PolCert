@@ -8,6 +8,7 @@ Require Import PrivateStorageWitness.
 Require Import ScalarPromotionValidator.
 Require Import ScalarPromotionValueWitness.
 Require Import ScalarPromotionWitness.
+Require Import StateView.
 Require Import StorageBoundsWitness.
 Require Import StorageCompatibilityWitness.
 Require Import Values.
@@ -413,15 +414,15 @@ Qed.
 Definition cscalar_promotion_bounded_family
     : View.checked_parameterized_view_transform_family
         cscalar_promotion_bounded_params := {|
-  View.cpvtf_input_view :=
+  generic_cpvtf_input_view :=
     cscalar_promotion_bounded_input_view;
-  View.cpvtf_output_view :=
+  generic_cpvtf_output_view :=
     cscalar_promotion_bounded_output_view;
-  View.cpvtf_check :=
+  generic_cpvtf_check :=
     cscalar_promotion_bounded_check;
-  View.cpvtf_side_condition :=
+  generic_cpvtf_side_condition :=
     cscalar_promotion_bounded_side_condition;
-  View.cpvtf_check_sound :=
+  generic_cpvtf_check_sound :=
     cscalar_promotion_bounded_family_sound;
 |}.
 

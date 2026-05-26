@@ -18,12 +18,15 @@ This is a design document.  It is not a claim that the view relation is already
 mechanized.
 
 Current mechanization status: `StateView.v` contains the first-class endpoint
-view relation.  Its carrier is now the top-level `generic_state_view`, not a
-functor-local record, so independently instantiated storage validators can
-share the same view type through the facade.  It also exposes basic inclusion
+view relation.  Its view carrier is now the top-level `generic_state_view`, not
+a functor-local record, so independently instantiated storage validators can
+share the same view type through the facade.  Its parameterized transform-family
+carrier has also been lifted to `generic_checked_parameterized_view_transform_family`,
+so validators can share the family type when their checker soundness depends on
+extra witness parameters and side conditions.  It also exposes basic inclusion
 algebra for views, so later validators can compose and weaken endpoint
-relations without unfolding them.  `ViewPipeline.v` records the
-common composition theorem used by the storage validators.  The pattern is:
+relations without unfolding them.  `ViewPipeline.v` records the common
+composition theorem used by the storage validators.  The pattern is:
 validate the schedule/control part from `before` to a storage-neutral
 `source_view`, then compose that with a feature-specific semantic
 `view_refinement` from `source_view` to `after` plus finite witness obligations
@@ -159,11 +162,8 @@ family with bounded parameter records, making the design concrete for storage
 passes that need trace evidence, declared cells, bounds, compatibility, and
 non-escape side conditions.  A concrete scalar-storage composition theorem now
 shows bounded scalar privatization followed by bounded scalar promotion as one
-composed public-view refinement.  The theorem composes the facade refinements
-directly, which also exposes the next abstraction cleanup: the parameterized
-family record should eventually be lifted outside the `StateView` functor so
-separately instantiated validators can share the family type, not only the view
-carrier.
+composed public-view refinement through the generic parameterized family
+composition hook.
 
 ## What a View Must Explain
 

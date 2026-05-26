@@ -10,6 +10,7 @@ Require Import PrivateStorageWitness.
 Require Import ScalarExpansionValidator.
 Require Import ScalarExpansionValueWitness.
 Require Import ScalarExpansionWitness.
+Require Import StateView.
 Require Import StateObservation.
 Require Import StorageBoundsWitness.
 Require Import StorageCompatibilityWitness.
@@ -586,15 +587,15 @@ Qed.
 Definition cscalar_privatization_bounded_family
     : View.checked_parameterized_view_transform_family
         cscalar_privatization_bounded_params := {|
-  View.cpvtf_input_view :=
+  generic_cpvtf_input_view :=
     cscalar_privatization_bounded_input_view;
-  View.cpvtf_output_view :=
+  generic_cpvtf_output_view :=
     cscalar_privatization_bounded_output_view;
-  View.cpvtf_check :=
+  generic_cpvtf_check :=
     cscalar_privatization_bounded_check;
-  View.cpvtf_side_condition :=
+  generic_cpvtf_side_condition :=
     cscalar_privatization_bounded_side_condition;
-  View.cpvtf_check_sound :=
+  generic_cpvtf_check_sound :=
     cscalar_privatization_bounded_family_sound;
 |}.
 

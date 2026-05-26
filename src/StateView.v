@@ -37,6 +37,38 @@ Record generic_state_view (state: Type) := {
 
 Arguments generic_state_view_rel {state} _ _ _.
 
+Record generic_checked_parameterized_view_transform_family
+    (state program params: Type)
+    (view_refinement:
+      generic_state_view state -> generic_state_view state ->
+      program -> program -> Prop) := {
+  generic_cpvtf_input_view : params -> generic_state_view state;
+  generic_cpvtf_output_view : params -> generic_state_view state;
+  generic_cpvtf_check : params -> program -> program -> imp bool;
+  generic_cpvtf_side_condition : params -> program -> program -> Prop;
+  generic_cpvtf_check_sound :
+    forall transform_params before after ok,
+      mayReturn
+        (generic_cpvtf_check transform_params before after) ok ->
+      ok = true ->
+      generic_cpvtf_side_condition transform_params before after ->
+      view_refinement
+        (generic_cpvtf_input_view transform_params)
+        (generic_cpvtf_output_view transform_params)
+        before after;
+}.
+
+Arguments generic_cpvtf_input_view
+  {state program params view_refinement} _ _.
+Arguments generic_cpvtf_output_view
+  {state program params view_refinement} _ _.
+Arguments generic_cpvtf_check
+  {state program params view_refinement} _ _ _ _.
+Arguments generic_cpvtf_side_condition
+  {state program params view_refinement} _ _ _ _.
+Arguments generic_cpvtf_check_sound
+  {state program params view_refinement} _ _ _ _ _ _ _ _.
+
 Module StateView (PolIRs: POLIRS).
 
 Module State := PolIRs.State.
@@ -233,21 +265,47 @@ Proof.
   - eapply cvtf_check_sound; eauto.
 Qed.
 
-Record checked_parameterized_view_transform_family (params: Type) := {
-  cpvtf_input_view : params -> view;
-  cpvtf_output_view : params -> view;
-  cpvtf_check : params -> PolyLang.t -> PolyLang.t -> imp bool;
-  cpvtf_side_condition : params -> PolyLang.t -> PolyLang.t -> Prop;
-  cpvtf_check_sound :
-    forall transform_params before after ok,
-      mayReturn (cpvtf_check transform_params before after) ok ->
-      ok = true ->
-      cpvtf_side_condition transform_params before after ->
-      view_refinement
-        (cpvtf_input_view transform_params)
-        (cpvtf_output_view transform_params)
-        before after;
-}.
+Definition checked_parameterized_view_transform_family (params: Type) :=
+  generic_checked_parameterized_view_transform_family
+    State.t PolyLang.t params view_refinement.
+
+Definition cpvtf_input_view {params}
+    (family: checked_parameterized_view_transform_family params)
+    (transform_params: params) : view :=
+  generic_cpvtf_input_view family transform_params.
+
+Definition cpvtf_output_view {params}
+    (family: checked_parameterized_view_transform_family params)
+    (transform_params: params) : view :=
+  generic_cpvtf_output_view family transform_params.
+
+Definition cpvtf_check {params}
+    (family: checked_parameterized_view_transform_family params)
+    (transform_params: params) (before after: PolyLang.t) : imp bool :=
+  generic_cpvtf_check family transform_params before after.
+
+Definition cpvtf_side_condition {params}
+    (family: checked_parameterized_view_transform_family params)
+    (transform_params: params) (before after: PolyLang.t) : Prop :=
+  generic_cpvtf_side_condition family transform_params before after.
+
+Theorem cpvtf_check_sound :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         transform_params before after ok,
+    mayReturn (cpvtf_check family transform_params before after) ok ->
+    ok = true ->
+    cpvtf_side_condition family transform_params before after ->
+    view_refinement
+      (cpvtf_input_view family transform_params)
+      (cpvtf_output_view family transform_params)
+      before after.
+Proof.
+  intros params family transform_params before after ok Hret Hok Hside.
+  exact
+    (generic_cpvtf_check_sound
+       family transform_params before after ok Hret Hok Hside).
+Qed.
 
 Theorem checked_parameterized_view_transform_family_pair_compose :
   forall params_first params_second

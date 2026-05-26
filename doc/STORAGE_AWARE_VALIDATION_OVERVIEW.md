@@ -113,13 +113,15 @@ Related skeletons include
 `PhaseProjectionWitness.v`,
 `PhaseSeparationValidator.v`, and
 `CStateObservation.v`.
-`StateView.v` now uses a top-level `generic_state_view` carrier so independently
-instantiated validators can share one facade-level view type instead of
-exporting incompatible functor-local records.  `ViewPipeline.v` factors out the
-repeated composition pattern shared by most storage validators: the existing
-general validator proves `before -> source_view`, while the feature-specific
-pass supplies finite witness obligations plus an explicit semantic
-`view_refinement` from `source_view` to the storage-changing target.
+`StateView.v` now uses top-level `generic_state_view` and
+`generic_checked_parameterized_view_transform_family` carriers so independently
+instantiated validators can share both the facade-level view type and the
+parameterized family type instead of exporting incompatible functor-local
+records.  `ViewPipeline.v` factors out the repeated composition pattern shared
+by most storage validators: the existing general validator proves
+`before -> source_view`, while the feature-specific pass supplies finite witness
+obligations plus an explicit semantic `view_refinement` from `source_view` to
+the storage-changing target.
 `TransformContract.checked_relational_transform_family_pair_compose` and
 `StateView.checked_view_transform_family_pair_compose` are the current generic
 two-pass composition hooks: two checked passes compose by composing their input
@@ -132,11 +134,9 @@ refinements.  `CInstrScalarStorageFamilyCompose.v` adds the first concrete
 scalar-storage composition theorem: bounded CInstr scalar privatization followed
 by bounded CInstr scalar promotion yields a composed public-view refinement,
 with both features' traces, bounds, compatibility, separation, and non-escape
-facts kept in side conditions.  This theorem currently composes the public
-facade refinements directly; a useful cleanup is to lift the parameterized
-family record itself out of the `StateView` functor, just as `generic_state_view`
-was lifted, so independently instantiated validators can also share the family
-record type.
+facts kept in side conditions.  This theorem now goes through the generic
+parameterized family composition hook, which is the intended shape for future
+storage pass sequences.
 `StorageWitness.v` now has the analogous access-level composition hook:
 `pprog_same_instance_access_remap_compose` composes two target-to-source
 cell-relation remaps through the same intermediate access cells.  This keeps
