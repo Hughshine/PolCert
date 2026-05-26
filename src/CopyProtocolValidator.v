@@ -12,6 +12,7 @@ Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
 Require Import CopyMappingWitness.
 Require Import CopyProtocolValueWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -136,6 +137,23 @@ Record copy_protocol_commit_mapping_value_view_contract
   cpcmvvc_semantic_refinement :
     copy_source_view_refines_view
       input_view output_view source_view after;
+}.
+
+Record copy_protocol_commit_mapping_bounded_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (expected_commit_targets: list MemCell)
+    (commit_bounds: list array_bounds)
+    (mapping: copy_cell_mapping)
+    (trace: list copy_event)
+    (value_trace: copy_value_trace value)
+    (source_view after: PolyLang.t) : Prop := {
+  cpcmbvvc_base :
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after;
+  cpcmbvvc_commit_bounds :
+    storage_bounds_obligations commit_bounds expected_commit_targets;
 }.
 
 Definition copy_pipeline_final_view
@@ -327,6 +345,89 @@ Proof.
       (Pipeline.compose_checked_source_view
          input_view output_view before source_view after ok);
       assumption.
+Qed.
+
+Theorem checked_copy_protocol_commit_mapping_bounded_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view expected_commit_targets commit_bounds
+         mapping trace value_trace before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_copy_source_view before source_view) ok ->
+    ok = true ->
+    check_copy_protocol_wfb trace = true ->
+    check_copy_commit_coverb expected_commit_targets trace = true ->
+    check_copy_mappingb mapping trace = true ->
+    check_copy_value_traceb value_eqb value_trace = true ->
+    check_storage_boundsb commit_bounds expected_commit_targets = true ->
+    copy_source_view_refines_view
+      input_view output_view source_view after ->
+    copy_protocol_commit_mapping_bounded_value_view_contract
+      value input_view output_view expected_commit_targets commit_bounds
+      mapping trace value_trace source_view after /\
+    View.view_refinement
+      input_view
+      (copy_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view expected_commit_targets
+         commit_bounds mapping trace value_trace before source_view after ok
+         Hvalue_eqb Hret Hok Hprotocol Hcommit Hmapping Hvalue Hbounds
+         Hcopy_semantics.
+  pose proof
+    (checked_copy_protocol_commit_mapping_value_view_correct
+       value value_eqb input_view output_view expected_commit_targets
+       mapping trace value_trace before source_view after ok
+       Hvalue_eqb Hret Hok Hprotocol Hcommit Hmapping Hvalue
+       Hcopy_semantics)
+    as [Hbase Hview].
+  pose proof
+    (check_storage_boundsb_sound
+       commit_bounds expected_commit_targets Hbounds)
+    as Hbounds_obligations.
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem copy_protocol_expected_commit_target_within_bounds :
+  forall (value: Type) input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after cell,
+    copy_protocol_commit_mapping_bounded_value_view_contract
+      value input_view output_view expected_commit_targets commit_bounds
+      mapping trace value_trace source_view after ->
+    In cell expected_commit_targets ->
+    cell_within_declared_bounds commit_bounds cell.
+Proof.
+  intros value input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within; eauto.
+Qed.
+
+Theorem copy_protocol_committed_target_within_bounds :
+  forall (value: Type) input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after cell,
+    copy_protocol_commit_mapping_bounded_value_view_contract
+      value input_view output_view expected_commit_targets commit_bounds
+      mapping trace value_trace source_view after ->
+    In cell (copy_protocol_committed_targets trace) ->
+    cell_within_declared_bounds commit_bounds cell.
+Proof.
+  intros value input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after cell Hcontract Hcommitted.
+  destruct Hcontract as [Hbase Hbounds].
+  destruct Hbase as [_ Hcommit _ _ _].
+  destruct Hcommit as [[_ Hcover]].
+  eapply storage_bounds_cell_within.
+  - exact Hbounds.
+  - apply (proj2 (Hcover cell)).
+    exact Hcommitted.
 Qed.
 
 Theorem checked_copy_protocol_commits_nodup :
