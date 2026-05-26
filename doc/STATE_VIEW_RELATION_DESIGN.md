@@ -1394,7 +1394,9 @@ source logical write they replace, and expansion reads must observe the current
 private value and match the represented source read.  The
 `checked_value_pure_scalar_privatization_correct` wrapper keeps the same
 public-view refinement conclusion while making this value-flow evidence an
-explicit checked premise.
+explicit checked premise.  The bounded value wrapper keeps the same conclusion
+and packages bounds, source/private storage compatibility, and non-escape
+evidence with the value-flow checker.
 
 ### Reduction Privatization
 
