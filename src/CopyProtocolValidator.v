@@ -488,6 +488,199 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_copy_protocol_declared_bounded_compatible_commit_mapping_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view expected_commit_targets
+         mapping trace value_trace
+         public_cells local_cells public_specs local_specs
+         commit_bounds public_bounds local_bounds
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_copy_source_view before source_view) ok ->
+    ok = true ->
+    check_copy_protocol_wfb trace = true ->
+    check_copy_commit_coverb expected_commit_targets trace = true ->
+    check_copy_mappingb mapping trace = true ->
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    check_copy_value_traceb value_eqb value_trace = true ->
+    check_storage_compatibilityb
+      mapping public_specs local_specs = true ->
+    check_storage_boundsb commit_bounds expected_commit_targets = true ->
+    check_storage_boundsb public_bounds public_cells = true ->
+    check_storage_boundsb local_bounds local_cells = true ->
+    copy_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (copy_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         before source_view after ok Hvalue_eqb Hret Hok Hprotocol
+         Hcommit Hmapping Hdeclared Hvalue Hcompatible Hcommit_bounds
+         Hpublic_bounds Hlocal_bounds Hcopy_semantics.
+  pose proof
+    (checked_copy_protocol_declared_bounded_compatible_commit_mapping_value_view_correct
+       value value_eqb input_view output_view expected_commit_targets
+       mapping trace value_trace public_cells local_cells
+       public_specs local_specs commit_bounds public_bounds local_bounds
+       before source_view after ok Hvalue_eqb Hret Hok Hprotocol
+       Hcommit Hmapping Hdeclared Hvalue Hcompatible Hcommit_bounds
+       Hpublic_bounds Hlocal_bounds Hcopy_semantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+    (value: Type) := {
+  cpdbccmvp_input_view : View.view;
+  cpdbccmvp_output_view : View.view;
+  cpdbccmvp_expected_commit_targets : list MemCell;
+  cpdbccmvp_mapping : copy_cell_mapping;
+  cpdbccmvp_trace : list copy_event;
+  cpdbccmvp_value_trace : copy_value_trace value;
+  cpdbccmvp_public_cells : list MemCell;
+  cpdbccmvp_local_cells : list MemCell;
+  cpdbccmvp_public_specs : list storage_spec;
+  cpdbccmvp_local_specs : list storage_spec;
+  cpdbccmvp_commit_bounds : list array_bounds;
+  cpdbccmvp_public_bounds : list array_bounds;
+  cpdbccmvp_local_bounds : list array_bounds;
+  cpdbccmvp_source_view : PolyLang.t;
+}.
+
+Definition copy_protocol_declared_bounded_compatible_commit_mapping_value_input_view
+    {value: Type}
+    (params:
+      copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+        value) : View.view :=
+  cpdbccmvp_input_view value params.
+
+Definition copy_protocol_declared_bounded_compatible_commit_mapping_value_output_view
+    {value: Type}
+    (params:
+      copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+        value) : View.view :=
+  copy_pipeline_final_view (cpdbccmvp_output_view value params).
+
+Definition copy_protocol_declared_bounded_compatible_commit_mapping_value_check
+    {value: Type}
+    (params:
+      copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+        value)
+    (before after: PolyLang.t) : imp bool :=
+  check_copy_source_view before (cpdbccmvp_source_view value params).
+
+Definition copy_protocol_declared_bounded_compatible_commit_mapping_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params:
+      copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+        value)
+    (before after: PolyLang.t) : Prop :=
+  check_copy_protocol_wfb
+    (cpdbccmvp_trace value params) = true /\
+  check_copy_commit_coverb
+    (cpdbccmvp_expected_commit_targets value params)
+    (cpdbccmvp_trace value params) = true /\
+  check_copy_mappingb
+    (cpdbccmvp_mapping value params)
+    (cpdbccmvp_trace value params) = true /\
+  check_copy_mapping_declarationb
+    (cpdbccmvp_mapping value params)
+    (cpdbccmvp_public_cells value params)
+    (cpdbccmvp_local_cells value params) = true /\
+  check_copy_value_traceb
+    value_eqb
+    (cpdbccmvp_value_trace value params) = true /\
+  check_storage_compatibilityb
+    (cpdbccmvp_mapping value params)
+    (cpdbccmvp_public_specs value params)
+    (cpdbccmvp_local_specs value params) = true /\
+  check_storage_boundsb
+    (cpdbccmvp_commit_bounds value params)
+    (cpdbccmvp_expected_commit_targets value params) = true /\
+  check_storage_boundsb
+    (cpdbccmvp_public_bounds value params)
+    (cpdbccmvp_public_cells value params) = true /\
+  check_storage_boundsb
+    (cpdbccmvp_local_bounds value params)
+    (cpdbccmvp_local_cells value params) = true /\
+  copy_source_view_refines_view
+    (cpdbccmvp_input_view value params)
+    (cpdbccmvp_output_view value params)
+    (cpdbccmvp_source_view value params)
+    after.
+
+Theorem copy_protocol_declared_bounded_compatible_commit_mapping_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (copy_protocol_declared_bounded_compatible_commit_mapping_value_check
+        params before after)
+      ok ->
+    ok = true ->
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (copy_protocol_declared_bounded_compatible_commit_mapping_value_input_view
+        params)
+      (copy_protocol_declared_bounded_compatible_commit_mapping_value_output_view
+        params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view expected_commit_targets mapping trace value_trace
+     public_cells local_cells public_specs local_specs
+     commit_bounds public_bounds local_bounds source_view].
+  simpl in *.
+  destruct Hside as
+    [Hprotocol
+     [Hcommit
+      [Hmapping
+       [Hdeclared
+        [Hvalue
+         [Hcompatible
+          [Hcommit_bounds
+           [Hpublic_bounds [Hlocal_bounds Hsemantics]]]]]]]]].
+  eapply
+    checked_copy_protocol_declared_bounded_compatible_commit_mapping_value_public_refinement;
+    eauto.
+Qed.
+
+Definition copy_protocol_declared_bounded_compatible_commit_mapping_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (copy_protocol_declared_bounded_compatible_commit_mapping_value_params
+          value) := {|
+  generic_cpvtf_input_view :=
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_input_view;
+  generic_cpvtf_output_view :=
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_output_view;
+  generic_cpvtf_check :=
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_check;
+  generic_cpvtf_side_condition :=
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_side_condition
+      value_eqb;
+  generic_cpvtf_check_sound :=
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem copy_protocol_expected_commit_target_within_bounds :
   forall (value: Type) input_view output_view
          expected_commit_targets commit_bounds mapping trace value_trace

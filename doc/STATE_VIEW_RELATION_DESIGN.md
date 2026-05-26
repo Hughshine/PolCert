@@ -198,7 +198,14 @@ bounded/fully-declared/non-escape copy theorem and packages it as
 `scratchpad_copy_bounded_non_escape_family`, while
 `StorageCopyFamilyCompose.v` shows that this copy-mediated family composes with
 bounded scalar promotion without exposing the copy contract as the final
-relation.  The overlap/private recomputation route now follows the same public
+relation.  The generic copy-protocol layer now has the same facade before the
+scratchpad-specific wrapper:
+`CopyProtocolValidator.copy_protocol_declared_bounded_compatible_commit_mapping_value_family`
+packages copy order, exact commits, remapping, value flow, declarations,
+compatibility, and bounds as side conditions, while
+`StorageCopyFamilyCompose.bounded_copy_protocol_then_scalar_promotion_public_semantic_refinement`
+exports only the paper-facing endpoint relation.  The overlap/private
+recomputation route now follows the same public
 interface: `OverlapTilingValidator` has a public-only facade for its strongest
 ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
 as `overlap_private_ordered_bounded_non_escape_family`, and
@@ -1348,6 +1355,15 @@ common composition theorem under an explicit copy-specific semantic refinement.
 copy-out exact cover with remapping and value-flow evidence, giving a generic
 copy-mediated update theorem that does not require the scratchpad-specific
 instance/private-storage wrapper.
+`checked_copy_protocol_declared_bounded_compatible_commit_mapping_value_public_refinement`
+is the strongest generic copy facade: it adds declared public/local mapping
+coverage, public/local storage compatibility, and declared bounds for commit,
+public, and local cells, then projects away the returned contract.  The
+corresponding
+`copy_protocol_declared_bounded_compatible_commit_mapping_value_family`
+packages those obligations as parameter/side-condition data, so a copy protocol
+can compose with later passes through `public_semantic_refinement` before it is
+lifted into the larger scratchpad/packing wrapper.
 `ScratchpadCopyValidator.checked_scratchpad_copy_view_correct`
 combines this copy witness with instance projection and local-buffer
 separation, which is closer to a scratchpad/packing transformation.  It still
