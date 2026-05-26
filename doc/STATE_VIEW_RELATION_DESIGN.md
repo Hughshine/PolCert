@@ -143,6 +143,15 @@ composed theorem should expose a small semantic relation over public
 observations.  Otherwise the endpoint stops looking like contextual semantic
 refinement and becomes a feature-specific checker theorem.
 
+Current mechanized direction: the CInstr scalar-expansion and scalar-promotion
+bridges now keep both theorem layers.  The detailed `_correct` theorems still
+return the storage/value contract together with the view refinement, which is
+useful for auditing obligations.  The new public-refinement facade theorems
+project away those contracts and expose only the `View.view_refinement`
+endpoint.  This is the intended final interface for pass composition and paper
+statements: the storage witnesses justify the theorem, but they are not the
+theorem's observable relation.
+
 ## What a View Must Explain
 
 A view is not only a cell projection.  It must explain what the target state

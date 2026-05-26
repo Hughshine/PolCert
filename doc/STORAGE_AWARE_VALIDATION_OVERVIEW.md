@@ -190,7 +190,11 @@ and use-def come from the ordered CInstr trace.
 The same static-trace route now has a bounded variant that adds private bounds,
 source/private storage compatibility, and non-escape checks before returning
 the bounded scalar privatization obligation package and the same public-view
-refinement conclusion.
+refinement conclusion.  The bridge now also provides public-refinement-only
+facade theorems for both the static and generic CInstr trace routes.  These
+theorems deliberately hide the scalar-expansion contract records from the
+composition-facing conclusion, so the endpoint remains the intuitive
+public-view semantic refinement.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list
@@ -235,7 +239,10 @@ steps, and an ordered CInstr-derived trace proves the generic scalar-promotion
 value-flow obligation.  `CInstrScalarPromotionValidatorBridge.v` connects that
 CInstr trace evidence to the existing scalar-promotion view wrappers, including
 the compatible and bounded/non-escape variants, without changing their
-public-view refinement conclusion.  `ScalarPromotionValidator.v` composes the
+public-view refinement conclusion.  It also exposes public-refinement-only
+facade theorems, so downstream composition can consume only the semantic
+endpoint while the trace, compatibility, bounds, separation, and non-escape
+proofs remain internal obligations.  `ScalarPromotionValidator.v` composes the
 storage protocol, the optional value-flow witness, scalar-private separation,
 and the remaining instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
