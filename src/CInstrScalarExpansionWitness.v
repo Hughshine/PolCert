@@ -293,3 +293,171 @@ Proof.
     + reflexivity.
   - exact Hvalue_event.
 Qed.
+
+(** Ordered trace layer.
+
+    The singleton lemmas above justify one CInstr read or write event.  The
+    pass-level scalar-privatization proof will need to thread the current
+    private values through many such events in schedule order.  The following
+    witness is still local to CInstr, but it is no longer a one-step fact: it
+    records an ordered list of CInstr-derived scalar expansion events and
+    proves that the list discharges the generic value-flow obligation. *)
+
+Inductive cscalar_expansion_value_trace
+    (entries: list scalar_expansion_entry)
+    : list (MemCell * Values.val) ->
+      scalar_expansion_value_trace Values.val -> Prop :=
+| CScalarExpansionValueTraceNil :
+    forall current_values,
+      cscalar_expansion_value_trace entries current_values []
+| CScalarExpansionValueTraceWrite :
+    forall current_values tail
+           instance envv source_before source_after
+           private_before private_after source_instr private_instr
+           event source_value private_value,
+      cassign_scalar_expansion_write_value_event
+        entries instance envv source_before source_after
+        private_before private_after source_instr private_instr
+        event (ExpansionValueWrite source_value private_value) ->
+      cscalar_expansion_value_trace
+        entries
+        (update_expanded_value
+           (expansion_event_private_cell event)
+           private_value current_values)
+        tail ->
+      cscalar_expansion_value_trace
+        entries current_values
+        ((event, ExpansionValueWrite source_value private_value) :: tail)
+| CScalarExpansionValueTraceRead :
+    forall current_values tail current_value
+           instance envv source_state private_state
+           source_access private_access ty event,
+      caccess_scalar_expansion_read_value_event
+        entries instance envv source_state private_state
+        source_access private_access ty
+        event (ExpansionValueRead current_value current_value) ->
+      lookup_expanded_value
+        (expansion_event_private_cell event) current_values =
+        Some current_value ->
+      cscalar_expansion_value_trace entries current_values tail ->
+      cscalar_expansion_value_trace
+        entries current_values
+        ((event, ExpansionValueRead current_value current_value) :: tail).
+
+Theorem cscalar_expansion_value_trace_sound_from :
+  forall entries current_values trace,
+    cscalar_expansion_value_trace entries current_values trace ->
+    scalar_expansion_value_trace_simulates_from current_values trace.
+Proof.
+  intros entries current_values trace Htrace.
+  induction Htrace.
+  - exact I.
+  - pose proof
+      (cassign_scalar_expansion_write_singleton_value_flow_from
+         entries instance envv source_before source_after
+         private_before private_after source_instr private_instr
+         event (ExpansionValueWrite source_value private_value)
+         current_values H)
+      as Hsingle.
+    simpl in Hsingle.
+    destruct Hsingle as [Hkind [Hvalue _]].
+    simpl.
+    split.
+    + exact Hkind.
+    + split.
+      * exact Hvalue.
+      * exact IHHtrace.
+  - pose proof
+      (caccess_scalar_expansion_read_singleton_value_flow_from
+         entries instance envv source_state private_state
+         source_access private_access ty
+         event (ExpansionValueRead current_value current_value)
+         current_values current_value H H0 eq_refl)
+      as Hsingle.
+    simpl in Hsingle.
+    destruct Hsingle as [Hkind _].
+    simpl.
+    split.
+    + exact Hkind.
+    + rewrite H0.
+      split.
+      * reflexivity.
+      * split.
+        -- reflexivity.
+        -- exact IHHtrace.
+Qed.
+
+Definition cscalar_expansion_value_trace_simulates
+    (entries: list scalar_expansion_entry)
+    (trace: scalar_expansion_value_trace Values.val) : Prop :=
+  cscalar_expansion_value_trace entries [] trace.
+
+Theorem cscalar_expansion_value_trace_sound :
+  forall entries trace,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    scalar_expansion_value_trace_simulates trace.
+Proof.
+  intros entries trace Htrace.
+  unfold cscalar_expansion_value_trace_simulates in Htrace.
+  unfold scalar_expansion_value_trace_simulates.
+  eapply cscalar_expansion_value_trace_sound_from.
+  exact Htrace.
+Qed.
+
+Theorem cscalar_expansion_value_trace_obligations :
+  forall entries trace,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    scalar_expansion_value_obligations Values.val trace.
+Proof.
+  intros entries trace Htrace.
+  constructor.
+  apply (cscalar_expansion_value_trace_sound entries).
+  exact Htrace.
+Qed.
+
+Theorem cscalar_expansion_value_trace_events_mapped :
+  forall entries current_values trace,
+    cscalar_expansion_value_trace entries current_values trace ->
+    scalar_expansion_events_mapped
+      entries (scalar_expansion_value_trace_events trace).
+Proof.
+  intros entries current_values trace Htrace.
+  induction Htrace.
+  - unfold scalar_expansion_events_mapped.
+    intros event Hin.
+    simpl in Hin. contradiction.
+  - unfold scalar_expansion_events_mapped in *.
+    intros query_event Hin.
+    simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      eapply cassign_scalar_expansion_write_event_mapped.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - unfold scalar_expansion_events_mapped in *.
+    intros query_event Hin.
+    simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      eapply caccess_scalar_expansion_read_event_mapped.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+Qed.
+
+Theorem cscalar_expansion_value_trace_sound_and_mapped :
+  forall entries trace,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    scalar_expansion_value_obligations Values.val trace /\
+    scalar_expansion_events_mapped
+      entries (scalar_expansion_value_trace_events trace).
+Proof.
+  intros entries trace Htrace.
+  split.
+  - apply (cscalar_expansion_value_trace_obligations entries).
+    exact Htrace.
+  - unfold cscalar_expansion_value_trace_simulates in Htrace.
+    eapply cscalar_expansion_value_trace_events_mapped.
+    exact Htrace.
+Qed.

@@ -1432,7 +1432,13 @@ work is to derive such events for an ordered instruction trace.  The CInstr
 bridge now exposes the underlying assignment semantics and phrases singleton
 read/write value-flow lemmas over an arbitrary current private-value map, so
 the next proof step can compose many local events instead of restarting from an
-empty trace at each instruction.
+empty trace at each instruction.  That next layer is now present as an ordered
+CInstr trace witness: CInstr-derived write/read events are threaded through the
+same current private-value map as the generic scalar-expansion value-flow
+checker, yielding both value-flow obligations and declared-entry event mapping
+for the whole trace.  This is still below the final user-facing theorem: the
+outer theorem should expose only the public-view refinement, with this trace
+witness hidden as one discharged semantic side condition.
 
 ### Reduction Privatization
 

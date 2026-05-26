@@ -169,7 +169,11 @@ expansion write/value event, and paired scalar access evaluations can justify
 one expansion read/value event.  The bridge also exposes the underlying
 `CInstr.semantics` steps for writes and gives read/write singleton value-flow
 lemmas that work from an arbitrary current private-value map, which is the
-shape needed for later pass-level trace composition.
+shape needed for later pass-level trace composition.  It now also contains an
+ordered trace witness: a list of CInstr-derived scalar-expansion reads and
+writes threads the current private-value map through schedule order and proves
+the generic scalar-expansion value-flow obligation, while separately exposing
+that the trace events are mapped by the declared expansion entries.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list
