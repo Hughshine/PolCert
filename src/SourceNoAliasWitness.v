@@ -15,6 +15,7 @@ Import ListNotations.
 
 Definition source_object := positive.
 Definition source_footprint := (source_object * list MemCell)%type.
+Definition source_access_footprint := (source_object * list MemCell)%type.
 
 Definition source_object_eqb
     (left right: source_object) : bool :=
@@ -99,6 +100,34 @@ Fixpoint source_footprint_objects
   | (object, _) :: tail =>
       object :: source_footprint_objects tail
   end.
+
+Fixpoint source_footprint_lookup
+    (object: source_object)
+    (footprints: list source_footprint) : option (list MemCell) :=
+  match footprints with
+  | [] => None
+  | (object', cells) :: tail =>
+      if source_object_eqb object object'
+      then Some cells
+      else source_footprint_lookup object tail
+  end.
+
+Lemma source_footprint_lookup_sound :
+  forall object footprints cells,
+    source_footprint_lookup object footprints = Some cells ->
+    In (object, cells) footprints.
+Proof.
+  induction footprints as [|[object' cells'] tail IH];
+    intros cells Hlookup; simpl in Hlookup; try discriminate.
+  destruct (source_object_eqb object object') eqn:Hobject.
+  - inversion Hlookup; subst.
+    apply source_object_eqb_eq in Hobject.
+    subst.
+    simpl. left. reflexivity.
+  - simpl. right.
+    eapply IH.
+    exact Hlookup.
+Qed.
 
 Fixpoint source_footprints_nodupb
     (footprints: list source_footprint) : bool :=
@@ -235,4 +264,106 @@ Proof.
     exact Hfootprints.
   - apply check_source_footprints_pairwise_disjointb_sound.
     exact Hdisjoint.
+Qed.
+
+(** Access-footprint coverage.
+
+    No-alias disjointness is sound only if the finite footprints actually
+    over-approximate the cells read or written by the source abstraction.  The
+    following checker records that side condition over a finite list of
+    per-object access cells. *)
+
+Definition source_accesses_covered
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint) : Prop :=
+  forall object access_cells cell,
+    In (object, access_cells) accesses ->
+    In cell access_cells ->
+    exists footprint_cells,
+      In (object, footprint_cells) footprints /\
+      In cell footprint_cells.
+
+Fixpoint check_source_accesses_coveredb
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint) : bool :=
+  match accesses with
+  | [] => true
+  | (object, access_cells) :: tail =>
+      match source_footprint_lookup object footprints with
+      | Some footprint_cells =>
+          mem_cells_subsetb access_cells footprint_cells &&
+          check_source_accesses_coveredb footprints tail
+      | None => false
+      end
+  end.
+
+Lemma check_source_accesses_coveredb_sound :
+  forall footprints accesses,
+    check_source_accesses_coveredb footprints accesses = true ->
+    source_accesses_covered footprints accesses.
+Proof.
+  unfold source_accesses_covered.
+  intros footprints accesses.
+  induction accesses as [|[object access_cells] tail IH];
+    intros Hcheck query_object query_cells cell Haccess Hcell;
+    simpl in Hcheck, Haccess.
+  - contradiction.
+  - destruct (source_footprint_lookup object footprints)
+      as [footprint_cells|] eqn:Hlookup; try discriminate.
+    apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hcovered Htail].
+    destruct Haccess as [Heq | Htail_access].
+    + inversion Heq; subst.
+      exists footprint_cells.
+      split.
+      * eapply source_footprint_lookup_sound.
+        exact Hlookup.
+      * eapply mem_cells_subsetb_sound; eauto.
+    + eapply IH; eauto.
+Qed.
+
+Record source_no_alias_access_obligations
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint) : Prop := {
+  snaa_no_alias :
+    source_no_alias_obligations footprints;
+  snaa_accesses_covered :
+    source_accesses_covered footprints accesses;
+}.
+
+Definition check_source_no_alias_accessb
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint) : bool :=
+  check_source_no_aliasb footprints &&
+  check_source_accesses_coveredb footprints accesses.
+
+Lemma check_source_no_alias_accessb_sound :
+  forall footprints accesses,
+    check_source_no_alias_accessb footprints accesses = true ->
+    source_no_alias_access_obligations footprints accesses.
+Proof.
+  intros footprints accesses Hcheck.
+  unfold check_source_no_alias_accessb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hno_alias Hcovered].
+  constructor.
+  - apply check_source_no_aliasb_sound.
+    exact Hno_alias.
+  - apply check_source_accesses_coveredb_sound.
+    exact Hcovered.
+Qed.
+
+Theorem source_access_cell_covered :
+  forall footprints accesses object access_cells cell,
+    source_no_alias_access_obligations footprints accesses ->
+    In (object, access_cells) accesses ->
+    In cell access_cells ->
+    exists footprint_cells,
+      In (object, footprint_cells) footprints /\
+      In cell footprint_cells.
+Proof.
+  intros footprints accesses object access_cells cell Hobligations
+         Haccess Hcell.
+  destruct Hobligations as [_ Hcovered].
+  eapply Hcovered; eauto.
 Qed.

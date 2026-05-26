@@ -248,12 +248,27 @@ Definition storage_generic_cell_view_mid_observables_compatible :=
 Definition storage_compose_generic_cell_view :=
   compose_generic_cell_view.
 Definition storage_source_footprint := source_footprint.
+Definition storage_source_access_footprint := source_access_footprint.
 Definition storage_check_source_no_aliasb :=
   check_source_no_aliasb.
 Definition storage_check_source_no_aliasb_sound :=
   check_source_no_aliasb_sound.
 Definition storage_source_no_alias_obligations :=
   source_no_alias_obligations.
+Definition storage_check_source_accesses_coveredb :=
+  check_source_accesses_coveredb.
+Definition storage_check_source_accesses_coveredb_sound :=
+  check_source_accesses_coveredb_sound.
+Definition storage_source_accesses_covered :=
+  source_accesses_covered.
+Definition storage_check_source_no_alias_accessb :=
+  check_source_no_alias_accessb.
+Definition storage_check_source_no_alias_accessb_sound :=
+  check_source_no_alias_accessb_sound.
+Definition storage_source_no_alias_access_obligations :=
+  source_no_alias_access_obligations.
+Definition storage_source_access_cell_covered :=
+  source_access_cell_covered.
 Definition storage_check_frame_preservationb :=
   check_frame_preservationb.
 Definition storage_check_frame_preservationb_sound :=

@@ -140,8 +140,9 @@ live-in/live-out boundary copies, private-side boundary uniqueness, and aligned
 boundary value evidence under the observer-backed private-erasure theorem.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
-duplicate-free, and different footprints are pairwise disjoint.  This remains a
-precondition witness rather than a transformation theorem.
+duplicate-free, different footprints are pairwise disjoint, and a finite list
+of source read/write cells can be checked against those declared footprints.
+This remains a precondition witness rather than a transformation theorem.
 `FramePreservationWitness.v` adds the generic contextual boundary condition:
 fragment writes must be contained in an allowed-write set, and that allowed set
 must be disjoint from frame cells owned by the surrounding context.
@@ -383,7 +384,7 @@ feature-specific instruction or trace simulation proofs.
 
 | Primitive | Current Coq hook | Checked now | Still explicit |
 | --- | --- | --- | --- |
-| P-1 no-alias memory abstraction | `SourceNoAliasWitness.check_source_no_aliasb_sound` | object ids and finite footprints are duplicate-free; footprints are pairwise disjoint | front-end proof that footprints over-approximate real C accesses |
+| P-1 no-alias memory abstraction | `SourceNoAliasWitness.check_source_no_aliasb_sound`; `SourceNoAliasWitness.check_source_no_alias_accessb_sound`; `SourceNoAliasWitness.source_access_cell_covered` | object ids and finite footprints are duplicate-free; footprints are pairwise disjoint; finite source access cells can be checked to lie inside the declared footprint for their logical object | deriving the finite access cells and proving they over-approximate real C accesses |
 | P0/P1 projection and roles | `InstanceProjectionWitness.check_instance_projectionb_sound` | projected target instances are in the source domain; commit-role instances exactly cover live-outs | deriving projected target sets from concrete codegen |
 | P1 local dependence closure | `OverlapClosureWitness.check_overlap_closureb_sound`; `OverlapClosureWitness.check_overlap_ordered_closureb_sound` | every finite tile dependency is supplied by a tile live-in or a projected computation in the same tile; tile-produced dependencies precede their consumers | deriving dependencies and trace order from concrete schedule/access semantics |
 | P2 access-map refinement | `LayoutWitness` and `LayoutRemapValidator` | same-instance access-list remap through a single declared-layout interface covering same-index array rename, index permutation such as transpose, and affine-composed index rewrites such as linearization | instruction-level value simulation for rewritten accesses; deriving layout declarations from generated code |

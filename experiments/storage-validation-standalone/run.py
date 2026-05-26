@@ -76,6 +76,19 @@ def validate_source_no_alias_abstraction() -> List[str]:
     read_cells = {("B", i) for i in range(n)}
     write_cells = {("A", i) for i in range(n)}
     require(read_cells.isdisjoint(write_cells), "logical read/write cells overlap")
+    declared_footprints = {
+        "A": {("A", i) for i in range(n)},
+        "B": {("B", i) for i in range(n)},
+    }
+    declared_accesses = {
+        "A": write_cells,
+        "B": read_cells,
+    }
+    require(set(declared_accesses.keys()) <= set(declared_footprints.keys()),
+            "source access object has no declared footprint")
+    require(all(access_cells <= declared_footprints[object_name]
+                for object_name, access_cells in declared_accesses.items()),
+            "source access falls outside declared object footprint")
 
     b = {i: 10 + i for i in range(n)}
     a = {i: 0 for i in range(n)}
@@ -85,6 +98,7 @@ def validate_source_no_alias_abstraction() -> List[str]:
     return [
         "distinct source names are interpreted as distinct logical blocks",
         "logical read/write footprints are computed under the no-alias abstraction",
+        "finite source accesses are covered by their declared object footprints",
         "validator assumptions would be unsound if A and B had the same physical base",
     ]
 
@@ -1748,6 +1762,32 @@ def reject_scalar_promotion_incompatible_storage() -> None:
 def reject_source_alias_violation() -> None:
     logical_blocks = {"A": "base_X", "B": "base_X"}
     require(logical_blocks["A"] != logical_blocks["B"], "A and B may alias")
+
+
+@add_negative("source_access_unknown_object", "source_no_alias_abstraction")
+def reject_source_access_unknown_object() -> None:
+    declared_footprints = {
+        "A": {("A", 0), ("A", 1)},
+    }
+    declared_accesses = {
+        "A": {("A", 0)},
+        "B": {("B", 0)},
+    }
+    require(set(declared_accesses.keys()) <= set(declared_footprints.keys()),
+            "source access object has no declared footprint")
+
+
+@add_negative("source_access_outside_footprint", "source_no_alias_abstraction")
+def reject_source_access_outside_footprint() -> None:
+    declared_footprints = {
+        "A": {("A", 0), ("A", 1)},
+    }
+    declared_accesses = {
+        "A": {("A", 0), ("A", 2)},
+    }
+    require(all(access_cells <= declared_footprints[object_name]
+                for object_name, access_cells in declared_accesses.items()),
+            "source access falls outside declared object footprint")
 
 
 @add_negative("aliased_layout_map", "layout_remap_padding")

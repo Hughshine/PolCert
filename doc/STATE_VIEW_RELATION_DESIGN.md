@@ -944,9 +944,11 @@ state_view_rel identity_view polir_state polir_state
 Current exploration status: `SourceNoAliasWitness.v` mechanizes the finite
 footprint side of this precondition.  `check_source_no_aliasb footprints = true`
 proves duplicate-free logical object ids, duplicate-free per-object footprints,
-and pairwise disjoint footprints.  This is deliberately not a transformation
-validator; it is the finite assumption that makes later logical-cell reasoning
-sound.
+and pairwise disjoint footprints.  The stronger
+`check_source_no_alias_accessb footprints accesses = true` additionally checks
+that finite source access cells are covered by the declared footprint for their
+logical object.  This is deliberately not a transformation validator; it is the
+finite assumption that makes later logical-cell reasoning sound.
 
 This is a precondition, not an optimizer.  It should be discharged by the
 front-end or boundary layer.
