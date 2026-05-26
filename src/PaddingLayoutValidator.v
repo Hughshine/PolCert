@@ -11,6 +11,7 @@ Require Import ViewPipeline.
 Require Import LayoutWitness.
 Require Import PaddingLayoutWitness.
 Require Import LayoutValueWitness.
+Require Import StorageBoundsWitness.
 Require Import StorageCompatibilityWitness.
 
 Import ListNotations.
@@ -266,6 +267,63 @@ Record padding_layout_declared_access_compatible_value_view_contract
     padding_source_view_refines_view
       input_view output_view source_view after;
 }.
+
+Record padding_layout_declared_access_bounds_compatible_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (layouts: list declared_array_layout)
+    (mapping: padding_layout_mapping)
+    (padding_cells allocated_cells: list MemCell)
+    (bounds: list array_bounds)
+    (logical_specs physical_specs: list storage_spec)
+    (entries: list (layout_value_entry value))
+    (source_view after: PolyLang.t) : Prop := {
+  pldabcvvc_padding :
+    padding_layout_obligations
+      mapping padding_cells allocated_cells;
+  pldabcvvc_bounds :
+    storage_bounds_obligations bounds allocated_cells;
+  pldabcvvc_access_remap :
+    Layout.Storage.pprog_same_instance_access_remap
+      (declared_layout_cell_relation layouts)
+      source_view after;
+  pldabcvvc_values :
+    layout_value_obligations value mapping entries;
+  pldabcvvc_storage_compatible :
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs;
+  pldabcvvc_semantic_refinement :
+    padding_source_view_refines_view
+      input_view output_view source_view after;
+}.
+
+Theorem padding_layout_target_within_bounds :
+  forall mapping padding_cells allocated_cells bounds cell,
+    padding_layout_obligations
+      mapping padding_cells allocated_cells ->
+    storage_bounds_obligations bounds allocated_cells ->
+    In cell (padding_layout_targets mapping) ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros mapping padding_cells allocated_cells bounds cell
+         Hpadding Hbounds Hin_target.
+  destruct Hpadding as [_ _ Htargets_allocated _ _ _].
+  eapply storage_bounds_cell_within; eauto.
+Qed.
+
+Theorem padding_layout_padding_within_bounds :
+  forall mapping padding_cells allocated_cells bounds cell,
+    padding_layout_obligations
+      mapping padding_cells allocated_cells ->
+    storage_bounds_obligations bounds allocated_cells ->
+    In cell padding_cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros mapping padding_cells allocated_cells bounds cell
+         Hpadding Hbounds Hin_padding.
+  destruct Hpadding as [_ _ _ _ Hpadding_allocated _].
+  eapply storage_bounds_cell_within; eauto.
+Qed.
 
 Definition padding_pipeline_final_view
     (output_view: View.view) : View.view :=
@@ -758,6 +816,70 @@ Proof.
     (check_padding_layoutb_sound
        mapping padding_cells allocated_cells Hpadding)
     as Hpadding_obligations.
+  pose proof
+    (Layout.check_pprog_declared_layout_access_remapb_sound
+       layouts source_view after Haccess)
+    as Haccess_obligations.
+  pose proof
+    (check_layout_valueb_sound
+       value value_eqb Hvalue_eqb mapping entries Hvalues)
+    as Hvalue_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hstorage)
+    as Hstorage_obligations.
+  split.
+  - constructor; assumption.
+  - apply
+      (Pipeline.compose_checked_source_view
+         input_view output_view before source_view after ok);
+      assumption.
+Qed.
+
+Theorem checked_padding_layout_declared_access_bounds_compatible_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn
+      (check_padding_source_view before source_view) ok ->
+    ok = true ->
+    check_padding_layoutb
+      mapping padding_cells allocated_cells = true ->
+    check_storage_boundsb bounds allocated_cells = true ->
+    Layout.check_pprog_declared_layout_access_remapb
+      layouts source_view after = true ->
+    check_layout_valueb value value_eqb mapping entries = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    padding_source_view_refines_view
+      input_view output_view source_view after ->
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts
+      mapping padding_cells allocated_cells bounds
+      logical_specs physical_specs entries source_view after /\
+    View.view_refinement
+      input_view
+      (padding_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hpadding Hbounds Haccess Hvalues Hstorage Hsemantics.
+  pose proof
+    (check_padding_layoutb_sound
+       mapping padding_cells allocated_cells Hpadding)
+    as Hpadding_obligations.
+  pose proof
+    (check_storage_boundsb_sound bounds allocated_cells Hbounds)
+    as Hbounds_obligations.
   pose proof
     (Layout.check_pprog_declared_layout_access_remapb_sound
        layouts source_view after Haccess)

@@ -74,6 +74,7 @@ Related skeletons include
 `FramePreservationWitness.v`, `FramePreservationValidator.v`,
 `StateObservation.v`,
 `LayoutWitness.v`, `LayoutRemapValidator.v`, `PaddingLayoutWitness.v`,
+`StorageBoundsWitness.v`,
 `PaddingLayoutValidator.v`, `PrivateStorageWitness.v`,
 `PrivateBoundaryWitness.v`,
 `PrivateStorageValidator.v`, `ScalarPromotionWitness.v`,
@@ -140,13 +141,19 @@ contract without changing their final-state relation.
 `PaddingLayoutWitness.v` adds the finite allocation side of layout/padding:
 source cells map functionally to target cells, target cells are injective and
 allocated, and padding cells are duplicate-free, allocated, and outside the
-represented target image.  `LayoutValueWitness.v` adds the boundary value side:
+represented target image.  `StorageBoundsWitness.v` adds the structured
+in-bounds side: declared array extents are well formed, finite physical cells
+can be checked against those extents, and padding/layout validators can require
+all allocated physical cells to be within declared bounds.  `LayoutValueWitness.v` adds the boundary value side:
 each source-to-target layout map entry can be paired with evidence that the
 source logical value equals the represented target physical value.
 `PaddingLayoutValidator.v` composes the structural, optional access-remap, and
 optional value witnesses with the same view-refinement endpoint.  The access
 variants reuse `LayoutWitness.check_pprog_array_rename_access_remapb_sound` to
-check that target PolIR accesses use the declared array rename relation.
+check that target PolIR accesses use the declared array rename relation.  The
+declared-layout route now also has a bounds-aware variant that composes
+in-bounds evidence with declared access remapping, boundary values, and
+size/alignment compatibility.
 `ScalarPromotionWitness.v` starts the scalar-promotion route by checking the
 local load/use/store protocol for a promoted source cell: scalar reads and
 writes require a prior load, ordinary writes to the promoted source cell are
@@ -330,7 +337,7 @@ feature-specific instruction or trace simulation proofs.
 | P0/P1 projection and roles | `InstanceProjectionWitness.check_instance_projectionb_sound` | projected target instances are in the source domain; commit-role instances exactly cover live-outs | deriving projected target sets from concrete codegen |
 | P1 local dependence closure | `OverlapClosureWitness.check_overlap_closureb_sound`; `OverlapClosureWitness.check_overlap_ordered_closureb_sound` | every finite tile dependency is supplied by a tile live-in or a projected computation in the same tile; tile-produced dependencies precede their consumers | deriving dependencies and trace order from concrete schedule/access semantics |
 | P2 access-map refinement | `LayoutWitness` and `LayoutRemapValidator` | same-instance access-list remap through a single declared-layout interface covering same-index array rename, index permutation such as transpose, and affine-composed index rewrites such as linearization | instruction-level value simulation for rewritten accesses; deriving layout declarations from generated code |
-| P2 plus padding | `PaddingLayoutWitness.check_padding_layoutb_sound`; `LayoutWitness.check_pprog_declared_layout_access_remapb_sound`; compatibility hooks for the older rename/permutation/affine checkers; `LayoutValueWitness.check_layout_valueb_sound`; `StorageCompatibilityWitness.check_storage_compatibilityb_sound`; `PaddingLayoutValidator.checked_padding_layout_declared_access_compatible_value_view_correct` | target image is injective and allocated; padding is duplicate-free, allocated, and outside the image; target/source access functions can be checked under one declared-layout witness; mapped source/target boundary values match; mapped physical layout cells can be required size/alignment-compatible with represented logical cells | deriving value entries and storage specs from concrete semantics and deriving layout declarations from generated code |
+| P2 plus padding | `PaddingLayoutWitness.check_padding_layoutb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `LayoutWitness.check_pprog_declared_layout_access_remapb_sound`; compatibility hooks for the older rename/permutation/affine checkers; `LayoutValueWitness.check_layout_valueb_sound`; `StorageCompatibilityWitness.check_storage_compatibilityb_sound`; `PaddingLayoutValidator.checked_padding_layout_declared_access_bounds_compatible_value_view_correct` | target image is injective and allocated; padding is duplicate-free, allocated, and outside the image; allocated physical cells can be checked against declared array extents; target/source access functions can be checked under one declared-layout witness; mapped source/target boundary values match; mapped physical layout cells can be required size/alignment-compatible with represented logical cells | deriving value entries, storage specs, and declared bounds from concrete semantics and deriving layout declarations from generated code |
 | P3 fresh private storage | `PrivateStorageWitness.check_private_separationb_sound`; private use-def checkers; `PrivateBoundaryWitness.check_private_boundaryb_sound`; `PrivateBoundaryWitness.check_private_boundary_private_uniqueb_sound`; `PrivateBoundaryWitness.check_private_boundary_valueb_sound`; `StorageCompatibilityWitness.check_storage_compatibilityb_sound`; `PrivateStorageValidator.checked_boundary_private_unique_compatible_value_expansion_view_correct` | private cells are duplicate-free and disjoint from public/frame cells; private reads have prior writes; required live-ins/live-outs have boundary pairs; live-out public commits are unique; boundary private cells can be required unique; boundary public/private values match; boundary public/private cells can be required size/alignment-compatible; uniqueness, value evidence, and compatibility can be composed in one private-erasure theorem | non-escape and deriving boundary value entries/storage specs from concrete expression and type semantics |
 | P4 copy protocol | `CopyProtocolWitness.check_copy_protocol_wfb_sound`; `CopyCommitWitness.check_copy_commit_coverb_sound`; `CopyInstanceWitness.check_copy_instance_traceb_sound`; `CopyMappingWitness.check_copy_mappingb_sound`; `CopyProtocolValueWitness.check_copy_value_traceb_sound`; `CopyProtocolValidator.checked_copy_protocol_commit_mapping_value_view_correct` | local reads are covered by prior local definitions; copy-out targets are duplicate-free and can exact-cover expected observable targets; copy protocol events align with internal/commit projected helper instances; public-to-local remap is injective and used consistently by copy/local events; copy/local/commit value flow is consistent; generic copy protocol can package commit exact cover, remapping, and value flow in one view theorem | deriving the trace, value trace, and helper-instance list from concrete instruction semantics |
 | P4 scratchpad/packing composition | `ScratchpadCopyValidator.checked_scratchpad_copy_view_correct`; `ScratchpadCopyValidator.checked_scratchpad_copy_instance_commit_view_correct`; `ScratchpadCopyValidator.checked_scratchpad_copy_compatible_full_view_correct` | projection, copy protocol, optional copy-out exact cover, optional copy-instance role alignment, public-to-local remapping, copy value flow, local-buffer separation, and public/local storage compatibility compose into `view_refinement` | deriving the trace, value trace, helper-instance list, storage specs, and full copy-mediated semantic simulation |

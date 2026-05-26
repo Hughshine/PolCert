@@ -14,6 +14,7 @@ Require Import StateObservation.
 Require Import LayoutWitness.
 Require Import PaddingLayoutWitness.
 Require Import LayoutValueWitness.
+Require Import StorageBoundsWitness.
 Require Import PaddingLayoutValidator.
 Require Import PrivateStorageWitness.
 Require Import PrivateBoundaryWitness.
@@ -414,6 +415,35 @@ Definition storage_check_layout_valueb_sound :=
   check_layout_valueb_sound.
 Definition storage_layout_value_obligations :=
   layout_value_obligations.
+Definition storage_array_bounds := array_bounds.
+Definition storage_array_bounds_id := array_bounds_id.
+Definition storage_array_bounds_extents := array_bounds_extents.
+Definition storage_check_z_index_within_boundb :=
+  check_z_index_within_boundb.
+Definition storage_check_z_index_within_boundb_sound :=
+  check_z_index_within_boundb_sound.
+Definition storage_check_indices_within_boundsb :=
+  check_indices_within_boundsb.
+Definition storage_check_indices_within_boundsb_sound :=
+  check_indices_within_boundsb_sound.
+Definition storage_cell_within_declared_bounds :=
+  cell_within_declared_bounds.
+Definition storage_check_cell_within_declared_boundsb :=
+  check_cell_within_declared_boundsb.
+Definition storage_check_cell_within_declared_boundsb_sound :=
+  check_cell_within_declared_boundsb_sound.
+Definition storage_check_cells_within_declared_boundsb :=
+  check_cells_within_declared_boundsb.
+Definition storage_check_cells_within_declared_boundsb_sound :=
+  check_cells_within_declared_boundsb_sound.
+Definition storage_bounds_obligations :=
+  storage_bounds_obligations.
+Definition storage_check_storage_boundsb :=
+  check_storage_boundsb.
+Definition storage_check_storage_boundsb_sound :=
+  check_storage_boundsb_sound.
+Definition storage_bounds_cell_within :=
+  storage_bounds_cell_within.
 Definition storage_padding_source_view_refines_view :=
   PaddingLayoutCore.padding_source_view_refines_view.
 Definition storage_padding_layout_view_contract :=
@@ -438,6 +468,12 @@ Definition storage_padding_layout_declared_access_value_view_contract :=
   PaddingLayoutCore.padding_layout_declared_access_value_view_contract.
 Definition storage_padding_layout_declared_access_compatible_value_view_contract :=
   PaddingLayoutCore.padding_layout_declared_access_compatible_value_view_contract.
+Definition storage_padding_layout_declared_access_bounds_compatible_value_view_contract :=
+  PaddingLayoutCore.padding_layout_declared_access_bounds_compatible_value_view_contract.
+Definition storage_padding_layout_target_within_bounds :=
+  PaddingLayoutCore.padding_layout_target_within_bounds.
+Definition storage_padding_layout_padding_within_bounds :=
+  PaddingLayoutCore.padding_layout_padding_within_bounds.
 Definition storage_checked_padding_layout_view_correct :=
   PaddingLayoutCore.checked_padding_layout_view_correct.
 Definition storage_checked_padding_layout_value_view_correct :=
@@ -460,6 +496,8 @@ Definition storage_checked_padding_layout_declared_access_value_view_correct :=
   PaddingLayoutCore.checked_padding_layout_declared_access_value_view_correct.
 Definition storage_checked_padding_layout_declared_access_compatible_value_view_correct :=
   PaddingLayoutCore.checked_padding_layout_declared_access_compatible_value_view_correct.
+Definition storage_checked_padding_layout_declared_access_bounds_compatible_value_view_correct :=
+  PaddingLayoutCore.checked_padding_layout_declared_access_bounds_compatible_value_view_correct.
 Definition storage_scalar_promotion_event := scalar_promotion_event.
 Definition storage_scalar_promotion_value_event :=
   scalar_promotion_value_event.

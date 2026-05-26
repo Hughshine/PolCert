@@ -388,6 +388,30 @@ def validate_layout_remap_padding() -> List[str]:
 
     padding_cells = {i * pad_stride + m for i in range(n)}
     require(set(pad_map.values()).isdisjoint(padding_cells), "logical accesses reach padding cells")
+    declared_bounds = {
+        "A_pad": (n * pad_stride,),
+        "A_t": (n * m,),
+        "A_lin": (n * m,),
+    }
+
+    def in_declared_bounds(array: str, index: Tuple[int, ...]) -> bool:
+        extents = declared_bounds[array]
+        return len(index) == len(extents) and all(
+            0 <= component < extent for component, extent in zip(index, extents)
+        )
+
+    allocated_physical_cells = [
+        ("A_pad", (target,)) for target in sorted(set(pad_map.values()) | padding_cells)
+    ]
+    allocated_physical_cells.extend(
+        ("A_t", (target,)) for target in sorted(set(transpose_map.values()))
+    )
+    allocated_physical_cells.extend(
+        ("A_lin", (target,)) for target in sorted(set(linearized_map.values()))
+    )
+    require(all(in_declared_bounds(array, index)
+                for array, index in allocated_physical_cells),
+            "allocated layout cell falls outside declared array bounds")
     declared_layouts = {
         ("A_pad", "A"): ("same", None),
         ("A_t", "A"): ("permutation", (1, 0)),
@@ -515,6 +539,7 @@ def validate_layout_remap_padding() -> List[str]:
         "transpose-style accesses use a declared index-permutation layout witness",
         "linearized accesses use a declared affine layout witness",
         "one declared-layout checker covers same-index, permutation, and affine cases",
+        "allocated physical layout cells are within declared array extents",
         "layout boundary values match the represented logical cells",
         "mapped physical layout cells are storage-compatible with represented logical cells",
     ]
@@ -1379,6 +1404,28 @@ def reject_layout_incompatible_storage() -> None:
     require(all(logical_specs[source_cell] == physical_specs[target_cell]
                 for source_cell, target_cell in storage_mappings),
             "layout storage spec mismatch")
+
+
+@add_negative("layout_out_of_declared_bounds", "layout_remap_padding")
+def reject_layout_out_of_declared_bounds() -> None:
+    n, m = 2, 3
+    pad_stride = m + 1
+    declared_bounds = {"A_pad": (n * pad_stride - 1,)}
+    allocated_physical_cells = [
+        ("A_pad", (i * pad_stride + j,))
+        for i in range(n)
+        for j in range(pad_stride)
+    ]
+
+    def in_declared_bounds(array: str, index: Tuple[int, ...]) -> bool:
+        extents = declared_bounds[array]
+        return len(index) == len(extents) and all(
+            0 <= component < extent for component, extent in zip(index, extents)
+        )
+
+    require(all(in_declared_bounds(array, index)
+                for array, index in allocated_physical_cells),
+            "allocated layout cell falls outside declared array bounds")
 
 
 @add_negative("layout_bad_access_remap", "layout_remap_padding")
