@@ -4,6 +4,7 @@ Require Import List.
 Require Import PolyBase.
 Require Import PrivateStorageWitness.
 Require Import StorageWitness.
+Require Import ReuseConflictWitness.
 Require Import PhaseValueWitness.
 
 Import ListNotations.
@@ -255,6 +256,45 @@ Proof.
   apply Htarget_final.
   unfold phase_projection_cell_relation in Hrel.
   eapply phase_projection_pair_target_in_targets; eauto.
+Qed.
+
+Theorem phase_projection_sources_reuse_mapping_sources :
+  forall mapping,
+    phase_projection_sources mapping = reuse_mapping_sources mapping.
+Proof.
+  reflexivity.
+Qed.
+
+Theorem phase_projection_sources_covered :
+  forall source_liveouts final_live mapping,
+    phase_projection_obligations source_liveouts final_live mapping ->
+    reuse_mapping_covers_sources mapping (phase_projection_sources mapping).
+Proof.
+  unfold reuse_mapping_covers_sources, reuse_source_covered.
+  intros source_liveouts final_live mapping Hobligations source_cell Hin_source.
+  pose proof
+    (phase_projection_sources_nodup
+       source_liveouts final_live mapping Hobligations)
+    as Hsources_nodup.
+  destruct (phase_projection_source_in_mapping mapping source_cell Hin_source)
+    as (target_cell & Hin_pair).
+  exists target_cell.
+  unfold phase_projection_cell_relation in *.
+  eapply reuse_lookup_complete_nodup.
+  - rewrite <- phase_projection_sources_reuse_mapping_sources.
+    exact Hsources_nodup.
+  - exact Hin_pair.
+Qed.
+
+Theorem phase_projection_boundary_obligations :
+  forall source_liveouts final_live mapping,
+    phase_projection_obligations source_liveouts final_live mapping ->
+    reuse_boundary_obligations mapping (phase_projection_sources mapping).
+Proof.
+  intros source_liveouts final_live mapping Hobligations.
+  constructor.
+  - eapply phase_projection_sources_nodup; eauto.
+  - eapply phase_projection_sources_covered; eauto.
 Qed.
 
 Record phase_projection_value_entry (value: Type) := {

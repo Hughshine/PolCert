@@ -1234,6 +1234,12 @@ Definition storage_phase_projection_mapped_source_liveout :=
   phase_projection_mapped_source_liveout.
 Definition storage_phase_projection_mapped_target_final_live :=
   phase_projection_mapped_target_final_live.
+Definition storage_phase_projection_sources_reuse_mapping_sources :=
+  phase_projection_sources_reuse_mapping_sources.
+Definition storage_phase_projection_sources_covered :=
+  phase_projection_sources_covered.
+Definition storage_phase_projection_boundary_obligations :=
+  phase_projection_boundary_obligations.
 Definition storage_check_phase_projection_valueb :=
   @check_phase_projection_valueb.
 Definition storage_check_phase_projection_valueb_sound :=
