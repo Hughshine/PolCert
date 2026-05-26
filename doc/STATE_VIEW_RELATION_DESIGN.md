@@ -1377,6 +1377,9 @@ expanded private trace is write-before-read.  The derived
 principle: two events for the same source instance and scalar cell cannot pick
 different private cells.  This is still a finite witness layer, not a full
 instruction-level simulation of the value computed into the private cell.
+`ScalarExpansionValidator.checked_scalar_expansion_view_correct` connects this
+finite layer to the existing private-erasure endpoint theorem under the same
+semantic refinement premise used by `PrivateStorageValidator`.
 
 ### Reduction Privatization
 
@@ -1945,7 +1948,9 @@ and proves that every dynamic point instantiates to a valid private cell trace.
 private-storage reasoning to scalar expansion: every dynamic
 `(instance, source scalar cell)` key selects one declared private cell, all
 events use that same selected cell, selected private cells are fresh, and the
-expanded private trace is write-before-read.
+expanded private trace is write-before-read.  `ScalarExpansionValidator` then
+packages those facts with `PrivateStorageValidator`'s private-erasure view
+refinement theorem, so the witness is not an isolated checker.
 `check_private_separationb` captures the reusable separation side condition:
 private cells are duplicate-free and disjoint from public/frame cells.
 `PrivateBoundaryWitness.check_private_boundaryb_sound` adds the boundary-copy
