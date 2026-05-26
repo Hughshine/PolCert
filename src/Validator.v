@@ -1306,6 +1306,8 @@ Definition storage_phase_separation_view_contract :=
   PhaseSeparationCore.phase_separation_view_contract.
 Definition storage_phase_separation_bounded_view_contract :=
   PhaseSeparationCore.phase_separation_bounded_view_contract.
+Definition storage_phase_separation_bounded_non_escape_view_contract :=
+  PhaseSeparationCore.phase_separation_bounded_non_escape_view_contract.
 Definition storage_phase_separation_value_view_contract :=
   PhaseSeparationCore.phase_separation_value_view_contract.
 Definition storage_phase_projection_view_contract :=
@@ -1320,6 +1322,8 @@ Definition storage_checked_phase_separation_view_correct :=
   PhaseSeparationCore.checked_phase_separation_view_correct.
 Definition storage_checked_phase_separation_bounded_view_correct :=
   PhaseSeparationCore.checked_phase_separation_bounded_view_correct.
+Definition storage_checked_phase_separation_bounded_non_escape_view_correct :=
+  PhaseSeparationCore.checked_phase_separation_bounded_non_escape_view_correct.
 Definition storage_checked_phase_separation_value_view_correct :=
   PhaseSeparationCore.checked_phase_separation_value_view_correct.
 Definition storage_checked_phase_projection_view_correct :=
@@ -1334,12 +1338,20 @@ Definition storage_phase_projection_mapped_target_within_bounds :=
   PhaseSeparationCore.phase_projection_mapped_target_within_bounds.
 Definition storage_phase_protocol_entry_live_cell_within_bounds :=
   PhaseSeparationCore.phase_protocol_entry_live_cell_within_bounds.
+Definition storage_phase_protocol_entry_live_cell_not_escaped :=
+  PhaseSeparationCore.phase_protocol_entry_live_cell_not_escaped.
 Definition storage_phase_protocol_read_cell_within_bounds :=
   PhaseSeparationCore.phase_protocol_read_cell_within_bounds.
+Definition storage_phase_protocol_read_cell_not_escaped :=
+  PhaseSeparationCore.phase_protocol_read_cell_not_escaped.
 Definition storage_phase_protocol_write_cell_within_bounds :=
   PhaseSeparationCore.phase_protocol_write_cell_within_bounds.
+Definition storage_phase_protocol_write_cell_not_escaped :=
+  PhaseSeparationCore.phase_protocol_write_cell_not_escaped.
 Definition storage_phase_protocol_next_live_cell_within_bounds :=
   PhaseSeparationCore.phase_protocol_next_live_cell_within_bounds.
+Definition storage_phase_protocol_next_live_cell_not_escaped :=
+  PhaseSeparationCore.phase_protocol_next_live_cell_not_escaped.
 
 (** Legacy validator API.  These definitions remain unchanged: the generalized
     contract above only wraps their existing correctness theorem as the

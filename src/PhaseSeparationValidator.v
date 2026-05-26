@@ -13,6 +13,7 @@ Require Import PhaseValueWitness.
 Require Import PhaseProjectionWitness.
 Require Import StorageCompatibilityWitness.
 Require Import StorageBoundsWitness.
+Require Import PrivateStorageWitness.
 
 Import ListNotations.
 
@@ -75,6 +76,22 @@ Record phase_separation_bounded_view_contract
   psbvc_protocol_bounds :
     storage_bounds_obligations
       phase_bounds (phase_protocol_cells entry_live steps);
+}.
+
+Record phase_separation_bounded_non_escape_view_contract
+    (input_view output_view: View.view)
+    (entry_live: list MemCell)
+    (steps: list phase_step)
+    (phase_bounds: list array_bounds)
+    (escaped_cells: list MemCell)
+    (source_view after: PolyLang.t) : Prop := {
+  psbnevc_bounded_base :
+    phase_separation_bounded_view_contract
+      input_view output_view entry_live steps phase_bounds
+      source_view after;
+  psbnevc_protocol_non_escape :
+    private_non_escape_obligations
+      (phase_protocol_cells entry_live steps) escaped_cells;
 }.
 
 Record phase_separation_value_view_contract
@@ -279,6 +296,44 @@ Proof.
        input_view output_view entry_live steps
        before source_view after ok Hret Hok Hphase Hsemantics)
     as [Hbase Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_phase_separation_bounded_non_escape_view_correct :
+  forall input_view output_view entry_live steps phase_bounds escaped_cells
+         before source_view after ok,
+    mayReturn (check_phase_source_view before source_view) ok ->
+    ok = true ->
+    check_phase_protocolb entry_live steps = true ->
+    check_storage_boundsb
+      phase_bounds (phase_protocol_cells entry_live steps) = true ->
+    check_private_non_escapeb
+      (phase_protocol_cells entry_live steps) escaped_cells = true ->
+    phase_source_view_refines_view
+      input_view output_view source_view after ->
+    phase_separation_bounded_non_escape_view_contract
+      input_view output_view entry_live steps phase_bounds escaped_cells
+      source_view after /\
+    View.view_refinement
+      input_view
+      (phase_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds escaped_cells
+         before source_view after ok
+         Hret Hok Hphase Hbounds Hnon_escape Hsemantics.
+  pose proof
+    (check_private_non_escapeb_sound
+       (phase_protocol_cells entry_live steps) escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_phase_separation_bounded_view_correct
+       input_view output_view entry_live steps phase_bounds
+       before source_view after ok
+       Hret Hok Hphase Hbounds Hsemantics)
+    as [Hbounded Hview].
   split.
   - constructor; assumption.
   - exact Hview.
@@ -548,6 +603,24 @@ Proof.
   exact Hin.
 Qed.
 
+Theorem phase_protocol_entry_live_cell_not_escaped :
+  forall input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after cell,
+    phase_separation_bounded_non_escape_view_contract
+      input_view output_view entry_live steps phase_bounds escaped_cells
+      source_view after ->
+    In cell entry_live ->
+    ~ In cell escaped_cells.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  apply phase_protocol_entry_live_in_cells.
+  exact Hin.
+Qed.
+
 Theorem phase_protocol_read_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after step cell,
@@ -563,6 +636,24 @@ Proof.
   destruct Hcontract as [_ Hbounds].
   eapply storage_bounds_cell_within
     with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_read_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_protocol_read_cell_not_escaped :
+  forall input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell,
+    phase_separation_bounded_non_escape_view_contract
+      input_view output_view entry_live steps phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_reads step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hread.
+  destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
   eapply phase_protocol_read_cell_in_cells; eauto.
 Qed.
 
@@ -584,6 +675,24 @@ Proof.
   eapply phase_protocol_write_cell_in_cells; eauto.
 Qed.
 
+Theorem phase_protocol_write_cell_not_escaped :
+  forall input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell,
+    phase_separation_bounded_non_escape_view_contract
+      input_view output_view entry_live steps phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_writes step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hwrite.
+  destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply phase_protocol_write_cell_in_cells; eauto.
+Qed.
+
 Theorem phase_protocol_next_live_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after step cell,
@@ -599,6 +708,24 @@ Proof.
   destruct Hcontract as [_ Hbounds].
   eapply storage_bounds_cell_within
     with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_next_live_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_protocol_next_live_cell_not_escaped :
+  forall input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell,
+    phase_separation_bounded_non_escape_view_contract
+      input_view output_view entry_live steps phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_next_live step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros input_view output_view entry_live steps phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hnext.
+  destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
   eapply phase_protocol_next_live_cell_in_cells; eauto.
 Qed.
 
