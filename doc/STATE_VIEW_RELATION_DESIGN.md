@@ -174,7 +174,12 @@ interface: `OverlapTilingValidator` has a public-only facade for its strongest
 ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
 as `overlap_private_ordered_bounded_non_escape_family`, and
 `StorageOverlapFamilyCompose.v` composes that instance-count-changing family
-with bounded scalar promotion through the same generic hook.
+with bounded scalar promotion through the same generic hook.  The versioned
+storage route now has the same shape: `VersionCommitValidator` projects the
+fully bounded/non-escape read+commit theorem to a public-only facade, packages
+it as `version_commit_read_fully_bounded_non_escape_family`, and
+`StorageVersionFamilyCompose.v` composes that array-expansion-style family with
+bounded scalar promotion through the generic hook.
 
 ## What a View Must Explain
 
@@ -1627,6 +1632,14 @@ storage compatibility for selected source/version pairs, so array expansion can
 state in one theorem that selected versions cover live-outs, are unique,
 contain the represented boundary values, and have compatible size/alignment
 specs.
+The current strongest version route also packages read-version selection,
+separate bounds for committed and produced physical versions, and non-escape for
+uncommitted produced versions.  Its public facade,
+`checked_version_commit_read_fully_bounded_compatible_non_escape_value_public_refinement`,
+exposes only `View.view_refinement`, and the corresponding
+`version_commit_read_fully_bounded_non_escape_family` carries commit selection,
+read selection, values, bounds, compatibility, and non-escape as
+parameters/side conditions for composition.
 
 This is useful as a counterpart to contraction and as a generalization of scalar
 expansion.

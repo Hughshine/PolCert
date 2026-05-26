@@ -700,6 +700,194 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_version_commit_read_fully_bounded_compatible_non_escape_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_version_source_view before source_view) ok ->
+    ok = true ->
+    check_version_commitb source_liveouts mapping = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    check_storage_boundsb commit_bounds
+      (version_commit_versions mapping) = true ->
+    check_storage_boundsb produced_bounds
+      (produced_version_versions produced_versions) = true ->
+    check_private_non_escapeb
+      (produced_version_versions produced_versions) escaped_cells = true ->
+    check_version_valueb value value_eqb mapping commit_entries = true ->
+    check_version_read_selectionb
+      expected_reads produced_versions read_entries = true ->
+    check_version_read_valueb
+      value_eqb read_entries read_value_entries = true ->
+    version_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (version_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries before source_view after ok
+         Hvalue_eqb Hret Hok Hcommit Hcompat Hcommit_bounds
+         Hproduced_bounds Hnon_escape Hcommit_value Hread_selection
+         Hread_values Hsemantics.
+  pose proof
+    (checked_version_commit_read_fully_bounded_compatible_non_escape_value_view_correct
+       value value_eqb input_view output_view source_liveouts mapping
+       logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+       commit_entries expected_reads produced_versions
+       read_entries read_value_entries before source_view after ok
+       Hvalue_eqb Hret Hok Hcommit Hcompat Hcommit_bounds
+       Hproduced_bounds Hnon_escape Hcommit_value Hread_selection
+       Hread_values Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record version_commit_read_fully_bounded_non_escape_params (value: Type) := {
+  vcrfbnep_input_view : View.view;
+  vcrfbnep_output_view : View.view;
+  vcrfbnep_source_liveouts : list MemCell;
+  vcrfbnep_mapping : version_commit_mapping;
+  vcrfbnep_logical_specs : list storage_spec;
+  vcrfbnep_physical_specs : list storage_spec;
+  vcrfbnep_commit_bounds : list array_bounds;
+  vcrfbnep_produced_bounds : list array_bounds;
+  vcrfbnep_escaped_cells : list MemCell;
+  vcrfbnep_commit_entries : list (version_value_entry value);
+  vcrfbnep_expected_reads : list logical_instance;
+  vcrfbnep_produced_versions : produced_version_mapping;
+  vcrfbnep_read_entries : list version_read_entry;
+  vcrfbnep_read_value_entries : list (version_read_value_entry value);
+  vcrfbnep_source_view : PolyLang.t;
+}.
+
+Definition version_commit_read_fully_bounded_non_escape_input_view
+    {value: Type}
+    (params: version_commit_read_fully_bounded_non_escape_params value)
+    : View.view :=
+  vcrfbnep_input_view value params.
+
+Definition version_commit_read_fully_bounded_non_escape_output_view
+    {value: Type}
+    (params: version_commit_read_fully_bounded_non_escape_params value)
+    : View.view :=
+  version_pipeline_final_view (vcrfbnep_output_view value params).
+
+Definition version_commit_read_fully_bounded_non_escape_check
+    {value: Type}
+    (params: version_commit_read_fully_bounded_non_escape_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_version_source_view before (vcrfbnep_source_view value params).
+
+Definition version_commit_read_fully_bounded_non_escape_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: version_commit_read_fully_bounded_non_escape_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_version_commitb
+    (vcrfbnep_source_liveouts value params)
+    (vcrfbnep_mapping value params) = true /\
+  check_storage_compatibilityb
+    (vcrfbnep_mapping value params)
+    (vcrfbnep_logical_specs value params)
+    (vcrfbnep_physical_specs value params) = true /\
+  check_storage_boundsb
+    (vcrfbnep_commit_bounds value params)
+    (version_commit_versions (vcrfbnep_mapping value params)) = true /\
+  check_storage_boundsb
+    (vcrfbnep_produced_bounds value params)
+    (produced_version_versions
+      (vcrfbnep_produced_versions value params)) = true /\
+  check_private_non_escapeb
+    (produced_version_versions
+      (vcrfbnep_produced_versions value params))
+    (vcrfbnep_escaped_cells value params) = true /\
+  check_version_valueb
+    value value_eqb
+    (vcrfbnep_mapping value params)
+    (vcrfbnep_commit_entries value params) = true /\
+  check_version_read_selectionb
+    (vcrfbnep_expected_reads value params)
+    (vcrfbnep_produced_versions value params)
+    (vcrfbnep_read_entries value params) = true /\
+  check_version_read_valueb
+    value_eqb
+    (vcrfbnep_read_entries value params)
+    (vcrfbnep_read_value_entries value params) = true /\
+  version_source_view_refines_view
+    (vcrfbnep_input_view value params)
+    (vcrfbnep_output_view value params)
+    (vcrfbnep_source_view value params)
+    after.
+
+Theorem version_commit_read_fully_bounded_non_escape_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (version_commit_read_fully_bounded_non_escape_check
+        params before after)
+      ok ->
+    ok = true ->
+    version_commit_read_fully_bounded_non_escape_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (version_commit_read_fully_bounded_non_escape_input_view params)
+      (version_commit_read_fully_bounded_non_escape_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view source_liveouts mapping logical_specs physical_specs
+     commit_bounds produced_bounds escaped_cells commit_entries expected_reads
+     produced_versions read_entries read_value_entries source_view].
+  simpl in *.
+  destruct Hside as
+    [Hcommit
+     [Hcompat
+      [Hcommit_bounds
+       [Hproduced_bounds
+        [Hnon_escape
+         [Hcommit_value
+          [Hread_selection [Hread_values Hsemantics]]]]]]]].
+  eapply
+    checked_version_commit_read_fully_bounded_compatible_non_escape_value_public_refinement;
+    eauto.
+Qed.
+
+Definition version_commit_read_fully_bounded_non_escape_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (version_commit_read_fully_bounded_non_escape_params value) := {|
+  generic_cpvtf_input_view :=
+    version_commit_read_fully_bounded_non_escape_input_view;
+  generic_cpvtf_output_view :=
+    version_commit_read_fully_bounded_non_escape_output_view;
+  generic_cpvtf_check :=
+    version_commit_read_fully_bounded_non_escape_check;
+  generic_cpvtf_side_condition :=
+    version_commit_read_fully_bounded_non_escape_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    version_commit_read_fully_bounded_non_escape_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem version_commit_selected_version_within_bounds :
   forall (value: Type) input_view output_view source_liveouts mapping
          logical_specs physical_specs physical_bounds entries
