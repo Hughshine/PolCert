@@ -673,6 +673,14 @@ Definition storage_check_copy_commit_coverb_obligations_sound :=
   check_copy_commit_coverb_obligations_sound.
 Definition storage_copy_commit_obligations :=
   copy_commit_obligations.
+Definition storage_copy_commit_identity_mapping :=
+  copy_commit_identity_mapping.
+Definition storage_copy_commit_committed_targets_nodup :=
+  copy_commit_committed_targets_nodup.
+Definition storage_copy_commit_committed_targets_covered :=
+  copy_commit_committed_targets_covered.
+Definition storage_copy_commit_boundary_obligations :=
+  copy_commit_boundary_obligations.
 Definition storage_check_copy_instance_traceb :=
   check_copy_instance_traceb.
 Definition storage_check_copy_instance_traceb_sound :=

@@ -4,6 +4,7 @@ Require Import List.
 Require Import PolyBase.
 Require Import PrivateStorageWitness.
 Require Import CopyProtocolWitness.
+Require Import ReuseConflictWitness.
 
 Import ListNotations.
 
@@ -69,4 +70,73 @@ Proof.
   constructor.
   apply check_copy_commit_coverb_sound.
   exact Hcheck.
+Qed.
+
+Fixpoint copy_commit_identity_mapping
+    (cells: list MemCell) : reuse_mapping :=
+  match cells with
+  | [] => []
+  | cell :: tail =>
+      (cell, cell) :: copy_commit_identity_mapping tail
+  end.
+
+Lemma copy_commit_identity_lookup :
+  forall cells cell,
+    In cell cells ->
+    reuse_lookup cell (copy_commit_identity_mapping cells) = Some cell.
+Proof.
+  induction cells as [|head tail IH]; intros cell Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst.
+      rewrite mem_cell_strict_eq_eqb with (c2 := cell).
+      * reflexivity.
+      * reflexivity.
+    + destruct (mem_cell_strict_eqb cell head) eqn:Heq_head.
+      * apply mem_cell_strict_eqb_eq in Heq_head.
+        subst.
+        reflexivity.
+      * apply IH.
+        exact Hin_tail.
+Qed.
+
+Theorem copy_commit_committed_targets_nodup :
+  forall expected_targets trace,
+    copy_commit_obligations expected_targets trace ->
+    NoDup (copy_protocol_committed_targets trace).
+Proof.
+  intros expected_targets trace Hobligations.
+  destruct Hobligations as [Hcover].
+  destruct Hcover as [Hnodup _].
+  exact Hnodup.
+Qed.
+
+Theorem copy_commit_committed_targets_covered :
+  forall expected_targets trace,
+    copy_commit_obligations expected_targets trace ->
+    reuse_mapping_covers_sources
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  unfold reuse_mapping_covers_sources, reuse_source_covered.
+  intros expected_targets trace _ source_cell Hin_source.
+  exists source_cell.
+  unfold reuse_cell_relation.
+  apply copy_commit_identity_lookup.
+  exact Hin_source.
+Qed.
+
+Theorem copy_commit_boundary_obligations :
+  forall expected_targets trace,
+    copy_commit_obligations expected_targets trace ->
+    reuse_boundary_obligations
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros expected_targets trace Hobligations.
+  constructor.
+  - eapply copy_commit_committed_targets_nodup; eauto.
+  - eapply copy_commit_committed_targets_covered; eauto.
 Qed.
