@@ -997,6 +997,18 @@ def validate_array_expansion_versioning() -> List[str]:
             "version commit does not cover every source live-out")
     require(len(set(selected_versions.values())) == len(selected_versions),
             "selected target versions are not unique")
+    declared_version_bounds = {
+        "X_exp": (t_max, n),
+    }
+
+    def version_in_declared_bounds(version_cell: Tuple[str, int, int]) -> bool:
+        array, t, i = version_cell
+        t_extent, i_extent = declared_version_bounds[array]
+        return 0 <= t < t_extent and 0 <= i < i_extent
+
+    require(all(version_in_declared_bounds(version_cell)
+                for version_cell in selected_versions.values()),
+            "selected target version falls outside declared bounds")
     logical_specs = {source_cell: (8, 8) for source_cell in source_liveouts}
     version_specs = {version_cell: (8, 8) for version_cell in selected_versions.values()}
     require(all(logical_specs[source_cell] == version_specs[version_cell]
@@ -1010,6 +1022,7 @@ def validate_array_expansion_versioning() -> List[str]:
         "extra versions project back to one source logical array",
         "selected committed versions cover source live-outs exactly once",
         "selected target versions are storage-compatible with source live-outs",
+        "selected target versions are within declared version-array bounds",
         "selected version values match represented source live-outs",
         "copy-out commits exactly the final source-observable version",
     ]
@@ -1844,6 +1857,18 @@ def reject_expansion_incompatible_version_storage() -> None:
     version_specs = {version_cell: (4, 4)}
     require(logical_specs[source_cell] == version_specs[version_cell],
             "selected version storage spec mismatch")
+
+
+@add_negative("expansion_version_out_of_bounds", "array_expansion_versioning")
+def reject_expansion_version_out_of_bounds() -> None:
+    declared_version_bounds = {
+        "X_exp": (3, 4),
+    }
+    version_cell = ("X_exp", 3, 0)
+    array, t, i = version_cell
+    t_extent, i_extent = declared_version_bounds[array]
+    require(0 <= t < t_extent and 0 <= i < i_extent,
+            "selected target version falls outside declared bounds")
 
 
 @add_negative("duplicate_overlap_commit", "overlapped_tiling")

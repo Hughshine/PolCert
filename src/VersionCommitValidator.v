@@ -13,6 +13,7 @@ Require Import VersionCommitWitness.
 Require Import VersionCommitValueWitness.
 Require Import VersionReadWitness.
 Require Import StorageCompatibilityWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -136,6 +137,56 @@ Record version_commit_read_compatible_value_view_contract
     version_read_selection_obligations
       expected_reads produced_versions read_entries;
   vcrcvc_read_values :
+    version_read_value_obligations
+      value read_entries read_value_entries;
+}.
+
+Record version_commit_bounded_compatible_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (source_liveouts: list MemCell)
+    (mapping: version_commit_mapping)
+    (logical_specs physical_specs: list storage_spec)
+    (physical_bounds: list array_bounds)
+    (entries: list (version_value_entry value))
+    (source_view after: PolyLang.t) : Prop := {
+  vcbcvc_commit :
+    version_commit_obligations source_liveouts mapping;
+  vcbcvc_storage_compatible :
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs;
+  vcbcvc_target_bounds :
+    storage_bounds_obligations
+      physical_bounds (version_commit_versions mapping);
+  vcbcvc_value :
+    version_value_obligations value mapping entries;
+  vcbcvc_semantic_refinement :
+    version_source_view_refines_view
+      input_view output_view source_view after;
+}.
+
+Record version_commit_read_bounded_compatible_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (source_liveouts: list MemCell)
+    (mapping: version_commit_mapping)
+    (logical_specs physical_specs: list storage_spec)
+    (physical_bounds: list array_bounds)
+    (commit_entries: list (version_value_entry value))
+    (expected_reads: list logical_instance)
+    (produced_versions: produced_version_mapping)
+    (read_entries: list version_read_entry)
+    (read_value_entries: list (version_read_value_entry value))
+    (source_view after: PolyLang.t) : Prop := {
+  vcrbcvc_commit_base :
+    version_commit_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs physical_bounds
+      commit_entries source_view after;
+  vcrbcvc_read_selection :
+    version_read_selection_obligations
+      expected_reads produced_versions read_entries;
+  vcrbcvc_read_values :
     version_read_value_obligations
       value read_entries read_value_entries;
 }.
@@ -355,6 +406,143 @@ Proof.
   split.
   - constructor; assumption.
   - exact Hview.
+Qed.
+
+Theorem checked_version_commit_bounded_compatible_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_version_source_view before source_view) ok ->
+    ok = true ->
+    check_version_commitb source_liveouts mapping = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    check_storage_boundsb physical_bounds
+      (version_commit_versions mapping) = true ->
+    check_version_valueb value value_eqb mapping entries = true ->
+    version_source_view_refines_view
+      input_view output_view source_view after ->
+    version_commit_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs physical_bounds entries source_view after /\
+    View.view_refinement
+      input_view
+      (version_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hcommit Hcompat Hbounds Hvalue Hsemantics.
+  pose proof
+    (check_version_commitb_sound source_liveouts mapping Hcommit)
+    as Hcommit_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hcompat)
+    as Hcompat_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       physical_bounds (version_commit_versions mapping) Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (check_version_valueb_sound
+       value value_eqb Hvalue_eqb mapping entries Hvalue)
+    as Hvalue_obligations.
+  pose proof
+    (checked_version_commit_compatible_value_view_correct
+       value value_eqb input_view output_view source_liveouts mapping
+       logical_specs physical_specs entries
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hcommit Hcompat Hvalue Hsemantics)
+    as [_ Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_version_commit_read_bounded_compatible_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_version_source_view before source_view) ok ->
+    ok = true ->
+    check_version_commitb source_liveouts mapping = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    check_storage_boundsb physical_bounds
+      (version_commit_versions mapping) = true ->
+    check_version_valueb value value_eqb mapping commit_entries = true ->
+    check_version_read_selectionb
+      expected_reads produced_versions read_entries = true ->
+    check_version_read_valueb
+      value_eqb read_entries read_value_entries = true ->
+    version_source_view_refines_view
+      input_view output_view source_view after ->
+    version_commit_read_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs physical_bounds commit_entries
+      expected_reads produced_versions read_entries read_value_entries
+      source_view after /\
+    View.view_refinement
+      input_view
+      (version_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view source_liveouts
+         mapping logical_specs physical_specs physical_bounds commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hcommit Hcompat Hbounds Hcommit_value
+         Hread_selection Hread_values Hsemantics.
+  pose proof
+    (check_version_read_selectionb_sound
+       expected_reads produced_versions read_entries Hread_selection)
+    as Hread_selection_obligations.
+  pose proof
+    (check_version_read_valueb_sound
+       value value_eqb Hvalue_eqb
+       read_entries read_value_entries Hread_values)
+    as Hread_value_obligations.
+  pose proof
+    (checked_version_commit_bounded_compatible_value_view_correct
+       value value_eqb input_view output_view source_liveouts mapping
+       logical_specs physical_specs physical_bounds commit_entries
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hcommit Hcompat Hbounds
+       Hcommit_value Hsemantics)
+    as [Hcommit_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem version_commit_selected_version_within_bounds :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         source_view after source_cell version_cell,
+    version_commit_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs physical_bounds entries source_view after ->
+    version_commit_cell_relation mapping version_cell source_cell ->
+    cell_within_declared_bounds physical_bounds version_cell.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         source_view after source_cell version_cell Hcontract Hrel.
+  destruct Hcontract as [Hcommit _ Hbounds _ _].
+  eapply storage_bounds_cell_within
+    with (cells := version_commit_versions mapping); eauto.
+  eapply version_commit_selected_version_in_versions; eauto.
 Qed.
 
 End VersionCommitValidator.
