@@ -249,6 +249,29 @@ Record overlap_private_ordered_closure_bounded_compatible_value_storage_view_con
     storage_bounds_obligations commit_bounds commit_cells;
 }.
 
+Record overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (source_domain source_liveouts: list logical_instance)
+    (tiles: list overlap_tile)
+    (target_values: list (overlap_value_entry value))
+    (private_cells public_cells frame_cells commit_cells: list MemCell)
+    (private_mapping: reuse_mapping)
+    (logical_specs private_specs: list storage_spec)
+    (private_bounds commit_bounds: list array_bounds)
+    (escaped_cells: list MemCell)
+    (writes: list overlap_write)
+    (source_view after: PolyLang.t) : Prop := {
+  opocbcnevs_bounded_storage_base :
+    overlap_private_ordered_closure_bounded_compatible_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs private_bounds commit_bounds
+      writes source_view after;
+  opocbcnevs_non_escape :
+    private_non_escape_obligations private_cells escaped_cells;
+}.
+
 Definition overlap_pipeline_final_view
     (output_view: View.view) : View.view :=
   Pipeline.pipeline_final_view output_view.
@@ -740,6 +763,72 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (check_overlap_source_view before source_view) ok ->
+    ok = true ->
+    check_instance_projectionb
+      source_domain source_liveouts
+      (overlap_tiles_targets tiles) = true ->
+    check_overlap_ordered_closureb tiles = true ->
+    check_private_separationb
+      private_cells public_cells frame_cells = true ->
+    check_storage_compatibilityb
+      private_mapping logical_specs private_specs = true ->
+    check_storage_boundsb private_bounds private_cells = true ->
+    check_storage_boundsb commit_bounds commit_cells = true ->
+    check_private_non_escapeb private_cells escaped_cells = true ->
+    check_overlap_valueb
+      value_eqb (overlap_tiles_targets tiles) target_values = true ->
+    check_overlap_storageb
+      private_cells commit_cells (overlap_tiles_targets tiles) writes = true ->
+    overlap_source_view_refines_view
+      input_view output_view source_view after ->
+    overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs private_bounds commit_bounds
+      escaped_cells writes source_view after /\
+    View.view_refinement
+      input_view
+      (overlap_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes before source_view after ok
+         Hvalue_eqb Hret Hok Hprojection Hclosure Hseparation Hstorage
+         Hprivate_bounds Hcommit_bounds Hnon_escape Hvalues Hwrites Hsemantics.
+  pose proof
+    (check_private_non_escapeb_sound
+       private_cells escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_overlap_private_ordered_closure_bounded_compatible_value_storage_view_correct
+       value value_eqb input_view output_view
+       source_domain source_liveouts tiles target_values
+       private_cells public_cells frame_cells commit_cells
+       private_mapping logical_specs private_specs private_bounds commit_bounds
+       writes before source_view after ok
+       Hvalue_eqb Hret Hok Hprojection Hclosure Hseparation Hstorage
+       Hprivate_bounds Hcommit_bounds Hvalues Hwrites Hsemantics)
+    as [Hbounded_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
 Theorem overlap_internal_write_within_private_bounds :
   forall (value: Type)
          input_view output_view
@@ -792,6 +881,34 @@ Proof.
     with (cells := commit_cells); eauto.
   destruct Hbase as [_ Hwrites].
   eapply overlap_storage_commit_write_public; eauto.
+Qed.
+
+Theorem overlap_internal_write_not_escaped :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes source_view after write,
+    overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs private_bounds commit_bounds
+      escaped_cells writes source_view after ->
+    In write writes ->
+    projected_role (overlap_write_target write) = Internal ->
+    ~ In (overlap_write_cell write) escaped_cells.
+Proof.
+  intros value input_view output_view source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes source_view after write Hcontract Hin Hrole.
+  destruct Hcontract as [Hbase Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  destruct Hbase as [Hbounded_base _ _].
+  destruct Hbounded_base as [_ Hwrites].
+  eapply overlap_storage_internal_write_private; eauto.
 Qed.
 
 End OverlapTilingValidator.
