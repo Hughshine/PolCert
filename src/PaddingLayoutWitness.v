@@ -3,6 +3,7 @@ Require Import List.
 
 Require Import PolyBase.
 Require Import PrivateStorageWitness.
+Require Import ReuseConflictWitness.
 
 Import ListNotations.
 
@@ -89,4 +90,63 @@ Proof.
     exact Hpadding_alloc.
   - apply mem_cells_disjointb_sound.
     exact Hpadding_disjoint.
+Qed.
+
+Theorem padding_layout_sources_reuse_mapping_sources :
+  forall mapping,
+    padding_layout_sources mapping = reuse_mapping_sources mapping.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma padding_layout_source_in_mapping :
+  forall mapping source_cell,
+    In source_cell (padding_layout_sources mapping) ->
+    exists target_cell,
+      In (source_cell, target_cell) mapping.
+Proof.
+  induction mapping as [|[source_head target_head] tail IH];
+    intros source_cell Hin; simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst.
+      exists target_head.
+      left. reflexivity.
+    + destruct (IH source_cell Hin_tail)
+        as (target_cell & Hin_mapping).
+      exists target_cell.
+      right. exact Hin_mapping.
+Qed.
+
+Theorem padding_layout_sources_covered :
+  forall mapping padding_cells allocated_cells,
+    padding_layout_obligations mapping padding_cells allocated_cells ->
+    reuse_mapping_covers_sources mapping (padding_layout_sources mapping).
+Proof.
+  unfold reuse_mapping_covers_sources, reuse_source_covered.
+  intros mapping padding_cells allocated_cells Hobligations
+         source_cell Hin_source.
+  pose proof
+    (plo_source_functional
+       mapping padding_cells allocated_cells Hobligations)
+    as Hsources_nodup.
+  destruct (padding_layout_source_in_mapping mapping source_cell Hin_source)
+    as (target_cell & Hin_pair).
+  exists target_cell.
+  eapply reuse_lookup_complete_nodup.
+  - rewrite <- padding_layout_sources_reuse_mapping_sources.
+    exact Hsources_nodup.
+  - exact Hin_pair.
+Qed.
+
+Theorem padding_layout_boundary_obligations :
+  forall mapping padding_cells allocated_cells,
+    padding_layout_obligations mapping padding_cells allocated_cells ->
+    reuse_boundary_obligations mapping (padding_layout_sources mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hobligations.
+  constructor.
+  - exact (plo_source_functional
+             mapping padding_cells allocated_cells Hobligations).
+  - eapply padding_layout_sources_covered; eauto.
 Qed.

@@ -496,6 +496,12 @@ Definition storage_check_padding_layoutb_sound :=
   check_padding_layoutb_sound.
 Definition storage_padding_layout_obligations :=
   padding_layout_obligations.
+Definition storage_padding_layout_sources_reuse_mapping_sources :=
+  padding_layout_sources_reuse_mapping_sources.
+Definition storage_padding_layout_sources_covered :=
+  padding_layout_sources_covered.
+Definition storage_padding_layout_boundary_obligations :=
+  padding_layout_boundary_obligations.
 Definition storage_layout_value_entry := layout_value_entry.
 Definition storage_check_layout_valueb :=
   @check_layout_valueb.
