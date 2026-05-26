@@ -306,12 +306,16 @@ Definition storage_private_non_escape_obligations :=
 Definition storage_private_event := private_event.
 Definition storage_private_event_cell :=
   private_event_cell.
+Definition storage_private_trace_cells :=
+  private_trace_cells.
 Definition storage_check_private_trace_cells_declaredb :=
   check_private_trace_cells_declaredb.
 Definition storage_check_private_trace_cells_declaredb_sound :=
   check_private_trace_cells_declaredb_sound.
 Definition storage_private_trace_cells_declared :=
   private_trace_cells_declared.
+Definition storage_private_trace_cells_declared_in :=
+  private_trace_cells_declared_in.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=

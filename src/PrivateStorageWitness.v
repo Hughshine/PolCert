@@ -289,6 +289,13 @@ Definition private_event_cell (event: private_event) : MemCell :=
   | PrivateRead cell => cell
   end.
 
+Fixpoint private_trace_cells (trace: list private_event) : list MemCell :=
+  match trace with
+  | [] => []
+  | event :: tail =>
+      private_event_cell event :: private_trace_cells tail
+  end.
+
 Fixpoint private_trace_cells_declared
     (private_cells: list MemCell)
     (trace: list private_event) : Prop :=
@@ -324,6 +331,22 @@ Proof.
       exact Hevent.
     + apply IH.
       exact Htail.
+Qed.
+
+Lemma private_trace_cells_declared_in :
+  forall private_cells trace cell,
+    private_trace_cells_declared private_cells trace ->
+    In cell (private_trace_cells trace) ->
+    In cell private_cells.
+Proof.
+  intros private_cells trace.
+  induction trace as [|event tail IH]; intros cell Hdeclared Hin;
+    simpl in Hdeclared, Hin.
+  - contradiction.
+  - destruct Hdeclared as [Hevent Htail].
+    destruct Hin as [Heq | Hin_tail].
+    + subst. exact Hevent.
+    + eapply IH; eauto.
 Qed.
 
 Fixpoint private_reads_defined

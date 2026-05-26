@@ -278,6 +278,10 @@ def validate_private_copy_boundary() -> List[str]:
 
     private_cells = {("seed_priv", i) for i in range(n)}
     private_cells |= {("tmp_priv", i) for i in range(n)}
+    declared_private_bounds = {
+        "seed_priv": (n,),
+        "tmp_priv": (n,),
+    }
     public_liveins = {"seed"}
     public_liveouts = {"tmp"}
     copyins = [("seed", ("seed_priv", i)) for i in range(n)]
@@ -296,6 +300,9 @@ def validate_private_copy_boundary() -> List[str]:
             "private live-out has no copy-out")
     require(all(cell in private_cells for _event, cell in private_trace),
             "private trace uses undeclared private cell")
+    require(all(0 <= index < declared_private_bounds[array][0]
+                for array, index in private_cells),
+            "private cell falls outside declared bounds")
     require({private for _public, private in copyins} <= private_cells,
             "copy-in does not target declared private cells")
     require({private for _public, private in copyouts} <= private_cells,
@@ -346,6 +353,7 @@ def validate_private_copy_boundary() -> List[str]:
         "every required public live-out has a unique copy-out boundary pair",
         "boundary pairs use declared private storage cells",
         "private trace read/write cells are declared private cells",
+        "declared private cells are within private array bounds",
         "boundary copy private cells are unique on the private side",
         "copy-in/copy-out boundary values match across public and private cells",
         "boundary public/private cells are storage-compatible for copy-in and copy-out",
@@ -1371,6 +1379,18 @@ def reject_private_trace_undeclared_cell() -> None:
     ]
     require(all(cell in private_cells for _event, cell in private_trace),
             "private trace uses undeclared private cell")
+
+
+@add_negative("private_out_of_declared_bounds", "private_copy_boundary")
+def reject_private_out_of_declared_bounds() -> None:
+    private_cells = {("seed_priv", 0), ("tmp_priv", 0), ("tmp_priv", 1)}
+    declared_private_bounds = {
+        "seed_priv": (1,),
+        "tmp_priv": (1,),
+    }
+    require(all(0 <= index < declared_private_bounds[array][0]
+                for array, index in private_cells),
+            "private cell falls outside declared bounds")
 
 
 @add_negative("private_bad_copyout_value", "private_copy_boundary")
