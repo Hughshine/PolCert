@@ -1450,7 +1450,10 @@ current value in the threaded private-value map, which proves read-after-write
 use-def for the projected private trace.  This allows a smaller static-core
 bridge theorem: static declaration/freshness/visibility checks are combined
 with CInstr trace evidence for event mapping and use-def before yielding the
-same public-view refinement conclusion.
+same public-view refinement conclusion.  A bounded variant composes the same
+trace-derived core with private-bounds, storage-compatibility, and non-escape
+witnesses, keeping those checks as side conditions rather than changing the
+endpoint relation.
 
 ### Reduction Privatization
 

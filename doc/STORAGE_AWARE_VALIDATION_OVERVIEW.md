@@ -187,6 +187,10 @@ threaded expansion map, the corresponding private trace is read-after-write
 safe.  The CInstr bridge uses this to offer a smaller static-core theorem where
 declared entries, hidden cells, and freshness are checked, while event mapping
 and use-def come from the ordered CInstr trace.
+The same static-trace route now has a bounded variant that adds private bounds,
+source/private storage compatibility, and non-escape checks before returning
+the bounded scalar privatization obligation package and the same public-view
+refinement conclusion.
 `SourceNoAliasWitness.v` makes the front-end memory abstraction explicit: each
 logical source object has a duplicate-free finite footprint, object ids are
 duplicate-free, different footprints are pairwise disjoint, and a finite list
