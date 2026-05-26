@@ -829,6 +829,200 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes
+         before source_view after ok,
+    (forall left right,
+        value_eqb left right = true ->
+        left = right) ->
+    mayReturn (check_overlap_source_view before source_view) ok ->
+    ok = true ->
+    check_instance_projectionb
+      source_domain source_liveouts
+      (overlap_tiles_targets tiles) = true ->
+    check_overlap_ordered_closureb tiles = true ->
+    check_private_separationb
+      private_cells public_cells frame_cells = true ->
+    check_storage_compatibilityb
+      private_mapping logical_specs private_specs = true ->
+    check_storage_boundsb private_bounds private_cells = true ->
+    check_storage_boundsb commit_bounds commit_cells = true ->
+    check_private_non_escapeb private_cells escaped_cells = true ->
+    check_overlap_valueb
+      value_eqb (overlap_tiles_targets tiles) target_values = true ->
+    check_overlap_storageb
+      private_cells commit_cells (overlap_tiles_targets tiles) writes = true ->
+    overlap_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (overlap_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes before source_view after ok
+         Hvalue_eqb Hret Hok Hprojection Hclosure Hseparation Hstorage
+         Hprivate_bounds Hcommit_bounds Hnon_escape Hvalues Hwrites Hsemantics.
+  pose proof
+    (checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_correct
+       value value_eqb input_view output_view
+       source_domain source_liveouts tiles target_values
+       private_cells public_cells frame_cells commit_cells
+       private_mapping logical_specs private_specs private_bounds commit_bounds
+       escaped_cells writes before source_view after ok
+       Hvalue_eqb Hret Hok Hprojection Hclosure Hseparation Hstorage
+       Hprivate_bounds Hcommit_bounds Hnon_escape Hvalues Hwrites Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record overlap_private_ordered_bounded_non_escape_params (value: Type) := {
+  opobnep_input_view : View.view;
+  opobnep_output_view : View.view;
+  opobnep_source_domain : list logical_instance;
+  opobnep_source_liveouts : list logical_instance;
+  opobnep_tiles : list overlap_tile;
+  opobnep_target_values : list (overlap_value_entry value);
+  opobnep_private_cells : list MemCell;
+  opobnep_public_cells : list MemCell;
+  opobnep_frame_cells : list MemCell;
+  opobnep_commit_cells : list MemCell;
+  opobnep_private_mapping : reuse_mapping;
+  opobnep_logical_specs : list storage_spec;
+  opobnep_private_specs : list storage_spec;
+  opobnep_private_bounds : list array_bounds;
+  opobnep_commit_bounds : list array_bounds;
+  opobnep_escaped_cells : list MemCell;
+  opobnep_writes : list overlap_write;
+  opobnep_source_view : PolyLang.t;
+}.
+
+Definition overlap_private_ordered_bounded_non_escape_input_view {value: Type}
+    (params: overlap_private_ordered_bounded_non_escape_params value)
+    : View.view :=
+  opobnep_input_view value params.
+
+Definition overlap_private_ordered_bounded_non_escape_output_view {value: Type}
+    (params: overlap_private_ordered_bounded_non_escape_params value)
+    : View.view :=
+  overlap_pipeline_final_view (opobnep_output_view value params).
+
+Definition overlap_private_ordered_bounded_non_escape_check {value: Type}
+    (params: overlap_private_ordered_bounded_non_escape_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_overlap_source_view before (opobnep_source_view value params).
+
+Definition overlap_private_ordered_bounded_non_escape_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: overlap_private_ordered_bounded_non_escape_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_instance_projectionb
+    (opobnep_source_domain value params)
+    (opobnep_source_liveouts value params)
+    (overlap_tiles_targets (opobnep_tiles value params)) = true /\
+  check_overlap_ordered_closureb
+    (opobnep_tiles value params) = true /\
+  check_private_separationb
+    (opobnep_private_cells value params)
+    (opobnep_public_cells value params)
+    (opobnep_frame_cells value params) = true /\
+  check_storage_compatibilityb
+    (opobnep_private_mapping value params)
+    (opobnep_logical_specs value params)
+    (opobnep_private_specs value params) = true /\
+  check_storage_boundsb
+    (opobnep_private_bounds value params)
+    (opobnep_private_cells value params) = true /\
+  check_storage_boundsb
+    (opobnep_commit_bounds value params)
+    (opobnep_commit_cells value params) = true /\
+  check_private_non_escapeb
+    (opobnep_private_cells value params)
+    (opobnep_escaped_cells value params) = true /\
+  check_overlap_valueb
+    value_eqb
+    (overlap_tiles_targets (opobnep_tiles value params))
+    (opobnep_target_values value params) = true /\
+  check_overlap_storageb
+    (opobnep_private_cells value params)
+    (opobnep_commit_cells value params)
+    (overlap_tiles_targets (opobnep_tiles value params))
+    (opobnep_writes value params) = true /\
+  overlap_source_view_refines_view
+    (opobnep_input_view value params)
+    (opobnep_output_view value params)
+    (opobnep_source_view value params)
+    after.
+
+Theorem overlap_private_ordered_bounded_non_escape_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (overlap_private_ordered_bounded_non_escape_check params before after)
+      ok ->
+    ok = true ->
+    overlap_private_ordered_bounded_non_escape_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (overlap_private_ordered_bounded_non_escape_input_view params)
+      (overlap_private_ordered_bounded_non_escape_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view source_domain source_liveouts tiles target_values
+     private_cells public_cells frame_cells commit_cells private_mapping
+     logical_specs private_specs private_bounds commit_bounds escaped_cells
+     writes source_view].
+  simpl in *.
+  destruct Hside as
+    [Hprojection
+     [Hclosure
+      [Hseparation
+       [Hstorage
+        [Hprivate_bounds
+         [Hcommit_bounds
+          [Hnon_escape
+           [Hvalues [Hwrites Hsemantics]]]]]]]]].
+  eapply
+    checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_public_refinement;
+    eauto.
+Qed.
+
+Definition overlap_private_ordered_bounded_non_escape_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (overlap_private_ordered_bounded_non_escape_params value) := {|
+  generic_cpvtf_input_view :=
+    overlap_private_ordered_bounded_non_escape_input_view;
+  generic_cpvtf_output_view :=
+    overlap_private_ordered_bounded_non_escape_output_view;
+  generic_cpvtf_check :=
+    overlap_private_ordered_bounded_non_escape_check;
+  generic_cpvtf_side_condition :=
+    overlap_private_ordered_bounded_non_escape_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    overlap_private_ordered_bounded_non_escape_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem overlap_internal_write_within_private_bounds :
   forall (value: Type)
          input_view output_view

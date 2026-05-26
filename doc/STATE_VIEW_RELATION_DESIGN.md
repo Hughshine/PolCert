@@ -169,7 +169,12 @@ bounded/fully-declared/non-escape copy theorem and packages it as
 `scratchpad_copy_bounded_non_escape_family`, while
 `StorageCopyFamilyCompose.v` shows that this copy-mediated family composes with
 bounded scalar promotion without exposing the copy contract as the final
-relation.
+relation.  The overlap/private recomputation route now follows the same public
+interface: `OverlapTilingValidator` has a public-only facade for its strongest
+ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
+as `overlap_private_ordered_bounded_non_escape_family`, and
+`StorageOverlapFamilyCompose.v` composes that instance-count-changing family
+with bounded scalar promotion through the same generic hook.
 
 ## What a View Must Explain
 
@@ -1847,8 +1852,15 @@ tile-private separation witness for materialized halo/local buffers.
 `checked_overlap_private_closure_view_correct` additionally package the finite
 tile-local closure witness.  `checked_overlap_ordered_closure_view_correct` and
 `checked_overlap_private_ordered_closure_view_correct` package the stronger
-producer-order variant.  Value equivalence of recomputed halo/internal
-instances is still a separate semantic refinement obligation.
+producer-order variant.  The current strongest materialized-overlap route also
+packages value equivalence, private/commit write classification, storage
+compatibility, private/commit bounds, and private non-escape.  Its public facade,
+`checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_public_refinement`,
+exposes only `View.view_refinement`, and
+`overlap_private_ordered_bounded_non_escape_family` carries the detailed
+projection, closure, value, storage, bounds, and non-escape witnesses as
+parameters/side conditions for composition.  Deriving those finite witnesses from
+concrete generated code remains explicit.
 
 Overlap support requires keeping instance duplication separate from state
 projection.
