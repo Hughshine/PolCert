@@ -232,9 +232,12 @@ scalar value.  `CInstrScalarPromotionWitness.v` now connects this value-flow
 layer to concrete CInstr semantics: load/read/write/store/global-write events
 can be derived from CInstr access, expression-evaluation, and assignment
 steps, and an ordered CInstr-derived trace proves the generic scalar-promotion
-value-flow obligation.  `ScalarPromotionValidator.v` composes the storage
-protocol, the optional value-flow witness, scalar-private separation, and the
-remaining instruction-level semantic refinement.
+value-flow obligation.  `CInstrScalarPromotionValidatorBridge.v` connects that
+CInstr trace evidence to the existing scalar-promotion view wrappers, including
+the compatible and bounded/non-escape variants, without changing their
+public-view refinement conclusion.  `ScalarPromotionValidator.v` composes the
+storage protocol, the optional value-flow witness, scalar-private separation,
+and the remaining instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
 local-read/local-write, and copy-out traces: local reads require earlier local
 definitions, and copy-out destinations are committed at most once.
