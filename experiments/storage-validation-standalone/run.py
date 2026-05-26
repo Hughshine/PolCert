@@ -1066,6 +1066,17 @@ def validate_array_expansion_versioning() -> List[str]:
     same_dict(x, target_x, "final X")
     source_liveouts = {("X", i) for i in range(n)}
     selected_versions = {("X", i): ("X_exp", t_max - 1, i) for i in range(n)}
+    produced_versions = {
+        ("write", t, i): ("X_exp", t, i)
+        for t in range(t_max)
+        for i in range(n)
+    }
+    expected_reads = [("read", t, i) for t in range(t_max) for i in range(n)]
+    read_entries = [
+        (("read", t, i), ("write", t, i), ("X_exp", t, i))
+        for t in range(t_max)
+        for i in range(n)
+    ]
     require(set(selected_versions.keys()) == source_liveouts,
             "version commit does not cover every source live-out")
     require(len(set(selected_versions.values())) == len(selected_versions),
@@ -1079,6 +1090,19 @@ def validate_array_expansion_versioning() -> List[str]:
         t_extent, i_extent = declared_version_bounds[array]
         return 0 <= t < t_extent and 0 <= i < i_extent
 
+    require([entry[0] for entry in read_entries] == expected_reads,
+            "version read entries do not cover expected reads in order")
+    produced_pairs = set(produced_versions.items())
+    require(all((expected_producer, selected_version) in produced_pairs
+                for _read_instance, expected_producer, selected_version in read_entries),
+            "read-selected version was not produced by the expected write")
+    require(all(version_in_declared_bounds(selected_version)
+                for _read_instance, _expected_producer, selected_version in read_entries),
+            "read-selected produced version falls outside declared bounds")
+    require(all(target_y[t, i] == x_exp[t, i]
+                for t in range(t_max)
+                for i in range(n)),
+            "read-selected version value does not match target read value")
     require(all(version_in_declared_bounds(version_cell)
                 for version_cell in selected_versions.values()),
             "selected target version falls outside declared bounds")
@@ -1092,6 +1116,8 @@ def validate_array_expansion_versioning() -> List[str]:
             "selected version value does not match source live-out")
     return [
         "each read selects the version produced by the same logical iteration",
+        "read-selected produced versions are within declared version-array bounds",
+        "read-selected produced values match target reads",
         "extra versions project back to one source logical array",
         "selected committed versions cover source live-outs exactly once",
         "selected target versions are storage-compatible with source live-outs",
@@ -2017,6 +2043,35 @@ def reject_expansion_version_out_of_bounds() -> None:
     t_extent, i_extent = declared_version_bounds[array]
     require(0 <= t < t_extent and 0 <= i < i_extent,
             "selected target version falls outside declared bounds")
+
+
+@add_negative("expansion_read_selects_unproduced_version", "array_expansion_versioning")
+def reject_expansion_read_selects_unproduced_version() -> None:
+    produced_versions = {
+        ("write", 0, 0): ("X_exp", 0, 0),
+    }
+    read_entry = (("read", 0, 0), ("write", 0, 0), ("X_exp", 1, 0))
+    _read_instance, expected_producer, selected_version = read_entry
+    require((expected_producer, selected_version) in set(produced_versions.items()),
+            "read-selected version was not produced by the expected write")
+
+
+@add_negative("expansion_read_version_out_of_bounds", "array_expansion_versioning")
+def reject_expansion_read_version_out_of_bounds() -> None:
+    declared_version_bounds = {
+        "X_exp": (3, 4),
+    }
+    produced_versions = {
+        ("write", 3, 0): ("X_exp", 3, 0),
+    }
+    read_entry = (("read", 3, 0), ("write", 3, 0), ("X_exp", 3, 0))
+    _read_instance, expected_producer, selected_version = read_entry
+    require((expected_producer, selected_version) in set(produced_versions.items()),
+            "read-selected version was not produced by the expected write")
+    array, t, i = selected_version
+    t_extent, i_extent = declared_version_bounds[array]
+    require(0 <= t < t_extent and 0 <= i < i_extent,
+            "read-selected produced version falls outside declared bounds")
 
 
 @add_negative("duplicate_overlap_commit", "overlapped_tiling")

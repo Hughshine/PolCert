@@ -29,6 +29,15 @@ Definition version_read_version
     (entry: logical_instance * MemCell) : MemCell :=
   snd entry.
 
+Fixpoint produced_version_versions
+    (produced_versions: produced_version_mapping) : list MemCell :=
+  match produced_versions with
+  | [] => []
+  | entry :: tail =>
+      version_read_version entry ::
+      produced_version_versions tail
+  end.
+
 Record version_read_entry := {
   vre_read_instance : logical_instance;
   vre_expected_producer : logical_instance;
@@ -73,6 +82,19 @@ Proof.
   destruct Hcheck as (entry' & Hin & Heq).
   apply produced_version_pair_eqb_eq in Heq.
   subst. exact Hin.
+Qed.
+
+Lemma produced_version_pair_version_in_versions :
+  forall produced_versions producer version,
+    In (producer, version) produced_versions ->
+    In version (produced_version_versions produced_versions).
+Proof.
+  induction produced_versions as [|entry tail IH];
+    intros producer version Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst. left. reflexivity.
+    + right. eapply IH; eauto.
 Qed.
 
 Definition version_read_entry_eqb
@@ -195,6 +217,24 @@ Proof.
       exact Htail.
 Qed.
 
+Lemma version_read_entries_selected_version_in_produced_versions :
+  forall produced_versions entries entry,
+    version_read_entries_select_producers produced_versions entries ->
+    In entry entries ->
+    In (vre_selected_version entry)
+      (produced_version_versions produced_versions).
+Proof.
+  intros produced_versions entries.
+  induction entries as [|head tail IH]; intros entry Hselect Hin;
+    simpl in Hselect, Hin.
+  - contradiction.
+  - destruct Hselect as [Hhead Htail].
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      eapply produced_version_pair_version_in_versions; eauto.
+    + eapply IH; eauto.
+Qed.
+
 Definition check_version_read_selectionb
     (expected_reads: list logical_instance)
     (produced_versions: produced_version_mapping)
@@ -218,6 +258,19 @@ Proof.
     exact Hcover.
   - apply check_version_read_entries_select_producersb_sound.
     exact Hselect.
+Qed.
+
+Theorem version_read_selected_version_in_produced_versions :
+  forall expected_reads produced_versions entries entry,
+    version_read_selection_obligations
+      expected_reads produced_versions entries ->
+    In entry entries ->
+    In (vre_selected_version entry)
+      (produced_version_versions produced_versions).
+Proof.
+  intros expected_reads produced_versions entries entry Hobligations Hin.
+  destruct Hobligations as [_ Hselect].
+  eapply version_read_entries_selected_version_in_produced_versions; eauto.
 Qed.
 
 Record version_read_value_entry (value: Type) := {

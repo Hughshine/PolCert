@@ -937,6 +937,10 @@ Definition storage_version_value_obligations :=
   version_value_obligations.
 Definition storage_produced_version_mapping :=
   produced_version_mapping.
+Definition storage_produced_version_versions :=
+  produced_version_versions.
+Definition storage_produced_version_pair_version_in_versions :=
+  produced_version_pair_version_in_versions.
 Definition storage_version_read_entry :=
   version_read_entry.
 Definition storage_version_read_value_entry :=
@@ -947,6 +951,8 @@ Definition storage_check_version_read_selectionb_sound :=
   check_version_read_selectionb_sound.
 Definition storage_version_read_selection_obligations :=
   version_read_selection_obligations.
+Definition storage_version_read_selected_version_in_produced_versions :=
+  version_read_selected_version_in_produced_versions.
 Definition storage_check_version_read_valueb :=
   @check_version_read_valueb.
 Definition storage_check_version_read_valueb_sound :=
@@ -995,6 +1001,8 @@ Definition storage_version_commit_bounded_compatible_value_view_contract :=
   VersionCommitCore.version_commit_bounded_compatible_value_view_contract.
 Definition storage_version_commit_read_bounded_compatible_value_view_contract :=
   VersionCommitCore.version_commit_read_bounded_compatible_value_view_contract.
+Definition storage_version_commit_read_fully_bounded_compatible_value_view_contract :=
+  VersionCommitCore.version_commit_read_fully_bounded_compatible_value_view_contract.
 Definition storage_checked_version_commit_view_correct :=
   VersionCommitCore.checked_version_commit_view_correct.
 Definition storage_checked_version_commit_value_view_correct :=
@@ -1009,8 +1017,12 @@ Definition storage_checked_version_commit_bounded_compatible_value_view_correct 
   VersionCommitCore.checked_version_commit_bounded_compatible_value_view_correct.
 Definition storage_checked_version_commit_read_bounded_compatible_value_view_correct :=
   VersionCommitCore.checked_version_commit_read_bounded_compatible_value_view_correct.
+Definition storage_checked_version_commit_read_fully_bounded_compatible_value_view_correct :=
+  VersionCommitCore.checked_version_commit_read_fully_bounded_compatible_value_view_correct.
 Definition storage_version_commit_selected_version_within_bounds :=
   VersionCommitCore.version_commit_selected_version_within_bounds.
+Definition storage_version_read_selected_version_within_produced_bounds :=
+  VersionCommitCore.version_read_selected_version_within_produced_bounds.
 Definition storage_reduction_chunks := reduction_chunks.
 Definition storage_reduction_accumulator_value :=
   reduction_accumulator_value.
