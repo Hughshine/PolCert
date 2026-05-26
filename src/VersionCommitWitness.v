@@ -266,3 +266,36 @@ Proof.
   - eapply version_commit_pair_version_in_versions; eauto.
   - eapply version_commit_pair_version_in_versions; eauto.
 Qed.
+
+Theorem version_commit_sources_covered :
+  forall source_liveouts mapping,
+    version_commit_obligations source_liveouts mapping ->
+    reuse_mapping_covers_sources mapping (version_commit_sources mapping).
+Proof.
+  unfold reuse_mapping_covers_sources, reuse_source_covered.
+  intros source_liveouts mapping Hobligations source_cell Hin_source.
+  pose proof
+    (version_commit_sources_nodup
+       source_liveouts mapping Hobligations)
+    as Hsources_nodup.
+  destruct (version_commit_source_in_mapping mapping source_cell Hin_source)
+    as (version_cell & Hin_pair).
+  exists version_cell.
+  unfold version_commit_cell_relation in *.
+  eapply reuse_lookup_complete_nodup.
+  - rewrite <- version_commit_sources_reuse_mapping_sources.
+    exact Hsources_nodup.
+  - exact Hin_pair.
+Qed.
+
+Theorem version_commit_boundary_obligations :
+  forall source_liveouts mapping,
+    version_commit_obligations source_liveouts mapping ->
+    reuse_boundary_obligations
+      mapping (version_commit_sources mapping).
+Proof.
+  intros source_liveouts mapping Hobligations.
+  constructor.
+  - eapply version_commit_sources_nodup; eauto.
+  - eapply version_commit_sources_covered; eauto.
+Qed.

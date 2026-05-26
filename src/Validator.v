@@ -1046,6 +1046,10 @@ Definition storage_version_commit_selected_source_liveout :=
   version_commit_selected_source_liveout.
 Definition storage_version_commit_selected_version_in_versions :=
   version_commit_selected_version_in_versions.
+Definition storage_version_commit_sources_covered :=
+  version_commit_sources_covered.
+Definition storage_version_commit_boundary_obligations :=
+  version_commit_boundary_obligations.
 Definition storage_version_source_view_refines_view :=
   VersionCommitCore.version_source_view_refines_view.
 Definition storage_version_commit_view_contract :=
