@@ -238,6 +238,56 @@ Proof.
   eapply mem_cells_subsetb_sound; eauto.
 Qed.
 
+Record copy_mapping_declaration_obligations
+    (mapping: copy_cell_mapping)
+    (public_cells local_cells: list MemCell) : Prop := {
+  cmd_mapping_publics_declared :
+    forall cell,
+      In cell (copy_mapping_publics mapping) ->
+      In cell public_cells;
+  cmd_mapping_locals_declared :
+    forall cell,
+      In cell (copy_mapping_locals mapping) ->
+      In cell local_cells;
+}.
+
+Definition check_copy_mapping_declarationb
+    (mapping: copy_cell_mapping)
+    (public_cells local_cells: list MemCell) : bool :=
+  mem_cells_subsetb (copy_mapping_publics mapping) public_cells &&
+  mem_cells_subsetb (copy_mapping_locals mapping) local_cells.
+
+Lemma check_copy_mapping_declarationb_sound :
+  forall mapping public_cells local_cells,
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells.
+Proof.
+  intros mapping public_cells local_cells Hcheck.
+  unfold check_copy_mapping_declarationb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hpublic Hlocal].
+  constructor.
+  - intros cell Hin.
+    eapply mem_cells_subsetb_sound; eauto.
+  - intros cell Hin.
+    eapply mem_cells_subsetb_sound; eauto.
+Qed.
+
+Lemma copy_mapping_declaration_local_only :
+  forall mapping public_cells local_cells,
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells ->
+    copy_mapping_local_declaration_obligations
+      mapping local_cells.
+Proof.
+  intros mapping public_cells local_cells Hdecl.
+  constructor.
+  intros cell Hin.
+  eapply cmd_mapping_locals_declared; eauto.
+Qed.
+
 Lemma copy_mapping_declared_local_public_disjoint :
   forall mapping local_cells public_cells frame_cells cell,
     copy_mapping_local_declaration_obligations mapping local_cells ->
@@ -249,6 +299,28 @@ Proof.
   eapply pso_private_public_disjoint.
   - exact Hsep.
   - eapply cmld_mapping_locals_declared; eauto.
+Qed.
+
+Lemma copy_mapping_declared_public_in_public :
+  forall mapping public_cells local_cells cell,
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells ->
+    In cell (copy_mapping_publics mapping) ->
+    In cell public_cells.
+Proof.
+  intros mapping public_cells local_cells cell Hdecl Hin.
+  eapply cmd_mapping_publics_declared; eauto.
+Qed.
+
+Lemma copy_mapping_declared_local_in_local :
+  forall mapping public_cells local_cells cell,
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells ->
+    In cell (copy_mapping_locals mapping) ->
+    In cell local_cells.
+Proof.
+  intros mapping public_cells local_cells cell Hdecl Hin.
+  eapply cmd_mapping_locals_declared; eauto.
 Qed.
 
 Lemma copy_mapping_declared_local_frame_disjoint :
