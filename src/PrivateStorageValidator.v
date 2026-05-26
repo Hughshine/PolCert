@@ -259,6 +259,37 @@ Record private_bounded_declared_boundary_unique_compatible_non_escape_value_view
     storage_bounds_obligations bounds private_cells;
 }.
 
+Record private_access_declared_local_view_contract
+    (public_view: Observation.cell_view)
+    (hidden_cells private_cells: list MemCell)
+    (points: list DomIndex)
+    (access_trace: list private_access_event)
+    (source_view after: PolyLang.t) : Prop := {
+  padlvc_local :
+    Witness.private_access_local_obligations
+      hidden_cells private_cells access_trace;
+  padlvc_declared_instances :
+    private_access_instances_declared_obligations
+      private_cells points access_trace;
+  padlvc_semantic_refinement :
+    private_source_view_refines_view public_view source_view after;
+}.
+
+Record private_access_bounded_declared_local_view_contract
+    (public_view: Observation.cell_view)
+    (hidden_cells private_cells: list MemCell)
+    (points: list DomIndex)
+    (bounds: list array_bounds)
+    (access_trace: list private_access_event)
+    (source_view after: PolyLang.t) : Prop := {
+  pabdlvc_declared_base :
+    private_access_declared_local_view_contract
+      public_view hidden_cells private_cells points access_trace
+      source_view after;
+  pabdlvc_private_bounds :
+    storage_bounds_obligations bounds private_cells;
+}.
+
 Theorem checked_private_expansion_view_correct :
   forall public_view private_target_cell before source_view after ok,
     mayReturn (check_private_source_view before source_view) ok ->
@@ -891,6 +922,116 @@ Proof.
         -- exact Hhidden.
         -- exact Hprivate_cell.
       * exact Hprivate.
+Qed.
+
+Theorem checked_access_declared_local_private_expansion_view_correct :
+  forall hidden_cells private_cells points access_trace
+         before source_view after ok,
+    mayReturn (check_private_source_view before source_view) ok ->
+    ok = true ->
+    Witness.check_private_access_local_obligationsb
+      hidden_cells private_cells access_trace = true ->
+    check_private_access_instances_declaredb
+      private_cells points access_trace = true ->
+    private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    private_access_declared_local_view_contract
+      (Witness.hidden_identity_cell_view hidden_cells)
+      hidden_cells private_cells points access_trace source_view after /\
+    View.view_refinement
+      (private_erasure_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      (private_pipeline_final_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      before after.
+Proof.
+  intros hidden_cells private_cells points access_trace
+         before source_view after ok Hret Hok Hlocal Hdeclared Hprivate.
+  pose proof
+    (check_private_access_instances_declaredb_sound
+       private_cells points access_trace Hdeclared)
+    as Hdeclared_obligations.
+  pose proof
+    (checked_access_local_private_expansion_view_correct
+       hidden_cells private_cells access_trace before source_view after ok
+       Hret Hok Hlocal Hprivate)
+    as [Hlocal_obligations Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_access_bounded_declared_local_private_expansion_view_correct :
+  forall hidden_cells private_cells points bounds access_trace
+         before source_view after ok,
+    mayReturn (check_private_source_view before source_view) ok ->
+    ok = true ->
+    Witness.check_private_access_local_obligationsb
+      hidden_cells private_cells access_trace = true ->
+    check_private_access_instances_declaredb
+      private_cells points access_trace = true ->
+    check_storage_boundsb bounds private_cells = true ->
+    private_source_view_refines_view
+      (Witness.hidden_identity_cell_view hidden_cells)
+      source_view after ->
+    private_access_bounded_declared_local_view_contract
+      (Witness.hidden_identity_cell_view hidden_cells)
+      hidden_cells private_cells points bounds access_trace source_view after /\
+    View.view_refinement
+      (private_erasure_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      (private_pipeline_final_view
+         (Witness.hidden_identity_cell_view hidden_cells))
+      before after.
+Proof.
+  intros hidden_cells private_cells points bounds access_trace
+         before source_view after ok Hret Hok Hlocal Hdeclared Hbounds Hprivate.
+  pose proof
+    (check_storage_boundsb_sound bounds private_cells Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (checked_access_declared_local_private_expansion_view_correct
+       hidden_cells private_cells points access_trace before source_view after ok
+       Hret Hok Hlocal Hdeclared Hprivate)
+    as [Hdeclared_contract Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem private_access_instantiated_trace_cell_declared :
+  forall public_view hidden_cells private_cells points access_trace
+         source_view after p cell,
+    private_access_declared_local_view_contract
+      public_view hidden_cells private_cells points access_trace
+      source_view after ->
+    In p points ->
+    In cell (private_access_trace_cells_at p access_trace) ->
+    In cell private_cells.
+Proof.
+  intros public_view hidden_cells private_cells points access_trace
+         source_view after p cell Hcontract Hin_point Hin_cell.
+  destruct Hcontract as [_ Hdeclared _].
+  eapply private_access_instances_declared_cell; eauto.
+Qed.
+
+Theorem private_access_instantiated_trace_cell_within_bounds :
+  forall public_view hidden_cells private_cells points bounds access_trace
+         source_view after p cell,
+    private_access_bounded_declared_local_view_contract
+      public_view hidden_cells private_cells points bounds access_trace
+      source_view after ->
+    In p points ->
+    In cell (private_access_trace_cells_at p access_trace) ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros public_view hidden_cells private_cells points bounds access_trace
+         source_view after p cell Hcontract Hin_point Hin_cell.
+  destruct Hcontract as [Hdeclared Hbounds].
+  eapply storage_bounds_cell_within.
+  - exact Hbounds.
+  - eapply private_access_instantiated_trace_cell_declared; eauto.
 Qed.
 
 End PrivateStorageValidator.

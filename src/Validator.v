@@ -316,6 +316,20 @@ Definition storage_private_trace_cells_declared :=
   private_trace_cells_declared.
 Definition storage_private_trace_cells_declared_in :=
   private_trace_cells_declared_in.
+Definition storage_private_access_trace_cells_at :=
+  private_access_trace_cells_at.
+Definition storage_private_access_trace_declared_at :=
+  private_access_trace_declared_at.
+Definition storage_check_private_access_trace_declared_atb :=
+  check_private_access_trace_declared_atb.
+Definition storage_check_private_access_instances_declaredb :=
+  check_private_access_instances_declaredb.
+Definition storage_check_private_access_instances_declaredb_sound :=
+  check_private_access_instances_declaredb_sound.
+Definition storage_private_access_instances_declared_obligations :=
+  private_access_instances_declared_obligations.
+Definition storage_private_access_instances_declared_cell :=
+  private_access_instances_declared_cell.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=

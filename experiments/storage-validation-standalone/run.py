@@ -361,6 +361,79 @@ def validate_private_copy_boundary() -> List[str]:
 
 
 @add_case(
+    "private_access_local_instantiation",
+    "same instances / access-level private storage instantiation",
+    """
+for (i = 0; i < N; i++) {
+  tmp = A[i] + 1;
+  B[i] = tmp * 2;
+}
+""",
+    """
+for (i = 0; i < N; i++) {
+  tmp_priv[i] = A[i] + 1;
+  B[i] = tmp_priv[i] * 2;
+}
+""",
+)
+def validate_private_access_local_instantiation() -> List[str]:
+    n = 5
+    points = [(i,) for i in range(n)]
+    access_trace = [
+        ("write", "tmp_priv[i]"),
+        ("read", "tmp_priv[i]"),
+    ]
+
+    def instantiate(access: str, point: Tuple[int, ...]) -> Tuple[str, int]:
+        require(access == "tmp_priv[i]", "unknown private access")
+        return ("tmp_priv", point[0])
+
+    defined_accesses = set()
+    for kind, access in access_trace:
+        if kind == "write":
+            defined_accesses.add(access)
+        else:
+            require(access in defined_accesses,
+                    "private access read occurs before matching access write")
+
+    private_cells = {("tmp_priv", i) for i in range(n)}
+    hidden_cells = set(private_cells)
+    declared_bounds = {"tmp_priv": (n,)}
+
+    instantiated_cells = [
+        instantiate(access, point)
+        for point in points
+        for _kind, access in access_trace
+    ]
+    require(all(cell in private_cells for cell in instantiated_cells),
+            "instantiated private access cell is undeclared")
+    require(all(cell in hidden_cells for cell in instantiated_cells),
+            "instantiated private access cell is observable")
+    require(all(0 <= index < declared_bounds[array][0]
+                for array, index in private_cells),
+            "instantiated private access cell falls outside declared bounds")
+
+    a = {i: 20 + i for i in range(n)}
+    source_b: Dict[int, int] = {}
+    target_b: Dict[int, int] = {}
+    for i in range(n):
+        tmp = a[i] + 1
+        source_b[i] = tmp * 2
+    tmp_priv: Dict[int, int] = {}
+    for i in range(n):
+        tmp_priv[i] = a[i] + 1
+        target_b[i] = tmp_priv[i] * 2
+
+    same_dict(source_b, target_b, "B")
+    return [
+        "symbolic private access trace is use-def well formed",
+        "each finite domain point instantiates private accesses to declared cells",
+        "instantiated private access cells are hidden from the public view",
+        "instantiated private access cells are within declared private bounds",
+    ]
+
+
+@add_case(
     "layout_remap_padding",
     "same instances / injective physical address remap",
     """
@@ -1496,6 +1569,44 @@ def reject_private_incompatible_boundary_storage() -> None:
     require(all(public_specs[public] == private_specs[private]
                 for public, private in boundary_pairs),
             "private boundary storage spec mismatch")
+
+
+@add_negative("private_access_symbolic_read_before_write", "private_access_local_instantiation")
+def reject_private_access_symbolic_read_before_write() -> None:
+    access_trace = [
+        ("read", "tmp_priv[i]"),
+        ("write", "tmp_priv[i]"),
+    ]
+    defined_accesses = set()
+    for kind, access in access_trace:
+        if kind == "write":
+            defined_accesses.add(access)
+        else:
+            require(access in defined_accesses,
+                    "private access read occurs before matching access write")
+
+
+@add_negative("private_access_instance_undeclared_cell", "private_access_local_instantiation")
+def reject_private_access_instance_undeclared_cell() -> None:
+    n = 3
+    points = [(0,), (1,), (2,), (3,)]
+    private_cells = {("tmp_priv", i) for i in range(n)}
+
+    def instantiate(point: Tuple[int, ...]) -> Tuple[str, int]:
+        return ("tmp_priv", point[0])
+
+    instantiated_cells = [instantiate(point) for point in points]
+    require(all(cell in private_cells for cell in instantiated_cells),
+            "instantiated private access cell is undeclared")
+
+
+@add_negative("private_access_instance_out_of_bounds", "private_access_local_instantiation")
+def reject_private_access_instance_out_of_bounds() -> None:
+    private_cells = {("tmp_priv", 0), ("tmp_priv", 3)}
+    declared_bounds = {"tmp_priv": (3,)}
+    require(all(0 <= index < declared_bounds[array][0]
+                for array, index in private_cells),
+            "instantiated private access cell falls outside declared bounds")
 
 
 @add_negative("scalar_promotion_incompatible_storage", "scalar_promotion")

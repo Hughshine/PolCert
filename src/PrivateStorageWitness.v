@@ -606,6 +606,95 @@ Proof.
   exact Hcheck.
 Qed.
 
+Definition private_access_trace_cells_at
+    (p: DomIndex)
+    (trace: list private_access_event) : list MemCell :=
+  private_trace_cells (instantiate_private_access_trace p trace).
+
+Definition private_access_trace_declared_at
+    (private_cells: list MemCell)
+    (p: DomIndex)
+    (trace: list private_access_event) : Prop :=
+  private_trace_cells_declared
+    private_cells
+    (instantiate_private_access_trace p trace).
+
+Definition check_private_access_trace_declared_atb
+    (private_cells: list MemCell)
+    (p: DomIndex)
+    (trace: list private_access_event) : bool :=
+  check_private_trace_cells_declaredb
+    private_cells
+    (instantiate_private_access_trace p trace).
+
+Record private_access_instances_declared_obligations
+    (private_cells: list MemCell)
+    (points: list DomIndex)
+    (trace: list private_access_event) : Prop := {
+  paid_instantiated_trace_declared :
+    forall p,
+      In p points ->
+      private_access_trace_declared_at private_cells p trace;
+}.
+
+Fixpoint check_private_access_instances_declaredb
+    (private_cells: list MemCell)
+    (points: list DomIndex)
+    (trace: list private_access_event) : bool :=
+  match points with
+  | [] => true
+  | p :: point_tail =>
+      check_private_access_trace_declared_atb private_cells p trace &&
+      check_private_access_instances_declaredb
+        private_cells point_tail trace
+  end.
+
+Lemma check_private_access_instances_declaredb_sound :
+  forall private_cells points trace,
+    check_private_access_instances_declaredb
+      private_cells points trace = true ->
+    private_access_instances_declared_obligations
+      private_cells points trace.
+Proof.
+  intros private_cells points.
+  induction points as [|p point_tail IH]; intros trace Hcheck.
+  - constructor.
+    intros p Hin.
+    contradiction.
+  - simpl in Hcheck.
+    apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    pose proof (IH trace Htail) as Htail_obligations.
+    constructor.
+    intros p' Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      unfold private_access_trace_declared_at.
+      unfold check_private_access_trace_declared_atb in Hhead.
+      apply check_private_trace_cells_declaredb_sound.
+      exact Hhead.
+    + destruct Htail_obligations as [Hdeclared_tail].
+      apply Hdeclared_tail.
+      exact Hin_tail.
+Qed.
+
+Theorem private_access_instances_declared_cell :
+  forall private_cells points trace p cell,
+    private_access_instances_declared_obligations
+      private_cells points trace ->
+    In p points ->
+    In cell (private_access_trace_cells_at p trace) ->
+    In cell private_cells.
+Proof.
+  intros private_cells points trace p cell Hobligations Hin_point Hin_cell.
+  destruct Hobligations as [Hdeclared].
+  unfold private_access_trace_cells_at in Hin_cell.
+  eapply private_trace_cells_declared_in.
+  - apply Hdeclared.
+    exact Hin_point.
+  - exact Hin_cell.
+Qed.
+
 Definition public_not_hidden
     (hidden_cells: list MemCell) (cell: MemCell) : Prop :=
   ~ In cell hidden_cells.
