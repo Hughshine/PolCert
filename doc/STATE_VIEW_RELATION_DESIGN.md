@@ -1951,6 +1951,14 @@ events use that same selected cell, selected private cells are fresh, and the
 expanded private trace is write-before-read.  `ScalarExpansionValidator` then
 packages those facts with `PrivateStorageValidator`'s private-erasure view
 refinement theorem, so the witness is not an isolated checker.
+The stronger
+`checked_scalar_expansion_bounded_compatible_non_escape_view_correct` theorem
+adds three reusable storage side conditions to the same endpoint theorem:
+expanded private cells must lie within declared private bounds, each
+source/private expansion entry must have compatible finite storage specs, and
+the private cells must be disjoint from the escaped-cell set.  Its corollaries
+make these facts usable at the event level: every expansion event's private
+cell is in bounds and does not escape.
 `check_private_separationb` captures the reusable separation side condition:
 private cells are duplicate-free and disjoint from public/frame cells.
 `PrivateBoundaryWitness.check_private_boundaryb_sound` adds the boundary-copy
