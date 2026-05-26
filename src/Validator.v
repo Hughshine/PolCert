@@ -836,8 +836,14 @@ Definition storage_check_conflict_safe_reuseb_sound :=
   check_conflict_safe_reuseb_sound.
 Definition storage_conflict_safe_reuse_obligations :=
   conflict_safe_reuse_obligations.
+Definition storage_reuse_mapping_source_in_mapping :=
+  reuse_mapping_source_in_mapping.
 Definition storage_reuse_mapping_covers_sources :=
   reuse_mapping_covers_sources.
+Definition storage_reuse_mapping_sources_covered :=
+  reuse_mapping_sources_covered.
+Definition storage_conflict_safe_reuse_boundary_obligations :=
+  conflict_safe_reuse_boundary_obligations.
 Definition storage_reuse_mapping_covers_sourcesb :=
   reuse_mapping_covers_sourcesb.
 Definition storage_reuse_mapping_covers_sourcesb_sound :=

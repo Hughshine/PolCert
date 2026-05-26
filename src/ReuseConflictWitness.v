@@ -309,6 +309,25 @@ Proof.
     + eapply IH; eauto.
 Qed.
 
+Lemma reuse_mapping_source_in_mapping :
+  forall mapping logical_cell,
+    In logical_cell (reuse_mapping_sources mapping) ->
+    exists physical_cell,
+      In (logical_cell, physical_cell) mapping.
+Proof.
+  induction mapping as [|[logical_head physical_head] tail IH];
+    intros logical_cell Hin; simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst.
+      exists physical_head.
+      left. reflexivity.
+    + destruct (IH logical_cell Hin_tail)
+        as (physical_cell & Hin_mapping).
+      exists physical_cell.
+      right. exact Hin_mapping.
+Qed.
+
 Record conflict_safe_reuse_obligations
     (mapping: reuse_mapping)
     (conflicts: conflict_pairs) : Prop := {
@@ -369,4 +388,30 @@ Proof.
     exact Hnodup.
   - apply reuse_mapping_covers_sourcesb_sound.
     exact Hcover.
+Qed.
+
+Theorem reuse_mapping_sources_covered :
+  forall mapping,
+    NoDup (reuse_mapping_sources mapping) ->
+    reuse_mapping_covers_sources mapping (reuse_mapping_sources mapping).
+Proof.
+  unfold reuse_mapping_covers_sources, reuse_source_covered.
+  intros mapping Hnodup source_cell Hin_source.
+  destruct (reuse_mapping_source_in_mapping mapping source_cell Hin_source)
+    as (physical_cell & Hin_pair).
+  exists physical_cell.
+  unfold reuse_cell_relation.
+  eapply reuse_lookup_complete_nodup; eauto.
+Qed.
+
+Theorem conflict_safe_reuse_boundary_obligations :
+  forall mapping conflicts,
+    conflict_safe_reuse_obligations mapping conflicts ->
+    reuse_boundary_obligations mapping (reuse_mapping_sources mapping).
+Proof.
+  intros mapping conflicts Hobligations.
+  constructor.
+  - exact (csro_sources_nodup mapping conflicts Hobligations).
+  - apply reuse_mapping_sources_covered.
+    exact (csro_sources_nodup mapping conflicts Hobligations).
 Qed.
