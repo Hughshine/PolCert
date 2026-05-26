@@ -820,6 +820,18 @@ source-observable final values are selected from the correct physical cells
 This view is intentionally not injective.  Its safety comes from conflict and
 lifetime reasoning.
 
+Current mechanized status: `ReuseConflictValidator` now exposes the strongest
+bounded/compatible/live-conflict/value route as
+`bounded_compatible_live_conflict_reuse_value_family`.  Its side conditions keep
+the feature-specific facts explicit: checked live intervals cover conflicts,
+checked reuse separates every conflict, checked boundary values agree along the
+reuse map, mapped logical/physical storage specs are compatible, and mapped
+physical cells lie within declared bounds.  The exported family conclusion is
+still only the public endpoint relation.  `StorageReuseFamilyCompose` uses that
+family with scalar promotion through `public_semantic_refinement`, so general
+contraction/rolling-buffer reuse has the same top theorem shape as the phase
+route rather than a bespoke checker theorem.
+
 ### Inter-Array Reuse
 
 Inter-array reuse lets different logical arrays share one physical buffer over

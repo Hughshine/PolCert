@@ -632,6 +632,153 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_bounded_compatible_live_conflict_reuse_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_reuse_source_view before source_view) ok ->
+    ok = true ->
+    check_live_conflictb intervals conflicts = true ->
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    check_reuse_valueb value value_eqb mapping entries = true ->
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    check_storage_boundsb physical_bounds
+      (reuse_mapping_targets mapping) = true ->
+    reuse_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (reuse_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hlive Hreuse Hvalue Hcompat Hbounds Hsemantics.
+  pose proof
+    (checked_bounded_compatible_live_conflict_reuse_value_view_correct
+       value value_eqb input_view output_view mapping logical_specs physical_specs
+       physical_bounds intervals conflicts entries before source_view after ok
+       Hvalue_eqb Hret Hok Hlive Hreuse Hvalue Hcompat Hbounds Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record bounded_compatible_live_conflict_reuse_value_params
+    (value: Type) := {
+  bclcrvp_input_view : View.view;
+  bclcrvp_output_view : View.view;
+  bclcrvp_mapping : reuse_mapping;
+  bclcrvp_logical_specs : list storage_spec;
+  bclcrvp_physical_specs : list storage_spec;
+  bclcrvp_physical_bounds : list array_bounds;
+  bclcrvp_intervals : list live_interval;
+  bclcrvp_conflicts : conflict_pairs;
+  bclcrvp_entries : list (reuse_value_entry value);
+  bclcrvp_source_view : PolyLang.t;
+}.
+
+Definition bounded_compatible_live_conflict_reuse_value_input_view
+    {value: Type}
+    (params: bounded_compatible_live_conflict_reuse_value_params value)
+    : View.view :=
+  bclcrvp_input_view value params.
+
+Definition bounded_compatible_live_conflict_reuse_value_output_view
+    {value: Type}
+    (params: bounded_compatible_live_conflict_reuse_value_params value)
+    : View.view :=
+  reuse_pipeline_final_view (bclcrvp_output_view value params).
+
+Definition bounded_compatible_live_conflict_reuse_value_check
+    {value: Type}
+    (params: bounded_compatible_live_conflict_reuse_value_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_reuse_source_view before (bclcrvp_source_view value params).
+
+Definition bounded_compatible_live_conflict_reuse_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: bounded_compatible_live_conflict_reuse_value_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_live_conflictb
+    (bclcrvp_intervals value params)
+    (bclcrvp_conflicts value params) = true /\
+  check_conflict_safe_reuseb
+    (bclcrvp_mapping value params)
+    (bclcrvp_conflicts value params) = true /\
+  check_reuse_valueb
+    value value_eqb
+    (bclcrvp_mapping value params)
+    (bclcrvp_entries value params) = true /\
+  check_storage_compatibilityb
+    (bclcrvp_mapping value params)
+    (bclcrvp_logical_specs value params)
+    (bclcrvp_physical_specs value params) = true /\
+  check_storage_boundsb
+    (bclcrvp_physical_bounds value params)
+    (reuse_mapping_targets (bclcrvp_mapping value params)) = true /\
+  reuse_source_view_refines_view
+    (bclcrvp_input_view value params)
+    (bclcrvp_output_view value params)
+    (bclcrvp_source_view value params)
+    after.
+
+Theorem bounded_compatible_live_conflict_reuse_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (bounded_compatible_live_conflict_reuse_value_check
+        params before after)
+      ok ->
+    ok = true ->
+    bounded_compatible_live_conflict_reuse_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (bounded_compatible_live_conflict_reuse_value_input_view params)
+      (bounded_compatible_live_conflict_reuse_value_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view mapping logical_specs physical_specs
+     physical_bounds intervals conflicts entries source_view].
+  simpl in *.
+  destruct Hside as
+    [Hlive [Hreuse [Hvalue [Hcompat [Hbounds Hsemantics]]]]].
+  eapply checked_bounded_compatible_live_conflict_reuse_value_public_refinement;
+    eauto.
+Qed.
+
+Definition bounded_compatible_live_conflict_reuse_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (bounded_compatible_live_conflict_reuse_value_params value) := {|
+  generic_cpvtf_input_view :=
+    bounded_compatible_live_conflict_reuse_value_input_view;
+  generic_cpvtf_output_view :=
+    bounded_compatible_live_conflict_reuse_value_output_view;
+  generic_cpvtf_check :=
+    bounded_compatible_live_conflict_reuse_value_check;
+  generic_cpvtf_side_condition :=
+    bounded_compatible_live_conflict_reuse_value_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    bounded_compatible_live_conflict_reuse_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem bounded_reuse_mapping_target_within_bounds :
   forall input_view output_view mapping physical_bounds conflicts
          source_view after logical_cell physical_cell,
