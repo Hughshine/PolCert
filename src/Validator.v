@@ -9,6 +9,7 @@ Require Import StorageWitness.
 Require Import CellView.
 Require Import SourceNoAliasWitness.
 Require Import FramePreservationWitness.
+Require Import FrameValueWitness.
 Require Import FramePreservationValidator.
 Require Import StateObservation.
 Require Import LayoutWitness.
@@ -267,12 +268,28 @@ Definition storage_frame_preservation_write_not_frame :=
   frame_preservation_write_not_frame.
 Definition storage_frame_preservation_write_neq_frame_cell :=
   frame_preservation_write_neq_frame_cell.
+Definition storage_frame_value_entry :=
+  frame_value_entry.
+Definition storage_check_frame_valueb :=
+  @check_frame_valueb.
+Definition storage_check_frame_valueb_sound :=
+  check_frame_valueb_sound.
+Definition storage_frame_value_obligations :=
+  frame_value_obligations.
+Definition storage_frame_value_cell_preserved :=
+  frame_value_cell_preserved.
 Definition storage_frame_source_view_refines_view :=
   FramePreservationCore.frame_source_view_refines_view.
 Definition storage_frame_preservation_view_contract :=
   FramePreservationCore.frame_preservation_view_contract.
 Definition storage_checked_frame_preservation_view_correct :=
   FramePreservationCore.checked_frame_preservation_view_correct.
+Definition storage_frame_preservation_value_view_contract :=
+  FramePreservationCore.frame_preservation_value_view_contract.
+Definition storage_checked_frame_preservation_value_view_correct :=
+  FramePreservationCore.checked_frame_preservation_value_view_correct.
+Definition storage_frame_preservation_frame_cell_value_preserved :=
+  FramePreservationCore.frame_preservation_frame_cell_value_preserved.
 Definition storage_private_boundary_pair :=
   private_boundary_pair.
 Definition storage_private_boundary_value_entry :=

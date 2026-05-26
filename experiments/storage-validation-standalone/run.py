@@ -90,6 +90,63 @@ def validate_source_no_alias_abstraction() -> List[str]:
 
 
 @add_case(
+    "contextual_frame_preservation",
+    "contextual frame / allowed writes plus preserved frame snapshot",
+    """
+for (i = 0; i < N; i++)
+  A[i] = A[i] + 1;
+/* C is owned by the surrounding context. */
+""",
+    """
+for (i = 0; i < N; i++)
+  tmp[i] = A[i] + 1;
+for (i = 0; i < N; i++)
+  A[i] = tmp[i];
+/* C is owned by the surrounding context and is unchanged. */
+""",
+)
+def validate_contextual_frame_preservation() -> List[str]:
+    n = 4
+    a = {i: 10 + i for i in range(n)}
+    c = {i: 100 + i for i in range(n)}
+
+    source_a = dict(a)
+    for i in range(n):
+        source_a[i] = source_a[i] + 1
+
+    tmp: Dict[int, int] = {}
+    target_a = dict(a)
+    write_cells = set()
+    for i in range(n):
+        tmp[i] = target_a[i] + 1
+        write_cells.add(("tmp", i))
+    for i in range(n):
+        target_a[i] = tmp[i]
+        write_cells.add(("A", i))
+
+    frame_cells = {("C", i) for i in range(n)}
+    allowed_write_cells = {("A", i) for i in range(n)} | {("tmp", i) for i in range(n)}
+    require(len(frame_cells) == n, "frame cells are not duplicate-free")
+    require(write_cells <= allowed_write_cells, "fragment write is not allowed")
+    require(allowed_write_cells.isdisjoint(frame_cells), "allowed writes overlap frame")
+
+    frame_before = {("C", i): c[i] for i in range(n)}
+    frame_after = {("C", i): c[i] for i in range(n)}
+    require(set(frame_before.keys()) == frame_cells, "before frame snapshot is not aligned")
+    require(set(frame_after.keys()) == frame_cells, "after frame snapshot is not aligned")
+    require(all(frame_before[cell] == frame_after[cell] for cell in frame_cells),
+            "frame value changed across fragment")
+    same_dict(source_a, target_a, "A")
+    return [
+        "fragment writes are included in a declared allowed-write set",
+        "allowed writes are disjoint from context-owned frame cells",
+        "every context-frame cell has aligned before/after snapshot evidence",
+        "frame snapshot values are preserved across the fragment",
+        "observable transformed output matches the source output on non-frame cells",
+    ]
+
+
+@add_case(
     "affine_interchange",
     "instance-preserving / storage-preserving",
     """
@@ -2377,6 +2434,35 @@ def reject_double_buffer_phase_write_out_of_bounds() -> None:
 
     require(all(phase_cell_in_declared_bounds(cell) for cell in phase_writes),
             "phase protocol cell falls outside declared bounds")
+
+
+@add_negative("frame_write_not_allowed", "contextual_frame_preservation")
+def reject_frame_write_not_allowed() -> None:
+    write_cells = {("A", 0), ("C", 0)}
+    allowed_write_cells = {("A", 0)}
+    require(write_cells <= allowed_write_cells,
+            "fragment write is not allowed")
+
+
+@add_negative("frame_allowed_overlaps_context", "contextual_frame_preservation")
+def reject_frame_allowed_overlaps_context() -> None:
+    allowed_write_cells = {("A", 0), ("C", 0)}
+    frame_cells = {("C", 0)}
+    require(allowed_write_cells.isdisjoint(frame_cells),
+            "allowed writes overlap frame")
+
+
+@add_negative("frame_value_changed", "contextual_frame_preservation")
+def reject_frame_value_changed() -> None:
+    frame_cells = {("C", 0), ("C", 1)}
+    frame_before = {("C", 0): 10, ("C", 1): 11}
+    frame_after = {("C", 0): 10, ("C", 1): 99}
+    require(set(frame_before.keys()) == frame_cells,
+            "before frame snapshot is not aligned")
+    require(set(frame_after.keys()) == frame_cells,
+            "after frame snapshot is not aligned")
+    require(all(frame_before[cell] == frame_after[cell] for cell in frame_cells),
+            "frame value changed across fragment")
 
 
 @add_negative("composition_bad_intermediate_public", "storage_view_composition")
