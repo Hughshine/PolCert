@@ -233,6 +233,53 @@ Proof.
   - eapply cvtf_check_sound; eauto.
 Qed.
 
+Record checked_parameterized_view_transform_family (params: Type) := {
+  cpvtf_input_view : params -> view;
+  cpvtf_output_view : params -> view;
+  cpvtf_check : params -> PolyLang.t -> PolyLang.t -> imp bool;
+  cpvtf_side_condition : params -> PolyLang.t -> PolyLang.t -> Prop;
+  cpvtf_check_sound :
+    forall transform_params before after ok,
+      mayReturn (cpvtf_check transform_params before after) ok ->
+      ok = true ->
+      cpvtf_side_condition transform_params before after ->
+      view_refinement
+        (cpvtf_input_view transform_params)
+        (cpvtf_output_view transform_params)
+        before after;
+}.
+
+Theorem checked_parameterized_view_transform_family_pair_compose :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         first_params second_params before mid after first_ok second_ok,
+    mayReturn
+      (@cpvtf_check params_first first first_params before mid) first_ok ->
+    first_ok = true ->
+    @cpvtf_side_condition params_first first first_params before mid ->
+    mayReturn
+      (@cpvtf_check params_second second second_params mid after) second_ok ->
+    second_ok = true ->
+    @cpvtf_side_condition params_second second second_params mid after ->
+    view_refinement
+      (compose_view
+        (@cpvtf_input_view params_second second second_params)
+        (@cpvtf_input_view params_first first first_params))
+      (compose_view
+        (@cpvtf_output_view params_second second second_params)
+        (@cpvtf_output_view params_first first first_params))
+      before after.
+Proof.
+  intros params_first params_second first second first_params second_params
+         before mid after first_ok second_ok
+         Hfirst_ret Hfirst_ok Hfirst_side
+         Hsecond_ret Hsecond_ok Hsecond_side.
+  eapply view_refinement_compose.
+  - eapply (@cpvtf_check_sound params_second second); eauto.
+  - eapply (@cpvtf_check_sound params_first first); eauto.
+Qed.
+
 Theorem affine_validate_identity_view_sound :
   forall before after ok,
     mayReturn (AffineCore.validate before after) ok ->

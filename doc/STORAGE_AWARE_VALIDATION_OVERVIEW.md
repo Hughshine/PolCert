@@ -124,7 +124,11 @@ pass supplies finite witness obligations plus an explicit semantic
 `StateView.checked_view_transform_family_pair_compose` are the current generic
 two-pass composition hooks: two checked passes compose by composing their input
 and output relations/views, so feature checkers do not need bespoke end-to-end
-theorems for every pass ordering.
+theorems for every pass ordering.  `StateView` also has a parameterized variant
+for storage passes whose checker soundness depends on extra witness parameters
+and semantic side conditions; this is the generic home for facade theorems that
+hide feature-specific contracts while still composing as public-view
+refinements.
 `StorageWitness.v` now has the analogous access-level composition hook:
 `pprog_same_instance_access_remap_compose` composes two target-to-source
 cell-relation remaps through the same intermediate access cells.  This keeps

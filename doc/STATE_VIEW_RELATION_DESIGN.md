@@ -150,7 +150,10 @@ useful for auditing obligations.  The new public-refinement facade theorems
 project away those contracts and expose only the `View.view_refinement`
 endpoint.  This is the intended final interface for pass composition and paper
 statements: the storage witnesses justify the theorem, but they are not the
-theorem's observable relation.
+theorem's observable relation.  `StateView` now includes a parameterized
+checked-view family for this facade style: a storage pass may carry witness
+parameters and side conditions, but its compositional interface is still only a
+public input view, a public output view, and a `view_refinement` theorem.
 
 ## What a View Must Explain
 
