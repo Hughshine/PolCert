@@ -1168,6 +1168,16 @@ def validate_reduction_privatization() -> List[str]:
             "reduction merge order reuses a private accumulator")
     require(set(merge_order) == set(partial_accumulators),
             "reduction merge order does not cover private accumulators exactly")
+    accumulator_bounds = {"local": (parts,)}
+
+    def accumulator_in_declared_bounds(accumulator: Tuple[str, int]) -> bool:
+        array, p = accumulator
+        (extent,) = accumulator_bounds[array]
+        return 0 <= p < extent
+
+    require(all(accumulator_in_declared_bounds(accumulator)
+                for accumulator in partial_accumulators),
+            "reduction accumulator falls outside declared bounds")
     public_accumulator = ("sum",)
     public_specs = {public_accumulator: (8, 8)}
     accumulator_specs = {accumulator: (8, 8) for accumulator in partial_accumulators}
@@ -1213,6 +1223,7 @@ def validate_reduction_privatization() -> List[str]:
         "iteration chunks are disjoint and exactly cover the source reduction domain",
         "private accumulators are fresh per chunk",
         "private accumulators are storage-compatible with the public reduction cell",
+        "private accumulators are within declared accumulator-array bounds",
         "private accumulators are disjoint from the context escape set",
         "merge order consumes every private accumulator exactly once",
         "merge-order accumulator values fold to the final reduction value",
@@ -1969,6 +1980,21 @@ def reject_reduction_incompatible_accumulator_storage() -> None:
     require(all(public_specs[public_cell] == accumulator_specs[private_cell]
                 for private_cell, public_cell in storage_mapping.items()),
             "reduction accumulator storage spec mismatch")
+
+
+@add_negative("reduction_accumulator_out_of_bounds", "reduction_privatization")
+def reject_reduction_accumulator_out_of_bounds() -> None:
+    partial_accumulators = [("local", 0), ("local", 1), ("local", 2)]
+    accumulator_bounds = {"local": (2,)}
+
+    def accumulator_in_declared_bounds(accumulator: Tuple[str, int]) -> bool:
+        array, p = accumulator
+        (extent,) = accumulator_bounds[array]
+        return 0 <= p < extent
+
+    require(all(accumulator_in_declared_bounds(accumulator)
+                for accumulator in partial_accumulators),
+            "reduction accumulator falls outside declared bounds")
 
 
 @add_negative("reduction_accumulator_escape", "reduction_privatization")
