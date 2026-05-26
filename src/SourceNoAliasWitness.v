@@ -4,6 +4,7 @@ Require Import List.
 Require Import Coqlib.
 Require Import PolyBase.
 Require Import PrivateStorageWitness.
+Require Import StorageBoundsWitness.
 
 Import ListNotations.
 
@@ -20,6 +21,14 @@ Definition source_access_footprint := (source_object * list MemCell)%type.
 Definition source_object_eqb
     (left right: source_object) : bool :=
   Pos.eqb left right.
+
+Fixpoint source_footprint_cells
+    (footprints: list source_footprint) : list MemCell :=
+  match footprints with
+  | [] => []
+  | (_, cells) :: tail =>
+      cells ++ source_footprint_cells tail
+  end.
 
 Lemma source_object_eqb_eq :
   forall left right,
@@ -127,6 +136,24 @@ Proof.
   - simpl. right.
     eapply IH.
     exact Hlookup.
+Qed.
+
+Lemma source_footprint_cell_in_cells :
+  forall footprints object cells cell,
+    In (object, cells) footprints ->
+    In cell cells ->
+    In cell (source_footprint_cells footprints).
+Proof.
+  induction footprints as [|[object' cells'] tail IH];
+    intros object cells cell Hfootprint Hcell;
+    simpl in Hfootprint |- *; try contradiction.
+  destruct Hfootprint as [Heq | Htail].
+  - inversion Heq; subst.
+    apply in_or_app.
+    left. exact Hcell.
+  - apply in_or_app.
+    right.
+    eapply IH; eauto.
 Qed.
 
 Fixpoint source_footprints_nodupb
@@ -331,11 +358,28 @@ Record source_no_alias_access_obligations
     source_accesses_covered footprints accesses;
 }.
 
+Record source_no_alias_access_bounded_obligations
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint)
+    (bounds: list array_bounds) : Prop := {
+  snaab_base :
+    source_no_alias_access_obligations footprints accesses;
+  snaab_footprint_bounds :
+    storage_bounds_obligations bounds (source_footprint_cells footprints);
+}.
+
 Definition check_source_no_alias_accessb
     (footprints: list source_footprint)
     (accesses: list source_access_footprint) : bool :=
   check_source_no_aliasb footprints &&
   check_source_accesses_coveredb footprints accesses.
+
+Definition check_source_no_alias_access_boundedb
+    (footprints: list source_footprint)
+    (accesses: list source_access_footprint)
+    (bounds: list array_bounds) : bool :=
+  check_source_no_alias_accessb footprints accesses &&
+  check_storage_boundsb bounds (source_footprint_cells footprints).
 
 Lemma check_source_no_alias_accessb_sound :
   forall footprints accesses,
@@ -353,6 +397,24 @@ Proof.
     exact Hcovered.
 Qed.
 
+Lemma check_source_no_alias_access_boundedb_sound :
+  forall footprints accesses bounds,
+    check_source_no_alias_access_boundedb
+      footprints accesses bounds = true ->
+    source_no_alias_access_bounded_obligations
+      footprints accesses bounds.
+Proof.
+  intros footprints accesses bounds Hcheck.
+  unfold check_source_no_alias_access_boundedb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hbase Hbounds].
+  constructor.
+  - apply check_source_no_alias_accessb_sound.
+    exact Hbase.
+  - apply check_storage_boundsb_sound.
+    exact Hbounds.
+Qed.
+
 Theorem source_access_cell_covered :
   forall footprints accesses object access_cells cell,
     source_no_alias_access_obligations footprints accesses ->
@@ -366,4 +428,40 @@ Proof.
          Haccess Hcell.
   destruct Hobligations as [_ Hcovered].
   eapply Hcovered; eauto.
+Qed.
+
+Theorem source_footprint_cell_within_bounds :
+  forall footprints accesses bounds object footprint_cells cell,
+    source_no_alias_access_bounded_obligations
+      footprints accesses bounds ->
+    In (object, footprint_cells) footprints ->
+    In cell footprint_cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros footprints accesses bounds object footprint_cells cell
+         Hobligations Hfootprint Hcell.
+  destruct Hobligations as [_ Hbounds].
+  eapply storage_bounds_cell_within.
+  - exact Hbounds.
+  - eapply source_footprint_cell_in_cells; eauto.
+Qed.
+
+Theorem source_access_cell_within_bounds :
+  forall footprints accesses bounds object access_cells cell,
+    source_no_alias_access_bounded_obligations
+      footprints accesses bounds ->
+    In (object, access_cells) accesses ->
+    In cell access_cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros footprints accesses bounds object access_cells cell
+         Hobligations Haccess Hcell.
+  destruct Hobligations as [Hbase Hbounds].
+  pose proof
+    (source_access_cell_covered
+       footprints accesses object access_cells cell Hbase Haccess Hcell)
+    as (footprint_cells & Hfootprint & Hfootprint_cell).
+  eapply storage_bounds_cell_within.
+  - exact Hbounds.
+  - eapply source_footprint_cell_in_cells; eauto.
 Qed.

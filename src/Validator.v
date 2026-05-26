@@ -250,6 +250,8 @@ Definition storage_compose_generic_cell_view :=
   compose_generic_cell_view.
 Definition storage_source_footprint := source_footprint.
 Definition storage_source_access_footprint := source_access_footprint.
+Definition storage_source_footprint_cells :=
+  source_footprint_cells.
 Definition storage_check_source_no_aliasb :=
   check_source_no_aliasb.
 Definition storage_check_source_no_aliasb_sound :=
@@ -268,8 +270,18 @@ Definition storage_check_source_no_alias_accessb_sound :=
   check_source_no_alias_accessb_sound.
 Definition storage_source_no_alias_access_obligations :=
   source_no_alias_access_obligations.
+Definition storage_check_source_no_alias_access_boundedb :=
+  check_source_no_alias_access_boundedb.
+Definition storage_check_source_no_alias_access_boundedb_sound :=
+  check_source_no_alias_access_boundedb_sound.
+Definition storage_source_no_alias_access_bounded_obligations :=
+  source_no_alias_access_bounded_obligations.
 Definition storage_source_access_cell_covered :=
   source_access_cell_covered.
+Definition storage_source_footprint_cell_within_bounds :=
+  source_footprint_cell_within_bounds.
+Definition storage_source_access_cell_within_bounds :=
+  source_access_cell_within_bounds.
 Definition storage_check_frame_preservationb :=
   check_frame_preservationb.
 Definition storage_check_frame_preservationb_sound :=
