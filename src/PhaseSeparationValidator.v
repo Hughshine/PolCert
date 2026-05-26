@@ -562,6 +562,302 @@ Proof.
   - exact Hview.
 Qed.
 
+Record phase_projection_bounded_compatible_non_escape_value_view_contract
+    (value: Type)
+    (input_view output_view: View.view)
+    (entry_live source_liveouts: list MemCell)
+    (entry_values: list (phase_cell_value value))
+    (steps: list phase_step)
+    (value_steps: list (phase_value_step value))
+    (mapping: phase_projection_mapping)
+    (projection_values: list (phase_projection_value_entry value))
+    (source_specs final_specs: list storage_spec)
+    (final_bounds phase_bounds: list array_bounds)
+    (escaped_cells: list MemCell)
+    (source_view after: PolyLang.t) : Prop := {
+  ppbcnevv_base :
+    phase_projection_bounded_compatible_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds source_view after;
+  ppbcnevv_protocol_bounds :
+    storage_bounds_obligations
+      phase_bounds (phase_protocol_cells entry_live steps);
+  ppbcnevv_protocol_non_escape :
+    private_non_escape_obligations
+      (phase_protocol_cells entry_live steps) escaped_cells;
+}.
+
+Theorem checked_phase_projection_bounded_compatible_non_escape_value_view_correct :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_phase_source_view before source_view) ok ->
+    ok = true ->
+    check_phase_protocolb entry_live steps = true ->
+    check_phase_value_protocolb
+      value value_eqb entry_live entry_values steps value_steps = true ->
+    check_phase_projectionb
+      source_liveouts
+      (phase_protocol_final_live entry_live steps)
+      mapping = true ->
+    check_phase_projection_valueb
+      value value_eqb mapping projection_values = true ->
+    check_storage_compatibilityb mapping source_specs final_specs = true ->
+    check_storage_boundsb final_bounds
+      (phase_projection_targets mapping) = true ->
+    check_storage_boundsb
+      phase_bounds (phase_protocol_cells entry_live steps) = true ->
+    check_private_non_escapeb
+      (phase_protocol_cells entry_live steps) escaped_cells = true ->
+    phase_source_view_refines_view
+      input_view output_view source_view after ->
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts entry_values
+      steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after /\
+    View.view_refinement
+      input_view
+      (phase_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hphase Hvalue Hprojection Hprojection_values Hstorage
+         Hfinal_bounds Hphase_bounds Hnon_escape Hsemantics.
+  pose proof
+    (check_storage_boundsb_sound
+       phase_bounds (phase_protocol_cells entry_live steps) Hphase_bounds)
+    as Hphase_bounds_obligations.
+  pose proof
+    (check_private_non_escapeb_sound
+       (phase_protocol_cells entry_live steps) escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (checked_phase_projection_bounded_compatible_value_view_correct
+       value value_eqb input_view output_view
+       entry_live source_liveouts entry_values steps value_steps
+       mapping projection_values source_specs final_specs final_bounds
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hphase Hvalue Hprojection
+       Hprojection_values Hstorage Hfinal_bounds Hsemantics)
+    as [Hbase Hview].
+  split.
+  - constructor; assumption.
+  - exact Hview.
+Qed.
+
+Theorem checked_phase_projection_bounded_compatible_non_escape_value_public_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         input_view output_view entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_phase_source_view before source_view) ok ->
+    ok = true ->
+    check_phase_protocolb entry_live steps = true ->
+    check_phase_value_protocolb
+      value value_eqb entry_live entry_values steps value_steps = true ->
+    check_phase_projectionb
+      source_liveouts
+      (phase_protocol_final_live entry_live steps)
+      mapping = true ->
+    check_phase_projection_valueb
+      value value_eqb mapping projection_values = true ->
+    check_storage_compatibilityb mapping source_specs final_specs = true ->
+    check_storage_boundsb final_bounds
+      (phase_projection_targets mapping) = true ->
+    check_storage_boundsb
+      phase_bounds (phase_protocol_cells entry_live steps) = true ->
+    check_private_non_escapeb
+      (phase_protocol_cells entry_live steps) escaped_cells = true ->
+    phase_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (phase_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb input_view output_view
+         entry_live source_liveouts entry_values
+         steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         before source_view after ok Hvalue_eqb Hret Hok
+         Hphase Hvalue Hprojection Hprojection_values Hstorage
+         Hfinal_bounds Hphase_bounds Hnon_escape Hsemantics.
+  pose proof
+    (checked_phase_projection_bounded_compatible_non_escape_value_view_correct
+       value value_eqb input_view output_view
+       entry_live source_liveouts entry_values steps value_steps
+       mapping projection_values source_specs final_specs final_bounds
+       phase_bounds escaped_cells before source_view after ok
+       Hvalue_eqb Hret Hok Hphase Hvalue Hprojection
+       Hprojection_values Hstorage Hfinal_bounds Hphase_bounds
+       Hnon_escape Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record phase_projection_bounded_compatible_non_escape_value_params
+    (value: Type) := {
+  ppbcnevp_input_view : View.view;
+  ppbcnevp_output_view : View.view;
+  ppbcnevp_entry_live : list MemCell;
+  ppbcnevp_source_liveouts : list MemCell;
+  ppbcnevp_entry_values : list (phase_cell_value value);
+  ppbcnevp_steps : list phase_step;
+  ppbcnevp_value_steps : list (phase_value_step value);
+  ppbcnevp_mapping : phase_projection_mapping;
+  ppbcnevp_projection_values : list (phase_projection_value_entry value);
+  ppbcnevp_source_specs : list storage_spec;
+  ppbcnevp_final_specs : list storage_spec;
+  ppbcnevp_final_bounds : list array_bounds;
+  ppbcnevp_phase_bounds : list array_bounds;
+  ppbcnevp_escaped_cells : list MemCell;
+  ppbcnevp_source_view : PolyLang.t;
+}.
+
+Definition phase_projection_bounded_compatible_non_escape_value_input_view
+    {value: Type}
+    (params:
+      phase_projection_bounded_compatible_non_escape_value_params value)
+    : View.view :=
+  ppbcnevp_input_view value params.
+
+Definition phase_projection_bounded_compatible_non_escape_value_output_view
+    {value: Type}
+    (params:
+      phase_projection_bounded_compatible_non_escape_value_params value)
+    : View.view :=
+  phase_pipeline_final_view (ppbcnevp_output_view value params).
+
+Definition phase_projection_bounded_compatible_non_escape_value_check
+    {value: Type}
+    (params:
+      phase_projection_bounded_compatible_non_escape_value_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_phase_source_view before (ppbcnevp_source_view value params).
+
+Definition phase_projection_bounded_compatible_non_escape_value_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params:
+      phase_projection_bounded_compatible_non_escape_value_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_phase_protocolb
+    (ppbcnevp_entry_live value params)
+    (ppbcnevp_steps value params) = true /\
+  check_phase_value_protocolb
+    value value_eqb
+    (ppbcnevp_entry_live value params)
+    (ppbcnevp_entry_values value params)
+    (ppbcnevp_steps value params)
+    (ppbcnevp_value_steps value params) = true /\
+  check_phase_projectionb
+    (ppbcnevp_source_liveouts value params)
+    (phase_protocol_final_live
+      (ppbcnevp_entry_live value params)
+      (ppbcnevp_steps value params))
+    (ppbcnevp_mapping value params) = true /\
+  check_phase_projection_valueb
+    value value_eqb
+    (ppbcnevp_mapping value params)
+    (ppbcnevp_projection_values value params) = true /\
+  check_storage_compatibilityb
+    (ppbcnevp_mapping value params)
+    (ppbcnevp_source_specs value params)
+    (ppbcnevp_final_specs value params) = true /\
+  check_storage_boundsb
+    (ppbcnevp_final_bounds value params)
+    (phase_projection_targets (ppbcnevp_mapping value params)) = true /\
+  check_storage_boundsb
+    (ppbcnevp_phase_bounds value params)
+    (phase_protocol_cells
+      (ppbcnevp_entry_live value params)
+      (ppbcnevp_steps value params)) = true /\
+  check_private_non_escapeb
+    (phase_protocol_cells
+      (ppbcnevp_entry_live value params)
+      (ppbcnevp_steps value params))
+    (ppbcnevp_escaped_cells value params) = true /\
+  phase_source_view_refines_view
+    (ppbcnevp_input_view value params)
+    (ppbcnevp_output_view value params)
+    (ppbcnevp_source_view value params)
+    after.
+
+Theorem phase_projection_bounded_compatible_non_escape_value_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (phase_projection_bounded_compatible_non_escape_value_check
+        params before after)
+      ok ->
+    ok = true ->
+    phase_projection_bounded_compatible_non_escape_value_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (phase_projection_bounded_compatible_non_escape_value_input_view params)
+      (phase_projection_bounded_compatible_non_escape_value_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view entry_live source_liveouts entry_values
+     steps value_steps mapping projection_values source_specs final_specs
+     final_bounds phase_bounds escaped_cells source_view].
+  simpl in *.
+  destruct Hside as
+    [Hphase
+     [Hvalue
+      [Hprojection
+       [Hprojection_values
+        [Hstorage
+         [Hfinal_bounds
+          [Hphase_bounds [Hnon_escape Hsemantics]]]]]]]].
+  eapply
+    checked_phase_projection_bounded_compatible_non_escape_value_public_refinement;
+    eauto.
+Qed.
+
+Definition phase_projection_bounded_compatible_non_escape_value_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (phase_projection_bounded_compatible_non_escape_value_params value) := {|
+  generic_cpvtf_input_view :=
+    phase_projection_bounded_compatible_non_escape_value_input_view;
+  generic_cpvtf_output_view :=
+    phase_projection_bounded_compatible_non_escape_value_output_view;
+  generic_cpvtf_check :=
+    phase_projection_bounded_compatible_non_escape_value_check;
+  generic_cpvtf_side_condition :=
+    phase_projection_bounded_compatible_non_escape_value_side_condition
+      value_eqb;
+  generic_cpvtf_check_sound :=
+    phase_projection_bounded_compatible_non_escape_value_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem phase_projection_mapped_target_within_bounds :
   forall (value: Type) input_view output_view entry_live source_liveouts
          entry_values steps value_steps mapping projection_values

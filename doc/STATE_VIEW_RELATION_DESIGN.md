@@ -896,8 +896,17 @@ the common composition theorem.
 `checked_phase_projection_compatible_value_view_correct` adds the final
 projection storage side condition: each logical source live-out and final
 physical phase cell pair must have compatible size/alignment specs.  The
-derivation of the supplied swap/phase projection and storage specs from
-concrete code remains explicit.
+bounded/non-escape phase route now combines the protocol and projection sides:
+`checked_phase_projection_bounded_compatible_non_escape_value_view_correct`
+packages phase visibility, value flow, final projection, storage compatibility,
+final target bounds, protocol-cell bounds, and protocol-cell non-escape in one
+contract.  The corresponding
+`phase_projection_bounded_compatible_non_escape_value_family` hides those
+obligations behind the parameterized public-view family interface, and
+`StoragePhaseFamilyCompose.bounded_phase_projection_then_scalar_promotion_public_semantic_refinement`
+uses the expanded `public_semantic_refinement` theorem shape for the composed
+endpoint.  The derivation of the supplied swap/phase projection and storage specs
+from concrete code remains explicit.
 
 ### Overlapped Tiling
 
@@ -1832,7 +1841,7 @@ Theorem shape:
 
 ```coq
 validate_double_buffer witness before after = true ->
-view_refinement input_phase_view output_phase_view before after
+public_semantic_refinement input_phase_view output_phase_view before after
 ```
 
 The input and output views may differ because the phase selector changes.
