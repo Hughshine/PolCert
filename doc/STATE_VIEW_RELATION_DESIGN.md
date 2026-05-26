@@ -179,7 +179,12 @@ storage route now has the same shape: `VersionCommitValidator` projects the
 fully bounded/non-escape read+commit theorem to a public-only facade, packages
 it as `version_commit_read_fully_bounded_non_escape_family`, and
 `StorageVersionFamilyCompose.v` composes that array-expansion-style family with
-bounded scalar promotion through the generic hook.
+bounded scalar promotion through the generic hook.  Reduction privatization now
+uses the same facade discipline: `ReductionMergeValidator` projects the
+commutative bounded/non-escape value theorem to public-view refinement, packages
+the merge/value/algebra/storage obligations as
+`reduction_merge_commutative_bounded_non_escape_family`, and
+`StorageReductionFamilyCompose.v` composes it with bounded scalar promotion.
 
 ## What a View Must Explain
 
@@ -1573,6 +1578,15 @@ storage view side condition for privatized reductions: the public reduction
 cell and each private partial accumulator must have compatible finite storage
 specs.  The remaining semantic question is how those finite-carrier facts and
 storage specs connect to the concrete source language semantics.
+The current strongest route,
+`checked_reduction_merge_commutative_bounded_compatible_non_escape_value_view_correct`,
+also checks accumulator bounds and private-accumulator non-escape.  Its public
+facade,
+`checked_reduction_merge_commutative_bounded_compatible_non_escape_value_public_refinement`,
+exposes only `View.view_refinement`, and
+`reduction_merge_commutative_bounded_non_escape_family` carries the finite merge,
+value fold, algebra, storage compatibility, bounds, and non-escape witnesses as
+parameters/side conditions for composition.
 
 For floating point, the view must say whether it preserves bit-exact results or
 uses relaxed reduction semantics.

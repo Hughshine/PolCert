@@ -782,6 +782,202 @@ Proof.
   - exact Hview.
 Qed.
 
+Theorem checked_reduction_merge_commutative_bounded_compatible_non_escape_value_public_refinement :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (merge_op: value -> value -> value)
+         identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         before source_view after ok,
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    mayReturn (check_reduction_source_view before source_view) ok ->
+    ok = true ->
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    @check_reduction_value_mergeb
+      value value_eqb merge_op initial_value final_value
+      merge_order accumulator_values = true ->
+    @check_reduction_commutative_lawb
+      value value_eqb merge_op identity carrier = true ->
+    check_storage_compatibilityb
+      (reduction_accumulator_storage_mapping
+         public_accumulator partial_accumulators)
+      public_specs accumulator_specs = true ->
+    check_storage_boundsb accumulator_bounds partial_accumulators = true ->
+    check_private_non_escapeb partial_accumulators escaped_cells = true ->
+    reduction_source_view_refines_view
+      input_view output_view source_view after ->
+    View.view_refinement
+      input_view
+      (reduction_pipeline_final_view output_view)
+      before after.
+Proof.
+  intros value value_eqb merge_op identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         before source_view after ok
+         Hvalue_eqb Hret Hok Hmerge Hvalue Halgebra Hstorage
+         Hbounds Hnon_escape Hsemantics.
+  pose proof
+    (checked_reduction_merge_commutative_bounded_compatible_non_escape_value_view_correct
+       value value_eqb merge_op identity input_view output_view
+       source_domain chunks partial_accumulators merge_order
+       public_accumulator public_specs accumulator_specs
+       accumulator_bounds escaped_cells
+       initial_value final_value accumulator_values carrier
+       before source_view after ok
+       Hvalue_eqb Hret Hok Hmerge Hvalue Halgebra Hstorage
+       Hbounds Hnon_escape Hsemantics)
+    as [_ Hview].
+  exact Hview.
+Qed.
+
+Record reduction_merge_commutative_bounded_non_escape_params (value: Type) := {
+  rmcbnep_input_view : View.view;
+  rmcbnep_output_view : View.view;
+  rmcbnep_source_domain : list logical_instance;
+  rmcbnep_chunks : reduction_chunks;
+  rmcbnep_partial_accumulators : list MemCell;
+  rmcbnep_merge_order : list MemCell;
+  rmcbnep_public_accumulator : MemCell;
+  rmcbnep_public_specs : list storage_spec;
+  rmcbnep_accumulator_specs : list storage_spec;
+  rmcbnep_accumulator_bounds : list array_bounds;
+  rmcbnep_escaped_cells : list MemCell;
+  rmcbnep_merge_op : value -> value -> value;
+  rmcbnep_identity : value;
+  rmcbnep_initial_value : value;
+  rmcbnep_final_value : value;
+  rmcbnep_accumulator_values : list (reduction_accumulator_value value);
+  rmcbnep_carrier : list value;
+  rmcbnep_source_view : PolyLang.t;
+}.
+
+Definition reduction_merge_commutative_bounded_non_escape_input_view
+    {value: Type}
+    (params: reduction_merge_commutative_bounded_non_escape_params value)
+    : View.view :=
+  rmcbnep_input_view value params.
+
+Definition reduction_merge_commutative_bounded_non_escape_output_view
+    {value: Type}
+    (params: reduction_merge_commutative_bounded_non_escape_params value)
+    : View.view :=
+  reduction_pipeline_final_view (rmcbnep_output_view value params).
+
+Definition reduction_merge_commutative_bounded_non_escape_check
+    {value: Type}
+    (params: reduction_merge_commutative_bounded_non_escape_params value)
+    (before after: PolyLang.t) : imp bool :=
+  check_reduction_source_view before (rmcbnep_source_view value params).
+
+Definition reduction_merge_commutative_bounded_non_escape_side_condition
+    {value: Type} (value_eqb: value -> value -> bool)
+    (params: reduction_merge_commutative_bounded_non_escape_params value)
+    (before after: PolyLang.t) : Prop :=
+  check_reduction_mergeb
+    (rmcbnep_source_domain value params)
+    (rmcbnep_chunks value params)
+    (rmcbnep_partial_accumulators value params)
+    (rmcbnep_merge_order value params) = true /\
+  @check_reduction_value_mergeb
+    value value_eqb
+    (rmcbnep_merge_op value params)
+    (rmcbnep_initial_value value params)
+    (rmcbnep_final_value value params)
+    (rmcbnep_merge_order value params)
+    (rmcbnep_accumulator_values value params) = true /\
+  @check_reduction_commutative_lawb
+    value value_eqb
+    (rmcbnep_merge_op value params)
+    (rmcbnep_identity value params)
+    (rmcbnep_carrier value params) = true /\
+  check_storage_compatibilityb
+    (reduction_accumulator_storage_mapping
+      (rmcbnep_public_accumulator value params)
+      (rmcbnep_partial_accumulators value params))
+    (rmcbnep_public_specs value params)
+    (rmcbnep_accumulator_specs value params) = true /\
+  check_storage_boundsb
+    (rmcbnep_accumulator_bounds value params)
+    (rmcbnep_partial_accumulators value params) = true /\
+  check_private_non_escapeb
+    (rmcbnep_partial_accumulators value params)
+    (rmcbnep_escaped_cells value params) = true /\
+  reduction_source_view_refines_view
+    (rmcbnep_input_view value params)
+    (rmcbnep_output_view value params)
+    (rmcbnep_source_view value params)
+    after.
+
+Theorem reduction_merge_commutative_bounded_non_escape_family_sound :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         params before after ok,
+    mayReturn
+      (reduction_merge_commutative_bounded_non_escape_check
+        params before after)
+      ok ->
+    ok = true ->
+    reduction_merge_commutative_bounded_non_escape_side_condition
+      value_eqb params before after ->
+    View.view_refinement
+      (reduction_merge_commutative_bounded_non_escape_input_view params)
+      (reduction_merge_commutative_bounded_non_escape_output_view params)
+      before after.
+Proof.
+  intros value value_eqb value_eqb_sound params before after ok
+         Hret Hok Hside.
+  destruct params as
+    [input_view output_view source_domain chunks partial_accumulators merge_order
+     public_accumulator public_specs accumulator_specs accumulator_bounds
+     escaped_cells merge_op identity initial_value final_value
+     accumulator_values carrier source_view].
+  simpl in *.
+  destruct Hside as
+    [Hmerge
+     [Hvalue
+      [Halgebra
+       [Hstorage
+        [Hbounds [Hnon_escape Hsemantics]]]]]].
+  eapply
+    checked_reduction_merge_commutative_bounded_compatible_non_escape_value_public_refinement;
+    eauto.
+Qed.
+
+Definition reduction_merge_commutative_bounded_non_escape_family
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    : View.checked_parameterized_view_transform_family
+        (reduction_merge_commutative_bounded_non_escape_params value) := {|
+  generic_cpvtf_input_view :=
+    reduction_merge_commutative_bounded_non_escape_input_view;
+  generic_cpvtf_output_view :=
+    reduction_merge_commutative_bounded_non_escape_output_view;
+  generic_cpvtf_check :=
+    reduction_merge_commutative_bounded_non_escape_check;
+  generic_cpvtf_side_condition :=
+    reduction_merge_commutative_bounded_non_escape_side_condition value_eqb;
+  generic_cpvtf_check_sound :=
+    reduction_merge_commutative_bounded_non_escape_family_sound
+      value value_eqb value_eqb_sound;
+|}.
+
 Theorem reduction_private_accumulator_within_bounds :
   forall (value: Type)
          (merge_op: value -> value -> value)
