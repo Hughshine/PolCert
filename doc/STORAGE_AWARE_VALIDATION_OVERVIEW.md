@@ -300,7 +300,11 @@ ordered value trace, so callers do not need to pass a separate event list plus
 an equality proof.  The value-flow layer now also proves private use-def:
 because a private read is legal only when its cell has a current value in the
 threaded expansion map, the corresponding private trace is read-after-write
-safe.  The CInstr bridge uses this to offer a smaller static-core theorem where
+safe.  `ScalarExpansionValueWitness.v` now exposes this as
+`scalar_expansion_value_obligations_private_use_def` and
+`scalar_expansion_value_obligations_events_private_use_def`, and `Validator.v`
+re-exports both facts for users of the storage facade.  The CInstr bridge uses
+this to offer a smaller static-core theorem where
 declared entries, hidden cells, and freshness are checked, while event mapping
 and use-def come from the ordered CInstr trace.
 The same static-trace route now has a bounded variant that adds private bounds,

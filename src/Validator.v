@@ -440,6 +440,10 @@ Definition storage_check_scalar_expansion_value_traceb_sound :=
   check_scalar_expansion_value_traceb_sound.
 Definition storage_scalar_expansion_value_obligations :=
   scalar_expansion_value_obligations.
+Definition storage_scalar_expansion_value_obligations_private_use_def :=
+  scalar_expansion_value_obligations_private_use_def.
+Definition storage_scalar_expansion_value_obligations_events_private_use_def :=
+  scalar_expansion_value_obligations_events_private_use_def.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=

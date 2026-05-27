@@ -422,3 +422,30 @@ Proof.
 Qed.
 
 End Soundness.
+
+Theorem scalar_expansion_value_obligations_private_use_def :
+  forall (value: Type) (trace: scalar_expansion_value_trace value),
+    scalar_expansion_value_obligations value trace ->
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  intros value trace Hobligations.
+  destruct Hobligations as [Hsimulates].
+  apply scalar_expansion_value_trace_private_use_def.
+  exact Hsimulates.
+Qed.
+
+Theorem scalar_expansion_value_obligations_events_private_use_def :
+  forall (value: Type)
+         (value_trace: scalar_expansion_value_trace value)
+         events,
+    scalar_expansion_value_obligations value value_trace ->
+    scalar_expansion_value_trace_events value_trace = events ->
+    private_use_def_trace (scalar_expansion_private_trace events).
+Proof.
+  intros value value_trace events Hobligations Hevents.
+  subst events.
+  apply scalar_expansion_value_obligations_private_use_def.
+  exact Hobligations.
+Qed.
