@@ -40,7 +40,9 @@ exports certificate-level refinement predicates and top theorems:
 `checked_parameterized_family_pair_certificate_refines` for two composed checked
 passes.  A feature-specific top theorem can therefore expose an accepted
 certificate while reusing the same direct public-view semantic-refinement
-endpoint.  `ViewPipeline.v` records the common
+endpoint.  `Validator.v` re-exports these generic certificate-level facades,
+including the pair-certificate refinement route, so downstream validators can
+share the same top theorem vocabulary.  `ViewPipeline.v` records the common
 composition theorem used by the storage validators.  The pattern is:
 validate the schedule/control part from `before` to a storage-neutral
 `source_view`, then compose that with a feature-specific semantic

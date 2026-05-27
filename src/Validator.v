@@ -180,12 +180,16 @@ Definition checked_view_transform_certificate_input_states_match :=
   StateViewCore.checked_view_transform_certificate_input_states_match.
 Definition checked_view_transform_certificate_output_states_match :=
   StateViewCore.checked_view_transform_certificate_output_states_match.
+Definition checked_view_transform_certificate_refinement :=
+  StateViewCore.checked_view_transform_certificate_refinement.
 Definition checked_view_transform_certificate_accepted :=
   StateViewCore.checked_view_transform_certificate_accepted.
 Definition checked_view_transform_certificate_public_semantic_sound :=
   StateViewCore.checked_view_transform_certificate_public_semantic_sound.
 Definition checked_view_transform_certificate_state_sound :=
   StateViewCore.checked_view_transform_certificate_state_sound.
+Definition checked_view_transform_certificate_refines :=
+  StateViewCore.checked_view_transform_certificate_refines.
 Definition checked_view_transform_certificate_semantic_refinement :=
   StateViewCore.checked_view_transform_certificate_semantic_refinement.
 Definition checked_parameterized_view_transform_family :=
@@ -226,6 +230,13 @@ Definition checked_parameterized_transform_certificate_output_states_match
       StateViewCore.checked_parameterized_transform_certificate family) :=
   StateViewCore.checked_parameterized_transform_certificate_output_states_match
     certificate.
+Definition checked_parameterized_transform_certificate_refinement
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_refinement
+    certificate.
 Definition checked_parameterized_transform_certificate_accepted
     {params}
     {family: checked_parameterized_view_transform_family params}
@@ -247,6 +258,13 @@ Definition checked_parameterized_transform_certificate_state_sound
       StateViewCore.checked_parameterized_transform_certificate family) :=
   StateViewCore.checked_parameterized_transform_certificate_state_sound
     params family certificate.
+Definition checked_parameterized_transform_certificate_refines
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_refines
+    params family certificate.
 Definition checked_parameterized_transform_certificate_semantic_refinement
     {params}
     (family: checked_parameterized_view_transform_family params)
@@ -258,6 +276,101 @@ Definition checked_parameterized_public_semantic_family_pair_compose :=
   StateViewCore.checked_parameterized_public_semantic_family_pair_compose.
 Definition checked_parameterized_public_semantic_family_pair_state_sound :=
   StateViewCore.checked_parameterized_public_semantic_family_pair_state_sound.
+Definition checked_parameterized_family_pair_certificate
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate first second.
+Definition checked_parameterized_family_pair_certificate_input_view
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_input_view
+    certificate.
+Definition checked_parameterized_family_pair_certificate_output_view
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_output_view
+    certificate.
+Definition checked_parameterized_family_pair_certificate_input_states_match
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_input_states_match
+    certificate.
+Definition checked_parameterized_family_pair_certificate_output_states_match
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_output_states_match
+    certificate.
+Definition checked_parameterized_family_pair_certificate_refinement
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_refinement
+    certificate.
+Definition checked_parameterized_family_pair_certificate_accepted
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_accepted
+    certificate.
+Definition checked_parameterized_family_pair_certificate_public_semantic_sound
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_public_semantic_sound
+    params_first params_second first second certificate.
+Definition checked_parameterized_family_pair_certificate_state_sound
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_state_sound
+    params_first params_second first second certificate.
+Definition checked_parameterized_family_pair_certificate_refines
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_refines
+    params_first params_second first second certificate.
+Definition checked_parameterized_family_pair_certificate_semantic_refinement
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.checked_parameterized_family_pair_certificate_semantic_refinement
+    params_first params_second first second certificate.
 Definition affine_validate_identity_view_sound :=
   StateViewCore.affine_validate_identity_view_sound.
 Definition affine_identity_view_family :=
@@ -304,6 +417,8 @@ Definition storage_reduction_identity_view : state_view :=
   ReductionMergeCore.View.identity_view.
 Definition storage_phase_identity_view : state_view :=
   PhaseSeparationCore.View.identity_view.
+Definition storage_frame_identity_view : state_view :=
+  FramePreservationCore.View.identity_view.
 Definition affine_validate_identity_sound :=
   TransformCore.affine_validate_identity_sound.
 Definition affine_validate_identity_relational_sound :=
