@@ -169,8 +169,13 @@ which packages private local use-def, boundary copy-in/copy-out, value,
 compatibility, bounds, and non-escape obligations below the CInstr-specific
 scalar wrapper.  `StoragePrivateFamilyCompose.v` composes that generic
 privatization/storage-expansion family with bounded scalar promotion and states
-the result as `public_semantic_refinement`.  The same facade shape now covers the
-scratchpad/packing route through
+the result as `public_semantic_refinement`.  It now also exposes the
+accepted-certificate endpoint
+`accepted_bounded_private_storage_certificate_semantic_refinement`, so generic
+private storage has the same readable top theorem shape as the scalar, copy, and
+reuse routes: accepted certificate, input view match, target execution, and a
+matching source execution related by the output view.  The same facade shape now
+covers the scratchpad/packing route through
 `ScratchpadCopyValidator.scratchpad_copy_bounded_non_escape_family`: the
 parameter record carries the helper-instance projection, copy protocol, commit
 cover, public-to-local mapping, value trace, declared public/local cells, bounds,
