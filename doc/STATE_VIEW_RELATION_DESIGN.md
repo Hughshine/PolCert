@@ -1715,7 +1715,12 @@ checker, yielding both value-flow obligations and declared-entry event mapping
 for the whole trace.  Its per-event bridge theorem exposes the combined local
 fact needed by later simulation proofs: each CInstr-derived trace event is
 mapped by the scalar-expansion entries and has a kind/value match with its
-source-side scalar event.  This is still below the final user-facing theorem: the
+source-side scalar event.  The next projection is now mechanized as
+`cscalar_expansion_value_event_cinstr_semantics` and
+`cscalar_expansion_value_trace_event_cinstr_and_matched`: every event selected
+from the ordered trace carries its local CInstr write/read provenance together
+with the mapping, kind, and value-match facts.  This is still below the final
+user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to
 that shape is `CInstrScalarExpansionValidatorBridge.v`: it packages a checked

@@ -294,6 +294,98 @@ Proof.
   - exact Hvalue_event.
 Qed.
 
+(** Event-level CInstr provenance.
+
+    The ordered trace below is the object consumed by the generic scalar
+    expansion value-flow validator.  This predicate exposes what each trace
+    event came from without forcing later proofs to re-induct over the trace
+    structure. *)
+Inductive cscalar_expansion_value_event_cinstr_semantics
+    (entries: list scalar_expansion_entry)
+    : scalar_expansion_event ->
+      scalar_expansion_value_event Values.val -> Prop :=
+| CScalarExpansionWriteEventCInstrSemantics :
+    forall instance envv source_before source_after
+           private_before private_after source_instr private_instr
+           event value_event,
+      cassign_scalar_expansion_write_value_event
+        entries instance envv source_before source_after
+        private_before private_after source_instr private_instr
+        event value_event ->
+      cscalar_expansion_value_event_cinstr_semantics
+        entries event value_event
+| CScalarExpansionReadEventCInstrSemantics :
+    forall instance envv source_state private_state
+           source_access private_access ty event value_event,
+      caccess_scalar_expansion_read_value_event
+        entries instance envv source_state private_state
+        source_access private_access ty event value_event ->
+      cscalar_expansion_value_event_cinstr_semantics
+        entries event value_event.
+
+Theorem cscalar_expansion_value_event_cinstr_mapped :
+  forall entries event value_event,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event ->
+    scalar_expansion_event_mapped entries event.
+Proof.
+  intros entries event value_event Hsem.
+  inversion Hsem; subst.
+  - eapply cassign_scalar_expansion_write_event_mapped.
+    exact H.
+  - eapply caccess_scalar_expansion_read_event_mapped.
+    exact H.
+Qed.
+
+Theorem cscalar_expansion_value_event_cinstr_kind :
+  forall entries event value_event,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event ->
+    scalar_expansion_value_event_kind_matches event value_event.
+Proof.
+  intros entries event value_event Hsem.
+  inversion Hsem; subst.
+  - eapply cassign_scalar_expansion_write_value_kind.
+    exact H.
+  - eapply caccess_scalar_expansion_read_value_kind.
+    exact H.
+Qed.
+
+Theorem cscalar_expansion_value_event_cinstr_values_match :
+  forall entries event value_event,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event ->
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros entries event value_event Hsem.
+  inversion Hsem; subst.
+  - inversion H; subst.
+    simpl.
+    reflexivity.
+  - inversion H; subst.
+    simpl.
+    reflexivity.
+Qed.
+
+Theorem cscalar_expansion_value_event_cinstr_mapped_and_matched :
+  forall entries event value_event,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event ->
+    scalar_expansion_event_mapped entries event /\
+    scalar_expansion_value_event_kind_matches event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros entries event value_event Hsem.
+  split.
+  - eapply cscalar_expansion_value_event_cinstr_mapped.
+    exact Hsem.
+  - split.
+    + eapply cscalar_expansion_value_event_cinstr_kind.
+      exact Hsem.
+    + eapply cscalar_expansion_value_event_cinstr_values_match.
+      exact Hsem.
+Qed.
+
 (** Ordered trace layer.
 
     The singleton lemmas above justify one CInstr read or write event.  The
@@ -385,6 +477,32 @@ Proof.
       * split.
         -- reflexivity.
         -- exact IHHtrace.
+Qed.
+
+Theorem cscalar_expansion_value_trace_event_cinstr_semantics :
+  forall entries current_values trace event value_event,
+    cscalar_expansion_value_trace entries current_values trace ->
+    In (event, value_event) trace ->
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event.
+Proof.
+  intros entries current_values trace event value_event Htrace Hin.
+  induction Htrace.
+  - simpl in Hin. contradiction.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor 2.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
 Qed.
 
 Definition cscalar_expansion_value_trace_simulates
@@ -529,4 +647,26 @@ Proof.
   - unfold scalar_expansion_events_mapped in Hmapped.
     exact (Hmapped event Hin_event).
   - split; assumption.
+Qed.
+
+Theorem cscalar_expansion_value_trace_event_cinstr_and_matched :
+  forall entries current_values trace event value_event,
+    cscalar_expansion_value_trace entries current_values trace ->
+    In (event, value_event) trace ->
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event /\
+    scalar_expansion_event_mapped entries event /\
+    scalar_expansion_value_event_kind_matches event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros entries current_values trace event value_event Htrace Hin.
+  pose proof
+    (cscalar_expansion_value_trace_event_cinstr_semantics
+       entries current_values trace event value_event Htrace Hin)
+    as Hcinstr.
+  pose proof
+    (cscalar_expansion_value_event_cinstr_mapped_and_matched
+       entries event value_event Hcinstr)
+    as [Hmapped [Hkind Hvalues]].
+  repeat split; assumption.
 Qed.

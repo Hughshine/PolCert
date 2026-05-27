@@ -341,7 +341,12 @@ that the trace events are mapped by the declared expansion entries.  Its
 per-event bridge theorem now combines these two directions: every event in the
 ordered CInstr-derived value trace is mapped by the declared expansion entries,
 has the storage-event kind claimed by the value event, and carries equal
-source/private values.
+source/private values.  The trace now also exposes event-level CInstr
+provenance through
+`cscalar_expansion_value_event_cinstr_semantics` and
+`cscalar_expansion_value_trace_event_cinstr_and_matched`, so later pass-level
+proofs can retrieve the local source/private CInstr read or write witness for
+an arbitrary ordered trace event without redoing the trace induction.
 `CInstrScalarExpansionValidatorBridge.v` connects this Prop-level CInstr trace
 evidence to the scalar-privatization public-view wrappers: a checked storage
 core plus an ordered CInstr trace can build the value-core obligations used by
