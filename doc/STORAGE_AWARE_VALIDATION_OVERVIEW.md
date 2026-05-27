@@ -46,14 +46,18 @@ primary relation that downstream composition has to understand.
 The final theorem surface should therefore not expose the internal
 `checked_parameterized_view_transform_family` machinery.  That machinery is the
 certificate layer used to prove one simple endpoint:
-`public_semantic_refinement input_view output_view source target`.  The
-existing schedule-only theorem is recovered by choosing the same-state input
-view and the `State.eq` output view.  `StateView.v` now provides generic
-single-pass certificate wrappers for both the existing unparameterized
-view-transform families and the newer parameterized storage families, plus
-pair-certificate wrappers for two-pass compositions.  A feature-facing
-certificate theorem can therefore hide either one family check or a two-pass
-intermediate program while reusing one shared state-sound proof pattern.
+`semantic_refinement_under_views input_view output_view source target`.  This
+is just the direct semantic-refinement statement: every target execution from a
+state related to the source input has a matching source execution whose final
+state is related by the output view.  The existing schedule-only theorem is
+recovered by choosing the same-state input view and the `State.eq` output view;
+`StateView.semantic_refinement_under_identity_views_iff_refinement_under_state_eq`
+records that equivalence.  `StateView.v` now provides generic single-pass
+certificate wrappers for both the existing unparameterized view-transform
+families and the newer parameterized storage families, plus pair-certificate
+wrappers for two-pass compositions.  A feature-facing certificate theorem can
+therefore hide either one family check or a two-pass intermediate program while
+reusing one shared state-sound proof pattern.
 The next presentation layer names that shared endpoint directly:
 `states_match` is the readable state relation induced by a view, and the
 feature-facing theorem should be named as a semantic refinement:
@@ -67,7 +71,8 @@ matching source execution and output states match
 ```
 
 The older `_state_sound` lemmas are compatibility/proof-engineering artifacts;
-the intended top theorem is the `_semantic_refinement` spelling.
+the intended top theorem is the `_semantic_refinement` spelling over
+`semantic_refinement_under_views`.
 The first implementation step is `StateView.v`, which packages endpoint
 relations as views and wraps the existing affine/general validators as
 `same_state_view -> identity_view` refinements.  It also exposes a small

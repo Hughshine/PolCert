@@ -1693,6 +1693,13 @@ about input/output public views and source/target executions.  The scalar
 wrapper is now an instance of the generic pair-certificate layer in
 `StateView.v`, so the same top-surface pattern can be reused by copy, private,
 reuse, phase, and reduction families without duplicating the composition proof.
+The paper-facing name for that endpoint is now
+`semantic_refinement_under_views`: storage features may change representation,
+but the top theorem should still read as ordinary semantic refinement with an
+input relation and an output observation.  The special case
+`same_state_view -> identity_view` is proved equivalent to the old
+`refinement_under State.eq` route, so the new statement generalizes the old one
+instead of replacing it with an unrelated relation.
 `CInstrScalarExpansionWitness.v` then gives the first concrete instruction
 bridge: a pair of CInstr assignment semantic steps can produce one expansion
 write/value event, and paired scalar access evaluations can produce one

@@ -146,12 +146,18 @@ Definition compose_view_monotone :=
 Definition view_refinement := StateViewCore.view_refinement.
 Definition public_semantic_refinement :=
   StateViewCore.public_semantic_refinement.
+Definition semantic_refinement_under_views :=
+  StateViewCore.semantic_refinement_under_views.
 Definition public_semantic_refinement_iff :=
   StateViewCore.public_semantic_refinement_iff.
 Definition view_refinement_to_public_semantic_refinement :=
   StateViewCore.view_refinement_to_public_semantic_refinement.
 Definition public_semantic_refinement_to_view_refinement :=
   StateViewCore.public_semantic_refinement_to_view_refinement.
+Definition semantic_refinement_under_views_iff :=
+  StateViewCore.semantic_refinement_under_views_iff.
+Definition semantic_refinement_under_identity_views_iff_refinement_under_state_eq :=
+  StateViewCore.semantic_refinement_under_identity_views_iff_refinement_under_state_eq.
 Definition identity_view_contains_state_eq :=
   StateViewCore.identity_view_contains_state_eq.
 Definition same_state_view_included_identity_view :=
@@ -186,6 +192,8 @@ Definition checked_view_transform_certificate_accepted :=
   StateViewCore.checked_view_transform_certificate_accepted.
 Definition checked_view_transform_certificate_public_semantic_sound :=
   StateViewCore.checked_view_transform_certificate_public_semantic_sound.
+Definition accepted_view_transform_certificate_semantic_refinement :=
+  StateViewCore.accepted_view_transform_certificate_semantic_refinement.
 Definition checked_view_transform_certificate_state_sound :=
   StateViewCore.checked_view_transform_certificate_state_sound.
 Definition checked_view_transform_certificate_refines :=
@@ -250,6 +258,13 @@ Definition checked_parameterized_transform_certificate_public_semantic_sound
     (certificate:
       StateViewCore.checked_parameterized_transform_certificate family) :=
   StateViewCore.checked_parameterized_transform_certificate_public_semantic_sound
+    params family certificate.
+Definition accepted_parameterized_transform_certificate_semantic_refinement
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.accepted_parameterized_transform_certificate_semantic_refinement
     params family certificate.
 Definition checked_parameterized_transform_certificate_state_sound
     {params}
@@ -343,6 +358,15 @@ Definition checked_parameterized_family_pair_certificate_public_semantic_sound
       StateViewCore.checked_parameterized_family_pair_certificate
         first second) :=
   StateViewCore.checked_parameterized_family_pair_certificate_public_semantic_sound
+    params_first params_second first second certificate.
+Definition accepted_parameterized_family_pair_certificate_semantic_refinement
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.accepted_parameterized_family_pair_certificate_semantic_refinement
     params_first params_second first second certificate.
 Definition checked_parameterized_family_pair_certificate_state_sound
     {params_first params_second}

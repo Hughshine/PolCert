@@ -165,6 +165,14 @@ Definition public_semantic_refinement
       PolyLang.instance_list_semantics before st_source0 st_source_after /\
       states_match output_view st_target_after st_source_after.
 
+(** The theorem name intended for final, feature-facing statements.
+
+    A storage-aware pass is still just a semantic refinement: every target
+    execution has a matching source execution.  Views only say which parts of
+    the initial and final states are compared. *)
+Definition semantic_refinement_under_views :=
+  public_semantic_refinement.
+
 Theorem public_semantic_refinement_iff :
   forall input_view output_view before after,
     public_semantic_refinement input_view output_view before after <->
@@ -193,6 +201,46 @@ Proof.
   intros input_view output_view before after Href.
   apply public_semantic_refinement_iff.
   exact Href.
+Qed.
+
+Theorem semantic_refinement_under_views_iff :
+  forall input_view output_view before after,
+    semantic_refinement_under_views input_view output_view before after <->
+    forall st_target0 st_source0 st_target_after,
+      states_match input_view st_target0 st_source0 ->
+      PolyLang.instance_list_semantics after st_target0 st_target_after ->
+      exists st_source_after,
+        PolyLang.instance_list_semantics before st_source0 st_source_after /\
+        states_match output_view st_target_after st_source_after.
+Proof.
+  intros input_view output_view before after.
+  unfold semantic_refinement_under_views, public_semantic_refinement.
+  tauto.
+Qed.
+
+Theorem semantic_refinement_under_identity_views_iff_refinement_under_state_eq :
+  forall before after,
+    semantic_refinement_under_views same_state_view identity_view before after <->
+    Transform.refinement_under Transform.identity_observation before after.
+Proof.
+  unfold semantic_refinement_under_views, public_semantic_refinement.
+  unfold Transform.refinement_under.
+  unfold states_match, state_view_rel, same_state_view, identity_view.
+  simpl.
+  unfold Transform.same_state_relation.
+  split.
+  - intros Href st0 st_after Hafter.
+    destruct (Href st0 st0 st_after eq_refl Hafter)
+      as (st_source_after & Hsource & Hobs).
+    exists st_source_after.
+    split; assumption.
+  - intros Href st_target0 st_source0 st_target_after
+           Heq Hafter.
+    subst st_source0.
+    destruct (Href st_target0 st_target_after Hafter)
+      as (st_source_after & Hsource & Hobs).
+    exists st_source_after.
+    split; assumption.
 Qed.
 
 Theorem identity_view_contains_state_eq :
@@ -374,6 +422,21 @@ Proof.
   destruct Haccepted as [ok [Hret Hok]].
   apply view_refinement_to_public_semantic_refinement.
   eapply cvtf_check_sound; eauto.
+Qed.
+
+Theorem accepted_view_transform_certificate_semantic_refinement :
+  forall family certificate before after,
+    checked_view_transform_certificate_accepted
+      family certificate before after ->
+    semantic_refinement_under_views
+      (checked_view_transform_certificate_input_view family certificate)
+      (checked_view_transform_certificate_output_view family certificate)
+      before after.
+Proof.
+  intros family certificate before after Haccepted.
+  exact
+    (checked_view_transform_certificate_public_semantic_sound
+       family certificate before after Haccepted).
 Qed.
 
 Theorem checked_view_transform_certificate_state_sound :
@@ -600,6 +663,25 @@ Proof.
     (cpvtf_check_public_semantic_sound
        params family (cptc_params certificate)
        before after ok Hret Hok Hside).
+Qed.
+
+Theorem accepted_parameterized_transform_certificate_semantic_refinement :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         (certificate:
+           checked_parameterized_transform_certificate family)
+         before after,
+    checked_parameterized_transform_certificate_accepted
+      certificate before after ->
+    semantic_refinement_under_views
+      (checked_parameterized_transform_certificate_input_view certificate)
+      (checked_parameterized_transform_certificate_output_view certificate)
+      before after.
+Proof.
+  intros params family certificate before after Haccepted.
+  exact
+    (checked_parameterized_transform_certificate_public_semantic_sound
+       params family certificate before after Haccepted).
 Qed.
 
 Theorem checked_parameterized_transform_certificate_state_sound :
@@ -888,6 +970,28 @@ Proof.
        before mid after first_ok second_ok
        Hfirst_ret Hfirst_ok Hfirst_side
        Hsecond_ret Hsecond_ok Hsecond_side).
+Qed.
+
+Theorem accepted_parameterized_family_pair_certificate_semantic_refinement :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         (certificate:
+           checked_parameterized_family_pair_certificate first second)
+         before after,
+    checked_parameterized_family_pair_certificate_accepted
+      certificate before after ->
+    semantic_refinement_under_views
+      (checked_parameterized_family_pair_certificate_input_view certificate)
+      (checked_parameterized_family_pair_certificate_output_view certificate)
+      before after.
+Proof.
+  intros params_first params_second first second certificate
+         before after Haccepted.
+  exact
+    (checked_parameterized_family_pair_certificate_public_semantic_sound
+       params_first params_second first second
+       certificate before after Haccepted).
 Qed.
 
 Theorem checked_parameterized_family_pair_certificate_state_sound :
