@@ -887,7 +887,9 @@ physical cells lie within declared bounds.  The exported family conclusion is
 still only the public endpoint relation.  `StorageReuseFamilyCompose` uses that
 family with scalar promotion through `public_semantic_refinement`, so general
 contraction/rolling-buffer reuse has the same top theorem shape as the phase
-route rather than a bespoke checker theorem.
+route rather than a bespoke checker theorem.  The accepted-certificate wrapper
+`accepted_bounded_conflict_reuse_certificate_state_sound` now instantiates the
+generic pair-certificate endpoint theorem for this non-injective reuse case.
 
 ### Inter-Array Reuse
 
@@ -916,7 +918,9 @@ live-overlap, reuse-boundary, storage-compatibility, boundary-value, and bounds
 obligations.  Its composition theorem now has both the internal
 `view_refinement` form and the paper-facing
 `bounded_inter_array_reuse_then_scalar_promotion_public_semantic_refinement`
-form, matching the general conflict-reuse route.
+form, matching the general conflict-reuse route.  The wrapper
+`accepted_bounded_inter_array_reuse_certificate_state_sound` gives the same
+direct accepted-certificate theorem shape for cross-array buffer sharing.
 
 ### Double Buffering and Ping-Pong Buffers
 
