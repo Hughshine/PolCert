@@ -131,6 +131,165 @@ Definition check_copy_value_traceb {value: Type}
     (trace: copy_value_trace value) : bool :=
   check_copy_value_trace_fromb value_eqb [] trace.
 
+Fixpoint copy_value_trace_events {value: Type}
+    (trace: copy_value_trace value) : list copy_event :=
+  match trace with
+  | [] => []
+  | (copy_event', _) :: tail =>
+      copy_event' :: copy_value_trace_events tail
+  end.
+
+Fixpoint copy_value_trace_values {value: Type}
+    (trace: copy_value_trace value) : list (copy_value_event value) :=
+  match trace with
+  | [] => []
+  | (_, value_event) :: tail =>
+      value_event :: copy_value_trace_values tail
+  end.
+
+Fixpoint copy_local_use_def_from
+    (defined_locals: list MemCell)
+    (trace: list copy_event) : Prop :=
+  match trace with
+  | [] => True
+  | CopyIn _ local_cell :: tail =>
+      copy_local_use_def_from (local_cell :: defined_locals) tail
+  | LocalRead local_cell :: tail =>
+      In local_cell defined_locals /\
+      copy_local_use_def_from defined_locals tail
+  | LocalWrite local_cell :: tail =>
+      copy_local_use_def_from (local_cell :: defined_locals) tail
+  | CopyOut local_cell _ :: tail =>
+      In local_cell defined_locals /\
+      copy_local_use_def_from defined_locals tail
+  end.
+
+Definition copy_local_use_def_trace (trace: list copy_event) : Prop :=
+  copy_local_use_def_from [] trace.
+
+Definition local_values_defined_by {value: Type}
+    (locals: list (MemCell * value))
+    (defined_locals: list MemCell) : Prop :=
+  forall cell current_value,
+    lookup_local_value cell locals = Some current_value ->
+    In cell defined_locals.
+
+Lemma local_values_defined_by_nil :
+  forall (value: Type) defined_locals,
+    @local_values_defined_by value [] defined_locals.
+Proof.
+  intros value defined_locals cell current_value Hlookup.
+  simpl in Hlookup.
+  discriminate.
+Qed.
+
+Lemma local_values_defined_by_update :
+  forall (value: Type) locals defined_locals local_cell local_value,
+    @local_values_defined_by value locals defined_locals ->
+    @local_values_defined_by value
+      (update_local_value local_cell local_value locals)
+      (local_cell :: defined_locals).
+Proof.
+  induction locals as [|[cell old_value] tail IH];
+    intros defined_locals local_cell local_value Hdefined
+           query_cell query_value Hlookup; simpl in Hlookup.
+  - destruct (mem_cell_strict_eqb query_cell local_cell) eqn:Heq.
+    + apply mem_cell_strict_eqb_eq in Heq.
+      subst. left. reflexivity.
+    + discriminate.
+  - destruct (mem_cell_strict_eqb local_cell cell) eqn:Hwrite.
+    + simpl in Hlookup.
+      destruct (mem_cell_strict_eqb query_cell cell) eqn:Hquery.
+      * apply mem_cell_strict_eqb_eq in Hquery.
+        apply mem_cell_strict_eqb_eq in Hwrite.
+        subst. left. reflexivity.
+      * right.
+        eapply Hdefined.
+        simpl.
+        rewrite Hquery.
+        exact Hlookup.
+    + simpl in Hlookup.
+      destruct (mem_cell_strict_eqb query_cell cell) eqn:Hquery.
+      * inversion Hlookup; subst.
+        right.
+        eapply Hdefined.
+        simpl.
+        rewrite Hquery.
+        reflexivity.
+      * eapply IH.
+        -- intros old_query old_current Hold.
+           destruct (mem_cell_strict_eqb old_query cell) eqn:Hold_query.
+           ++ apply mem_cell_strict_eqb_eq in Hold_query.
+              subst.
+              eapply Hdefined.
+              simpl.
+              rewrite mem_cell_strict_eq_eqb with (c2 := cell).
+              ** reflexivity.
+              ** reflexivity.
+           ++ eapply Hdefined.
+              simpl.
+              rewrite Hold_query.
+              exact Hold.
+        -- exact Hlookup.
+Qed.
+
+Theorem copy_value_trace_local_use_def_from :
+  forall (value: Type) trace locals defined_locals,
+    copy_value_trace_simulates_from locals trace ->
+    @local_values_defined_by value locals defined_locals ->
+    copy_local_use_def_from
+      defined_locals
+      (copy_value_trace_events trace).
+Proof.
+  induction trace as [|[copy_event' value_event] tail IH];
+    intros locals defined_locals Hsim Hdefined; simpl in Hsim.
+  - exact I.
+  - destruct copy_event' as [source_cell local_cell
+                            | local_cell
+                            | local_cell
+                            | local_cell target_cell];
+      destruct value_event as [source_value local_value
+                              | read_value
+                              | new_local_value
+                              | out_local_value out_target_value];
+      simpl in Hsim; try contradiction; simpl.
+    + destruct Hsim as [_ Htail].
+      eapply IH.
+      * exact Htail.
+      * apply local_values_defined_by_update.
+        exact Hdefined.
+    + destruct (lookup_local_value local_cell locals)
+        as [current_value |] eqn:Hlookup; try contradiction.
+      destruct Hsim as [_ Htail].
+      split.
+      * eapply Hdefined.
+        exact Hlookup.
+      * eapply IH; eauto.
+    + eapply IH.
+      * exact Hsim.
+      * apply local_values_defined_by_update.
+        exact Hdefined.
+    + destruct (lookup_local_value local_cell locals)
+        as [current_value |] eqn:Hlookup; try contradiction.
+      destruct Hsim as [_ [_ Htail]].
+      split.
+      * eapply Hdefined.
+        exact Hlookup.
+      * eapply IH; eauto.
+Qed.
+
+Theorem copy_value_trace_local_use_def :
+  forall (value: Type) (trace: copy_value_trace value),
+    copy_value_trace_simulates trace ->
+    copy_local_use_def_trace (copy_value_trace_events trace).
+Proof.
+  intros value trace Hsim.
+  unfold copy_value_trace_simulates, copy_local_use_def_trace in *.
+  eapply copy_value_trace_local_use_def_from.
+  - exact Hsim.
+  - apply local_values_defined_by_nil.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -211,3 +370,28 @@ Proof.
 Qed.
 
 End Soundness.
+
+Theorem copy_value_obligations_local_use_def :
+  forall (value: Type) (trace: copy_value_trace value),
+    copy_value_simulation_obligations value trace ->
+    copy_local_use_def_trace (copy_value_trace_events trace).
+Proof.
+  intros value trace Hobligations.
+  destruct Hobligations as [Hsimulates].
+  apply copy_value_trace_local_use_def.
+  exact Hsimulates.
+Qed.
+
+Theorem copy_value_obligations_events_local_use_def :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         events,
+    copy_value_simulation_obligations value value_trace ->
+    copy_value_trace_events value_trace = events ->
+    copy_local_use_def_trace events.
+Proof.
+  intros value value_trace events Hobligations Hevents.
+  subst events.
+  apply copy_value_obligations_local_use_def.
+  exact Hobligations.
+Qed.

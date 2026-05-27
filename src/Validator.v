@@ -806,12 +806,24 @@ Definition storage_copy_mapping_declared_local_in_local :=
   copy_mapping_declared_local_in_local.
 Definition storage_copy_value_event := copy_value_event.
 Definition storage_copy_value_trace := copy_value_trace.
+Definition storage_copy_value_trace_events :=
+  @copy_value_trace_events.
+Definition storage_copy_value_trace_values :=
+  @copy_value_trace_values.
+Definition storage_copy_local_use_def_from :=
+  copy_local_use_def_from.
+Definition storage_copy_local_use_def_trace :=
+  copy_local_use_def_trace.
 Definition storage_check_copy_value_traceb :=
   @check_copy_value_traceb.
 Definition storage_check_copy_value_traceb_sound :=
   check_copy_value_traceb_sound.
 Definition storage_copy_value_simulation_obligations :=
   copy_value_simulation_obligations.
+Definition storage_copy_value_obligations_local_use_def :=
+  copy_value_obligations_local_use_def.
+Definition storage_copy_value_obligations_events_local_use_def :=
+  copy_value_obligations_events_local_use_def.
 Definition storage_check_copy_protocol_wfb :=
   check_copy_protocol_wfb.
 Definition storage_check_copy_protocol_wfb_sound :=
