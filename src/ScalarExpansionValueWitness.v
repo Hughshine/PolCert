@@ -233,6 +233,25 @@ Fixpoint scalar_expansion_value_trace_events {value: Type}
       storage_event :: scalar_expansion_value_trace_events tail
   end.
 
+Lemma scalar_expansion_value_trace_pair_event_in_events :
+  forall (value: Type)
+         (trace: scalar_expansion_value_trace value)
+         storage_event value_event,
+    In (storage_event, value_event) trace ->
+    In storage_event (scalar_expansion_value_trace_events trace).
+Proof.
+  intros value trace.
+  induction trace as [|[head_storage head_value] tail IH];
+    intros storage_event value_event Hin; simpl in *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      eapply IH.
+      exact Htail.
+Qed.
+
 Fixpoint scalar_expansion_value_trace_values {value: Type}
     (trace: scalar_expansion_value_trace value)
     : list (scalar_expansion_value_event value) :=

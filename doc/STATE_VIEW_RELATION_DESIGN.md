@@ -1680,7 +1680,10 @@ empty trace at each instruction.  That next layer is now present as an ordered
 CInstr trace witness: CInstr-derived write/read events are threaded through the
 same current private-value map as the generic scalar-expansion value-flow
 checker, yielding both value-flow obligations and declared-entry event mapping
-for the whole trace.  This is still below the final user-facing theorem: the
+for the whole trace.  Its per-event bridge theorem exposes the combined local
+fact needed by later simulation proofs: each CInstr-derived trace event is
+mapped by the scalar-expansion entries and has a kind/value match with its
+source-side scalar event.  This is still below the final user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to
 that shape is `CInstrScalarExpansionValidatorBridge.v`: it packages a checked

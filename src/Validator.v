@@ -526,6 +526,10 @@ Definition storage_scalar_expansion_value_event :=
   scalar_expansion_value_event.
 Definition storage_scalar_expansion_value_trace :=
   scalar_expansion_value_trace.
+Definition storage_scalar_expansion_value_trace_events :=
+  @scalar_expansion_value_trace_events.
+Definition storage_scalar_expansion_value_trace_pair_event_in_events :=
+  @scalar_expansion_value_trace_pair_event_in_events.
 Definition storage_scalar_expansion_value_event_kind_matches :=
   @scalar_expansion_value_event_kind_matches.
 Definition storage_scalar_expansion_value_event_values_match :=

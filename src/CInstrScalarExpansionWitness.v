@@ -498,3 +498,35 @@ Proof.
     + eapply cscalar_expansion_value_trace_private_use_def.
       exact Htrace.
 Qed.
+
+Theorem cscalar_expansion_value_trace_event_mapped_and_matched :
+  forall entries current_values trace event value_event,
+    cscalar_expansion_value_trace entries current_values trace ->
+    In (event, value_event) trace ->
+    scalar_expansion_event_mapped entries event /\
+    scalar_expansion_value_event_kind_matches event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros entries current_values trace event value_event Htrace Hin.
+  pose proof
+    (cscalar_expansion_value_trace_events_mapped
+       entries current_values trace Htrace)
+    as Hmapped.
+  pose proof
+    (cscalar_expansion_value_trace_sound_from
+       entries current_values trace Htrace)
+    as Hsimulates.
+  pose proof
+    (scalar_expansion_value_trace_pair_event_in_events
+       Values.val trace event value_event Hin)
+    as Hin_event.
+  pose proof
+    (scalar_expansion_value_trace_simulates_from_event_matched
+       Values.val trace current_values event value_event
+       Hsimulates Hin)
+    as [Hkind Hvalues].
+  split.
+  - unfold scalar_expansion_events_mapped in Hmapped.
+    exact (Hmapped event Hin_event).
+  - split; assumption.
+Qed.
