@@ -178,7 +178,20 @@ with both features' traces, bounds, compatibility, separation, and non-escape
 facts kept in side conditions.  This theorem now goes through the generic
 parameterized family composition hook and also has a
 `public_semantic_refinement` facade, which is the intended shape for future
-storage pass sequences.  The generic private-storage layer now also exposes
+storage pass sequences.  It now also has a concrete accepted-certificate top
+theorem,
+`accepted_bounded_cinstr_scalar_storage_certificate_refines`, whose conclusion
+is the certificate-level
+`bounded_cinstr_scalar_storage_semantic_refinement`.  Unfolded, that conclusion
+says exactly: if the input states match under the certificate's input view and
+the target program executes, then the source program has a matching execution
+whose final state satisfies the certificate's output view.  This hides the
+intermediate program and both CInstr family checks while keeping the statement
+as close as possible to the old semantic-refinement theorem shape.  The expanded
+helper theorem
+`accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement` remains
+available for proof scripts that want the state variables explicitly.  The
+generic private-storage layer now also exposes
 `PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`,
 which packages private local use-def, boundary copy-in/copy-out, value,
 compatibility, bounds, and non-escape obligations below the CInstr-specific

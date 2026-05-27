@@ -19,6 +19,73 @@ Module Expansion := CInstrScalarExpansionValidatorBridge PolIRs Observer.
 Module Promotion := CInstrScalarPromotionValidatorBridge PolIRs.
 Module View := Expansion.View.
 
+Record bounded_cinstr_scalar_storage_certificate := {
+  bcssc_privatization_params :
+    Expansion.cscalar_privatization_bounded_params;
+  bcssc_promotion_params :
+    Promotion.cscalar_promotion_bounded_params;
+  bcssc_mid_program : PolIRs.PolyLang.t;
+}.
+
+Definition bounded_cinstr_scalar_storage_pair_certificate
+    (certificate: bounded_cinstr_scalar_storage_certificate)
+    : View.checked_parameterized_family_pair_certificate
+        Expansion.cscalar_privatization_bounded_family
+        Promotion.cscalar_promotion_bounded_family := {|
+  View.cpfpc_first_params := bcssc_privatization_params certificate;
+  View.cpfpc_second_params := bcssc_promotion_params certificate;
+  View.cpfpc_mid_program := bcssc_mid_program certificate;
+|}.
+
+Definition bounded_cinstr_scalar_storage_certificate_input_view
+    (certificate: bounded_cinstr_scalar_storage_certificate)
+    : View.view :=
+  View.checked_parameterized_family_pair_certificate_input_view
+    (bounded_cinstr_scalar_storage_pair_certificate certificate).
+
+Definition bounded_cinstr_scalar_storage_certificate_output_view
+    (certificate: bounded_cinstr_scalar_storage_certificate)
+    : View.view :=
+  View.checked_parameterized_family_pair_certificate_output_view
+    (bounded_cinstr_scalar_storage_pair_certificate certificate).
+
+Definition bounded_cinstr_scalar_storage_certificate_input_states_match
+    (certificate: bounded_cinstr_scalar_storage_certificate) :=
+  View.states_match
+    (bounded_cinstr_scalar_storage_certificate_input_view certificate).
+
+Definition bounded_cinstr_scalar_storage_certificate_output_states_match
+    (certificate: bounded_cinstr_scalar_storage_certificate) :=
+  View.states_match
+    (bounded_cinstr_scalar_storage_certificate_output_view certificate).
+
+(** Certificate-level semantic facade.
+
+    This is the CInstr scalar-storage analogue of the old semantic refinement
+    endpoint, with [State.eq] generalized to certificate-defined input and
+    output state views.  The internal two-pass decomposition and intermediate
+    program are fields of the certificate, not part of the theorem surface. *)
+Definition bounded_cinstr_scalar_storage_semantic_refinement
+    (certificate: bounded_cinstr_scalar_storage_certificate)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  forall st_target0 st_source0 st_target_after,
+    bounded_cinstr_scalar_storage_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_cinstr_scalar_storage_certificate_output_states_match
+        certificate st_target_after st_source_after.
+
+Definition bounded_cinstr_scalar_storage_certificate_accepted
+    (certificate: bounded_cinstr_scalar_storage_certificate)
+    (before after: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_accepted
+    (bounded_cinstr_scalar_storage_pair_certificate certificate)
+    before after.
+
 Theorem bounded_privatization_then_promotion_public_refinement :
   forall (privatization_params:
             Expansion.cscalar_privatization_bounded_params)
@@ -117,6 +184,93 @@ Proof.
   - exact Hpromo_ret.
   - exact Hpromo_ok.
   - exact Hpromo_side.
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_public_semantic_refinement :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    View.public_semantic_refinement
+      (bounded_cinstr_scalar_storage_certificate_input_view certificate)
+      (bounded_cinstr_scalar_storage_certificate_output_view certificate)
+      before after.
+Proof.
+  intros certificate before after Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+       _
+       _
+       Expansion.cscalar_privatization_bounded_family
+       Promotion.cscalar_promotion_bounded_family
+       (bounded_cinstr_scalar_storage_pair_certificate certificate)
+       before after Haccepted).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_state_sound :
+  forall certificate before after st_target0 st_source0 st_target_after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    View.state_view_rel
+      (bounded_cinstr_scalar_storage_certificate_input_view certificate)
+      st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      after st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        before st_source0 st_source_after /\
+      View.state_view_rel
+        (bounded_cinstr_scalar_storage_certificate_output_view certificate)
+        st_target_after st_source_after.
+Proof.
+  intros certificate before after st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (View.checked_parameterized_family_pair_certificate_state_sound
+       _
+       _
+       Expansion.cscalar_privatization_bounded_family
+       Promotion.cscalar_promotion_bounded_family
+       (bounded_cinstr_scalar_storage_pair_certificate certificate)
+       before after st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_refines :
+  forall certificate source target,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate source target ->
+    bounded_cinstr_scalar_storage_semantic_refinement
+      certificate source target.
+Proof.
+  unfold bounded_cinstr_scalar_storage_semantic_refinement.
+  intros certificate source target Haccepted
+         st_target0 st_source0 st_target_after Hinput Htarget.
+  exact
+    (accepted_bounded_cinstr_scalar_storage_certificate_state_sound
+       certificate source target st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement :
+  forall certificate source target st_target0 st_source0 st_target_after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate source target ->
+    bounded_cinstr_scalar_storage_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_cinstr_scalar_storage_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros certificate source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_bounded_cinstr_scalar_storage_certificate_state_sound
+       certificate source target st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
 Qed.
 
 End CInstrScalarStorageFamilyCompose.

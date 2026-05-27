@@ -253,7 +253,15 @@ non-escape side conditions.  A concrete scalar-storage composition theorem now
 shows bounded scalar privatization followed by bounded scalar promotion as one
 composed public-view refinement through the generic parameterized family
 composition hook, and now also exposes a `public_semantic_refinement` facade for
-the same composed endpoint.  The generic private-storage layer now follows the same
+the same composed endpoint.  The concrete CInstr scalar-storage certificate
+wrapper now exposes the final paper-facing shape as
+`accepted_bounded_cinstr_scalar_storage_certificate_refines`: an accepted
+certificate implies
+`bounded_cinstr_scalar_storage_semantic_refinement`.  That refinement is just
+the old execution-matching theorem shape with `State.eq` replaced by the
+certificate's input/output views: input states match, the target executes, and
+there exists a source execution whose final state satisfies the output view.
+The generic private-storage layer now follows the same
 discipline below the CInstr wrapper:
 `PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`
 packages local private use-def, boundary copy-in/copy-out, boundary values,
