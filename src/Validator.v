@@ -1117,6 +1117,14 @@ Definition storage_check_version_valueb_sound :=
   check_version_valueb_sound.
 Definition storage_version_value_obligations :=
   version_value_obligations.
+Definition storage_version_value_entries_match_length :=
+  version_value_entries_match_length.
+Definition storage_version_value_entries_match_mapping_entry :=
+  version_value_entries_match_mapping_entry.
+Definition storage_version_value_obligation_length_match :=
+  version_value_obligation_length_match.
+Definition storage_version_value_obligation_mapping_entry_matched :=
+  version_value_obligation_mapping_entry_matched.
 Definition storage_produced_version_mapping :=
   produced_version_mapping.
 Definition storage_produced_version_versions :=
