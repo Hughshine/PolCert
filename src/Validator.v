@@ -988,6 +988,10 @@ Definition storage_check_reuse_valueb_sound :=
   check_reuse_valueb_sound.
 Definition storage_reuse_value_obligations :=
   reuse_value_obligations.
+Definition storage_reuse_value_obligation_length_match :=
+  reuse_value_obligation_length_match.
+Definition storage_reuse_value_obligation_mapping_entry_matched :=
+  reuse_value_obligation_mapping_entry_matched.
 Definition storage_storage_spec := storage_spec.
 Definition storage_check_storage_compatibilityb :=
   check_storage_compatibilityb.

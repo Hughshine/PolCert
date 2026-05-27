@@ -53,6 +53,57 @@ Fixpoint reuse_value_entries_match {value: Type}
   | _, _ => False
   end.
 
+Lemma reuse_value_entries_match_length :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value)),
+    reuse_value_entries_match mapping entries ->
+    length mapping = length entries.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_entry mapping_tail IH];
+    intros entries Hmatch; destruct entries as [|entry entry_tail];
+    simpl in *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    f_equal.
+    apply IH.
+    exact Htail.
+Qed.
+
+Lemma reuse_value_entries_match_mapping_entry :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value))
+         mapping_entry,
+    reuse_value_entries_match mapping entries ->
+    In mapping_entry mapping ->
+    exists entry,
+      In entry entries /\
+      reuse_value_entry_cells_match mapping_entry entry /\
+      reuse_value_entry_value_match entry.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_head mapping_tail IH];
+    intros entries mapping_entry Hmatch Hin;
+    destruct entries as [|entry entry_tail];
+    simpl in *; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Hin_head | Hin_tail].
+  - subst mapping_entry.
+    exists entry.
+    split.
+    + left; reflexivity.
+    + split; assumption.
+  - destruct
+      (IH entry_tail mapping_entry Htail Hin_tail)
+      as (matched_entry & Hentry_in & Hmatched_cells & Hmatched_value).
+    exists matched_entry.
+    split.
+    + right; exact Hentry_in.
+    + split; assumption.
+Qed.
+
 Definition check_reuse_value_entryb {value: Type}
     (value_eqb: value -> value -> bool)
     (mapping_entry: MemCell * MemCell)
@@ -150,3 +201,33 @@ Proof.
 Qed.
 
 End Soundness.
+
+Theorem reuse_value_obligation_length_match :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value)),
+    reuse_value_obligations value mapping entries ->
+    length mapping = length entries.
+Proof.
+  intros value mapping entries Hobligations.
+  apply reuse_value_entries_match_length.
+  exact (rvo_entries_match value mapping entries Hobligations).
+Qed.
+
+Theorem reuse_value_obligation_mapping_entry_matched :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value))
+         mapping_entry,
+    reuse_value_obligations value mapping entries ->
+    In mapping_entry mapping ->
+    exists entry,
+      In entry entries /\
+      reuse_value_entry_cells_match mapping_entry entry /\
+      reuse_value_entry_value_match entry.
+Proof.
+  intros value mapping entries mapping_entry Hobligations Hin.
+  eapply reuse_value_entries_match_mapping_entry.
+  - exact (rvo_entries_match value mapping entries Hobligations).
+  - exact Hin.
+Qed.

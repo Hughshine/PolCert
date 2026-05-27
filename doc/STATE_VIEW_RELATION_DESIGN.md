@@ -85,6 +85,18 @@ reused physical cells through a public observation.  The top theorem should not
 force the reader to inspect those details; those details belong to the
 certificate obligations and the component validator soundness lemmas.
 
+Design consequence: adding storage-aware support should not culminate in a
+top-level theorem whose main conclusion is just an internal
+`state_view_rel`/`compose_view` fact.  Those relations are the way the proof is
+assembled.  The final theorem should always be re-exported in direct execution
+semantics form, with `input_states_match` and `output_states_match` as the only
+visible generalization of the old `State.eq` endpoint.  For transformations
+whose public storage is unchanged, these matchers should instantiate to the
+identity view and the statement should collapse back to the old schedule-only
+semantic refinement.  For privatization, reuse, copy, versioning, or overlap
+with local storage, the same theorem shape remains; only the certificate-chosen
+public observation changes.
+
 ## Problem
 
 The current affine validation route proves a strong fragment-level fact:
