@@ -167,11 +167,17 @@ theorems for every pass ordering.  `StateView` also has a parameterized variant
 for storage passes whose checker soundness depends on extra witness parameters
 and semantic side conditions; this is the generic home for facade theorems that
 hide feature-specific contracts while still composing as public-view
-refinements.  The single-pass certificate endpoint,
-`checked_parameterized_transform_certificate_semantic_refinement`, is the
-shared theorem shape for one accepted storage pass: accepted certificate, input
-states match, target execution, and matched source execution under the output
-view.  `CInstrScalarStorageFamilyCompose.v` adds the first concrete
+refinements.  The single-pass certificate facade,
+`checked_parameterized_transform_certificate_refines`, and the two-pass facade,
+`checked_parameterized_family_pair_certificate_refines`, are the shared theorem
+shapes for accepted storage certificates.  Their conclusions are
+certificate-level refinement predicates: input states match under the
+certificate's input view, the target executes, and the source has a matching
+execution whose final state satisfies the certificate's output view.  The older
+explicit-state helper theorem
+`checked_parameterized_transform_certificate_semantic_refinement` remains
+available for proof scripts that want the quantified states exposed.
+`CInstrScalarStorageFamilyCompose.v` adds the first concrete
 scalar-storage composition theorem: bounded CInstr scalar privatization followed
 by bounded CInstr scalar promotion yields a composed public-view refinement,
 with both features' traces, bounds, compatibility, separation, and non-escape
@@ -182,13 +188,10 @@ storage pass sequences.  It now also has a concrete accepted-certificate top
 theorem,
 `accepted_bounded_cinstr_scalar_storage_certificate_refines`, whose conclusion
 is the certificate-level
-`bounded_cinstr_scalar_storage_semantic_refinement`.  Unfolded, that conclusion
-says exactly: if the input states match under the certificate's input view and
-the target program executes, then the source program has a matching execution
-whose final state satisfies the certificate's output view.  This hides the
-intermediate program and both CInstr family checks while keeping the statement
-as close as possible to the old semantic-refinement theorem shape.  The expanded
-helper theorem
+`bounded_cinstr_scalar_storage_semantic_refinement`, an instance of the generic
+pair-certificate refinement predicate.  This hides the intermediate program and
+both CInstr family checks while keeping the statement as close as possible to
+the old semantic-refinement theorem shape.  The expanded helper theorem
 `accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement` remains
 available for proof scripts that want the state variables explicitly.  The
 generic private-storage layer now also exposes

@@ -34,9 +34,13 @@ composition.  The parameterized family layer now also has a generic
 pair-certificate wrapper:
 `checked_parameterized_family_pair_certificate_accepted`,
 `checked_parameterized_family_pair_certificate_public_semantic_sound`, and
-`checked_parameterized_family_pair_certificate_state_sound`.  A feature-specific
-top theorem can therefore expose an accepted certificate while reusing the same
-direct public-view semantic-refinement endpoint.  `ViewPipeline.v` records the common
+`checked_parameterized_family_pair_certificate_state_sound`.  It now also
+exports certificate-level refinement predicates and top theorems:
+`checked_parameterized_transform_certificate_refines` for one checked pass and
+`checked_parameterized_family_pair_certificate_refines` for two composed checked
+passes.  A feature-specific top theorem can therefore expose an accepted
+certificate while reusing the same direct public-view semantic-refinement
+endpoint.  `ViewPipeline.v` records the common
 composition theorem used by the storage validators.  The pattern is:
 validate the schedule/control part from `before` to a storage-neutral
 `source_view`, then compose that with a feature-specific semantic
@@ -257,10 +261,10 @@ the same composed endpoint.  The concrete CInstr scalar-storage certificate
 wrapper now exposes the final paper-facing shape as
 `accepted_bounded_cinstr_scalar_storage_certificate_refines`: an accepted
 certificate implies
-`bounded_cinstr_scalar_storage_semantic_refinement`.  That refinement is just
-the old execution-matching theorem shape with `State.eq` replaced by the
-certificate's input/output views: input states match, the target executes, and
-there exists a source execution whose final state satisfies the output view.
+`bounded_cinstr_scalar_storage_semantic_refinement`.  That refinement is an
+instance of the generic pair-certificate refinement predicate: it is the old
+execution-matching theorem shape with `State.eq` replaced by the certificate's
+input/output views.
 The generic private-storage layer now follows the same
 discipline below the CInstr wrapper:
 `PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`

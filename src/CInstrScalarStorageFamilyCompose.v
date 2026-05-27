@@ -68,16 +68,9 @@ Definition bounded_cinstr_scalar_storage_certificate_output_states_match
 Definition bounded_cinstr_scalar_storage_semantic_refinement
     (certificate: bounded_cinstr_scalar_storage_certificate)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  forall st_target0 st_source0 st_target_after,
-    bounded_cinstr_scalar_storage_certificate_input_states_match
-      certificate st_target0 st_source0 ->
-    PolIRs.PolyLang.instance_list_semantics
-      target st_target0 st_target_after ->
-    exists st_source_after,
-      PolIRs.PolyLang.instance_list_semantics
-        source st_source0 st_source_after /\
-      bounded_cinstr_scalar_storage_certificate_output_states_match
-        certificate st_target_after st_source_after.
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_cinstr_scalar_storage_pair_certificate certificate)
+    source target.
 
 Definition bounded_cinstr_scalar_storage_certificate_accepted
     (certificate: bounded_cinstr_scalar_storage_certificate)
@@ -242,13 +235,15 @@ Theorem accepted_bounded_cinstr_scalar_storage_certificate_refines :
     bounded_cinstr_scalar_storage_semantic_refinement
       certificate source target.
 Proof.
-  unfold bounded_cinstr_scalar_storage_semantic_refinement.
-  intros certificate source target Haccepted
-         st_target0 st_source0 st_target_after Hinput Htarget.
+  intros certificate source target Haccepted.
   exact
-    (accepted_bounded_cinstr_scalar_storage_certificate_state_sound
-       certificate source target st_target0 st_source0 st_target_after
-       Haccepted Hinput Htarget).
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       Expansion.cscalar_privatization_bounded_family
+       Promotion.cscalar_promotion_bounded_family
+       (bounded_cinstr_scalar_storage_pair_certificate certificate)
+       source target Haccepted).
 Qed.
 
 Theorem accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement :

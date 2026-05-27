@@ -112,6 +112,26 @@ Definition bounded_scalar_storage_certificate_output_states_match
     (certificate: bounded_scalar_storage_certificate exp_value promo_value) :=
   View.states_match (bounded_scalar_storage_certificate_output_view certificate).
 
+Definition bounded_scalar_storage_semantic_refinement
+    (exp_value promo_value: Type)
+    (exp_value_eqb: exp_value -> exp_value -> bool)
+    (promo_value_eqb: promo_value -> promo_value -> bool)
+    (exp_value_eqb_sound:
+      forall left right,
+        exp_value_eqb left right = true ->
+        left = right)
+    (promo_value_eqb_sound:
+      forall left right,
+        promo_value_eqb left right = true ->
+        left = right)
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_scalar_storage_pair_certificate
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound certificate)
+    source target.
+
 Definition bounded_scalar_storage_certificate_accepted
     (exp_value promo_value: Type)
     (exp_value_eqb: exp_value -> exp_value -> bool)
@@ -297,6 +317,47 @@ Proof.
           exp_value_eqb_sound promo_value_eqb_sound certificate)
        before after st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_scalar_storage_certificate_refines :
+  forall (exp_value promo_value: Type)
+         (exp_value_eqb: exp_value -> exp_value -> bool)
+         (promo_value_eqb: promo_value -> promo_value -> bool)
+         (exp_value_eqb_sound:
+           forall left right,
+             exp_value_eqb left right = true ->
+             left = right)
+         (promo_value_eqb_sound:
+           forall left right,
+             promo_value_eqb left right = true ->
+             left = right)
+         (certificate:
+           bounded_scalar_storage_certificate exp_value promo_value)
+         source target,
+    bounded_scalar_storage_certificate_accepted
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound
+      certificate source target ->
+    bounded_scalar_storage_semantic_refinement
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound
+      certificate source target.
+Proof.
+  intros exp_value promo_value exp_value_eqb promo_value_eqb
+         exp_value_eqb_sound promo_value_eqb_sound
+         certificate source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       (scalar_storage_privatization_family
+          exp_value exp_value_eqb exp_value_eqb_sound)
+       (scalar_storage_promotion_family
+          promo_value promo_value_eqb promo_value_eqb_sound)
+       (bounded_scalar_storage_pair_certificate
+          exp_value promo_value exp_value_eqb promo_value_eqb
+          exp_value_eqb_sound promo_value_eqb_sound certificate)
+       source target Haccepted).
 Qed.
 
 Theorem accepted_bounded_scalar_storage_certificate_semantic_refinement :
