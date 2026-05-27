@@ -49,10 +49,11 @@ certificate layer used to prove one simple endpoint:
 `public_semantic_refinement input_view output_view source target`.  The
 existing schedule-only theorem is recovered by choosing the same-state input
 view and the `State.eq` output view.  `StateView.v` now provides generic
-single-pass and pair-certificate wrappers for parameterized transform
-families.  A feature-facing certificate theorem can therefore hide either one
-storage family check or a two-pass intermediate program while reusing one
-shared state-sound proof pattern.
+single-pass certificate wrappers for both the existing unparameterized
+view-transform families and the newer parameterized storage families, plus
+pair-certificate wrappers for two-pass compositions.  A feature-facing
+certificate theorem can therefore hide either one family check or a two-pass
+intermediate program while reusing one shared state-sound proof pattern.
 The next presentation layer names that shared endpoint directly:
 `states_match` is the readable state relation induced by a view, and the
 feature-facing theorem should be named as a semantic refinement:
@@ -74,7 +75,12 @@ relation-inclusion algebra (`view_included_refl`, `view_included_trans`, and
 `compose_view_monotone`) so storage validators can compose endpoint views
 without unfolding the underlying state relations.  The current layout skeleton
 also exposes `related_cells_view` and a `layout_view`-level theorem, so the
-layout prototype no longer bypasses the view endpoint.  `StateObservation.v`
+layout prototype no longer bypasses the view endpoint.  The legacy
+affine/general validators are available through the same certificate surface
+via `affine_identity_view_certificate` and
+`general_identity_view_certificate`; these instantiate the intuitive endpoint
+with `same_state_view` on input and `identity_view`/`State.eq` on output.
+`StateObservation.v`
 now proves that observer-backed cell views compose through
 `compose_cell_relation`, and its `compose_cell_view` constructor makes public
 footprint composition explicit through a shared-intermediate-observable

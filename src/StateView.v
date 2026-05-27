@@ -314,6 +314,98 @@ Proof.
   - eapply cvtf_check_sound; eauto.
 Qed.
 
+Definition checked_view_transform_certificate
+    (family: checked_view_transform_family) : Type :=
+  unit.
+
+Definition checked_view_transform_certificate_input_view
+    (family: checked_view_transform_family)
+    (_certificate: checked_view_transform_certificate family) : view :=
+  cvtf_input_view family.
+
+Definition checked_view_transform_certificate_output_view
+    (family: checked_view_transform_family)
+    (_certificate: checked_view_transform_certificate family) : view :=
+  cvtf_output_view family.
+
+Definition checked_view_transform_certificate_input_states_match
+    (family: checked_view_transform_family)
+    (certificate: checked_view_transform_certificate family) :=
+  states_match
+    (checked_view_transform_certificate_input_view family certificate).
+
+Definition checked_view_transform_certificate_output_states_match
+    (family: checked_view_transform_family)
+    (certificate: checked_view_transform_certificate family) :=
+  states_match
+    (checked_view_transform_certificate_output_view family certificate).
+
+Definition checked_view_transform_certificate_accepted
+    (family: checked_view_transform_family)
+    (_certificate: checked_view_transform_certificate family)
+    (before after: PolyLang.t) : Prop :=
+  exists ok,
+    mayReturn (cvtf_check family before after) ok /\
+    ok = true.
+
+Theorem checked_view_transform_certificate_public_semantic_sound :
+  forall family certificate before after,
+    checked_view_transform_certificate_accepted
+      family certificate before after ->
+    public_semantic_refinement
+      (checked_view_transform_certificate_input_view family certificate)
+      (checked_view_transform_certificate_output_view family certificate)
+      before after.
+Proof.
+  intros family certificate before after Haccepted.
+  destruct Haccepted as [ok [Hret Hok]].
+  apply view_refinement_to_public_semantic_refinement.
+  eapply cvtf_check_sound; eauto.
+Qed.
+
+Theorem checked_view_transform_certificate_state_sound :
+  forall family certificate before after
+         st_target0 st_source0 st_target_after,
+    checked_view_transform_certificate_accepted
+      family certificate before after ->
+    state_view_rel
+      (checked_view_transform_certificate_input_view family certificate)
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel
+        (checked_view_transform_certificate_output_view family certificate)
+        st_target_after st_source_after.
+Proof.
+  intros family certificate before after
+         st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply
+    (checked_view_transform_certificate_public_semantic_sound
+       family certificate before after Haccepted);
+    eauto.
+Qed.
+
+Theorem checked_view_transform_certificate_semantic_refinement :
+  forall family certificate source target
+         st_target0 st_source0 st_target_after,
+    checked_view_transform_certificate_accepted
+      family certificate source target ->
+    checked_view_transform_certificate_input_states_match
+      family certificate st_target0 st_source0 ->
+    PolyLang.instance_list_semantics target st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics source st_source0 st_source_after /\
+      checked_view_transform_certificate_output_states_match
+        family certificate st_target_after st_source_after.
+Proof.
+  intros family certificate source target
+         st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply checked_view_transform_certificate_state_sound; eauto.
+Qed.
+
 Definition checked_parameterized_view_transform_family (params: Type) :=
   generic_checked_parameterized_view_transform_family
     State.t PolyLang.t params view_refinement.
@@ -781,6 +873,10 @@ Definition affine_identity_view_family
   cvtf_check_sound := affine_validate_identity_view_sound;
 |}.
 
+Definition affine_identity_view_certificate
+    : checked_view_transform_certificate affine_identity_view_family :=
+  tt.
+
 Theorem general_validate_identity_view_sound :
   forall before after ok,
     mayReturn (AffineCore.validate_general before after) ok ->
@@ -800,5 +896,9 @@ Definition general_identity_view_family
   cvtf_check := AffineCore.validate_general;
   cvtf_check_sound := general_validate_identity_view_sound;
 |}.
+
+Definition general_identity_view_certificate
+    : checked_view_transform_certificate general_identity_view_family :=
+  tt.
 
 End StateView.

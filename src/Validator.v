@@ -170,6 +170,24 @@ Definition checked_view_transform_family :=
   StateViewCore.checked_view_transform_family.
 Definition checked_view_transform_family_pair_compose :=
   StateViewCore.checked_view_transform_family_pair_compose.
+Definition checked_view_transform_certificate :=
+  StateViewCore.checked_view_transform_certificate.
+Definition checked_view_transform_certificate_input_view :=
+  StateViewCore.checked_view_transform_certificate_input_view.
+Definition checked_view_transform_certificate_output_view :=
+  StateViewCore.checked_view_transform_certificate_output_view.
+Definition checked_view_transform_certificate_input_states_match :=
+  StateViewCore.checked_view_transform_certificate_input_states_match.
+Definition checked_view_transform_certificate_output_states_match :=
+  StateViewCore.checked_view_transform_certificate_output_states_match.
+Definition checked_view_transform_certificate_accepted :=
+  StateViewCore.checked_view_transform_certificate_accepted.
+Definition checked_view_transform_certificate_public_semantic_sound :=
+  StateViewCore.checked_view_transform_certificate_public_semantic_sound.
+Definition checked_view_transform_certificate_state_sound :=
+  StateViewCore.checked_view_transform_certificate_state_sound.
+Definition checked_view_transform_certificate_semantic_refinement :=
+  StateViewCore.checked_view_transform_certificate_semantic_refinement.
 Definition checked_parameterized_view_transform_family :=
   StateViewCore.checked_parameterized_view_transform_family.
 Definition cpvtf_check_public_semantic_sound :=
@@ -244,10 +262,14 @@ Definition affine_validate_identity_view_sound :=
   StateViewCore.affine_validate_identity_view_sound.
 Definition affine_identity_view_family :=
   StateViewCore.affine_identity_view_family.
+Definition affine_identity_view_certificate :=
+  StateViewCore.affine_identity_view_certificate.
 Definition general_validate_identity_view_sound :=
   StateViewCore.general_validate_identity_view_sound.
 Definition general_identity_view_family :=
   StateViewCore.general_identity_view_family.
+Definition general_identity_view_certificate :=
+  StateViewCore.general_identity_view_certificate.
 Definition storage_check_source_view :=
   ViewPipelineCore.check_source_view.
 Definition storage_check_source_view_correct :=
