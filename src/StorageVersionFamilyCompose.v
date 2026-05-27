@@ -87,6 +87,19 @@ Definition bounded_version_commit_certificate_output_states_match
     (certificate: bounded_version_commit_certificate value) :=
   View.states_match (bounded_version_commit_certificate_output_view certificate).
 
+Definition bounded_version_commit_semantic_refinement
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    (certificate: bounded_version_commit_certificate value)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_version_commit_pair_certificate
+      value value_eqb value_eqb_sound certificate)
+    source target.
+
 Definition bounded_version_commit_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
     (value_eqb_sound:
@@ -318,6 +331,32 @@ Proof.
        value value_eqb value_eqb_sound certificate
        source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_version_commit_certificate_refines :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: bounded_version_commit_certificate value)
+         source target,
+    bounded_version_commit_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    bounded_version_commit_semantic_refinement
+      value value_eqb value_eqb_sound certificate source target.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       (version_family value value_eqb value_eqb_sound)
+       scalar_promotion_family
+       (bounded_version_commit_pair_certificate
+          value value_eqb value_eqb_sound certificate)
+       source target Haccepted).
 Qed.
 
 End StorageVersionFamilyCompose.

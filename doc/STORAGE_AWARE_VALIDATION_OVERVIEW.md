@@ -215,11 +215,12 @@ storage specs, escaped-cell set, and source-view program, while the exported
 theorem is still just public-view refinement.  `StorageCopyFamilyCompose.v`
 checks that this copy-mediated family composes with bounded scalar promotion
 through the same generic pair-composition hook, and states the composed endpoint
-as `public_semantic_refinement`.  It now also exposes accepted-certificate
-state theorems for both the scratchpad wrapper and the underlying copy protocol,
-so copy-mediated storage passes share the same top theorem shape as scalar
-storage: accepted certificate, input public view, target execution, and matched
-source execution under the output public view.  The generic copy protocol itself is now also
+as `public_semantic_refinement`.  It now also exposes
+`accepted_bounded_scratchpad_copy_certificate_refines` and
+`accepted_declared_copy_protocol_certificate_refines`, so copy-mediated storage
+passes share the same top theorem shape as scalar storage: accepted certificate,
+input public view, target execution, and matched source execution under the
+output public view.  The generic copy protocol itself is now also
 packaged as
 `CopyProtocolValidator.copy_protocol_declared_bounded_compatible_commit_mapping_value_family`,
 so copy-in/local/copy-out bookkeeping can participate in the same composition
@@ -243,6 +244,10 @@ array-expansion/version route now follows the same facade rule through
 `VersionCommitValidator.version_commit_read_fully_bounded_non_escape_family`,
 which carries commit selection, read-version selection, produced versions, value
 evidence, compatibility, bounds, and produced-version non-escape while exposing
+only public-view refinement.  The composition wrapper now also exposes
+`accepted_bounded_version_commit_certificate_refines`, so array-expansion-style
+versioned storage has the same accepted-certificate top theorem as copy,
+private, reuse, and overlap routes.  The
 only the public-view refinement endpoint.  `StorageVersionFamilyCompose.v`
 checks version-then-scalar-promotion composition through the same generic hook
 with the same paper-facing endpoint.  Its value witness now also exposes
@@ -701,15 +706,22 @@ feature-specific instruction or trace simulation proofs.
 | P10 frame preservation | `FramePreservationWitness.check_frame_preservationb_sound`; per-cell corollaries such as `FramePreservationWitness.frame_preservation_write_not_frame`; `FrameValueWitness.check_frame_valueb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `FramePreservationValidator.checked_frame_preservation_value_view_correct`; `FramePreservationValidator.checked_frame_preservation_bounded_value_view_correct`; `FramePreservationValidator.checked_frame_preservation_bounded_value_public_refinement`; `FramePreservationValidator.frame_preservation_bounded_value_family`; `StorageFrameFamilyCompose.bounded_frame_preservation_then_scalar_promotion_public_semantic_refinement`; `FramePreservationValidator.frame_preservation_frame_cell_value_preserved`; `FramePreservationValidator.frame_preservation_write_within_allowed_bounds`; `FramePreservationValidator.frame_preservation_frame_cell_within_bounds` | writes are included in the allowed-write set; allowed writes are disjoint from frame cells; each fragment write is therefore outside the context frame; aligned frame before/after values are equal for every listed frame cell; allowed-write cells and context-frame cells can be checked against declared array bounds; fragment writes inherit the allowed-write bounds; the bounded value route now has a public-only facade and parameterized family instance, so contextual frame preservation can compose through the same public semantic theorem interface as storage transformations | deriving the write set, declared bounds, and frame snapshots from concrete instruction semantics |
 | overlap-specific composition | `OverlapTilingValidator.checked_overlap_*_view_correct`; `OverlapValueWitness.check_overlap_valueb_sound`; derived facts `OverlapValueWitness.overlap_value_obligation_length_match` and `OverlapValueWitness.overlap_value_obligation_target_matched`; `OverlapStorageWitness.check_overlap_storageb_sound`; `StorageBoundsWitness.check_storage_boundsb_sound`; `PrivateStorageWitness.check_private_non_escapeb_sound`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_value_storage_view_correct`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_correct`; `OverlapTilingValidator.checked_overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_public_refinement`; `OverlapTilingValidator.overlap_private_ordered_bounded_non_escape_family`; `StorageOverlapFamilyCompose.bounded_overlap_then_scalar_promotion_refinement`; `OverlapTilingValidator.overlap_internal_write_within_private_bounds`; `OverlapTilingValidator.overlap_commit_write_within_commit_bounds`; `OverlapTilingValidator.overlap_internal_write_not_escaped` | duplicated/internal instances project to source instances and commits are unique; optional tile-local closure and private separation; recomputed value evidence matches the finite projected-target list and can be projected per duplicated/internal target into a matching value entry with equal source/target values; internal writes target tile-private cells and commit writes target public commit cells; private/commit write-cell regions can be checked against declared bounds, role-specific writes inherit the corresponding bounds fact, and tile-private internal writes can be required not to escape the fragment; the strongest overlap/private route now has a public-only facade and parameterized family instance, so instance-duplication transformations compose through the same public-view family theorem as storage-only passes | deriving concrete recomputed values, target write cells, storage specs, declared bounds, and escaped-cell sets from codegen |
 
-The public-facing composition surface has now been normalized for the older
-family-compose files as well: inter-array reuse, overlap/private recomputation,
-version commit/read, and reduction merge all keep their lower-level
-`view_refinement` theorems but also export `public_semantic_refinement`
-wrappers.  The new theorem names are
-`bounded_inter_array_reuse_then_scalar_promotion_public_semantic_refinement`,
-`bounded_overlap_then_scalar_promotion_public_semantic_refinement`,
-`bounded_version_commit_then_scalar_promotion_public_semantic_refinement`, and
-`bounded_reduction_merge_then_scalar_promotion_public_semantic_refinement`.
+The public-facing composition surface has now been normalized across the
+storage family-compose files.  Copy/scratchpad, inter-array reuse,
+conflict-safe reuse, version commit/read, reduction merge, phase projection, and
+overlap/private recomputation all keep their lower-level `view_refinement`
+theorems where useful, export `public_semantic_refinement` wrappers, and now
+expose accepted-certificate `..._certificate_refines` endpoints backed by the
+generic pair-certificate refinement predicate in `StateView.v`.  The current
+coverage is: `accepted_bounded_scratchpad_copy_certificate_refines`,
+`accepted_declared_copy_protocol_certificate_refines`,
+`accepted_bounded_inter_array_reuse_certificate_refines`,
+`accepted_bounded_conflict_reuse_certificate_refines`,
+`accepted_bounded_version_commit_certificate_refines`,
+`accepted_bounded_reduction_merge_certificate_refines`,
+`accepted_bounded_phase_projection_certificate_refines`, and
+`accepted_bounded_overlap_certificate_refines`, in addition to the scalar and
+private-storage endpoints listed above.
 
 ## Theorem Families
 

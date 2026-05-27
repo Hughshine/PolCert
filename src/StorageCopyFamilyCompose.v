@@ -105,6 +105,19 @@ Definition bounded_scratchpad_copy_certificate_output_states_match
   View.states_match
     (bounded_scratchpad_copy_certificate_output_view certificate).
 
+Definition bounded_scratchpad_copy_semantic_refinement
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    (certificate: bounded_scratchpad_copy_certificate value)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_scratchpad_copy_pair_certificate
+      value value_eqb value_eqb_sound certificate)
+    source target.
+
 Definition bounded_scratchpad_copy_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
     (value_eqb_sound:
@@ -174,6 +187,19 @@ Definition declared_copy_protocol_certificate_output_states_match
     (certificate: declared_copy_protocol_certificate value) :=
   View.states_match
     (declared_copy_protocol_certificate_output_view certificate).
+
+Definition declared_copy_protocol_semantic_refinement
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    (certificate: declared_copy_protocol_certificate value)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (declared_copy_protocol_pair_certificate
+      value value_eqb value_eqb_sound certificate)
+    source target.
 
 Definition declared_copy_protocol_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
@@ -408,6 +434,32 @@ Proof.
        Haccepted Hinput Htarget).
 Qed.
 
+Theorem accepted_bounded_scratchpad_copy_certificate_refines :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: bounded_scratchpad_copy_certificate value)
+         source target,
+    bounded_scratchpad_copy_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    bounded_scratchpad_copy_semantic_refinement
+      value value_eqb value_eqb_sound certificate source target.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       (scratchpad_copy_family value value_eqb value_eqb_sound)
+       scalar_promotion_family
+       (bounded_scratchpad_copy_pair_certificate
+          value value_eqb value_eqb_sound certificate)
+       source target Haccepted).
+Qed.
+
 Theorem bounded_copy_protocol_then_scalar_promotion_public_semantic_refinement :
   forall (value: Type) (value_eqb: value -> value -> bool)
          (value_eqb_sound:
@@ -564,6 +616,32 @@ Proof.
        value value_eqb value_eqb_sound certificate
        source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_declared_copy_protocol_certificate_refines :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: declared_copy_protocol_certificate value)
+         source target,
+    declared_copy_protocol_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    declared_copy_protocol_semantic_refinement
+      value value_eqb value_eqb_sound certificate source target.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       (copy_protocol_family value value_eqb value_eqb_sound)
+       scalar_promotion_family
+       (declared_copy_protocol_pair_certificate
+          value value_eqb value_eqb_sound certificate)
+       source target Haccepted).
 Qed.
 
 End StorageCopyFamilyCompose.

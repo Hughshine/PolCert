@@ -81,6 +81,13 @@ Definition bounded_inter_array_reuse_certificate_output_states_match
   View.states_match
     (bounded_inter_array_reuse_certificate_output_view certificate).
 
+Definition bounded_inter_array_reuse_semantic_refinement
+    (certificate: bounded_inter_array_reuse_certificate)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_inter_array_reuse_pair_certificate certificate)
+    source target.
+
 Definition bounded_inter_array_reuse_certificate_accepted
     (certificate: bounded_inter_array_reuse_certificate)
     (before after: PolIRs.PolyLang.t) : Prop :=
@@ -143,6 +150,19 @@ Definition bounded_conflict_reuse_certificate_output_states_match
     (certificate: bounded_conflict_reuse_certificate value) :=
   View.states_match
     (bounded_conflict_reuse_certificate_output_view certificate).
+
+Definition bounded_conflict_reuse_semantic_refinement
+    (value: Type) (value_eqb: value -> value -> bool)
+    (value_eqb_sound:
+      forall left right,
+        value_eqb left right = true ->
+        left = right)
+    (certificate: bounded_conflict_reuse_certificate value)
+    (source target: PolIRs.PolyLang.t) : Prop :=
+  View.checked_parameterized_family_pair_certificate_refinement
+    (bounded_conflict_reuse_pair_certificate
+      value value_eqb value_eqb_sound certificate)
+    source target.
 
 Definition bounded_conflict_reuse_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
@@ -327,6 +347,24 @@ Proof.
        Haccepted Hinput Htarget).
 Qed.
 
+Theorem accepted_bounded_inter_array_reuse_certificate_refines :
+  forall certificate source target,
+    bounded_inter_array_reuse_certificate_accepted
+      certificate source target ->
+    bounded_inter_array_reuse_semantic_refinement
+      certificate source target.
+Proof.
+  intros certificate source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       inter_array_reuse_family
+       scalar_promotion_family
+       (bounded_inter_array_reuse_pair_certificate certificate)
+       source target Haccepted).
+Qed.
+
 Theorem bounded_conflict_reuse_then_scalar_promotion_public_semantic_refinement :
   forall (value: Type) (value_eqb: value -> value -> bool)
          (value_eqb_sound:
@@ -482,6 +520,32 @@ Proof.
        value value_eqb value_eqb_sound certificate
        source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_conflict_reuse_certificate_refines :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: bounded_conflict_reuse_certificate value)
+         source target,
+    bounded_conflict_reuse_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    bounded_conflict_reuse_semantic_refinement
+      value value_eqb value_eqb_sound certificate source target.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target Haccepted.
+  exact
+    (View.checked_parameterized_family_pair_certificate_refines
+       _
+       _
+       (conflict_reuse_family value value_eqb value_eqb_sound)
+       scalar_promotion_family
+       (bounded_conflict_reuse_pair_certificate
+          value value_eqb value_eqb_sound certificate)
+       source target Haccepted).
 Qed.
 
 End StorageReuseFamilyCompose.

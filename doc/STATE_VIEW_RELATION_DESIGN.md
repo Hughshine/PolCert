@@ -291,8 +291,10 @@ packages copy order, exact commits, remapping, value flow, declarations,
 compatibility, and bounds as side conditions, while
 `StorageCopyFamilyCompose.bounded_copy_protocol_then_scalar_promotion_public_semantic_refinement`
 exports only the paper-facing endpoint relation.  Its certificate wrapper,
-`accepted_declared_copy_protocol_certificate_state_sound`, gives the same direct
-semantic-refinement theorem shape for the lower-level copy protocol itself.  The overlap/private
+`accepted_declared_copy_protocol_certificate_refines`, gives the same direct
+accepted-certificate theorem shape for the lower-level copy protocol itself;
+`accepted_bounded_scratchpad_copy_certificate_refines` does the same for the
+scratchpad/packing wrapper.  The overlap/private
 recomputation route now follows the same public
 interface: `OverlapTilingValidator` has a public-only facade for its strongest
 ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
@@ -307,15 +309,19 @@ fully bounded/non-escape read+commit theorem to a public-only facade, packages
 it as `version_commit_read_fully_bounded_non_escape_family`, and
 `StorageVersionFamilyCompose.v` composes that array-expansion-style family with
 bounded scalar promotion through the generic hook with the same paper-facing
-endpoint.  Reduction privatization now
+endpoint plus `accepted_bounded_version_commit_certificate_refines`.  Reduction privatization now
 uses the same facade discipline: `ReductionMergeValidator` projects the
 commutative bounded/non-escape value theorem to public-view refinement, packages
 the merge/value/algebra/storage obligations as
 `reduction_merge_commutative_bounded_non_escape_family`, and
 `StorageReductionFamilyCompose.v` composes it with bounded scalar promotion
-under `public_semantic_refinement`.  The older inter-array reuse composition now
-has the same public-semantic wrapper as the general conflict-reuse composition,
-so the top theorem surface is uniform across reuse variants.
+under `public_semantic_refinement` and
+`accepted_bounded_reduction_merge_certificate_refines`.  Phase/double-buffering
+projection now exposes `accepted_bounded_phase_projection_certificate_refines`.
+The older inter-array reuse composition now has the same public-semantic and
+accepted-certificate wrappers as the general conflict-reuse composition:
+`accepted_bounded_inter_array_reuse_certificate_refines` and
+`accepted_bounded_conflict_reuse_certificate_refines`.
 
 ## What a View Must Explain
 
