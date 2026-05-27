@@ -734,12 +734,24 @@ Definition storage_scalar_promotion_value_event :=
   scalar_promotion_value_event.
 Definition storage_scalar_promotion_value_trace :=
   scalar_promotion_value_trace.
+Definition storage_scalar_promotion_value_trace_events :=
+  @scalar_promotion_value_trace_events.
+Definition storage_scalar_promotion_value_trace_values :=
+  @scalar_promotion_value_trace_values.
+Definition storage_scalar_value_use_def_from :=
+  scalar_value_use_def_from.
+Definition storage_scalar_value_use_def_trace :=
+  scalar_value_use_def_trace.
 Definition storage_check_scalar_value_traceb :=
   @check_scalar_value_traceb.
 Definition storage_check_scalar_value_traceb_sound :=
   check_scalar_value_traceb_sound.
 Definition storage_scalar_value_simulation_obligations :=
   scalar_value_simulation_obligations.
+Definition storage_scalar_value_obligations_use_def :=
+  scalar_value_obligations_use_def.
+Definition storage_scalar_value_obligations_events_use_def :=
+  scalar_value_obligations_events_use_def.
 Definition storage_check_scalar_promotionb :=
   check_scalar_promotionb.
 Definition storage_check_scalar_promotionb_sound :=

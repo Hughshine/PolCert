@@ -139,6 +139,98 @@ Definition check_scalar_value_traceb {value: Type}
     (trace: scalar_promotion_value_trace value) : bool :=
   check_scalar_value_trace_fromb value_eqb None trace.
 
+Fixpoint scalar_value_use_def_from
+    (loaded: bool)
+    (trace: list scalar_promotion_event) : Prop :=
+  match trace with
+  | [] => True
+  | PromotionLoad _ _ :: tail =>
+      scalar_value_use_def_from true tail
+  | PromotionScalarRead _ :: tail =>
+      loaded = true /\
+      scalar_value_use_def_from loaded tail
+  | PromotionScalarWrite _ :: tail =>
+      loaded = true /\
+      scalar_value_use_def_from loaded tail
+  | PromotionStore _ _ :: tail =>
+      loaded = true /\
+      scalar_value_use_def_from loaded tail
+  | PromotionGlobalWrite _ :: tail =>
+      scalar_value_use_def_from loaded tail
+  end.
+
+Definition scalar_value_use_def_trace
+    (trace: list scalar_promotion_event) : Prop :=
+  scalar_value_use_def_from false trace.
+
+Definition scalar_current_loaded {value: Type}
+    (current_scalar: option value)
+    (loaded: bool) : Prop :=
+  match current_scalar with
+  | Some _ => loaded = true
+  | None => True
+  end.
+
+Theorem scalar_value_trace_use_def_from :
+  forall (value: Type)
+         (trace: scalar_promotion_value_trace value)
+         current_scalar loaded,
+    scalar_value_trace_simulates_from current_scalar trace ->
+    scalar_current_loaded current_scalar loaded ->
+    scalar_value_use_def_from
+      loaded
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  induction trace as [|[storage_event value_event] tail IH];
+    intros current_scalar loaded Hsim Hloaded; simpl in Hsim.
+  - exact I.
+  - destruct storage_event as [source_cell scalar_cell
+                              | scalar_cell
+                              | scalar_cell
+                              | scalar_cell source_cell
+                              | cell];
+      destruct value_event as [source_value scalar_value
+                              | read_value
+                              | new_scalar_value
+                              | store_scalar_value store_source_value
+                              | ];
+      simpl in Hsim; try contradiction; simpl.
+    + destruct Hsim as [_ Htail].
+      eapply IH.
+      * exact Htail.
+      * simpl. reflexivity.
+    + destruct current_scalar as [current_value |]; try contradiction.
+      destruct Hsim as [_ Htail].
+      split.
+      * exact Hloaded.
+      * eapply IH; eauto.
+    + destruct current_scalar as [current_value |]; try contradiction.
+      split.
+      * exact Hloaded.
+      * eapply IH.
+        -- exact Hsim.
+        -- exact Hloaded.
+    + destruct current_scalar as [current_value |]; try contradiction.
+      destruct Hsim as [_ [_ Htail]].
+      split.
+      * exact Hloaded.
+      * eapply IH; eauto.
+    + eapply IH; eauto.
+Qed.
+
+Theorem scalar_value_trace_use_def :
+  forall (value: Type) (trace: scalar_promotion_value_trace value),
+    scalar_value_trace_simulates trace ->
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  intros value trace Hsim.
+  unfold scalar_value_trace_simulates, scalar_value_use_def_trace in *.
+  eapply scalar_value_trace_use_def_from.
+  - exact Hsim.
+  - exact I.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -220,3 +312,29 @@ Proof.
 Qed.
 
 End Soundness.
+
+Theorem scalar_value_obligations_use_def :
+  forall (value: Type) (trace: scalar_promotion_value_trace value),
+    scalar_value_simulation_obligations value trace ->
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  intros value trace Hobligations.
+  destruct Hobligations as [Hsimulates].
+  apply scalar_value_trace_use_def.
+  exact Hsimulates.
+Qed.
+
+Theorem scalar_value_obligations_events_use_def :
+  forall (value: Type)
+         (value_trace: scalar_promotion_value_trace value)
+         events,
+    scalar_value_simulation_obligations value value_trace ->
+    scalar_promotion_value_trace_events value_trace = events ->
+    scalar_value_use_def_trace events.
+Proof.
+  intros value value_trace events Hobligations Hevents.
+  subst events.
+  apply scalar_value_obligations_use_def.
+  exact Hobligations.
+Qed.
