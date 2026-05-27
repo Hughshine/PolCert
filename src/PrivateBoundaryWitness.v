@@ -198,6 +198,58 @@ Fixpoint private_boundary_value_entries_match {value: Type}
   | _, _ => False
   end.
 
+Lemma private_boundary_value_entries_match_length :
+  forall (value: Type)
+         (pairs: list private_boundary_pair)
+         (entries: list (private_boundary_value_entry value)),
+    private_boundary_value_entries_match pairs entries ->
+    length pairs = length entries.
+Proof.
+  intros value pairs.
+  induction pairs as [|boundary pairs_tail IH];
+    intros entries Hmatch; destruct entries as [|entry entries_tail];
+    simpl in *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    f_equal.
+    apply IH.
+    exact Htail.
+Qed.
+
+Lemma private_boundary_value_entries_match_pair :
+  forall (value: Type)
+         (pairs: list private_boundary_pair)
+         (entries: list (private_boundary_value_entry value))
+         boundary,
+    private_boundary_value_entries_match pairs entries ->
+    In boundary pairs ->
+    exists entry,
+      In entry entries /\
+      boundary = private_boundary_value_pair entry /\
+      private_boundary_public_value entry =
+        private_boundary_private_value entry.
+Proof.
+  intros value pairs.
+  induction pairs as [|boundary_head pairs_tail IH];
+    intros entries boundary Hmatch Hin;
+    destruct entries as [|entry entries_tail];
+    simpl in *; try contradiction.
+  destruct Hmatch as [Hpair [Hvalue Htail]].
+  destruct Hin as [Hin_head | Hin_tail].
+  - subst boundary.
+    exists entry.
+    split.
+    + left; reflexivity.
+    + split; assumption.
+  - destruct
+      (IH entries_tail boundary Htail Hin_tail)
+      as (matched_entry & Hentry_in & Hmatched_pair & Hmatched_value).
+    exists matched_entry.
+    split.
+    + right; exact Hentry_in.
+    + split; assumption.
+Qed.
+
 Fixpoint check_private_boundary_value_entriesb {value: Type}
     (value_eqb: value -> value -> bool)
     (pairs: list private_boundary_pair)
@@ -285,3 +337,73 @@ Proof.
 Qed.
 
 End ValueSoundness.
+
+Theorem private_boundary_value_obligation_copyin_length_match :
+  forall (value: Type)
+         copyins copyouts copyin_values copyout_values,
+    private_boundary_value_obligations
+      value copyins copyouts copyin_values copyout_values ->
+    length copyins = length copyin_values.
+Proof.
+  intros value copyins copyouts copyin_values copyout_values Hobligations.
+  apply private_boundary_value_entries_match_length.
+  exact
+    (pbvo_copyin_values_match
+       value copyins copyouts copyin_values copyout_values Hobligations).
+Qed.
+
+Theorem private_boundary_value_obligation_copyout_length_match :
+  forall (value: Type)
+         copyins copyouts copyin_values copyout_values,
+    private_boundary_value_obligations
+      value copyins copyouts copyin_values copyout_values ->
+    length copyouts = length copyout_values.
+Proof.
+  intros value copyins copyouts copyin_values copyout_values Hobligations.
+  apply private_boundary_value_entries_match_length.
+  exact
+    (pbvo_copyout_values_match
+       value copyins copyouts copyin_values copyout_values Hobligations).
+Qed.
+
+Theorem private_boundary_value_obligation_copyin_pair_matched :
+  forall (value: Type)
+         copyins copyouts copyin_values copyout_values boundary,
+    private_boundary_value_obligations
+      value copyins copyouts copyin_values copyout_values ->
+    In boundary copyins ->
+    exists entry,
+      In entry copyin_values /\
+      boundary = private_boundary_value_pair entry /\
+      private_boundary_public_value entry =
+        private_boundary_private_value entry.
+Proof.
+  intros value copyins copyouts copyin_values copyout_values
+         boundary Hobligations Hin.
+  eapply private_boundary_value_entries_match_pair.
+  - exact
+      (pbvo_copyin_values_match
+         value copyins copyouts copyin_values copyout_values Hobligations).
+  - exact Hin.
+Qed.
+
+Theorem private_boundary_value_obligation_copyout_pair_matched :
+  forall (value: Type)
+         copyins copyouts copyin_values copyout_values boundary,
+    private_boundary_value_obligations
+      value copyins copyouts copyin_values copyout_values ->
+    In boundary copyouts ->
+    exists entry,
+      In entry copyout_values /\
+      boundary = private_boundary_value_pair entry /\
+      private_boundary_public_value entry =
+        private_boundary_private_value entry.
+Proof.
+  intros value copyins copyouts copyin_values copyout_values
+         boundary Hobligations Hin.
+  eapply private_boundary_value_entries_match_pair.
+  - exact
+      (pbvo_copyout_values_match
+         value copyins copyouts copyin_values copyout_values Hobligations).
+  - exact Hin.
+Qed.

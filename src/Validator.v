@@ -453,6 +453,14 @@ Definition storage_check_private_boundary_valueb_sound :=
   check_private_boundary_valueb_sound.
 Definition storage_private_boundary_value_obligations :=
   private_boundary_value_obligations.
+Definition storage_private_boundary_value_obligation_copyin_length_match :=
+  private_boundary_value_obligation_copyin_length_match.
+Definition storage_private_boundary_value_obligation_copyout_length_match :=
+  private_boundary_value_obligation_copyout_length_match.
+Definition storage_private_boundary_value_obligation_copyin_pair_matched :=
+  private_boundary_value_obligation_copyin_pair_matched.
+Definition storage_private_boundary_value_obligation_copyout_pair_matched :=
+  private_boundary_value_obligation_copyout_pair_matched.
 Definition storage_check_private_non_escapeb :=
   check_private_non_escapeb.
 Definition storage_check_private_non_escapeb_sound :=

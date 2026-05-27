@@ -2333,7 +2333,10 @@ live-ins to be unique, because broadcasting one public live-in to many private
 cells is a normal privatization pattern.
 `check_private_boundary_valueb_sound` adds aligned boundary value evidence:
 copy-in and copy-out entries must match their boundary pairs, and public/private
-values must be equal at those boundary points.
+values must be equal at those boundary points.  The derived copy-in/copy-out
+projection theorems expose this evidence per boundary pair, so the eventual
+public semantic theorem can talk about source and target boundary observations
+without unfolding the whole finite value list.
 The current contract still needs an abstract semantic refinement obligation,
 but `PrivateStorageValidator.checked_access_local_private_expansion_view_correct`
 now returns these local facts and composes the view theorem under that
