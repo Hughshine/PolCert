@@ -1220,6 +1220,14 @@ Definition storage_version_read_selected_version_not_escaped :=
 Definition storage_reduction_chunks := reduction_chunks.
 Definition storage_reduction_accumulator_value :=
   reduction_accumulator_value.
+Definition storage_reduction_value_cells :=
+  @reduction_value_cells.
+Definition storage_reduction_accumulator_values_exact_cover :=
+  @reduction_accumulator_values_exact_cover.
+Definition storage_check_reduction_accumulator_values_exact_coverb :=
+  @check_reduction_accumulator_values_exact_coverb.
+Definition storage_check_reduction_accumulator_values_exact_coverb_sound :=
+  check_reduction_accumulator_values_exact_coverb_sound.
 Definition storage_check_reduction_associative_lawb :=
   @check_reduction_associative_lawb.
 Definition storage_check_reduction_associative_lawb_sound :=
@@ -1258,6 +1266,12 @@ Definition storage_reduction_private_accumulator_merged :=
   reduction_private_accumulator_merged.
 Definition storage_reduction_merged_accumulator_private :=
   reduction_merged_accumulator_private.
+Definition storage_reduction_accumulator_value_cells_nodup :=
+  reduction_accumulator_value_cells_nodup.
+Definition storage_reduction_merged_accumulator_has_value :=
+  reduction_merged_accumulator_has_value.
+Definition storage_reduction_value_cell_in_merge_order :=
+  reduction_value_cell_in_merge_order.
 Definition storage_reduction_source_view_refines_view :=
   ReductionMergeCore.reduction_source_view_refines_view.
 Definition storage_reduction_merge_view_contract :=

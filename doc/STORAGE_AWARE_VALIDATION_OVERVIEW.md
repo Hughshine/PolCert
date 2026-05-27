@@ -212,6 +212,11 @@ value fold evidence, finite carrier algebra witnesses, storage compatibility,
 bounds, and non-escape, while `StorageReductionFamilyCompose.v` proves the same
 reduction-then-scalar-promotion composition shape through
 `public_semantic_refinement`.
+The reduction value layer now also checks that accumulator-value evidence is a
+precise snapshot of the merge order: value cells are duplicate-free, every
+merged private accumulator has exactly one value entry, and every value entry
+belongs to the merge order.  This prevents the reduction certificate from
+silently relying on ambiguous lookup behavior in its fold evidence.
 `StorageWitness.v` now has the analogous access-level composition hook:
 `pprog_same_instance_access_remap_compose` composes two target-to-source
 cell-relation remaps through the same intermediate access cells.  This keeps
