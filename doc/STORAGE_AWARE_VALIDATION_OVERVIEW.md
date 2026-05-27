@@ -48,10 +48,11 @@ The final theorem surface should therefore not expose the internal
 certificate layer used to prove one simple endpoint:
 `public_semantic_refinement input_view output_view source target`.  The
 existing schedule-only theorem is recovered by choosing the same-state input
-view and the `State.eq` output view.  `StateView.v` now provides a generic
-pair-certificate wrapper for parameterized transform families, so a
-feature-facing certificate theorem can hide the intermediate program and the
-two family checks while reusing one shared state-sound proof pattern.
+view and the `State.eq` output view.  `StateView.v` now provides generic
+single-pass and pair-certificate wrappers for parameterized transform
+families.  A feature-facing certificate theorem can therefore hide either one
+storage family check or a two-pass intermediate program while reusing one
+shared state-sound proof pattern.
 The next presentation layer names that shared endpoint directly:
 `states_match` is the readable state relation induced by a view, and the
 feature-facing theorem should be named as a semantic refinement:
@@ -156,7 +157,11 @@ theorems for every pass ordering.  `StateView` also has a parameterized variant
 for storage passes whose checker soundness depends on extra witness parameters
 and semantic side conditions; this is the generic home for facade theorems that
 hide feature-specific contracts while still composing as public-view
-refinements.  `CInstrScalarStorageFamilyCompose.v` adds the first concrete
+refinements.  The single-pass certificate endpoint,
+`checked_parameterized_transform_certificate_semantic_refinement`, is the
+shared theorem shape for one accepted storage pass: accepted certificate, input
+states match, target execution, and matched source execution under the output
+view.  `CInstrScalarStorageFamilyCompose.v` adds the first concrete
 scalar-storage composition theorem: bounded CInstr scalar privatization followed
 by bounded CInstr scalar promotion yields a composed public-view refinement,
 with both features' traces, bounds, compatibility, separation, and non-escape

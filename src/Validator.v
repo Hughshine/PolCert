@@ -170,10 +170,72 @@ Definition checked_view_transform_family :=
   StateViewCore.checked_view_transform_family.
 Definition checked_view_transform_family_pair_compose :=
   StateViewCore.checked_view_transform_family_pair_compose.
+Definition checked_parameterized_view_transform_family :=
+  StateViewCore.checked_parameterized_view_transform_family.
 Definition cpvtf_check_public_semantic_sound :=
   StateViewCore.cpvtf_check_public_semantic_sound.
 Definition cpvtf_check_public_semantic_state_sound :=
   StateViewCore.cpvtf_check_public_semantic_state_sound.
+Definition checked_parameterized_transform_certificate
+    {params}
+    (family: checked_parameterized_view_transform_family params) :=
+  StateViewCore.checked_parameterized_transform_certificate family.
+Definition checked_parameterized_transform_certificate_input_view
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_input_view
+    certificate.
+Definition checked_parameterized_transform_certificate_output_view
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_output_view
+    certificate.
+Definition checked_parameterized_transform_certificate_input_states_match
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_input_states_match
+    certificate.
+Definition checked_parameterized_transform_certificate_output_states_match
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_output_states_match
+    certificate.
+Definition checked_parameterized_transform_certificate_accepted
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_accepted
+    certificate.
+Definition checked_parameterized_transform_certificate_public_semantic_sound
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_public_semantic_sound
+    params family certificate.
+Definition checked_parameterized_transform_certificate_state_sound
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_state_sound
+    params family certificate.
+Definition checked_parameterized_transform_certificate_semantic_refinement
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.checked_parameterized_transform_certificate_semantic_refinement
+    params family certificate.
 Definition checked_parameterized_public_semantic_family_pair_compose :=
   StateViewCore.checked_parameterized_public_semantic_family_pair_compose.
 Definition checked_parameterized_public_semantic_family_pair_state_sound :=

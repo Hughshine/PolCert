@@ -397,6 +397,128 @@ Proof.
   eapply cpvtf_check_public_semantic_sound; eauto.
 Qed.
 
+Record checked_parameterized_transform_certificate
+    {params: Type}
+    (family: checked_parameterized_view_transform_family params) := {
+  cptc_params : params;
+}.
+
+Arguments cptc_params {params family} _.
+
+Definition checked_parameterized_transform_certificate_input_view
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      checked_parameterized_transform_certificate family) : view :=
+  cpvtf_input_view family (cptc_params certificate).
+
+Definition checked_parameterized_transform_certificate_output_view
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      checked_parameterized_transform_certificate family) : view :=
+  cpvtf_output_view family (cptc_params certificate).
+
+Definition checked_parameterized_transform_certificate_input_states_match
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      checked_parameterized_transform_certificate family) :=
+  states_match
+    (checked_parameterized_transform_certificate_input_view certificate).
+
+Definition checked_parameterized_transform_certificate_output_states_match
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      checked_parameterized_transform_certificate family) :=
+  states_match
+    (checked_parameterized_transform_certificate_output_view certificate).
+
+Definition checked_parameterized_transform_certificate_accepted
+    {params}
+    {family: checked_parameterized_view_transform_family params}
+    (certificate:
+      checked_parameterized_transform_certificate family)
+    (before after: PolyLang.t) : Prop :=
+  exists ok,
+    mayReturn
+      (cpvtf_check family (cptc_params certificate) before after)
+      ok /\
+    ok = true /\
+    cpvtf_side_condition family (cptc_params certificate) before after.
+
+Theorem checked_parameterized_transform_certificate_public_semantic_sound :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         (certificate:
+           checked_parameterized_transform_certificate family)
+         before after,
+    checked_parameterized_transform_certificate_accepted
+      certificate before after ->
+    public_semantic_refinement
+      (checked_parameterized_transform_certificate_input_view certificate)
+      (checked_parameterized_transform_certificate_output_view certificate)
+      before after.
+Proof.
+  intros params family certificate before after Haccepted.
+  destruct Haccepted as [ok [Hret [Hok Hside]]].
+  exact
+    (cpvtf_check_public_semantic_sound
+       params family (cptc_params certificate)
+       before after ok Hret Hok Hside).
+Qed.
+
+Theorem checked_parameterized_transform_certificate_state_sound :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         (certificate:
+           checked_parameterized_transform_certificate family)
+         before after st_target0 st_source0 st_target_after,
+    checked_parameterized_transform_certificate_accepted
+      certificate before after ->
+    state_view_rel
+      (checked_parameterized_transform_certificate_input_view certificate)
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel
+        (checked_parameterized_transform_certificate_output_view certificate)
+        st_target_after st_source_after.
+Proof.
+  intros params family certificate before after
+         st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply
+    (checked_parameterized_transform_certificate_public_semantic_sound
+       params family certificate before after Haccepted);
+    eauto.
+Qed.
+
+Theorem checked_parameterized_transform_certificate_semantic_refinement :
+  forall params
+         (family: checked_parameterized_view_transform_family params)
+         (certificate:
+           checked_parameterized_transform_certificate family)
+         source target st_target0 st_source0 st_target_after,
+    checked_parameterized_transform_certificate_accepted
+      certificate source target ->
+    checked_parameterized_transform_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolyLang.instance_list_semantics target st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics source st_source0 st_source_after /\
+      checked_parameterized_transform_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros params family certificate
+         source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply checked_parameterized_transform_certificate_state_sound;
+    eauto.
+Qed.
+
 Theorem checked_parameterized_view_transform_family_pair_compose :
   forall params_first params_second
          (first: checked_parameterized_view_transform_family params_first)
