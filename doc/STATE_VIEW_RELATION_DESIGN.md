@@ -1644,7 +1644,10 @@ private cells are erased from the endpoint observation.
 `ScalarExpansionValueWitness.v` is the next layer below that theorem.  It
 checks a finite value trace: expansion writes must store the same value as the
 source logical write they replace, and expansion reads must observe the current
-private value and match the represented source read.  The
+private value and match the represented source read.  Its per-event projection
+theorem exposes the part needed by later semantic simulation proofs: every
+checked value event has the storage-event kind it claims and equal
+source/private values.  The
 `checked_value_pure_scalar_privatization_correct` wrapper keeps the same
 public-view refinement conclusion while making this value-flow evidence an
 explicit checked premise.  The bounded value wrapper keeps the same conclusion

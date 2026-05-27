@@ -526,6 +526,10 @@ Definition storage_scalar_expansion_value_event :=
   scalar_expansion_value_event.
 Definition storage_scalar_expansion_value_trace :=
   scalar_expansion_value_trace.
+Definition storage_scalar_expansion_value_event_kind_matches :=
+  @scalar_expansion_value_event_kind_matches.
+Definition storage_scalar_expansion_value_event_values_match :=
+  @scalar_expansion_value_event_values_match.
 Definition storage_check_scalar_expansion_value_traceb :=
   @check_scalar_expansion_value_traceb.
 Definition storage_check_scalar_expansion_value_traceb_sound :=
@@ -536,6 +540,8 @@ Definition storage_scalar_expansion_value_obligations_private_use_def :=
   scalar_expansion_value_obligations_private_use_def.
 Definition storage_scalar_expansion_value_obligations_events_private_use_def :=
   scalar_expansion_value_obligations_events_private_use_def.
+Definition storage_scalar_expansion_value_obligation_event_matched :=
+  scalar_expansion_value_obligation_event_matched.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=

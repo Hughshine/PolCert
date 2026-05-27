@@ -144,6 +144,16 @@ Definition scalar_expansion_value_event_kind_matches
   | _, _ => False
   end.
 
+Definition scalar_expansion_value_event_values_match
+    {value: Type}
+    (value_event: scalar_expansion_value_event value) : Prop :=
+  match value_event with
+  | ExpansionValueWrite source_value private_value =>
+      source_value = private_value
+  | ExpansionValueRead source_value private_value =>
+      source_value = private_value
+  end.
+
 Fixpoint scalar_expansion_value_trace_simulates_from {value: Type}
     (expanded_values: list (MemCell * value))
     (trace: scalar_expansion_value_trace value) : Prop :=
@@ -353,6 +363,68 @@ Proof.
   - apply expanded_values_defined_by_nil.
 Qed.
 
+Theorem scalar_expansion_value_trace_simulates_from_event_matched :
+  forall (value: Type)
+         (trace: scalar_expansion_value_trace value)
+         expanded_values storage_event value_event,
+    scalar_expansion_value_trace_simulates_from
+      expanded_values trace ->
+    In (storage_event, value_event) trace ->
+    scalar_expansion_value_event_kind_matches
+      storage_event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros value trace.
+  induction trace as [|[head_storage head_value] tail IH];
+    intros expanded_values storage_event value_event Hsim Hin;
+    simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail_in].
+    + inversion Hhead; subst head_storage head_value.
+      destruct value_event as [source_value private_value
+                              | source_value private_value];
+        simpl in Hsim.
+      * destruct Hsim as [Hkind [Hvalue _]].
+        split.
+        -- unfold scalar_expansion_value_event_kind_matches.
+           rewrite Hkind.
+           exact I.
+        -- unfold scalar_expansion_value_event_values_match.
+           exact Hvalue.
+      * destruct Hsim as [Hkind Hread].
+        destruct
+          (lookup_expanded_value
+             (expansion_event_private_cell storage_event)
+             expanded_values) as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hread as [Hsource [Hprivate _]].
+        split.
+        -- unfold scalar_expansion_value_event_kind_matches.
+           rewrite Hkind.
+           exact I.
+        -- unfold scalar_expansion_value_event_values_match.
+           transitivity current_value.
+           ++ exact Hsource.
+           ++ symmetry. exact Hprivate.
+    + destruct head_value as [head_source head_private
+                            | head_source head_private];
+        simpl in Hsim.
+      * destruct Hsim as [_ [_ Htail]].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * destruct Hsim as [_ Hread].
+        destruct
+          (lookup_expanded_value
+             (expansion_event_private_cell head_storage)
+             expanded_values) as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hread as [_ [_ Htail]].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -448,4 +520,23 @@ Proof.
   subst events.
   apply scalar_expansion_value_obligations_private_use_def.
   exact Hobligations.
+Qed.
+
+Theorem scalar_expansion_value_obligation_event_matched :
+  forall (value: Type)
+         (value_trace: scalar_expansion_value_trace value)
+         storage_event value_event,
+    scalar_expansion_value_obligations value value_trace ->
+    In (storage_event, value_event) value_trace ->
+    scalar_expansion_value_event_kind_matches
+      storage_event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros value value_trace storage_event value_event
+         Hobligations Hin.
+  destruct Hobligations as [Hsimulates].
+  unfold scalar_expansion_value_trace_simulates in Hsimulates.
+  eapply scalar_expansion_value_trace_simulates_from_event_matched.
+  - exact Hsimulates.
+  - exact Hin.
 Qed.
