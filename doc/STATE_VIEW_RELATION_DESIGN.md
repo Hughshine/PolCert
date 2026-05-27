@@ -1592,7 +1592,13 @@ cell.  `CInstrScalarPromotionWitness.v` now supplies the first concrete
 instruction bridge for that value trace: CInstr access, expression-evaluation,
 and assignment steps can justify promotion load/read/write/store/global-write
 events, and an ordered CInstr-derived trace proves the generic scalar-promotion
-value-flow obligation.  `CInstrScalarPromotionValidatorBridge.v` packages that
+value-flow obligation.  The promotion bridge now mirrors the scalar-expansion
+event-provenance layer through
+`cscalar_promotion_value_event_cinstr_semantics` and
+`cscalar_promotion_value_trace_event_cinstr_and_matched`: later proofs can
+recover the local CInstr witness for a selected trace event, plus a checked
+promotion-kind match and the internal load/store value equalities carried by
+the value event.  `CInstrScalarPromotionValidatorBridge.v` packages that
 instruction evidence into the existing scalar-promotion public-view wrappers,
 including compatible and bounded/non-escape variants, so the endpoint theorem
 remains a view refinement rather than a CInstr-specific relation.

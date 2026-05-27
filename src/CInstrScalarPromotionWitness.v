@@ -237,6 +237,107 @@ Proof.
   exact I.
 Qed.
 
+(** Event-level CInstr provenance for scalar promotion.
+
+    The ordered trace below proves the generic scalar-promotion value-flow
+    obligation.  This event predicate lets later pass-level proofs recover the
+    local CInstr witness for any selected trace event without re-inducting over
+    the whole trace. *)
+Inductive cscalar_promotion_value_event_cinstr_semantics
+    : scalar_promotion_event ->
+      scalar_promotion_value_event Values.val -> Prop :=
+| CScalarPromotionLoadEventCInstrSemantics :
+    forall envv source_state target_before target_after
+           source_access scalar_access target_instr target_expr ty
+           event value_event,
+      cscalar_promotion_load_value_event
+        envv source_state target_before target_after
+        source_access scalar_access target_instr target_expr ty
+        event value_event ->
+      cscalar_promotion_value_event_cinstr_semantics event value_event
+| CScalarPromotionReadEventCInstrSemantics :
+    forall envv source_state target_state source_access scalar_access ty
+           event value_event,
+      cscalar_promotion_read_value_event
+        envv source_state target_state source_access scalar_access ty
+        event value_event ->
+      cscalar_promotion_value_event_cinstr_semantics event value_event
+| CScalarPromotionWriteEventCInstrSemantics :
+    forall envv source_before source_after target_before target_after
+           source_instr target_instr event value_event,
+      cscalar_promotion_write_value_event
+        envv source_before source_after target_before target_after
+        source_instr target_instr event value_event ->
+      cscalar_promotion_value_event_cinstr_semantics event value_event
+| CScalarPromotionStoreEventCInstrSemantics :
+    forall envv target_before target_after source_access scalar_access
+           target_instr store_expr ty event value_event,
+      cscalar_promotion_store_value_event
+        envv target_before target_after source_access scalar_access
+        target_instr store_expr ty event value_event ->
+      cscalar_promotion_value_event_cinstr_semantics event value_event
+| CScalarPromotionGlobalWriteEventCInstrSemantics :
+    forall envv before after instr event value_event,
+      cscalar_promotion_global_write_value_event
+        envv before after instr event value_event ->
+      cscalar_promotion_value_event_cinstr_semantics event value_event.
+
+Definition cscalar_promotion_value_event_kind_matches
+    (event: scalar_promotion_event)
+    (value_event: scalar_promotion_value_event Values.val) : Prop :=
+  match event, value_event with
+  | PromotionLoad _ _, PromotionValueLoad _ _ => True
+  | PromotionScalarRead _, PromotionValueRead _ => True
+  | PromotionScalarWrite _, PromotionValueWrite _ => True
+  | PromotionStore _ _, PromotionValueStore _ _ => True
+  | PromotionGlobalWrite _, PromotionValueGlobalWrite => True
+  | _, _ => False
+  end.
+
+Definition cscalar_promotion_value_event_internal_values_match
+    (value_event: scalar_promotion_value_event Values.val) : Prop :=
+  match value_event with
+  | PromotionValueLoad source_value scalar_value =>
+      source_value = scalar_value
+  | PromotionValueStore scalar_value source_value =>
+      scalar_value = source_value
+  | _ => True
+  end.
+
+Theorem cscalar_promotion_value_event_cinstr_kind :
+  forall event value_event,
+    cscalar_promotion_value_event_cinstr_semantics event value_event ->
+    cscalar_promotion_value_event_kind_matches event value_event.
+Proof.
+  intros event value_event Hsem.
+  inversion Hsem; subst;
+    inversion H; subst; simpl; exact I.
+Qed.
+
+Theorem cscalar_promotion_value_event_cinstr_internal_values_match :
+  forall event value_event,
+    cscalar_promotion_value_event_cinstr_semantics event value_event ->
+    cscalar_promotion_value_event_internal_values_match value_event.
+Proof.
+  intros event value_event Hsem.
+  inversion Hsem; subst;
+    inversion H; subst; simpl; auto.
+Qed.
+
+Theorem cscalar_promotion_value_event_cinstr_matched :
+  forall event value_event,
+    cscalar_promotion_value_event_cinstr_semantics event value_event ->
+    cscalar_promotion_value_event_kind_matches event value_event /\
+    cscalar_promotion_value_event_internal_values_match value_event.
+Proof.
+  intros event value_event Hsem.
+  split.
+  - eapply cscalar_promotion_value_event_cinstr_kind.
+    exact Hsem.
+  - eapply cscalar_promotion_value_event_cinstr_internal_values_match.
+    exact Hsem.
+Qed.
+
 Inductive cscalar_promotion_value_trace
     : option Values.val ->
       scalar_promotion_value_trace Values.val -> Prop :=
@@ -331,6 +432,72 @@ Proof.
   - inversion H; subst.
     simpl.
     exact IHHtrace.
+Qed.
+
+Theorem cscalar_promotion_value_trace_event_cinstr_semantics :
+  forall current_scalar trace event value_event,
+    cscalar_promotion_value_trace current_scalar trace ->
+    In (event, value_event) trace ->
+    cscalar_promotion_value_event_cinstr_semantics event value_event.
+Proof.
+  intros current_scalar trace event value_event Htrace Hin.
+  induction Htrace.
+  - simpl in Hin. contradiction.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor 2.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor 3.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor 4.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      econstructor 5.
+      exact H.
+    + apply IHHtrace.
+      exact Hin_tail.
+Qed.
+
+Theorem cscalar_promotion_value_trace_event_cinstr_and_matched :
+  forall current_scalar trace event value_event,
+    cscalar_promotion_value_trace current_scalar trace ->
+    In (event, value_event) trace ->
+    cscalar_promotion_value_event_cinstr_semantics event value_event /\
+    cscalar_promotion_value_event_kind_matches event value_event /\
+    cscalar_promotion_value_event_internal_values_match value_event.
+Proof.
+  intros current_scalar trace event value_event Htrace Hin.
+  pose proof
+    (cscalar_promotion_value_trace_event_cinstr_semantics
+       current_scalar trace event value_event Htrace Hin)
+    as Hcinstr.
+  pose proof
+    (cscalar_promotion_value_event_cinstr_matched
+       event value_event Hcinstr)
+    as [Hkind Hvalues].
+  repeat split; assumption.
 Qed.
 
 Definition cscalar_promotion_value_trace_simulates

@@ -434,7 +434,12 @@ events occur only after the promoted scalar has a current value.  `CInstrScalarP
 layer to concrete CInstr semantics: load/read/write/store/global-write events
 can be derived from CInstr access, expression-evaluation, and assignment
 steps, and an ordered CInstr-derived trace proves the generic scalar-promotion
-value-flow obligation.  `CInstrScalarPromotionValidatorBridge.v` connects that
+value-flow obligation.  It now also exposes
+`cscalar_promotion_value_event_cinstr_semantics` and
+`cscalar_promotion_value_trace_event_cinstr_and_matched`, so a later pass-level
+proof can select an arbitrary trace event and recover both its CInstr
+provenance and its promotion-specific kind/internal-value match facts.
+`CInstrScalarPromotionValidatorBridge.v` connects that
 CInstr trace evidence to the existing scalar-promotion view wrappers, including
 the compatible and bounded/non-escape variants, without changing their
 public-view refinement conclusion.  It also exposes public-refinement-only
