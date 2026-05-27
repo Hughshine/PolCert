@@ -1345,6 +1345,14 @@ Definition storage_phase_value_protocol :=
   phase_value_protocol.
 Definition storage_phase_value_protocol_final_values :=
   @phase_value_protocol_final_values.
+Definition storage_phase_value_lookup_in_cells :=
+  phase_value_lookup_in_cells.
+Definition storage_phase_snapshot_value_cells_nodup :=
+  phase_snapshot_value_cells_nodup.
+Definition storage_phase_snapshot_cell_has_value :=
+  phase_snapshot_cell_has_value.
+Definition storage_phase_snapshot_value_cell_in_cells :=
+  phase_snapshot_value_cell_in_cells.
 Definition storage_phase_value_protocol_final_snapshot :=
   phase_value_protocol_final_snapshot.
 Definition storage_check_phase_value_protocolb_final_snapshot :=
@@ -1409,6 +1417,14 @@ Definition storage_check_phase_projection_valueb_sound :=
   check_phase_projection_valueb_sound.
 Definition storage_phase_projection_value_obligations :=
   phase_projection_value_obligations.
+Definition storage_phase_projection_value_entries_match_length :=
+  phase_projection_value_entries_match_length.
+Definition storage_phase_projection_value_entries_match_mapping_entry :=
+  phase_projection_value_entries_match_mapping_entry.
+Definition storage_phase_projection_value_obligation_length_match :=
+  phase_projection_value_obligation_length_match.
+Definition storage_phase_projection_value_obligation_mapping_entry_matched :=
+  phase_projection_value_obligation_mapping_entry_matched.
 Definition storage_phase_source_view_refines_view :=
   PhaseSeparationCore.phase_source_view_refines_view.
 Definition storage_phase_separation_view_contract :=

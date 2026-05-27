@@ -84,6 +84,74 @@ Proof.
         eapply mem_cells_subsetb_sound; eauto.
 Qed.
 
+Lemma phase_value_lookup_in_cells :
+  forall (value: Type)
+         cell
+         (values: list (phase_cell_value value)),
+    In cell (phase_value_cells values) ->
+    exists value',
+      phase_value_lookup cell values = Some value'.
+Proof.
+  intros value cell values.
+  induction values as [|[head_cell head_value] tail IH];
+    intros Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst.
+      rewrite mem_cell_strict_eq_eqb by reflexivity.
+      exists head_value.
+      reflexivity.
+    + destruct (mem_cell_strict_eqb cell head_cell) eqn:Heq.
+      * exists head_value.
+        reflexivity.
+      * apply IH.
+        exact Hin_tail.
+Qed.
+
+Theorem phase_snapshot_value_cells_nodup :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value)),
+    phase_snapshot_matches_cells cells values ->
+    NoDup (phase_value_cells values).
+Proof.
+  intros value cells values Hsnapshot.
+  destruct Hsnapshot as [_ [Hvalues_nodup _]].
+  exact Hvalues_nodup.
+Qed.
+
+Theorem phase_snapshot_cell_has_value :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    phase_snapshot_matches_cells cells values ->
+    In cell cells ->
+    exists value',
+      phase_value_lookup cell values = Some value'.
+Proof.
+  intros value cells values cell Hsnapshot Hin_cell.
+  destruct Hsnapshot as [_ [_ Hcover]].
+  apply phase_value_lookup_in_cells.
+  apply Hcover.
+  exact Hin_cell.
+Qed.
+
+Theorem phase_snapshot_value_cell_in_cells :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    phase_snapshot_matches_cells cells values ->
+    In cell (phase_value_cells values) ->
+    In cell cells.
+Proof.
+  intros value cells values cell Hsnapshot Hin_value.
+  destruct Hsnapshot as [_ [_ Hcover]].
+  apply Hcover.
+  exact Hin_value.
+Qed.
+
 Definition phase_reads_have_values {value: Type}
     (reads: list MemCell)
     (entry_values: list (phase_cell_value value)) : Prop :=

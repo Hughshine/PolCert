@@ -351,6 +351,56 @@ Fixpoint check_phase_projection_value_entriesb {value: Type}
   | _, _ => false
   end.
 
+Lemma phase_projection_value_entries_match_length :
+  forall (value: Type)
+         (mapping: phase_projection_mapping)
+         (entries: list (phase_projection_value_entry value)),
+    phase_projection_value_entries_match mapping entries ->
+    length mapping = length entries.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_entry mapping_tail IH];
+    intros entries Hmatch; destruct entries as [|entry entry_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    simpl.
+    rewrite IH with (entries := entry_tail); auto.
+Qed.
+
+Lemma phase_projection_value_entries_match_mapping_entry :
+  forall (value: Type)
+         (mapping: phase_projection_mapping)
+         (entries: list (phase_projection_value_entry value))
+         mapping_entry,
+    phase_projection_value_entries_match mapping entries ->
+    In mapping_entry mapping ->
+    exists entry,
+      In entry entries /\
+      phase_projection_value_entry_cells_match mapping_entry entry /\
+      phase_projection_value_entry_value_match entry.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_head mapping_tail IH];
+    intros entries mapping_entry Hmatch Hin;
+    destruct entries as [|entry entry_tail];
+    simpl in Hmatch, Hin |- *; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst.
+    exists entry.
+    split.
+    + left. reflexivity.
+    + split; assumption.
+  - destruct
+      (IH entry_tail mapping_entry Htail Hin_tail)
+      as (entry' & Hin_entry & Hcells' & Hvalue').
+    exists entry'.
+    split.
+    + right. exact Hin_entry.
+    + split; assumption.
+Qed.
+
 Section ValueSoundness.
 
 Variable value: Type.
@@ -431,3 +481,33 @@ Proof.
 Qed.
 
 End ValueSoundness.
+
+Theorem phase_projection_value_obligation_length_match :
+  forall (value: Type)
+         (mapping: phase_projection_mapping)
+         (entries: list (phase_projection_value_entry value)),
+    phase_projection_value_obligations value mapping entries ->
+    length mapping = length entries.
+Proof.
+  intros value mapping entries Hobligations.
+  destruct Hobligations as [Hmatch].
+  eapply phase_projection_value_entries_match_length.
+  exact Hmatch.
+Qed.
+
+Theorem phase_projection_value_obligation_mapping_entry_matched :
+  forall (value: Type)
+         (mapping: phase_projection_mapping)
+         (entries: list (phase_projection_value_entry value))
+         mapping_entry,
+    phase_projection_value_obligations value mapping entries ->
+    In mapping_entry mapping ->
+    exists entry,
+      In entry entries /\
+      phase_projection_value_entry_cells_match mapping_entry entry /\
+      phase_projection_value_entry_value_match entry.
+Proof.
+  intros value mapping entries mapping_entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply phase_projection_value_entries_match_mapping_entry; eauto.
+Qed.
