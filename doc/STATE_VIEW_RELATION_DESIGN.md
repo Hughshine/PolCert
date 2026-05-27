@@ -232,13 +232,18 @@ bounded/fully-declared/non-escape copy theorem and packages it as
 `scratchpad_copy_bounded_non_escape_family`, while
 `StorageCopyFamilyCompose.v` shows that this copy-mediated family composes with
 bounded scalar promotion without exposing the copy contract as the final
-relation.  The generic copy-protocol layer now has the same facade before the
+relation.  It also exposes
+`accepted_bounded_scratchpad_copy_certificate_state_sound`, an instance of the
+generic pair-certificate endpoint theorem for scratchpad/packing.  The generic
+copy-protocol layer now has the same facade before the
 scratchpad-specific wrapper:
 `CopyProtocolValidator.copy_protocol_declared_bounded_compatible_commit_mapping_value_family`
 packages copy order, exact commits, remapping, value flow, declarations,
 compatibility, and bounds as side conditions, while
 `StorageCopyFamilyCompose.bounded_copy_protocol_then_scalar_promotion_public_semantic_refinement`
-exports only the paper-facing endpoint relation.  The overlap/private
+exports only the paper-facing endpoint relation.  Its certificate wrapper,
+`accepted_declared_copy_protocol_certificate_state_sound`, gives the same direct
+semantic-refinement theorem shape for the lower-level copy protocol itself.  The overlap/private
 recomputation route now follows the same public
 interface: `OverlapTilingValidator` has a public-only facade for its strongest
 ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
