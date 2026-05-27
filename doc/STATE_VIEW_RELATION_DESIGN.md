@@ -271,7 +271,10 @@ discipline below the CInstr wrapper:
 packages local private use-def, boundary copy-in/copy-out, boundary values,
 storage compatibility, private bounds, and non-escape, while
 `StoragePrivateFamilyCompose.bounded_private_storage_then_scalar_promotion_public_semantic_refinement`
-states the composed endpoint as `public_semantic_refinement`.  The
+states the composed endpoint as `public_semantic_refinement`.  It also exposes
+`accepted_bounded_private_storage_certificate_refines`, which instantiates the
+generic pair-certificate refinement predicate for private-storage
+certificates.  The
 scratchpad/packing route now follows the same rule:
 `ScratchpadCopyValidator` exposes a public-only facade for the strongest
 bounded/fully-declared/non-escape copy theorem and packages it as
@@ -296,7 +299,9 @@ ordered-closure/bounded/compatible/non-escape value-storage theorem, packages it
 as `overlap_private_ordered_bounded_non_escape_family`, and
 `StorageOverlapFamilyCompose.v` composes that instance-count-changing family
 with bounded scalar promotion through the same generic hook and exports a
-`public_semantic_refinement` endpoint.  The versioned
+`public_semantic_refinement` endpoint plus
+`accepted_bounded_overlap_certificate_refines`, making overlap/recomputation a
+second concrete instance of the unified accepted-certificate top theorem.  The versioned
 storage route now has the same shape: `VersionCommitValidator` projects the
 fully bounded/non-escape read+commit theorem to a public-only facade, packages
 it as `version_commit_read_fully_bounded_non_escape_family`, and

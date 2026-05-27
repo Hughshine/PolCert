@@ -202,10 +202,11 @@ scalar wrapper.  `StoragePrivateFamilyCompose.v` composes that generic
 privatization/storage-expansion family with bounded scalar promotion and states
 the result as `public_semantic_refinement`.  It now also exposes the
 accepted-certificate endpoint
-`accepted_bounded_private_storage_certificate_semantic_refinement`, so generic
-private storage has the same readable top theorem shape as the scalar, copy, and
-reuse routes: accepted certificate, input view match, target execution, and a
-matching source execution related by the output view.  The same facade shape now
+`accepted_bounded_private_storage_certificate_refines`, whose conclusion is the
+generic pair-certificate refinement predicate instantiated with private-storage
+witnesses.  The expanded
+`accepted_bounded_private_storage_certificate_semantic_refinement` remains for
+scripts that want the states explicit.  The same facade shape now
 covers the scratchpad/packing route through
 `ScratchpadCopyValidator.scratchpad_copy_bounded_non_escape_family`: the
 parameter record carries the helper-instance projection, copy protocol, commit
@@ -230,7 +231,10 @@ which carries target projection, ordered tile-local closure, value equivalence,
 private/commit writes, compatibility, bounds, and non-escape witnesses while
 exporting only public-view refinement.  `StorageOverlapFamilyCompose.v` checks
 the corresponding overlap-then-scalar-promotion composition and exposes the
-endpoint as `public_semantic_refinement`.  The overlap value witness now also
+endpoint as both `public_semantic_refinement` and the accepted-certificate
+theorem `accepted_bounded_overlap_certificate_refines`, so the
+instance-duplication route now has the same readable top theorem as the
+storage-only routes.  The overlap value witness now also
 has elimination lemmas that project the finite value table per duplicated or
 internal target instance: every listed projected target has a corresponding
 value entry whose target key matches and whose recomputed value equals the
