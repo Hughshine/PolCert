@@ -1043,6 +1043,14 @@ Definition storage_check_overlap_valueb_sound :=
   check_overlap_valueb_sound.
 Definition storage_overlap_value_obligations :=
   overlap_value_obligations.
+Definition storage_overlap_value_entries_match_length :=
+  overlap_value_entries_match_length.
+Definition storage_overlap_value_entries_match_target :=
+  overlap_value_entries_match_target.
+Definition storage_overlap_value_obligation_length_match :=
+  overlap_value_obligation_length_match.
+Definition storage_overlap_value_obligation_target_matched :=
+  overlap_value_obligation_target_matched.
 Definition storage_overlap_write := overlap_write.
 Definition storage_check_overlap_storageb :=
   check_overlap_storageb.

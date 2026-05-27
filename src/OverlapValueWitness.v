@@ -89,6 +89,60 @@ Fixpoint check_overlap_value_entriesb {value: Type}
   | _, _ => false
   end.
 
+Lemma overlap_value_entries_match_length :
+  forall (value: Type)
+         (targets: list projected_instance)
+         (entries: list (overlap_value_entry value)),
+    overlap_value_entries_match targets entries ->
+    length targets = length entries.
+Proof.
+  intros value targets.
+  induction targets as [|target target_tail IH];
+    intros entries Hmatch; destruct entries as [|entry entry_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    simpl.
+    rewrite IH with (entries := entry_tail); auto.
+Qed.
+
+Lemma overlap_value_entries_match_target :
+  forall (value: Type)
+         (targets: list projected_instance)
+         (entries: list (overlap_value_entry value))
+         target,
+    overlap_value_entries_match targets entries ->
+    In target targets ->
+    exists entry,
+      In entry entries /\
+      overlap_value_target entry = target /\
+      overlap_value_source_value entry =
+        overlap_value_target_value entry.
+Proof.
+  intros value targets.
+  induction targets as [|target_head target_tail IH];
+    intros entries target Hmatch Hin;
+    destruct entries as [|entry entry_tail];
+    simpl in Hmatch, Hin |- *; try contradiction.
+  destruct Hmatch as [Htarget [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  -
+    exists entry.
+    split.
+    + left. reflexivity.
+    + split.
+      * rewrite <- Heq.
+        symmetry. exact Htarget.
+      * exact Hvalue.
+  - destruct
+      (IH entry_tail target Htail Hin_tail)
+      as (entry' & Hin_entry & Htarget' & Hvalue').
+    exists entry'.
+    split.
+    + right. exact Hin_entry.
+    + split; assumption.
+Qed.
+
 Record overlap_value_obligations
     (value: Type)
     (targets: list projected_instance)
@@ -144,4 +198,35 @@ Proof.
   apply check_overlap_value_entriesb_sound with (value_eqb := value_eqb).
   - exact Hvalue_eqb.
   - exact Hcheck.
+Qed.
+
+Theorem overlap_value_obligation_length_match :
+  forall (value: Type)
+         (targets: list projected_instance)
+         (entries: list (overlap_value_entry value)),
+    overlap_value_obligations value targets entries ->
+    length targets = length entries.
+Proof.
+  intros value targets entries Hobligations.
+  destruct Hobligations as [Hmatch].
+  eapply overlap_value_entries_match_length.
+  exact Hmatch.
+Qed.
+
+Theorem overlap_value_obligation_target_matched :
+  forall (value: Type)
+         (targets: list projected_instance)
+         (entries: list (overlap_value_entry value))
+         target,
+    overlap_value_obligations value targets entries ->
+    In target targets ->
+    exists entry,
+      In entry entries /\
+      overlap_value_target entry = target /\
+      overlap_value_source_value entry =
+        overlap_value_target_value entry.
+Proof.
+  intros value targets entries target Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply overlap_value_entries_match_target; eauto.
 Qed.
