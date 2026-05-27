@@ -30,7 +30,13 @@ relations without unfolding them.  `StateView.v` also exposes a
 top-level theorem back into the familiar semantic-refinement quantifiers, with
 `State.eq` generalized to input/output public views.  This is the paper-facing
 shape; `view_refinement` is the compact connective used internally for
-composition.  `ViewPipeline.v` records the common
+composition.  The parameterized family layer now also has a generic
+pair-certificate wrapper:
+`checked_parameterized_family_pair_certificate_accepted`,
+`checked_parameterized_family_pair_certificate_public_semantic_sound`, and
+`checked_parameterized_family_pair_certificate_state_sound`.  A feature-specific
+top theorem can therefore expose an accepted certificate while reusing the same
+direct public-view semantic-refinement endpoint.  `ViewPipeline.v` records the common
 composition theorem used by the storage validators.  The pattern is:
 validate the schedule/control part from `before` to a storage-neutral
 `source_view`, then compose that with a feature-specific semantic
@@ -1612,7 +1618,10 @@ wrapper, `bounded_scalar_storage_certificate_accepted`, whose theorem
 back to the direct semantic-refinement quantifiers.  That wrapper is the
 intended top-surface shape for scalar storage: the certificate hides the
 intermediate program and the two family checks, while the conclusion talks only
-about input/output public views and source/target executions.
+about input/output public views and source/target executions.  The scalar
+wrapper is now an instance of the generic pair-certificate layer in
+`StateView.v`, so the same top-surface pattern can be reused by copy, private,
+reuse, phase, and reduction families without duplicating the composition proof.
 `CInstrScalarExpansionWitness.v` then gives the first concrete instruction
 bridge: a pair of CInstr assignment semantic steps can produce one expansion
 write/value event, and paired scalar access evaluations can produce one

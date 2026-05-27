@@ -491,6 +491,125 @@ Proof.
   eapply checked_parameterized_public_semantic_family_pair_compose; eauto.
 Qed.
 
+Record checked_parameterized_family_pair_certificate
+    {params_first params_second: Type}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second) := {
+  cpfpc_first_params : params_first;
+  cpfpc_second_params : params_second;
+  cpfpc_mid_program : PolyLang.t;
+}.
+
+Arguments cpfpc_first_params
+  {params_first params_second first second} _.
+Arguments cpfpc_second_params
+  {params_first params_second first second} _.
+Arguments cpfpc_mid_program
+  {params_first params_second first second} _.
+
+Definition checked_parameterized_family_pair_certificate_input_view
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      checked_parameterized_family_pair_certificate first second) : view :=
+  compose_view
+    (cpvtf_input_view second (cpfpc_second_params certificate))
+    (cpvtf_input_view first (cpfpc_first_params certificate)).
+
+Definition checked_parameterized_family_pair_certificate_output_view
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      checked_parameterized_family_pair_certificate first second) : view :=
+  compose_view
+    (cpvtf_output_view second (cpfpc_second_params certificate))
+    (cpvtf_output_view first (cpfpc_first_params certificate)).
+
+Definition checked_parameterized_family_pair_certificate_accepted
+    {params_first params_second}
+    {first: checked_parameterized_view_transform_family params_first}
+    {second: checked_parameterized_view_transform_family params_second}
+    (certificate:
+      checked_parameterized_family_pair_certificate first second)
+    (before after: PolyLang.t) : Prop :=
+  exists first_ok second_ok,
+    mayReturn
+      (cpvtf_check first (cpfpc_first_params certificate)
+        before (cpfpc_mid_program certificate))
+      first_ok /\
+    first_ok = true /\
+    cpvtf_side_condition first (cpfpc_first_params certificate)
+      before (cpfpc_mid_program certificate) /\
+    mayReturn
+      (cpvtf_check second (cpfpc_second_params certificate)
+        (cpfpc_mid_program certificate) after)
+      second_ok /\
+    second_ok = true /\
+    cpvtf_side_condition second (cpfpc_second_params certificate)
+      (cpfpc_mid_program certificate) after.
+
+Theorem checked_parameterized_family_pair_certificate_public_semantic_sound :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         (certificate:
+           checked_parameterized_family_pair_certificate first second)
+         before after,
+    checked_parameterized_family_pair_certificate_accepted
+      certificate before after ->
+    public_semantic_refinement
+      (checked_parameterized_family_pair_certificate_input_view certificate)
+      (checked_parameterized_family_pair_certificate_output_view certificate)
+      before after.
+Proof.
+  intros params_first params_second first second certificate before after
+         Haccepted.
+  destruct Haccepted as [first_ok [second_ok Haccepted]].
+  destruct Haccepted as
+    [Hfirst_ret [Hfirst_ok [Hfirst_side
+     [Hsecond_ret [Hsecond_ok Hsecond_side]]]]].
+  destruct certificate as [first_params second_params mid].
+  simpl in *.
+  exact
+    (checked_parameterized_public_semantic_family_pair_compose
+       params_first params_second first second
+       first_params second_params
+       before mid after first_ok second_ok
+       Hfirst_ret Hfirst_ok Hfirst_side
+       Hsecond_ret Hsecond_ok Hsecond_side).
+Qed.
+
+Theorem checked_parameterized_family_pair_certificate_state_sound :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         (certificate:
+           checked_parameterized_family_pair_certificate first second)
+         before after st_target0 st_source0 st_target_after,
+    checked_parameterized_family_pair_certificate_accepted
+      certificate before after ->
+    state_view_rel
+      (checked_parameterized_family_pair_certificate_input_view certificate)
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics after st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics before st_source0 st_source_after /\
+      state_view_rel
+        (checked_parameterized_family_pair_certificate_output_view certificate)
+        st_target_after st_source_after.
+Proof.
+  intros params_first params_second first second certificate
+         before after st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply
+    (checked_parameterized_family_pair_certificate_public_semantic_sound
+       params_first params_second first second
+       certificate before after Haccepted);
+    eauto.
+Qed.
+
 Theorem affine_validate_identity_view_sound :
   forall before after ok,
     mayReturn (AffineCore.validate before after) ok ->
