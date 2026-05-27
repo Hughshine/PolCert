@@ -81,6 +81,9 @@ Definition view := generic_state_view State.t.
 Definition state_view_rel (state_view: view) : Transform.state_relation :=
   generic_state_view_rel state_view.
 
+Definition states_match (state_view: view) : Transform.state_relation :=
+  state_view_rel state_view.
+
 Definition mk_view (rel: Transform.state_relation) : view := {|
   generic_state_view_rel := rel;
 |}.
@@ -156,11 +159,11 @@ Definition public_semantic_refinement
     (input_view output_view: view)
     (before after: PolyLang.t) : Prop :=
   forall st_target0 st_source0 st_target_after,
-    state_view_rel input_view st_target0 st_source0 ->
+    states_match input_view st_target0 st_source0 ->
     PolyLang.instance_list_semantics after st_target0 st_target_after ->
     exists st_source_after,
       PolyLang.instance_list_semantics before st_source0 st_source_after /\
-      state_view_rel output_view st_target_after st_source_after.
+      states_match output_view st_target_after st_source_after.
 
 Theorem public_semantic_refinement_iff :
   forall input_view output_view before after,
@@ -607,6 +610,32 @@ Proof.
     (checked_parameterized_family_pair_certificate_public_semantic_sound
        params_first params_second first second
        certificate before after Haccepted);
+    eauto.
+Qed.
+
+Theorem checked_parameterized_family_pair_certificate_semantic_refinement :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         (certificate:
+           checked_parameterized_family_pair_certificate first second)
+         source target st_target0 st_source0 st_target_after,
+    checked_parameterized_family_pair_certificate_accepted
+      certificate source target ->
+    states_match
+      (checked_parameterized_family_pair_certificate_input_view certificate)
+      st_target0 st_source0 ->
+    PolyLang.instance_list_semantics target st_target0 st_target_after ->
+    exists st_source_after,
+      PolyLang.instance_list_semantics source st_source0 st_source_after /\
+      states_match
+        (checked_parameterized_family_pair_certificate_output_view certificate)
+        st_target_after st_source_after.
+Proof.
+  intros params_first params_second first second certificate
+         source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  eapply checked_parameterized_family_pair_certificate_state_sound;
     eauto.
 Qed.
 

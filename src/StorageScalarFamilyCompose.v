@@ -102,6 +102,16 @@ Definition bounded_scalar_storage_certificate_output_view
     (Expansion.scalar_privatization_bounded_value_output_view
       (bssc_privatization_params certificate)).
 
+Definition bounded_scalar_storage_certificate_input_states_match
+    {exp_value promo_value: Type}
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value) :=
+  View.states_match (bounded_scalar_storage_certificate_input_view certificate).
+
+Definition bounded_scalar_storage_certificate_output_states_match
+    {exp_value promo_value: Type}
+    (certificate: bounded_scalar_storage_certificate exp_value promo_value) :=
+  View.states_match (bounded_scalar_storage_certificate_output_view certificate).
+
 Definition bounded_scalar_storage_certificate_accepted
     (exp_value promo_value: Type)
     (exp_value_eqb: exp_value -> exp_value -> bool)
@@ -286,6 +296,47 @@ Proof.
           exp_value promo_value exp_value_eqb promo_value_eqb
           exp_value_eqb_sound promo_value_eqb_sound certificate)
        before after st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_scalar_storage_certificate_semantic_refinement :
+  forall (exp_value promo_value: Type)
+         (exp_value_eqb: exp_value -> exp_value -> bool)
+         (promo_value_eqb: promo_value -> promo_value -> bool)
+         (exp_value_eqb_sound:
+           forall left right,
+             exp_value_eqb left right = true ->
+             left = right)
+         (promo_value_eqb_sound:
+           forall left right,
+             promo_value_eqb left right = true ->
+             left = right)
+         (certificate:
+           bounded_scalar_storage_certificate exp_value promo_value)
+         source target st_target0 st_source0 st_target_after,
+    bounded_scalar_storage_certificate_accepted
+      exp_value promo_value exp_value_eqb promo_value_eqb
+      exp_value_eqb_sound promo_value_eqb_sound
+      certificate source target ->
+    bounded_scalar_storage_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_scalar_storage_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros exp_value promo_value exp_value_eqb promo_value_eqb
+         exp_value_eqb_sound promo_value_eqb_sound
+         certificate source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_bounded_scalar_storage_certificate_state_sound
+       exp_value promo_value exp_value_eqb promo_value_eqb
+       exp_value_eqb_sound promo_value_eqb_sound certificate
+       source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
 Qed.
 

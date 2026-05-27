@@ -63,6 +63,28 @@ Equivalently, the conclusion should be a single
 passes differ in how they build the two public views and discharge the
 certificate, not in the final semantic endpoint.
 
+For theorem presentation, the final layer should use semantic-refinement names,
+not proof-engineering names such as `state_sound`.  The intended public
+vocabulary is:
+
+```text
+accepted_<feature>_certificate_semantic_refinement
+  accepted certificate for source -> target
+  input_states_match certificate target_initial source_initial
+  target executes
+  ---------------------------------------------------------------
+  exists source_final,
+    source executes and
+    output_states_match certificate target_final source_final
+```
+
+`input_states_match` and `output_states_match` are just readable names for the
+view relations chosen by the certificate.  The relation may erase private
+storage, project committed versions, hide overlap-local writes, or compare
+reused physical cells through a public observation.  The top theorem should not
+force the reader to inspect those details; those details belong to the
+certificate obligations and the component validator soundness lemmas.
+
 ## Problem
 
 The current affine validation route proves a strong fragment-level fact:

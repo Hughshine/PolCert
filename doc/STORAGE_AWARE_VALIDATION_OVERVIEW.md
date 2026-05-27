@@ -52,6 +52,20 @@ view and the `State.eq` output view.  `StateView.v` now provides a generic
 pair-certificate wrapper for parameterized transform families, so a
 feature-facing certificate theorem can hide the intermediate program and the
 two family checks while reusing one shared state-sound proof pattern.
+The next presentation layer names that shared endpoint directly:
+`states_match` is the readable state relation induced by a view, and the
+feature-facing theorem should be named as a semantic refinement:
+
+```text
+accepted certificate
+input states match
+target execution
+---------------------------------------------------------------
+matching source execution and output states match
+```
+
+The older `_state_sound` lemmas are compatibility/proof-engineering artifacts;
+the intended top theorem is the `_semantic_refinement` spelling.
 The first implementation step is `StateView.v`, which packages endpoint
 relations as views and wraps the existing affine/general validators as
 `same_state_view -> identity_view` refinements.  It also exposes a small

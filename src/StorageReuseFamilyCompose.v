@@ -71,6 +71,16 @@ Definition bounded_inter_array_reuse_certificate_output_view
     (InterArray.bounded_inter_array_reuse_output_view
       (biarc_reuse_params certificate)).
 
+Definition bounded_inter_array_reuse_certificate_input_states_match
+    (certificate: bounded_inter_array_reuse_certificate) :=
+  View.states_match
+    (bounded_inter_array_reuse_certificate_input_view certificate).
+
+Definition bounded_inter_array_reuse_certificate_output_states_match
+    (certificate: bounded_inter_array_reuse_certificate) :=
+  View.states_match
+    (bounded_inter_array_reuse_certificate_output_view certificate).
+
 Definition bounded_inter_array_reuse_certificate_accepted
     (certificate: bounded_inter_array_reuse_certificate)
     (before after: PolIRs.PolyLang.t) : Prop :=
@@ -121,6 +131,18 @@ Definition bounded_conflict_reuse_certificate_output_view
       (bcrc_promotion_params certificate))
     (Conflict.bounded_compatible_live_conflict_reuse_value_output_view
       (bcrc_reuse_params certificate)).
+
+Definition bounded_conflict_reuse_certificate_input_states_match
+    {value: Type}
+    (certificate: bounded_conflict_reuse_certificate value) :=
+  View.states_match
+    (bounded_conflict_reuse_certificate_input_view certificate).
+
+Definition bounded_conflict_reuse_certificate_output_states_match
+    {value: Type}
+    (certificate: bounded_conflict_reuse_certificate value) :=
+  View.states_match
+    (bounded_conflict_reuse_certificate_output_view certificate).
 
 Definition bounded_conflict_reuse_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
@@ -284,6 +306,27 @@ Proof.
        Haccepted Hinput Htarget).
 Qed.
 
+Theorem accepted_bounded_inter_array_reuse_certificate_semantic_refinement :
+  forall certificate source target st_target0 st_source0 st_target_after,
+    bounded_inter_array_reuse_certificate_accepted certificate source target ->
+    bounded_inter_array_reuse_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_inter_array_reuse_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros certificate source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_bounded_inter_array_reuse_certificate_state_sound
+       certificate source target st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
 Theorem bounded_conflict_reuse_then_scalar_promotion_public_semantic_refinement :
   forall (value: Type) (value_eqb: value -> value -> bool)
          (value_eqb_sound:
@@ -408,6 +451,36 @@ Proof.
        (bounded_conflict_reuse_pair_certificate
           value value_eqb value_eqb_sound certificate)
        before after st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_bounded_conflict_reuse_certificate_semantic_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: bounded_conflict_reuse_certificate value)
+         source target st_target0 st_source0 st_target_after,
+    bounded_conflict_reuse_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    bounded_conflict_reuse_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_conflict_reuse_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_bounded_conflict_reuse_certificate_state_sound
+       value value_eqb value_eqb_sound certificate
+       source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
 Qed.
 

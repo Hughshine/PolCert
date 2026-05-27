@@ -93,6 +93,18 @@ Definition bounded_scratchpad_copy_certificate_output_view
     (Scratchpad.scratchpad_copy_bounded_non_escape_output_view
       (bscc_scratchpad_params certificate)).
 
+Definition bounded_scratchpad_copy_certificate_input_states_match
+    {value: Type}
+    (certificate: bounded_scratchpad_copy_certificate value) :=
+  View.states_match
+    (bounded_scratchpad_copy_certificate_input_view certificate).
+
+Definition bounded_scratchpad_copy_certificate_output_states_match
+    {value: Type}
+    (certificate: bounded_scratchpad_copy_certificate value) :=
+  View.states_match
+    (bounded_scratchpad_copy_certificate_output_view certificate).
+
 Definition bounded_scratchpad_copy_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
     (value_eqb_sound:
@@ -150,6 +162,18 @@ Definition declared_copy_protocol_certificate_output_view
       (dcpc_promotion_params certificate))
     (Copy.copy_protocol_declared_bounded_compatible_commit_mapping_value_output_view
       (dcpc_copy_params certificate)).
+
+Definition declared_copy_protocol_certificate_input_states_match
+    {value: Type}
+    (certificate: declared_copy_protocol_certificate value) :=
+  View.states_match
+    (declared_copy_protocol_certificate_input_view certificate).
+
+Definition declared_copy_protocol_certificate_output_states_match
+    {value: Type}
+    (certificate: declared_copy_protocol_certificate value) :=
+  View.states_match
+    (declared_copy_protocol_certificate_output_view certificate).
 
 Definition declared_copy_protocol_certificate_accepted
     (value: Type) (value_eqb: value -> value -> bool)
@@ -354,6 +378,36 @@ Proof.
        Haccepted Hinput Htarget).
 Qed.
 
+Theorem accepted_bounded_scratchpad_copy_certificate_semantic_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: bounded_scratchpad_copy_certificate value)
+         source target st_target0 st_source0 st_target_after,
+    bounded_scratchpad_copy_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    bounded_scratchpad_copy_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      bounded_scratchpad_copy_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_bounded_scratchpad_copy_certificate_state_sound
+       value value_eqb value_eqb_sound certificate
+       source target st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
 Theorem bounded_copy_protocol_then_scalar_promotion_public_semantic_refinement :
   forall (value: Type) (value_eqb: value -> value -> bool)
          (value_eqb_sound:
@@ -479,6 +533,36 @@ Proof.
        (declared_copy_protocol_pair_certificate
           value value_eqb value_eqb_sound certificate)
        before after st_target0 st_source0 st_target_after
+       Haccepted Hinput Htarget).
+Qed.
+
+Theorem accepted_declared_copy_protocol_certificate_semantic_refinement :
+  forall (value: Type) (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+           forall left right,
+             value_eqb left right = true ->
+             left = right)
+         (certificate: declared_copy_protocol_certificate value)
+         source target st_target0 st_source0 st_target_after,
+    declared_copy_protocol_certificate_accepted
+      value value_eqb value_eqb_sound certificate source target ->
+    declared_copy_protocol_certificate_input_states_match
+      certificate st_target0 st_source0 ->
+    PolIRs.PolyLang.instance_list_semantics
+      target st_target0 st_target_after ->
+    exists st_source_after,
+      PolIRs.PolyLang.instance_list_semantics
+        source st_source0 st_source_after /\
+      declared_copy_protocol_certificate_output_states_match
+        certificate st_target_after st_source_after.
+Proof.
+  intros value value_eqb value_eqb_sound certificate
+         source target st_target0 st_source0 st_target_after
+         Haccepted Hinput Htarget.
+  exact
+    (accepted_declared_copy_protocol_certificate_state_sound
+       value value_eqb value_eqb_sound certificate
+       source target st_target0 st_source0 st_target_after
        Haccepted Hinput Htarget).
 Qed.
 
