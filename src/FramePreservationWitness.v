@@ -52,6 +52,19 @@ Proof.
     exact Hdisjoint.
 Qed.
 
+Lemma frame_preservation_write_allowed :
+  forall frame_cells write_cells allowed_write_cells cell,
+    frame_preservation_obligations
+      frame_cells write_cells allowed_write_cells ->
+    In cell write_cells ->
+    In cell allowed_write_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells cell Hframe Hwrite.
+  destruct Hframe as [_ Hwrites_allowed _].
+  apply Hwrites_allowed.
+  exact Hwrite.
+Qed.
+
 Definition writes_disjoint_from_frame
     (write_cells frame_cells: list MemCell) : Prop :=
   mem_cells_disjoint write_cells frame_cells.
@@ -114,4 +127,36 @@ Proof.
          Hframe Hwrite Hframe_cell Heq.
   subst.
   eapply frame_preservation_write_not_frame; eauto.
+Qed.
+
+Lemma check_frame_preservationb_write_allowed :
+  forall frame_cells write_cells allowed_write_cells cell,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    In cell write_cells ->
+    In cell allowed_write_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells cell Hcheck Hwrite.
+  pose proof
+    (check_frame_preservationb_sound
+       frame_cells write_cells allowed_write_cells Hcheck)
+    as Hframe.
+  eapply frame_preservation_write_allowed; eauto.
+Qed.
+
+Lemma check_frame_preservationb_write_neq_frame_cell :
+  forall frame_cells write_cells allowed_write_cells write_cell frame_cell,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    In write_cell write_cells ->
+    In frame_cell frame_cells ->
+    write_cell <> frame_cell.
+Proof.
+  intros frame_cells write_cells allowed_write_cells write_cell frame_cell
+         Hcheck Hwrite Hframe_cell.
+  pose proof
+    (check_frame_preservationb_sound
+       frame_cells write_cells allowed_write_cells Hcheck)
+    as Hframe.
+  eapply frame_preservation_write_neq_frame_cell; eauto.
 Qed.

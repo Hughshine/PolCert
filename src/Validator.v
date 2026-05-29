@@ -562,12 +562,18 @@ Definition storage_frame_preservation_obligations :=
   frame_preservation_obligations.
 Definition storage_frame_preservation_writes_disjoint :=
   frame_preservation_writes_disjoint.
+Definition storage_frame_preservation_write_allowed :=
+  frame_preservation_write_allowed.
 Definition storage_frame_preservation_allowed_not_frame :=
   frame_preservation_allowed_not_frame.
 Definition storage_frame_preservation_write_not_frame :=
   frame_preservation_write_not_frame.
 Definition storage_frame_preservation_write_neq_frame_cell :=
   frame_preservation_write_neq_frame_cell.
+Definition storage_check_frame_preservationb_write_allowed :=
+  check_frame_preservationb_write_allowed.
+Definition storage_check_frame_preservationb_write_neq_frame_cell :=
+  check_frame_preservationb_write_neq_frame_cell.
 Definition storage_frame_value_entry :=
   frame_value_entry.
 Definition storage_check_frame_valueb :=
@@ -576,10 +582,14 @@ Definition storage_check_frame_valueb_sound :=
   check_frame_valueb_sound.
 Definition storage_frame_value_obligations :=
   frame_value_obligations.
+Definition storage_frame_value_obligation_length_match :=
+  frame_value_obligation_length_match.
 Definition storage_frame_value_cell_preserved :=
   frame_value_cell_preserved.
 Definition storage_frame_value_entry_in_frame_cells :=
   frame_value_entry_in_frame_cells.
+Definition storage_frame_value_entry_preserved_from_obligation :=
+  frame_value_entry_preserved_from_obligation.
 Definition storage_frame_source_view_refines_view :=
   FramePreservationCore.frame_source_view_refines_view.
 Definition storage_frame_preservation_view_contract :=
@@ -594,8 +604,14 @@ Definition storage_frame_preservation_bounded_value_view_contract :=
   FramePreservationCore.frame_preservation_bounded_value_view_contract.
 Definition storage_checked_frame_preservation_bounded_value_view_correct :=
   FramePreservationCore.checked_frame_preservation_bounded_value_view_correct.
+Definition storage_frame_preservation_contract_write_allowed :=
+  FramePreservationCore.frame_preservation_contract_write_allowed.
 Definition storage_frame_preservation_frame_cell_value_preserved :=
   FramePreservationCore.frame_preservation_frame_cell_value_preserved.
+Definition storage_frame_preservation_frame_value_entry_in_frame_cells :=
+  FramePreservationCore.frame_preservation_frame_value_entry_in_frame_cells.
+Definition storage_frame_preservation_frame_value_length_match :=
+  FramePreservationCore.frame_preservation_frame_value_length_match.
 Definition storage_frame_preservation_allowed_write_within_bounds :=
   FramePreservationCore.frame_preservation_allowed_write_within_bounds.
 Definition storage_frame_preservation_write_within_allowed_bounds :=

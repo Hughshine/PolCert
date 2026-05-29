@@ -116,6 +116,24 @@ Proof.
         exact Htail.
 Qed.
 
+Lemma frame_value_entries_preserve_length :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value)),
+    frame_value_entries_preserve frame_cells entries ->
+    length frame_cells = length entries.
+Proof.
+  induction frame_cells as [|cell frame_tail IH];
+    intros entries Hpreserve;
+    destruct entries as [|entry entry_tail];
+    simpl in Hpreserve; try contradiction.
+  - reflexivity.
+  - simpl.
+    destruct Hpreserve as [_ [_ Htail]].
+    f_equal.
+    apply IH.
+    exact Htail.
+Qed.
+
 Record frame_value_obligations
     (frame_cells: list MemCell)
     (entries: list (frame_value_entry value)) : Prop := {
@@ -138,6 +156,17 @@ Proof.
   constructor.
   apply check_frame_value_entriesb_sound.
   exact Hcheck.
+Qed.
+
+Theorem frame_value_obligation_length_match :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value)),
+    frame_value_obligations frame_cells entries ->
+    length frame_cells = length entries.
+Proof.
+  intros frame_cells entries Hobligations.
+  destruct Hobligations as [Hpreserve].
+  eapply frame_value_entries_preserve_length; eauto.
 Qed.
 
 Lemma frame_value_entries_preserve_cell :
@@ -232,6 +261,22 @@ Proof.
   intros frame_cells entries entry Hobligations Hin.
   destruct Hobligations as [Hpreserve].
   eapply frame_value_entries_preserve_entry; eauto.
+Qed.
+
+Theorem frame_value_entry_preserved_from_obligation :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (entry: frame_value_entry value),
+    frame_value_obligations frame_cells entries ->
+    In entry entries ->
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  intros frame_cells entries entry Hobligations Hin.
+  pose proof
+    (frame_value_entry_in_frame_cells
+       frame_cells entries entry Hobligations Hin)
+    as [_ Hpreserved].
+  exact Hpreserved.
 Qed.
 
 End Soundness.

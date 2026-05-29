@@ -369,6 +369,21 @@ Definition frame_preservation_bounded_value_family
       value value_eqb value_eqb_sound;
 |}.
 
+Theorem frame_preservation_contract_write_allowed :
+  forall input_view output_view frame_cells write_cells allowed_write_cells
+         source_view after cell,
+    frame_preservation_view_contract
+      input_view output_view frame_cells write_cells allowed_write_cells
+      source_view after ->
+    In cell write_cells ->
+    In cell allowed_write_cells.
+Proof.
+  intros input_view output_view frame_cells write_cells allowed_write_cells
+         source_view after cell Hcontract Hwrite.
+  destruct Hcontract as [Hframe _ _].
+  eapply frame_preservation_write_allowed; eauto.
+Qed.
+
 Theorem frame_preservation_frame_cell_value_preserved :
   forall (value: Type) input_view output_view
          frame_cells write_cells allowed_write_cells frame_entries
@@ -388,6 +403,41 @@ Proof.
          Hcontract Hin.
   destruct Hcontract as [_ Hvalues].
   eapply frame_value_cell_preserved; eauto.
+Qed.
+
+Theorem frame_preservation_frame_value_entry_in_frame_cells :
+  forall (value: Type) input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         source_view after entry,
+    frame_preservation_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      source_view after ->
+    In entry frame_entries ->
+    In (fve_frame_cell entry) frame_cells /\
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  intros value input_view output_view frame_cells write_cells
+         allowed_write_cells frame_entries source_view after entry
+         Hcontract Hin.
+  destruct Hcontract as [_ Hvalues].
+  eapply frame_value_entry_in_frame_cells; eauto.
+Qed.
+
+Theorem frame_preservation_frame_value_length_match :
+  forall (value: Type) input_view output_view
+         frame_cells write_cells allowed_write_cells frame_entries
+         source_view after,
+    frame_preservation_value_view_contract
+      value input_view output_view
+      frame_cells write_cells allowed_write_cells frame_entries
+      source_view after ->
+    length frame_cells = length frame_entries.
+Proof.
+  intros value input_view output_view frame_cells write_cells
+         allowed_write_cells frame_entries source_view after Hcontract.
+  destruct Hcontract as [_ Hvalues].
+  eapply frame_value_obligation_length_match; eauto.
 Qed.
 
 Theorem frame_preservation_allowed_write_within_bounds :

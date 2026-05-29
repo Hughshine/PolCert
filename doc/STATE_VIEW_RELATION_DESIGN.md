@@ -426,9 +426,14 @@ the top theorem is still semantic refinement under public views, while the
 write-set, frame-value, and bounds witnesses remain side conditions.  The frame
 value witness now also exposes both directions of the finite table evidence:
 every frame cell has a preserving value entry, and every supplied value entry is
-known to belong to the checked frame.  The missing piece is deriving
-`write_cells` from concrete instruction semantics rather than supplying it as a
-finite witness.
+known to belong to the checked frame.  The witness and validator layers also
+expose direct projections for the operational facts future instruction proofs
+will need: checked writes are allowed writes, checked writes are distinct from
+frame cells, supplied frame-value entries preserve their before/after value, and
+the frame-cell/value-entry lists have matching length.  These are still
+evidence-layer facts; the public endpoint remains the same intuitive
+view-refinement theorem.  The missing piece is deriving `write_cells` from
+concrete instruction semantics rather than supplying it as a finite witness.
 
 ### Commit Policy
 
