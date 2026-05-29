@@ -478,3 +478,47 @@ Proof.
   - exact Hsimulates.
   - exact Hin.
 Qed.
+
+Theorem scalar_value_obligation_load_values_equal :
+  forall (value: Type)
+         (value_trace: scalar_promotion_value_trace value)
+         source_cell scalar_cell source_value scalar_value,
+    scalar_value_simulation_obligations value value_trace ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) value_trace ->
+    source_value = scalar_value.
+Proof.
+  intros value value_trace source_cell scalar_cell source_value scalar_value
+         Hobligations Hin.
+  pose proof
+    (scalar_value_obligation_event_matched
+       value value_trace
+       (PromotionLoad source_cell scalar_cell)
+       (PromotionValueLoad source_value scalar_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem scalar_value_obligation_store_values_equal :
+  forall (value: Type)
+         (value_trace: scalar_promotion_value_trace value)
+         scalar_cell source_cell scalar_value source_value,
+    scalar_value_simulation_obligations value value_trace ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) value_trace ->
+    scalar_value = source_value.
+Proof.
+  intros value value_trace scalar_cell source_cell scalar_value source_value
+         Hobligations Hin.
+  pose proof
+    (scalar_value_obligation_event_matched
+       value value_trace
+       (PromotionStore scalar_cell source_cell)
+       (PromotionValueStore scalar_value source_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.

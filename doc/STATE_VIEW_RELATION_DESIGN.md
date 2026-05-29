@@ -1659,8 +1659,8 @@ scalar, writes update it, and store-back commits the current scalar value.
 the storage protocol, value-flow witness, and private separation for the scalar
 cell.  `ScalarPromotionValueWitness.v` now exposes selected-event projection:
 from a checked value-flow trace, an arbitrary event recovers the matching
-promotion-event kind plus the load/store value equality carried by that value
-event.  `CInstrScalarPromotionWitness.v` now supplies the first concrete
+promotion-event kind; the load and store cases also have direct equal-value
+lemmas.  `CInstrScalarPromotionWitness.v` now supplies the first concrete
 instruction bridge for that value trace: CInstr access, expression-evaluation,
 and assignment steps can justify promotion load/read/write/store/global-write
 events, and an ordered CInstr-derived trace proves the generic scalar-promotion
@@ -1686,6 +1686,10 @@ and `scalar_promotion_bounded_compatible_non_escape_value_family`.  That means
 load/read/write/store-back protocol, value flow, compatibility, source/scalar
 bounds, scalar non-escape, and scalar separation can be packaged as a reusable
 public-view family even before CInstr-specific trace derivation is attached.
+The validator layer also exposes direct contract projections for load/store
+value equality and for the compatible source/scalar storage specs, so these
+facts remain side conditions below the intuitive public-view theorem instead
+of becoming part of the theorem surface.
 
 This is local storage refinement, not a global layout transformation.
 

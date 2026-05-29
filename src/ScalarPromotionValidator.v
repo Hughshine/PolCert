@@ -634,6 +634,157 @@ Definition scalar_promotion_bounded_compatible_non_escape_value_family
       value value_eqb value_eqb_sound;
 |}.
 
+Theorem scalar_promotion_value_load_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         public_cells frame_cells
+         source_view after source_value scalar_value,
+    scalar_promotion_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace public_cells frame_cells
+      source_view after ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) value_trace ->
+    source_value = scalar_value.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         public_cells frame_cells source_view after source_value scalar_value
+         Hcontract Hin.
+  destruct Hcontract as [_ Hvalue_simulation _ _].
+  eapply scalar_value_obligation_load_values_equal; eauto.
+Qed.
+
+Theorem scalar_promotion_value_store_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         public_cells frame_cells
+         source_view after scalar_value source_value,
+    scalar_promotion_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace public_cells frame_cells
+      source_view after ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) value_trace ->
+    scalar_value = source_value.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         public_cells frame_cells source_view after scalar_value source_value
+         Hcontract Hin.
+  destruct Hcontract as [_ Hvalue_simulation _ _].
+  eapply scalar_value_obligation_store_values_equal; eauto.
+Qed.
+
+Theorem scalar_promotion_source_scalar_compatible_specs :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs public_cells frame_cells
+         source_view after,
+    scalar_promotion_compatible_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      public_cells frame_cells source_view after ->
+    exists logical_spec scalar_spec,
+      In logical_spec logical_specs /\
+      In scalar_spec scalar_specs /\
+      storage_spec_cell logical_spec = source_cell /\
+      storage_spec_cell scalar_spec = scalar_cell /\
+      storage_specs_compatible logical_spec scalar_spec.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs public_cells frame_cells
+         source_view after Hcontract.
+  destruct Hcontract as [_ _ _ Hcompatible _].
+  eapply storage_compatibility_mapping_pair_specs.
+  - exact Hcompatible.
+  - simpl. left. reflexivity.
+Qed.
+
+Theorem scalar_promotion_bounded_value_load_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after source_value scalar_value,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) value_trace ->
+    source_value = scalar_value.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after source_value scalar_value
+         Hcontract Hin.
+  destruct Hcontract as [Hbase _ _ _].
+  destruct Hbase as [_ Hvalue_simulation _ _ _].
+  eapply scalar_value_obligation_load_values_equal; eauto.
+Qed.
+
+Theorem scalar_promotion_bounded_value_store_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after scalar_value source_value,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) value_trace ->
+    scalar_value = source_value.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after scalar_value source_value
+         Hcontract Hin.
+  destruct Hcontract as [Hbase _ _ _].
+  destruct Hbase as [_ Hvalue_simulation _ _ _].
+  eapply scalar_value_obligation_store_values_equal; eauto.
+Qed.
+
+Theorem scalar_promotion_bounded_source_scalar_compatible_specs :
+  forall (value: Type)
+         input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells
+         source_view after,
+    scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_cell scalar_cell
+      source_liveout trace value_trace logical_specs scalar_specs
+      source_bounds scalar_bounds escaped_cells public_cells frame_cells
+      source_view after ->
+    exists logical_spec scalar_spec,
+      In logical_spec logical_specs /\
+      In scalar_spec scalar_specs /\
+      storage_spec_cell logical_spec = source_cell /\
+      storage_spec_cell scalar_spec = scalar_cell /\
+      storage_specs_compatible logical_spec scalar_spec.
+Proof.
+  intros value input_view output_view
+         source_cell scalar_cell source_liveout trace value_trace
+         logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+         public_cells frame_cells source_view after Hcontract.
+  destruct Hcontract as [Hbase _ _ _].
+  eapply scalar_promotion_source_scalar_compatible_specs.
+  exact Hbase.
+Qed.
+
 Theorem scalar_promotion_source_cell_within_bounds :
   forall (value: Type)
          input_view output_view
