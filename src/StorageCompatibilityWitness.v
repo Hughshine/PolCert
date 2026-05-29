@@ -197,6 +197,23 @@ Proof.
         -- exact Hspecs.
 Qed.
 
+Theorem check_storage_mapping_entry_compatibleb_specs :
+  forall logical_specs physical_specs mapping_entry,
+    check_storage_mapping_entry_compatibleb
+      logical_specs physical_specs mapping_entry = true ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros logical_specs physical_specs mapping_entry Hcheck.
+  apply storage_mapping_entry_compatible_specs.
+  apply check_storage_mapping_entry_compatibleb_sound.
+  exact Hcheck.
+Qed.
+
 Fixpoint check_storage_mapping_compatibleb
     (mapping: reuse_mapping)
     (logical_specs physical_specs: list storage_spec) : bool :=
@@ -293,4 +310,104 @@ Proof.
   apply storage_mapping_entry_compatible_specs.
   apply Hcompatible.
   exact Hin.
+Qed.
+
+Theorem storage_compatibility_mapping_pair_specs :
+  forall mapping logical_specs physical_specs logical_cell physical_cell,
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs logical_cell physical_cell
+         Hobligations Hin.
+  destruct
+    (storage_compatibility_mapping_entry_specs
+       mapping logical_specs physical_specs
+       (logical_cell, physical_cell) Hobligations Hin)
+    as (logical_spec & physical_spec &
+        Hlogical_in & Hphysical_in & Hlogical_cell &
+        Hphysical_cell & Hcompatible).
+  simpl in Hlogical_cell, Hphysical_cell.
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hcompatible.
+Qed.
+
+Theorem storage_compatibility_lookup_specs :
+  forall mapping logical_specs physical_specs logical_cell physical_cell,
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs logical_cell physical_cell
+         Hobligations Hlookup.
+  assert (In (logical_cell, physical_cell) mapping) as Hin.
+  {
+    destruct
+      (reuse_lookup_sound logical_cell physical_cell mapping Hlookup)
+      as [Hin | (logical_cell' & Hin & Hlogical_eq)].
+    - exact Hin.
+    - rewrite <- Hlogical_eq in Hin.
+      exact Hin.
+  }
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem check_storage_compatibilityb_mapping_pair_specs :
+  forall mapping logical_specs physical_specs logical_cell physical_cell,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs logical_cell physical_cell
+         Hcheck Hin.
+  eapply storage_compatibility_mapping_pair_specs.
+  - apply check_storage_compatibilityb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_storage_compatibilityb_lookup_specs :
+  forall mapping logical_specs physical_specs logical_cell physical_cell,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs logical_cell physical_cell
+         Hcheck Hlookup.
+  eapply storage_compatibility_lookup_specs.
+  - apply check_storage_compatibilityb_sound.
+    exact Hcheck.
+  - exact Hlookup.
 Qed.

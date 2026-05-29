@@ -1254,8 +1254,18 @@ Definition storage_storage_spec_lookup_entry :=
   storage_spec_lookup_entry.
 Definition storage_mapping_entry_compatible_specs :=
   storage_mapping_entry_compatible_specs.
+Definition storage_check_storage_mapping_entry_compatibleb_specs :=
+  check_storage_mapping_entry_compatibleb_specs.
 Definition storage_compatibility_mapping_entry_specs :=
   storage_compatibility_mapping_entry_specs.
+Definition storage_compatibility_mapping_pair_specs :=
+  storage_compatibility_mapping_pair_specs.
+Definition storage_compatibility_lookup_specs :=
+  storage_compatibility_lookup_specs.
+Definition storage_check_storage_compatibilityb_mapping_pair_specs :=
+  check_storage_compatibilityb_mapping_pair_specs.
+Definition storage_check_storage_compatibilityb_lookup_specs :=
+  check_storage_compatibilityb_lookup_specs.
 Definition storage_check_inter_array_reuseb :=
   check_inter_array_reuseb.
 Definition storage_check_inter_array_reuseb_sound :=

@@ -2026,7 +2026,9 @@ The contraction-facing wrappers
 `checked_compatible_live_conflict_reuse_value_view_correct` now package the
 full finite side condition expected by a rolling-buffer proof: live-overlap
 cover, conflict-safe physical separation, storage compatibility, and optional
-boundary value equality.  The bounded/compatible/live value contract now also
+boundary value equality.  The shared storage-compatibility witness can now
+recover concrete logical/physical spec entries directly from the checker or a
+reuse lookup result.  The bounded/compatible/live value contract now also
 projects concrete mapping pairs and value entries to the checked physical
 bounds and logical/physical storage-spec entries, without changing the top
 `view_refinement` statement.  They still do not derive the live intervals or

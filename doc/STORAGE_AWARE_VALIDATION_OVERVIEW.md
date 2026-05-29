@@ -546,7 +546,10 @@ and scratch/local-buffer reuse without pretending that the specs have already
 been derived from C types.  It also exposes table-entry projections from the
 lookup-based check: every successful spec lookup is tied to a concrete supplied
 spec entry, and every compatible mapping edge can recover the logical and
-physical spec entries whose size/alignment facts were checked.
+physical spec entries whose size/alignment facts were checked.  The shared
+corollaries now work directly from either the compatibility checker or a
+`reuse_lookup` result, so pass-specific wrappers can recover the concrete
+logical/physical spec entries without restating the lookup-to-entry argument.
 `InterArrayReuseWitness.v` packages the inter-array reuse case without adding
 a new primitive: it combines live-interval conflict cover, conflict-safe reuse,
 and storage compatibility.  Its derived facts say that mapped live-overlapping
