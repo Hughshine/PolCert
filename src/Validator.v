@@ -860,6 +860,10 @@ Definition storage_check_cell_within_declared_boundsb :=
   check_cell_within_declared_boundsb.
 Definition storage_check_cell_within_declared_boundsb_sound :=
   check_cell_within_declared_boundsb_sound.
+Definition storage_cell_within_declared_bounds_entry :=
+  cell_within_declared_bounds_entry.
+Definition storage_check_cell_within_declared_boundsb_entry :=
+  check_cell_within_declared_boundsb_entry.
 Definition storage_check_cells_within_declared_boundsb :=
   check_cells_within_declared_boundsb.
 Definition storage_check_cells_within_declared_boundsb_sound :=
@@ -872,6 +876,10 @@ Definition storage_check_storage_boundsb_sound :=
   check_storage_boundsb_sound.
 Definition storage_bounds_cell_within :=
   storage_bounds_cell_within.
+Definition storage_bounds_cell_bound_entry :=
+  storage_bounds_cell_bound_entry.
+Definition storage_check_storage_boundsb_cell_bound_entry :=
+  check_storage_boundsb_cell_bound_entry.
 Definition storage_padding_source_view_refines_view :=
   PaddingLayoutCore.padding_source_view_refines_view.
 Definition storage_padding_layout_view_contract :=

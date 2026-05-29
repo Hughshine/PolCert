@@ -375,3 +375,71 @@ Proof.
   destruct Hobligations as [_ Hcells].
   eapply Hcells; eauto.
 Qed.
+
+Theorem cell_within_declared_bounds_entry :
+  forall bounds cell,
+    cell_within_declared_bounds bounds cell ->
+    exists bound,
+      In bound bounds /\
+      array_bounds_id bound = arr_id cell /\
+      indices_within_bounds
+        (arr_index cell)
+        (array_bounds_extents bound).
+Proof.
+  intros bounds cell Hwithin.
+  destruct Hwithin as (bound & Hin & Harray).
+  unfold cell_within_array_bounds in Harray.
+  destruct Harray as [Hid Hindices].
+  exists bound.
+  repeat split; assumption.
+Qed.
+
+Theorem check_cell_within_declared_boundsb_entry :
+  forall bounds cell,
+    check_cell_within_declared_boundsb bounds cell = true ->
+    exists bound,
+      In bound bounds /\
+      array_bounds_id bound = arr_id cell /\
+      indices_within_bounds
+        (arr_index cell)
+        (array_bounds_extents bound).
+Proof.
+  intros bounds cell Hcheck.
+  apply cell_within_declared_bounds_entry.
+  apply check_cell_within_declared_boundsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem storage_bounds_cell_bound_entry :
+  forall bounds cells cell,
+    storage_bounds_obligations bounds cells ->
+    In cell cells ->
+    exists bound,
+      In bound bounds /\
+      array_bounds_id bound = arr_id cell /\
+      indices_within_bounds
+        (arr_index cell)
+        (array_bounds_extents bound).
+Proof.
+  intros bounds cells cell Hobligations Hin.
+  apply cell_within_declared_bounds_entry.
+  eapply storage_bounds_cell_within; eauto.
+Qed.
+
+Theorem check_storage_boundsb_cell_bound_entry :
+  forall bounds cells cell,
+    check_storage_boundsb bounds cells = true ->
+    In cell cells ->
+    exists bound,
+      In bound bounds /\
+      array_bounds_id bound = arr_id cell /\
+      indices_within_bounds
+        (arr_index cell)
+        (array_bounds_extents bound).
+Proof.
+  intros bounds cells cell Hcheck Hin.
+  apply storage_bounds_cell_bound_entry with (cells := cells).
+  - apply check_storage_boundsb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.

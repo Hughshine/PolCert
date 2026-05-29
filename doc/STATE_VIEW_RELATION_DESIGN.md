@@ -966,7 +966,9 @@ bounded/compatible/live-conflict/value route as
 the feature-specific facts explicit: checked live intervals cover conflicts,
 checked reuse separates every conflict, checked boundary values agree along the
 reuse map, mapped logical/physical storage specs are compatible, and mapped
-physical cells lie within declared bounds.  The exported family conclusion is
+physical cells lie within declared bounds.  The shared bounds witness can now
+project that last fact back to the concrete declared array-bound entry and the
+per-dimension index proof.  The exported family conclusion is
 still only the public endpoint relation.  `StorageReuseFamilyCompose` uses that
 family with scalar promotion through `public_semantic_refinement`, so general
 contraction/rolling-buffer reuse has the same top theorem shape as the phase

@@ -416,7 +416,11 @@ allocated, and padding cells are duplicate-free, allocated, and outside the
 represented target image.  `StorageBoundsWitness.v` adds the structured
 in-bounds side: declared array extents are well formed, finite physical cells
 can be checked against those extents, and padding/layout validators can require
-all allocated physical cells to be within declared bounds.  `LayoutValueWitness.v` adds the boundary value side:
+all allocated physical cells to be within declared bounds.  Its derived
+projections now recover the concrete array-bounds entry and per-dimension
+index proof for a checked cell, so later pass-specific corollaries can cite the
+actual declared extent rather than only the packed `cell_within_declared_bounds`
+predicate.  `LayoutValueWitness.v` adds the boundary value side:
 each source-to-target layout map entry can be paired with evidence that the
 source logical value equals the represented target physical value.
 `PaddingLayoutValidator.v` composes the structural, optional access-remap, and
