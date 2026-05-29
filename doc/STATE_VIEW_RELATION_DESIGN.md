@@ -1484,13 +1484,25 @@ cells and no others.
 to projected helper instances: copy-in/local events must be internal
 instances, and copy-out events must be commit-role instances.  This is the
 finite witness that lets instance projection and copy protocol speak about the
-same helper trace.
+same helper trace.  The derived entry projections
+`copy_instance_trace_obligation_target_event` and
+`copy_instance_trace_obligation_event_target` expose the positional
+correspondence in both directions without changing the top-level theorem shape.
 `CopyMappingWitness.check_copy_mappingb_sound` adds the local remapping layer:
 a finite public-to-local map is injective on both sides, and copy-in, local
 read/write, and copy-out events must use that declared map consistently.
+The declaration projections
+`copy_mapping_local_declaration_pair_local_declared` and
+`copy_mapping_declaration_pair_declared` turn a concrete mapping pair into
+declared local/public membership facts, keeping the declaration tables as
+witness evidence rather than as endpoint relations.
 `CopyProtocolValueWitness.v` adds a value-flow layer for copy protocols:
 copy-in transfers source value to local value, local reads observe the current
 local value, local writes update it, and copy-out commits it to the target.
+`copy_value_obligation_event_entry` and
+`copy_value_obligation_trace_event_entry` project checked value flow back to
+concrete value-trace entries with matching copy-event kind and equal boundary
+values.
 `CopyProtocolValidator.checked_copy_protocol_value_view_correct`,
 `checked_copy_protocol_mapping_view_correct`, and
 `checked_copy_protocol_mapping_value_view_correct` package these facts into the

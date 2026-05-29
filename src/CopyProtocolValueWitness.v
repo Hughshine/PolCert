@@ -180,6 +180,28 @@ Proof.
       exact Htail.
 Qed.
 
+Lemma copy_value_trace_event_in_trace :
+  forall (value: Type)
+         (trace: copy_value_trace value)
+         copy_event',
+    In copy_event' (copy_value_trace_events trace) ->
+    exists value_event,
+      In (copy_event', value_event) trace.
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros copy_event' Hin; simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + subst copy_event'.
+      exists head_value.
+      simpl. left. reflexivity.
+    + pose proof (IH copy_event' Htail)
+        as (value_event & Hin_trace).
+      exists value_event.
+      simpl. right. exact Hin_trace.
+Qed.
+
 Fixpoint copy_value_trace_values {value: Type}
     (trace: copy_value_trace value) : list (copy_value_event value) :=
   match trace with
@@ -187,6 +209,28 @@ Fixpoint copy_value_trace_values {value: Type}
   | (_, value_event) :: tail =>
       value_event :: copy_value_trace_values tail
   end.
+
+Lemma copy_value_trace_value_in_trace :
+  forall (value: Type)
+         (trace: copy_value_trace value)
+         value_event,
+    In value_event (copy_value_trace_values trace) ->
+    exists copy_event',
+      In (copy_event', value_event) trace.
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros value_event Hin; simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + subst value_event.
+      exists head_event.
+      simpl. left. reflexivity.
+    + pose proof (IH value_event Htail)
+        as (copy_event' & Hin_trace).
+      exists copy_event'.
+      simpl. right. exact Hin_trace.
+Qed.
 
 Fixpoint copy_local_use_def_from
     (defined_locals: list MemCell)
@@ -534,4 +578,49 @@ Proof.
   eapply copy_value_trace_simulates_from_event_matched.
   - exact Hsimulates.
   - exact Hin.
+Qed.
+
+Theorem copy_value_obligation_event_entry :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         copy_event',
+    copy_value_simulation_obligations value value_trace ->
+    In copy_event' (copy_value_trace_events value_trace) ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value value_trace copy_event' Hobligations Hin.
+  pose proof
+    (copy_value_trace_event_in_trace
+       value value_trace copy_event' Hin)
+    as (value_event & Hentry_in).
+  pose proof
+    (copy_value_obligation_event_matched
+       value value_trace copy_event' value_event
+       Hobligations Hentry_in)
+    as [Hkind Hvalues].
+  exists value_event.
+  split.
+  - exact Hentry_in.
+  - split; assumption.
+Qed.
+
+Theorem copy_value_obligation_trace_event_entry :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         events copy_event',
+    copy_value_simulation_obligations value value_trace ->
+    copy_value_trace_events value_trace = events ->
+    In copy_event' events ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value value_trace events copy_event'
+         Hobligations Hevents Hin.
+  subst events.
+  eapply copy_value_obligation_event_entry; eauto.
 Qed.

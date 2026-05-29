@@ -275,6 +275,69 @@ Proof.
     eapply mem_cells_subsetb_sound; eauto.
 Qed.
 
+Lemma copy_mapping_pair_public_in_publics :
+  forall mapping public_cell local_cell,
+    copy_mapping_pair mapping public_cell local_cell ->
+    In public_cell (copy_mapping_publics mapping).
+Proof.
+  unfold copy_mapping_pair.
+  induction mapping as [|[mapped_public mapped_local] tail IH];
+    intros public_cell local_cell Hin;
+    simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      apply IH with (local_cell := local_cell).
+      exact Htail.
+Qed.
+
+Lemma copy_mapping_pair_local_in_locals :
+  forall mapping public_cell local_cell,
+    copy_mapping_pair mapping public_cell local_cell ->
+    In local_cell (copy_mapping_locals mapping).
+Proof.
+  unfold copy_mapping_pair.
+  induction mapping as [|[mapped_public mapped_local] tail IH];
+    intros public_cell local_cell Hin;
+    simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      apply IH with (public_cell := public_cell).
+      exact Htail.
+Qed.
+
+Theorem copy_mapping_local_declaration_pair_local_declared :
+  forall mapping local_cells public_cell local_cell,
+    copy_mapping_local_declaration_obligations mapping local_cells ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    In local_cell local_cells.
+Proof.
+  intros mapping local_cells public_cell local_cell Hdecl Hpair.
+  eapply cmld_mapping_locals_declared; eauto.
+  eapply copy_mapping_pair_local_in_locals; eauto.
+Qed.
+
+Theorem copy_mapping_declaration_pair_declared :
+  forall mapping public_cells local_cells public_cell local_cell,
+    copy_mapping_declaration_obligations
+      mapping public_cells local_cells ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    In public_cell public_cells /\ In local_cell local_cells.
+Proof.
+  intros mapping public_cells local_cells public_cell local_cell
+         Hdecl Hpair.
+  split.
+  - eapply cmd_mapping_publics_declared; eauto.
+    eapply copy_mapping_pair_public_in_publics; eauto.
+  - eapply cmd_mapping_locals_declared; eauto.
+    eapply copy_mapping_pair_local_in_locals; eauto.
+Qed.
+
 Lemma copy_mapping_declaration_local_only :
   forall mapping public_cells local_cells,
     copy_mapping_declaration_obligations

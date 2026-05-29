@@ -995,6 +995,14 @@ Definition storage_check_copy_mapping_declarationb_sound :=
   check_copy_mapping_declarationb_sound.
 Definition storage_copy_mapping_declaration_obligations :=
   copy_mapping_declaration_obligations.
+Definition storage_copy_mapping_pair_public_in_publics :=
+  copy_mapping_pair_public_in_publics.
+Definition storage_copy_mapping_pair_local_in_locals :=
+  copy_mapping_pair_local_in_locals.
+Definition storage_copy_mapping_local_declaration_pair_local_declared :=
+  copy_mapping_local_declaration_pair_local_declared.
+Definition storage_copy_mapping_declaration_pair_declared :=
+  copy_mapping_declaration_pair_declared.
 Definition storage_copy_mapping_declaration_local_only :=
   copy_mapping_declaration_local_only.
 Definition storage_copy_mapping_declared_local_public_disjoint :=
@@ -1025,6 +1033,12 @@ Definition storage_copy_value_obligations_local_use_def :=
   copy_value_obligations_local_use_def.
 Definition storage_copy_value_obligations_events_local_use_def :=
   copy_value_obligations_events_local_use_def.
+Definition storage_copy_value_obligation_event_matched :=
+  copy_value_obligation_event_matched.
+Definition storage_copy_value_obligation_event_entry :=
+  copy_value_obligation_event_entry.
+Definition storage_copy_value_obligation_trace_event_entry :=
+  copy_value_obligation_trace_event_entry.
 Definition storage_check_copy_protocol_wfb :=
   check_copy_protocol_wfb.
 Definition storage_check_copy_protocol_wfb_sound :=
@@ -1055,6 +1069,12 @@ Definition storage_check_copy_instance_traceb_obligations_sound :=
   check_copy_instance_traceb_obligations_sound.
 Definition storage_copy_instance_trace_obligations :=
   copy_instance_trace_obligations.
+Definition storage_copy_instance_trace_obligations_length_match :=
+  copy_instance_trace_obligations_length_match.
+Definition storage_copy_instance_trace_obligation_target_event :=
+  copy_instance_trace_obligation_target_event.
+Definition storage_copy_instance_trace_obligation_event_target :=
+  copy_instance_trace_obligation_event_target.
 Definition storage_copy_source_view_refines_view :=
   CopyProtocolCore.copy_source_view_refines_view.
 Definition storage_copy_protocol_view_contract :=
