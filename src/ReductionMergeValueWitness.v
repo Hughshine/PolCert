@@ -136,6 +136,47 @@ Proof.
         exact Hin_tail.
 Qed.
 
+Lemma reduction_value_entry_cell_in_cells :
+  forall (value: Type)
+         cell value'
+         (values: list (reduction_accumulator_value value)),
+    In (cell, value') values ->
+    In cell (reduction_value_cells values).
+Proof.
+  intros value cell value' values.
+  induction values as [|[head_cell head_value] tail IH];
+    intros Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      apply IH.
+      exact Htail.
+Qed.
+
+Lemma reduction_value_lookup_entry :
+  forall (value: Type)
+         cell value'
+         (values: list (reduction_accumulator_value value)),
+    reduction_value_lookup cell values = Some value' ->
+    In (cell, value') values.
+Proof.
+  intros value cell value' values.
+  induction values as [|[head_cell head_value] tail IH];
+    intros Hlookup; simpl in Hlookup.
+  - discriminate.
+  - destruct (mem_cell_strict_eqb cell head_cell) eqn:Heq.
+    + apply mem_cell_strict_eqb_eq in Heq.
+      left.
+      destruct Heq.
+      inversion Hlookup; subst.
+      reflexivity.
+    + right.
+      apply IH.
+      exact Hlookup.
+Qed.
+
 Definition check_reduction_value_mergeb {value: Type}
     (value_eqb: value -> value -> bool)
     (merge_op: value -> value -> value)
@@ -241,6 +282,29 @@ Proof.
   exact Hin_merge.
 Qed.
 
+Theorem reduction_merged_accumulator_value_entry :
+  forall initial_value final_value merge_order values cell,
+    reduction_value_merge_obligations
+      initial_value final_value merge_order values ->
+    In cell merge_order ->
+    exists value',
+      In (cell, value') values /\
+      reduction_value_lookup cell values = Some value'.
+Proof.
+  intros initial_value final_value merge_order values cell
+         Hobligations Hin_merge.
+  destruct
+    (reduction_merged_accumulator_has_value
+       initial_value final_value merge_order values cell
+       Hobligations Hin_merge)
+    as (value' & Hlookup).
+  exists value'.
+  split.
+  - apply reduction_value_lookup_entry.
+    exact Hlookup.
+  - exact Hlookup.
+Qed.
+
 Theorem reduction_value_cell_in_merge_order :
   forall initial_value final_value merge_order values cell,
     reduction_value_merge_obligations
@@ -254,6 +318,21 @@ Proof.
   destruct Hcover as [_ Hexact_cover].
   apply Hexact_cover.
   exact Hin_value.
+Qed.
+
+Theorem reduction_accumulator_value_entry_in_merge_order :
+  forall initial_value final_value merge_order values cell value',
+    reduction_value_merge_obligations
+      initial_value final_value merge_order values ->
+    In (cell, value') values ->
+    In cell merge_order.
+Proof.
+  intros initial_value final_value merge_order values cell value'
+         Hobligations Hin_value.
+  eapply reduction_value_cell_in_merge_order.
+  - exact Hobligations.
+  - eapply reduction_value_entry_cell_in_cells.
+    exact Hin_value.
 Qed.
 
 End Soundness.

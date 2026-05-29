@@ -1820,7 +1820,10 @@ domain, merge-order cells are private iff they are private accumulators, and
 both covered instances and merge order are duplicate-free.
 `ReductionMergeValueWitness.v` adds the fold-value side: it
 looks up supplied values for merge-order accumulators and checks that folding
-them with a supplied merge operator yields the claimed final value.
+them with a supplied merge operator yields the claimed final value.  It also
+exposes accumulator-value entry projections in both directions: a selected
+merge-order accumulator has a concrete `(cell, value)` table entry and lookup
+result, and every table entry is tied back to the merge order.
 `ReductionAlgebraWitness.v` adds a finite-carrier law checker: the associative
 variant checks closure, associativity, and two-sided identity on the carrier;
 the commutative variant additionally checks commutativity.

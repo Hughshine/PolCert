@@ -1581,10 +1581,18 @@ Definition storage_reduction_merged_accumulator_private :=
   reduction_merged_accumulator_private.
 Definition storage_reduction_accumulator_value_cells_nodup :=
   reduction_accumulator_value_cells_nodup.
+Definition storage_reduction_value_entry_cell_in_cells :=
+  reduction_value_entry_cell_in_cells.
+Definition storage_reduction_value_lookup_entry :=
+  reduction_value_lookup_entry.
 Definition storage_reduction_merged_accumulator_has_value :=
   reduction_merged_accumulator_has_value.
+Definition storage_reduction_merged_accumulator_value_entry :=
+  reduction_merged_accumulator_value_entry.
 Definition storage_reduction_value_cell_in_merge_order :=
   reduction_value_cell_in_merge_order.
+Definition storage_reduction_accumulator_value_entry_in_merge_order :=
+  reduction_accumulator_value_entry_in_merge_order.
 Definition storage_reduction_source_view_refines_view :=
   ReductionMergeCore.reduction_source_view_refines_view.
 Definition storage_reduction_merge_view_contract :=
