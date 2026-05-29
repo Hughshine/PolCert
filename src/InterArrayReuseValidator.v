@@ -307,6 +307,86 @@ Proof.
            mapping logical_cell physical_cell Hlookup).
 Qed.
 
+Theorem bounded_inter_array_mapping_pair_within_bounds :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    cell_within_declared_bounds physical_bounds physical_cell.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [_ _ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := reuse_mapping_targets mapping); eauto.
+  eapply reuse_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem bounded_inter_array_mapping_pair_cell_relation :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    reuse_cell_relation mapping physical_cell logical_cell.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [Hreuse _ _ _].
+  eapply inter_array_mapping_pair_cell_relation; eauto.
+Qed.
+
+Theorem bounded_inter_array_mapping_pair_compatible_specs :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [Hreuse _ _ _].
+  eapply inter_array_mapping_pair_compatible_specs; eauto.
+Qed.
+
+Theorem bounded_inter_array_lookup_compatible_specs :
+  forall input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell,
+    bounded_inter_array_reuse_view_contract
+      input_view output_view mapping physical_bounds intervals conflicts
+      logical_specs physical_specs source_view after ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros input_view output_view mapping physical_bounds intervals conflicts
+         logical_specs physical_specs source_view after
+         logical_cell physical_cell Hcontract Hlookup.
+  destruct Hcontract as [Hreuse _ _ _].
+  eapply inter_array_lookup_compatible_specs; eauto.
+Qed.
+
 Theorem bounded_inter_array_overlap_mapped_distinct :
   forall input_view output_view mapping physical_bounds intervals conflicts
          logical_specs physical_specs source_view after

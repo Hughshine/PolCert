@@ -1248,6 +1248,14 @@ Definition storage_inter_array_storage_mapping_compatible :=
   inter_array_storage_mapping_compatible.
 Definition storage_inter_array_reuse_boundary_obligations :=
   inter_array_reuse_boundary_obligations.
+Definition storage_inter_array_mapping_pair_cell_relation :=
+  inter_array_mapping_pair_cell_relation.
+Definition storage_inter_array_mapping_entry_compatible_specs :=
+  inter_array_mapping_entry_compatible_specs.
+Definition storage_inter_array_mapping_pair_compatible_specs :=
+  inter_array_mapping_pair_compatible_specs.
+Definition storage_inter_array_lookup_compatible_specs :=
+  inter_array_lookup_compatible_specs.
 Definition storage_inter_array_live_overlaps_reuse_separated :=
   inter_array_live_overlaps_reuse_separated.
 Definition storage_inter_array_overlap_mapped_distinct :=
@@ -1266,6 +1274,14 @@ Definition storage_checked_bounded_inter_array_reuse_view_correct :=
   InterArrayReuseCore.checked_bounded_inter_array_reuse_view_correct.
 Definition storage_bounded_inter_array_reuse_mapping_target_within_bounds :=
   InterArrayReuseCore.bounded_inter_array_reuse_mapping_target_within_bounds.
+Definition storage_bounded_inter_array_mapping_pair_within_bounds :=
+  InterArrayReuseCore.bounded_inter_array_mapping_pair_within_bounds.
+Definition storage_bounded_inter_array_mapping_pair_cell_relation :=
+  InterArrayReuseCore.bounded_inter_array_mapping_pair_cell_relation.
+Definition storage_bounded_inter_array_mapping_pair_compatible_specs :=
+  InterArrayReuseCore.bounded_inter_array_mapping_pair_compatible_specs.
+Definition storage_bounded_inter_array_lookup_compatible_specs :=
+  InterArrayReuseCore.bounded_inter_array_lookup_compatible_specs.
 Definition storage_bounded_inter_array_overlap_mapped_distinct :=
   InterArrayReuseCore.bounded_inter_array_overlap_mapped_distinct.
 Definition storage_bounded_inter_array_same_physical_not_live_overlap :=

@@ -101,6 +101,97 @@ Proof.
   exact Hreuse.
 Qed.
 
+Theorem inter_array_mapping_pair_cell_relation :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    inter_array_reuse_obligations
+      mapping intervals conflicts logical_specs physical_specs ->
+    In (logical_cell, physical_cell) mapping ->
+    reuse_cell_relation mapping physical_cell logical_cell.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hobligations Hin.
+  unfold reuse_cell_relation.
+  eapply reuse_lookup_complete_nodup.
+  - eapply inter_array_reuse_sources_nodup; eauto.
+  - exact Hin.
+Qed.
+
+Theorem inter_array_mapping_entry_compatible_specs :
+  forall mapping intervals conflicts logical_specs physical_specs mapping_entry,
+    inter_array_reuse_obligations
+      mapping intervals conflicts logical_specs physical_specs ->
+    In mapping_entry mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs mapping_entry
+         Hobligations Hin.
+  destruct Hobligations as [_ _ Hcompatible].
+  eapply storage_compatibility_mapping_entry_specs; eauto.
+Qed.
+
+Theorem inter_array_mapping_pair_compatible_specs :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    inter_array_reuse_obligations
+      mapping intervals conflicts logical_specs physical_specs ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hobligations Hin.
+  pose proof
+    (inter_array_mapping_entry_compatible_specs
+       mapping intervals conflicts logical_specs physical_specs
+       (logical_cell, physical_cell) Hobligations Hin)
+    as (logical_spec & physical_spec & Hlogical_in & Hphysical_in &
+        Hlogical_cell & Hphysical_cell & Hspecs).
+  exists logical_spec, physical_spec.
+  simpl in Hlogical_cell, Hphysical_cell.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hspecs.
+Qed.
+
+Theorem inter_array_lookup_compatible_specs :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    inter_array_reuse_obligations
+      mapping intervals conflicts logical_specs physical_specs ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hobligations Hlookup.
+  pose proof
+    (reuse_lookup_sound logical_cell physical_cell mapping Hlookup)
+    as [Hin | (logical_cell' & Hin & Heq)].
+  - eapply inter_array_mapping_pair_compatible_specs; eauto.
+  - subst logical_cell'.
+    eapply inter_array_mapping_pair_compatible_specs; eauto.
+Qed.
+
 Theorem inter_array_live_overlaps_reuse_separated :
   forall mapping intervals conflicts logical_specs physical_specs,
     inter_array_reuse_obligations
