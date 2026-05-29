@@ -85,6 +85,52 @@ Definition relational_refinement
       PolyLang.instance_list_semantics before st_source0 st_source_after /\
       final_rel st_target_after st_source_after.
 
+(** Relation-first spelling intended for feature-facing correctness statements.
+
+    [relational_refinement] remains the compact proof-engineering connective.
+    This name exposes the same endpoint in the form storage-aware passes should
+    present: explicit pre/post state relations around the usual target-to-source
+    semantic refinement. *)
+Definition semantic_refinement_between :=
+  relational_refinement.
+
+Theorem semantic_refinement_between_iff :
+  forall initial_rel final_rel before after,
+    semantic_refinement_between initial_rel final_rel before after <->
+    forall st_target0 st_source0 st_target_after,
+      initial_rel st_target0 st_source0 ->
+      PolyLang.instance_list_semantics after st_target0 st_target_after ->
+      exists st_source_after,
+        PolyLang.instance_list_semantics before st_source0 st_source_after /\
+        final_rel st_target_after st_source_after.
+Proof.
+  intros initial_rel final_rel before after.
+  unfold semantic_refinement_between, relational_refinement.
+  tauto.
+Qed.
+
+Theorem semantic_refinement_between_same_state_iff_refinement_under :
+  forall obs before after,
+    semantic_refinement_between same_state_relation obs before after <->
+    refinement_under obs before after.
+Proof.
+  intros obs before after.
+  unfold semantic_refinement_between, relational_refinement.
+  unfold refinement_under, same_state_relation.
+  split.
+  - intros Href st0 st_after Hafter.
+    destruct (Href st0 st0 st_after eq_refl Hafter)
+      as (st_source_after & Hsource & Hobs).
+    exists st_source_after.
+    split; assumption.
+  - intros Href st_target0 st_source0 st_target_after Heq Hafter.
+    subst st_source0.
+    destruct (Href st_target0 st_target_after Hafter)
+      as (st_source_after & Hsource & Hobs).
+    exists st_source_after.
+    split; assumption.
+Qed.
+
 Definition compose_state_relation
     (target_mid mid_source: state_relation) : state_relation :=
   fun st_target st_source =>

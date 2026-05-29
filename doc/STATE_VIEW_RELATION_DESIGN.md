@@ -85,18 +85,22 @@ accepted_<feature>_certificate_semantic_refinement
 ```
 
 `input_states_match` and `output_states_match` are just readable names for the
-view relations chosen by the certificate.  The relation may erase private
-storage, project committed versions, hide overlap-local writes, or compare
-reused physical cells through a public observation.  The top theorem should not
-force the reader to inspect those details; those details belong to the
-certificate obligations and the component validator soundness lemmas.
+pre/post state relations chosen by the certificate.  Those relations may be
+constructed from views, but views are not the main theorem interface.  The
+relation may erase private storage, project committed versions, hide
+overlap-local writes, or compare reused physical cells through a public
+observation.  The top theorem should not force the reader to inspect those
+details; those details belong to the certificate obligations and the component
+validator soundness lemmas.
 
 Design consequence: adding storage-aware support should not culminate in a
 top-level theorem whose main conclusion is just an internal
 `state_view_rel`/`compose_view` fact.  Those relations are the way the proof is
 assembled.  The final theorem should always be re-exported in direct execution
-semantics form, with `input_states_match` and `output_states_match` as the only
-visible generalization of the old `State.eq` endpoint.  For transformations
+semantics form, preferably as
+`semantic_refinement_between Rpre Rpost source target`, with
+`input_states_match` and `output_states_match` as view-derived aliases only
+when a certificate packages relations as views.  For transformations
 whose public storage is unchanged, these matchers should instantiate to the
 identity view and the statement should collapse back to the old schedule-only
 semantic refinement.  For privatization, reuse, copy, versioning, or overlap
@@ -161,10 +165,20 @@ identity view:
   all source-observable cells are represented by the same target cells
 ```
 
-The general theorem should use a state relation parameter:
+The general theorem should use explicit state relation parameters:
 
 ```coq
-relational_refinement
+semantic_refinement_between
+  Rpre
+  Rpost
+  before
+  after
+```
+
+View-packaged certificates are the derived case:
+
+```coq
+semantic_refinement_between
   (state_view_rel input_view)
   (state_view_rel output_view)
   before
@@ -174,7 +188,7 @@ relational_refinement
 The existing route is the special case:
 
 ```coq
-relational_refinement
+semantic_refinement_between
   (state_view_rel same_state_view)
   (state_view_rel identity_view)
   before
@@ -214,25 +228,32 @@ they want to know why the public-view refinement is justified.
 Mechanically, this means the final theorem should be presentable as:
 
 ```coq
-public_semantic_refinement input_view output_view before after
+semantic_refinement_between Rpre Rpost before after
+```
+
+The view-packaged compatibility spelling is:
+
+```coq
+semantic_refinement_under_views input_view output_view before after
 ```
 
 or, fully expanded:
 
 ```coq
 forall st_target0 st_source0 st_target_after,
-  state_view_rel input_view st_target0 st_source0 ->
+  Rpre st_target0 st_source0 ->
   instance_list_semantics after st_target0 st_target_after ->
   exists st_source_after,
     instance_list_semantics before st_source0 st_source_after /\
-    state_view_rel output_view st_target_after st_source_after.
+    Rpost st_target_after st_source_after.
 ```
 
-This is intentionally isomorphic to `View.view_refinement`.  The difference is
-presentation, not proof strength: `view_refinement` is good for composition
-lemmas, while `public_semantic_refinement` is the theorem statement a reader
-should see at the top of the pipeline.  The old affine theorem is recovered by
-choosing `same_state_view`/`identity_view`, where the final public view is just
+This is intentionally isomorphic to `View.view_refinement` when `Rpre` and
+`Rpost` are induced by views.  The difference is presentation, not proof
+strength: `view_refinement` is good for composition lemmas, while
+`semantic_refinement_between` is the theorem statement a reader should see at
+the top of the pipeline.  The old affine theorem is recovered by choosing
+`same_state_view`/`identity_view`, where the final public view is just
 `State.eq`.
 
 This separation is the main proof-engineering rule for the storage route:
@@ -1700,9 +1721,11 @@ wrapper is now an instance of the generic pair-certificate layer in
 `StateView.v`, so the same top-surface pattern can be reused by copy, private,
 reuse, phase, and reduction families without duplicating the composition proof.
 The paper-facing name for that endpoint is now
-`semantic_refinement_under_views`: storage features may change representation,
-but the top theorem should still read as ordinary semantic refinement with an
-input relation and an output observation.  The special case
+`semantic_refinement_between`: storage features may change representation, but
+the top theorem should still read as ordinary semantic refinement with an
+input relation and an output observation.  `semantic_refinement_under_views` is
+the compatibility instance for certificate relations packaged as views.  The
+special case
 `same_state_view -> identity_view` is proved equivalent to the old
 `refinement_under State.eq` route, so the new statement generalizes the old one
 instead of replacing it with an unrelated relation.
@@ -2267,11 +2290,11 @@ This is enough to restate the current affine validators as
 
 ### Step 2: View Relation Packaging
 
-Connect views to `relational_refinement`:
+Connect views to the relation-first semantic refinement endpoint:
 
 ```coq
 Definition view_refinement vin vout before after :=
-  relational_refinement
+  semantic_refinement_between
     (state_view_rel vin)
     (state_view_rel vout)
     before

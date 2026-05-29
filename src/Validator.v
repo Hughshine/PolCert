@@ -107,6 +107,12 @@ Definition identity_observation_contract :=
   TransformCore.identity_observation_contract.
 Definition refinement_under := TransformCore.refinement_under.
 Definition relational_refinement := TransformCore.relational_refinement.
+Definition semantic_refinement_between :=
+  TransformCore.semantic_refinement_between.
+Definition semantic_refinement_between_iff :=
+  TransformCore.semantic_refinement_between_iff.
+Definition semantic_refinement_between_same_state_iff_refinement_under :=
+  TransformCore.semantic_refinement_between_same_state_iff_refinement_under.
 Definition refinement_under_to_relational :=
   TransformCore.refinement_under_to_relational.
 Definition relational_refinement_compose :=
@@ -192,6 +198,8 @@ Definition checked_view_transform_certificate_accepted :=
   StateViewCore.checked_view_transform_certificate_accepted.
 Definition checked_view_transform_certificate_public_semantic_sound :=
   StateViewCore.checked_view_transform_certificate_public_semantic_sound.
+Definition accepted_view_transform_certificate_semantic_refinement_between :=
+  StateViewCore.accepted_view_transform_certificate_semantic_refinement_between.
 Definition accepted_view_transform_certificate_semantic_refinement :=
   StateViewCore.accepted_view_transform_certificate_semantic_refinement.
 Definition checked_view_transform_certificate_state_sound :=
@@ -258,6 +266,13 @@ Definition checked_parameterized_transform_certificate_public_semantic_sound
     (certificate:
       StateViewCore.checked_parameterized_transform_certificate family) :=
   StateViewCore.checked_parameterized_transform_certificate_public_semantic_sound
+    params family certificate.
+Definition accepted_parameterized_transform_certificate_semantic_refinement_between
+    {params}
+    (family: checked_parameterized_view_transform_family params)
+    (certificate:
+      StateViewCore.checked_parameterized_transform_certificate family) :=
+  StateViewCore.accepted_parameterized_transform_certificate_semantic_refinement_between
     params family certificate.
 Definition accepted_parameterized_transform_certificate_semantic_refinement
     {params}
@@ -358,6 +373,15 @@ Definition checked_parameterized_family_pair_certificate_public_semantic_sound
       StateViewCore.checked_parameterized_family_pair_certificate
         first second) :=
   StateViewCore.checked_parameterized_family_pair_certificate_public_semantic_sound
+    params_first params_second first second certificate.
+Definition accepted_parameterized_family_pair_certificate_semantic_refinement_between
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.accepted_parameterized_family_pair_certificate_semantic_refinement_between
     params_first params_second first second certificate.
 Definition accepted_parameterized_family_pair_certificate_semantic_refinement
     {params_first params_second}

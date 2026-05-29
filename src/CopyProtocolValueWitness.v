@@ -29,6 +29,28 @@ Arguments CopyValueOut {value} _ _.
 Definition copy_value_trace (value: Type) :=
   list (copy_event * copy_value_event value).
 
+Definition copy_value_event_kind_matches {value: Type}
+    (event: copy_event)
+    (value_event: copy_value_event value) : Prop :=
+  match event, value_event with
+  | CopyIn _ _, CopyValueIn _ _ => True
+  | LocalRead _, CopyValueRead _ => True
+  | LocalWrite _, CopyValueWrite _ => True
+  | CopyOut _ _, CopyValueOut _ _ => True
+  | _, _ => False
+  end.
+
+Definition copy_value_event_values_match {value: Type}
+    (value_event: copy_value_event value) : Prop :=
+  match value_event with
+  | CopyValueIn source_value local_value =>
+      source_value = local_value
+  | CopyValueRead _ => True
+  | CopyValueWrite _ => True
+  | CopyValueOut local_value target_value =>
+      local_value = target_value
+  end.
+
 Fixpoint lookup_local_value {value: Type}
     (local_cell: MemCell)
     (locals: list (MemCell * value)) : option value :=
@@ -138,6 +160,25 @@ Fixpoint copy_value_trace_events {value: Type}
   | (copy_event', _) :: tail =>
       copy_event' :: copy_value_trace_events tail
   end.
+
+Lemma copy_value_trace_pair_event_in_events :
+  forall (value: Type)
+         (trace: copy_value_trace value)
+         copy_event' value_event,
+    In (copy_event', value_event) trace ->
+    In copy_event' (copy_value_trace_events trace).
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros copy_event' value_event Hin; simpl in *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      eapply IH.
+      exact Htail.
+Qed.
 
 Fixpoint copy_value_trace_values {value: Type}
     (trace: copy_value_trace value) : list (copy_value_event value) :=
@@ -290,6 +331,87 @@ Proof.
   - apply local_values_defined_by_nil.
 Qed.
 
+Theorem copy_value_trace_simulates_from_event_matched :
+  forall (value: Type)
+         (trace: copy_value_trace value)
+         locals copy_event' value_event,
+    copy_value_trace_simulates_from locals trace ->
+    In (copy_event', value_event) trace ->
+    copy_value_event_kind_matches copy_event' value_event /\
+    copy_value_event_values_match value_event.
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros locals copy_event' value_event Hsim Hin;
+    simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail_in].
+    + inversion Hhead; subst head_event head_value.
+      destruct copy_event' as [source_cell local_cell
+                              | local_cell
+                              | local_cell
+                              | local_cell target_cell];
+        destruct value_event as [source_value local_value
+                                | read_value
+                                | new_local_value
+                                | out_local_value out_target_value];
+        simpl in Hsim; try contradiction.
+      * destruct Hsim as [Hvalue _].
+        split.
+        -- simpl. exact I.
+        -- simpl. exact Hvalue.
+      * destruct
+          (lookup_local_value local_cell locals)
+          as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hsim as [_ _].
+        split; simpl; exact I.
+      * split; simpl; exact I.
+      * destruct
+          (lookup_local_value local_cell locals)
+          as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hsim as [Hlocal [Htarget _]].
+        split.
+        -- simpl. exact I.
+        -- simpl.
+           transitivity current_value.
+           ++ exact Hlocal.
+           ++ symmetry. exact Htarget.
+    + destruct head_event as [source_cell local_cell
+                             | local_cell
+                             | local_cell
+                             | local_cell target_cell];
+        destruct head_value as [source_value local_value
+                               | read_value
+                               | new_local_value
+                               | out_local_value out_target_value];
+        simpl in Hsim; try contradiction.
+      * destruct Hsim as [_ Htail].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * destruct
+          (lookup_local_value local_cell locals)
+          as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hsim as [_ Htail].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * eapply IH.
+        -- exact Hsim.
+        -- exact Htail_in.
+      * destruct
+          (lookup_local_value local_cell locals)
+          as [current_value |] eqn:Hlookup;
+          try contradiction.
+        destruct Hsim as [_ [_ Htail]].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -394,4 +516,22 @@ Proof.
   subst events.
   apply copy_value_obligations_local_use_def.
   exact Hobligations.
+Qed.
+
+Theorem copy_value_obligation_event_matched :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         copy_event' value_event,
+    copy_value_simulation_obligations value value_trace ->
+    In (copy_event', value_event) value_trace ->
+    copy_value_event_kind_matches copy_event' value_event /\
+    copy_value_event_values_match value_event.
+Proof.
+  intros value value_trace copy_event' value_event
+         Hobligations Hin.
+  destruct Hobligations as [Hsimulates].
+  unfold copy_value_trace_simulates in Hsimulates.
+  eapply copy_value_trace_simulates_from_event_matched.
+  - exact Hsimulates.
+  - exact Hin.
 Qed.
