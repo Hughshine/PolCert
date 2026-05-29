@@ -1947,7 +1947,11 @@ every selected source is a live-out, every selected version belongs to the
 version image, and both source and version images are duplicate-free.
 `VersionCommitValueWitness.v` adds selected source/version value evidence
 aligned with the mapping and proves that selected version values equal
-represented source values.
+represented source values.  Its table evidence is now projectable in both
+directions: each supplied commit-value entry is tied back to a concrete
+source/version mapping pair, yields the reusable selection relation, and can be
+lifted by the validator to source-liveout, version-image, storage-compatibility,
+and committed-version-bounds facts.
 `VersionCommitValidator.checked_version_commit_value_view_correct` packages
 both witnesses into the common composition theorem under the remaining
 semantic obligation that concrete target writes produce the supplied value

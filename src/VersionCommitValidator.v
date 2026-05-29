@@ -9,6 +9,7 @@ Require Import TransformContract.
 Require Import StateView.
 Require Import ViewPipeline.
 Require Import InstanceProjectionWitness.
+Require Import ReuseConflictWitness.
 Require Import VersionCommitWitness.
 Require Import VersionCommitValueWitness.
 Require Import VersionReadWitness.
@@ -887,6 +888,180 @@ Definition version_commit_read_fully_bounded_non_escape_family
     version_commit_read_fully_bounded_non_escape_family_sound
       value value_eqb value_eqb_sound;
 |}.
+
+Theorem version_commit_value_entry_mapping_pair :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         entries source_view after entry,
+    version_commit_value_view_contract
+      value input_view output_view source_liveouts mapping entries
+      source_view after ->
+    In entry entries ->
+    In (vve_source_cell entry, vve_version_cell entry) mapping /\
+    vve_source_value entry = vve_version_value entry.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         entries source_view after entry Hcontract Hin.
+  destruct Hcontract as [_ Hvalues _].
+  destruct
+    (version_value_obligation_entry_in_mapping
+       value mapping entries entry Hvalues Hin)
+    as ([source_cell version_cell] & Hmapping & Hcells & Hvalue).
+  unfold version_value_entry_cells_match in Hcells.
+  unfold version_value_entry_value_match in Hvalue.
+  simpl in Hcells.
+  destruct Hcells as [Hsource Hversion].
+  rewrite Hsource in Hmapping.
+  rewrite Hversion in Hmapping.
+  split; assumption.
+Qed.
+
+Theorem version_commit_value_entry_cell_relation :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         entries source_view after entry,
+    version_commit_value_view_contract
+      value input_view output_view source_liveouts mapping entries
+      source_view after ->
+    In entry entries ->
+    version_commit_cell_relation
+      mapping (vve_version_cell entry) (vve_source_cell entry).
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         entries source_view after entry Hcontract Hin.
+  destruct
+    (version_commit_value_entry_mapping_pair
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hcontract Hin)
+    as [Hmapping _].
+  destruct Hcontract as [Hcommit _ _].
+  pose proof
+    (version_commit_sources_nodup source_liveouts mapping Hcommit)
+    as Hsources_nodup.
+  unfold version_commit_cell_relation.
+  eapply reuse_lookup_complete_nodup.
+  - rewrite <- version_commit_sources_reuse_mapping_sources.
+    exact Hsources_nodup.
+  - exact Hmapping.
+Qed.
+
+Theorem version_commit_value_entry_values_equal :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         entries source_view after entry,
+    version_commit_value_view_contract
+      value input_view output_view source_liveouts mapping entries
+      source_view after ->
+    In entry entries ->
+    vve_source_value entry = vve_version_value entry.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         entries source_view after entry Hcontract Hin.
+  destruct
+    (version_commit_value_entry_mapping_pair
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hcontract Hin)
+    as [_ Hvalue].
+  exact Hvalue.
+Qed.
+
+Theorem version_commit_value_entry_source_liveout :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         entries source_view after entry,
+    version_commit_value_view_contract
+      value input_view output_view source_liveouts mapping entries
+      source_view after ->
+    In entry entries ->
+    In (vve_source_cell entry) source_liveouts.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         entries source_view after entry Hcontract Hin.
+  pose proof
+    (version_commit_value_entry_cell_relation
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hcontract Hin)
+    as Hrel.
+  destruct Hcontract as [Hcommit _ _].
+  eapply version_commit_selected_source_liveout; eauto.
+Qed.
+
+Theorem version_commit_value_entry_version_in_versions :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         entries source_view after entry,
+    version_commit_value_view_contract
+      value input_view output_view source_liveouts mapping entries
+      source_view after ->
+    In entry entries ->
+    In (vve_version_cell entry) (version_commit_versions mapping).
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         entries source_view after entry Hcontract Hin.
+  pose proof
+    (version_commit_value_entry_cell_relation
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hcontract Hin)
+    as Hrel.
+  destruct Hcontract as [Hcommit _ _].
+  eapply version_commit_selected_version_in_versions; eauto.
+Qed.
+
+Theorem version_commit_value_entry_compatible_specs :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         logical_specs physical_specs entries source_view after entry,
+    version_commit_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs entries source_view after ->
+    In entry entries ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = vve_source_cell entry /\
+      storage_spec_cell physical_spec = vve_version_cell entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs entries source_view after entry
+         Hcontract Hin.
+  destruct Hcontract as [Hcommit Hcompatible Hvalues Hsemantics].
+  assert
+    (Hbase:
+      version_commit_value_view_contract
+        value input_view output_view source_liveouts mapping entries
+        source_view after).
+  { constructor; assumption. }
+  destruct
+    (version_commit_value_entry_mapping_pair
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hbase Hin)
+    as [Hmapping _].
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem version_commit_value_entry_version_within_bounds :
+  forall (value: Type) input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         source_view after entry,
+    version_commit_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs physical_bounds entries source_view after ->
+    In entry entries ->
+    cell_within_declared_bounds physical_bounds (vve_version_cell entry).
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs physical_bounds entries
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [Hcommit Hcompatible Hbounds Hvalues Hsemantics].
+  assert
+    (Hbase:
+      version_commit_value_view_contract
+        value input_view output_view source_liveouts mapping entries
+        source_view after).
+  { constructor; assumption. }
+  pose proof
+    (version_commit_value_entry_version_in_versions
+       value input_view output_view source_liveouts mapping
+       entries source_view after entry Hbase Hin)
+    as Hversion_in.
+  eapply storage_bounds_cell_within
+    with (cells := version_commit_versions mapping); eauto.
+Qed.
 
 Theorem version_commit_selected_version_within_bounds :
   forall (value: Type) input_view output_view source_liveouts mapping

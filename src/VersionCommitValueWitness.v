@@ -120,6 +120,39 @@ Proof.
     + split; assumption.
 Qed.
 
+Lemma version_value_entries_match_entry_in_mapping :
+  forall (value: Type)
+         (mapping: version_commit_mapping)
+         (entries: list (version_value_entry value))
+         entry,
+    version_value_entries_match mapping entries ->
+    In entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      version_value_entry_cells_match mapping_entry entry /\
+      version_value_entry_value_match entry.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_head mapping_tail IH];
+    intros entries entry Hmatch Hin;
+    destruct entries as [|entry_head entry_tail];
+    simpl in Hmatch, Hin |- *; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst entry_head.
+    exists mapping_head.
+    split.
+    + left. reflexivity.
+    + split; assumption.
+  - destruct
+      (IH entry_tail entry Htail Hin_tail)
+      as (mapping_entry & Hin_mapping & Hcells' & Hvalue').
+    exists mapping_entry.
+    split.
+    + right. exact Hin_mapping.
+    + split; assumption.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -226,4 +259,21 @@ Proof.
   intros value mapping entries mapping_entry Hobligations Hin.
   destruct Hobligations as [Hmatch].
   eapply version_value_entries_match_mapping_entry; eauto.
+Qed.
+
+Theorem version_value_obligation_entry_in_mapping :
+  forall (value: Type)
+         (mapping: version_commit_mapping)
+         (entries: list (version_value_entry value))
+         entry,
+    version_value_obligations value mapping entries ->
+    In entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      version_value_entry_cells_match mapping_entry entry /\
+      version_value_entry_value_match entry.
+Proof.
+  intros value mapping entries entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply version_value_entries_match_entry_in_mapping; eauto.
 Qed.
