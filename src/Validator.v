@@ -1190,6 +1190,12 @@ Definition storage_compatibility_obligations :=
   storage_compatibility_obligations.
 Definition storage_mapping_compatible :=
   storage_mapping_compatible.
+Definition storage_storage_spec_lookup_entry :=
+  storage_spec_lookup_entry.
+Definition storage_mapping_entry_compatible_specs :=
+  storage_mapping_entry_compatible_specs.
+Definition storage_compatibility_mapping_entry_specs :=
+  storage_compatibility_mapping_entry_specs.
 Definition storage_check_inter_array_reuseb :=
   check_inter_array_reuseb.
 Definition storage_check_inter_array_reuseb_sound :=

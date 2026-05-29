@@ -39,6 +39,27 @@ Fixpoint storage_spec_lookup
       else storage_spec_lookup cell tail
   end.
 
+Lemma storage_spec_lookup_entry :
+  forall cell specs spec,
+    storage_spec_lookup cell specs = Some spec ->
+    In spec specs /\ storage_spec_cell spec = cell.
+Proof.
+  intros cell specs.
+  induction specs as [|head tail IH];
+    intros spec Hlookup; simpl in Hlookup; try discriminate.
+  destruct (mem_cell_strict_eqb cell (storage_spec_cell head))
+    eqn:Hcell.
+  - inversion Hlookup; subst spec.
+    apply mem_cell_strict_eqb_eq in Hcell.
+    split.
+    + simpl. left. reflexivity.
+    + symmetry. exact Hcell.
+  - pose proof (IH spec Hlookup) as [Hin Hcell_spec].
+    split.
+    + simpl. right. exact Hin.
+    + exact Hcell_spec.
+Qed.
+
 Fixpoint storage_spec_cells
     (specs: list storage_spec) : list MemCell :=
   match specs with
@@ -139,6 +160,43 @@ Proof.
       exact Hcheck.
 Qed.
 
+Theorem storage_mapping_entry_compatible_specs :
+  forall logical_specs physical_specs mapping_entry,
+    storage_mapping_entry_compatible
+      logical_specs physical_specs mapping_entry ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros logical_specs physical_specs
+         [logical_cell physical_cell] Hcompatible.
+  unfold storage_mapping_entry_compatible in Hcompatible.
+  simpl in Hcompatible |- *.
+  destruct Hcompatible as
+    (logical_spec & physical_spec & Hlogical & Hphysical & Hspecs).
+  pose proof
+    (storage_spec_lookup_entry
+       logical_cell logical_specs logical_spec Hlogical)
+    as [Hlogical_in Hlogical_cell].
+  pose proof
+    (storage_spec_lookup_entry
+       physical_cell physical_specs physical_spec Hphysical)
+    as [Hphysical_in Hphysical_cell].
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hspecs.
+Qed.
+
 Fixpoint check_storage_mapping_compatibleb
     (mapping: reuse_mapping)
     (logical_specs physical_specs: list storage_spec) : bool :=
@@ -215,4 +273,24 @@ Proof.
     exact Hphysical.
   - apply check_storage_mapping_compatibleb_sound.
     exact Hcompatible.
+Qed.
+
+Theorem storage_compatibility_mapping_entry_specs :
+  forall mapping logical_specs physical_specs mapping_entry,
+    storage_compatibility_obligations
+      mapping logical_specs physical_specs ->
+    In mapping_entry mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs mapping_entry
+         Hobligations Hin.
+  destruct Hobligations as [_ _ Hcompatible].
+  apply storage_mapping_entry_compatible_specs.
+  apply Hcompatible.
+  exact Hin.
 Qed.

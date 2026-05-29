@@ -2442,8 +2442,11 @@ private-erasure theorem.
 `checked_boundary_private_unique_compatible_value_expansion_view_correct` adds
 boundary storage compatibility for the same copy-in/copy-out pairs: public and
 private cells must both have finite storage specs, and paired specs must agree
-on size and alignment.  The strongest generic private-storage route now also
-has a public-only facade:
+on size and alignment.  The shared storage-compatibility witness now exposes
+the checked logical/physical spec entries for each compatible mapping edge, so
+later type-derived spec proofs can connect to the finite table instead of only
+to lookup equations.  The strongest generic private-storage route now also has
+a public-only facade:
 `checked_bounded_declared_boundary_private_unique_compatible_non_escape_value_expansion_public_refinement`
 adds declared private trace coverage, private bounds, and non-escape, then
 projects away the returned contract.  Its parameterized family,

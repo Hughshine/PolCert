@@ -534,7 +534,10 @@ bounds rather than checking an unrelated cell list.
 checker for logical-to-physical storage maps.  This captures the explicit
 storage-class side condition needed by contraction, inter-array reuse, packing,
 and scratch/local-buffer reuse without pretending that the specs have already
-been derived from C types.
+been derived from C types.  It also exposes table-entry projections from the
+lookup-based check: every successful spec lookup is tied to a concrete supplied
+spec entry, and every compatible mapping edge can recover the logical and
+physical spec entries whose size/alignment facts were checked.
 `InterArrayReuseWitness.v` packages the inter-array reuse case without adding
 a new primitive: it combines live-interval conflict cover, conflict-safe reuse,
 and storage compatibility.  Its derived facts say that mapped live-overlapping
