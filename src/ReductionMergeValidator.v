@@ -63,6 +63,26 @@ Fixpoint reduction_accumulator_storage_mapping
       reduction_accumulator_storage_mapping public_accumulator tail
   end.
 
+Lemma reduction_accumulator_storage_mapping_pair :
+  forall public_accumulator partial_accumulators partial_accumulator,
+    In partial_accumulator partial_accumulators ->
+    In (public_accumulator, partial_accumulator)
+      (reduction_accumulator_storage_mapping
+         public_accumulator partial_accumulators).
+Proof.
+  intros public_accumulator partial_accumulators.
+  induction partial_accumulators
+    as [|head_accumulator tail_accumulators IH];
+    intros partial_accumulator Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst.
+      left. reflexivity.
+    + right.
+      apply IH.
+      exact Hin_tail.
+Qed.
+
 Record reduction_merge_view_contract
     (input_view output_view: View.view)
     (source_domain: list logical_instance)
@@ -1100,6 +1120,173 @@ Proof.
   destruct Hcompatible as [Hvalue _].
   destruct Hvalue as [Hmerge _ _ _].
   eapply reduction_merged_accumulator_private; eauto.
+Qed.
+
+Theorem reduction_value_entry_in_merge_order :
+  forall (value: Type)
+         (merge_op: value -> value -> value)
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         initial_value final_value accumulator_values
+         (merge_law: Prop)
+         source_view after acc acc_value,
+    reduction_merge_value_view_contract
+      value merge_op input_view output_view source_domain chunks
+      partial_accumulators merge_order initial_value final_value
+      accumulator_values merge_law source_view after ->
+    In (acc, acc_value) accumulator_values ->
+    In acc merge_order.
+Proof.
+  intros value merge_op input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         initial_value final_value accumulator_values merge_law
+         source_view after acc acc_value Hcontract Hin.
+  destruct Hcontract as [_ Hvalues _ _].
+  eapply reduction_accumulator_value_entry_in_merge_order; eauto.
+Qed.
+
+Theorem reduction_value_entry_private_accumulator :
+  forall (value: Type)
+         (merge_op: value -> value -> value)
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         initial_value final_value accumulator_values
+         (merge_law: Prop)
+         source_view after acc acc_value,
+    reduction_merge_value_view_contract
+      value merge_op input_view output_view source_domain chunks
+      partial_accumulators merge_order initial_value final_value
+      accumulator_values merge_law source_view after ->
+    In (acc, acc_value) accumulator_values ->
+    In acc partial_accumulators.
+Proof.
+  intros value merge_op input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         initial_value final_value accumulator_values merge_law
+         source_view after acc acc_value Hcontract Hin.
+  destruct Hcontract as [Hmerge Hvalues Hlaw Hsemantics].
+  pose proof
+    (reduction_accumulator_value_entry_in_merge_order
+       value merge_op initial_value final_value merge_order
+       accumulator_values acc acc_value Hvalues Hin)
+    as Hmerge_order.
+  eapply reduction_merged_accumulator_private; eauto.
+Qed.
+
+Theorem reduction_value_entry_compatible_specs :
+  forall (value: Type)
+         (merge_op: value -> value -> value)
+         identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value,
+    reduction_merge_commutative_compatible_value_view_contract
+      value merge_op identity input_view output_view source_domain chunks
+      partial_accumulators merge_order public_accumulator
+      public_specs accumulator_specs
+      initial_value final_value accumulator_values carrier source_view after ->
+    In (acc, acc_value) accumulator_values ->
+    exists public_spec accumulator_spec,
+      In public_spec public_specs /\
+      In accumulator_spec accumulator_specs /\
+      storage_spec_cell public_spec = public_accumulator /\
+      storage_spec_cell accumulator_spec = acc /\
+      storage_specs_compatible public_spec accumulator_spec.
+Proof.
+  intros value merge_op identity input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value Hcontract Hin.
+  destruct Hcontract as [Hbase Hcompatible].
+  destruct Hbase as [Hmerge Hvalues _ _].
+  pose proof
+    (reduction_accumulator_value_entry_in_merge_order
+       value merge_op initial_value final_value merge_order
+       accumulator_values acc acc_value Hvalues Hin)
+    as Hmerge_order.
+  pose proof
+    (reduction_merged_accumulator_private
+       source_domain chunks partial_accumulators merge_order acc
+       Hmerge Hmerge_order)
+    as Hprivate.
+  pose proof
+    (reduction_accumulator_storage_mapping_pair
+       public_accumulator partial_accumulators acc Hprivate)
+    as Hmapping.
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem reduction_value_entry_within_bounds :
+  forall (value: Type)
+         (merge_op: value -> value -> value)
+         identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value,
+    reduction_merge_commutative_bounded_compatible_non_escape_value_view_contract
+      value merge_op identity input_view output_view source_domain chunks
+      partial_accumulators merge_order public_accumulator
+      public_specs accumulator_specs accumulator_bounds escaped_cells
+      initial_value final_value accumulator_values carrier source_view after ->
+    In (acc, acc_value) accumulator_values ->
+    cell_within_declared_bounds accumulator_bounds acc.
+Proof.
+  intros value merge_op identity input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value Hcontract Hin.
+  assert (Hmerge_order: In acc merge_order).
+  {
+    destruct Hcontract as [Hbase _].
+    destruct Hbase as [Hcompatible _].
+    destruct Hcompatible as [Hvalue _].
+    destruct Hvalue as [_ Hvalues _ _].
+    eapply reduction_accumulator_value_entry_in_merge_order; eauto.
+  }
+  eapply reduction_merged_accumulator_within_bounds; eauto.
+Qed.
+
+Theorem reduction_value_entry_not_escaped :
+  forall (value: Type)
+         (merge_op: value -> value -> value)
+         identity
+         input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value,
+    reduction_merge_commutative_bounded_compatible_non_escape_value_view_contract
+      value merge_op identity input_view output_view source_domain chunks
+      partial_accumulators merge_order public_accumulator
+      public_specs accumulator_specs accumulator_bounds escaped_cells
+      initial_value final_value accumulator_values carrier source_view after ->
+    In (acc, acc_value) accumulator_values ->
+    ~ In acc escaped_cells.
+Proof.
+  intros value merge_op identity input_view output_view
+         source_domain chunks partial_accumulators merge_order
+         public_accumulator public_specs accumulator_specs
+         accumulator_bounds escaped_cells
+         initial_value final_value accumulator_values carrier
+         source_view after acc acc_value Hcontract Hin.
+  assert (Hmerge_order: In acc merge_order).
+  {
+    destruct Hcontract as [Hbase _].
+    destruct Hbase as [Hcompatible _].
+    destruct Hcompatible as [Hvalue _].
+    destruct Hvalue as [_ Hvalues _ _].
+    eapply reduction_accumulator_value_entry_in_merge_order; eauto.
+  }
+  eapply reduction_merged_accumulator_not_escaped; eauto.
 Qed.
 
 End ReductionMergeValidator.

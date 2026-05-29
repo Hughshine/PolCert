@@ -1891,7 +1891,11 @@ specs.  The remaining semantic question is how those finite-carrier facts and
 storage specs connect to the concrete source language semantics.
 The current strongest route,
 `checked_reduction_merge_commutative_bounded_compatible_non_escape_value_view_correct`,
-also checks accumulator bounds and private-accumulator non-escape.  Its public
+also checks accumulator bounds and private-accumulator non-escape.  The
+validator now exposes the entry-level consequences needed by later instruction
+semantics: every supplied accumulator value entry is in the merge order, belongs
+to a private accumulator, and inherits compatible storage specs, declared
+accumulator bounds, and non-escape facts.  Its public
 facade,
 `checked_reduction_merge_commutative_bounded_compatible_non_escape_value_public_refinement`,
 exposes only `View.view_refinement`, and
