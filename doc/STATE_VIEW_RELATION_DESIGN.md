@@ -2510,6 +2510,12 @@ state is a projected live-out boundary: layout live-outs, phase/double-buffer
 projection, contraction/inter-array reuse, and copy-out/packing can all use the
 same final relation shape while keeping their feature-specific trace,
 lifetime, or value-simulation obligations separate.
+The boundary contract now also exposes direct endpoint projections:
+`storage_boundary_source_cell_covered`,
+`storage_boundary_lookup_compatible_specs`, and
+`storage_boundary_source_cell_compatible_target` recover the concrete target
+cell and storage-spec entries for a listed observable source cell without
+changing the final theorem from a plain public-view refinement.
 
 The next mechanized layer is `cell_view_transform_contract`.  It packages the
 common pass shape:

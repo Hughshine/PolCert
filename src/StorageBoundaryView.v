@@ -105,6 +105,136 @@ Proof.
     exact Hstorage.
 Qed.
 
+Theorem storage_boundary_source_cell_covered :
+  forall mapping source_cells logical_specs physical_specs source_cell,
+    storage_boundary_view_contract
+      mapping source_cells logical_specs physical_specs ->
+    In source_cell source_cells ->
+    exists target_cell,
+      reuse_cell_relation mapping target_cell source_cell.
+Proof.
+  intros mapping source_cells logical_specs physical_specs
+         source_cell Hcontract Hin.
+  destruct Hcontract as [Hboundary _].
+  destruct Hboundary as [_ Hcovered].
+  eapply Hcovered; eauto.
+Qed.
+
+Theorem storage_boundary_mapping_entry_compatible_specs :
+  forall mapping source_cells logical_specs physical_specs mapping_entry,
+    storage_boundary_view_contract
+      mapping source_cells logical_specs physical_specs ->
+    In mapping_entry mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping source_cells logical_specs physical_specs mapping_entry
+         Hcontract Hin.
+  destruct Hcontract as [_ Hcompatible].
+  eapply storage_compatibility_mapping_entry_specs; eauto.
+Qed.
+
+Theorem storage_boundary_lookup_compatible_specs :
+  forall mapping source_cells logical_specs physical_specs
+         logical_cell physical_cell,
+    storage_boundary_view_contract
+      mapping source_cells logical_specs physical_specs ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping source_cells logical_specs physical_specs
+         logical_cell physical_cell Hcontract Hlookup.
+  pose proof
+    (reuse_lookup_sound logical_cell physical_cell mapping Hlookup)
+    as [Hin | (logical_cell' & Hin & Heq)].
+  - pose proof
+      (storage_boundary_mapping_entry_compatible_specs
+         mapping source_cells logical_specs physical_specs
+         (logical_cell, physical_cell) Hcontract Hin)
+      as (logical_spec & physical_spec & Hlogical_in & Hphysical_in &
+          Hlogical_cell & Hphysical_cell & Hspecs).
+    exists logical_spec, physical_spec.
+    simpl in Hlogical_cell, Hphysical_cell.
+    split.
+    + exact Hlogical_in.
+    + split.
+      * exact Hphysical_in.
+      * split.
+        -- exact Hlogical_cell.
+        -- split.
+           ++ exact Hphysical_cell.
+           ++ exact Hspecs.
+  - subst logical_cell'.
+    pose proof
+      (storage_boundary_mapping_entry_compatible_specs
+         mapping source_cells logical_specs physical_specs
+         (logical_cell, physical_cell) Hcontract Hin)
+      as (logical_spec & physical_spec & Hlogical_in & Hphysical_in &
+          Hlogical_cell & Hphysical_cell & Hspecs).
+    exists logical_spec, physical_spec.
+    simpl in Hlogical_cell, Hphysical_cell.
+    split.
+    + exact Hlogical_in.
+    + split.
+      * exact Hphysical_in.
+      * split.
+        -- exact Hlogical_cell.
+        -- split.
+           ++ exact Hphysical_cell.
+           ++ exact Hspecs.
+Qed.
+
+Theorem storage_boundary_source_cell_compatible_target :
+  forall mapping source_cells logical_specs physical_specs source_cell,
+    storage_boundary_view_contract
+      mapping source_cells logical_specs physical_specs ->
+    In source_cell source_cells ->
+    exists target_cell logical_spec physical_spec,
+      reuse_cell_relation mapping target_cell source_cell /\
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = source_cell /\
+      storage_spec_cell physical_spec = target_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping source_cells logical_specs physical_specs
+         source_cell Hcontract Hin.
+  pose proof
+    (storage_boundary_source_cell_covered
+       mapping source_cells logical_specs physical_specs
+       source_cell Hcontract Hin)
+    as (target_cell & Hrelation).
+  pose proof Hrelation as Hlookup.
+  unfold reuse_cell_relation in Hlookup.
+  pose proof
+    (storage_boundary_lookup_compatible_specs
+       mapping source_cells logical_specs physical_specs
+       source_cell target_cell Hcontract Hlookup)
+    as (logical_spec & physical_spec & Hlogical_in & Hphysical_in &
+        Hlogical_cell & Hphysical_cell & Hspecs).
+  exists target_cell, logical_spec, physical_spec.
+  split.
+  - exact Hrelation.
+  - split.
+    + exact Hlogical_in.
+    + split.
+      * exact Hphysical_in.
+      * split.
+        -- exact Hlogical_cell.
+        -- split.
+           ++ exact Hphysical_cell.
+           ++ exact Hspecs.
+Qed.
+
 Definition storage_boundary_contract_cell_view
     (mapping: reuse_mapping)
     (source_cells: list MemCell)

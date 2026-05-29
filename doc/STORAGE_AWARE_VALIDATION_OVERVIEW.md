@@ -568,7 +568,10 @@ boundary maps: it combines `check_reuse_boundaryb_sound`,
 `check_storage_compatibilityb_sound`, and the observer-backed boundary view into
 one theorem, so layout, phase projection, reuse/contraction, and copy-out style
 passes can share the same final-observation discipline when their live-outs are
-represented by a finite logical-to-physical map.
+represented by a finite logical-to-physical map.  Its contract-level projections
+now expose the concrete endpoint facts directly: every listed observable source
+cell has a target under the boundary cell relation, and that target can be tied
+back to the checked logical/physical storage-spec entries.
 `ReuseConflictValidator.v` composes the finite conflict
 checker, the optional live-range cover checker, the optional storage
 compatibility checker, and the value witness under the remaining semantic
