@@ -1221,7 +1221,11 @@ proves duplicate-free logical object ids, duplicate-free per-object footprints,
 and pairwise disjoint footprints.  The stronger
 `check_source_no_alias_accessb footprints accesses = true` additionally checks
 that finite source access cells are covered by the declared footprint for their
-logical object.  This is deliberately not a transformation validator; it is the
+logical object.  The witness now also exposes direct entry projections:
+declared footprints for distinct source objects are disjoint, concrete cells
+drawn from those footprints are distinct, and covered access entries inherit
+the same no-alias facts.  This is deliberately not a transformation validator;
+it is the
 finite assumption that makes later logical-cell reasoning sound.
 
 This is a precondition, not an optimizer.  It should be discharged by the

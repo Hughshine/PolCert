@@ -540,8 +540,16 @@ Definition storage_check_source_no_alias_access_boundedb_sound :=
   check_source_no_alias_access_boundedb_sound.
 Definition storage_source_no_alias_access_bounded_obligations :=
   source_no_alias_access_bounded_obligations.
+Definition storage_source_no_alias_footprints_disjoint :=
+  source_no_alias_footprints_disjoint.
+Definition storage_source_no_alias_footprint_cells_distinct :=
+  source_no_alias_footprint_cells_distinct.
 Definition storage_source_access_cell_covered :=
   source_access_cell_covered.
+Definition storage_source_access_footprints_disjoint :=
+  source_access_footprints_disjoint.
+Definition storage_source_access_cells_distinct :=
+  source_access_cells_distinct.
 Definition storage_source_footprint_cell_within_bounds :=
   source_footprint_cell_within_bounds.
 Definition storage_source_access_cell_within_bounds :=

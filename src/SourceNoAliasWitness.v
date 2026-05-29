@@ -293,6 +293,69 @@ Proof.
     exact Hdisjoint.
 Qed.
 
+Lemma source_footprints_pairwise_disjoint_entries :
+  forall footprints left_object left_cells right_object right_cells,
+    source_footprints_pairwise_disjoint footprints ->
+    In (left_object, left_cells) footprints ->
+    In (right_object, right_cells) footprints ->
+    left_object <> right_object ->
+    mem_cells_disjoint left_cells right_cells.
+Proof.
+  induction footprints as [|[object cells] tail IH];
+    intros left_object left_cells right_object right_cells
+           Hdisjoint Hleft Hright Hobjects;
+    simpl in Hleft, Hright; try contradiction.
+  destruct Hdisjoint as [Hhead_disjoint Htail_disjoint].
+  destruct Hleft as [Hleft_head | Hleft_tail];
+    destruct Hright as [Hright_head | Hright_tail].
+  - inversion Hleft_head; inversion Hright_head; subst.
+    contradiction.
+  - inversion Hleft_head; subst.
+    eapply Hhead_disjoint; eauto.
+  - inversion Hright_head; subst.
+    apply mem_cells_disjoint_sym.
+    eapply Hhead_disjoint; eauto.
+  - eapply IH; eauto.
+Qed.
+
+Theorem source_no_alias_footprints_disjoint :
+  forall footprints left_object left_cells right_object right_cells,
+    source_no_alias_obligations footprints ->
+    In (left_object, left_cells) footprints ->
+    In (right_object, right_cells) footprints ->
+    left_object <> right_object ->
+    mem_cells_disjoint left_cells right_cells.
+Proof.
+  intros footprints left_object left_cells right_object right_cells
+         Hobligations Hleft Hright Hobjects.
+  destruct Hobligations as [_ _ Hdisjoint].
+  eapply source_footprints_pairwise_disjoint_entries; eauto.
+Qed.
+
+Theorem source_no_alias_footprint_cells_distinct :
+  forall footprints left_object left_cells right_object right_cells
+         left_cell right_cell,
+    source_no_alias_obligations footprints ->
+    In (left_object, left_cells) footprints ->
+    In left_cell left_cells ->
+    In (right_object, right_cells) footprints ->
+    In right_cell right_cells ->
+    left_object <> right_object ->
+    left_cell <> right_cell.
+Proof.
+  intros footprints left_object left_cells right_object right_cells
+         left_cell right_cell Hobligations Hleft Hleft_cell
+         Hright Hright_cell Hobjects Heq.
+  subst right_cell.
+  pose proof
+    (source_no_alias_footprints_disjoint
+       footprints left_object left_cells right_object right_cells
+       Hobligations Hleft Hright Hobjects)
+    as Hdisjoint.
+  unfold mem_cells_disjoint in Hdisjoint.
+  eapply Hdisjoint; eauto.
+Qed.
+
 (** Access-footprint coverage.
 
     No-alias disjointness is sound only if the finite footprints actually
@@ -444,6 +507,58 @@ Proof.
   eapply storage_bounds_cell_within.
   - exact Hbounds.
   - eapply source_footprint_cell_in_cells; eauto.
+Qed.
+
+Theorem source_access_footprints_disjoint :
+  forall footprints accesses left_object left_cells right_object right_cells,
+    source_no_alias_access_obligations footprints accesses ->
+    In (left_object, left_cells) accesses ->
+    In (right_object, right_cells) accesses ->
+    left_object <> right_object ->
+    mem_cells_disjoint left_cells right_cells.
+Proof.
+  unfold mem_cells_disjoint.
+  intros footprints accesses left_object left_cells right_object right_cells
+         Hobligations Hleft Hright Hobjects cell Hleft_cell Hright_cell.
+  destruct Hobligations as [Hno_alias Hcovered].
+  destruct
+    (Hcovered left_object left_cells cell Hleft Hleft_cell)
+    as (left_footprint_cells & Hleft_footprint & Hleft_covered).
+  destruct
+    (Hcovered right_object right_cells cell Hright Hright_cell)
+    as (right_footprint_cells & Hright_footprint & Hright_covered).
+  pose proof
+    (source_no_alias_footprints_disjoint
+       footprints left_object left_footprint_cells
+       right_object right_footprint_cells
+       Hno_alias Hleft_footprint Hright_footprint Hobjects)
+    as Hdisjoint.
+  unfold mem_cells_disjoint in Hdisjoint.
+  eapply Hdisjoint; eauto.
+Qed.
+
+Theorem source_access_cells_distinct :
+  forall footprints accesses left_object left_cells right_object right_cells
+         left_cell right_cell,
+    source_no_alias_access_obligations footprints accesses ->
+    In (left_object, left_cells) accesses ->
+    In left_cell left_cells ->
+    In (right_object, right_cells) accesses ->
+    In right_cell right_cells ->
+    left_object <> right_object ->
+    left_cell <> right_cell.
+Proof.
+  intros footprints accesses left_object left_cells right_object right_cells
+         left_cell right_cell Hobligations Hleft Hleft_cell
+         Hright Hright_cell Hobjects Heq.
+  subst right_cell.
+  pose proof
+    (source_access_footprints_disjoint
+       footprints accesses left_object left_cells right_object right_cells
+       Hobligations Hleft Hright Hobjects)
+    as Hdisjoint.
+  unfold mem_cells_disjoint in Hdisjoint.
+  eapply Hdisjoint; eauto.
 Qed.
 
 Theorem source_access_cell_within_bounds :
