@@ -1057,7 +1057,11 @@ checks the optional boundary values for that map.  The
 same module now exposes the projection map as
 `phase_projection_cell_relation` and names the exact-cover consequences needed
 by a later state-observation proof: live-outs are mapped, mapped sources are
-live-outs, and mapped targets are final-live.
+live-outs, and mapped targets are final-live.  The value-entry side is now
+projectable in both directions as well: each supplied projection value entry is
+tied back to a concrete source/target mapping pair, proves source/target value
+equality, and can be lifted by the validator to source-liveout, final-live,
+storage-compatibility, and target-bounds facts.
 `PhaseValueWitness.phase_value_protocol_final_snapshot` and
 `check_phase_value_protocolb_final_snapshot` make the intermediate final
 boundary explicit: once the value protocol is checked, the final value snapshot

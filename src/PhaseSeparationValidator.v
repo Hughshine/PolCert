@@ -858,6 +858,176 @@ Definition phase_projection_bounded_compatible_non_escape_value_family
       value value_eqb value_eqb_sound;
 |}.
 
+Theorem phase_projection_value_entry_mapping_pair :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry,
+    phase_projection_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_view after ->
+    In entry projection_values ->
+    In (ppve_source_cell entry, ppve_target_cell entry) mapping /\
+    ppve_source_value entry = ppve_target_value entry.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry
+         Hcontract Hin.
+  destruct Hcontract as [_ _ _ Hprojection_values _].
+  destruct
+    (phase_projection_value_obligation_entry_in_mapping
+       value mapping projection_values entry Hprojection_values Hin)
+    as ([source_cell target_cell] & Hmapping & Hcells & Hvalue).
+  unfold phase_projection_value_entry_cells_match in Hcells.
+  unfold phase_projection_value_entry_value_match in Hvalue.
+  simpl in Hcells.
+  destruct Hcells as [Hsource Htarget].
+  rewrite Hsource in Hmapping.
+  rewrite Htarget in Hmapping.
+  split; assumption.
+Qed.
+
+Theorem phase_projection_value_entry_values_equal :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry,
+    phase_projection_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_view after ->
+    In entry projection_values ->
+    ppve_source_value entry = ppve_target_value entry.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry
+         Hcontract Hin.
+  destruct
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hcontract Hin)
+    as [_ Hvalue].
+  exact Hvalue.
+Qed.
+
+Theorem phase_projection_value_entry_source_liveout :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry,
+    phase_projection_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_view after ->
+    In entry projection_values ->
+    In (ppve_source_cell entry) source_liveouts.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry
+         Hcontract Hin.
+  pose proof
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hcontract Hin)
+    as [Hmapping _].
+  destruct Hcontract as [_ _ Hprojection _ _].
+  eapply phase_projection_mapped_source_liveout.
+  - exact Hprojection.
+  - unfold phase_projection_cell_relation.
+    exact Hmapping.
+Qed.
+
+Theorem phase_projection_value_entry_target_final_live :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry,
+    phase_projection_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_view after ->
+    In entry projection_values ->
+    In (ppve_target_cell entry) (phase_protocol_final_live entry_live steps).
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_view after entry
+         Hcontract Hin.
+  pose proof
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hcontract Hin)
+    as [Hmapping _].
+  destruct Hcontract as [_ _ Hprojection _ _].
+  eapply phase_projection_mapped_target_final_live.
+  - exact Hprojection.
+  - unfold phase_projection_cell_relation.
+    exact Hmapping.
+Qed.
+
+Theorem phase_projection_value_entry_compatible_specs :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         source_view after entry,
+    phase_projection_compatible_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs source_view after ->
+    In entry projection_values ->
+    exists source_spec final_spec,
+      In source_spec source_specs /\
+      In final_spec final_specs /\
+      storage_spec_cell source_spec = ppve_source_cell entry /\
+      storage_spec_cell final_spec = ppve_target_cell entry /\
+      storage_specs_compatible source_spec final_spec.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [Hbase Hcompatible].
+  destruct
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hbase Hin)
+    as [Hmapping _].
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem phase_projection_value_entry_target_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs final_bounds
+         source_view after entry,
+    phase_projection_bounded_compatible_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds source_view after ->
+    In entry projection_values ->
+    cell_within_declared_bounds final_bounds (ppve_target_cell entry).
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs final_bounds
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [Hbase _ Hbounds].
+  destruct
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hbase Hin)
+    as [Hmapping _].
+  eapply storage_bounds_cell_within
+    with (cells := phase_projection_targets mapping); eauto.
+  eapply phase_projection_pair_target_in_targets.
+  exact Hmapping.
+Qed.
+
 Theorem phase_projection_mapped_target_within_bounds :
   forall (value: Type) input_view output_view entry_live source_liveouts
          entry_values steps value_steps mapping projection_values
