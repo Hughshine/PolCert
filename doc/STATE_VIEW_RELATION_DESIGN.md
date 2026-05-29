@@ -1401,7 +1401,10 @@ functional, the target image is injective and allocated, and padding cells are
 duplicate-free, allocated, and disjoint from that target image.
 `LayoutValueWitness.check_layout_valueb_sound` adds boundary value evidence:
 entries must align with the source-to-target layout map, and each represented
-source value must equal the corresponding target physical value.
+source value must equal the corresponding target physical value.  It now also
+exposes positional-table projections: the map and value evidence have matching
+lengths, every layout-map edge has a matching value entry, and every supplied
+value entry belongs to the checked layout map.
 `PaddingLayoutValidator.checked_padding_layout_view_correct` packages those
 facts as another `view_refinement` wrapper.
 `checked_padding_layout_access_view_correct` additionally returns the

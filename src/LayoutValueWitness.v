@@ -147,4 +147,126 @@ Proof.
   exact Hcheck.
 Qed.
 
+Lemma layout_value_entries_match_length :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value)),
+    layout_value_entries_match mapping entries ->
+    length mapping = length entries.
+Proof.
+  induction mapping as [|mapping_entry mapping_tail IH];
+    intros entries Hmatch; destruct entries as [|value_entry entry_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    simpl.
+    f_equal.
+    apply IH.
+    exact Htail.
+Qed.
+
+Lemma layout_value_entries_match_mapping_entry :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (mapping_entry: MemCell * MemCell),
+    layout_value_entries_match mapping entries ->
+    In mapping_entry mapping ->
+    exists value_entry,
+      In value_entry entries /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  induction mapping as [|head mapping_tail IH];
+    intros entries mapping_entry Hmatch Hin;
+    destruct entries as [|value_entry entry_tail];
+    simpl in Hmatch, Hin; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst head.
+    exists value_entry.
+    split.
+    + simpl. left. reflexivity.
+    + split; assumption.
+  - pose proof
+      (IH entry_tail mapping_entry Htail Hin_tail)
+      as (tail_entry & Hentry_in & Hentry_cells & Hentry_value).
+    exists tail_entry.
+    split.
+    + simpl. right. exact Hentry_in.
+    + split; assumption.
+Qed.
+
+Theorem layout_value_obligation_length_match :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value)),
+    layout_value_obligations mapping entries ->
+    length mapping = length entries.
+Proof.
+  intros mapping entries Hobligations.
+  destruct Hobligations as [Hmatch].
+  eapply layout_value_entries_match_length; eauto.
+Qed.
+
+Theorem layout_value_obligation_mapping_entry_matched :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (mapping_entry: MemCell * MemCell),
+    layout_value_obligations mapping entries ->
+    In mapping_entry mapping ->
+    exists value_entry,
+      In value_entry entries /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  intros mapping entries mapping_entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply layout_value_entries_match_mapping_entry; eauto.
+Qed.
+
+Lemma layout_value_entries_match_entry_in_mapping :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (value_entry: layout_value_entry value),
+    layout_value_entries_match mapping entries ->
+    In value_entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  induction mapping as [|mapping_entry mapping_tail IH];
+    intros entries value_entry Hmatch Hin;
+    destruct entries as [|head_entry entry_tail];
+    simpl in Hmatch, Hin; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst head_entry.
+    exists mapping_entry.
+    split.
+    + simpl. left. reflexivity.
+    + split; assumption.
+  - pose proof
+      (IH entry_tail value_entry Htail Hin_tail)
+      as (tail_mapping_entry & Hmapping_in & Hentry_cells & Hentry_value).
+    exists tail_mapping_entry.
+    split.
+    + simpl. right. exact Hmapping_in.
+    + split; assumption.
+Qed.
+
+Theorem layout_value_obligation_entry_in_mapping :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (value_entry: layout_value_entry value),
+    layout_value_obligations mapping entries ->
+    In value_entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  intros mapping entries value_entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply layout_value_entries_match_entry_in_mapping; eauto.
+Qed.
+
 End Soundness.

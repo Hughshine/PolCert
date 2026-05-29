@@ -829,6 +829,12 @@ Definition storage_check_layout_valueb_sound :=
   check_layout_valueb_sound.
 Definition storage_layout_value_obligations :=
   layout_value_obligations.
+Definition storage_layout_value_obligation_length_match :=
+  layout_value_obligation_length_match.
+Definition storage_layout_value_obligation_mapping_entry_matched :=
+  layout_value_obligation_mapping_entry_matched.
+Definition storage_layout_value_obligation_entry_in_mapping :=
+  layout_value_obligation_entry_in_mapping.
 Definition storage_array_bounds := array_bounds.
 Definition storage_array_bounds_id := array_bounds_id.
 Definition storage_array_bounds_extents := array_bounds_extents.
