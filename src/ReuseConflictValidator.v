@@ -797,6 +797,60 @@ Proof.
            mapping logical_cell physical_cell Hlookup).
 Qed.
 
+Theorem bounded_reuse_mapping_pair_within_bounds :
+  forall input_view output_view mapping physical_bounds conflicts
+         source_view after logical_cell physical_cell,
+    bounded_conflict_reuse_view_contract
+      input_view output_view mapping physical_bounds conflicts
+      source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    cell_within_declared_bounds physical_bounds physical_cell.
+Proof.
+  intros input_view output_view mapping physical_bounds conflicts
+         source_view after logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [_ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := reuse_mapping_targets mapping); eauto.
+  eapply reuse_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem compatible_conflict_reuse_mapping_pair_compatible_specs :
+  forall input_view output_view mapping logical_specs physical_specs conflicts
+         source_view after logical_cell physical_cell,
+    compatible_conflict_reuse_view_contract
+      input_view output_view mapping logical_specs physical_specs conflicts
+      source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros input_view output_view mapping logical_specs physical_specs conflicts
+         source_view after logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [_ Hcompatible _].
+  destruct
+    (storage_compatibility_mapping_entry_specs
+       mapping logical_specs physical_specs
+       (logical_cell, physical_cell) Hcompatible Hin)
+    as (logical_spec & physical_spec &
+        Hlogical_in & Hphysical_in & Hlogical_cell &
+        Hphysical_cell & Hcompatible_specs).
+  simpl in Hlogical_cell, Hphysical_cell.
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hcompatible_specs.
+Qed.
+
 Theorem bounded_compatible_live_reuse_mapping_target_within_bounds :
   forall (value: Type) input_view output_view mapping
          logical_specs physical_specs physical_bounds intervals conflicts entries
@@ -815,6 +869,235 @@ Proof.
     with (cells := reuse_mapping_targets mapping); eauto.
   exact (reuse_lookup_target_in_targets
            mapping logical_cell physical_cell Hlookup).
+Qed.
+
+Theorem bounded_compatible_live_reuse_mapping_pair_within_bounds :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after logical_cell physical_cell,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    cell_within_declared_bounds physical_bounds physical_cell.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after
+         logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [_ _ _ _ _ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := reuse_mapping_targets mapping); eauto.
+  eapply reuse_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem bounded_compatible_live_reuse_mapping_pair_compatible_specs :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after logical_cell physical_cell,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after
+         logical_cell physical_cell Hcontract Hin.
+  destruct Hcontract as [_ _ _ _ Hcompatible _ _].
+  destruct
+    (storage_compatibility_mapping_entry_specs
+       mapping logical_specs physical_specs
+       (logical_cell, physical_cell) Hcompatible Hin)
+    as (logical_spec & physical_spec &
+        Hlogical_in & Hphysical_in & Hlogical_cell &
+        Hphysical_cell & Hcompatible_specs).
+  simpl in Hlogical_cell, Hphysical_cell.
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hcompatible_specs.
+Qed.
+
+Theorem bounded_compatible_live_reuse_lookup_compatible_specs :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after logical_cell physical_cell,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after
+         logical_cell physical_cell Hcontract Hlookup.
+  destruct Hcontract as [_ _ _ _ Hcompatible _ _].
+  assert (In (logical_cell, physical_cell) mapping) as Hin.
+  {
+    destruct
+      (reuse_lookup_sound logical_cell physical_cell mapping Hlookup)
+      as [Hin | (logical_cell' & Hin & Hlogical_eq)].
+    - exact Hin.
+    - rewrite <- Hlogical_eq in Hin.
+      exact Hin.
+  }
+  destruct
+    (storage_compatibility_mapping_entry_specs
+       mapping logical_specs physical_specs
+       (logical_cell, physical_cell) Hcompatible Hin)
+    as (logical_spec & physical_spec &
+        Hlogical_in & Hphysical_in & Hlogical_cell &
+        Hphysical_cell & Hcompatible_specs).
+  simpl in Hlogical_cell, Hphysical_cell.
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * exact Hlogical_cell.
+      * split.
+        -- exact Hphysical_cell.
+        -- exact Hcompatible_specs.
+Qed.
+
+Theorem bounded_compatible_live_reuse_value_entry_mapping_pair :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after entry,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In entry entries ->
+    exists logical_cell physical_cell,
+      In (logical_cell, physical_cell) mapping /\
+      logical_cell = rve_logical_cell entry /\
+      physical_cell = rve_physical_cell entry /\
+      reuse_value_entry_value_match entry.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after entry
+         Hcontract Hin.
+  destruct Hcontract as [_ _ _ Hvalues _ _ _].
+  destruct
+    (reuse_value_obligation_entry_in_mapping
+       value mapping entries entry Hvalues Hin)
+    as ([logical_cell physical_cell] &
+        Hmapping_in & Hcells & Hvalue_match).
+  unfold reuse_value_entry_cells_match in Hcells.
+  simpl in Hcells.
+  destruct Hcells as [Hlogical_cell Hphysical_cell].
+  exists logical_cell, physical_cell.
+  repeat split; assumption.
+Qed.
+
+Theorem bounded_compatible_live_reuse_value_entry_values_equal :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after entry,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In entry entries ->
+    rve_logical_value entry = rve_physical_value entry.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after entry
+         Hcontract Hin.
+  destruct
+    (bounded_compatible_live_reuse_value_entry_mapping_pair
+       value input_view output_view mapping logical_specs physical_specs
+       physical_bounds intervals conflicts entries source_view after entry
+       Hcontract Hin)
+    as (_ & _ & _ & _ & _ & Hvalue_match).
+  exact Hvalue_match.
+Qed.
+
+Theorem bounded_compatible_live_reuse_value_entry_within_bounds :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after entry,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In entry entries ->
+    cell_within_declared_bounds physical_bounds (rve_physical_cell entry).
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after entry
+         Hcontract Hin.
+  destruct
+    (bounded_compatible_live_reuse_value_entry_mapping_pair
+       value input_view output_view mapping logical_specs physical_specs
+       physical_bounds intervals conflicts entries source_view after entry
+       Hcontract Hin)
+    as (logical_cell & physical_cell &
+        Hmapping_in & _ & Hphysical_cell & _).
+  rewrite <- Hphysical_cell.
+  eapply bounded_compatible_live_reuse_mapping_pair_within_bounds; eauto.
+Qed.
+
+Theorem bounded_compatible_live_reuse_value_entry_compatible_specs :
+  forall (value: Type) input_view output_view mapping
+         logical_specs physical_specs physical_bounds intervals conflicts entries
+         source_view after entry,
+    bounded_compatible_live_conflict_reuse_value_view_contract
+      value input_view output_view mapping logical_specs physical_specs
+      physical_bounds intervals conflicts entries source_view after ->
+    In entry entries ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = rve_logical_cell entry /\
+      storage_spec_cell physical_spec = rve_physical_cell entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view mapping logical_specs physical_specs
+         physical_bounds intervals conflicts entries source_view after entry
+         Hcontract Hin.
+  destruct
+    (bounded_compatible_live_reuse_value_entry_mapping_pair
+       value input_view output_view mapping logical_specs physical_specs
+       physical_bounds intervals conflicts entries source_view after entry
+       Hcontract Hin)
+    as (logical_cell & physical_cell &
+        Hmapping_in & Hlogical_cell & Hphysical_cell & _).
+  destruct
+    (bounded_compatible_live_reuse_mapping_pair_compatible_specs
+       value input_view output_view mapping logical_specs physical_specs
+       physical_bounds intervals conflicts entries source_view after
+       logical_cell physical_cell Hcontract Hmapping_in)
+    as (logical_spec & physical_spec &
+        Hlogical_in & Hphysical_in & Hlogical_spec_cell &
+        Hphysical_spec_cell & Hcompatible_specs).
+  exists logical_spec, physical_spec.
+  split.
+  - exact Hlogical_in.
+  - split.
+    + exact Hphysical_in.
+    + split.
+      * rewrite <- Hlogical_cell.
+        exact Hlogical_spec_cell.
+      * split.
+        -- rewrite <- Hphysical_cell.
+           exact Hphysical_spec_cell.
+        -- exact Hcompatible_specs.
 Qed.
 
 End ReuseConflictValidator.

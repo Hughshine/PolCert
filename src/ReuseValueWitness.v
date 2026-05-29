@@ -104,6 +104,39 @@ Proof.
     + split; assumption.
 Qed.
 
+Lemma reuse_value_entries_match_entry_in_mapping :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value))
+         entry,
+    reuse_value_entries_match mapping entries ->
+    In entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      reuse_value_entry_cells_match mapping_entry entry /\
+      reuse_value_entry_value_match entry.
+Proof.
+  intros value mapping.
+  induction mapping as [|mapping_entry mapping_tail IH];
+    intros entries entry Hmatch Hin;
+    destruct entries as [|entry_head entry_tail];
+    simpl in *; try contradiction.
+  destruct Hmatch as [Hcells [Hvalue Htail]].
+  destruct Hin as [Hin_head | Hin_tail].
+  - subst entry_head.
+    exists mapping_entry.
+    split.
+    + left; reflexivity.
+    + split; assumption.
+  - destruct
+      (IH entry_tail entry Htail Hin_tail)
+      as (matched_entry & Hmapping_in & Hmatched_cells & Hmatched_value).
+    exists matched_entry.
+    split.
+    + right; exact Hmapping_in.
+    + split; assumption.
+Qed.
+
 Definition check_reuse_value_entryb {value: Type}
     (value_eqb: value -> value -> bool)
     (mapping_entry: MemCell * MemCell)
@@ -228,6 +261,24 @@ Theorem reuse_value_obligation_mapping_entry_matched :
 Proof.
   intros value mapping entries mapping_entry Hobligations Hin.
   eapply reuse_value_entries_match_mapping_entry.
+  - exact (rvo_entries_match value mapping entries Hobligations).
+  - exact Hin.
+Qed.
+
+Theorem reuse_value_obligation_entry_in_mapping :
+  forall (value: Type)
+         (mapping: reuse_mapping)
+         (entries: list (reuse_value_entry value))
+         entry,
+    reuse_value_obligations value mapping entries ->
+    In entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      reuse_value_entry_cells_match mapping_entry entry /\
+      reuse_value_entry_value_match entry.
+Proof.
+  intros value mapping entries entry Hobligations Hin.
+  eapply reuse_value_entries_match_entry_in_mapping.
   - exact (rvo_entries_match value mapping entries Hobligations).
   - exact Hin.
 Qed.

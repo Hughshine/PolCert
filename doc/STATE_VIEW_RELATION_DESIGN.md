@@ -2004,7 +2004,10 @@ pairs are physically separated.  This still does not derive the intervals from
 the schedule and access semantics.  `ReuseValueWitness.check_reuse_valueb_sound`
 adds the boundary equality witness: finite value entries must be aligned with
 the logical-to-physical selector and each physical boundary value must equal
-the logical value it represents.  `ReuseStateView.reuse_view` now defines the
+the logical value it represents.  Its projections now work in both directions:
+each reuse-map edge recovers a matching value entry, and each supplied value
+entry recovers the concrete reuse-map edge whose logical/physical cells it
+claims to represent.  `ReuseStateView.reuse_view` now defines the
 boundary projection view from a logical-to-physical selector.  The more precise
 `ReuseStateView.reuse_boundary_cell_view` restricts that relation to declared
 source live-outs and uses their image as the target-public footprint.  Its
@@ -2017,7 +2020,10 @@ The contraction-facing wrappers
 `checked_compatible_live_conflict_reuse_value_view_correct` now package the
 full finite side condition expected by a rolling-buffer proof: live-overlap
 cover, conflict-safe physical separation, storage compatibility, and optional
-boundary value equality.  They still do not derive the live intervals or
+boundary value equality.  The bounded/compatible/live value contract now also
+projects concrete mapping pairs and value entries to the checked physical
+bounds and logical/physical storage-spec entries, without changing the top
+`view_refinement` statement.  They still do not derive the live intervals or
 boundary observations from concrete code.
 
 This view must not require injectivity.  Safety comes from conflict/lifetime
