@@ -166,6 +166,122 @@ Proof.
   - eapply IH; eauto.
 Qed.
 
+Lemma overlap_write_entries_match_length :
+  forall private_cells commit_cells targets writes,
+    overlap_write_entries_match
+      private_cells commit_cells targets writes ->
+    length targets = length writes.
+Proof.
+  intros private_cells commit_cells targets.
+  induction targets as [|target target_tail IH];
+    intros writes Hmatch;
+    destruct writes as [|write write_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    simpl.
+    f_equal.
+    eapply IH; eauto.
+Qed.
+
+Lemma overlap_write_entries_match_target_write :
+  forall private_cells commit_cells targets writes target,
+    overlap_write_entries_match
+      private_cells commit_cells targets writes ->
+    In target targets ->
+    exists write,
+      In write writes /\
+      target = overlap_write_target write /\
+      overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets.
+  induction targets as [|head_target target_tail IH];
+    intros writes target Hmatch Hin;
+    destruct writes as [|write write_tail];
+    simpl in Hmatch, Hin; try contradiction.
+  destruct Hmatch as [Htarget [Hcell Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst target.
+    exists write.
+    split.
+    + simpl. left. reflexivity.
+    + split.
+      * exact Htarget.
+      * exact Hcell.
+  - pose proof
+      (IH write_tail target Htail Hin_tail)
+      as (tail_write & Hwrite_in & Htarget_match & Hcell_ok).
+    exists tail_write.
+    split.
+    + simpl. right. exact Hwrite_in.
+    + split; assumption.
+Qed.
+
+Lemma overlap_write_entries_match_write_target :
+  forall private_cells commit_cells targets writes write,
+    overlap_write_entries_match
+      private_cells commit_cells targets writes ->
+    In write writes ->
+    In (overlap_write_target write) targets /\
+    overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets.
+  induction targets as [|target target_tail IH];
+    intros writes write Hmatch Hin;
+    destruct writes as [|head_write write_tail];
+    simpl in Hmatch, Hin; try contradiction.
+  destruct Hmatch as [Htarget [Hcell Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst write.
+    split.
+    + simpl. left. exact Htarget.
+    + exact Hcell.
+  - pose proof (IH write_tail write Htail Hin_tail)
+      as [Htarget_in Hcell_ok].
+    split.
+    + simpl. right. exact Htarget_in.
+    + exact Hcell_ok.
+Qed.
+
+Theorem overlap_storage_entries_length_match :
+  forall private_cells commit_cells targets writes,
+    overlap_storage_obligations
+      private_cells commit_cells targets writes ->
+    length targets = length writes.
+Proof.
+  intros private_cells commit_cells targets writes Hobligations.
+  destruct Hobligations as [Hmatch _].
+  eapply overlap_write_entries_match_length; eauto.
+Qed.
+
+Theorem overlap_storage_target_write_entry :
+  forall private_cells commit_cells targets writes target,
+    overlap_storage_obligations
+      private_cells commit_cells targets writes ->
+    In target targets ->
+    exists write,
+      In write writes /\
+      target = overlap_write_target write /\
+      overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets writes target Hobligations Hin.
+  destruct Hobligations as [Hmatch _].
+  eapply overlap_write_entries_match_target_write; eauto.
+Qed.
+
+Theorem overlap_storage_write_target_in_targets :
+  forall private_cells commit_cells targets writes write,
+    overlap_storage_obligations
+      private_cells commit_cells targets writes ->
+    In write writes ->
+    In (overlap_write_target write) targets /\
+    overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets writes write Hobligations Hin.
+  destruct Hobligations as [Hmatch _].
+  eapply overlap_write_entries_match_write_target; eauto.
+Qed.
+
 Theorem overlap_storage_internal_write_private :
   forall private_cells commit_cells targets writes write,
     overlap_storage_obligations

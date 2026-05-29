@@ -1369,6 +1369,12 @@ Definition storage_check_overlap_storageb_sound :=
   check_overlap_storageb_sound.
 Definition storage_overlap_storage_obligations :=
   overlap_storage_obligations.
+Definition storage_overlap_storage_entries_length_match :=
+  overlap_storage_entries_length_match.
+Definition storage_overlap_storage_target_write_entry :=
+  overlap_storage_target_write_entry.
+Definition storage_overlap_storage_write_target_in_targets :=
+  overlap_storage_write_target_in_targets.
 Definition storage_overlap_storage_internal_write_private :=
   overlap_storage_internal_write_private.
 Definition storage_overlap_storage_commit_write_public :=

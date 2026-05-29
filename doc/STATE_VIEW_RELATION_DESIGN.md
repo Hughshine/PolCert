@@ -2158,7 +2158,10 @@ compatibility, private/commit bounds, and private non-escape.  Its public facade
 exposes only `View.view_refinement`, and
 `overlap_private_ordered_bounded_non_escape_family` carries the detailed
 projection, closure, value, storage, bounds, and non-escape witnesses as
-parameters/side conditions for composition.  Deriving those finite witnesses from
+parameters/side conditions for composition.  The storage witness now also
+projects the role-to-write table itself: every projected target recovers its
+write entry, every supplied write points back to a checked target, and the two
+lists have the same length.  Deriving those finite witnesses from
 concrete generated code remains explicit.
 
 Overlap support requires keeping instance duplication separate from state
