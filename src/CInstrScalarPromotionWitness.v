@@ -338,6 +338,17 @@ Proof.
     exact Hsem.
 Qed.
 
+Theorem cscalar_promotion_value_event_cinstr_generic_matched :
+  forall event value_event,
+    cscalar_promotion_value_event_cinstr_semantics event value_event ->
+    scalar_promotion_value_event_kind_matches event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros event value_event Hsem.
+  inversion Hsem; subst;
+    inversion H; subst; simpl; auto.
+Qed.
+
 Inductive cscalar_promotion_value_trace
     : option Values.val ->
       scalar_promotion_value_trace Values.val -> Prop :=
@@ -495,6 +506,26 @@ Proof.
     as Hcinstr.
   pose proof
     (cscalar_promotion_value_event_cinstr_matched
+       event value_event Hcinstr)
+    as [Hkind Hvalues].
+  repeat split; assumption.
+Qed.
+
+Theorem cscalar_promotion_value_trace_event_cinstr_and_generic_matched :
+  forall current_scalar trace event value_event,
+    cscalar_promotion_value_trace current_scalar trace ->
+    In (event, value_event) trace ->
+    cscalar_promotion_value_event_cinstr_semantics event value_event /\
+    scalar_promotion_value_event_kind_matches event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros current_scalar trace event value_event Htrace Hin.
+  pose proof
+    (cscalar_promotion_value_trace_event_cinstr_semantics
+       current_scalar trace event value_event Htrace Hin)
+    as Hcinstr.
+  pose proof
+    (cscalar_promotion_value_event_cinstr_generic_matched
        event value_event Hcinstr)
     as [Hkind Hvalues].
   repeat split; assumption.

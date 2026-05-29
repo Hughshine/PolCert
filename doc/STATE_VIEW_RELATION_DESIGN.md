@@ -1609,7 +1609,10 @@ same event stream: load/source values must match, reads observe the current
 scalar, writes update it, and store-back commits the current scalar value.
 `ScalarPromotionValidator.checked_scalar_promotion_value_view_correct` combines
 the storage protocol, value-flow witness, and private separation for the scalar
-cell.  `CInstrScalarPromotionWitness.v` now supplies the first concrete
+cell.  `ScalarPromotionValueWitness.v` now exposes selected-event projection:
+from a checked value-flow trace, an arbitrary event recovers the matching
+promotion-event kind plus the load/store value equality carried by that value
+event.  `CInstrScalarPromotionWitness.v` now supplies the first concrete
 instruction bridge for that value trace: CInstr access, expression-evaluation,
 and assignment steps can justify promotion load/read/write/store/global-write
 events, and an ordered CInstr-derived trace proves the generic scalar-promotion
@@ -1619,8 +1622,11 @@ event-provenance layer through
 `cscalar_promotion_value_trace_event_cinstr_and_matched`: later proofs can
 recover the local CInstr witness for a selected trace event, plus a checked
 promotion-kind match and the internal load/store value equalities carried by
-the value event.  `CInstrScalarPromotionValidatorBridge.v` packages that
-instruction evidence into the existing scalar-promotion public-view wrappers,
+the value event.  It also provides
+`cscalar_promotion_value_trace_event_cinstr_and_generic_matched`, using the
+generic scalar-promotion value witness predicates directly.
+`CInstrScalarPromotionValidatorBridge.v` packages that instruction evidence
+into the existing scalar-promotion public-view wrappers,
 including compatible and bounded/non-escape variants, so the endpoint theorem
 remains a view refinement rather than a CInstr-specific relation.
 `checked_scalar_promotion_compatible_value_view_correct` adds the finite

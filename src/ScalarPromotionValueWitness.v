@@ -31,6 +31,30 @@ Arguments PromotionValueGlobalWrite {value}.
 Definition scalar_promotion_value_trace (value: Type) :=
   list (scalar_promotion_event * scalar_promotion_value_event value).
 
+Definition scalar_promotion_value_event_kind_matches {value: Type}
+    (event: scalar_promotion_event)
+    (value_event: scalar_promotion_value_event value) : Prop :=
+  match event, value_event with
+  | PromotionLoad _ _, PromotionValueLoad _ _ => True
+  | PromotionScalarRead _, PromotionValueRead _ => True
+  | PromotionScalarWrite _, PromotionValueWrite _ => True
+  | PromotionStore _ _, PromotionValueStore _ _ => True
+  | PromotionGlobalWrite _, PromotionValueGlobalWrite => True
+  | _, _ => False
+  end.
+
+Definition scalar_promotion_value_event_values_match {value: Type}
+    (value_event: scalar_promotion_value_event value) : Prop :=
+  match value_event with
+  | PromotionValueLoad source_value scalar_value =>
+      source_value = scalar_value
+  | PromotionValueRead _ => True
+  | PromotionValueWrite _ => True
+  | PromotionValueStore scalar_value source_value =>
+      scalar_value = source_value
+  | PromotionValueGlobalWrite => True
+  end.
+
 Fixpoint scalar_promotion_value_trace_events {value: Type}
     (trace: scalar_promotion_value_trace value)
     : list scalar_promotion_event :=
@@ -39,6 +63,25 @@ Fixpoint scalar_promotion_value_trace_events {value: Type}
   | (storage_event, _) :: tail =>
       storage_event :: scalar_promotion_value_trace_events tail
   end.
+
+Lemma scalar_promotion_value_trace_pair_event_in_events :
+  forall (value: Type)
+         (trace: scalar_promotion_value_trace value)
+         storage_event value_event,
+    In (storage_event, value_event) trace ->
+    In storage_event (scalar_promotion_value_trace_events trace).
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros storage_event value_event Hin; simpl in *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      eapply IH.
+      exact Htail.
+Qed.
 
 Fixpoint scalar_promotion_value_trace_values {value: Type}
     (trace: scalar_promotion_value_trace value)
@@ -231,6 +274,85 @@ Proof.
   - exact I.
 Qed.
 
+Theorem scalar_value_trace_simulates_from_event_matched :
+  forall (value: Type)
+         (trace: scalar_promotion_value_trace value)
+         current_scalar storage_event value_event,
+    scalar_value_trace_simulates_from current_scalar trace ->
+    In (storage_event, value_event) trace ->
+    scalar_promotion_value_event_kind_matches storage_event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros value trace.
+  induction trace as [|[head_event head_value] tail IH];
+    intros current_scalar storage_event value_event Hsim Hin;
+    simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail_in].
+    + inversion Hhead; subst head_event head_value.
+      destruct storage_event as [source_cell scalar_cell
+                                | scalar_cell
+                                | scalar_cell
+                                | scalar_cell source_cell
+                                | cell];
+        destruct value_event as [source_value scalar_value
+                                | read_value
+                                | new_scalar_value
+                                | store_scalar_value store_source_value
+                                | ];
+        simpl in Hsim; try contradiction.
+      * destruct Hsim as [Hvalue _].
+        split.
+        -- simpl. exact I.
+        -- simpl. exact Hvalue.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        destruct Hsim as [_ _].
+        split; simpl; exact I.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        split; simpl; exact I.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        destruct Hsim as [Hscalar [Hsource _]].
+        split.
+        -- simpl. exact I.
+        -- simpl.
+           transitivity current_value.
+           ++ exact Hscalar.
+           ++ symmetry. exact Hsource.
+      * split; simpl; exact I.
+    + destruct head_event as [source_cell scalar_cell
+                             | scalar_cell
+                             | scalar_cell
+                             | scalar_cell source_cell
+                             | cell];
+        destruct head_value as [source_value scalar_value
+                               | read_value
+                               | new_scalar_value
+                               | store_scalar_value store_source_value
+                               | ];
+        simpl in Hsim; try contradiction.
+      * destruct Hsim as [_ Htail].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        destruct Hsim as [_ Htail].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        eapply IH.
+        -- exact Hsim.
+        -- exact Htail_in.
+      * destruct current_scalar as [current_value |]; try contradiction.
+        destruct Hsim as [_ [_ Htail]].
+        eapply IH.
+        -- exact Htail.
+        -- exact Htail_in.
+      * eapply IH.
+        -- exact Hsim.
+        -- exact Htail_in.
+Qed.
+
 Section Soundness.
 
 Variable value: Type.
@@ -337,4 +459,22 @@ Proof.
   subst events.
   apply scalar_value_obligations_use_def.
   exact Hobligations.
+Qed.
+
+Theorem scalar_value_obligation_event_matched :
+  forall (value: Type)
+         (value_trace: scalar_promotion_value_trace value)
+         storage_event value_event,
+    scalar_value_simulation_obligations value value_trace ->
+    In (storage_event, value_event) value_trace ->
+    scalar_promotion_value_event_kind_matches storage_event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros value value_trace storage_event value_event
+         Hobligations Hin.
+  destruct Hobligations as [Hsimulates].
+  unfold scalar_value_trace_simulates in Hsimulates.
+  eapply scalar_value_trace_simulates_from_event_matched.
+  - exact Hsimulates.
+  - exact Hin.
 Qed.
