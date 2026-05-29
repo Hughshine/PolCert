@@ -191,4 +191,47 @@ Proof.
   eapply frame_value_entries_preserve_cell; eauto.
 Qed.
 
+Lemma frame_value_entries_preserve_entry :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (entry: frame_value_entry value),
+    frame_value_entries_preserve frame_cells entries ->
+    In entry entries ->
+    In (fve_frame_cell entry) frame_cells /\
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  induction frame_cells as [|head frame_tail IH];
+    intros entries entry Hpreserve Hin;
+    destruct entries as [|head_entry entry_tail];
+    simpl in Hpreserve, Hin; try contradiction.
+  destruct Hpreserve as [Hcell [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst head_entry.
+    split.
+    + simpl. left.
+      unfold frame_value_entry_cell_match in Hcell.
+      exact Hcell.
+    + unfold frame_value_entry_preserved in Hvalue.
+      exact Hvalue.
+  - pose proof (IH entry_tail entry Htail Hin_tail)
+      as [Hframe Hpreserved].
+    split.
+    + simpl. right. exact Hframe.
+    + exact Hpreserved.
+Qed.
+
+Theorem frame_value_entry_in_frame_cells :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (entry: frame_value_entry value),
+    frame_value_obligations frame_cells entries ->
+    In entry entries ->
+    In (fve_frame_cell entry) frame_cells /\
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  intros frame_cells entries entry Hobligations Hin.
+  destruct Hobligations as [Hpreserve].
+  eapply frame_value_entries_preserve_entry; eauto.
+Qed.
+
 End Soundness.

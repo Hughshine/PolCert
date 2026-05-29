@@ -423,9 +423,12 @@ view can be composed with a context-frame contract without changing the old
 the composed endpoint as `public_semantic_refinement`.  That keeps frame
 preservation in the same theorem discipline as storage-changing transformations:
 the top theorem is still semantic refinement under public views, while the
-write-set, frame-value, and bounds witnesses remain side conditions.  The missing
-piece is deriving `write_cells` from concrete instruction semantics rather than
-supplying it as a finite witness.
+write-set, frame-value, and bounds witnesses remain side conditions.  The frame
+value witness now also exposes both directions of the finite table evidence:
+every frame cell has a preserving value entry, and every supplied value entry is
+known to belong to the checked frame.  The missing piece is deriving
+`write_cells` from concrete instruction semantics rather than supplying it as a
+finite witness.
 
 ### Commit Policy
 

@@ -570,6 +570,8 @@ Definition storage_frame_value_obligations :=
   frame_value_obligations.
 Definition storage_frame_value_cell_preserved :=
   frame_value_cell_preserved.
+Definition storage_frame_value_entry_in_frame_cells :=
+  frame_value_entry_in_frame_cells.
 Definition storage_frame_source_view_refines_view :=
   FramePreservationCore.frame_source_view_refines_view.
 Definition storage_frame_preservation_view_contract :=
