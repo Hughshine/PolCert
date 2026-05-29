@@ -108,6 +108,47 @@ Proof.
         exact Hin_tail.
 Qed.
 
+Lemma phase_value_entry_cell_in_cells :
+  forall (value: Type)
+         cell value'
+         (values: list (phase_cell_value value)),
+    In (cell, value') values ->
+    In cell (phase_value_cells values).
+Proof.
+  intros value cell value' values.
+  induction values as [|[head_cell head_value] tail IH];
+    intros Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Hhead | Htail].
+    + inversion Hhead; subst.
+      left. reflexivity.
+    + right.
+      apply IH.
+      exact Htail.
+Qed.
+
+Lemma phase_value_lookup_entry :
+  forall (value: Type)
+         cell value'
+         (values: list (phase_cell_value value)),
+    phase_value_lookup cell values = Some value' ->
+    In (cell, value') values.
+Proof.
+  intros value cell value' values.
+  induction values as [|[head_cell head_value] tail IH];
+    intros Hlookup; simpl in Hlookup.
+  - discriminate.
+  - destruct (mem_cell_strict_eqb cell head_cell) eqn:Heq.
+    + apply mem_cell_strict_eqb_eq in Heq.
+      left.
+      destruct Heq.
+      inversion Hlookup; subst.
+      reflexivity.
+    + right.
+      apply IH.
+      exact Hlookup.
+Qed.
+
 Theorem phase_snapshot_value_cells_nodup :
   forall (value: Type)
          cells
@@ -137,6 +178,29 @@ Proof.
   exact Hin_cell.
 Qed.
 
+Theorem phase_snapshot_cell_value_entry :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    phase_snapshot_matches_cells cells values ->
+    In cell cells ->
+    exists value',
+      In (cell, value') values /\
+      phase_value_lookup cell values = Some value'.
+Proof.
+  intros value cells values cell Hsnapshot Hin_cell.
+  destruct
+    (phase_snapshot_cell_has_value
+       value cells values cell Hsnapshot Hin_cell)
+    as (value' & Hlookup).
+  exists value'.
+  split.
+  - apply phase_value_lookup_entry.
+    exact Hlookup.
+  - exact Hlookup.
+Qed.
+
 Theorem phase_snapshot_value_cell_in_cells :
   forall (value: Type)
          cells
@@ -150,6 +214,22 @@ Proof.
   destruct Hsnapshot as [_ [_ Hcover]].
   apply Hcover.
   exact Hin_value.
+Qed.
+
+Theorem phase_snapshot_value_entry_in_cells :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell value',
+    phase_snapshot_matches_cells cells values ->
+    In (cell, value') values ->
+    In cell cells.
+Proof.
+  intros value cells values cell value' Hsnapshot Hin_value.
+  eapply phase_snapshot_value_cell_in_cells.
+  - exact Hsnapshot.
+  - eapply phase_value_entry_cell_in_cells.
+    exact Hin_value.
 Qed.
 
 Definition phase_reads_have_values {value: Type}
@@ -205,6 +285,73 @@ Definition phase_next_cell_value_flow {value: Type}
       exists entry_value,
         phase_value_lookup cell entry_values = Some entry_value /\
         next_value = entry_value)).
+
+Theorem phase_reads_have_value_entry :
+  forall (value: Type)
+         reads
+         (entry_values: list (phase_cell_value value))
+         cell,
+    phase_reads_have_values reads entry_values ->
+    In cell reads ->
+    exists value',
+      In (cell, value') entry_values /\
+      phase_value_lookup cell entry_values = Some value'.
+Proof.
+  intros value reads entry_values cell Hreads Hin.
+  destruct (Hreads cell Hin) as (value' & Hlookup).
+  exists value'.
+  split.
+  - apply phase_value_lookup_entry.
+    exact Hlookup.
+  - exact Hlookup.
+Qed.
+
+Theorem phase_next_cell_value_flow_entries :
+  forall (value: Type)
+         (entry_values write_values next_values:
+           list (phase_cell_value value))
+         cell,
+    phase_next_cell_value_flow entry_values write_values next_values cell ->
+    exists next_value,
+      In (cell, next_value) next_values /\
+      phase_value_lookup cell next_values = Some next_value /\
+      ((exists write_value,
+          In (cell, write_value) write_values /\
+          phase_value_lookup cell write_values = Some write_value /\
+          next_value = write_value) \/
+       (phase_value_lookup cell write_values = None /\
+        exists entry_value,
+          In (cell, entry_value) entry_values /\
+          phase_value_lookup cell entry_values = Some entry_value /\
+          next_value = entry_value)).
+Proof.
+  intros value entry_values write_values next_values cell Hflow.
+  destruct Hflow as (next_value & Hnext & Hsource).
+  exists next_value.
+  split.
+  - apply phase_value_lookup_entry.
+    exact Hnext.
+  - split.
+    + exact Hnext.
+    + destruct Hsource as [Hwrite | Hentry].
+      * left.
+        destruct Hwrite as (write_value & Hwrite & Hnext_value).
+        exists write_value.
+        split.
+        -- apply phase_value_lookup_entry.
+           exact Hwrite.
+        -- split; assumption.
+      * right.
+        destruct Hentry as [Hwrite_none Hentry].
+        split.
+        -- exact Hwrite_none.
+        -- destruct Hentry as (entry_value & Hentry & Hnext_value).
+           exists entry_value.
+           split.
+           ++ apply phase_value_lookup_entry.
+              exact Hentry.
+           ++ split; assumption.
+Qed.
 
 Definition check_phase_next_cell_valueb {value: Type}
     (value_eqb: value -> value -> bool)

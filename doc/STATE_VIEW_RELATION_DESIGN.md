@@ -1036,10 +1036,13 @@ entry-live cells, and next-live cells come from either entry-live cells or phase
 writes.  `PhaseValueWitness.check_phase_value_protocolb_sound` adds the
 snapshot value-flow side: read cells have entry values, and each next-live
 value is either produced by the phase write for that cell or inherited from
-the entry snapshot.  `PhaseProjectionWitness.check_phase_projectionb_sound`
-adds the final-boundary projection side: source live-outs are covered exactly
-once by a finite map into final phase-live cells, and the target cells are
-duplicate-free.  `PhaseProjectionWitness.check_phase_projection_valueb_sound`
+the entry snapshot.  It also exposes table-entry projection facts, so lookup
+witnesses for snapshot cells, reads, and next-live flow can be recovered as
+concrete `(cell, value)` entries in the finite value tables.
+`PhaseProjectionWitness.check_phase_projectionb_sound` adds the final-boundary
+projection side: source live-outs are covered exactly once by a finite map into
+final phase-live cells, and the target cells are duplicate-free.
+`PhaseProjectionWitness.check_phase_projection_valueb_sound`
 checks the optional boundary values for that map.  The
 same module now exposes the projection map as
 `phase_projection_cell_relation` and names the exact-cover consequences needed

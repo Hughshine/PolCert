@@ -1652,12 +1652,24 @@ Definition storage_phase_value_protocol_final_values :=
   @phase_value_protocol_final_values.
 Definition storage_phase_value_lookup_in_cells :=
   phase_value_lookup_in_cells.
+Definition storage_phase_value_entry_cell_in_cells :=
+  phase_value_entry_cell_in_cells.
+Definition storage_phase_value_lookup_entry :=
+  phase_value_lookup_entry.
 Definition storage_phase_snapshot_value_cells_nodup :=
   phase_snapshot_value_cells_nodup.
 Definition storage_phase_snapshot_cell_has_value :=
   phase_snapshot_cell_has_value.
+Definition storage_phase_snapshot_cell_value_entry :=
+  phase_snapshot_cell_value_entry.
 Definition storage_phase_snapshot_value_cell_in_cells :=
   phase_snapshot_value_cell_in_cells.
+Definition storage_phase_snapshot_value_entry_in_cells :=
+  phase_snapshot_value_entry_in_cells.
+Definition storage_phase_reads_have_value_entry :=
+  phase_reads_have_value_entry.
+Definition storage_phase_next_cell_value_flow_entries :=
+  phase_next_cell_value_flow_entries.
 Definition storage_phase_value_protocol_final_snapshot :=
   phase_value_protocol_final_snapshot.
 Definition storage_check_phase_value_protocolb_final_snapshot :=
