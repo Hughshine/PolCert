@@ -766,6 +766,116 @@ Proof.
   - eapply cmd_mapping_locals_declared; eauto.
 Qed.
 
+Theorem copy_protocol_mapping_pair_within_bounds :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after public_cell local_cell,
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    cell_within_declared_bounds public_bounds public_cell /\
+    cell_within_declared_bounds local_bounds local_cell.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after public_cell local_cell Hcontract Hpair.
+  destruct Hcontract as [_ Hdeclared _ Hpublic_bounds Hlocal_bounds].
+  pose proof
+    (copy_mapping_declaration_pair_declared
+       mapping public_cells local_cells public_cell local_cell
+       Hdeclared Hpair)
+    as [Hpublic Hlocal].
+  split.
+  - eapply storage_bounds_cell_within; eauto.
+  - eapply storage_bounds_cell_within; eauto.
+Qed.
+
+Theorem copy_protocol_mapping_pair_compatible_specs :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after public_cell local_cell,
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    exists public_spec local_spec,
+      In public_spec public_specs /\
+      In local_spec local_specs /\
+      storage_spec_cell public_spec = public_cell /\
+      storage_spec_cell local_spec = local_cell /\
+      storage_specs_compatible public_spec local_spec.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after public_cell local_cell Hcontract Hpair.
+  destruct Hcontract as [_ _ Hcompatible _ _].
+  pose proof
+    (storage_compatibility_mapping_entry_specs
+       mapping public_specs local_specs
+       (public_cell, local_cell) Hcompatible Hpair)
+    as (public_spec & local_spec & Hpublic_in & Hlocal_in &
+        Hpublic_cell & Hlocal_cell & Hspecs).
+  exists public_spec, local_spec.
+  simpl in Hpublic_cell, Hlocal_cell.
+  split.
+  - exact Hpublic_in.
+  - split.
+    + exact Hlocal_in.
+    + split.
+      * exact Hpublic_cell.
+      * split.
+        -- exact Hlocal_cell.
+        -- exact Hspecs.
+Qed.
+
+Theorem copy_protocol_value_event_entry :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after copy_event',
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    In copy_event' (copy_value_trace_events value_trace) ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after copy_event'
+         Hcontract Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_event_entry; eauto.
+Qed.
+
+Theorem copy_protocol_trace_value_event_entry :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after copy_event',
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    copy_value_trace_events value_trace = trace ->
+    In copy_event' trace ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after copy_event'
+         Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_trace_event_entry; eauto.
+Qed.
+
 Theorem checked_copy_protocol_commits_nodup :
   forall trace,
     check_copy_protocol_wfb trace = true ->

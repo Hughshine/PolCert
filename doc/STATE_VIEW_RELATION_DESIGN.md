@@ -1520,6 +1520,11 @@ corresponding
 packages those obligations as parameter/side-condition data, so a copy protocol
 can compose with later passes through `public_semantic_refinement` before it is
 lifted into the larger scratchpad/packing wrapper.
+The same validator also exposes contract-level projections such as
+`copy_protocol_mapping_pair_within_bounds`,
+`copy_protocol_mapping_pair_compatible_specs`, and
+`copy_protocol_trace_value_event_entry`; these are deliberately corollaries of
+the checked contract, not extra arguments to the final refinement theorem.
 `ScratchpadCopyValidator.checked_scratchpad_copy_view_correct`
 combines this copy witness with instance projection and local-buffer
 separation, which is closer to a scratchpad/packing transformation.  It still
@@ -1549,6 +1554,13 @@ The corresponding `scratchpad_copy_bounded_non_escape_family` carries all copy
 protocol, mapping, value-flow, bounds, compatibility, and non-escape witnesses as
 parameters/side conditions, giving scratchpad/packing the same compositional
 shape as scalar privatization, scalar promotion, and inter-array reuse.
+The scratchpad facade mirrors the copy-protocol projections with
+`scratchpad_copy_full_target_event`, `scratchpad_copy_full_event_target`,
+`scratchpad_copy_full_trace_value_event_entry`,
+`scratchpad_copy_mapping_pair_compatible_specs`, and
+`scratchpad_copy_mapping_pair_within_declared_bounds`, so later concrete-code
+lifting proofs can cite direct entry facts while the top theorem remains a
+plain public-view semantic refinement.
 
 This support cannot be reduced to schedule legality.  The copy protocol is part
 of correctness.

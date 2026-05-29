@@ -1168,6 +1168,200 @@ Definition scratchpad_copy_bounded_non_escape_family
       value value_eqb value_eqb_sound;
 |}.
 
+Theorem scratchpad_copy_full_target_event :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after target,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    In target targets ->
+    exists event,
+      In event copy_trace /\
+      projected_role target = copy_event_projected_role event.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after target Hcontract Hin.
+  destruct Hcontract as [Hbase _ _].
+  destruct Hbase as [_ Hinstance].
+  eapply copy_instance_trace_obligation_target_event; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_event_target :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after event,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    In event copy_trace ->
+    exists target,
+      In target targets /\
+      projected_role target = copy_event_projected_role event.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after event Hcontract Hin.
+  destruct Hcontract as [Hbase _ _].
+  destruct Hbase as [_ Hinstance].
+  eapply copy_instance_trace_obligation_event_target; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_value_event_entry :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after copy_event',
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    In copy_event' (copy_value_trace_events value_trace) ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after copy_event' Hcontract Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_event_entry; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_trace_value_event_entry :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after copy_event',
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    copy_value_trace_events value_trace = copy_trace ->
+    In copy_event' copy_trace ->
+    exists value_event,
+      In (copy_event', value_event) value_trace /\
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after copy_event' Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_trace_event_entry; eauto.
+Qed.
+
+Theorem scratchpad_copy_mapping_pair_compatible_specs :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs
+         source_view after public_cell local_cell,
+    scratchpad_copy_fully_declared_compatible_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs source_view after ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    exists public_spec local_spec,
+      In public_spec public_specs /\
+      In local_spec local_specs /\
+      storage_spec_cell public_spec = public_cell /\
+      storage_spec_cell local_spec = local_cell /\
+      storage_specs_compatible public_spec local_spec.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs
+         source_view after public_cell local_cell Hcontract Hpair.
+  destruct Hcontract as [Hcompatible _].
+  destruct Hcompatible as [_ Hstorage].
+  pose proof
+    (storage_compatibility_mapping_entry_specs
+       mapping public_specs local_specs
+       (public_cell, local_cell) Hstorage Hpair)
+    as (public_spec & local_spec & Hpublic_in & Hlocal_in &
+        Hpublic_cell & Hlocal_cell & Hspecs).
+  exists public_spec, local_spec.
+  simpl in Hpublic_cell, Hlocal_cell.
+  split.
+  - exact Hpublic_in.
+  - split.
+    + exact Hlocal_in.
+    + split.
+      * exact Hpublic_cell.
+      * split.
+        -- exact Hlocal_cell.
+        -- exact Hspecs.
+Qed.
+
+Theorem scratchpad_copy_mapping_pair_within_declared_bounds :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds
+         source_view after public_cell local_cell,
+    scratchpad_copy_bounded_fully_declared_compatible_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds source_view after ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    cell_within_declared_bounds public_bounds public_cell /\
+    cell_within_declared_bounds local_bounds local_cell.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds
+         source_view after public_cell local_cell Hcontract Hpair.
+  destruct Hcontract as [Hdeclared Hpublic_bounds Hlocal_bounds].
+  destruct Hdeclared as [_ Hmapping_declared].
+  pose proof
+    (copy_mapping_declaration_pair_declared
+       mapping public_cells local_cells public_cell local_cell
+       Hmapping_declared Hpair)
+    as [Hpublic Hlocal].
+  split.
+  - eapply storage_bounds_cell_within; eauto.
+  - eapply storage_bounds_cell_within; eauto.
+Qed.
+
 Theorem scratchpad_copy_mapping_local_within_bounds :
   forall (value: Type)
          input_view output_view
