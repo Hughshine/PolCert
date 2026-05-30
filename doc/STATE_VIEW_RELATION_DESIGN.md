@@ -1388,8 +1388,11 @@ instruction-level simulation theorem.  The shared
 program/instruction projections: the source and target instruction lists have
 the same length, nth source or target instructions recover the corresponding
 remapped instruction, and matched nth instructions directly expose their write
-and read access-list relations.  These facts keep layout-specific simulation
-proofs from unpacking the generic `Forall2` witness.
+and read access-list relations.  The access-list relation itself now exposes
+nth access-pair and point-cell projections, and the program-level wrapper lifts
+those facts to nth write/read accesses of matched instructions.  These facts
+keep layout-specific simulation proofs from unpacking the generic `Forall2`
+witness.
 
 ### Padding and Alignment
 

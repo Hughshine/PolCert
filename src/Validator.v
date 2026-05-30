@@ -505,7 +505,18 @@ Definition phase_separation_shape := TransformCore.phase_separation_shape.
 Definition storage_cell_relation := cell_relation.
 Definition storage_identity_cell_relation := identity_cell_relation.
 Definition storage_compose_cell_relation := compose_cell_relation.
+Definition storage_same_point_access_relation := same_point_access_relation.
 Definition storage_access_list_relation := access_list_relation.
+Definition storage_access_list_relation_length :=
+  access_list_relation_length.
+Definition storage_access_list_relation_target_access :=
+  access_list_relation_target_access.
+Definition storage_access_list_relation_source_access :=
+  access_list_relation_source_access.
+Definition storage_access_list_relation_nth :=
+  access_list_relation_nth.
+Definition storage_access_list_relation_nth_point :=
+  access_list_relation_nth_point.
 Definition storage_generic_cell_view := generic_cell_view.
 Definition storage_gcv_cell_relation := gcv_cell_relation.
 Definition storage_gcv_source_observable := gcv_source_observable.
@@ -803,6 +814,14 @@ Definition pprog_same_instance_access_remap_write_accesses_nth :=
   StorageCore.pprog_same_instance_access_remap_write_accesses_nth.
 Definition pprog_same_instance_access_remap_read_accesses_nth :=
   StorageCore.pprog_same_instance_access_remap_read_accesses_nth.
+Definition pprog_same_instance_access_remap_write_access_nth :=
+  StorageCore.pprog_same_instance_access_remap_write_access_nth.
+Definition pprog_same_instance_access_remap_read_access_nth :=
+  StorageCore.pprog_same_instance_access_remap_read_access_nth.
+Definition pprog_same_instance_access_remap_write_access_cell_nth :=
+  StorageCore.pprog_same_instance_access_remap_write_access_cell_nth.
+Definition pprog_same_instance_access_remap_read_access_cell_nth :=
+  StorageCore.pprog_same_instance_access_remap_read_access_cell_nth.
 Definition pprog_same_instance_identity_remap_refl :=
   StorageCore.pprog_same_instance_identity_remap_refl.
 Definition pprog_same_instance_access_remap_compose :=

@@ -68,6 +68,93 @@ Definition access_list_relation
     (target_accesses source_accesses: list AccessFunction) : Prop :=
   Forall2 (same_point_access_relation rel) target_accesses source_accesses.
 
+Theorem access_list_relation_length :
+  forall rel target_accesses source_accesses,
+    access_list_relation rel target_accesses source_accesses ->
+    length target_accesses = length source_accesses.
+Proof.
+  intros rel target_accesses source_accesses Hrel.
+  induction Hrel as [|target_access source_access target_tail source_tail
+                      Hhead Htail IH].
+  - reflexivity.
+  - simpl. rewrite IH. reflexivity.
+Qed.
+
+Theorem access_list_relation_target_access :
+  forall rel target_accesses source_accesses n target_access,
+    access_list_relation rel target_accesses source_accesses ->
+    nth_error target_accesses n = Some target_access ->
+    exists source_access,
+      nth_error source_accesses n = Some source_access /\
+      same_point_access_relation rel target_access source_access.
+Proof.
+  intros rel target_accesses source_accesses n target_access Hrel.
+  revert n target_access.
+  induction Hrel as [|target_head source_head target_tail source_tail
+                      Hhead Htail IH];
+    intros n target_access Hnth;
+    destruct n as [|n]; simpl in Hnth; try discriminate.
+  - inversion Hnth. subst.
+    exists source_head.
+    split; [reflexivity|exact Hhead].
+  - eapply IH; eauto.
+Qed.
+
+Theorem access_list_relation_source_access :
+  forall rel target_accesses source_accesses n source_access,
+    access_list_relation rel target_accesses source_accesses ->
+    nth_error source_accesses n = Some source_access ->
+    exists target_access,
+      nth_error target_accesses n = Some target_access /\
+      same_point_access_relation rel target_access source_access.
+Proof.
+  intros rel target_accesses source_accesses n source_access Hrel.
+  revert n source_access.
+  induction Hrel as [|target_head source_head target_tail source_tail
+                      Hhead Htail IH];
+    intros n source_access Hnth;
+    destruct n as [|n]; simpl in Hnth; try discriminate.
+  - inversion Hnth. subst.
+    exists target_head.
+    split; [reflexivity|exact Hhead].
+  - eapply IH; eauto.
+Qed.
+
+Theorem access_list_relation_nth :
+  forall rel target_accesses source_accesses n target_access source_access,
+    access_list_relation rel target_accesses source_accesses ->
+    nth_error target_accesses n = Some target_access ->
+    nth_error source_accesses n = Some source_access ->
+    same_point_access_relation rel target_access source_access.
+Proof.
+  intros rel target_accesses source_accesses n target_access source_access
+         Hrel Htarget Hsource.
+  destruct
+    (access_list_relation_target_access
+       rel target_accesses source_accesses n target_access Hrel Htarget)
+    as (source_access' & Hsource' & Hpoint).
+  rewrite Hsource in Hsource'.
+  inversion Hsource'. subst.
+  exact Hpoint.
+Qed.
+
+Theorem access_list_relation_nth_point :
+  forall rel target_accesses source_accesses n target_access source_access p,
+    access_list_relation rel target_accesses source_accesses ->
+    nth_error target_accesses n = Some target_access ->
+    nth_error source_accesses n = Some source_access ->
+    rel (exact_cell target_access p) (exact_cell source_access p).
+Proof.
+  intros rel target_accesses source_accesses n target_access source_access p
+         Hrel Htarget Hsource.
+  pose proof
+    (access_list_relation_nth
+       rel target_accesses source_accesses n target_access source_access
+       Hrel Htarget Hsource)
+    as Hpoint.
+  exact (Hpoint p).
+Qed.
+
 Lemma same_point_access_relation_identity_refl :
   forall access,
     same_point_access_relation identity_cell_relation access access.
@@ -474,6 +561,116 @@ Proof.
        Hremap Hbefore Hafter)
     as Hsiar.
   exact (siar_read_accesses _ _ _ Hsiar).
+Qed.
+
+Theorem pprog_same_instance_access_remap_write_access_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_waccess before_pi) access_n = Some before_access ->
+    nth_error (PL.pi_waccess after_pi) access_n = Some after_access ->
+    same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access
+         Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access.
+  pose proof
+    (pprog_same_instance_access_remap_write_accesses_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after instr_n before_pi after_pi
+       Hremap Hbefore_pi Hafter_pi)
+    as Haccesses.
+  eapply access_list_relation_nth; eauto.
+Qed.
+
+Theorem pprog_same_instance_access_remap_read_access_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_raccess before_pi) access_n = Some before_access ->
+    nth_error (PL.pi_raccess after_pi) access_n = Some after_access ->
+    same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access
+         Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access.
+  pose proof
+    (pprog_same_instance_access_remap_read_accesses_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after instr_n before_pi after_pi
+       Hremap Hbefore_pi Hafter_pi)
+    as Haccesses.
+  eapply access_list_relation_nth; eauto.
+Qed.
+
+Theorem pprog_same_instance_access_remap_write_access_cell_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access p,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_waccess before_pi) access_n = Some before_access ->
+    nth_error (PL.pi_waccess after_pi) access_n = Some after_access ->
+    rel (exact_cell after_access p) (exact_cell before_access p).
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access p
+         Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access.
+  pose proof
+    (pprog_same_instance_access_remap_write_access_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after instr_n access_n
+       before_pi after_pi before_access after_access
+       Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access)
+    as Haccess.
+  exact (Haccess p).
+Qed.
+
+Theorem pprog_same_instance_access_remap_read_access_cell_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access p,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_raccess before_pi) access_n = Some before_access ->
+    nth_error (PL.pi_raccess after_pi) access_n = Some after_access ->
+    rel (exact_cell after_access p) (exact_cell before_access p).
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi after_pi before_access after_access p
+         Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access.
+  pose proof
+    (pprog_same_instance_access_remap_read_access_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after instr_n access_n
+       before_pi after_pi before_access after_access
+       Hremap Hbefore_pi Hafter_pi Hbefore_access Hafter_access)
+    as Haccess.
+  exact (Haccess p).
 Qed.
 
 Definition pprog_same_instance_identity_remap
