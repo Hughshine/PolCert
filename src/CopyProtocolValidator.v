@@ -12,6 +12,7 @@ Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
 Require Import CopyMappingWitness.
 Require Import CopyProtocolValueWitness.
+Require Import ReuseConflictWitness.
 Require Import StorageCompatibilityWitness.
 Require Import StorageBoundsWitness.
 
@@ -718,6 +719,70 @@ Proof.
   - exact Hbounds.
   - apply (proj2 (Hcover cell)).
     exact Hcommitted.
+Qed.
+
+Theorem copy_protocol_commit_mapping_value_boundary_obligations :
+  forall (value: Type) input_view output_view
+         expected_commit_targets mapping trace value_trace
+         source_view after,
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    reuse_boundary_obligations
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros value input_view output_view
+         expected_commit_targets mapping trace value_trace
+         source_view after Hcontract.
+  destruct Hcontract as [_ Hcommit _ _ _].
+  eapply copy_commit_boundary_obligations.
+  exact Hcommit.
+Qed.
+
+Theorem copy_protocol_bounded_commit_mapping_value_boundary_obligations :
+  forall (value: Type) input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after,
+    copy_protocol_commit_mapping_bounded_value_view_contract
+      value input_view output_view expected_commit_targets commit_bounds
+      mapping trace value_trace source_view after ->
+    reuse_boundary_obligations
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros value input_view output_view
+         expected_commit_targets commit_bounds mapping trace value_trace
+         source_view after Hcontract.
+  destruct Hcontract as [Hbase _].
+  eapply copy_protocol_commit_mapping_value_boundary_obligations.
+  exact Hbase.
+Qed.
+
+Theorem copy_protocol_declared_bounded_compatible_boundary_obligations :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after,
+    copy_protocol_declared_bounded_compatible_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace public_cells local_cells
+      public_specs local_specs commit_bounds public_bounds local_bounds
+      source_view after ->
+    reuse_boundary_obligations
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace public_cells local_cells
+         public_specs local_specs commit_bounds public_bounds local_bounds
+         source_view after Hcontract.
+  destruct Hcontract as [Hbounded _ _ _ _].
+  eapply copy_protocol_bounded_commit_mapping_value_boundary_obligations.
+  exact Hbounded.
 Qed.
 
 Theorem copy_protocol_mapping_public_within_bounds :
