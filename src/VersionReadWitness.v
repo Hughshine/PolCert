@@ -217,6 +217,58 @@ Proof.
       exact Htail.
 Qed.
 
+Lemma version_read_entries_cover_length :
+  forall expected_reads entries,
+    version_read_entries_cover expected_reads entries ->
+    length expected_reads = length entries.
+Proof.
+  induction expected_reads as [|expected_read expected_tail IH];
+    intros entries Hcover;
+    destruct entries as [|entry entry_tail];
+    simpl in Hcover |- *; try contradiction.
+  - reflexivity.
+  - destruct Hcover as [_ Htail].
+    simpl.
+    rewrite IH with (entries := entry_tail); auto.
+Qed.
+
+Lemma version_read_entries_cover_read_in_expected :
+  forall expected_reads entries entry,
+    version_read_entries_cover expected_reads entries ->
+    In entry entries ->
+    In (vre_read_instance entry) expected_reads.
+Proof.
+  induction expected_reads as [|expected_read expected_tail IH];
+    intros entries entry Hcover Hin;
+    destruct entries as [|entry_head entry_tail];
+    simpl in Hcover, Hin |- *; try contradiction.
+  destruct Hcover as [Hhead Htail].
+  destruct Hin as [Heq | Hin_tail].
+  - subst entry.
+    left. exact Hhead.
+  - right.
+    eapply IH; eauto.
+Qed.
+
+Lemma version_read_entries_selected_pair_in_produced_versions :
+  forall produced_versions entries entry,
+    version_read_entries_select_producers produced_versions entries ->
+    In entry entries ->
+    In (vre_expected_producer entry, vre_selected_version entry)
+      produced_versions.
+Proof.
+  intros produced_versions entries.
+  induction entries as [|head tail IH];
+    intros entry Hselect Hin;
+    simpl in Hselect, Hin.
+  - contradiction.
+  - destruct Hselect as [Hhead Htail].
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      exact Hhead.
+    + eapply IH; eauto.
+Qed.
+
 Lemma version_read_entries_selected_version_in_produced_versions :
   forall produced_versions entries entry,
     version_read_entries_select_producers produced_versions entries ->
@@ -271,6 +323,42 @@ Proof.
   intros expected_reads produced_versions entries entry Hobligations Hin.
   destruct Hobligations as [_ Hselect].
   eapply version_read_entries_selected_version_in_produced_versions; eauto.
+Qed.
+
+Theorem version_read_selection_obligation_length_match :
+  forall expected_reads produced_versions entries,
+    version_read_selection_obligations
+      expected_reads produced_versions entries ->
+    length expected_reads = length entries.
+Proof.
+  intros expected_reads produced_versions entries Hobligations.
+  destruct Hobligations as [Hcover _].
+  eapply version_read_entries_cover_length; eauto.
+Qed.
+
+Theorem version_read_selection_obligation_read_in_expected :
+  forall expected_reads produced_versions entries entry,
+    version_read_selection_obligations
+      expected_reads produced_versions entries ->
+    In entry entries ->
+    In (vre_read_instance entry) expected_reads.
+Proof.
+  intros expected_reads produced_versions entries entry Hobligations Hin.
+  destruct Hobligations as [Hcover _].
+  eapply version_read_entries_cover_read_in_expected; eauto.
+Qed.
+
+Theorem version_read_selection_obligation_produced_pair :
+  forall expected_reads produced_versions entries entry,
+    version_read_selection_obligations
+      expected_reads produced_versions entries ->
+    In entry entries ->
+    In (vre_expected_producer entry, vre_selected_version entry)
+      produced_versions.
+Proof.
+  intros expected_reads produced_versions entries entry Hobligations Hin.
+  destruct Hobligations as [_ Hselect].
+  eapply version_read_entries_selected_pair_in_produced_versions; eauto.
 Qed.
 
 Record version_read_value_entry (value: Type) := {

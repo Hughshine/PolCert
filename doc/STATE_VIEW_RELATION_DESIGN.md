@@ -2010,6 +2010,9 @@ uncommitted produced versions.  The read-value witness now has the same
 concrete-entry projection shape as the commit-value witness: checked read
 entries can recover matching read-value entries with equal source/version
 values, and supplied read-value entries recover their selected read entry.  The
+read-selection witness also exposes direct per-entry facts: each read entry
+comes from the expected-read list and selects a concrete produced
+`(producer, version)` pair.  The
 fully bounded/non-escape validator lifts those supplied read-value entries to
 produced-version bounds and non-escape facts.  Its public facade,
 `checked_version_commit_read_fully_bounded_compatible_non_escape_value_public_refinement`,

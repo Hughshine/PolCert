@@ -1748,8 +1748,20 @@ Definition storage_check_version_read_selectionb_sound :=
   check_version_read_selectionb_sound.
 Definition storage_version_read_selection_obligations :=
   version_read_selection_obligations.
+Definition storage_version_read_entries_cover_length :=
+  version_read_entries_cover_length.
+Definition storage_version_read_entries_cover_read_in_expected :=
+  version_read_entries_cover_read_in_expected.
+Definition storage_version_read_entries_selected_pair_in_produced_versions :=
+  version_read_entries_selected_pair_in_produced_versions.
 Definition storage_version_read_selected_version_in_produced_versions :=
   version_read_selected_version_in_produced_versions.
+Definition storage_version_read_selection_obligation_length_match :=
+  version_read_selection_obligation_length_match.
+Definition storage_version_read_selection_obligation_read_in_expected :=
+  version_read_selection_obligation_read_in_expected.
+Definition storage_version_read_selection_obligation_produced_pair :=
+  version_read_selection_obligation_produced_pair.
 Definition storage_check_version_read_valueb :=
   @check_version_read_valueb.
 Definition storage_check_version_read_valueb_sound :=
@@ -1854,10 +1866,20 @@ Definition storage_version_commit_selected_version_within_bounds :=
   VersionCommitCore.version_commit_selected_version_within_bounds.
 Definition storage_version_read_value_entries_length_match :=
   VersionCommitCore.version_read_value_entries_length_match.
+Definition storage_version_read_selection_entries_length_match :=
+  VersionCommitCore.version_read_selection_entries_length_match.
+Definition storage_version_read_entry_expected_read :=
+  VersionCommitCore.version_read_entry_expected_read.
+Definition storage_version_read_entry_produced_pair :=
+  VersionCommitCore.version_read_entry_produced_pair.
 Definition storage_version_read_entry_value_entry_values_equal :=
   VersionCommitCore.version_read_entry_value_entry_values_equal.
 Definition storage_version_read_value_entry_read_entry_in_reads :=
   VersionCommitCore.version_read_value_entry_read_entry_in_reads.
+Definition storage_version_read_value_entry_expected_read :=
+  VersionCommitCore.version_read_value_entry_expected_read.
+Definition storage_version_read_value_entry_produced_pair :=
+  VersionCommitCore.version_read_value_entry_produced_pair.
 Definition storage_version_read_value_entry_values_equal :=
   VersionCommitCore.version_read_value_entry_values_equal.
 Definition storage_version_read_selected_version_within_produced_bounds :=
