@@ -73,8 +73,9 @@ Definition bounded_cinstr_scalar_storage_certificate_output_states_match
 Definition bounded_cinstr_scalar_storage_semantic_refinement
     (certificate: bounded_cinstr_scalar_storage_certificate)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_cinstr_scalar_storage_pair_certificate certificate)
+  View.public_semantic_refinement
+    (bounded_cinstr_scalar_storage_certificate_input_view certificate)
+    (bounded_cinstr_scalar_storage_certificate_output_view certificate)
     source target.
 
 Definition bounded_cinstr_scalar_storage_certificate_accepted
@@ -406,13 +407,8 @@ Theorem accepted_bounded_cinstr_scalar_storage_certificate_refines :
 Proof.
   intros certificate source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       Expansion.cscalar_privatization_bounded_family
-       Promotion.cscalar_promotion_bounded_family
-       (bounded_cinstr_scalar_storage_pair_certificate certificate)
-       source target Haccepted).
+    (accepted_bounded_cinstr_scalar_storage_certificate_public_semantic_refinement
+       certificate source target Haccepted).
 Qed.
 
 Theorem accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement :

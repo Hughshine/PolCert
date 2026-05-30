@@ -200,10 +200,11 @@ storage pass sequences.  It now also has a concrete accepted-certificate top
 theorem,
 `accepted_bounded_cinstr_scalar_storage_certificate_refines`, whose conclusion
 is the certificate-level
-`bounded_cinstr_scalar_storage_semantic_refinement`, an instance of the generic
-pair-certificate refinement predicate.  This hides the intermediate program and
-both CInstr family checks while keeping the statement as close as possible to
-the old semantic-refinement theorem shape.  The accepted certificate also
+`bounded_cinstr_scalar_storage_semantic_refinement`, a direct
+`public_semantic_refinement` over the certificate's input and output views.
+This hides the intermediate program and both CInstr family checks while keeping
+the statement as close as possible to the old semantic-refinement theorem
+shape.  The accepted certificate also
 exposes trace-summary projections for each side of the composed storage pass:
 the privatization side recovers value obligations, mapped events, and private
 use-def, while the promotion side recovers value obligations and scalar
