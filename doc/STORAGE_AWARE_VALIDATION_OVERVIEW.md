@@ -203,7 +203,11 @@ is the certificate-level
 `bounded_cinstr_scalar_storage_semantic_refinement`, an instance of the generic
 pair-certificate refinement predicate.  This hides the intermediate program and
 both CInstr family checks while keeping the statement as close as possible to
-the old semantic-refinement theorem shape.  The expanded helper theorem
+the old semantic-refinement theorem shape.  The accepted certificate also
+exposes trace-summary projections for each side of the composed storage pass:
+the privatization side recovers value obligations, mapped events, and private
+use-def, while the promotion side recovers value obligations and scalar
+loaded-before-use.  The expanded helper theorem
 `accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement` remains
 available for proof scripts that want the state variables explicitly.  The
 generic private-storage layer now also exposes

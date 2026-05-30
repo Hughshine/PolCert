@@ -287,7 +287,10 @@ certificate implies
 `bounded_cinstr_scalar_storage_semantic_refinement`.  That refinement is an
 instance of the generic pair-certificate refinement predicate: it is the old
 execution-matching theorem shape with `State.eq` replaced by the certificate's
-input/output views.
+input/output views.  Separate accepted-certificate projection facts expose the
+two CInstr trace summaries when a later proof needs them: privatization yields
+value obligations, mapped events, and private use-def, while promotion yields
+value obligations and scalar loaded-before-use.
 The generic private-storage layer now follows the same
 discipline below the CInstr wrapper:
 `PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`

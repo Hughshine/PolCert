@@ -2,7 +2,12 @@ Require Import CInstrScalarExpansionValidatorBridge.
 Require Import CInstrScalarPromotionValidatorBridge.
 Require Import ImpureAlarmConfig.
 Require Import PolIRs.
+Require Import PrivateStorageWitness.
+Require Import ScalarExpansionValueWitness.
+Require Import ScalarExpansionWitness.
+Require Import ScalarPromotionValueWitness.
 Require Import StateObservation.
+Require Import Values.
 
 (** Composition witness for concrete CInstr scalar-storage families.
 
@@ -78,6 +83,69 @@ Definition bounded_cinstr_scalar_storage_certificate_accepted
   View.checked_parameterized_family_pair_certificate_accepted
     (bounded_cinstr_scalar_storage_pair_certificate certificate)
     before after.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_privatization_trace_summary :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    scalar_expansion_value_obligations Values.val
+      (Expansion.cspbp_value_trace
+         (bcssc_privatization_params certificate)) /\
+    scalar_expansion_events_mapped
+      (Expansion.cspbp_entries
+         (bcssc_privatization_params certificate))
+      (scalar_expansion_value_trace_events
+         (Expansion.cspbp_value_trace
+            (bcssc_privatization_params certificate))) /\
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events
+            (Expansion.cspbp_value_trace
+               (bcssc_privatization_params certificate)))).
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret [_Hpriv_ok [Hpriv_side _Hpromotion]]]]].
+  exact
+    (Expansion.cscalar_privatization_bounded_side_condition_trace_summary
+       (bcssc_privatization_params certificate)
+       before (bcssc_mid_program certificate)
+       Hpriv_side).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_promotion_trace_summary :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    scalar_value_simulation_obligations Values.val
+      (Promotion.cspmp_value_trace
+         (bcssc_promotion_params certificate)) /\
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events
+         (Promotion.cspmp_value_trace
+            (bcssc_promotion_params certificate))).
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret
+          [_Hpriv_ok
+            [_Hpriv_side
+              [_Hpromotion_ret
+                [_Hpromotion_ok Hpromotion_side]]]]]]].
+  exact
+    (Promotion.cscalar_promotion_bounded_side_condition_trace_summary
+       (bcssc_promotion_params certificate)
+       (bcssc_mid_program certificate) after
+       Hpromotion_side).
+Qed.
 
 Theorem bounded_privatization_then_promotion_public_refinement :
   forall (privatization_params:
