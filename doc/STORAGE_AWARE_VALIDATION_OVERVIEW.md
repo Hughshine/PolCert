@@ -468,6 +468,9 @@ size/alignment compatibility.
 local load/use/store protocol for a promoted source cell: scalar reads and
 writes require a prior load, ordinary writes to the promoted source cell are
 rejected as interference, and live-out promoted cells require a final store.
+Its checked projections now expose the protocol-safety and live-out-store
+obligations directly, including the concrete fact that a checked live-out
+promotion trace ends in a store-back.
 `ScalarPromotionValueWitness.v` adds the first value-flow layer over that
 protocol: a load initializes the scalar to the source value, scalar reads see
 the current scalar, scalar writes update it, and store-back commits the current

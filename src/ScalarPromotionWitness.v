@@ -266,6 +266,20 @@ Proof.
   - exact I.
 Qed.
 
+Theorem check_scalar_promotion_liveout_storeb_ends_with_store :
+  forall trace source_cell scalar_cell source_liveout,
+    check_scalar_promotion_liveout_storeb
+      source_cell scalar_cell source_liveout trace = true ->
+    source_liveout = true ->
+    scalar_promotion_ends_with_store source_cell scalar_cell trace.
+Proof.
+  intros trace source_cell scalar_cell source_liveout Hcheck Hliveout.
+  unfold check_scalar_promotion_liveout_storeb in Hcheck.
+  rewrite Hliveout in Hcheck.
+  apply check_scalar_promotion_ends_with_storeb_sound.
+  exact Hcheck.
+Qed.
+
 Record scalar_promotion_obligations
     (source_cell scalar_cell: MemCell)
     (source_liveout: bool)
@@ -301,4 +315,47 @@ Proof.
     exact Htrace.
   - apply check_scalar_promotion_liveout_storeb_sound.
     exact Hstore.
+Qed.
+
+Theorem check_scalar_promotionb_trace_safe :
+  forall source_cell scalar_cell source_liveout trace,
+    check_scalar_promotionb
+      source_cell scalar_cell source_liveout trace = true ->
+    scalar_promotion_trace_safe source_cell scalar_cell trace.
+Proof.
+  intros source_cell scalar_cell source_liveout trace Hcheck.
+  exact
+    (spo_trace_safe
+       source_cell scalar_cell source_liveout trace
+       (check_scalar_promotionb_sound
+          source_cell scalar_cell source_liveout trace Hcheck)).
+Qed.
+
+Theorem check_scalar_promotionb_liveout_store :
+  forall source_cell scalar_cell source_liveout trace,
+    check_scalar_promotionb
+      source_cell scalar_cell source_liveout trace = true ->
+    scalar_promotion_liveout_store
+      source_cell scalar_cell source_liveout trace.
+Proof.
+  intros source_cell scalar_cell source_liveout trace Hcheck.
+  exact
+    (spo_liveout_store
+       source_cell scalar_cell source_liveout trace
+       (check_scalar_promotionb_sound
+          source_cell scalar_cell source_liveout trace Hcheck)).
+Qed.
+
+Theorem check_scalar_promotionb_liveout_ends_with_store :
+  forall source_cell scalar_cell source_liveout trace,
+    check_scalar_promotionb
+      source_cell scalar_cell source_liveout trace = true ->
+    source_liveout = true ->
+    scalar_promotion_ends_with_store source_cell scalar_cell trace.
+Proof.
+  intros source_cell scalar_cell source_liveout trace Hcheck Hliveout.
+  unfold check_scalar_promotionb in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [_ Hstore].
+  eapply check_scalar_promotion_liveout_storeb_ends_with_store; eauto.
 Qed.

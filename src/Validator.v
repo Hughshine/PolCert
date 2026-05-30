@@ -1318,6 +1318,14 @@ Definition storage_check_scalar_promotionb_sound :=
   check_scalar_promotionb_sound.
 Definition storage_scalar_promotion_obligations :=
   scalar_promotion_obligations.
+Definition storage_check_scalar_promotion_liveout_storeb_ends_with_store :=
+  check_scalar_promotion_liveout_storeb_ends_with_store.
+Definition storage_check_scalar_promotionb_trace_safe :=
+  check_scalar_promotionb_trace_safe.
+Definition storage_check_scalar_promotionb_liveout_store :=
+  check_scalar_promotionb_liveout_store.
+Definition storage_check_scalar_promotionb_liveout_ends_with_store :=
+  check_scalar_promotionb_liveout_ends_with_store.
 Definition storage_promotion_source_view_refines_view :=
   ScalarPromotionCore.promotion_source_view_refines_view.
 Definition storage_scalar_promotion_view_contract :=
