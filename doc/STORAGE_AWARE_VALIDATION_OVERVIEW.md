@@ -825,7 +825,10 @@ write/read or load/store equality facts instead of requiring callers to unpack
 generic value-match predicates.  They also expose the same selected-event facts
 from the outer `..._value_trace_simulates` predicates, so later pass-level
 proofs can cite the user-facing trace evidence directly instead of first
-unfolding the initial current-value state.
+unfolding the initial current-value state.  The same outer trace evidence now
+exports bundled value-obligation/use-def consequences: expansion traces yield
+value obligations, mapped events, and private use-def; promotion traces yield
+value obligations and scalar loaded-before-use facts.
 
 The public-facing composition surface has now been normalized across the
 storage family-compose files.  Copy/scratchpad, inter-array reuse,

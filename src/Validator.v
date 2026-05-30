@@ -764,6 +764,16 @@ Definition storage_cscalar_expansion_value_trace :=
   cscalar_expansion_value_trace.
 Definition storage_cscalar_expansion_value_trace_simulates :=
   cscalar_expansion_value_trace_simulates.
+Definition storage_cscalar_expansion_value_trace_sound :=
+  cscalar_expansion_value_trace_sound.
+Definition storage_cscalar_expansion_value_trace_obligations :=
+  cscalar_expansion_value_trace_obligations.
+Definition storage_cscalar_expansion_value_trace_sound_and_mapped :=
+  cscalar_expansion_value_trace_sound_and_mapped.
+Definition storage_cscalar_expansion_value_trace_private_use_def :=
+  cscalar_expansion_value_trace_private_use_def.
+Definition storage_cscalar_expansion_value_trace_sound_mapped_and_usedef :=
+  cscalar_expansion_value_trace_sound_mapped_and_usedef.
 Definition storage_cscalar_expansion_value_trace_event_cinstr_and_matched :=
   cscalar_expansion_value_trace_event_cinstr_and_matched.
 Definition storage_cscalar_expansion_value_trace_event_write_values_equal :=
@@ -1212,6 +1222,14 @@ Definition storage_cscalar_promotion_value_trace :=
   cscalar_promotion_value_trace.
 Definition storage_cscalar_promotion_value_trace_simulates :=
   cscalar_promotion_value_trace_simulates.
+Definition storage_cscalar_promotion_value_trace_sound :=
+  cscalar_promotion_value_trace_sound.
+Definition storage_cscalar_promotion_value_trace_obligations :=
+  cscalar_promotion_value_trace_obligations.
+Definition storage_cscalar_promotion_value_trace_events_use_def :=
+  cscalar_promotion_value_trace_events_use_def.
+Definition storage_cscalar_promotion_value_trace_sound_and_usedef :=
+  cscalar_promotion_value_trace_sound_and_usedef.
 Definition storage_cscalar_promotion_value_trace_event_cinstr_and_generic_matched :=
   cscalar_promotion_value_trace_event_cinstr_and_generic_matched.
 Definition storage_cscalar_promotion_value_trace_load_values_equal :=

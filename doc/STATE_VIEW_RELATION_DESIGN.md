@@ -1732,7 +1732,10 @@ value-match predicate.  It also provides
 generic scalar-promotion value witness predicates directly.  Simulates-level
 wrappers expose the same generic selected-event and load/store equality facts
 from `cscalar_promotion_value_trace_simulates`, keeping later bridge proofs at
-the public trace-evidence boundary.
+the public trace-evidence boundary.  The same trace predicate now also exports
+value-obligation and scalar loaded-before-use consequences directly, so
+pass-level proofs can use promotion trace evidence without opening the
+threaded scalar state.
 `CInstrScalarPromotionValidatorBridge.v` packages that instruction evidence
 into the existing scalar-promotion public-view wrappers,
 including compatible and bounded/non-escape variants, so the endpoint theorem
@@ -1871,7 +1874,9 @@ write/read equality corollaries keep later simulation proofs from depending on
 the internal shape of that value-match predicate.  The same projections are
 also available from `cscalar_expansion_value_trace_simulates`, so callers can
 work at the trace-evidence interface instead of unfolding the initial private
-value map.  This is still below the final
+value map.  That trace interface also exports the bundled value-obligation,
+mapped-event, and private-use-def consequences used by the CInstr validator
+bridge.  This is still below the final
 user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to

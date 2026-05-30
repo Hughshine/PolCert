@@ -666,3 +666,31 @@ Proof.
   apply cscalar_promotion_value_trace_sound.
   exact Htrace.
 Qed.
+
+Theorem cscalar_promotion_value_trace_events_use_def :
+  forall trace,
+    cscalar_promotion_value_trace_simulates trace ->
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  intros trace Htrace.
+  apply scalar_value_trace_use_def
+    with (value := Values.val).
+  apply cscalar_promotion_value_trace_sound.
+  exact Htrace.
+Qed.
+
+Theorem cscalar_promotion_value_trace_sound_and_usedef :
+  forall trace,
+    cscalar_promotion_value_trace_simulates trace ->
+    scalar_value_simulation_obligations Values.val trace /\
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  intros trace Htrace.
+  split.
+  - apply cscalar_promotion_value_trace_obligations.
+    exact Htrace.
+  - apply cscalar_promotion_value_trace_events_use_def.
+    exact Htrace.
+Qed.
