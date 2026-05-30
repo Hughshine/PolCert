@@ -605,12 +605,20 @@ Definition storage_frame_value_obligations :=
   frame_value_obligations.
 Definition storage_frame_value_obligation_length_match :=
   frame_value_obligation_length_match.
+Definition storage_check_frame_valueb_length_match :=
+  @check_frame_valueb_length_match.
 Definition storage_frame_value_cell_preserved :=
   frame_value_cell_preserved.
+Definition storage_check_frame_valueb_cell_preserved :=
+  @check_frame_valueb_cell_preserved.
 Definition storage_frame_value_entry_in_frame_cells :=
   frame_value_entry_in_frame_cells.
+Definition storage_check_frame_valueb_entry_in_frame_cells :=
+  @check_frame_valueb_entry_in_frame_cells.
 Definition storage_frame_value_entry_preserved_from_obligation :=
   frame_value_entry_preserved_from_obligation.
+Definition storage_check_frame_valueb_entry_preserved :=
+  @check_frame_valueb_entry_preserved.
 Definition storage_frame_source_view_refines_view :=
   FramePreservationCore.frame_source_view_refines_view.
 Definition storage_frame_preservation_view_contract :=

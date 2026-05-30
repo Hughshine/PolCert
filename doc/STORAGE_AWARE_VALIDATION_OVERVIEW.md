@@ -424,8 +424,10 @@ must be disjoint from frame cells owned by the surrounding context.
 each context-frame cell is aligned with a before/after value pair and those
 values must match.  The frame witnesses now expose direct projection facts:
 checked writes are in the allowed-write set, checked writes are distinct from
-frame cells, frame-value tables have the same length as the frame-cell list,
-and each supplied frame-value entry preserves its before/after value.
+frame cells, and checked frame-value tables have the same length as the
+frame-cell list, project listed frame cells to preserved value entries, and
+project each supplied frame-value entry back to the checked frame with equal
+before/after values.
 `FramePreservationValidator.v` packages that side condition with the common
 source-view theorem shape, so feature-specific storage views can carry a frame
 contract without changing their final-state relation.  Its bounded value route

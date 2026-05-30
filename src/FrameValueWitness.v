@@ -279,4 +279,62 @@ Proof.
   exact Hpreserved.
 Qed.
 
+Theorem check_frame_valueb_length_match :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value)),
+    check_frame_valueb frame_cells entries = true ->
+    length frame_cells = length entries.
+Proof.
+  intros frame_cells entries Hcheck.
+  eapply frame_value_obligation_length_match.
+  apply check_frame_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_frame_valueb_cell_preserved :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (cell: MemCell),
+    check_frame_valueb frame_cells entries = true ->
+    In cell frame_cells ->
+    exists entry,
+      In entry entries /\
+      fve_frame_cell entry = cell /\
+      fve_before_value entry = fve_after_value entry.
+Proof.
+  intros frame_cells entries cell Hcheck Hin.
+  eapply frame_value_cell_preserved; eauto.
+  apply check_frame_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_frame_valueb_entry_in_frame_cells :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (entry: frame_value_entry value),
+    check_frame_valueb frame_cells entries = true ->
+    In entry entries ->
+    In (fve_frame_cell entry) frame_cells /\
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  intros frame_cells entries entry Hcheck Hin.
+  eapply frame_value_entry_in_frame_cells; eauto.
+  apply check_frame_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_frame_valueb_entry_preserved :
+  forall (frame_cells: list MemCell)
+         (entries: list (frame_value_entry value))
+         (entry: frame_value_entry value),
+    check_frame_valueb frame_cells entries = true ->
+    In entry entries ->
+    fve_before_value entry = fve_after_value entry.
+Proof.
+  intros frame_cells entries entry Hcheck Hin.
+  eapply frame_value_entry_preserved_from_obligation; eauto.
+  apply check_frame_valueb_sound.
+  exact Hcheck.
+Qed.
+
 End Soundness.
