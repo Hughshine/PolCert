@@ -206,3 +206,42 @@ Proof.
   destruct Hobligations as [Hmatch].
   eapply copy_instance_trace_matches_event_target; eauto.
 Qed.
+
+Theorem check_copy_instance_traceb_length_match :
+  forall targets trace,
+    check_copy_instance_traceb targets trace = true ->
+    length targets = length trace.
+Proof.
+  intros targets trace Hcheck.
+  eapply copy_instance_trace_obligations_length_match.
+  apply check_copy_instance_traceb_obligations_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_copy_instance_traceb_target_event :
+  forall targets trace target,
+    check_copy_instance_traceb targets trace = true ->
+    In target targets ->
+    exists event,
+      In event trace /\
+      projected_role target = copy_event_projected_role event.
+Proof.
+  intros targets trace target Hcheck Hin.
+  eapply copy_instance_trace_obligation_target_event; eauto.
+  apply check_copy_instance_traceb_obligations_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_copy_instance_traceb_event_target :
+  forall targets trace event,
+    check_copy_instance_traceb targets trace = true ->
+    In event trace ->
+    exists target,
+      In target targets /\
+      projected_role target = copy_event_projected_role event.
+Proof.
+  intros targets trace event Hcheck Hin.
+  eapply copy_instance_trace_obligation_event_target; eauto.
+  apply check_copy_instance_traceb_obligations_sound.
+  exact Hcheck.
+Qed.

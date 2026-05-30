@@ -730,3 +730,170 @@ Proof.
   - simpl in Hvalues.
     exact Hvalues.
 Qed.
+
+Theorem check_copy_value_traceb_local_use_def :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      copy_local_use_def_trace (copy_value_trace_events value_trace).
+Proof.
+  intros value value_eqb Hsound value_trace Hcheck.
+  apply copy_value_obligations_local_use_def.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_events_local_use_def :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace events,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      copy_value_trace_events value_trace = events ->
+      copy_local_use_def_trace events.
+Proof.
+  intros value value_eqb Hsound value_trace events Hcheck Hevents.
+  eapply copy_value_obligations_events_local_use_def; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_event_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace copy_event' value_event,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      In (copy_event', value_event) value_trace ->
+      copy_value_event_kind_matches copy_event' value_event /\
+      copy_value_event_values_match value_event.
+Proof.
+  intros value value_eqb Hsound value_trace
+         copy_event' value_event Hcheck Hin.
+  eapply copy_value_obligation_event_matched; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_event_entry :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace copy_event',
+      check_copy_value_traceb value_eqb value_trace = true ->
+      In copy_event' (copy_value_trace_events value_trace) ->
+      exists value_event,
+        In (copy_event', value_event) value_trace /\
+        copy_value_event_kind_matches copy_event' value_event /\
+        copy_value_event_values_match value_event.
+Proof.
+  intros value value_eqb Hsound value_trace copy_event' Hcheck Hin.
+  eapply copy_value_obligation_event_entry; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_trace_event_entry :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace events copy_event',
+      check_copy_value_traceb value_eqb value_trace = true ->
+      copy_value_trace_events value_trace = events ->
+      In copy_event' events ->
+      exists value_event,
+        In (copy_event', value_event) value_trace /\
+        copy_value_event_kind_matches copy_event' value_event /\
+        copy_value_event_values_match value_event.
+Proof.
+  intros value value_eqb Hsound value_trace events copy_event'
+         Hcheck Hevents Hin.
+  eapply copy_value_obligation_trace_event_entry; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_copyin_values_equal :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace source_cell local_cell source_value local_value,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      In (CopyIn source_cell local_cell,
+          CopyValueIn source_value local_value) value_trace ->
+      source_value = local_value.
+Proof.
+  intros value value_eqb Hsound value_trace source_cell local_cell
+         source_value local_value Hcheck Hin.
+  eapply copy_value_obligation_copyin_values_equal; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_copyout_values_equal :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace local_cell target_cell local_value target_value,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      In (CopyOut local_cell target_cell,
+          CopyValueOut local_value target_value) value_trace ->
+      local_value = target_value.
+Proof.
+  intros value value_eqb Hsound value_trace local_cell target_cell
+         local_value target_value Hcheck Hin.
+  eapply copy_value_obligation_copyout_values_equal; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_trace_copyin_values_equal :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace events source_cell local_cell,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      copy_value_trace_events value_trace = events ->
+      In (CopyIn source_cell local_cell) events ->
+      exists source_value local_value,
+        In (CopyIn source_cell local_cell,
+            CopyValueIn source_value local_value) value_trace /\
+        source_value = local_value.
+Proof.
+  intros value value_eqb Hsound value_trace events source_cell local_cell
+         Hcheck Hevents Hin.
+  eapply copy_value_obligation_trace_copyin_values_equal; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.
+
+Theorem check_copy_value_traceb_trace_copyout_values_equal :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall value_trace events local_cell target_cell,
+      check_copy_value_traceb value_eqb value_trace = true ->
+      copy_value_trace_events value_trace = events ->
+      In (CopyOut local_cell target_cell) events ->
+      exists local_value target_value,
+        In (CopyOut local_cell target_cell,
+            CopyValueOut local_value target_value) value_trace /\
+        local_value = target_value.
+Proof.
+  intros value value_eqb Hsound value_trace events local_cell target_cell
+         Hcheck Hevents Hin.
+  eapply copy_value_obligation_trace_copyout_values_equal; eauto.
+  eapply check_copy_value_traceb_sound; eauto.
+Qed.

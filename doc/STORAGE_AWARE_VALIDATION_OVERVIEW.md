@@ -509,34 +509,30 @@ local-read/local-write, and copy-out traces: local reads require earlier local
 definitions, and copy-out destinations are committed at most once.
 `CopyCommitWitness.v` adds exact copy-out boundary coverage for update-style
 scratchpad transformations: the committed target cells must exactly cover the
-expected observable target set.
+expected observable target set.  Its checked projections expose the resulting
+commit uniqueness and boundary-map obligations directly.
 `CopyInstanceWitness.v` aligns copy protocol events with projected helper
 instances: copy-in/local events must be internal target instances, while
-copy-out events must be commit-role target instances.
+copy-out events must be commit-role target instances.  The checked trace now
+directly projects both target-to-event and event-to-target role facts.
 `CopyMappingWitness.v` adds the remapping-consistency layer for copy-mediated
 local storage: the declared public-to-local map is injective on both sides, and
 copy-in, local read/write, and copy-out events use that declared map.  It also
 connects the map back to the declared local-buffer cell set, so local
 separation and bounds checks apply to the cells actually used by the copy
 mapping rather than to an unrelated list.  The strengthened declaration route
-also connects mapping-public cells back to the declared public-cell set, so
-public-side bounds and frame/visibility assumptions can be tied to the same
-finite mapping.
+also connects mapping-public cells back to the declared public-cell set, and
+the checked predicates expose the per-event mapping pairs and declared-cell
+facts directly, so public-side bounds and frame/visibility assumptions can be
+tied to the same finite mapping without unpacking obligation records.
 `CopyProtocolValueWitness.v` adds the value-flow layer for the same protocol:
 copy-in transfers source value to local value, local reads observe the current
 local value, local writes update it, and copy-out commits the current local
-value.  It now also exposes
-`CopyProtocolValueWitness.copy_value_obligations_local_use_def` and
-`CopyProtocolValueWitness.copy_value_obligations_events_local_use_def`: the
-value trace itself proves that every local read and copy-out observes a local
-cell that has already been filled by copy-in or local write.  Direct
-projections
-`CopyProtocolValueWitness.copy_value_obligation_copyin_values_equal`,
-`CopyProtocolValueWitness.copy_value_obligation_copyout_values_equal`,
-`CopyProtocolValueWitness.copy_value_obligation_trace_copyin_values_equal`,
-and `CopyProtocolValueWitness.copy_value_obligation_trace_copyout_values_equal`
-make the two boundary equalities explicit without changing the public
-refinement theorem.  `CopyProtocolValidator.v` packages both the bookkeeping-only and
+value.  Its checked projections expose that every local read and copy-out
+observes a filled local cell, recover matching value-trace entries for checked
+copy events, and make the copy-in/source-to-local and copy-out/local-to-target
+equalities explicit without changing the public refinement theorem.
+`CopyProtocolValidator.v` packages both the bookkeeping-only and
 value-flow variants into composable `view_refinement` theorems under an
 explicit instruction-level semantic refinement.  The same equalities are
 forwarded through the declared/bounded/compatible copy contract, keeping the
@@ -833,6 +829,12 @@ facts without changing the public theorem shape: checked copy contracts can
 project a mapping pair to declared bounds and compatible storage specs, recover
 value-trace entries when the value trace is aligned with the copy trace, and in
 the scratchpad case project helper targets and copy events against each other.
+The generic copy witness layer now has the same direct checked-projection
+facade: `check_copy_commit_coverb` exports commit/boundary facts,
+`check_copy_instance_traceb` exports bidirectional event-role alignment,
+`check_copy_mappingb` exports per-event remapping facts, declaration checkers
+export declared public/local-cell facts, and `check_copy_value_traceb` exports
+local-use-def and boundary-value equalities.
 The phase facade follows the same pattern for the strongest bounded/non-escape
 contract: projection value entries directly inherit compatible storage specs
 and target bounds, mapped final targets inherit declared bounds, and

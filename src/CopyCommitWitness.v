@@ -140,3 +140,42 @@ Proof.
   - eapply copy_commit_committed_targets_nodup; eauto.
   - eapply copy_commit_committed_targets_covered; eauto.
 Qed.
+
+Theorem check_copy_commit_coverb_committed_targets_nodup :
+  forall expected_targets trace,
+    check_copy_commit_coverb expected_targets trace = true ->
+    NoDup (copy_protocol_committed_targets trace).
+Proof.
+  intros expected_targets trace Hcheck.
+  eapply copy_commit_committed_targets_nodup.
+  apply check_copy_commit_coverb_obligations_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_copy_commit_coverb_committed_targets_covered :
+  forall expected_targets trace,
+    check_copy_commit_coverb expected_targets trace = true ->
+    reuse_mapping_covers_sources
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros expected_targets trace Hcheck.
+  eapply copy_commit_committed_targets_covered.
+  apply check_copy_commit_coverb_obligations_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_copy_commit_coverb_boundary_obligations :
+  forall expected_targets trace,
+    check_copy_commit_coverb expected_targets trace = true ->
+    reuse_boundary_obligations
+      (copy_commit_identity_mapping
+         (copy_protocol_committed_targets trace))
+      (copy_protocol_committed_targets trace).
+Proof.
+  intros expected_targets trace Hcheck.
+  eapply copy_commit_boundary_obligations.
+  apply check_copy_commit_coverb_obligations_sound.
+  exact Hcheck.
+Qed.

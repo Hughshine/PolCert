@@ -1312,6 +1312,22 @@ Definition storage_check_copy_mappingb_sound :=
   check_copy_mappingb_sound.
 Definition storage_copy_mapping_obligations :=
   copy_mapping_obligations.
+Definition storage_check_copy_mappingb_publics_nodup :=
+  check_copy_mappingb_publics_nodup.
+Definition storage_check_copy_mappingb_locals_nodup :=
+  check_copy_mappingb_locals_nodup.
+Definition storage_check_copy_mappingb_trace_consistent :=
+  check_copy_mappingb_trace_consistent.
+Definition storage_check_copy_mappingb_event_consistent :=
+  check_copy_mappingb_event_consistent.
+Definition storage_check_copy_mappingb_copyin_pair :=
+  check_copy_mappingb_copyin_pair.
+Definition storage_check_copy_mappingb_local_read_declared :=
+  check_copy_mappingb_local_read_declared.
+Definition storage_check_copy_mappingb_local_write_declared :=
+  check_copy_mappingb_local_write_declared.
+Definition storage_check_copy_mappingb_copyout_pair :=
+  check_copy_mappingb_copyout_pair.
 Definition storage_check_copy_mapping_local_declarationb :=
   check_copy_mapping_local_declarationb.
 Definition storage_check_copy_mapping_local_declarationb_sound :=
@@ -1330,18 +1346,32 @@ Definition storage_copy_mapping_pair_local_in_locals :=
   copy_mapping_pair_local_in_locals.
 Definition storage_copy_mapping_local_declaration_pair_local_declared :=
   copy_mapping_local_declaration_pair_local_declared.
+Definition storage_check_copy_mapping_local_declarationb_pair_local_declared :=
+  check_copy_mapping_local_declarationb_pair_local_declared.
 Definition storage_copy_mapping_declaration_pair_declared :=
   copy_mapping_declaration_pair_declared.
+Definition storage_check_copy_mapping_declarationb_pair_declared :=
+  check_copy_mapping_declarationb_pair_declared.
 Definition storage_copy_mapping_declaration_local_only :=
   copy_mapping_declaration_local_only.
+Definition storage_check_copy_mapping_declarationb_local_only :=
+  check_copy_mapping_declarationb_local_only.
 Definition storage_copy_mapping_declared_local_public_disjoint :=
   copy_mapping_declared_local_public_disjoint.
+Definition storage_check_copy_mapping_local_declarationb_declared_local_public_disjoint :=
+  check_copy_mapping_local_declarationb_declared_local_public_disjoint.
 Definition storage_copy_mapping_declared_local_frame_disjoint :=
   copy_mapping_declared_local_frame_disjoint.
+Definition storage_check_copy_mapping_local_declarationb_declared_local_frame_disjoint :=
+  check_copy_mapping_local_declarationb_declared_local_frame_disjoint.
 Definition storage_copy_mapping_declared_public_in_public :=
   copy_mapping_declared_public_in_public.
+Definition storage_check_copy_mapping_declarationb_declared_public_in_public :=
+  check_copy_mapping_declarationb_declared_public_in_public.
 Definition storage_copy_mapping_declared_local_in_local :=
   copy_mapping_declared_local_in_local.
+Definition storage_check_copy_mapping_declarationb_declared_local_in_local :=
+  check_copy_mapping_declarationb_declared_local_in_local.
 Definition storage_copy_value_event := copy_value_event.
 Definition storage_copy_value_trace := copy_value_trace.
 Definition storage_copy_value_trace_events :=
@@ -1368,6 +1398,24 @@ Definition storage_copy_value_obligation_event_entry :=
   copy_value_obligation_event_entry.
 Definition storage_copy_value_obligation_trace_event_entry :=
   copy_value_obligation_trace_event_entry.
+Definition storage_check_copy_value_traceb_local_use_def :=
+  @check_copy_value_traceb_local_use_def.
+Definition storage_check_copy_value_traceb_events_local_use_def :=
+  @check_copy_value_traceb_events_local_use_def.
+Definition storage_check_copy_value_traceb_event_matched :=
+  @check_copy_value_traceb_event_matched.
+Definition storage_check_copy_value_traceb_event_entry :=
+  @check_copy_value_traceb_event_entry.
+Definition storage_check_copy_value_traceb_trace_event_entry :=
+  @check_copy_value_traceb_trace_event_entry.
+Definition storage_check_copy_value_traceb_copyin_values_equal :=
+  @check_copy_value_traceb_copyin_values_equal.
+Definition storage_check_copy_value_traceb_copyout_values_equal :=
+  @check_copy_value_traceb_copyout_values_equal.
+Definition storage_check_copy_value_traceb_trace_copyin_values_equal :=
+  @check_copy_value_traceb_trace_copyin_values_equal.
+Definition storage_check_copy_value_traceb_trace_copyout_values_equal :=
+  @check_copy_value_traceb_trace_copyout_values_equal.
 Definition storage_check_copy_protocol_wfb :=
   check_copy_protocol_wfb.
 Definition storage_check_copy_protocol_wfb_sound :=
@@ -1386,10 +1434,16 @@ Definition storage_copy_commit_identity_mapping :=
   copy_commit_identity_mapping.
 Definition storage_copy_commit_committed_targets_nodup :=
   copy_commit_committed_targets_nodup.
+Definition storage_check_copy_commit_coverb_committed_targets_nodup :=
+  check_copy_commit_coverb_committed_targets_nodup.
 Definition storage_copy_commit_committed_targets_covered :=
   copy_commit_committed_targets_covered.
+Definition storage_check_copy_commit_coverb_committed_targets_covered :=
+  check_copy_commit_coverb_committed_targets_covered.
 Definition storage_copy_commit_boundary_obligations :=
   copy_commit_boundary_obligations.
+Definition storage_check_copy_commit_coverb_boundary_obligations :=
+  check_copy_commit_coverb_boundary_obligations.
 Definition storage_check_copy_instance_traceb :=
   check_copy_instance_traceb.
 Definition storage_check_copy_instance_traceb_sound :=
@@ -1400,10 +1454,16 @@ Definition storage_copy_instance_trace_obligations :=
   copy_instance_trace_obligations.
 Definition storage_copy_instance_trace_obligations_length_match :=
   copy_instance_trace_obligations_length_match.
+Definition storage_check_copy_instance_traceb_length_match :=
+  check_copy_instance_traceb_length_match.
 Definition storage_copy_instance_trace_obligation_target_event :=
   copy_instance_trace_obligation_target_event.
+Definition storage_check_copy_instance_traceb_target_event :=
+  check_copy_instance_traceb_target_event.
 Definition storage_copy_instance_trace_obligation_event_target :=
   copy_instance_trace_obligation_event_target.
+Definition storage_check_copy_instance_traceb_event_target :=
+  check_copy_instance_traceb_event_target.
 Definition storage_copy_source_view_refines_view :=
   CopyProtocolCore.copy_source_view_refines_view.
 Definition storage_copy_protocol_view_contract :=

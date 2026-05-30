@@ -212,6 +212,124 @@ Proof.
     exact Htrace.
 Qed.
 
+Lemma copy_trace_mapping_consistent_event :
+  forall mapping trace event,
+    copy_trace_mapping_consistent mapping trace ->
+    In event trace ->
+    copy_event_mapping_consistent mapping event.
+Proof.
+  induction trace as [|head tail IH];
+    intros event Hconsistent Hin; simpl in Hconsistent, Hin.
+  - contradiction.
+  - destruct Hconsistent as [Hhead Htail].
+    destruct Hin as [Heq | Hin_tail].
+    + subst.
+      exact Hhead.
+    + eapply IH; eauto.
+Qed.
+
+Theorem check_copy_mappingb_publics_nodup :
+  forall mapping trace,
+    check_copy_mappingb mapping trace = true ->
+    NoDup (copy_mapping_publics mapping).
+Proof.
+  intros mapping trace Hcheck.
+  destruct (check_copy_mappingb_sound mapping trace Hcheck)
+    as [Hpublic _ _].
+  exact Hpublic.
+Qed.
+
+Theorem check_copy_mappingb_locals_nodup :
+  forall mapping trace,
+    check_copy_mappingb mapping trace = true ->
+    NoDup (copy_mapping_locals mapping).
+Proof.
+  intros mapping trace Hcheck.
+  destruct (check_copy_mappingb_sound mapping trace Hcheck)
+    as [_ Hlocal _].
+  exact Hlocal.
+Qed.
+
+Theorem check_copy_mappingb_trace_consistent :
+  forall mapping trace,
+    check_copy_mappingb mapping trace = true ->
+    copy_trace_mapping_consistent mapping trace.
+Proof.
+  intros mapping trace Hcheck.
+  destruct (check_copy_mappingb_sound mapping trace Hcheck)
+    as [_ _ Htrace].
+  exact Htrace.
+Qed.
+
+Theorem check_copy_mappingb_event_consistent :
+  forall mapping trace event,
+    check_copy_mappingb mapping trace = true ->
+    In event trace ->
+    copy_event_mapping_consistent mapping event.
+Proof.
+  intros mapping trace event Hcheck Hin.
+  eapply copy_trace_mapping_consistent_event.
+  - apply check_copy_mappingb_trace_consistent.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_copy_mappingb_copyin_pair :
+  forall mapping trace public_cell local_cell,
+    check_copy_mappingb mapping trace = true ->
+    In (CopyIn public_cell local_cell) trace ->
+    copy_mapping_pair mapping public_cell local_cell.
+Proof.
+  intros mapping trace public_cell local_cell Hcheck Hin.
+  pose proof
+    (check_copy_mappingb_event_consistent
+       mapping trace (CopyIn public_cell local_cell) Hcheck Hin)
+    as Hconsistent.
+  exact Hconsistent.
+Qed.
+
+Theorem check_copy_mappingb_local_read_declared :
+  forall mapping trace local_cell,
+    check_copy_mappingb mapping trace = true ->
+    In (LocalRead local_cell) trace ->
+    copy_mapping_local_declared mapping local_cell.
+Proof.
+  intros mapping trace local_cell Hcheck Hin.
+  pose proof
+    (check_copy_mappingb_event_consistent
+       mapping trace (LocalRead local_cell) Hcheck Hin)
+    as Hconsistent.
+  exact Hconsistent.
+Qed.
+
+Theorem check_copy_mappingb_local_write_declared :
+  forall mapping trace local_cell,
+    check_copy_mappingb mapping trace = true ->
+    In (LocalWrite local_cell) trace ->
+    copy_mapping_local_declared mapping local_cell.
+Proof.
+  intros mapping trace local_cell Hcheck Hin.
+  pose proof
+    (check_copy_mappingb_event_consistent
+       mapping trace (LocalWrite local_cell) Hcheck Hin)
+    as Hconsistent.
+  exact Hconsistent.
+Qed.
+
+Theorem check_copy_mappingb_copyout_pair :
+  forall mapping trace public_cell local_cell,
+    check_copy_mappingb mapping trace = true ->
+    In (CopyOut local_cell public_cell) trace ->
+    copy_mapping_pair mapping public_cell local_cell.
+Proof.
+  intros mapping trace public_cell local_cell Hcheck Hin.
+  pose proof
+    (check_copy_mappingb_event_consistent
+       mapping trace (CopyOut local_cell public_cell) Hcheck Hin)
+    as Hconsistent.
+  exact Hconsistent.
+Qed.
+
 Record copy_mapping_local_declaration_obligations
     (mapping: copy_cell_mapping)
     (local_cells: list MemCell) : Prop := {
@@ -322,6 +440,18 @@ Proof.
   eapply copy_mapping_pair_local_in_locals; eauto.
 Qed.
 
+Theorem check_copy_mapping_local_declarationb_pair_local_declared :
+  forall mapping local_cells public_cell local_cell,
+    check_copy_mapping_local_declarationb mapping local_cells = true ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    In local_cell local_cells.
+Proof.
+  intros mapping local_cells public_cell local_cell Hcheck Hpair.
+  eapply copy_mapping_local_declaration_pair_local_declared; eauto.
+  apply check_copy_mapping_local_declarationb_sound.
+  exact Hcheck.
+Qed.
+
 Theorem copy_mapping_declaration_pair_declared :
   forall mapping public_cells local_cells public_cell local_cell,
     copy_mapping_declaration_obligations
@@ -338,6 +468,20 @@ Proof.
     eapply copy_mapping_pair_local_in_locals; eauto.
 Qed.
 
+Theorem check_copy_mapping_declarationb_pair_declared :
+  forall mapping public_cells local_cells public_cell local_cell,
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    copy_mapping_pair mapping public_cell local_cell ->
+    In public_cell public_cells /\ In local_cell local_cells.
+Proof.
+  intros mapping public_cells local_cells public_cell local_cell
+         Hcheck Hpair.
+  eapply copy_mapping_declaration_pair_declared; eauto.
+  apply check_copy_mapping_declarationb_sound.
+  exact Hcheck.
+Qed.
+
 Lemma copy_mapping_declaration_local_only :
   forall mapping public_cells local_cells,
     copy_mapping_declaration_obligations
@@ -349,6 +493,20 @@ Proof.
   constructor.
   intros cell Hin.
   eapply cmd_mapping_locals_declared; eauto.
+Qed.
+
+Theorem check_copy_mapping_declarationb_local_only :
+  forall mapping public_cells local_cells,
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    copy_mapping_local_declaration_obligations
+      mapping local_cells.
+Proof.
+  intros mapping public_cells local_cells Hcheck.
+  apply copy_mapping_declaration_local_only with
+    (public_cells := public_cells).
+  apply check_copy_mapping_declarationb_sound.
+  exact Hcheck.
 Qed.
 
 Lemma copy_mapping_declared_local_public_disjoint :
@@ -364,6 +522,20 @@ Proof.
   - eapply cmld_mapping_locals_declared; eauto.
 Qed.
 
+Theorem check_copy_mapping_local_declarationb_declared_local_public_disjoint :
+  forall mapping local_cells public_cells frame_cells cell,
+    check_copy_mapping_local_declarationb mapping local_cells = true ->
+    private_separation_obligations local_cells public_cells frame_cells ->
+    In cell (copy_mapping_locals mapping) ->
+    ~ In cell public_cells.
+Proof.
+  intros mapping local_cells public_cells frame_cells cell
+         Hcheck Hsep Hin.
+  eapply copy_mapping_declared_local_public_disjoint; eauto.
+  apply check_copy_mapping_local_declarationb_sound.
+  exact Hcheck.
+Qed.
+
 Lemma copy_mapping_declared_public_in_public :
   forall mapping public_cells local_cells cell,
     copy_mapping_declaration_obligations
@@ -373,6 +545,19 @@ Lemma copy_mapping_declared_public_in_public :
 Proof.
   intros mapping public_cells local_cells cell Hdecl Hin.
   eapply cmd_mapping_publics_declared; eauto.
+Qed.
+
+Theorem check_copy_mapping_declarationb_declared_public_in_public :
+  forall mapping public_cells local_cells cell,
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    In cell (copy_mapping_publics mapping) ->
+    In cell public_cells.
+Proof.
+  intros mapping public_cells local_cells cell Hcheck Hin.
+  eapply copy_mapping_declared_public_in_public; eauto.
+  apply check_copy_mapping_declarationb_sound.
+  exact Hcheck.
 Qed.
 
 Lemma copy_mapping_declared_local_in_local :
@@ -386,6 +571,19 @@ Proof.
   eapply cmd_mapping_locals_declared; eauto.
 Qed.
 
+Theorem check_copy_mapping_declarationb_declared_local_in_local :
+  forall mapping public_cells local_cells cell,
+    check_copy_mapping_declarationb
+      mapping public_cells local_cells = true ->
+    In cell (copy_mapping_locals mapping) ->
+    In cell local_cells.
+Proof.
+  intros mapping public_cells local_cells cell Hcheck Hin.
+  eapply copy_mapping_declared_local_in_local; eauto.
+  apply check_copy_mapping_declarationb_sound.
+  exact Hcheck.
+Qed.
+
 Lemma copy_mapping_declared_local_frame_disjoint :
   forall mapping local_cells public_cells frame_cells cell,
     copy_mapping_local_declaration_obligations mapping local_cells ->
@@ -397,4 +595,18 @@ Proof.
   eapply pso_private_frame_disjoint.
   - exact Hsep.
   - eapply cmld_mapping_locals_declared; eauto.
+Qed.
+
+Theorem check_copy_mapping_local_declarationb_declared_local_frame_disjoint :
+  forall mapping local_cells public_cells frame_cells cell,
+    check_copy_mapping_local_declarationb mapping local_cells = true ->
+    private_separation_obligations local_cells public_cells frame_cells ->
+    In cell (copy_mapping_locals mapping) ->
+    ~ In cell frame_cells.
+Proof.
+  intros mapping local_cells public_cells frame_cells cell
+         Hcheck Hsep Hin.
+  eapply copy_mapping_declared_local_frame_disjoint; eauto.
+  apply check_copy_mapping_local_declarationb_sound.
+  exact Hcheck.
 Qed.
