@@ -1527,7 +1527,13 @@ local value, local writes update it, and copy-out commits it to the target.
 `copy_value_obligation_event_entry` and
 `copy_value_obligation_trace_event_entry` project checked value flow back to
 concrete value-trace entries with matching copy-event kind and equal boundary
-values.
+values.  The direct equality projections
+`copy_value_obligation_copyin_values_equal`,
+`copy_value_obligation_copyout_values_equal`,
+`copy_value_obligation_trace_copyin_values_equal`, and
+`copy_value_obligation_trace_copyout_values_equal` name the intuitive copy-in
+and copy-out value facts explicitly while keeping them below the common view
+refinement theorem.
 `CopyProtocolValidator.checked_copy_protocol_value_view_correct`,
 `checked_copy_protocol_mapping_view_correct`, and
 `checked_copy_protocol_mapping_value_view_correct` package these facts into the
@@ -1582,6 +1588,10 @@ shape as scalar privatization, scalar promotion, and inter-array reuse.
 The scratchpad facade mirrors the copy-protocol projections with
 `scratchpad_copy_full_target_event`, `scratchpad_copy_full_event_target`,
 `scratchpad_copy_full_trace_value_event_entry`,
+`scratchpad_copy_full_copyin_values_equal`,
+`scratchpad_copy_full_copyout_values_equal`,
+`scratchpad_copy_full_trace_copyin_values_equal`,
+`scratchpad_copy_full_trace_copyout_values_equal`,
 `scratchpad_copy_mapping_pair_compatible_specs`, and
 `scratchpad_copy_mapping_pair_within_declared_bounds`.  The strongest
 non-escape contract also projects the same compatibility, bounds, and

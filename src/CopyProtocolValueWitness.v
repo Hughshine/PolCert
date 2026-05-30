@@ -624,3 +624,109 @@ Proof.
   subst events.
   eapply copy_value_obligation_event_entry; eauto.
 Qed.
+
+Theorem copy_value_obligation_copyin_values_equal :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         source_cell local_cell source_value local_value,
+    copy_value_simulation_obligations value value_trace ->
+    In (CopyIn source_cell local_cell,
+        CopyValueIn source_value local_value) value_trace ->
+    source_value = local_value.
+Proof.
+  intros value value_trace source_cell local_cell
+         source_value local_value Hobligations Hin.
+  pose proof
+    (copy_value_obligation_event_matched
+       value value_trace
+       (CopyIn source_cell local_cell)
+       (CopyValueIn source_value local_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem copy_value_obligation_copyout_values_equal :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         local_cell target_cell local_value target_value,
+    copy_value_simulation_obligations value value_trace ->
+    In (CopyOut local_cell target_cell,
+        CopyValueOut local_value target_value) value_trace ->
+    local_value = target_value.
+Proof.
+  intros value value_trace local_cell target_cell
+         local_value target_value Hobligations Hin.
+  pose proof
+    (copy_value_obligation_event_matched
+       value value_trace
+       (CopyOut local_cell target_cell)
+       (CopyValueOut local_value target_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem copy_value_obligation_trace_copyin_values_equal :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         events source_cell local_cell,
+    copy_value_simulation_obligations value value_trace ->
+    copy_value_trace_events value_trace = events ->
+    In (CopyIn source_cell local_cell) events ->
+    exists source_value local_value,
+      In (CopyIn source_cell local_cell,
+          CopyValueIn source_value local_value) value_trace /\
+      source_value = local_value.
+Proof.
+  intros value value_trace events source_cell local_cell
+         Hobligations Hevents Hin.
+  pose proof
+    (copy_value_obligation_trace_event_entry
+       value value_trace events (CopyIn source_cell local_cell)
+       Hobligations Hevents Hin)
+    as (value_event & Hentry_in & Hkind & Hvalues).
+  destruct value_event as [source_value local_value
+                          | read_value
+                          | new_local_value
+                          | out_local_value out_target_value];
+    simpl in Hkind; try contradiction.
+  exists source_value, local_value.
+  split.
+  - exact Hentry_in.
+  - simpl in Hvalues.
+    exact Hvalues.
+Qed.
+
+Theorem copy_value_obligation_trace_copyout_values_equal :
+  forall (value: Type)
+         (value_trace: copy_value_trace value)
+         events local_cell target_cell,
+    copy_value_simulation_obligations value value_trace ->
+    copy_value_trace_events value_trace = events ->
+    In (CopyOut local_cell target_cell) events ->
+    exists local_value target_value,
+      In (CopyOut local_cell target_cell,
+          CopyValueOut local_value target_value) value_trace /\
+      local_value = target_value.
+Proof.
+  intros value value_trace events local_cell target_cell
+         Hobligations Hevents Hin.
+  pose proof
+    (copy_value_obligation_trace_event_entry
+       value value_trace events (CopyOut local_cell target_cell)
+       Hobligations Hevents Hin)
+    as (value_event & Hentry_in & Hkind & Hvalues).
+  destruct value_event as [source_value local_value
+                          | read_value
+                          | new_local_value
+                          | out_local_value out_target_value];
+    simpl in Hkind; try contradiction.
+  exists out_local_value, out_target_value.
+  split.
+  - exact Hentry_in.
+  - simpl in Hvalues.
+    exact Hvalues.
+Qed.

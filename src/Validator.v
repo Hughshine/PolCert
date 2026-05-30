@@ -1231,6 +1231,14 @@ Definition storage_copy_protocol_value_event_entry :=
   CopyProtocolCore.copy_protocol_value_event_entry.
 Definition storage_copy_protocol_trace_value_event_entry :=
   CopyProtocolCore.copy_protocol_trace_value_event_entry.
+Definition storage_copy_protocol_value_copyin_values_equal :=
+  CopyProtocolCore.copy_protocol_value_copyin_values_equal.
+Definition storage_copy_protocol_value_copyout_values_equal :=
+  CopyProtocolCore.copy_protocol_value_copyout_values_equal.
+Definition storage_copy_protocol_trace_value_copyin_values_equal :=
+  CopyProtocolCore.copy_protocol_trace_value_copyin_values_equal.
+Definition storage_copy_protocol_trace_value_copyout_values_equal :=
+  CopyProtocolCore.copy_protocol_trace_value_copyout_values_equal.
 Definition storage_scratchpad_source_view_refines_view :=
   ScratchpadCopyCore.scratchpad_source_view_refines_view.
 Definition storage_scratchpad_copy_view_contract :=
@@ -1285,6 +1293,14 @@ Definition storage_scratchpad_copy_full_value_event_entry :=
   ScratchpadCopyCore.scratchpad_copy_full_value_event_entry.
 Definition storage_scratchpad_copy_full_trace_value_event_entry :=
   ScratchpadCopyCore.scratchpad_copy_full_trace_value_event_entry.
+Definition storage_scratchpad_copy_full_copyin_values_equal :=
+  ScratchpadCopyCore.scratchpad_copy_full_copyin_values_equal.
+Definition storage_scratchpad_copy_full_copyout_values_equal :=
+  ScratchpadCopyCore.scratchpad_copy_full_copyout_values_equal.
+Definition storage_scratchpad_copy_full_trace_copyin_values_equal :=
+  ScratchpadCopyCore.scratchpad_copy_full_trace_copyin_values_equal.
+Definition storage_scratchpad_copy_full_trace_copyout_values_equal :=
+  ScratchpadCopyCore.scratchpad_copy_full_trace_copyout_values_equal.
 Definition storage_scratchpad_copy_mapping_pair_compatible_specs :=
   ScratchpadCopyCore.scratchpad_copy_mapping_pair_compatible_specs.
 Definition storage_scratchpad_copy_mapping_pair_within_declared_bounds :=

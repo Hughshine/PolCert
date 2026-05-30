@@ -1277,6 +1277,116 @@ Proof.
   eapply copy_value_obligation_trace_event_entry; eauto.
 Qed.
 
+Theorem scratchpad_copy_full_copyin_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after source_cell local_cell source_value local_value,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    In (CopyIn source_cell local_cell,
+        CopyValueIn source_value local_value) value_trace ->
+    source_value = local_value.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after source_cell local_cell source_value local_value
+         Hcontract Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_copyin_values_equal; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_copyout_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after local_cell target_cell local_value target_value,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    In (CopyOut local_cell target_cell,
+        CopyValueOut local_value target_value) value_trace ->
+    local_value = target_value.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after local_cell target_cell local_value target_value
+         Hcontract Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_copyout_values_equal; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_trace_copyin_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after source_cell local_cell,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    copy_value_trace_events value_trace = copy_trace ->
+    In (CopyIn source_cell local_cell) copy_trace ->
+    exists source_value local_value,
+      In (CopyIn source_cell local_cell,
+          CopyValueIn source_value local_value) value_trace /\
+      source_value = local_value.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after source_cell local_cell
+         Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_trace_copyin_values_equal; eauto.
+Qed.
+
+Theorem scratchpad_copy_full_trace_copyout_values_equal :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after local_cell target_cell,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    copy_value_trace_events value_trace = copy_trace ->
+    In (CopyOut local_cell target_cell) copy_trace ->
+    exists local_value target_value,
+      In (CopyOut local_cell target_cell,
+          CopyValueOut local_value target_value) value_trace /\
+      local_value = target_value.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after local_cell target_cell
+         Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ Hvalue].
+  eapply copy_value_obligation_trace_copyout_values_equal; eauto.
+Qed.
+
 Theorem scratchpad_copy_mapping_pair_compatible_specs :
   forall (value: Type)
          input_view output_view

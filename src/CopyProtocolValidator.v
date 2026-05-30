@@ -876,6 +876,86 @@ Proof.
   eapply copy_value_obligation_trace_event_entry; eauto.
 Qed.
 
+Theorem copy_protocol_value_copyin_values_equal :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         source_cell local_cell source_value local_value,
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    In (CopyIn source_cell local_cell,
+        CopyValueIn source_value local_value) value_trace ->
+    source_value = local_value.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         source_cell local_cell source_value local_value
+         Hcontract Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_copyin_values_equal; eauto.
+Qed.
+
+Theorem copy_protocol_value_copyout_values_equal :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         local_cell target_cell local_value target_value,
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    In (CopyOut local_cell target_cell,
+        CopyValueOut local_value target_value) value_trace ->
+    local_value = target_value.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         local_cell target_cell local_value target_value
+         Hcontract Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_copyout_values_equal; eauto.
+Qed.
+
+Theorem copy_protocol_trace_value_copyin_values_equal :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         source_cell local_cell,
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    copy_value_trace_events value_trace = trace ->
+    In (CopyIn source_cell local_cell) trace ->
+    exists source_value local_value,
+      In (CopyIn source_cell local_cell,
+          CopyValueIn source_value local_value) value_trace /\
+      source_value = local_value.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         source_cell local_cell Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_trace_copyin_values_equal; eauto.
+Qed.
+
+Theorem copy_protocol_trace_value_copyout_values_equal :
+  forall (value: Type) input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         local_cell target_cell,
+    copy_protocol_commit_mapping_value_view_contract
+      value input_view output_view expected_commit_targets
+      mapping trace value_trace source_view after ->
+    copy_value_trace_events value_trace = trace ->
+    In (CopyOut local_cell target_cell) trace ->
+    exists local_value target_value,
+      In (CopyOut local_cell target_cell,
+          CopyValueOut local_value target_value) value_trace /\
+      local_value = target_value.
+Proof.
+  intros value input_view output_view expected_commit_targets
+         mapping trace value_trace source_view after
+         local_cell target_cell Hcontract Hevents Hin.
+  destruct Hcontract as [_ _ _ Hvalue _].
+  eapply copy_value_obligation_trace_copyout_values_equal; eauto.
+Qed.
+
 Theorem checked_copy_protocol_commits_nodup :
   forall trace,
     check_copy_protocol_wfb trace = true ->
