@@ -1554,8 +1554,10 @@ lifted into the larger scratchpad/packing wrapper.
 The same validator also exposes contract-level projections such as
 `copy_protocol_mapping_pair_within_bounds`,
 `copy_protocol_mapping_pair_compatible_specs`, and
-`copy_protocol_trace_value_event_entry`; these are deliberately corollaries of
-the checked contract, not extra arguments to the final refinement theorem.
+`copy_protocol_trace_value_event_entry`; the declared/bounded/compatible
+contract now forwards the direct copy-in and copy-out equality projections as
+well.  These are deliberately corollaries of the checked contract, not extra
+arguments to the final refinement theorem.
 `ScratchpadCopyValidator.checked_scratchpad_copy_view_correct`
 combines this copy witness with instance projection and local-buffer
 separation, which is closer to a scratchpad/packing transformation.  It still
@@ -1592,6 +1594,10 @@ The scratchpad facade mirrors the copy-protocol projections with
 `scratchpad_copy_full_copyout_values_equal`,
 `scratchpad_copy_full_trace_copyin_values_equal`,
 `scratchpad_copy_full_trace_copyout_values_equal`,
+`scratchpad_copy_non_escape_copyin_values_equal`,
+`scratchpad_copy_non_escape_copyout_values_equal`,
+`scratchpad_copy_non_escape_trace_copyin_values_equal`,
+`scratchpad_copy_non_escape_trace_copyout_values_equal`,
 `scratchpad_copy_mapping_pair_compatible_specs`, and
 `scratchpad_copy_mapping_pair_within_declared_bounds`.  The strongest
 non-escape contract also projects the same compatibility, bounds, and
