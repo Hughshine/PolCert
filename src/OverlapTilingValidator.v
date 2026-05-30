@@ -11,6 +11,7 @@ Require Import ViewPipeline.
 Require Import PrivateStorageWitness.
 Require Import ReuseConflictWitness.
 Require Import InstanceProjectionWitness.
+Require Import InstanceTraceWitness.
 Require Import OverlapClosureWitness.
 Require Import OverlapValueWitness.
 Require Import OverlapStorageWitness.
@@ -1174,6 +1175,80 @@ Proof.
          Hcontract Htile Hdep.
   destruct Hcontract as [_ Hclosure _ _].
   eapply overlap_ordered_closure_dependency_ordered; eauto.
+Qed.
+
+Theorem overlap_storage_contract_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs
+         writes source_view after,
+    overlap_private_ordered_closure_compatible_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs writes source_view after ->
+    instance_trace_obligations
+      overlap_write overlap_write_projected_role
+      (overlap_tiles_targets tiles) writes.
+Proof.
+  intros value input_view output_view source_domain source_liveouts tiles
+         target_values private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs writes source_view after
+         Hcontract.
+  destruct Hcontract as [_ Hwrites].
+  eapply overlap_storage_instance_trace_obligations.
+  exact Hwrites.
+Qed.
+
+Theorem overlap_bounded_storage_contract_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         writes source_view after,
+    overlap_private_ordered_closure_bounded_compatible_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs private_bounds commit_bounds
+      writes source_view after ->
+    instance_trace_obligations
+      overlap_write overlap_write_projected_role
+      (overlap_tiles_targets tiles) writes.
+Proof.
+  intros value input_view output_view source_domain source_liveouts tiles
+         target_values private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         writes source_view after Hcontract.
+  destruct Hcontract as [Hbase _ _].
+  eapply overlap_storage_contract_instance_trace_obligations.
+  exact Hbase.
+Qed.
+
+Theorem overlap_bounded_non_escape_storage_contract_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts tiles target_values
+         private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes source_view after,
+    overlap_private_ordered_closure_bounded_compatible_non_escape_value_storage_view_contract
+      value input_view output_view source_domain source_liveouts tiles
+      target_values private_cells public_cells frame_cells commit_cells
+      private_mapping logical_specs private_specs private_bounds commit_bounds
+      escaped_cells writes source_view after ->
+    instance_trace_obligations
+      overlap_write overlap_write_projected_role
+      (overlap_tiles_targets tiles) writes.
+Proof.
+  intros value input_view output_view source_domain source_liveouts tiles
+         target_values private_cells public_cells frame_cells commit_cells
+         private_mapping logical_specs private_specs private_bounds commit_bounds
+         escaped_cells writes source_view after Hcontract.
+  destruct Hcontract as [Hbase _].
+  eapply overlap_bounded_storage_contract_instance_trace_obligations.
+  exact Hbase.
 Qed.
 
 Theorem overlap_internal_write_within_private_bounds :

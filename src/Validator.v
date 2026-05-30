@@ -2187,6 +2187,8 @@ Definition storage_overlap_value_obligation_target_matched :=
 Definition storage_check_overlap_valueb_target_matched :=
   @check_overlap_valueb_target_matched.
 Definition storage_overlap_write := overlap_write.
+Definition storage_overlap_write_projected_role :=
+  overlap_write_projected_role.
 Definition storage_check_overlap_storageb :=
   check_overlap_storageb.
 Definition storage_check_overlap_storageb_sound :=
@@ -2217,6 +2219,10 @@ Definition storage_overlap_storage_commit_cells_nodup :=
   overlap_storage_commit_cells_nodup.
 Definition storage_check_overlap_storageb_commit_cells_nodup :=
   check_overlap_storageb_commit_cells_nodup.
+Definition storage_overlap_storage_instance_trace_obligations :=
+  overlap_storage_instance_trace_obligations.
+Definition storage_check_overlap_storageb_instance_trace_obligations :=
+  check_overlap_storageb_instance_trace_obligations.
 Definition storage_overlap_source_view_refines_view :=
   OverlapTilingCore.overlap_source_view_refines_view.
 Definition storage_overlap_no_private_view_contract :=
@@ -2279,6 +2285,12 @@ Definition storage_overlap_private_ordered_closure_contract_dependency_available
   OverlapTilingCore.overlap_private_ordered_closure_contract_dependency_available.
 Definition storage_overlap_private_ordered_closure_contract_dependency_ordered :=
   OverlapTilingCore.overlap_private_ordered_closure_contract_dependency_ordered.
+Definition storage_overlap_storage_contract_instance_trace_obligations :=
+  OverlapTilingCore.overlap_storage_contract_instance_trace_obligations.
+Definition storage_overlap_bounded_storage_contract_instance_trace_obligations :=
+  OverlapTilingCore.overlap_bounded_storage_contract_instance_trace_obligations.
+Definition storage_overlap_bounded_non_escape_storage_contract_instance_trace_obligations :=
+  OverlapTilingCore.overlap_bounded_non_escape_storage_contract_instance_trace_obligations.
 Definition storage_overlap_internal_write_within_private_bounds :=
   OverlapTilingCore.overlap_internal_write_within_private_bounds.
 Definition storage_overlap_commit_write_within_commit_bounds :=

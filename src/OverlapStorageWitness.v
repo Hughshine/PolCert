@@ -4,6 +4,7 @@ Require Import List.
 Require Import PolyBase.
 Require Import PrivateStorageWitness.
 Require Import InstanceProjectionWitness.
+Require Import InstanceTraceWitness.
 Require Import OverlapValueWitness.
 
 Import ListNotations.
@@ -21,6 +22,10 @@ Record overlap_write := {
   overlap_write_target : projected_instance;
   overlap_write_cell : MemCell;
 }.
+
+Definition overlap_write_projected_role
+    (write: overlap_write) : instance_role :=
+  projected_role (overlap_write_target write).
 
 Definition overlap_write_role_cell_ok
     (private_cells commit_cells: list MemCell)
@@ -243,6 +248,27 @@ Proof.
     + exact Hcell_ok.
 Qed.
 
+Lemma overlap_write_entries_match_instance_trace :
+  forall private_cells commit_cells targets writes,
+    overlap_write_entries_match
+      private_cells commit_cells targets writes ->
+    instance_trace_matches
+      overlap_write overlap_write_projected_role targets writes.
+Proof.
+  intros private_cells commit_cells targets.
+  induction targets as [|target target_tail IH];
+    intros writes Hmatch;
+    destruct writes as [|write write_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - exact I.
+  - destruct Hmatch as [Htarget [_ Htail]].
+    split.
+    + unfold overlap_write_projected_role.
+      rewrite <- Htarget.
+      reflexivity.
+    + eapply IH; eauto.
+Qed.
+
 Theorem overlap_storage_entries_length_match :
   forall private_cells commit_cells targets writes,
     overlap_storage_obligations
@@ -333,6 +359,20 @@ Proof.
   exact Hnodup.
 Qed.
 
+Theorem overlap_storage_instance_trace_obligations :
+  forall private_cells commit_cells targets writes,
+    overlap_storage_obligations
+      private_cells commit_cells targets writes ->
+    instance_trace_obligations
+      overlap_write overlap_write_projected_role targets writes.
+Proof.
+  intros private_cells commit_cells targets writes Hobligations.
+  destruct Hobligations as [Hmatch _].
+  constructor.
+  eapply overlap_write_entries_match_instance_trace.
+  exact Hmatch.
+Qed.
+
 Theorem check_overlap_storageb_entries_length_match :
   forall private_cells commit_cells targets writes,
     check_overlap_storageb
@@ -413,6 +453,19 @@ Theorem check_overlap_storageb_commit_cells_nodup :
 Proof.
   intros private_cells commit_cells targets writes Hcheck.
   eapply overlap_storage_commit_cells_nodup.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_instance_trace_obligations :
+  forall private_cells commit_cells targets writes,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    instance_trace_obligations
+      overlap_write overlap_write_projected_role targets writes.
+Proof.
+  intros private_cells commit_cells targets writes Hcheck.
+  eapply overlap_storage_instance_trace_obligations.
   apply check_overlap_storageb_sound.
   exact Hcheck.
 Qed.
