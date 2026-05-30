@@ -1487,6 +1487,9 @@ finite storage spec, and the paired specs must agree on size and alignment.
 The stronger bounds/compatibility wrapper now also exposes direct contract
 projections: a supplied value entry recovers its layout-map pair, source/target
 value equality, target-cell bounds, and compatible source/target storage specs.
+It also exposes padding-cell projections: every declared padding cell is within
+the checked allocated bounds, and no padding cell can be the target of a
+represented layout-map pair.
 These remain side facts below the public-view theorem rather than extra
 relations in the theorem statement.
 The proof that concrete target instruction semantics realizes those rewritten

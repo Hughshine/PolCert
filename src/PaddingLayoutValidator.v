@@ -325,6 +325,35 @@ Proof.
   eapply storage_bounds_cell_within; eauto.
 Qed.
 
+Theorem padding_layout_padding_cell_not_target :
+  forall mapping padding_cells allocated_cells cell,
+    padding_layout_obligations mapping padding_cells allocated_cells ->
+    In cell padding_cells ->
+    ~ In cell (padding_layout_targets mapping).
+Proof.
+  intros mapping padding_cells allocated_cells cell Hpadding Hin_padding.
+  destruct Hpadding as [_ _ _ _ _ Hdisjoint].
+  eapply Hdisjoint; eauto.
+Qed.
+
+Theorem padding_layout_padding_cell_not_mapping_target :
+  forall mapping padding_cells allocated_cells
+         padding_cell source_cell target_cell,
+    padding_layout_obligations mapping padding_cells allocated_cells ->
+    In padding_cell padding_cells ->
+    In (source_cell, target_cell) mapping ->
+    padding_cell <> target_cell.
+Proof.
+  intros mapping padding_cells allocated_cells
+         padding_cell source_cell target_cell
+         Hpadding Hin_padding Hin_mapping Heq.
+  subst padding_cell.
+  eapply padding_layout_padding_cell_not_target.
+  - exact Hpadding.
+  - exact Hin_padding.
+  - eapply padding_layout_mapping_pair_target_in_targets; eauto.
+Qed.
+
 Definition padding_pipeline_final_view
     (output_view: View.view) : View.view :=
   Pipeline.pipeline_final_view output_view.
@@ -1024,6 +1053,50 @@ Proof.
   - exact Hpadding.
   - exact Hbounds.
   - eapply padding_layout_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem padding_layout_declared_access_bounds_padding_cell_within_bounds :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after padding_cell,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In padding_cell padding_cells ->
+    cell_within_declared_bounds bounds padding_cell.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after padding_cell Hcontract Hin_padding.
+  destruct Hcontract as [Hpadding Hbounds _ _ _ _].
+  eapply padding_layout_padding_within_bounds; eauto.
+Qed.
+
+Theorem padding_layout_declared_access_bounds_padding_cell_not_mapping_target :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after padding_cell source_cell target_cell,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In padding_cell padding_cells ->
+    In (source_cell, target_cell) mapping ->
+    padding_cell <> target_cell.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after padding_cell source_cell target_cell
+         Hcontract Hin_padding Hin_mapping.
+  destruct Hcontract as [Hpadding _ _ _ _ _].
+  eapply padding_layout_padding_cell_not_mapping_target; eauto.
 Qed.
 
 Theorem padding_layout_mapping_pair_compatible_specs :
