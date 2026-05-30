@@ -1390,7 +1390,10 @@ the same length, nth source or target instructions recover the corresponding
 remapped instruction, and matched nth instructions directly expose their write
 and read access-list relations.  The access-list relation itself now exposes
 nth access-pair and point-cell projections, and the program-level wrapper lifts
-those facts to nth write/read accesses of matched instructions.  The
+those facts to nth write/read accesses of matched instructions.  It also exposes
+one-sided source/target access recovery at program level, so a proof that knows
+only the selected source or target write/read access can recover the matching
+instruction, the paired access, and the same-point relation.  The
 single-instruction `same_instance_access_remap` layer exposes the same
 write/read access length, nth-access, and point-cell facts directly.  These
 facts keep layout-specific simulation proofs from unpacking the generic
@@ -1398,7 +1401,8 @@ facts keep layout-specific simulation proofs from unpacking the generic
 pprog write/read point-cell corollaries, so a concrete instruction proof can
 move from a successful checker run to the exact declared-layout cell relation
 for a selected access without unpacking the intermediate remap records.  It
-also exposes one-sided source/target access recovery facts: knowing only one
+also exposes checker-level one-sided source/target access recovery facts:
+knowing only one
 selected write or read access is enough to recover the paired access and its
 same-point relation.
 

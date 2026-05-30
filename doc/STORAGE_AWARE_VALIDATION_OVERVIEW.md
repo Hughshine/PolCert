@@ -778,6 +778,15 @@ primitive slices.  The rightmost column is the deliberately explicit semantic
 gap; these are the obligations that should later be discharged by
 feature-specific instruction or trace simulation proofs.
 
+For P2, the shared program-level access remap layer also exposes one-sided
+recovery facts:
+`StorageWitness.pprog_same_instance_access_remap_write_target_access`,
+`StorageWitness.pprog_same_instance_access_remap_write_source_access`,
+`StorageWitness.pprog_same_instance_access_remap_read_target_access`, and
+`StorageWitness.pprog_same_instance_access_remap_read_source_access`.  These
+facts recover the paired instruction/access and same-point relation when a
+proof starts from only the selected source or target write/read access.
+
 | Primitive | Current Coq hook | Checked now | Still explicit |
 | --- | --- | --- | --- |
 | P-1 no-alias memory abstraction | `SourceNoAliasWitness.check_source_no_aliasb_sound`; `SourceNoAliasWitness.check_source_no_alias_accessb_sound`; `SourceNoAliasWitness.check_source_no_alias_access_boundedb_sound`; `SourceNoAliasWitness.source_no_alias_footprints_disjoint`; `SourceNoAliasWitness.source_no_alias_footprint_cells_distinct`; `SourceNoAliasWitness.source_access_cell_covered`; `SourceNoAliasWitness.source_access_footprints_disjoint`; `SourceNoAliasWitness.source_access_cells_distinct`; `SourceNoAliasWitness.source_access_cell_within_bounds` | object ids and finite footprints are duplicate-free; distinct source-object footprints are pairwise disjoint, so concrete cells from different source objects are distinct; finite source access cells can be checked to lie inside the declared footprint for their logical object, so covered access entries for different source objects inherit the same disjointness; footprint cells can be checked against declared array bounds, so covered source access cells inherit in-bounds facts | deriving the finite access cells and proving they over-approximate real C accesses |

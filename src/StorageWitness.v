@@ -757,6 +757,138 @@ Proof.
   eapply access_list_relation_nth; eauto.
 Qed.
 
+Theorem pprog_same_instance_access_remap_write_target_access :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n after_pi after_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_waccess after_pi) access_n = Some after_access ->
+    exists before_pi before_access,
+      nth_error pis_before instr_n = Some before_pi /\
+      nth_error (PL.pi_waccess before_pi) access_n = Some before_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n after_pi after_access
+         Hremap Hafter_pi Hafter_access.
+  destruct
+    (pprog_same_instance_access_remap_target_instr
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after
+       instr_n after_pi Hremap Hafter_pi)
+    as (before_pi & Hbefore_pi & Hsiar).
+  destruct
+    (same_instance_access_remap_write_target_access
+       rel before_pi after_pi access_n after_access Hsiar Hafter_access)
+    as (before_access & Hbefore_access & Haccess).
+  exists before_pi, before_access.
+  repeat split; assumption.
+Qed.
+
+Theorem pprog_same_instance_access_remap_write_source_access :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi before_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error (PL.pi_waccess before_pi) access_n = Some before_access ->
+    exists after_pi after_access,
+      nth_error pis_after instr_n = Some after_pi /\
+      nth_error (PL.pi_waccess after_pi) access_n = Some after_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi before_access
+         Hremap Hbefore_pi Hbefore_access.
+  destruct
+    (pprog_same_instance_access_remap_source_instr
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after
+       instr_n before_pi Hremap Hbefore_pi)
+    as (after_pi & Hafter_pi & Hsiar).
+  destruct
+    (same_instance_access_remap_write_source_access
+       rel before_pi after_pi access_n before_access Hsiar Hbefore_access)
+    as (after_access & Hafter_access & Haccess).
+  exists after_pi, after_access.
+  repeat split; assumption.
+Qed.
+
+Theorem pprog_same_instance_access_remap_read_target_access :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n after_pi after_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_after instr_n = Some after_pi ->
+    nth_error (PL.pi_raccess after_pi) access_n = Some after_access ->
+    exists before_pi before_access,
+      nth_error pis_before instr_n = Some before_pi /\
+      nth_error (PL.pi_raccess before_pi) access_n = Some before_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n after_pi after_access
+         Hremap Hafter_pi Hafter_access.
+  destruct
+    (pprog_same_instance_access_remap_target_instr
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after
+       instr_n after_pi Hremap Hafter_pi)
+    as (before_pi & Hbefore_pi & Hsiar).
+  destruct
+    (same_instance_access_remap_read_target_access
+       rel before_pi after_pi access_n after_access Hsiar Hafter_access)
+    as (before_access & Hbefore_access & Haccess).
+  exists before_pi, before_access.
+  repeat split; assumption.
+Qed.
+
+Theorem pprog_same_instance_access_remap_read_source_access :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi before_access,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before instr_n = Some before_pi ->
+    nth_error (PL.pi_raccess before_pi) access_n = Some before_access ->
+    exists after_pi after_access,
+      nth_error pis_after instr_n = Some after_pi /\
+      nth_error (PL.pi_raccess after_pi) access_n = Some after_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after
+         instr_n access_n before_pi before_access
+         Hremap Hbefore_pi Hbefore_access.
+  destruct
+    (pprog_same_instance_access_remap_source_instr
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after
+       instr_n before_pi Hremap Hbefore_pi)
+    as (after_pi & Hafter_pi & Hsiar).
+  destruct
+    (same_instance_access_remap_read_source_access
+       rel before_pi after_pi access_n before_access Hsiar Hbefore_access)
+    as (after_access & Hafter_access & Haccess).
+  exists after_pi, after_access.
+  repeat split; assumption.
+Qed.
+
 Theorem pprog_same_instance_access_remap_write_access_cell_nth :
   forall rel pis_before varctxt_before vars_before
          pis_after varctxt_after vars_after

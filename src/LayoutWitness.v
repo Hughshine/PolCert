@@ -1425,20 +1425,7 @@ Proof.
        ((after_pis, after_varctxt), after_vars)
        Hcheck)
     as Hremap.
-  destruct
-    (Storage.pprog_same_instance_access_remap_target_instr
-       (declared_layout_cell_relation layouts)
-       source_pis source_varctxt source_vars
-       after_pis after_varctxt after_vars
-       instr_n after_instr Hremap Hafter_instr)
-    as (source_instr & Hsource_instr & Hsiar).
-  destruct
-    (Storage.same_instance_access_remap_write_target_access
-       (declared_layout_cell_relation layouts)
-       source_instr after_instr access_n target_access Hsiar Htarget_access)
-    as (source_access & Hsource_access & Haccess).
-  exists source_instr, source_access.
-  repeat split; assumption.
+  eapply Storage.pprog_same_instance_access_remap_write_target_access; eauto.
 Qed.
 
 Theorem check_pprog_declared_layout_write_source_access :
@@ -1470,20 +1457,7 @@ Proof.
        ((after_pis, after_varctxt), after_vars)
        Hcheck)
     as Hremap.
-  destruct
-    (Storage.pprog_same_instance_access_remap_source_instr
-       (declared_layout_cell_relation layouts)
-       source_pis source_varctxt source_vars
-       after_pis after_varctxt after_vars
-       instr_n source_instr Hremap Hsource_instr)
-    as (after_instr & Hafter_instr & Hsiar).
-  destruct
-    (Storage.same_instance_access_remap_write_source_access
-       (declared_layout_cell_relation layouts)
-       source_instr after_instr access_n source_access Hsiar Hsource_access)
-    as (target_access & Htarget_access & Haccess).
-  exists after_instr, target_access.
-  repeat split; assumption.
+  eapply Storage.pprog_same_instance_access_remap_write_source_access; eauto.
 Qed.
 
 Theorem check_pprog_declared_layout_read_target_access :
@@ -1515,20 +1489,7 @@ Proof.
        ((after_pis, after_varctxt), after_vars)
        Hcheck)
     as Hremap.
-  destruct
-    (Storage.pprog_same_instance_access_remap_target_instr
-       (declared_layout_cell_relation layouts)
-       source_pis source_varctxt source_vars
-       after_pis after_varctxt after_vars
-       instr_n after_instr Hremap Hafter_instr)
-    as (source_instr & Hsource_instr & Hsiar).
-  destruct
-    (Storage.same_instance_access_remap_read_target_access
-       (declared_layout_cell_relation layouts)
-       source_instr after_instr access_n target_access Hsiar Htarget_access)
-    as (source_access & Hsource_access & Haccess).
-  exists source_instr, source_access.
-  repeat split; assumption.
+  eapply Storage.pprog_same_instance_access_remap_read_target_access; eauto.
 Qed.
 
 Theorem check_pprog_declared_layout_read_source_access :
@@ -1560,20 +1521,7 @@ Proof.
        ((after_pis, after_varctxt), after_vars)
        Hcheck)
     as Hremap.
-  destruct
-    (Storage.pprog_same_instance_access_remap_source_instr
-       (declared_layout_cell_relation layouts)
-       source_pis source_varctxt source_vars
-       after_pis after_varctxt after_vars
-       instr_n source_instr Hremap Hsource_instr)
-    as (after_instr & Hafter_instr & Hsiar).
-  destruct
-    (Storage.same_instance_access_remap_read_source_access
-       (declared_layout_cell_relation layouts)
-       source_instr after_instr access_n source_access Hsiar Hsource_access)
-    as (target_access & Htarget_access & Haccess).
-  exists after_instr, target_access.
-  repeat split; assumption.
+  eapply Storage.pprog_same_instance_access_remap_read_source_access; eauto.
 Qed.
 
 Lemma check_pprog_array_index_permutation_access_remapb_sound :
