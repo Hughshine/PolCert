@@ -93,6 +93,67 @@ Proof.
     eapply mem_cells_subsetb_sound; eauto.
 Qed.
 
+Theorem check_phase_stepb_reads_visible :
+  forall entry_live step,
+    check_phase_stepb entry_live step = true ->
+    forall cell,
+      In cell (phase_reads step) ->
+      In cell entry_live.
+Proof.
+  intros entry_live step Hcheck.
+  exact (proj1 (check_phase_stepb_sound entry_live step Hcheck)).
+Qed.
+
+Theorem check_phase_stepb_writes_disjoint :
+  forall entry_live step,
+    check_phase_stepb entry_live step = true ->
+    mem_cells_disjoint (phase_writes step) entry_live.
+Proof.
+  intros entry_live step Hcheck.
+  exact (proj1 (proj2 (check_phase_stepb_sound entry_live step Hcheck))).
+Qed.
+
+Theorem check_phase_stepb_writes_nodup :
+  forall entry_live step,
+    check_phase_stepb entry_live step = true ->
+    NoDup (phase_writes step).
+Proof.
+  intros entry_live step Hcheck.
+  exact
+    (proj1
+       (proj2 (proj2 (check_phase_stepb_sound entry_live step Hcheck)))).
+Qed.
+
+Theorem check_phase_stepb_next_live_nodup :
+  forall entry_live step,
+    check_phase_stepb entry_live step = true ->
+    NoDup (phase_next_live step).
+Proof.
+  intros entry_live step Hcheck.
+  exact
+    (proj1
+       (proj2
+          (proj2
+             (proj2
+                (check_phase_stepb_sound entry_live step Hcheck))))).
+Qed.
+
+Theorem check_phase_stepb_next_live_covered :
+  forall entry_live step,
+    check_phase_stepb entry_live step = true ->
+    forall cell,
+      In cell (phase_next_live step) ->
+      In cell (phase_writes step ++ entry_live).
+Proof.
+  intros entry_live step Hcheck.
+  exact
+    (proj2
+       (proj2
+          (proj2
+             (proj2
+                (check_phase_stepb_sound entry_live step Hcheck))))).
+Qed.
+
 Fixpoint phase_protocol_safe
     (entry_live: list MemCell)
     (steps: list phase_step) : Prop :=
@@ -130,6 +191,42 @@ Proof.
       exact Hstep.
     + apply IH.
       exact Htail.
+Qed.
+
+Theorem check_phase_protocolb_protocol_safe :
+  forall entry_live steps,
+    check_phase_protocolb entry_live steps = true ->
+    phase_protocol_safe entry_live steps.
+Proof.
+  intros entry_live steps Hcheck.
+  apply check_phase_protocolb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_protocolb_head_safe :
+  forall entry_live step tail,
+    check_phase_protocolb entry_live (step :: tail) = true ->
+    phase_step_safe entry_live step.
+Proof.
+  intros entry_live step tail Hcheck.
+  simpl in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hstep _].
+  apply check_phase_stepb_sound.
+  exact Hstep.
+Qed.
+
+Theorem check_phase_protocolb_tail_safe :
+  forall entry_live step tail,
+    check_phase_protocolb entry_live (step :: tail) = true ->
+    phase_protocol_safe (phase_next_live step) tail.
+Proof.
+  intros entry_live step tail Hcheck.
+  simpl in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [_ Htail].
+  apply check_phase_protocolb_sound.
+  exact Htail.
 Qed.
 
 Definition phase_protocol_final_live

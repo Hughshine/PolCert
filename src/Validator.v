@@ -2619,6 +2619,22 @@ Definition storage_check_phase_protocolb :=
   check_phase_protocolb.
 Definition storage_check_phase_protocolb_sound :=
   check_phase_protocolb_sound.
+Definition storage_check_phase_stepb_reads_visible :=
+  check_phase_stepb_reads_visible.
+Definition storage_check_phase_stepb_writes_disjoint :=
+  check_phase_stepb_writes_disjoint.
+Definition storage_check_phase_stepb_writes_nodup :=
+  check_phase_stepb_writes_nodup.
+Definition storage_check_phase_stepb_next_live_nodup :=
+  check_phase_stepb_next_live_nodup.
+Definition storage_check_phase_stepb_next_live_covered :=
+  check_phase_stepb_next_live_covered.
+Definition storage_check_phase_protocolb_protocol_safe :=
+  check_phase_protocolb_protocol_safe.
+Definition storage_check_phase_protocolb_head_safe :=
+  check_phase_protocolb_head_safe.
+Definition storage_check_phase_protocolb_tail_safe :=
+  check_phase_protocolb_tail_safe.
 Definition storage_phase_protocol_final_live :=
   phase_protocol_final_live.
 Definition storage_phase_step_cells :=

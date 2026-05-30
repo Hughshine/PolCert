@@ -743,7 +743,9 @@ non-escape route now also has a public-only facade and a
 privatization/merge policy uses the same parameterized public-view family
 interface as the other storage-changing routes.
 `PhaseSeparationWitness.v` starts the double-buffering route by checking phase
-read visibility, write/live disjointness, and next-live coverage;
+read visibility, write/live disjointness, and next-live coverage.  Its checked
+projections now expose each single-step fact directly from `check_phase_stepb`
+and recover head/tail protocol safety directly from `check_phase_protocolb`.
 `PhaseValueWitness.v` adds phase snapshot value flow: reads have entry values,
 and every next-live value is either written in the phase or inherited from the
 entry snapshot.  Its checked projections recover table-entry facts directly:
