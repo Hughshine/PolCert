@@ -1404,9 +1404,10 @@ for a selected access without unpacking the intermediate remap records.  It
 also exposes checker-level one-sided source/target access recovery facts:
 knowing only one selected write or read access is enough to recover the paired
 access and its same-point relation.  The older array-rename,
-index-permutation, and affine layout checker facades expose the same pinstr and
-pprog-level one-sided recovery shape, so legacy padding/transpose/linearization
-routes can use the same proof style while they migrate toward declared layouts.
+index-permutation, and affine layout checker facades expose the same
+pinstr/pprog-level point-cell corollaries and one-sided recovery shape, so
+legacy padding/transpose/linearization routes can use the same proof style
+while they migrate toward declared layouts.
 
 ### Padding and Alignment
 
