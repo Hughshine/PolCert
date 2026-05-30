@@ -1727,10 +1727,24 @@ Definition storage_check_live_conflictb_sound :=
   check_live_conflictb_sound.
 Definition storage_live_conflict_obligations :=
   live_conflict_obligations.
+Definition storage_check_live_conflictb_intervals_wf :=
+  check_live_conflictb_intervals_wf.
+Definition storage_check_live_conflictb_interval_wf :=
+  check_live_conflictb_interval_wf.
+Definition storage_check_live_conflictb_cells_nodup :=
+  check_live_conflictb_cells_nodup.
+Definition storage_check_live_conflictb_overlap_covered :=
+  check_live_conflictb_overlap_covered.
+Definition storage_check_live_conflictb_pair_conflict_present :=
+  check_live_conflictb_pair_conflict_present.
 Definition storage_live_overlaps_reuse_separated :=
   live_overlaps_reuse_separated.
 Definition storage_live_conflict_and_conflict_safe_reuse_sound :=
   live_conflict_and_conflict_safe_reuse_sound.
+Definition storage_check_live_conflictb_and_reuse_obligations_separated :=
+  check_live_conflictb_and_reuse_obligations_separated.
+Definition storage_check_live_conflictb_and_check_conflict_safe_reuseb_separated :=
+  check_live_conflictb_and_check_conflict_safe_reuseb_separated.
 Definition storage_reuse_value_entry := reuse_value_entry.
 Definition storage_check_reuse_valueb :=
   @check_reuse_valueb.

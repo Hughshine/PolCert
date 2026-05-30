@@ -579,8 +579,11 @@ reusable boundary obligations for every source in the finite reuse map directly
 from `check_conflict_safe_reuseb`.  `LifetimeConflictWitness.v`
 checks the preceding finite live-range obligation: every pair of overlapping
 live intervals must be listed as a conflict, and conflict-safe reuse then
-implies physical separation for all live overlaps.  `ReuseValueWitness.v` adds
-a boundary value witness aligned with the logical-to-physical map: each
+implies physical separation for all live overlaps.  Its checked projections now
+recover interval well-formedness, interval-cell uniqueness, per-overlap conflict
+coverage, and the composed checked result that a live-conflict witness plus a
+conflict-safe reuse witness separates all overlapping live ranges physically.
+`ReuseValueWitness.v` adds a boundary value witness aligned with the logical-to-physical map: each
 physical boundary value must equal the logical value it represents.  Direct
 checked projection facts expose that the finite value evidence has the same
 length as the reuse map and that each reuse-map edge has a corresponding value

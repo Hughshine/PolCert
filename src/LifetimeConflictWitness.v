@@ -343,6 +343,66 @@ Proof.
     exact Hcover.
 Qed.
 
+Theorem check_live_conflictb_intervals_wf :
+  forall intervals conflicts,
+    check_live_conflictb intervals conflicts = true ->
+    live_intervals_wf intervals.
+Proof.
+  intros intervals conflicts Hcheck.
+  exact
+    (lco_intervals_wf
+       intervals conflicts
+       (check_live_conflictb_sound intervals conflicts Hcheck)).
+Qed.
+
+Theorem check_live_conflictb_interval_wf :
+  forall intervals conflicts interval,
+    check_live_conflictb intervals conflicts = true ->
+    In interval intervals ->
+    live_interval_wf interval.
+Proof.
+  intros intervals conflicts interval Hcheck Hin.
+  eapply check_live_conflictb_intervals_wf; eauto.
+Qed.
+
+Theorem check_live_conflictb_cells_nodup :
+  forall intervals conflicts,
+    check_live_conflictb intervals conflicts = true ->
+    NoDup (live_interval_cells intervals).
+Proof.
+  intros intervals conflicts Hcheck.
+  exact
+    (lco_cells_nodup
+       intervals conflicts
+       (check_live_conflictb_sound intervals conflicts Hcheck)).
+Qed.
+
+Theorem check_live_conflictb_overlap_covered :
+  forall intervals conflicts,
+    check_live_conflictb intervals conflicts = true ->
+    live_conflict_cover intervals conflicts.
+Proof.
+  intros intervals conflicts Hcheck.
+  exact
+    (lco_overlap_covered
+       intervals conflicts
+       (check_live_conflictb_sound intervals conflicts Hcheck)).
+Qed.
+
+Theorem check_live_conflictb_pair_conflict_present :
+  forall intervals conflicts left right,
+    check_live_conflictb intervals conflicts = true ->
+    In left intervals ->
+    In right intervals ->
+    li_cell left <> li_cell right ->
+    live_interval_overlap left right ->
+    conflict_pair_present (li_cell left) (li_cell right) conflicts.
+Proof.
+  intros intervals conflicts left right Hcheck Hin_left Hin_right
+         Hneq Hoverlap.
+  eapply check_live_conflictb_overlap_covered; eauto.
+Qed.
+
 Definition interval_cells_reuse_separated
     (mapping: reuse_mapping)
     (left right: live_interval) : Prop :=
@@ -413,4 +473,31 @@ Proof.
   - apply conflict_pair_separated_to_interval_sym.
     apply Hseparated.
     exact Hreverse.
+Qed.
+
+Theorem check_live_conflictb_and_reuse_obligations_separated :
+  forall mapping conflicts intervals,
+    check_live_conflictb intervals conflicts = true ->
+    conflict_safe_reuse_obligations mapping conflicts ->
+    live_overlaps_reuse_separated mapping intervals.
+Proof.
+  intros mapping conflicts intervals Hlive_check Hreuse.
+  eapply live_conflict_and_conflict_safe_reuse_sound.
+  - apply check_live_conflictb_sound.
+    exact Hlive_check.
+  - exact Hreuse.
+Qed.
+
+Theorem check_live_conflictb_and_check_conflict_safe_reuseb_separated :
+  forall mapping conflicts intervals,
+    check_live_conflictb intervals conflicts = true ->
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    live_overlaps_reuse_separated mapping intervals.
+Proof.
+  intros mapping conflicts intervals Hlive_check Hreuse_check.
+  eapply live_conflict_and_conflict_safe_reuse_sound.
+  - apply check_live_conflictb_sound.
+    exact Hlive_check.
+  - apply check_conflict_safe_reuseb_sound.
+    exact Hreuse_check.
 Qed.
