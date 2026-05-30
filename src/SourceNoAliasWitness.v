@@ -493,6 +493,24 @@ Proof.
   eapply Hcovered; eauto.
 Qed.
 
+Theorem check_source_no_alias_accessb_cell_covered :
+  forall footprints accesses object access_cells cell,
+    check_source_no_alias_accessb footprints accesses = true ->
+    In (object, access_cells) accesses ->
+    In cell access_cells ->
+    exists footprint_cells,
+      In (object, footprint_cells) footprints /\
+      In cell footprint_cells.
+Proof.
+  intros footprints accesses object access_cells cell
+         Hcheck Haccess Hcell.
+  eapply source_access_cell_covered.
+  - apply check_source_no_alias_accessb_sound.
+    exact Hcheck.
+  - exact Haccess.
+  - exact Hcell.
+Qed.
+
 Theorem source_footprint_cell_within_bounds :
   forall footprints accesses bounds object footprint_cells cell,
     source_no_alias_access_bounded_obligations
@@ -561,6 +579,30 @@ Proof.
   eapply Hdisjoint; eauto.
 Qed.
 
+Theorem check_source_no_alias_accessb_cells_distinct :
+  forall footprints accesses left_object left_cells right_object right_cells
+         left_cell right_cell,
+    check_source_no_alias_accessb footprints accesses = true ->
+    In (left_object, left_cells) accesses ->
+    In left_cell left_cells ->
+    In (right_object, right_cells) accesses ->
+    In right_cell right_cells ->
+    left_object <> right_object ->
+    left_cell <> right_cell.
+Proof.
+  intros footprints accesses left_object left_cells right_object right_cells
+         left_cell right_cell Hcheck Hleft Hleft_cell
+         Hright Hright_cell Hobjects.
+  eapply source_access_cells_distinct.
+  - apply check_source_no_alias_accessb_sound.
+    exact Hcheck.
+  - exact Hleft.
+  - exact Hleft_cell.
+  - exact Hright.
+  - exact Hright_cell.
+  - exact Hobjects.
+Qed.
+
 Theorem source_access_cell_within_bounds :
   forall footprints accesses bounds object access_cells cell,
     source_no_alias_access_bounded_obligations
@@ -579,4 +621,38 @@ Proof.
   eapply storage_bounds_cell_within.
   - exact Hbounds.
   - eapply source_footprint_cell_in_cells; eauto.
+Qed.
+
+Theorem check_source_no_alias_access_boundedb_footprint_cell_within_bounds :
+  forall footprints accesses bounds object footprint_cells cell,
+    check_source_no_alias_access_boundedb
+      footprints accesses bounds = true ->
+    In (object, footprint_cells) footprints ->
+    In cell footprint_cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros footprints accesses bounds object footprint_cells cell
+         Hcheck Hfootprint Hcell.
+  eapply source_footprint_cell_within_bounds.
+  - apply check_source_no_alias_access_boundedb_sound.
+    exact Hcheck.
+  - exact Hfootprint.
+  - exact Hcell.
+Qed.
+
+Theorem check_source_no_alias_access_boundedb_cell_within_bounds :
+  forall footprints accesses bounds object access_cells cell,
+    check_source_no_alias_access_boundedb
+      footprints accesses bounds = true ->
+    In (object, access_cells) accesses ->
+    In cell access_cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros footprints accesses bounds object access_cells cell
+         Hcheck Haccess Hcell.
+  eapply source_access_cell_within_bounds.
+  - apply check_source_no_alias_access_boundedb_sound.
+    exact Hcheck.
+  - exact Haccess.
+  - exact Hcell.
 Qed.

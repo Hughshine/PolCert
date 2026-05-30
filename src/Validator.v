@@ -559,14 +559,22 @@ Definition storage_source_no_alias_footprint_cells_distinct :=
   source_no_alias_footprint_cells_distinct.
 Definition storage_source_access_cell_covered :=
   source_access_cell_covered.
+Definition storage_check_source_no_alias_accessb_cell_covered :=
+  check_source_no_alias_accessb_cell_covered.
 Definition storage_source_access_footprints_disjoint :=
   source_access_footprints_disjoint.
 Definition storage_source_access_cells_distinct :=
   source_access_cells_distinct.
+Definition storage_check_source_no_alias_accessb_cells_distinct :=
+  check_source_no_alias_accessb_cells_distinct.
 Definition storage_source_footprint_cell_within_bounds :=
   source_footprint_cell_within_bounds.
 Definition storage_source_access_cell_within_bounds :=
   source_access_cell_within_bounds.
+Definition storage_check_source_no_alias_access_boundedb_footprint_cell_within_bounds :=
+  check_source_no_alias_access_boundedb_footprint_cell_within_bounds.
+Definition storage_check_source_no_alias_access_boundedb_cell_within_bounds :=
+  check_source_no_alias_access_boundedb_cell_within_bounds.
 Definition storage_check_frame_preservationb :=
   check_frame_preservationb.
 Definition storage_check_frame_preservationb_sound :=
