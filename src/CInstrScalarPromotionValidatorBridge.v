@@ -399,6 +399,83 @@ Proof.
   exact Htrace.
 Qed.
 
+Theorem cscalar_promotion_bounded_side_condition_contract :
+  forall params before after,
+    cscalar_promotion_bounded_side_condition params before after ->
+    Scalar.scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      Values.val
+      (cspmp_input_view params)
+      (cspmp_output_view params)
+      (cspmp_source_cell params)
+      (cspmp_scalar_cell params)
+      (cspmp_source_liveout params)
+      (scalar_promotion_value_trace_events (cspmp_value_trace params))
+      (cspmp_value_trace params)
+      (cspmp_logical_specs params)
+      (cspmp_scalar_specs params)
+      (cspmp_source_bounds params)
+      (cspmp_scalar_bounds params)
+      (cspmp_escaped_cells params)
+      (cspmp_public_cells params)
+      (cspmp_frame_cells params)
+      (cspmp_source_view params)
+      after.
+Proof.
+  intros
+    [input_view output_view source_cell scalar_cell source_liveout value_trace
+     logical_specs scalar_specs source_bounds scalar_bounds escaped_cells
+     public_cells frame_cells source_view]
+    before after Hside.
+  simpl in *.
+  destruct Hside as
+    [Hpromotion
+     [Htrace
+      [Hcompat
+       [Hsource_bounds
+        [Hscalar_bounds
+         [Hnon_escape [Hseparation Hsemantics]]]]]]].
+  pose proof
+    (check_scalar_promotionb_sound
+       source_cell scalar_cell source_liveout
+       (scalar_promotion_value_trace_events value_trace)
+       Hpromotion)
+    as Hpromotion_obligations.
+  pose proof
+    (cscalar_promotion_value_trace_obligations
+       value_trace Htrace)
+    as Hvalue_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       [(source_cell, scalar_cell)] logical_specs scalar_specs Hcompat)
+    as Hcompat_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       source_bounds [source_cell] Hsource_bounds)
+    as Hsource_bounds_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       scalar_bounds [scalar_cell] Hscalar_bounds)
+    as Hscalar_bounds_obligations.
+  pose proof
+    (check_private_non_escapeb_sound
+       [scalar_cell] escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  pose proof
+    (check_private_separationb_sound
+       [scalar_cell] public_cells frame_cells Hseparation)
+    as Hseparation_obligations.
+  constructor.
+  - constructor.
+    + exact Hpromotion_obligations.
+    + exact Hvalue_obligations.
+    + exact Hseparation_obligations.
+    + exact Hcompat_obligations.
+    + exact Hsemantics.
+  - exact Hsource_bounds_obligations.
+  - exact Hscalar_bounds_obligations.
+  - exact Hnon_escape_obligations.
+Qed.
+
 Theorem cscalar_promotion_bounded_family_sound :
   forall params before after ok,
     mayReturn

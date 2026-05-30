@@ -147,6 +147,107 @@ Proof.
        Hpromotion_side).
 Qed.
 
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_privatization_obligations :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    Expansion.Scalar.bounded_value_pure_scalar_privatization_obligations
+      Values.val
+      (Expansion.cspbp_hidden_cells
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_private_cells
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_source_domain
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_source_cells
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_entries
+         (bcssc_privatization_params certificate))
+      (scalar_expansion_value_trace_events
+         (Expansion.cspbp_value_trace
+            (bcssc_privatization_params certificate)))
+      (Expansion.cspbp_value_trace
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_private_bounds
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_source_specs
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_private_specs
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_escaped_cells
+         (bcssc_privatization_params certificate)).
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret [_Hpriv_ok [Hpriv_side _Hpromotion]]]]].
+  exact
+    (Expansion.cscalar_privatization_bounded_side_condition_obligations
+       (bcssc_privatization_params certificate)
+       before (bcssc_mid_program certificate)
+       Hpriv_side).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_promotion_contract :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    Promotion.Scalar.scalar_promotion_bounded_compatible_non_escape_value_view_contract
+      Values.val
+      (Promotion.cspmp_input_view
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_output_view
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_source_cell
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_scalar_cell
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_source_liveout
+         (bcssc_promotion_params certificate))
+      (scalar_promotion_value_trace_events
+         (Promotion.cspmp_value_trace
+            (bcssc_promotion_params certificate)))
+      (Promotion.cspmp_value_trace
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_logical_specs
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_scalar_specs
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_source_bounds
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_scalar_bounds
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_escaped_cells
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_public_cells
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_frame_cells
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_source_view
+         (bcssc_promotion_params certificate))
+      after.
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret
+          [_Hpriv_ok
+            [_Hpriv_side
+              [_Hpromotion_ret
+                [_Hpromotion_ok Hpromotion_side]]]]]]].
+  exact
+    (Promotion.cscalar_promotion_bounded_side_condition_contract
+       (bcssc_promotion_params certificate)
+       (bcssc_mid_program certificate) after
+       Hpromotion_side).
+Qed.
+
 Theorem bounded_privatization_then_promotion_public_refinement :
   forall (privatization_params:
             Expansion.cscalar_privatization_bounded_params)

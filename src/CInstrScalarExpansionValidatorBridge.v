@@ -583,6 +583,64 @@ Proof.
   exact Htrace.
 Qed.
 
+Theorem cscalar_privatization_bounded_side_condition_obligations :
+  forall params before after,
+    cscalar_privatization_bounded_side_condition params before after ->
+    Scalar.bounded_value_pure_scalar_privatization_obligations
+      Values.val
+      (cspbp_hidden_cells params)
+      (cspbp_private_cells params)
+      (cspbp_source_domain params)
+      (cspbp_source_cells params)
+      (cspbp_entries params)
+      (scalar_expansion_value_trace_events (cspbp_value_trace params))
+      (cspbp_value_trace params)
+      (cspbp_private_bounds params)
+      (cspbp_source_specs params)
+      (cspbp_private_specs params)
+      (cspbp_escaped_cells params).
+Proof.
+  intros
+    [hidden_cells private_cells source_domain source_cells entries value_trace
+     private_bounds source_specs private_specs escaped_cells source_view]
+    before after Hside.
+  simpl in *.
+  destruct Hside as [Hbounded [Htrace _Hprivate]].
+  unfold check_bounded_scalar_privatization_static_coreb in Hbounded.
+  repeat rewrite andb_true_iff in Hbounded.
+  destruct Hbounded as (((Hstatic & Hbounds) & Hcompatible) & Hnon_escape).
+  pose proof
+    (check_scalar_privatization_static_coreb_sound
+       hidden_cells private_cells source_domain source_cells entries
+       value_trace Hstatic Htrace)
+    as Hcore.
+  pose proof
+    (cscalar_expansion_value_trace_obligations
+       entries value_trace Htrace)
+    as Hvalue_obligations.
+  pose proof
+    (check_storage_boundsb_sound
+       private_bounds private_cells Hbounds)
+    as Hbounds_obligations.
+  pose proof
+    (check_storage_compatibilityb_sound
+       (Scalar.scalar_expansion_storage_mapping entries)
+       source_specs private_specs Hcompatible)
+    as Hcompatible_obligations.
+  pose proof
+    (check_private_non_escapeb_sound
+       private_cells escaped_cells Hnon_escape)
+    as Hnon_escape_obligations.
+  constructor.
+  - constructor.
+    + exact Hcore.
+    + exact Hvalue_obligations.
+    + reflexivity.
+  - exact Hbounds_obligations.
+  - exact Hcompatible_obligations.
+  - exact Hnon_escape_obligations.
+Qed.
+
 Theorem cscalar_privatization_bounded_family_sound :
   forall params before after ok,
     mayReturn
