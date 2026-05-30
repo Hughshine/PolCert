@@ -655,9 +655,14 @@ shape.  The bounded version-commit route composes this with
 declared version-array bounds and any selected version related by the commit
 cell relation is known to be in bounds.  `VersionReadWitness.v` also exposes
 the produced-version image used by internal read-selection witnesses; the
+read-value witness now projects its positional table in both directions, so
+later concrete-read proofs can cite a matching value entry for a read selection
+and recover the source/version value equality from a supplied value entry.
 fully bounded read/commit route now checks that every read-selected produced
 version is within its declared version-array bounds as well as every committed
-version.  Its fully bounded non-escape route now also has a public-only facade
+version.  Its fully bounded non-escape route now also projects those supplied
+read-value entries to declared produced-version bounds and non-escape facts.
+It also has a public-only facade
 and a `version_commit_read_fully_bounded_non_escape_family`, so the versioned
 storage/array-expansion case participates in the same parameterized
 public-view family composition interface as scalar, copy, reuse, and overlap.

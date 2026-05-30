@@ -1082,6 +1082,108 @@ Proof.
   eapply version_commit_selected_version_in_versions; eauto.
 Qed.
 
+Theorem version_read_value_entries_length_match :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after,
+    version_commit_read_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_entries
+      expected_reads produced_versions read_entries read_value_entries
+      source_view after ->
+    length read_entries = length read_value_entries.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after Hcontract.
+  destruct Hcontract as [_ _ Hread_values].
+  eapply version_read_value_obligation_length_match; eauto.
+Qed.
+
+Theorem version_read_entry_value_entry_values_equal :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after entry,
+    version_commit_read_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_entries
+      expected_reads produced_versions read_entries read_value_entries
+      source_view after ->
+    In entry read_entries ->
+    exists value_entry,
+      In value_entry read_value_entries /\
+      vrve_read_entry value_entry = entry /\
+      vrve_source_value value_entry =
+        vrve_version_value value_entry.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [_ _ Hread_values].
+  eapply version_read_value_obligation_entry_matched; eauto.
+Qed.
+
+Theorem version_read_value_entry_read_entry_in_reads :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after value_entry,
+    version_commit_read_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_entries
+      expected_reads produced_versions read_entries read_value_entries
+      source_view after ->
+    In value_entry read_value_entries ->
+    In (vrve_read_entry value_entry) read_entries.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after value_entry Hcontract Hin.
+  destruct Hcontract as [_ _ Hread_values].
+  destruct
+    (version_read_value_obligation_value_entry_matched
+       value read_entries read_value_entries value_entry
+       Hread_values Hin)
+    as [Hentry _].
+  exact Hentry.
+Qed.
+
+Theorem version_read_value_entry_values_equal :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after value_entry,
+    version_commit_read_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_entries
+      expected_reads produced_versions read_entries read_value_entries
+      source_view after ->
+    In value_entry read_value_entries ->
+    vrve_source_value value_entry =
+      vrve_version_value value_entry.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_entries
+         expected_reads produced_versions read_entries read_value_entries
+         source_view after value_entry Hcontract Hin.
+  destruct Hcontract as [_ _ Hread_values].
+  destruct
+    (version_read_value_obligation_value_entry_matched
+       value read_entries read_value_entries value_entry
+       Hread_values Hin)
+    as [_ Hvalue].
+  exact Hvalue.
+Qed.
+
 Theorem version_read_selected_version_within_produced_bounds :
   forall (value: Type)
          input_view output_view source_liveouts mapping
@@ -1104,6 +1206,39 @@ Proof.
          Hcontract Hin.
   destruct Hcontract as [Hbase Hbounds].
   destruct Hbase as [_ Hread_selection _].
+  eapply storage_bounds_cell_within
+    with (cells := produced_version_versions produced_versions); eauto.
+  eapply version_read_selected_version_in_produced_versions; eauto.
+Qed.
+
+Theorem version_read_value_entry_selected_version_within_produced_bounds :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries source_view after value_entry,
+    version_commit_read_fully_bounded_compatible_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_bounds produced_bounds
+      commit_entries expected_reads produced_versions
+      read_entries read_value_entries source_view after ->
+    In value_entry read_value_entries ->
+    cell_within_declared_bounds
+      produced_bounds
+      (vre_selected_version (vrve_read_entry value_entry)).
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries source_view after value_entry
+         Hcontract Hin.
+  destruct Hcontract as [Hbase Hbounds].
+  destruct Hbase as [_ Hread_selection Hread_values].
+  destruct
+    (version_read_value_obligation_value_entry_matched
+       value read_entries read_value_entries value_entry
+       Hread_values Hin)
+    as [Hentry_in _].
   eapply storage_bounds_cell_within
     with (cells := produced_version_versions produced_versions); eauto.
   eapply version_read_selected_version_in_produced_versions; eauto.
@@ -1158,6 +1293,38 @@ Proof.
   destruct Hbase as [Hread_bounded _].
   destruct Hread_bounded as [_ Hread_selection _].
   destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply version_read_selected_version_in_produced_versions; eauto.
+Qed.
+
+Theorem version_read_value_entry_selected_version_not_escaped :
+  forall (value: Type)
+         input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries source_view after value_entry,
+    version_commit_read_fully_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view source_liveouts mapping
+      logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+      commit_entries expected_reads produced_versions
+      read_entries read_value_entries source_view after ->
+    In value_entry read_value_entries ->
+    ~ In (vre_selected_version (vrve_read_entry value_entry)) escaped_cells.
+Proof.
+  intros value input_view output_view source_liveouts mapping
+         logical_specs physical_specs commit_bounds produced_bounds escaped_cells
+         commit_entries expected_reads produced_versions
+         read_entries read_value_entries source_view after value_entry
+         Hcontract Hin.
+  destruct Hcontract as [Hfull Hnon_escape].
+  destruct Hfull as [Hbase _].
+  destruct Hbase as [_ Hread_selection Hread_values].
+  destruct Hnon_escape as [Hdisjoint].
+  destruct
+    (version_read_value_obligation_value_entry_matched
+       value read_entries read_value_entries value_entry
+       Hread_values Hin)
+    as [Hentry_in _].
   eapply Hdisjoint.
   eapply version_read_selected_version_in_produced_versions; eauto.
 Qed.

@@ -2006,7 +2006,12 @@ contain the represented boundary values, and have compatible size/alignment
 specs.
 The current strongest version route also packages read-version selection,
 separate bounds for committed and produced physical versions, and non-escape for
-uncommitted produced versions.  Its public facade,
+uncommitted produced versions.  The read-value witness now has the same
+concrete-entry projection shape as the commit-value witness: checked read
+entries can recover matching read-value entries with equal source/version
+values, and supplied read-value entries recover their selected read entry.  The
+fully bounded/non-escape validator lifts those supplied read-value entries to
+produced-version bounds and non-escape facts.  Its public facade,
 `checked_version_commit_read_fully_bounded_compatible_non_escape_value_public_refinement`,
 exposes only `View.view_refinement`, and the corresponding
 `version_commit_read_fully_bounded_non_escape_family` carries commit selection,

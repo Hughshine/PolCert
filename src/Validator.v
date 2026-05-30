@@ -1756,6 +1756,18 @@ Definition storage_check_version_read_valueb_sound :=
   check_version_read_valueb_sound.
 Definition storage_version_read_value_obligations :=
   version_read_value_obligations.
+Definition storage_version_read_value_entries_match_length :=
+  version_read_value_entries_match_length.
+Definition storage_version_read_value_entries_match_entry :=
+  version_read_value_entries_match_entry.
+Definition storage_version_read_value_entries_match_value_entry :=
+  version_read_value_entries_match_value_entry.
+Definition storage_version_read_value_obligation_length_match :=
+  version_read_value_obligation_length_match.
+Definition storage_version_read_value_obligation_entry_matched :=
+  version_read_value_obligation_entry_matched.
+Definition storage_version_read_value_obligation_value_entry_matched :=
+  version_read_value_obligation_value_entry_matched.
 Definition storage_check_version_commitb :=
   check_version_commitb.
 Definition storage_check_version_commitb_sound :=
@@ -1840,12 +1852,24 @@ Definition storage_version_commit_value_entry_version_within_bounds :=
   VersionCommitCore.version_commit_value_entry_version_within_bounds.
 Definition storage_version_commit_selected_version_within_bounds :=
   VersionCommitCore.version_commit_selected_version_within_bounds.
+Definition storage_version_read_value_entries_length_match :=
+  VersionCommitCore.version_read_value_entries_length_match.
+Definition storage_version_read_entry_value_entry_values_equal :=
+  VersionCommitCore.version_read_entry_value_entry_values_equal.
+Definition storage_version_read_value_entry_read_entry_in_reads :=
+  VersionCommitCore.version_read_value_entry_read_entry_in_reads.
+Definition storage_version_read_value_entry_values_equal :=
+  VersionCommitCore.version_read_value_entry_values_equal.
 Definition storage_version_read_selected_version_within_produced_bounds :=
   VersionCommitCore.version_read_selected_version_within_produced_bounds.
+Definition storage_version_read_value_entry_selected_version_within_produced_bounds :=
+  VersionCommitCore.version_read_value_entry_selected_version_within_produced_bounds.
 Definition storage_version_produced_version_not_escaped :=
   VersionCommitCore.version_produced_version_not_escaped.
 Definition storage_version_read_selected_version_not_escaped :=
   VersionCommitCore.version_read_selected_version_not_escaped.
+Definition storage_version_read_value_entry_selected_version_not_escaped :=
+  VersionCommitCore.version_read_value_entry_selected_version_not_escaped.
 Definition storage_reduction_chunks := reduction_chunks.
 Definition storage_reduction_accumulator_value :=
   reduction_accumulator_value.

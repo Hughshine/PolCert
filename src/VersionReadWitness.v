@@ -368,3 +368,134 @@ Proof.
   - exact Hvalue_eqb.
   - exact Hcheck.
 Qed.
+
+Lemma version_read_value_entries_match_length :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value)),
+    version_read_value_entries_match entries value_entries ->
+    length entries = length value_entries.
+Proof.
+  intros value entries.
+  induction entries as [|entry entry_tail IH];
+    intros value_entries Hmatch;
+    destruct value_entries as [|value_entry value_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - reflexivity.
+  - destruct Hmatch as [_ [_ Htail]].
+    simpl.
+    rewrite IH with (value_entries := value_tail); auto.
+Qed.
+
+Lemma version_read_value_entries_match_entry :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value))
+         entry,
+    version_read_value_entries_match entries value_entries ->
+    In entry entries ->
+    exists value_entry,
+      In value_entry value_entries /\
+      vrve_read_entry value_entry = entry /\
+      vrve_source_value value_entry =
+        vrve_version_value value_entry.
+Proof.
+  intros value entries.
+  induction entries as [|entry_head entry_tail IH];
+    intros value_entries entry Hmatch Hin;
+    destruct value_entries as [|value_entry value_tail];
+    simpl in Hmatch, Hin |- *; try contradiction.
+  destruct Hmatch as [Hentry [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst entry.
+    exists value_entry.
+    split.
+    + left. reflexivity.
+    + split.
+      * exact (eq_sym Hentry).
+      * exact Hvalue.
+  - destruct
+      (IH value_tail entry Htail Hin_tail)
+      as (tail_value_entry & Hin_value & Hentry_eq & Hvalue_eq).
+    exists tail_value_entry.
+    split.
+    + right. exact Hin_value.
+    + split; assumption.
+Qed.
+
+Lemma version_read_value_entries_match_value_entry :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value))
+         value_entry,
+    version_read_value_entries_match entries value_entries ->
+    In value_entry value_entries ->
+    In (vrve_read_entry value_entry) entries /\
+    vrve_source_value value_entry =
+      vrve_version_value value_entry.
+Proof.
+  intros value entries.
+  induction entries as [|entry_head entry_tail IH];
+    intros value_entries value_entry Hmatch Hin;
+    destruct value_entries as [|value_head value_tail];
+    simpl in Hmatch, Hin |- *; try contradiction.
+  destruct Hmatch as [Hentry [Hvalue Htail]].
+  destruct Hin as [Heq | Hin_tail].
+  - subst value_head.
+    split.
+    + left. exact Hentry.
+    + exact Hvalue.
+  - destruct
+      (IH value_tail value_entry Htail Hin_tail)
+      as [Hentry_in Hvalue_eq].
+    split.
+    + right. exact Hentry_in.
+    + exact Hvalue_eq.
+Qed.
+
+Theorem version_read_value_obligation_length_match :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value)),
+    version_read_value_obligations value entries value_entries ->
+    length entries = length value_entries.
+Proof.
+  intros value entries value_entries Hobligations.
+  destruct Hobligations as [Hmatch].
+  eapply version_read_value_entries_match_length.
+  exact Hmatch.
+Qed.
+
+Theorem version_read_value_obligation_entry_matched :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value))
+         entry,
+    version_read_value_obligations value entries value_entries ->
+    In entry entries ->
+    exists value_entry,
+      In value_entry value_entries /\
+      vrve_read_entry value_entry = entry /\
+      vrve_source_value value_entry =
+        vrve_version_value value_entry.
+Proof.
+  intros value entries value_entries entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply version_read_value_entries_match_entry; eauto.
+Qed.
+
+Theorem version_read_value_obligation_value_entry_matched :
+  forall (value: Type)
+         (entries: list version_read_entry)
+         (value_entries: list (version_read_value_entry value))
+         value_entry,
+    version_read_value_obligations value entries value_entries ->
+    In value_entry value_entries ->
+    In (vrve_read_entry value_entry) entries /\
+    vrve_source_value value_entry =
+      vrve_version_value value_entry.
+Proof.
+  intros value entries value_entries value_entry Hobligations Hin.
+  destruct Hobligations as [Hmatch].
+  eapply version_read_value_entries_match_value_entry; eauto.
+Qed.
