@@ -786,6 +786,10 @@ recovery facts:
 `StorageWitness.pprog_same_instance_access_remap_read_source_access`.  These
 facts recover the paired instruction/access and same-point relation when a
 proof starts from only the selected source or target write/read access.
+The older array-rename, index-permutation, and affine-layout pprog checkers now
+expose the same direct recovery facts under `LayoutWitness`, so padding,
+transpose-style, and linearized-layout compatibility paths do not have to
+unpack the generic remap witness by hand.
 
 | Primitive | Current Coq hook | Checked now | Still explicit |
 | --- | --- | --- | --- |
