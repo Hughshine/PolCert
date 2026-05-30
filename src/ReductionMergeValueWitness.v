@@ -335,4 +335,72 @@ Proof.
     exact Hin_value.
 Qed.
 
+Theorem check_reduction_value_mergeb_accumulator_value_cells_nodup :
+  forall initial_value final_value merge_order values,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    NoDup (reduction_value_cells values).
+Proof.
+  intros initial_value final_value merge_order values Hcheck.
+  eapply reduction_accumulator_value_cells_nodup.
+  eapply check_reduction_value_mergeb_sound; eauto.
+Qed.
+
+Theorem check_reduction_value_mergeb_merged_accumulator_has_value :
+  forall initial_value final_value merge_order values cell,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    In cell merge_order ->
+    exists value',
+      reduction_value_lookup cell values = Some value'.
+Proof.
+  intros initial_value final_value merge_order values cell Hcheck Hin.
+  eapply reduction_merged_accumulator_has_value; eauto.
+  eapply check_reduction_value_mergeb_sound; eauto.
+Qed.
+
+Theorem check_reduction_value_mergeb_merged_accumulator_value_entry :
+  forall initial_value final_value merge_order values cell,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    In cell merge_order ->
+    exists value',
+      In (cell, value') values /\
+      reduction_value_lookup cell values = Some value'.
+Proof.
+  intros initial_value final_value merge_order values cell Hcheck Hin.
+  eapply reduction_merged_accumulator_value_entry; eauto.
+  eapply check_reduction_value_mergeb_sound; eauto.
+Qed.
+
+Theorem check_reduction_value_mergeb_value_cell_in_merge_order :
+  forall initial_value final_value merge_order values cell,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    In cell (reduction_value_cells values) ->
+    In cell merge_order.
+Proof.
+  intros initial_value final_value merge_order values cell Hcheck Hin.
+  eapply reduction_value_cell_in_merge_order; eauto.
+  eapply check_reduction_value_mergeb_sound; eauto.
+Qed.
+
+Theorem check_reduction_value_mergeb_accumulator_value_entry_in_merge_order :
+  forall initial_value final_value merge_order values cell value',
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    In (cell, value') values ->
+    In cell merge_order.
+Proof.
+  intros initial_value final_value merge_order values cell value'
+         Hcheck Hin.
+  eapply reduction_accumulator_value_entry_in_merge_order; eauto.
+  eapply check_reduction_value_mergeb_sound; eauto.
+Qed.
+
 End Soundness.

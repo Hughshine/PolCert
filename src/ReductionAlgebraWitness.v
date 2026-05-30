@@ -269,4 +269,81 @@ Proof.
     exact Hidentity.
 Qed.
 
+Theorem check_reduction_associative_lawb_closed :
+  forall carrier,
+    check_reduction_associative_lawb carrier = true ->
+    reduction_closed_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_associative_lawb_sound carrier Hcheck)
+    as [Hclosed _ _].
+  exact Hclosed.
+Qed.
+
+Theorem check_reduction_associative_lawb_associative :
+  forall carrier,
+    check_reduction_associative_lawb carrier = true ->
+    reduction_associative_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_associative_lawb_sound carrier Hcheck)
+    as [_ Hassoc _].
+  exact Hassoc.
+Qed.
+
+Theorem check_reduction_associative_lawb_identity :
+  forall carrier,
+    check_reduction_associative_lawb carrier = true ->
+    reduction_identity_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_associative_lawb_sound carrier Hcheck)
+    as [_ _ Hidentity].
+  exact Hidentity.
+Qed.
+
+Theorem check_reduction_commutative_lawb_closed :
+  forall carrier,
+    check_reduction_commutative_lawb carrier = true ->
+    reduction_closed_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_commutative_lawb_sound carrier Hcheck)
+    as [Hclosed _ _ _].
+  exact Hclosed.
+Qed.
+
+Theorem check_reduction_commutative_lawb_associative :
+  forall carrier,
+    check_reduction_commutative_lawb carrier = true ->
+    reduction_associative_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_commutative_lawb_sound carrier Hcheck)
+    as [_ Hassoc _ _].
+  exact Hassoc.
+Qed.
+
+Theorem check_reduction_commutative_lawb_commutative :
+  forall carrier,
+    check_reduction_commutative_lawb carrier = true ->
+    reduction_commutative_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_commutative_lawb_sound carrier Hcheck)
+    as [_ _ Hcomm _].
+  exact Hcomm.
+Qed.
+
+Theorem check_reduction_commutative_lawb_identity :
+  forall carrier,
+    check_reduction_commutative_lawb carrier = true ->
+    reduction_identity_on carrier.
+Proof.
+  intros carrier Hcheck.
+  destruct (check_reduction_commutative_lawb_sound carrier Hcheck)
+    as [_ _ _ Hidentity].
+  exact Hidentity.
+Qed.
+
 End ReductionAlgebra.

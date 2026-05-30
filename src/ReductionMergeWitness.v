@@ -250,3 +250,95 @@ Proof.
   apply Hcover.
   exact Hin.
 Qed.
+
+Theorem check_reduction_mergeb_chunks_covered_nodup :
+  forall source_domain chunks partial_accumulators merge_order,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    NoDup (reduction_chunk_domain chunks).
+Proof.
+  intros source_domain chunks partial_accumulators merge_order Hcheck.
+  eapply reduction_chunks_covered_nodup.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_source_instance_covered :
+  forall source_domain chunks partial_accumulators merge_order instance,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    In instance source_domain ->
+    In instance (reduction_chunk_domain chunks).
+Proof.
+  intros source_domain chunks partial_accumulators merge_order instance
+         Hcheck Hin.
+  eapply reduction_source_instance_covered; eauto.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_covered_instance_in_source :
+  forall source_domain chunks partial_accumulators merge_order instance,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    In instance (reduction_chunk_domain chunks) ->
+    In instance source_domain.
+Proof.
+  intros source_domain chunks partial_accumulators merge_order instance
+         Hcheck Hin.
+  eapply reduction_covered_instance_in_source; eauto.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_private_accumulators_nodup :
+  forall source_domain chunks partial_accumulators merge_order,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    NoDup partial_accumulators.
+Proof.
+  intros source_domain chunks partial_accumulators merge_order Hcheck.
+  eapply reduction_private_accumulators_nodup.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_merge_order_nodup :
+  forall source_domain chunks partial_accumulators merge_order,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    NoDup merge_order.
+Proof.
+  intros source_domain chunks partial_accumulators merge_order Hcheck.
+  eapply reduction_merge_order_nodup.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_private_accumulator_merged :
+  forall source_domain chunks partial_accumulators merge_order acc,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    In acc partial_accumulators ->
+    In acc merge_order.
+Proof.
+  intros source_domain chunks partial_accumulators merge_order acc
+         Hcheck Hin.
+  eapply reduction_private_accumulator_merged; eauto.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_mergeb_merged_accumulator_private :
+  forall source_domain chunks partial_accumulators merge_order acc,
+    check_reduction_mergeb
+      source_domain chunks partial_accumulators merge_order = true ->
+    In acc merge_order ->
+    In acc partial_accumulators.
+Proof.
+  intros source_domain chunks partial_accumulators merge_order acc
+         Hcheck Hin.
+  eapply reduction_merged_accumulator_private; eauto.
+  apply check_reduction_mergeb_sound.
+  exact Hcheck.
+Qed.

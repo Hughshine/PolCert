@@ -2244,18 +2244,42 @@ Definition storage_check_reduction_associative_lawb_sound :=
   check_reduction_associative_lawb_sound.
 Definition storage_reduction_associative_obligations :=
   reduction_associative_obligations.
+Definition storage_check_reduction_associative_lawb_closed :=
+  @check_reduction_associative_lawb_closed.
+Definition storage_check_reduction_associative_lawb_associative :=
+  @check_reduction_associative_lawb_associative.
+Definition storage_check_reduction_associative_lawb_identity :=
+  @check_reduction_associative_lawb_identity.
 Definition storage_check_reduction_commutative_lawb :=
   @check_reduction_commutative_lawb.
 Definition storage_check_reduction_commutative_lawb_sound :=
   check_reduction_commutative_lawb_sound.
 Definition storage_reduction_commutative_obligations :=
   reduction_commutative_obligations.
+Definition storage_check_reduction_commutative_lawb_closed :=
+  @check_reduction_commutative_lawb_closed.
+Definition storage_check_reduction_commutative_lawb_associative :=
+  @check_reduction_commutative_lawb_associative.
+Definition storage_check_reduction_commutative_lawb_commutative :=
+  @check_reduction_commutative_lawb_commutative.
+Definition storage_check_reduction_commutative_lawb_identity :=
+  @check_reduction_commutative_lawb_identity.
 Definition storage_check_reduction_value_mergeb :=
   @check_reduction_value_mergeb.
 Definition storage_check_reduction_value_mergeb_sound :=
   check_reduction_value_mergeb_sound.
 Definition storage_reduction_value_merge_obligations :=
   reduction_value_merge_obligations.
+Definition storage_check_reduction_value_mergeb_accumulator_value_cells_nodup :=
+  @check_reduction_value_mergeb_accumulator_value_cells_nodup.
+Definition storage_check_reduction_value_mergeb_merged_accumulator_has_value :=
+  @check_reduction_value_mergeb_merged_accumulator_has_value.
+Definition storage_check_reduction_value_mergeb_merged_accumulator_value_entry :=
+  @check_reduction_value_mergeb_merged_accumulator_value_entry.
+Definition storage_check_reduction_value_mergeb_value_cell_in_merge_order :=
+  @check_reduction_value_mergeb_value_cell_in_merge_order.
+Definition storage_check_reduction_value_mergeb_accumulator_value_entry_in_merge_order :=
+  @check_reduction_value_mergeb_accumulator_value_entry_in_merge_order.
 Definition storage_check_reduction_mergeb :=
   check_reduction_mergeb.
 Definition storage_check_reduction_mergeb_sound :=
@@ -2264,18 +2288,32 @@ Definition storage_reduction_merge_obligations :=
   reduction_merge_obligations.
 Definition storage_reduction_chunks_covered_nodup :=
   reduction_chunks_covered_nodup.
+Definition storage_check_reduction_mergeb_chunks_covered_nodup :=
+  check_reduction_mergeb_chunks_covered_nodup.
 Definition storage_reduction_source_instance_covered :=
   reduction_source_instance_covered.
+Definition storage_check_reduction_mergeb_source_instance_covered :=
+  check_reduction_mergeb_source_instance_covered.
 Definition storage_reduction_covered_instance_in_source :=
   reduction_covered_instance_in_source.
+Definition storage_check_reduction_mergeb_covered_instance_in_source :=
+  check_reduction_mergeb_covered_instance_in_source.
 Definition storage_reduction_private_accumulators_nodup :=
   reduction_private_accumulators_nodup.
+Definition storage_check_reduction_mergeb_private_accumulators_nodup :=
+  check_reduction_mergeb_private_accumulators_nodup.
 Definition storage_reduction_merge_order_nodup :=
   reduction_merge_order_nodup.
+Definition storage_check_reduction_mergeb_merge_order_nodup :=
+  check_reduction_mergeb_merge_order_nodup.
 Definition storage_reduction_private_accumulator_merged :=
   reduction_private_accumulator_merged.
+Definition storage_check_reduction_mergeb_private_accumulator_merged :=
+  check_reduction_mergeb_private_accumulator_merged.
 Definition storage_reduction_merged_accumulator_private :=
   reduction_merged_accumulator_private.
+Definition storage_check_reduction_mergeb_merged_accumulator_private :=
+  check_reduction_mergeb_merged_accumulator_private.
 Definition storage_reduction_accumulator_value_cells_nodup :=
   reduction_accumulator_value_cells_nodup.
 Definition storage_reduction_value_entry_cell_in_cells :=

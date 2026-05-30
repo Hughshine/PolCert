@@ -688,14 +688,19 @@ storage/array-expansion case participates in the same parameterized
 public-view family composition interface as scalar, copy, reuse, and overlap.
 `ReductionMergeWitness.v` starts the reduction-privatization route by checking
 chunk exact cover, private accumulator uniqueness, and merge-order cover;
-it also exposes the exact-cover consequences as named lemmas for later
-semantic proofs.
+it also exposes the exact-cover consequences as direct checked projections for
+later semantic proofs: source instances are covered exactly once by chunks,
+private accumulators are duplicate-free, and merge-order cells exactly cover
+the private accumulator set.
 `ReductionMergeValueWitness.v` checks the narrower value-flow side: merge-order
 cells are looked up in supplied accumulator values and folded with a supplied
-merge operator to the claimed final value.  It also projects that finite value
-table both ways: every merge-order accumulator has an explicit `(cell, value)`
-entry with the corresponding lookup result, and every supplied accumulator
-value entry is known to belong to the merge order.  `ReductionMergeValidator.v`
+merge operator to the claimed final value.  Its checked projections expose the
+finite value table both ways: every merge-order accumulator has an explicit
+`(cell, value)` entry with the corresponding lookup result, every supplied
+accumulator value entry is known to belong to the merge order, and value cells
+are duplicate-free.  The algebra-law checker also projects closed,
+associative, commutative, and identity facts directly from the checked finite
+carrier when the corresponding law checker succeeds.  `ReductionMergeValidator.v`
 composes both variants while keeping the reduction algebra law explicit.  Its
 bounded non-escape variant also threads `StorageBoundsWitness` through private
 accumulators, so every private accumulator consumed by the merge can be shown
