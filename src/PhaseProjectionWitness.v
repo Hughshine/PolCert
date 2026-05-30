@@ -297,6 +297,92 @@ Proof.
   - eapply phase_projection_sources_covered; eauto.
 Qed.
 
+Theorem check_phase_projectionb_sources_nodup :
+  forall source_liveouts final_live mapping,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    NoDup (phase_projection_sources mapping).
+Proof.
+  intros source_liveouts final_live mapping Hcheck.
+  eapply phase_projection_sources_nodup.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_targets_nodup :
+  forall source_liveouts final_live mapping,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    NoDup (phase_projection_targets mapping).
+Proof.
+  intros source_liveouts final_live mapping Hcheck.
+  eapply phase_projection_targets_nodup.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_liveout_mapped :
+  forall source_liveouts final_live mapping source_cell,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    In source_cell source_liveouts ->
+    exists target_cell,
+      phase_projection_cell_relation mapping target_cell source_cell /\
+      In target_cell final_live.
+Proof.
+  intros source_liveouts final_live mapping source_cell Hcheck Hin.
+  eapply phase_projection_liveout_mapped; eauto.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_mapped_source_liveout :
+  forall source_liveouts final_live mapping source_cell target_cell,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    phase_projection_cell_relation mapping target_cell source_cell ->
+    In source_cell source_liveouts.
+Proof.
+  intros source_liveouts final_live mapping source_cell target_cell
+         Hcheck Hrel.
+  eapply phase_projection_mapped_source_liveout; eauto.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_mapped_target_final_live :
+  forall source_liveouts final_live mapping source_cell target_cell,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    phase_projection_cell_relation mapping target_cell source_cell ->
+    In target_cell final_live.
+Proof.
+  intros source_liveouts final_live mapping source_cell target_cell
+         Hcheck Hrel.
+  eapply phase_projection_mapped_target_final_live; eauto.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_sources_covered :
+  forall source_liveouts final_live mapping,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    reuse_mapping_covers_sources
+      mapping (phase_projection_sources mapping).
+Proof.
+  intros source_liveouts final_live mapping Hcheck.
+  eapply phase_projection_sources_covered.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_projectionb_boundary_obligations :
+  forall source_liveouts final_live mapping,
+    check_phase_projectionb source_liveouts final_live mapping = true ->
+    reuse_boundary_obligations
+      mapping (phase_projection_sources mapping).
+Proof.
+  intros source_liveouts final_live mapping Hcheck.
+  eapply phase_projection_boundary_obligations.
+  apply check_phase_projection_obligationsb_sound.
+  exact Hcheck.
+Qed.
+
 Record phase_projection_value_entry (value: Type) := {
   ppve_source_cell : MemCell;
   ppve_target_cell : MemCell;
@@ -560,4 +646,58 @@ Proof.
   intros value mapping entries entry Hobligations Hin.
   destruct Hobligations as [Hmatch].
   eapply phase_projection_value_entries_match_entry_in_mapping; eauto.
+Qed.
+
+Theorem check_phase_projection_valueb_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries,
+      check_phase_projection_valueb value value_eqb mapping entries = true ->
+      length mapping = length entries.
+Proof.
+  intros value value_eqb Hsound mapping entries Hcheck.
+  eapply phase_projection_value_obligation_length_match.
+  eapply check_phase_projection_valueb_sound; eauto.
+Qed.
+
+Theorem check_phase_projection_valueb_mapping_entry_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries mapping_entry,
+      check_phase_projection_valueb value value_eqb mapping entries = true ->
+      In mapping_entry mapping ->
+      exists entry,
+        In entry entries /\
+        phase_projection_value_entry_cells_match mapping_entry entry /\
+        phase_projection_value_entry_value_match entry.
+Proof.
+  intros value value_eqb Hsound mapping entries mapping_entry
+         Hcheck Hin.
+  eapply phase_projection_value_obligation_mapping_entry_matched; eauto.
+  eapply check_phase_projection_valueb_sound; eauto.
+Qed.
+
+Theorem check_phase_projection_valueb_entry_in_mapping :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries entry,
+      check_phase_projection_valueb value value_eqb mapping entries = true ->
+      In entry entries ->
+      exists mapping_entry,
+        In mapping_entry mapping /\
+        phase_projection_value_entry_cells_match mapping_entry entry /\
+        phase_projection_value_entry_value_match entry.
+Proof.
+  intros value value_eqb Hsound mapping entries entry Hcheck Hin.
+  eapply phase_projection_value_obligation_entry_in_mapping; eauto.
+  eapply check_phase_projection_valueb_sound; eauto.
 Qed.

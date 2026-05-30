@@ -2407,22 +2407,40 @@ Definition storage_phase_value_lookup_entry :=
   phase_value_lookup_entry.
 Definition storage_phase_snapshot_value_cells_nodup :=
   phase_snapshot_value_cells_nodup.
+Definition storage_check_phase_snapshot_matches_cellsb_value_cells_nodup :=
+  check_phase_snapshot_matches_cellsb_value_cells_nodup.
 Definition storage_phase_snapshot_cell_has_value :=
   phase_snapshot_cell_has_value.
+Definition storage_check_phase_snapshot_matches_cellsb_cell_has_value :=
+  check_phase_snapshot_matches_cellsb_cell_has_value.
 Definition storage_phase_snapshot_cell_value_entry :=
   phase_snapshot_cell_value_entry.
+Definition storage_check_phase_snapshot_matches_cellsb_cell_value_entry :=
+  check_phase_snapshot_matches_cellsb_cell_value_entry.
 Definition storage_phase_snapshot_value_cell_in_cells :=
   phase_snapshot_value_cell_in_cells.
+Definition storage_check_phase_snapshot_matches_cellsb_value_cell_in_cells :=
+  check_phase_snapshot_matches_cellsb_value_cell_in_cells.
 Definition storage_phase_snapshot_value_entry_in_cells :=
   phase_snapshot_value_entry_in_cells.
+Definition storage_check_phase_snapshot_matches_cellsb_value_entry_in_cells :=
+  check_phase_snapshot_matches_cellsb_value_entry_in_cells.
 Definition storage_phase_reads_have_value_entry :=
   phase_reads_have_value_entry.
+Definition storage_check_phase_reads_have_valuesb_value_entry :=
+  check_phase_reads_have_valuesb_value_entry.
 Definition storage_phase_next_cell_value_flow_entries :=
   phase_next_cell_value_flow_entries.
+Definition storage_check_phase_next_cell_valueb_entries :=
+  @check_phase_next_cell_valueb_entries.
+Definition storage_check_phase_next_valuesb_cell_entries :=
+  @check_phase_next_valuesb_cell_entries.
 Definition storage_phase_value_protocol_final_snapshot :=
   phase_value_protocol_final_snapshot.
 Definition storage_check_phase_value_protocolb_final_snapshot :=
   check_phase_value_protocolb_final_snapshot.
+Definition storage_check_phase_value_protocolb_final_snapshot_cell_value_entry :=
+  @check_phase_value_protocolb_final_snapshot_cell_value_entry.
 Definition storage_check_phase_protocolb :=
   check_phase_protocolb.
 Definition storage_check_phase_protocolb_sound :=
@@ -2463,20 +2481,34 @@ Definition storage_phase_projection_target_in_mapping :=
   phase_projection_target_in_mapping.
 Definition storage_phase_projection_sources_nodup :=
   phase_projection_sources_nodup.
+Definition storage_check_phase_projectionb_sources_nodup :=
+  check_phase_projectionb_sources_nodup.
 Definition storage_phase_projection_targets_nodup :=
   phase_projection_targets_nodup.
+Definition storage_check_phase_projectionb_targets_nodup :=
+  check_phase_projectionb_targets_nodup.
 Definition storage_phase_projection_liveout_mapped :=
   phase_projection_liveout_mapped.
+Definition storage_check_phase_projectionb_liveout_mapped :=
+  check_phase_projectionb_liveout_mapped.
 Definition storage_phase_projection_mapped_source_liveout :=
   phase_projection_mapped_source_liveout.
+Definition storage_check_phase_projectionb_mapped_source_liveout :=
+  check_phase_projectionb_mapped_source_liveout.
 Definition storage_phase_projection_mapped_target_final_live :=
   phase_projection_mapped_target_final_live.
+Definition storage_check_phase_projectionb_mapped_target_final_live :=
+  check_phase_projectionb_mapped_target_final_live.
 Definition storage_phase_projection_sources_reuse_mapping_sources :=
   phase_projection_sources_reuse_mapping_sources.
 Definition storage_phase_projection_sources_covered :=
   phase_projection_sources_covered.
+Definition storage_check_phase_projectionb_sources_covered :=
+  check_phase_projectionb_sources_covered.
 Definition storage_phase_projection_boundary_obligations :=
   phase_projection_boundary_obligations.
+Definition storage_check_phase_projectionb_boundary_obligations :=
+  check_phase_projectionb_boundary_obligations.
 Definition storage_check_phase_projection_valueb :=
   @check_phase_projection_valueb.
 Definition storage_check_phase_projection_valueb_sound :=
@@ -2495,6 +2527,12 @@ Definition storage_phase_projection_value_obligation_mapping_entry_matched :=
   phase_projection_value_obligation_mapping_entry_matched.
 Definition storage_phase_projection_value_obligation_entry_in_mapping :=
   phase_projection_value_obligation_entry_in_mapping.
+Definition storage_check_phase_projection_valueb_length_match :=
+  @check_phase_projection_valueb_length_match.
+Definition storage_check_phase_projection_valueb_mapping_entry_matched :=
+  @check_phase_projection_valueb_mapping_entry_matched.
+Definition storage_check_phase_projection_valueb_entry_in_mapping :=
+  @check_phase_projection_valueb_entry_in_mapping.
 Definition storage_phase_source_view_refines_view :=
   PhaseSeparationCore.phase_source_view_refines_view.
 Definition storage_phase_separation_view_contract :=

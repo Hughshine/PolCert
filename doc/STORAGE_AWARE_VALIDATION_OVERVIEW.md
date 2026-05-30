@@ -713,13 +713,16 @@ interface as the other storage-changing routes.
 read visibility, write/live disjointness, and next-live coverage;
 `PhaseValueWitness.v` adds phase snapshot value flow: reads have entry values,
 and every next-live value is either written in the phase or inherited from the
-entry snapshot.  It also exposes table-entry projections: snapshot/read/next
-value lookups can be recovered as concrete `(cell, value)` entries from the
-finite value tables.  `PhaseProjectionWitness.v` checks the final-boundary
-projection from source logical live-outs to the final phase-live physical
-cells, with an optional value-equality layer for those projected cells.  It
-also exposes the projection map as a target-to-source `cell_relation` and names
-the exact-cover consequences used by later view proofs.
+entry snapshot.  Its checked projections recover table-entry facts directly:
+snapshot/read/next value lookups can be recovered as concrete `(cell, value)`
+entries from the finite value tables, and the checked whole-protocol value flow
+projects final-live cells into final snapshot entries.  `PhaseProjectionWitness.v`
+checks the final-boundary projection from source logical live-outs to the final
+phase-live physical cells, with an optional value-equality layer for those
+projected cells.  It exposes the projection map as a target-to-source
+`cell_relation` and now gives direct checked projections for source/target
+deduplication, live-out mapping, mapped-source/live-out recovery, mapped-target
+final-live recovery, boundary obligations, and positional value-table matching.
 `PhaseSeparationValidator.v` composes these variants while keeping the
 phase/swap semantic meaning explicit.  The phase value layer now exposes
 snapshot elimination lemmas: cells in a checked phase-live snapshot have lookup

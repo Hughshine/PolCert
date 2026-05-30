@@ -232,6 +232,82 @@ Proof.
     exact Hin_value.
 Qed.
 
+Theorem check_phase_snapshot_matches_cellsb_value_cells_nodup :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value)),
+    check_phase_snapshot_matches_cellsb cells values = true ->
+    NoDup (phase_value_cells values).
+Proof.
+  intros value cells values Hcheck.
+  eapply phase_snapshot_value_cells_nodup.
+  apply check_phase_snapshot_matches_cellsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_snapshot_matches_cellsb_cell_has_value :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    check_phase_snapshot_matches_cellsb cells values = true ->
+    In cell cells ->
+    exists value',
+      phase_value_lookup cell values = Some value'.
+Proof.
+  intros value cells values cell Hcheck Hin.
+  eapply phase_snapshot_cell_has_value; eauto.
+  apply check_phase_snapshot_matches_cellsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_snapshot_matches_cellsb_cell_value_entry :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    check_phase_snapshot_matches_cellsb cells values = true ->
+    In cell cells ->
+    exists value',
+      In (cell, value') values /\
+      phase_value_lookup cell values = Some value'.
+Proof.
+  intros value cells values cell Hcheck Hin.
+  eapply phase_snapshot_cell_value_entry; eauto.
+  apply check_phase_snapshot_matches_cellsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_snapshot_matches_cellsb_value_cell_in_cells :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell,
+    check_phase_snapshot_matches_cellsb cells values = true ->
+    In cell (phase_value_cells values) ->
+    In cell cells.
+Proof.
+  intros value cells values cell Hcheck Hin.
+  eapply phase_snapshot_value_cell_in_cells; eauto.
+  apply check_phase_snapshot_matches_cellsb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_snapshot_matches_cellsb_value_entry_in_cells :
+  forall (value: Type)
+         cells
+         (values: list (phase_cell_value value))
+         cell value',
+    check_phase_snapshot_matches_cellsb cells values = true ->
+    In (cell, value') values ->
+    In cell cells.
+Proof.
+  intros value cells values cell value' Hcheck Hin.
+  eapply phase_snapshot_value_entry_in_cells; eauto.
+  apply check_phase_snapshot_matches_cellsb_sound.
+  exact Hcheck.
+Qed.
+
 Definition phase_reads_have_values {value: Type}
     (reads: list MemCell)
     (entry_values: list (phase_cell_value value)) : Prop :=
@@ -304,6 +380,22 @@ Proof.
   - apply phase_value_lookup_entry.
     exact Hlookup.
   - exact Hlookup.
+Qed.
+
+Theorem check_phase_reads_have_valuesb_value_entry :
+  forall (value: Type)
+         (entry_values: list (phase_cell_value value))
+         reads cell,
+    check_phase_reads_have_valuesb entry_values reads = true ->
+    In cell reads ->
+    exists value',
+      In (cell, value') entry_values /\
+      phase_value_lookup cell entry_values = Some value'.
+Proof.
+  intros value entry_values reads cell Hcheck Hin.
+  eapply phase_reads_have_value_entry; eauto.
+  apply check_phase_reads_have_valuesb_sound.
+  exact Hcheck.
 Qed.
 
 Theorem phase_next_cell_value_flow_entries :
@@ -454,6 +546,52 @@ Proof.
       apply check_phase_next_cell_valueb_sound.
       exact Hhead.
     + eapply IH; eauto.
+Qed.
+
+Theorem check_phase_next_cell_valueb_entries :
+  forall entry_values write_values next_values cell,
+    check_phase_next_cell_valueb
+      value_eqb entry_values write_values next_values cell = true ->
+    exists next_value,
+      In (cell, next_value) next_values /\
+      phase_value_lookup cell next_values = Some next_value /\
+      ((exists write_value,
+          In (cell, write_value) write_values /\
+          phase_value_lookup cell write_values = Some write_value /\
+          next_value = write_value) \/
+       (phase_value_lookup cell write_values = None /\
+        exists entry_value,
+          In (cell, entry_value) entry_values /\
+          phase_value_lookup cell entry_values = Some entry_value /\
+          next_value = entry_value)).
+Proof.
+  intros entry_values write_values next_values cell Hcheck.
+  apply phase_next_cell_value_flow_entries.
+  apply check_phase_next_cell_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_next_valuesb_cell_entries :
+  forall entry_values write_values next_values next_live cell,
+    check_phase_next_valuesb
+      value_eqb entry_values write_values next_values next_live = true ->
+    In cell next_live ->
+    exists next_value,
+      In (cell, next_value) next_values /\
+      phase_value_lookup cell next_values = Some next_value /\
+      ((exists write_value,
+          In (cell, write_value) write_values /\
+          phase_value_lookup cell write_values = Some write_value /\
+          next_value = write_value) \/
+       (phase_value_lookup cell write_values = None /\
+        exists entry_value,
+          In (cell, entry_value) entry_values /\
+          phase_value_lookup cell entry_values = Some entry_value /\
+          next_value = entry_value)).
+Proof.
+  intros entry_values write_values next_values next_live cell Hcheck Hin.
+  apply phase_next_cell_value_flow_entries.
+  eapply check_phase_next_valuesb_sound; eauto.
 Qed.
 
 Record phase_value_step (value: Type) := {
@@ -629,6 +767,26 @@ Proof.
   intros entry_live entry_values steps value_steps Hcheck.
   apply phase_value_protocol_final_snapshot.
   apply check_phase_value_protocolb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_phase_value_protocolb_final_snapshot_cell_value_entry :
+  forall entry_live entry_values steps value_steps cell,
+    check_phase_value_protocolb
+      entry_live entry_values steps value_steps = true ->
+    In cell (phase_protocol_final_live entry_live steps) ->
+    exists value',
+      In
+        (cell, value')
+        (phase_value_protocol_final_values entry_values value_steps) /\
+      phase_value_lookup
+        cell
+        (phase_value_protocol_final_values entry_values value_steps) =
+      Some value'.
+Proof.
+  intros entry_live entry_values steps value_steps cell Hcheck Hin.
+  eapply phase_snapshot_cell_value_entry; eauto.
+  eapply check_phase_value_protocolb_final_snapshot.
   exact Hcheck.
 Qed.
 
