@@ -1394,7 +1394,10 @@ those facts to nth write/read accesses of matched instructions.  The
 single-instruction `same_instance_access_remap` layer exposes the same
 write/read access length, nth-access, and point-cell facts directly.  These
 facts keep layout-specific simulation proofs from unpacking the generic
-`Forall2` witness.
+`Forall2` witness.  The declared-layout checker also exposes direct pinstr and
+pprog write/read point-cell corollaries, so a concrete instruction proof can
+move from a successful checker run to the exact declared-layout cell relation
+for a selected access without unpacking the intermediate remap records.
 
 ### Padding and Alignment
 

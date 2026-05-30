@@ -922,10 +922,18 @@ Definition layout_check_pinstr_declared_layout_access_remapb :=
   LayoutCore.check_pinstr_declared_layout_access_remapb.
 Definition layout_check_pinstr_declared_layout_access_remapb_sound :=
   LayoutCore.check_pinstr_declared_layout_access_remapb_sound.
+Definition layout_check_pinstr_declared_layout_write_access_cell_nth :=
+  LayoutCore.check_pinstr_declared_layout_write_access_cell_nth.
+Definition layout_check_pinstr_declared_layout_read_access_cell_nth :=
+  LayoutCore.check_pinstr_declared_layout_read_access_cell_nth.
 Definition layout_check_pprog_declared_layout_access_remapb :=
   LayoutCore.check_pprog_declared_layout_access_remapb.
 Definition layout_check_pprog_declared_layout_access_remapb_sound :=
   LayoutCore.check_pprog_declared_layout_access_remapb_sound.
+Definition layout_check_pprog_declared_layout_write_access_cell_nth :=
+  LayoutCore.check_pprog_declared_layout_write_access_cell_nth.
+Definition layout_check_pprog_declared_layout_read_access_cell_nth :=
+  LayoutCore.check_pprog_declared_layout_read_access_cell_nth.
 Definition storage_padding_layout_mapping := padding_layout_mapping.
 Definition storage_check_padding_layoutb :=
   check_padding_layoutb.
