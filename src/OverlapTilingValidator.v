@@ -1023,6 +1023,159 @@ Definition overlap_private_ordered_bounded_non_escape_family
       value value_eqb value_eqb_sound;
 |}.
 
+Theorem overlap_closure_contract_dependency_consumer_in_targets :
+  forall input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep,
+    overlap_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _].
+  eapply overlap_closure_dependency_consumer_in_targets; eauto.
+Qed.
+
+Theorem overlap_closure_contract_dependency_available :
+  forall input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep,
+    overlap_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _].
+  eapply overlap_closure_dependency_available; eauto.
+Qed.
+
+Theorem overlap_ordered_closure_contract_dependency_consumer_in_targets :
+  forall input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep,
+    overlap_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _].
+  eapply overlap_ordered_closure_dependency_consumer_in_targets; eauto.
+Qed.
+
+Theorem overlap_ordered_closure_contract_dependency_available :
+  forall input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep,
+    overlap_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _].
+  eapply overlap_ordered_closure_dependency_available; eauto.
+Qed.
+
+Theorem overlap_ordered_closure_contract_dependency_ordered :
+  forall input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep,
+    overlap_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    source_precedes_in_sources
+      (overlap_dependency_producer dep)
+      (overlap_dependency_consumer dep)
+      (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         source_view after tile dep Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _].
+  eapply overlap_ordered_closure_dependency_ordered; eauto.
+Qed.
+
+Theorem overlap_private_ordered_closure_contract_dependency_consumer_in_targets :
+  forall input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep,
+    overlap_private_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      private_cells public_cells frame_cells source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep
+         Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _ _].
+  eapply overlap_ordered_closure_dependency_consumer_in_targets; eauto.
+Qed.
+
+Theorem overlap_private_ordered_closure_contract_dependency_available :
+  forall input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep,
+    overlap_private_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      private_cells public_cells frame_cells source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep
+         Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _ _].
+  eapply overlap_ordered_closure_dependency_available; eauto.
+Qed.
+
+Theorem overlap_private_ordered_closure_contract_dependency_ordered :
+  forall input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep,
+    overlap_private_ordered_closure_view_contract
+      input_view output_view source_domain source_liveouts tiles
+      private_cells public_cells frame_cells source_view after ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    source_precedes_in_sources
+      (overlap_dependency_producer dep)
+      (overlap_dependency_consumer dep)
+      (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros input_view output_view source_domain source_liveouts tiles
+         private_cells public_cells frame_cells source_view after tile dep
+         Hcontract Htile Hdep.
+  destruct Hcontract as [_ Hclosure _ _].
+  eapply overlap_ordered_closure_dependency_ordered; eauto.
+Qed.
+
 Theorem overlap_internal_write_within_private_bounds :
   forall (value: Type)
          input_view output_view

@@ -2212,7 +2212,11 @@ tile and a producer supplied either by a tile live-in or by a computation in
 the same tile.  The ordered variant additionally implies that a tile-produced
 dependency appears before its consumer in the tile trace.  This is a closure
 witness over finite, already-derived dependencies and trace order; it does not
-yet derive the dependency set from schedule/access semantics.
+yet derive the dependency set from schedule/access semantics.  The overlap
+validator now lifts these per-dependency facts to the packaged closure and
+private ordered-closure contracts, so later semantic proofs can cite consumer,
+availability, and producer-before-consumer facts without unpacking the local
+closure witness by hand.
 `InstanceProjectionValidator.checked_instance_projection_view_correct` packages
 the witness into the shared `view_refinement` composition shape.
 `OverlapTilingValidator.checked_overlap_no_private_view_correct` specializes
