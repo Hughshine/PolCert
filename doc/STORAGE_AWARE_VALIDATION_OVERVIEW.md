@@ -445,7 +445,10 @@ that this contextual frame family composes through the same
 `PaddingLayoutWitness.v` adds the finite allocation side of layout/padding:
 source cells map functionally to target cells, target cells are injective and
 allocated, and padding cells are duplicate-free, allocated, and outside the
-represented target image.  `StorageBoundsWitness.v` adds the structured
+represented target image.  Its checked projections now expose each allocation,
+injectivity, padding disjointness, and boundary-coverage consequence directly
+from `check_padding_layoutb`, including per-mapping target allocation and
+per-padding-cell separation from the target image.  `StorageBoundsWitness.v` adds the structured
 in-bounds side: declared array extents are well formed, finite physical cells
 can be checked against those extents, and padding/layout validators can require
 all allocated physical cells to be within declared bounds.  Its derived

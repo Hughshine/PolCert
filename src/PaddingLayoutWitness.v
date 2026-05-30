@@ -107,6 +107,118 @@ Proof.
     exact Hpadding_disjoint.
 Qed.
 
+Theorem check_padding_layoutb_source_functional :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    NoDup (padding_layout_sources mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_source_functional
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_target_injective :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    NoDup (padding_layout_targets mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_target_injective
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_targets_allocated :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    forall cell,
+      In cell (padding_layout_targets mapping) ->
+      In cell allocated_cells.
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_targets_allocated
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_mapping_target_allocated :
+  forall mapping padding_cells allocated_cells source_cell target_cell,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    In (source_cell, target_cell) mapping ->
+    In target_cell allocated_cells.
+Proof.
+  intros mapping padding_cells allocated_cells source_cell target_cell
+         Hcheck Hin.
+  eapply check_padding_layoutb_targets_allocated.
+  - exact Hcheck.
+  - eapply padding_layout_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem check_padding_layoutb_padding_nodup :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    NoDup padding_cells.
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_padding_nodup
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_padding_allocated :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    forall cell,
+      In cell padding_cells ->
+      In cell allocated_cells.
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_padding_allocated
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_padding_outside_targets :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    mem_cells_disjoint padding_cells (padding_layout_targets mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  exact
+    (plo_padding_outside_targets
+       mapping padding_cells allocated_cells
+       (check_padding_layoutb_sound
+          mapping padding_cells allocated_cells Hcheck)).
+Qed.
+
+Theorem check_padding_layoutb_padding_cell_not_target :
+  forall mapping padding_cells allocated_cells padding_cell target_cell,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    In padding_cell padding_cells ->
+    In target_cell (padding_layout_targets mapping) ->
+    padding_cell <> target_cell.
+Proof.
+  intros mapping padding_cells allocated_cells padding_cell target_cell
+         Hcheck Hpadding Htarget Heq.
+  subst target_cell.
+  pose proof
+    (check_padding_layoutb_padding_outside_targets
+       mapping padding_cells allocated_cells Hcheck)
+    as Hdisjoint.
+  eapply Hdisjoint; eauto.
+Qed.
+
 Theorem padding_layout_sources_reuse_mapping_sources :
   forall mapping,
     padding_layout_sources mapping = reuse_mapping_sources mapping.
@@ -164,4 +276,28 @@ Proof.
   - exact (plo_source_functional
              mapping padding_cells allocated_cells Hobligations).
   - eapply padding_layout_sources_covered; eauto.
+Qed.
+
+Theorem check_padding_layoutb_sources_covered :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    reuse_mapping_covers_sources mapping (padding_layout_sources mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  apply padding_layout_sources_covered with
+      (padding_cells := padding_cells)
+      (allocated_cells := allocated_cells).
+  apply check_padding_layoutb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_padding_layoutb_boundary_obligations :
+  forall mapping padding_cells allocated_cells,
+    check_padding_layoutb mapping padding_cells allocated_cells = true ->
+    reuse_boundary_obligations mapping (padding_layout_sources mapping).
+Proof.
+  intros mapping padding_cells allocated_cells Hcheck.
+  constructor.
+  - eapply check_padding_layoutb_source_functional; eauto.
+  - eapply check_padding_layoutb_sources_covered; eauto.
 Qed.

@@ -1109,6 +1109,22 @@ Definition storage_check_padding_layoutb_sound :=
   check_padding_layoutb_sound.
 Definition storage_padding_layout_obligations :=
   padding_layout_obligations.
+Definition storage_check_padding_layoutb_source_functional :=
+  check_padding_layoutb_source_functional.
+Definition storage_check_padding_layoutb_target_injective :=
+  check_padding_layoutb_target_injective.
+Definition storage_check_padding_layoutb_targets_allocated :=
+  check_padding_layoutb_targets_allocated.
+Definition storage_check_padding_layoutb_mapping_target_allocated :=
+  check_padding_layoutb_mapping_target_allocated.
+Definition storage_check_padding_layoutb_padding_nodup :=
+  check_padding_layoutb_padding_nodup.
+Definition storage_check_padding_layoutb_padding_allocated :=
+  check_padding_layoutb_padding_allocated.
+Definition storage_check_padding_layoutb_padding_outside_targets :=
+  check_padding_layoutb_padding_outside_targets.
+Definition storage_check_padding_layoutb_padding_cell_not_target :=
+  check_padding_layoutb_padding_cell_not_target.
 Definition storage_padding_layout_mapping_pair_target_in_targets :=
   padding_layout_mapping_pair_target_in_targets.
 Definition storage_padding_layout_sources_reuse_mapping_sources :=
@@ -1117,6 +1133,10 @@ Definition storage_padding_layout_sources_covered :=
   padding_layout_sources_covered.
 Definition storage_padding_layout_boundary_obligations :=
   padding_layout_boundary_obligations.
+Definition storage_check_padding_layoutb_sources_covered :=
+  check_padding_layoutb_sources_covered.
+Definition storage_check_padding_layoutb_boundary_obligations :=
+  check_padding_layoutb_boundary_obligations.
 Definition storage_layout_value_entry := layout_value_entry.
 Definition storage_check_layout_valueb :=
   @check_layout_valueb.
