@@ -1578,7 +1578,12 @@ The scratchpad facade mirrors the copy-protocol projections with
 `scratchpad_copy_full_target_event`, `scratchpad_copy_full_event_target`,
 `scratchpad_copy_full_trace_value_event_entry`,
 `scratchpad_copy_mapping_pair_compatible_specs`, and
-`scratchpad_copy_mapping_pair_within_declared_bounds`, so later concrete-code
+`scratchpad_copy_mapping_pair_within_declared_bounds`.  The strongest
+non-escape contract also projects the same compatibility, bounds, and
+local-not-public facts directly through
+`scratchpad_copy_non_escape_mapping_pair_compatible_specs`,
+`scratchpad_copy_non_escape_mapping_pair_within_declared_bounds`, and
+`scratchpad_copy_non_escape_mapping_local_not_public`, so later concrete-code
 lifting proofs can cite direct entry facts while the top theorem remains a
 plain public-view semantic refinement.
 
