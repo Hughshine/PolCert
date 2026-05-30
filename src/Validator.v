@@ -2555,6 +2555,14 @@ Definition storage_check_reduction_value_mergeb_sound :=
   check_reduction_value_mergeb_sound.
 Definition storage_reduction_value_merge_obligations :=
   reduction_value_merge_obligations.
+Definition storage_check_reduction_value_mergeb_values_exact_cover :=
+  @check_reduction_value_mergeb_values_exact_cover.
+Definition storage_check_reduction_value_mergeb_merge_result :=
+  @check_reduction_value_mergeb_merge_result.
+Definition storage_check_reduction_value_mergeb_ordered_values :=
+  @check_reduction_value_mergeb_ordered_values.
+Definition storage_check_reduction_value_mergeb_folded_ordered_values :=
+  @check_reduction_value_mergeb_folded_ordered_values.
 Definition storage_check_reduction_value_mergeb_accumulator_value_cells_nodup :=
   @check_reduction_value_mergeb_accumulator_value_cells_nodup.
 Definition storage_check_reduction_value_mergeb_merged_accumulator_has_value :=

@@ -253,6 +253,75 @@ Proof.
     exact Hcheck.
 Qed.
 
+Theorem check_reduction_value_mergeb_values_exact_cover :
+  forall initial_value final_value merge_order values,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    reduction_accumulator_values_exact_cover merge_order values.
+Proof.
+  intros initial_value final_value merge_order values Hcheck.
+  destruct
+    (check_reduction_value_mergeb_sound
+       initial_value final_value merge_order values Hcheck)
+    as [Hcover _].
+  exact Hcover.
+Qed.
+
+Theorem check_reduction_value_mergeb_merge_result :
+  forall initial_value final_value merge_order values,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    reduction_value_merge_result
+      merge_op initial_value final_value merge_order values.
+Proof.
+  intros initial_value final_value merge_order values Hcheck.
+  destruct
+    (check_reduction_value_mergeb_sound
+       initial_value final_value merge_order values Hcheck)
+    as [_ Hresult].
+  exact Hresult.
+Qed.
+
+Theorem check_reduction_value_mergeb_ordered_values :
+  forall initial_value final_value merge_order values,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    exists ordered_values,
+      reduction_merge_values_for_order merge_order values =
+        Some ordered_values /\
+      fold_reduction_values merge_op initial_value ordered_values =
+        final_value.
+Proof.
+  intros initial_value final_value merge_order values Hcheck.
+  apply check_reduction_value_mergeb_merge_result.
+  exact Hcheck.
+Qed.
+
+Theorem check_reduction_value_mergeb_folded_ordered_values :
+  forall initial_value final_value merge_order values ordered_values,
+    check_reduction_value_mergeb
+      value_eqb merge_op initial_value final_value
+      merge_order values = true ->
+    reduction_merge_values_for_order merge_order values =
+      Some ordered_values ->
+    fold_reduction_values merge_op initial_value ordered_values =
+      final_value.
+Proof.
+  intros initial_value final_value merge_order values ordered_values
+         Hcheck Hordered.
+  destruct
+    (check_reduction_value_mergeb_ordered_values
+       initial_value final_value merge_order values Hcheck)
+    as (checked_ordered_values & Hchecked_ordered & Hfold).
+  rewrite Hordered in Hchecked_ordered.
+  inversion Hchecked_ordered as [Hvalues_eq].
+  subst checked_ordered_values.
+  exact Hfold.
+Qed.
+
 Theorem reduction_accumulator_value_cells_nodup :
   forall initial_value final_value merge_order values,
     reduction_value_merge_obligations
