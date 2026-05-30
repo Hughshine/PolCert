@@ -2033,6 +2033,12 @@ Definition storage_version_value_obligation_mapping_entry_matched :=
   version_value_obligation_mapping_entry_matched.
 Definition storage_version_value_obligation_entry_in_mapping :=
   version_value_obligation_entry_in_mapping.
+Definition storage_check_version_valueb_length_match :=
+  @check_version_valueb_length_match.
+Definition storage_check_version_valueb_mapping_entry_matched :=
+  @check_version_valueb_mapping_entry_matched.
+Definition storage_check_version_valueb_entry_in_mapping :=
+  @check_version_valueb_entry_in_mapping.
 Definition storage_produced_version_mapping :=
   produced_version_mapping.
 Definition storage_produced_version_versions :=
@@ -2063,6 +2069,14 @@ Definition storage_version_read_selection_obligation_read_in_expected :=
   version_read_selection_obligation_read_in_expected.
 Definition storage_version_read_selection_obligation_produced_pair :=
   version_read_selection_obligation_produced_pair.
+Definition storage_check_version_read_selectionb_selected_version_in_produced_versions :=
+  check_version_read_selectionb_selected_version_in_produced_versions.
+Definition storage_check_version_read_selectionb_length_match :=
+  check_version_read_selectionb_length_match.
+Definition storage_check_version_read_selectionb_read_in_expected :=
+  check_version_read_selectionb_read_in_expected.
+Definition storage_check_version_read_selectionb_produced_pair :=
+  check_version_read_selectionb_produced_pair.
 Definition storage_check_version_read_valueb :=
   @check_version_read_valueb.
 Definition storage_check_version_read_valueb_sound :=
@@ -2081,6 +2095,12 @@ Definition storage_version_read_value_obligation_entry_matched :=
   version_read_value_obligation_entry_matched.
 Definition storage_version_read_value_obligation_value_entry_matched :=
   version_read_value_obligation_value_entry_matched.
+Definition storage_check_version_read_valueb_length_match :=
+  @check_version_read_valueb_length_match.
+Definition storage_check_version_read_valueb_entry_matched :=
+  @check_version_read_valueb_entry_matched.
+Definition storage_check_version_read_valueb_value_entry_matched :=
+  @check_version_read_valueb_value_entry_matched.
 Definition storage_check_version_commitb :=
   check_version_commitb.
 Definition storage_check_version_commitb_sound :=
@@ -2099,18 +2119,32 @@ Definition storage_version_commit_version_in_mapping :=
   version_commit_version_in_mapping.
 Definition storage_version_commit_sources_nodup :=
   version_commit_sources_nodup.
+Definition storage_check_version_commitb_sources_nodup :=
+  check_version_commitb_sources_nodup.
 Definition storage_version_commit_versions_nodup :=
   version_commit_versions_nodup.
+Definition storage_check_version_commitb_versions_nodup :=
+  check_version_commitb_versions_nodup.
 Definition storage_version_commit_liveout_selected :=
   version_commit_liveout_selected.
+Definition storage_check_version_commitb_liveout_selected :=
+  check_version_commitb_liveout_selected.
 Definition storage_version_commit_selected_source_liveout :=
   version_commit_selected_source_liveout.
+Definition storage_check_version_commitb_selected_source_liveout :=
+  check_version_commitb_selected_source_liveout.
 Definition storage_version_commit_selected_version_in_versions :=
   version_commit_selected_version_in_versions.
+Definition storage_check_version_commitb_selected_version_in_versions :=
+  check_version_commitb_selected_version_in_versions.
 Definition storage_version_commit_sources_covered :=
   version_commit_sources_covered.
+Definition storage_check_version_commitb_sources_covered :=
+  check_version_commitb_sources_covered.
 Definition storage_version_commit_boundary_obligations :=
   version_commit_boundary_obligations.
+Definition storage_check_version_commitb_boundary_obligations :=
+  check_version_commitb_boundary_obligations.
 Definition storage_version_source_view_refines_view :=
   VersionCommitCore.version_source_view_refines_view.
 Definition storage_version_commit_view_contract :=

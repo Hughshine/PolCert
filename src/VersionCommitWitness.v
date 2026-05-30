@@ -299,3 +299,85 @@ Proof.
   - eapply version_commit_sources_nodup; eauto.
   - eapply version_commit_sources_covered; eauto.
 Qed.
+
+Theorem check_version_commitb_sources_nodup :
+  forall source_liveouts mapping,
+    check_version_commitb source_liveouts mapping = true ->
+    NoDup (version_commit_sources mapping).
+Proof.
+  intros source_liveouts mapping Hcheck.
+  eapply version_commit_sources_nodup.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_versions_nodup :
+  forall source_liveouts mapping,
+    check_version_commitb source_liveouts mapping = true ->
+    NoDup (version_commit_versions mapping).
+Proof.
+  intros source_liveouts mapping Hcheck.
+  eapply version_commit_versions_nodup.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_liveout_selected :
+  forall source_liveouts mapping source_cell,
+    check_version_commitb source_liveouts mapping = true ->
+    In source_cell source_liveouts ->
+    exists version_cell,
+      version_commit_cell_relation mapping version_cell source_cell.
+Proof.
+  intros source_liveouts mapping source_cell Hcheck Hliveout.
+  eapply version_commit_liveout_selected; eauto.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_selected_source_liveout :
+  forall source_liveouts mapping source_cell version_cell,
+    check_version_commitb source_liveouts mapping = true ->
+    version_commit_cell_relation mapping version_cell source_cell ->
+    In source_cell source_liveouts.
+Proof.
+  intros source_liveouts mapping source_cell version_cell Hcheck Hrel.
+  eapply version_commit_selected_source_liveout; eauto.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_selected_version_in_versions :
+  forall source_liveouts mapping source_cell version_cell,
+    check_version_commitb source_liveouts mapping = true ->
+    version_commit_cell_relation mapping version_cell source_cell ->
+    In version_cell (version_commit_versions mapping).
+Proof.
+  intros source_liveouts mapping source_cell version_cell Hcheck Hrel.
+  eapply version_commit_selected_version_in_versions; eauto.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_sources_covered :
+  forall source_liveouts mapping,
+    check_version_commitb source_liveouts mapping = true ->
+    reuse_mapping_covers_sources mapping (version_commit_sources mapping).
+Proof.
+  intros source_liveouts mapping Hcheck.
+  eapply version_commit_sources_covered.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_commitb_boundary_obligations :
+  forall source_liveouts mapping,
+    check_version_commitb source_liveouts mapping = true ->
+    reuse_boundary_obligations
+      mapping (version_commit_sources mapping).
+Proof.
+  intros source_liveouts mapping Hcheck.
+  eapply version_commit_boundary_obligations.
+  apply check_version_commitb_sound.
+  exact Hcheck.
+Qed.

@@ -277,3 +277,57 @@ Proof.
   destruct Hobligations as [Hmatch].
   eapply version_value_entries_match_entry_in_mapping; eauto.
 Qed.
+
+Theorem check_version_valueb_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries,
+      check_version_valueb value value_eqb mapping entries = true ->
+      length mapping = length entries.
+Proof.
+  intros value value_eqb Hsound mapping entries Hcheck.
+  eapply version_value_obligation_length_match.
+  eapply check_version_valueb_sound; eauto.
+Qed.
+
+Theorem check_version_valueb_mapping_entry_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries mapping_entry,
+      check_version_valueb value value_eqb mapping entries = true ->
+      In mapping_entry mapping ->
+      exists entry,
+        In entry entries /\
+        version_value_entry_cells_match mapping_entry entry /\
+        version_value_entry_value_match entry.
+Proof.
+  intros value value_eqb Hsound mapping entries mapping_entry
+         Hcheck Hin.
+  eapply version_value_obligation_mapping_entry_matched; eauto.
+  eapply check_version_valueb_sound; eauto.
+Qed.
+
+Theorem check_version_valueb_entry_in_mapping :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall mapping entries entry,
+      check_version_valueb value value_eqb mapping entries = true ->
+      In entry entries ->
+      exists mapping_entry,
+        In mapping_entry mapping /\
+        version_value_entry_cells_match mapping_entry entry /\
+        version_value_entry_value_match entry.
+Proof.
+  intros value value_eqb Hsound mapping entries entry Hcheck Hin.
+  eapply version_value_obligation_entry_in_mapping; eauto.
+  eapply check_version_valueb_sound; eauto.
+Qed.

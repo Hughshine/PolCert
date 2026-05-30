@@ -659,22 +659,25 @@ bounds.
 `VersionCommitWitness.v` starts the array-expansion/versioning route by
 checking that each source live-out selects exactly one target version and that
 selected versions are duplicate-free.  It also exposes the exact-cover
-consequences as named lemmas: live-outs have selected versions, selected
-sources are live-outs, selected versions belong to the version image, and both
-finite images are duplicate-free.  `VersionCommitValueWitness.v` checks that
-value evidence is aligned with the selected source/version cell pairs and that
-every selected version value equals the represented source value;
+consequences as direct checked projections: live-outs have selected versions,
+selected sources are live-outs, selected versions belong to the version image,
+the selected sources form a reusable boundary footprint, and both finite images
+are duplicate-free.  `VersionCommitValueWitness.v` checks that value evidence is
+aligned with the selected source/version cell pairs and that every selected
+version value equals the represented source value; its checked projections
+recover length alignment and both mapping-entry-to-value-entry directions.
 `VersionCommitValidator.v` gives both variants the same compositional theorem
 shape.  The bounded version-commit route composes this with
 `StorageBoundsWitness`, so selected target versions are checked against
 declared version-array bounds and any selected version related by the commit
 cell relation is known to be in bounds.  `VersionReadWitness.v` also exposes
 the produced-version image used by internal read-selection witnesses; the
-read-selection table now projects each read entry back to the expected-read
-list and to the concrete produced `(producer, version)` pair it selects.  The
-read-value witness now projects its positional table in both directions, so
-later concrete-read proofs can cite a matching value entry for a read selection
-and recover the source/version value equality from a supplied value entry.
+checked read-selection table now projects each read entry back to the
+expected-read list and to the concrete produced `(producer, version)` pair it
+selects.  The checked read-value witness now projects its positional table in
+both directions, so later concrete-read proofs can cite a matching value entry
+for a read selection and recover the source/version value equality from a
+supplied value entry.
 The fully bounded read/commit route now checks that every read-selected produced
 version is within its declared version-array bounds as well as every committed
 version.  Its fully bounded non-escape route now also projects those supplied

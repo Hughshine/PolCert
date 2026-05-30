@@ -361,6 +361,59 @@ Proof.
   eapply version_read_entries_selected_pair_in_produced_versions; eauto.
 Qed.
 
+Theorem check_version_read_selectionb_selected_version_in_produced_versions :
+  forall expected_reads produced_versions entries entry,
+    check_version_read_selectionb
+      expected_reads produced_versions entries = true ->
+    In entry entries ->
+    In (vre_selected_version entry)
+      (produced_version_versions produced_versions).
+Proof.
+  intros expected_reads produced_versions entries entry Hcheck Hin.
+  eapply version_read_selected_version_in_produced_versions; eauto.
+  apply check_version_read_selectionb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_read_selectionb_length_match :
+  forall expected_reads produced_versions entries,
+    check_version_read_selectionb
+      expected_reads produced_versions entries = true ->
+    length expected_reads = length entries.
+Proof.
+  intros expected_reads produced_versions entries Hcheck.
+  eapply version_read_selection_obligation_length_match.
+  apply check_version_read_selectionb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_read_selectionb_read_in_expected :
+  forall expected_reads produced_versions entries entry,
+    check_version_read_selectionb
+      expected_reads produced_versions entries = true ->
+    In entry entries ->
+    In (vre_read_instance entry) expected_reads.
+Proof.
+  intros expected_reads produced_versions entries entry Hcheck Hin.
+  eapply version_read_selection_obligation_read_in_expected; eauto.
+  apply check_version_read_selectionb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_version_read_selectionb_produced_pair :
+  forall expected_reads produced_versions entries entry,
+    check_version_read_selectionb
+      expected_reads produced_versions entries = true ->
+    In entry entries ->
+    In (vre_expected_producer entry, vre_selected_version entry)
+      produced_versions.
+Proof.
+  intros expected_reads produced_versions entries entry Hcheck Hin.
+  eapply version_read_selection_obligation_produced_pair; eauto.
+  apply check_version_read_selectionb_sound.
+  exact Hcheck.
+Qed.
+
 Record version_read_value_entry (value: Type) := {
   vrve_read_entry : version_read_entry;
   vrve_source_value : value;
@@ -586,4 +639,58 @@ Proof.
   intros value entries value_entries value_entry Hobligations Hin.
   destruct Hobligations as [Hmatch].
   eapply version_read_value_entries_match_value_entry; eauto.
+Qed.
+
+Theorem check_version_read_valueb_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall entries value_entries,
+      check_version_read_valueb value_eqb entries value_entries = true ->
+      length entries = length value_entries.
+Proof.
+  intros value value_eqb Hsound entries value_entries Hcheck.
+  eapply version_read_value_obligation_length_match.
+  eapply check_version_read_valueb_sound; eauto.
+Qed.
+
+Theorem check_version_read_valueb_entry_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall entries value_entries entry,
+      check_version_read_valueb value_eqb entries value_entries = true ->
+      In entry entries ->
+      exists value_entry,
+        In value_entry value_entries /\
+        vrve_read_entry value_entry = entry /\
+        vrve_source_value value_entry =
+          vrve_version_value value_entry.
+Proof.
+  intros value value_eqb Hsound entries value_entries entry Hcheck Hin.
+  eapply version_read_value_obligation_entry_matched; eauto.
+  eapply check_version_read_valueb_sound; eauto.
+Qed.
+
+Theorem check_version_read_valueb_value_entry_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall entries value_entries value_entry,
+      check_version_read_valueb value_eqb entries value_entries = true ->
+      In value_entry value_entries ->
+      In (vrve_read_entry value_entry) entries /\
+      vrve_source_value value_entry =
+        vrve_version_value value_entry.
+Proof.
+  intros value value_eqb Hsound entries value_entries value_entry
+         Hcheck Hin.
+  eapply version_read_value_obligation_value_entry_matched; eauto.
+  eapply check_version_read_valueb_sound; eauto.
 Qed.
