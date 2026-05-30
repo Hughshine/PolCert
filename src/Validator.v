@@ -581,6 +581,12 @@ Definition storage_check_frame_preservationb_sound :=
   check_frame_preservationb_sound.
 Definition storage_frame_preservation_obligations :=
   frame_preservation_obligations.
+Definition storage_check_frame_preservationb_frame_nodup :=
+  check_frame_preservationb_frame_nodup.
+Definition storage_check_frame_preservationb_writes_allowed :=
+  check_frame_preservationb_writes_allowed.
+Definition storage_check_frame_preservationb_allowed_frame_disjoint :=
+  check_frame_preservationb_allowed_frame_disjoint.
 Definition storage_frame_preservation_writes_disjoint :=
   frame_preservation_writes_disjoint.
 Definition storage_frame_preservation_write_allowed :=
@@ -593,8 +599,16 @@ Definition storage_frame_preservation_write_neq_frame_cell :=
   frame_preservation_write_neq_frame_cell.
 Definition storage_check_frame_preservationb_write_allowed :=
   check_frame_preservationb_write_allowed.
+Definition storage_check_frame_preservationb_writes_disjoint :=
+  check_frame_preservationb_writes_disjoint.
+Definition storage_check_frame_preservationb_allowed_not_frame :=
+  check_frame_preservationb_allowed_not_frame.
+Definition storage_check_frame_preservationb_write_not_frame :=
+  check_frame_preservationb_write_not_frame.
 Definition storage_check_frame_preservationb_write_neq_frame_cell :=
   check_frame_preservationb_write_neq_frame_cell.
+Definition storage_check_frame_preservationb_write_distinct_from_frame_cell :=
+  check_frame_preservationb_write_distinct_from_frame_cell.
 Definition storage_frame_value_entry :=
   frame_value_entry.
 Definition storage_check_frame_valueb :=

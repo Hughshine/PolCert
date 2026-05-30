@@ -52,6 +52,50 @@ Proof.
     exact Hdisjoint.
 Qed.
 
+Theorem check_frame_preservationb_frame_nodup :
+  forall frame_cells write_cells allowed_write_cells,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    NoDup frame_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells Hcheck.
+  exact
+    (fpo_frame_nodup
+       frame_cells write_cells allowed_write_cells
+       (check_frame_preservationb_sound
+          frame_cells write_cells allowed_write_cells Hcheck)).
+Qed.
+
+Theorem check_frame_preservationb_writes_allowed :
+  forall frame_cells write_cells allowed_write_cells,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    forall cell,
+      In cell write_cells ->
+      In cell allowed_write_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells Hcheck.
+  exact
+    (fpo_writes_allowed
+       frame_cells write_cells allowed_write_cells
+       (check_frame_preservationb_sound
+          frame_cells write_cells allowed_write_cells Hcheck)).
+Qed.
+
+Theorem check_frame_preservationb_allowed_frame_disjoint :
+  forall frame_cells write_cells allowed_write_cells,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    mem_cells_disjoint allowed_write_cells frame_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells Hcheck.
+  exact
+    (fpo_allowed_frame_disjoint
+       frame_cells write_cells allowed_write_cells
+       (check_frame_preservationb_sound
+          frame_cells write_cells allowed_write_cells Hcheck)).
+Qed.
+
 Lemma frame_preservation_write_allowed :
   forall frame_cells write_cells allowed_write_cells cell,
     frame_preservation_obligations
@@ -144,6 +188,44 @@ Proof.
   eapply frame_preservation_write_allowed; eauto.
 Qed.
 
+Theorem check_frame_preservationb_writes_disjoint :
+  forall frame_cells write_cells allowed_write_cells,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    writes_disjoint_from_frame write_cells frame_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells Hcheck.
+  eapply frame_preservation_writes_disjoint.
+  apply check_frame_preservationb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_frame_preservationb_allowed_not_frame :
+  forall frame_cells write_cells allowed_write_cells cell,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    In cell allowed_write_cells ->
+    ~ In cell frame_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells cell Hcheck Hallowed.
+  eapply frame_preservation_allowed_not_frame; eauto.
+  apply check_frame_preservationb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_frame_preservationb_write_not_frame :
+  forall frame_cells write_cells allowed_write_cells cell,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    In cell write_cells ->
+    ~ In cell frame_cells.
+Proof.
+  intros frame_cells write_cells allowed_write_cells cell Hcheck Hwrite.
+  eapply frame_preservation_write_not_frame; eauto.
+  apply check_frame_preservationb_sound.
+  exact Hcheck.
+Qed.
+
 Lemma check_frame_preservationb_write_neq_frame_cell :
   forall frame_cells write_cells allowed_write_cells write_cell frame_cell,
     check_frame_preservationb
@@ -159,4 +241,17 @@ Proof.
        frame_cells write_cells allowed_write_cells Hcheck)
     as Hframe.
   eapply frame_preservation_write_neq_frame_cell; eauto.
+Qed.
+
+Theorem check_frame_preservationb_write_distinct_from_frame_cell :
+  forall frame_cells write_cells allowed_write_cells write_cell frame_cell,
+    check_frame_preservationb
+      frame_cells write_cells allowed_write_cells = true ->
+    In write_cell write_cells ->
+    In frame_cell frame_cells ->
+    write_cell <> frame_cell.
+Proof.
+  intros frame_cells write_cells allowed_write_cells write_cell frame_cell
+         Hcheck Hwrite Hframe_cell.
+  eapply check_frame_preservationb_write_neq_frame_cell; eauto.
 Qed.
