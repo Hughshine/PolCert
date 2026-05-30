@@ -1443,6 +1443,11 @@ same-index, finite permutation, and affine composition.
 storage-compatibility layer to the same wrapper: every mapped logical cell must
 have a finite storage spec, every mapped physical layout cell must have a
 finite storage spec, and the paired specs must agree on size and alignment.
+The stronger bounds/compatibility wrapper now also exposes direct contract
+projections: a supplied value entry recovers its layout-map pair, source/target
+value equality, target-cell bounds, and compatible source/target storage specs.
+These remain side facts below the public-view theorem rather than extra
+relations in the theorem statement.
 The proof that concrete target instruction semantics realizes those rewritten
 accesses, values, and storage specs remains explicit.
 

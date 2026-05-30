@@ -900,4 +900,213 @@ Proof.
       assumption.
 Qed.
 
+Theorem padding_layout_value_entry_mapping_pair :
+  forall (value: Type)
+         input_view output_view mapping padding_cells allocated_cells entries
+         source_view after entry,
+    padding_layout_value_view_contract
+      value input_view output_view mapping padding_cells allocated_cells
+      entries source_view after ->
+    In entry entries ->
+    In (lve_source_cell entry, lve_target_cell entry) mapping.
+Proof.
+  intros value input_view output_view mapping padding_cells allocated_cells
+         entries source_view after entry Hcontract Hin.
+  destruct Hcontract as [_ Hvalues _].
+  destruct
+    (layout_value_obligation_entry_in_mapping
+       value mapping entries entry Hvalues Hin)
+    as ([source_cell target_cell] & Hin_mapping & Hcells & _).
+  destruct Hcells as [Hsource Htarget].
+  simpl in Hsource, Htarget.
+  subst.
+  exact Hin_mapping.
+Qed.
+
+Theorem padding_layout_value_entry_values_equal :
+  forall (value: Type)
+         input_view output_view mapping padding_cells allocated_cells entries
+         source_view after entry,
+    padding_layout_value_view_contract
+      value input_view output_view mapping padding_cells allocated_cells
+      entries source_view after ->
+    In entry entries ->
+    lve_source_value entry = lve_target_value entry.
+Proof.
+  intros value input_view output_view mapping padding_cells allocated_cells
+         entries source_view after entry Hcontract Hin.
+  destruct Hcontract as [_ Hvalues _].
+  destruct
+    (layout_value_obligation_entry_in_mapping
+       value mapping entries entry Hvalues Hin)
+    as (_ & _ & _ & Hentry_value).
+  unfold layout_value_entry_value_match in Hentry_value.
+  exact Hentry_value.
+Qed.
+
+Theorem padding_layout_declared_access_bounds_compatible_value_entry_mapping_pair :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In entry entries ->
+    In (lve_source_cell entry, lve_target_cell entry) mapping.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry Hcontract Hin.
+  assert
+    (Hbase:
+      padding_layout_value_view_contract
+        value input_view output_view mapping padding_cells allocated_cells
+        entries source_view after).
+  {
+    destruct Hcontract as [Hpadding _ _ Hvalues _ Hsemantics].
+    constructor; assumption.
+  }
+  eapply padding_layout_value_entry_mapping_pair; eauto.
+Qed.
+
+Theorem padding_layout_declared_access_bounds_compatible_value_entry_values_equal :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In entry entries ->
+    lve_source_value entry = lve_target_value entry.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry Hcontract Hin.
+  assert
+    (Hbase:
+      padding_layout_value_view_contract
+        value input_view output_view mapping padding_cells allocated_cells
+        entries source_view after).
+  {
+    destruct Hcontract as [Hpadding _ _ Hvalues _ Hsemantics].
+    constructor; assumption.
+  }
+  eapply padding_layout_value_entry_values_equal; eauto.
+Qed.
+
+Theorem padding_layout_mapping_pair_target_within_bounds :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after source_cell target_cell,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In (source_cell, target_cell) mapping ->
+    cell_within_declared_bounds bounds target_cell.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after source_cell target_cell Hcontract Hin.
+  destruct Hcontract as [Hpadding Hbounds _ _ _ _].
+  eapply padding_layout_target_within_bounds.
+  - exact Hpadding.
+  - exact Hbounds.
+  - eapply padding_layout_mapping_pair_target_in_targets; eauto.
+Qed.
+
+Theorem padding_layout_mapping_pair_compatible_specs :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after source_cell target_cell,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In (source_cell, target_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = source_cell /\
+      storage_spec_cell physical_spec = target_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after source_cell target_cell Hcontract Hin.
+  destruct Hcontract as [_ _ _ _ Hcompatible _].
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem padding_layout_value_entry_target_within_bounds :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In entry entries ->
+    cell_within_declared_bounds bounds (lve_target_cell entry).
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry Hcontract Hin.
+  pose proof
+    (padding_layout_declared_access_bounds_compatible_value_entry_mapping_pair
+       value input_view output_view layouts mapping padding_cells
+       allocated_cells bounds logical_specs physical_specs entries
+       source_view after entry Hcontract Hin)
+    as Hmapping.
+  eapply padding_layout_mapping_pair_target_within_bounds; eauto.
+Qed.
+
+Theorem padding_layout_value_entry_compatible_specs :
+  forall (value: Type)
+         input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry,
+    padding_layout_declared_access_bounds_compatible_value_view_contract
+      value input_view output_view layouts mapping padding_cells
+      allocated_cells bounds logical_specs physical_specs entries
+      source_view after ->
+    In entry entries ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = lve_source_cell entry /\
+      storage_spec_cell physical_spec = lve_target_cell entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros value input_view output_view layouts
+         mapping padding_cells allocated_cells bounds
+         logical_specs physical_specs entries
+         source_view after entry Hcontract Hin.
+  pose proof
+    (padding_layout_declared_access_bounds_compatible_value_entry_mapping_pair
+       value input_view output_view layouts mapping padding_cells
+       allocated_cells bounds logical_specs physical_specs entries
+       source_view after entry Hcontract Hin)
+    as Hmapping.
+  eapply padding_layout_mapping_pair_compatible_specs; eauto.
+Qed.
+
 End PaddingLayoutValidator.

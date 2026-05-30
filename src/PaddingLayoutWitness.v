@@ -32,6 +32,21 @@ Fixpoint padding_layout_targets
       target_cell :: padding_layout_targets tail
   end.
 
+Lemma padding_layout_mapping_pair_target_in_targets :
+  forall mapping source_cell target_cell,
+    In (source_cell, target_cell) mapping ->
+    In target_cell (padding_layout_targets mapping).
+Proof.
+  induction mapping as [|[source_head target_head] tail IH];
+    intros source_cell target_cell Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + inversion Heq; subst.
+      left. reflexivity.
+    + right.
+      eapply IH; eauto.
+Qed.
+
 Record padding_layout_obligations
     (mapping: padding_layout_mapping)
     (padding_cells allocated_cells: list MemCell) : Prop := {
