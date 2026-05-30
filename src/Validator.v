@@ -786,6 +786,26 @@ Definition same_instance_access_remap_write_accesses :=
   StorageCore.siar_write_accesses.
 Definition same_instance_access_remap_read_accesses :=
   StorageCore.siar_read_accesses.
+Definition same_instance_access_remap_write_accesses_length :=
+  StorageCore.same_instance_access_remap_write_accesses_length.
+Definition same_instance_access_remap_read_accesses_length :=
+  StorageCore.same_instance_access_remap_read_accesses_length.
+Definition same_instance_access_remap_write_target_access :=
+  StorageCore.same_instance_access_remap_write_target_access.
+Definition same_instance_access_remap_write_source_access :=
+  StorageCore.same_instance_access_remap_write_source_access.
+Definition same_instance_access_remap_read_target_access :=
+  StorageCore.same_instance_access_remap_read_target_access.
+Definition same_instance_access_remap_read_source_access :=
+  StorageCore.same_instance_access_remap_read_source_access.
+Definition same_instance_access_remap_write_access_nth :=
+  StorageCore.same_instance_access_remap_write_access_nth.
+Definition same_instance_access_remap_read_access_nth :=
+  StorageCore.same_instance_access_remap_read_access_nth.
+Definition same_instance_access_remap_write_access_cell_nth :=
+  StorageCore.same_instance_access_remap_write_access_cell_nth.
+Definition same_instance_access_remap_read_access_cell_nth :=
+  StorageCore.same_instance_access_remap_read_access_cell_nth.
 Definition same_instance_identity_remap :=
   StorageCore.same_instance_identity_remap.
 Definition same_instance_identity_remap_refl :=

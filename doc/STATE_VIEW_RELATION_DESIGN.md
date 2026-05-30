@@ -1390,9 +1390,11 @@ the same length, nth source or target instructions recover the corresponding
 remapped instruction, and matched nth instructions directly expose their write
 and read access-list relations.  The access-list relation itself now exposes
 nth access-pair and point-cell projections, and the program-level wrapper lifts
-those facts to nth write/read accesses of matched instructions.  These facts
-keep layout-specific simulation proofs from unpacking the generic `Forall2`
-witness.
+those facts to nth write/read accesses of matched instructions.  The
+single-instruction `same_instance_access_remap` layer exposes the same
+write/read access length, nth-access, and point-cell facts directly.  These
+facts keep layout-specific simulation proofs from unpacking the generic
+`Forall2` witness.
 
 ### Padding and Alignment
 

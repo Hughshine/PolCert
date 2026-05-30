@@ -271,6 +271,146 @@ Record same_instance_access_remap
       (PL.pi_raccess after) (PL.pi_raccess before);
 }.
 
+Theorem same_instance_access_remap_write_accesses_length :
+  forall rel before after,
+    same_instance_access_remap rel before after ->
+    length (PL.pi_waccess after) = length (PL.pi_waccess before).
+Proof.
+  intros rel before after Hremap.
+  eapply access_list_relation_length.
+  exact (siar_write_accesses _ _ _ Hremap).
+Qed.
+
+Theorem same_instance_access_remap_read_accesses_length :
+  forall rel before after,
+    same_instance_access_remap rel before after ->
+    length (PL.pi_raccess after) = length (PL.pi_raccess before).
+Proof.
+  intros rel before after Hremap.
+  eapply access_list_relation_length.
+  exact (siar_read_accesses _ _ _ Hremap).
+Qed.
+
+Theorem same_instance_access_remap_write_target_access :
+  forall rel before after n after_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_waccess after) n = Some after_access ->
+    exists before_access,
+      nth_error (PL.pi_waccess before) n = Some before_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n after_access Hremap Hnth.
+  eapply access_list_relation_target_access.
+  - exact (siar_write_accesses _ _ _ Hremap).
+  - exact Hnth.
+Qed.
+
+Theorem same_instance_access_remap_write_source_access :
+  forall rel before after n before_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_waccess before) n = Some before_access ->
+    exists after_access,
+      nth_error (PL.pi_waccess after) n = Some after_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n before_access Hremap Hnth.
+  eapply access_list_relation_source_access.
+  - exact (siar_write_accesses _ _ _ Hremap).
+  - exact Hnth.
+Qed.
+
+Theorem same_instance_access_remap_read_target_access :
+  forall rel before after n after_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_raccess after) n = Some after_access ->
+    exists before_access,
+      nth_error (PL.pi_raccess before) n = Some before_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n after_access Hremap Hnth.
+  eapply access_list_relation_target_access.
+  - exact (siar_read_accesses _ _ _ Hremap).
+  - exact Hnth.
+Qed.
+
+Theorem same_instance_access_remap_read_source_access :
+  forall rel before after n before_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_raccess before) n = Some before_access ->
+    exists after_access,
+      nth_error (PL.pi_raccess after) n = Some after_access /\
+      same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n before_access Hremap Hnth.
+  eapply access_list_relation_source_access.
+  - exact (siar_read_accesses _ _ _ Hremap).
+  - exact Hnth.
+Qed.
+
+Theorem same_instance_access_remap_write_access_nth :
+  forall rel before after n before_access after_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_waccess before) n = Some before_access ->
+    nth_error (PL.pi_waccess after) n = Some after_access ->
+    same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n before_access after_access
+         Hremap Hbefore Hafter.
+  eapply access_list_relation_nth.
+  - exact (siar_write_accesses _ _ _ Hremap).
+  - exact Hafter.
+  - exact Hbefore.
+Qed.
+
+Theorem same_instance_access_remap_read_access_nth :
+  forall rel before after n before_access after_access,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_raccess before) n = Some before_access ->
+    nth_error (PL.pi_raccess after) n = Some after_access ->
+    same_point_access_relation rel after_access before_access.
+Proof.
+  intros rel before after n before_access after_access
+         Hremap Hbefore Hafter.
+  eapply access_list_relation_nth.
+  - exact (siar_read_accesses _ _ _ Hremap).
+  - exact Hafter.
+  - exact Hbefore.
+Qed.
+
+Theorem same_instance_access_remap_write_access_cell_nth :
+  forall rel before after n before_access after_access p,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_waccess before) n = Some before_access ->
+    nth_error (PL.pi_waccess after) n = Some after_access ->
+    rel (exact_cell after_access p) (exact_cell before_access p).
+Proof.
+  intros rel before after n before_access after_access p
+         Hremap Hbefore Hafter.
+  pose proof
+    (same_instance_access_remap_write_access_nth
+       rel before after n before_access after_access
+       Hremap Hbefore Hafter)
+    as Haccess.
+  exact (Haccess p).
+Qed.
+
+Theorem same_instance_access_remap_read_access_cell_nth :
+  forall rel before after n before_access after_access p,
+    same_instance_access_remap rel before after ->
+    nth_error (PL.pi_raccess before) n = Some before_access ->
+    nth_error (PL.pi_raccess after) n = Some after_access ->
+    rel (exact_cell after_access p) (exact_cell before_access p).
+Proof.
+  intros rel before after n before_access after_access p
+         Hremap Hbefore Hafter.
+  pose proof
+    (same_instance_access_remap_read_access_nth
+       rel before after n before_access after_access
+       Hremap Hbefore Hafter)
+    as Haccess.
+  exact (Haccess p).
+Qed.
+
 Definition same_instance_identity_remap
     (before after: PL.PolyInstr) : Prop :=
   same_instance_access_remap identity_cell_relation before after.
