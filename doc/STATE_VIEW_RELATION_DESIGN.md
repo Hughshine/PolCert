@@ -1685,7 +1685,9 @@ event-provenance layer through
 `cscalar_promotion_value_trace_event_cinstr_and_matched`: later proofs can
 recover the local CInstr witness for a selected trace event, plus a checked
 promotion-kind match and the internal load/store value equalities carried by
-the value event.  It also provides
+the value event.  Direct load/store equality corollaries now expose those
+selected-event facts without requiring callers to unfold the generic
+value-match predicate.  It also provides
 `cscalar_promotion_value_trace_event_cinstr_and_generic_matched`, using the
 generic scalar-promotion value witness predicates directly.
 `CInstrScalarPromotionValidatorBridge.v` packages that instruction evidence
@@ -1821,7 +1823,9 @@ source-side scalar event.  The next projection is now mechanized as
 `cscalar_expansion_value_event_cinstr_semantics` and
 `cscalar_expansion_value_trace_event_cinstr_and_matched`: every event selected
 from the ordered trace carries its local CInstr write/read provenance together
-with the mapping, kind, and value-match facts.  This is still below the final
+with the mapping, kind, and value-match facts.  The corresponding direct
+write/read equality corollaries keep later simulation proofs from depending on
+the internal shape of that value-match predicate.  This is still below the final
 user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to

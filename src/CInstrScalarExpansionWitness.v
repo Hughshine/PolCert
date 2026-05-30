@@ -386,6 +386,38 @@ Proof.
       exact Hsem.
 Qed.
 
+Theorem cscalar_expansion_value_event_cinstr_write_values_equal :
+  forall entries event source_value private_value,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event (ExpansionValueWrite source_value private_value) ->
+    source_value = private_value.
+Proof.
+  intros entries event source_value private_value Hsem.
+  pose proof
+    (cscalar_expansion_value_event_cinstr_values_match
+       entries event (ExpansionValueWrite source_value private_value)
+       Hsem)
+    as Hvalues.
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem cscalar_expansion_value_event_cinstr_read_values_equal :
+  forall entries event source_value private_value,
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event (ExpansionValueRead source_value private_value) ->
+    source_value = private_value.
+Proof.
+  intros entries event source_value private_value Hsem.
+  pose proof
+    (cscalar_expansion_value_event_cinstr_values_match
+       entries event (ExpansionValueRead source_value private_value)
+       Hsem)
+    as Hvalues.
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
 (** Ordered trace layer.
 
     The singleton lemmas above justify one CInstr read or write event.  The
@@ -669,4 +701,40 @@ Proof.
        entries event value_event Hcinstr)
     as [Hmapped [Hkind Hvalues]].
   repeat split; assumption.
+Qed.
+
+Theorem cscalar_expansion_value_trace_event_write_values_equal :
+  forall entries current_values trace event source_value private_value,
+    cscalar_expansion_value_trace entries current_values trace ->
+    In (event, ExpansionValueWrite source_value private_value) trace ->
+    source_value = private_value.
+Proof.
+  intros entries current_values trace event source_value private_value
+         Htrace Hin.
+  pose proof
+    (cscalar_expansion_value_trace_event_cinstr_and_matched
+       entries current_values trace event
+       (ExpansionValueWrite source_value private_value)
+       Htrace Hin)
+    as [_ [_ [_ Hvalues]]].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem cscalar_expansion_value_trace_event_read_values_equal :
+  forall entries current_values trace event source_value private_value,
+    cscalar_expansion_value_trace entries current_values trace ->
+    In (event, ExpansionValueRead source_value private_value) trace ->
+    source_value = private_value.
+Proof.
+  intros entries current_values trace event source_value private_value
+         Htrace Hin.
+  pose proof
+    (cscalar_expansion_value_trace_event_cinstr_and_matched
+       entries current_values trace event
+       (ExpansionValueRead source_value private_value)
+       Htrace Hin)
+    as [_ [_ [_ Hvalues]]].
+  simpl in Hvalues.
+  exact Hvalues.
 Qed.

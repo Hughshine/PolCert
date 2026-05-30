@@ -559,3 +559,45 @@ Proof.
   - exact Hsimulates.
   - exact Hin.
 Qed.
+
+Theorem scalar_expansion_value_obligation_write_values_equal :
+  forall (value: Type)
+         (value_trace: scalar_expansion_value_trace value)
+         storage_event source_value private_value,
+    scalar_expansion_value_obligations value value_trace ->
+    In (storage_event, ExpansionValueWrite source_value private_value)
+      value_trace ->
+    source_value = private_value.
+Proof.
+  intros value value_trace storage_event source_value private_value
+         Hobligations Hin.
+  pose proof
+    (scalar_expansion_value_obligation_event_matched
+       value value_trace storage_event
+       (ExpansionValueWrite source_value private_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem scalar_expansion_value_obligation_read_values_equal :
+  forall (value: Type)
+         (value_trace: scalar_expansion_value_trace value)
+         storage_event source_value private_value,
+    scalar_expansion_value_obligations value value_trace ->
+    In (storage_event, ExpansionValueRead source_value private_value)
+      value_trace ->
+    source_value = private_value.
+Proof.
+  intros value value_trace storage_event source_value private_value
+         Hobligations Hin.
+  pose proof
+    (scalar_expansion_value_obligation_event_matched
+       value value_trace storage_event
+       (ExpansionValueRead source_value private_value)
+       Hobligations Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.

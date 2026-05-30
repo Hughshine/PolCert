@@ -23,6 +23,8 @@ Require Import ScalarExpansionValueWitness.
 Require Import PrivateBoundaryWitness.
 Require Import ScalarPromotionWitness.
 Require Import ScalarPromotionValueWitness.
+Require Import CInstrScalarExpansionWitness.
+Require Import CInstrScalarPromotionWitness.
 Require Import ScalarPromotionValidator.
 Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
@@ -735,6 +737,28 @@ Definition storage_scalar_expansion_value_obligations_events_private_use_def :=
   scalar_expansion_value_obligations_events_private_use_def.
 Definition storage_scalar_expansion_value_obligation_event_matched :=
   scalar_expansion_value_obligation_event_matched.
+Definition storage_scalar_expansion_value_obligation_write_values_equal :=
+  scalar_expansion_value_obligation_write_values_equal.
+Definition storage_scalar_expansion_value_obligation_read_values_equal :=
+  scalar_expansion_value_obligation_read_values_equal.
+Definition storage_cscalar_expansion_value_event_cinstr_semantics :=
+  cscalar_expansion_value_event_cinstr_semantics.
+Definition storage_cscalar_expansion_value_event_cinstr_mapped_and_matched :=
+  cscalar_expansion_value_event_cinstr_mapped_and_matched.
+Definition storage_cscalar_expansion_value_event_cinstr_write_values_equal :=
+  cscalar_expansion_value_event_cinstr_write_values_equal.
+Definition storage_cscalar_expansion_value_event_cinstr_read_values_equal :=
+  cscalar_expansion_value_event_cinstr_read_values_equal.
+Definition storage_cscalar_expansion_value_trace :=
+  cscalar_expansion_value_trace.
+Definition storage_cscalar_expansion_value_trace_simulates :=
+  cscalar_expansion_value_trace_simulates.
+Definition storage_cscalar_expansion_value_trace_event_cinstr_and_matched :=
+  cscalar_expansion_value_trace_event_cinstr_and_matched.
+Definition storage_cscalar_expansion_value_trace_event_write_values_equal :=
+  cscalar_expansion_value_trace_event_write_values_equal.
+Definition storage_cscalar_expansion_value_trace_event_read_values_equal :=
+  cscalar_expansion_value_trace_event_read_values_equal.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
 Definition same_instance_identity_remap :=
@@ -997,6 +1021,24 @@ Definition storage_scalar_value_obligation_load_values_equal :=
   scalar_value_obligation_load_values_equal.
 Definition storage_scalar_value_obligation_store_values_equal :=
   scalar_value_obligation_store_values_equal.
+Definition storage_cscalar_promotion_value_event_cinstr_semantics :=
+  cscalar_promotion_value_event_cinstr_semantics.
+Definition storage_cscalar_promotion_value_event_cinstr_generic_matched :=
+  cscalar_promotion_value_event_cinstr_generic_matched.
+Definition storage_cscalar_promotion_value_event_cinstr_load_values_equal :=
+  cscalar_promotion_value_event_cinstr_load_values_equal.
+Definition storage_cscalar_promotion_value_event_cinstr_store_values_equal :=
+  cscalar_promotion_value_event_cinstr_store_values_equal.
+Definition storage_cscalar_promotion_value_trace :=
+  cscalar_promotion_value_trace.
+Definition storage_cscalar_promotion_value_trace_simulates :=
+  cscalar_promotion_value_trace_simulates.
+Definition storage_cscalar_promotion_value_trace_event_cinstr_and_generic_matched :=
+  cscalar_promotion_value_trace_event_cinstr_and_generic_matched.
+Definition storage_cscalar_promotion_value_trace_load_values_equal :=
+  cscalar_promotion_value_trace_load_values_equal.
+Definition storage_cscalar_promotion_value_trace_store_values_equal :=
+  cscalar_promotion_value_trace_store_values_equal.
 Definition storage_check_scalar_promotionb :=
   check_scalar_promotionb.
 Definition storage_check_scalar_promotionb_sound :=

@@ -345,7 +345,10 @@ that the trace events are mapped by the declared expansion entries.  Its
 per-event bridge theorem now combines these two directions: every event in the
 ordered CInstr-derived value trace is mapped by the declared expansion entries,
 has the storage-event kind claimed by the value event, and carries equal
-source/private values.  The trace now also exposes event-level CInstr
+source/private values.  Direct corollaries now name the generic and
+CInstr-derived write/read value equalities, so later simulation proofs do not
+need to unfold the value-match predicate.  The trace now also exposes
+event-level CInstr
 provenance through
 `cscalar_expansion_value_event_cinstr_semantics` and
 `cscalar_expansion_value_trace_event_cinstr_and_matched`, so later pass-level
@@ -457,6 +460,8 @@ value-flow obligation.  It now also exposes
 `cscalar_promotion_value_trace_event_cinstr_and_matched`, so a later pass-level
 proof can select an arbitrary trace event and recover both its CInstr
 provenance and its promotion-specific kind/internal-value match facts.  The
+load/store equality corollaries now name those selected-event value facts
+directly for CInstr-derived traces.  The
 bridge additionally exposes
 `cscalar_promotion_value_trace_event_cinstr_and_generic_matched`, which phrases
 the same selected-event fact using the generic scalar-promotion value witness
@@ -784,6 +789,10 @@ contract: projection value entries directly inherit compatible storage specs
 and target bounds, mapped final targets inherit declared bounds, and
 entry/read/write/next-live protocol cells directly inherit phase-buffer bounds
 and non-escape facts.
+The concrete CInstr scalar witnesses now follow the same direct-projection
+style: scalar expansion and scalar promotion expose named selected-event
+write/read or load/store equality facts instead of requiring callers to unpack
+generic value-match predicates.
 
 The public-facing composition surface has now been normalized across the
 storage family-compose files.  Copy/scratchpad, inter-array reuse,

@@ -349,6 +349,36 @@ Proof.
     inversion H; subst; simpl; auto.
 Qed.
 
+Theorem cscalar_promotion_value_event_cinstr_load_values_equal :
+  forall event source_value scalar_value,
+    cscalar_promotion_value_event_cinstr_semantics
+      event (PromotionValueLoad source_value scalar_value) ->
+    source_value = scalar_value.
+Proof.
+  intros event source_value scalar_value Hsem.
+  pose proof
+    (cscalar_promotion_value_event_cinstr_generic_matched
+       event (PromotionValueLoad source_value scalar_value) Hsem)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem cscalar_promotion_value_event_cinstr_store_values_equal :
+  forall event scalar_value source_value,
+    cscalar_promotion_value_event_cinstr_semantics
+      event (PromotionValueStore scalar_value source_value) ->
+    scalar_value = source_value.
+Proof.
+  intros event scalar_value source_value Hsem.
+  pose proof
+    (cscalar_promotion_value_event_cinstr_generic_matched
+       event (PromotionValueStore scalar_value source_value) Hsem)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
 Inductive cscalar_promotion_value_trace
     : option Values.val ->
       scalar_promotion_value_trace Values.val -> Prop :=
@@ -529,6 +559,48 @@ Proof.
        event value_event Hcinstr)
     as [Hkind Hvalues].
   repeat split; assumption.
+Qed.
+
+Theorem cscalar_promotion_value_trace_load_values_equal :
+  forall current_scalar trace source_cell scalar_cell
+         source_value scalar_value,
+    cscalar_promotion_value_trace current_scalar trace ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) trace ->
+    source_value = scalar_value.
+Proof.
+  intros current_scalar trace source_cell scalar_cell
+         source_value scalar_value Htrace Hin.
+  pose proof
+    (cscalar_promotion_value_trace_event_cinstr_and_generic_matched
+       current_scalar trace
+       (PromotionLoad source_cell scalar_cell)
+       (PromotionValueLoad source_value scalar_value)
+       Htrace Hin)
+    as [_ [_ Hvalues]].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem cscalar_promotion_value_trace_store_values_equal :
+  forall current_scalar trace scalar_cell source_cell
+         scalar_value source_value,
+    cscalar_promotion_value_trace current_scalar trace ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) trace ->
+    scalar_value = source_value.
+Proof.
+  intros current_scalar trace scalar_cell source_cell
+         scalar_value source_value Htrace Hin.
+  pose proof
+    (cscalar_promotion_value_trace_event_cinstr_and_generic_matched
+       current_scalar trace
+       (PromotionStore scalar_cell source_cell)
+       (PromotionValueStore scalar_value source_value)
+       Htrace Hin)
+    as [_ [_ Hvalues]].
+  simpl in Hvalues.
+  exact Hvalues.
 Qed.
 
 Definition cscalar_promotion_value_trace_simulates
