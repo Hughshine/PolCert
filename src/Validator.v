@@ -761,6 +761,20 @@ Definition storage_cscalar_expansion_value_trace_event_read_values_equal :=
   cscalar_expansion_value_trace_event_read_values_equal.
 Definition same_instance_access_remap :=
   StorageCore.same_instance_access_remap.
+Definition same_instance_access_remap_same_depth :=
+  StorageCore.siar_same_depth.
+Definition same_instance_access_remap_same_instr :=
+  StorageCore.siar_same_instr.
+Definition same_instance_access_remap_same_domain :=
+  StorageCore.siar_same_domain.
+Definition same_instance_access_remap_same_point_witness :=
+  StorageCore.siar_same_point_witness.
+Definition same_instance_access_remap_same_source_transformation :=
+  StorageCore.siar_same_source_transformation.
+Definition same_instance_access_remap_write_accesses :=
+  StorageCore.siar_write_accesses.
+Definition same_instance_access_remap_read_accesses :=
+  StorageCore.siar_read_accesses.
 Definition same_instance_identity_remap :=
   StorageCore.same_instance_identity_remap.
 Definition same_instance_identity_remap_refl :=
@@ -773,6 +787,22 @@ Definition pprog_same_instance_access_remap :=
   StorageCore.pprog_same_instance_access_remap.
 Definition pprog_same_instance_identity_remap :=
   StorageCore.pprog_same_instance_identity_remap.
+Definition pprog_same_instance_access_remap_varctxt_equal :=
+  StorageCore.pprog_same_instance_access_remap_varctxt_equal.
+Definition pprog_same_instance_access_remap_vars_equal :=
+  StorageCore.pprog_same_instance_access_remap_vars_equal.
+Definition pprog_same_instance_access_remap_instrs_length :=
+  StorageCore.pprog_same_instance_access_remap_instrs_length.
+Definition pprog_same_instance_access_remap_source_instr :=
+  StorageCore.pprog_same_instance_access_remap_source_instr.
+Definition pprog_same_instance_access_remap_target_instr :=
+  StorageCore.pprog_same_instance_access_remap_target_instr.
+Definition pprog_same_instance_access_remap_instr_nth :=
+  StorageCore.pprog_same_instance_access_remap_instr_nth.
+Definition pprog_same_instance_access_remap_write_accesses_nth :=
+  StorageCore.pprog_same_instance_access_remap_write_accesses_nth.
+Definition pprog_same_instance_access_remap_read_accesses_nth :=
+  StorageCore.pprog_same_instance_access_remap_read_accesses_nth.
 Definition pprog_same_instance_identity_remap_refl :=
   StorageCore.pprog_same_instance_identity_remap_refl.
 Definition pprog_same_instance_access_remap_compose :=

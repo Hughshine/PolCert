@@ -1383,7 +1383,13 @@ view_refinement
 ```
 
 The current branch sketches the access-witness side.  Full support requires the
-instruction-level simulation theorem.
+instruction-level simulation theorem.  The shared
+`StorageWitness.pprog_same_instance_access_remap` layer now also exposes direct
+program/instruction projections: the source and target instruction lists have
+the same length, nth source or target instructions recover the corresponding
+remapped instruction, and matched nth instructions directly expose their write
+and read access-list relations.  These facts keep layout-specific simulation
+proofs from unpacking the generic `Forall2` witness.
 
 ### Padding and Alignment
 

@@ -283,6 +283,199 @@ Definition pprog_same_instance_access_remap
   vars_after = vars_before /\
   Forall2 (same_instance_access_remap rel) pis_before pis_after.
 
+Theorem pprog_same_instance_access_remap_varctxt_equal :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    varctxt_after = varctxt_before.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after Hremap.
+  destruct Hremap as [Hvarctxt _].
+  exact Hvarctxt.
+Qed.
+
+Theorem pprog_same_instance_access_remap_vars_equal :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    vars_after = vars_before.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after Hremap.
+  destruct Hremap as [_ [Hvars _]].
+  exact Hvars.
+Qed.
+
+Theorem pprog_same_instance_access_remap_instrs_length :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    length pis_before = length pis_after.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after Hremap.
+  destruct Hremap as [_ [_ Hpis]].
+  induction Hpis as [|before_pi after_pi before_tail after_tail Hhead Htail IH].
+  - reflexivity.
+  - simpl. rewrite IH. reflexivity.
+Qed.
+
+Lemma Forall2_nth_error_left :
+  forall (A B: Type) (R: A -> B -> Prop) xs ys n x,
+    Forall2 R xs ys ->
+    nth_error xs n = Some x ->
+    exists y,
+      nth_error ys n = Some y /\
+      R x y.
+Proof.
+  intros A B R xs ys n x Hforall.
+  revert n x.
+  induction Hforall as [|x_head y_head xs_tail ys_tail Hhead Htail IH];
+    intros n x Hnth;
+    destruct n as [|n]; simpl in Hnth; try discriminate.
+  - inversion Hnth. subst.
+    exists y_head.
+    split; [reflexivity|exact Hhead].
+  - eapply IH; eauto.
+Qed.
+
+Lemma Forall2_nth_error_right :
+  forall (A B: Type) (R: A -> B -> Prop) xs ys n y,
+    Forall2 R xs ys ->
+    nth_error ys n = Some y ->
+    exists x,
+      nth_error xs n = Some x /\
+      R x y.
+Proof.
+  intros A B R xs ys n y Hforall.
+  revert n y.
+  induction Hforall as [|x_head y_head xs_tail ys_tail Hhead Htail IH];
+    intros n y Hnth;
+    destruct n as [|n]; simpl in Hnth; try discriminate.
+  - inversion Hnth. subst.
+    exists x_head.
+    split; [reflexivity|exact Hhead].
+  - eapply IH; eauto.
+Qed.
+
+Theorem pprog_same_instance_access_remap_source_instr :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before n = Some before_pi ->
+    exists after_pi,
+      nth_error pis_after n = Some after_pi /\
+      same_instance_access_remap rel before_pi after_pi.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi Hremap Hnth.
+  destruct Hremap as [_ [_ Hpis]].
+  eapply Forall2_nth_error_left; eauto.
+Qed.
+
+Theorem pprog_same_instance_access_remap_target_instr :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n after_pi,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_after n = Some after_pi ->
+    exists before_pi,
+      nth_error pis_before n = Some before_pi /\
+      same_instance_access_remap rel before_pi after_pi.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n after_pi Hremap Hnth.
+  destruct Hremap as [_ [_ Hpis]].
+  eapply Forall2_nth_error_right; eauto.
+Qed.
+
+Theorem pprog_same_instance_access_remap_instr_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before n = Some before_pi ->
+    nth_error pis_after n = Some after_pi ->
+    same_instance_access_remap rel before_pi after_pi.
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi
+         Hremap Hbefore Hafter.
+  destruct
+    (pprog_same_instance_access_remap_source_instr
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after n before_pi Hremap Hbefore)
+    as (after_pi' & Hafter' & Hsiar).
+  rewrite Hafter in Hafter'.
+  inversion Hafter'. subst.
+  exact Hsiar.
+Qed.
+
+Theorem pprog_same_instance_access_remap_write_accesses_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before n = Some before_pi ->
+    nth_error pis_after n = Some after_pi ->
+    access_list_relation rel
+      (PL.pi_waccess after_pi) (PL.pi_waccess before_pi).
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi
+         Hremap Hbefore Hafter.
+  pose proof
+    (pprog_same_instance_access_remap_instr_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after n before_pi after_pi
+       Hremap Hbefore Hafter)
+    as Hsiar.
+  exact (siar_write_accesses _ _ _ Hsiar).
+Qed.
+
+Theorem pprog_same_instance_access_remap_read_accesses_nth :
+  forall rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi,
+    pprog_same_instance_access_remap
+      rel
+      ((pis_before, varctxt_before), vars_before)
+      ((pis_after, varctxt_after), vars_after) ->
+    nth_error pis_before n = Some before_pi ->
+    nth_error pis_after n = Some after_pi ->
+    access_list_relation rel
+      (PL.pi_raccess after_pi) (PL.pi_raccess before_pi).
+Proof.
+  intros rel pis_before varctxt_before vars_before
+         pis_after varctxt_after vars_after n before_pi after_pi
+         Hremap Hbefore Hafter.
+  pose proof
+    (pprog_same_instance_access_remap_instr_nth
+       rel pis_before varctxt_before vars_before
+       pis_after varctxt_after vars_after n before_pi after_pi
+       Hremap Hbefore Hafter)
+    as Hsiar.
+  exact (siar_read_accesses _ _ _ Hsiar).
+Qed.
+
 Definition pprog_same_instance_identity_remap
     (before after: PL.t) : Prop :=
   pprog_same_instance_access_remap identity_cell_relation before after.
