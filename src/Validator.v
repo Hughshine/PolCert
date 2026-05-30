@@ -1807,24 +1807,42 @@ Definition storage_inter_array_reuse_obligations :=
   inter_array_reuse_obligations.
 Definition storage_inter_array_reuse_sources_nodup :=
   inter_array_reuse_sources_nodup.
+Definition storage_check_inter_array_reuseb_sources_nodup :=
+  check_inter_array_reuseb_sources_nodup.
 Definition storage_inter_array_storage_mapping_compatible :=
   inter_array_storage_mapping_compatible.
+Definition storage_check_inter_array_reuseb_storage_mapping_compatible :=
+  check_inter_array_reuseb_storage_mapping_compatible.
 Definition storage_inter_array_reuse_boundary_obligations :=
   inter_array_reuse_boundary_obligations.
+Definition storage_check_inter_array_reuseb_boundary_obligations :=
+  check_inter_array_reuseb_boundary_obligations.
 Definition storage_inter_array_mapping_pair_cell_relation :=
   inter_array_mapping_pair_cell_relation.
+Definition storage_check_inter_array_reuseb_mapping_pair_cell_relation :=
+  check_inter_array_reuseb_mapping_pair_cell_relation.
 Definition storage_inter_array_mapping_entry_compatible_specs :=
   inter_array_mapping_entry_compatible_specs.
 Definition storage_inter_array_mapping_pair_compatible_specs :=
   inter_array_mapping_pair_compatible_specs.
+Definition storage_check_inter_array_reuseb_mapping_pair_compatible_specs :=
+  check_inter_array_reuseb_mapping_pair_compatible_specs.
 Definition storage_inter_array_lookup_compatible_specs :=
   inter_array_lookup_compatible_specs.
+Definition storage_check_inter_array_reuseb_lookup_compatible_specs :=
+  check_inter_array_reuseb_lookup_compatible_specs.
 Definition storage_inter_array_live_overlaps_reuse_separated :=
   inter_array_live_overlaps_reuse_separated.
+Definition storage_check_inter_array_reuseb_live_overlaps_reuse_separated :=
+  check_inter_array_reuseb_live_overlaps_reuse_separated.
 Definition storage_inter_array_overlap_mapped_distinct :=
   inter_array_overlap_mapped_distinct.
+Definition storage_check_inter_array_reuseb_overlap_mapped_distinct :=
+  check_inter_array_reuseb_overlap_mapped_distinct.
 Definition storage_inter_array_same_physical_not_live_overlap :=
   inter_array_same_physical_not_live_overlap.
+Definition storage_check_inter_array_reuseb_same_physical_not_live_overlap :=
+  check_inter_array_reuseb_same_physical_not_live_overlap.
 Definition storage_inter_array_source_view_refines_view :=
   InterArrayReuseCore.inter_array_source_view_refines_view.
 Definition storage_inter_array_reuse_view_contract :=

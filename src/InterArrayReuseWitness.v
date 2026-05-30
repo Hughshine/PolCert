@@ -262,3 +262,161 @@ Proof.
   contradiction Hdistinct.
   reflexivity.
 Qed.
+
+Theorem check_inter_array_reuseb_sources_nodup :
+  forall mapping intervals conflicts logical_specs physical_specs,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    NoDup (reuse_mapping_sources mapping).
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs Hcheck.
+  eapply inter_array_reuse_sources_nodup.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_storage_mapping_compatible :
+  forall mapping intervals conflicts logical_specs physical_specs,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    storage_mapping_compatible mapping logical_specs physical_specs.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs Hcheck.
+  eapply inter_array_storage_mapping_compatible.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_boundary_obligations :
+  forall mapping intervals conflicts logical_specs physical_specs,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    reuse_boundary_obligations mapping (reuse_mapping_sources mapping).
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs Hcheck.
+  eapply inter_array_reuse_boundary_obligations.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_mapping_pair_cell_relation :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    In (logical_cell, physical_cell) mapping ->
+    reuse_cell_relation mapping physical_cell logical_cell.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hcheck Hin.
+  eapply inter_array_mapping_pair_cell_relation; eauto.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_mapping_pair_compatible_specs :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    In (logical_cell, physical_cell) mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hcheck Hin.
+  eapply inter_array_mapping_pair_compatible_specs; eauto.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_lookup_compatible_specs :
+  forall mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    reuse_lookup logical_cell mapping = Some physical_cell ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = logical_cell /\
+      storage_spec_cell physical_spec = physical_cell /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         logical_cell physical_cell Hcheck Hlookup.
+  eapply inter_array_lookup_compatible_specs; eauto.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_live_overlaps_reuse_separated :
+  forall mapping intervals conflicts logical_specs physical_specs,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    live_overlaps_reuse_separated mapping intervals.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs Hcheck.
+  eapply inter_array_live_overlaps_reuse_separated.
+  apply check_inter_array_reuseb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_inter_array_reuseb_overlap_mapped_distinct :
+  forall mapping intervals conflicts logical_specs physical_specs
+         left right physical_left physical_right,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    In left intervals ->
+    In right intervals ->
+    li_cell left <> li_cell right ->
+    live_interval_overlap left right ->
+    reuse_lookup (li_cell left) mapping = Some physical_left ->
+    reuse_lookup (li_cell right) mapping = Some physical_right ->
+    physical_left <> physical_right.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         left right physical_left physical_right Hcheck Hin_left Hin_right
+         Hcells_distinct Hoverlap Hlookup_left Hlookup_right.
+  pose proof
+    (check_inter_array_reuseb_sound
+       mapping intervals conflicts logical_specs physical_specs Hcheck)
+    as Hobligations.
+  exact
+    (inter_array_overlap_mapped_distinct
+       mapping intervals conflicts logical_specs physical_specs
+       left right physical_left physical_right
+       Hobligations Hin_left Hin_right Hcells_distinct Hoverlap
+       Hlookup_left Hlookup_right).
+Qed.
+
+Theorem check_inter_array_reuseb_same_physical_not_live_overlap :
+  forall mapping intervals conflicts logical_specs physical_specs
+         left right physical_cell,
+    check_inter_array_reuseb
+      mapping intervals conflicts logical_specs physical_specs = true ->
+    In left intervals ->
+    In right intervals ->
+    li_cell left <> li_cell right ->
+    reuse_lookup (li_cell left) mapping = Some physical_cell ->
+    reuse_lookup (li_cell right) mapping = Some physical_cell ->
+    ~ live_interval_overlap left right.
+Proof.
+  intros mapping intervals conflicts logical_specs physical_specs
+         left right physical_cell Hcheck Hin_left Hin_right
+         Hcells_distinct Hlookup_left Hlookup_right.
+  pose proof
+    (check_inter_array_reuseb_sound
+       mapping intervals conflicts logical_specs physical_specs Hcheck)
+    as Hobligations.
+  exact
+    (inter_array_same_physical_not_live_overlap
+       mapping intervals conflicts logical_specs physical_specs
+       left right physical_cell
+       Hobligations Hin_left Hin_right Hcells_distinct
+       Hlookup_left Hlookup_right).
+Qed.

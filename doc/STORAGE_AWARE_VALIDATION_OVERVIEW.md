@@ -616,7 +616,11 @@ and storage compatibility.  Its derived facts say that mapped live-overlapping
 logical cells have distinct physical cells, therefore two distinct logical
 cells that share one physical cell cannot overlap in their live intervals, and
 each concrete reuse-map entry can be projected to the observer boundary
-relation plus the checked logical/physical storage-spec entries.
+relation plus the checked logical/physical storage-spec entries.  The same
+facts are now exposed directly from `check_inter_array_reuseb`, including
+source-key uniqueness, boundary obligations, storage compatibility, per-entry
+cell-relation/spec recovery, live-overlap physical separation, and the
+same-physical-cells-cannot-overlap consequence.
 `InterArrayReuseValidator.v` gives that composed finite witness the same
 `view_refinement` endpoint theorem shape as the other storage features.  Its
 bounded variant additionally requires the shared physical image of the reuse
