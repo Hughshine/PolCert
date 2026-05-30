@@ -370,7 +370,10 @@ safe.  `ScalarExpansionValueWitness.v` now exposes this as
 `scalar_expansion_value_obligation_event_matched`, a per-event projection fact
 that every checked write/read value event matches its storage-event kind and
 has equal source/private values.  `Validator.v` re-exports these facts for
-users of the storage facade.  The CInstr bridge uses this to offer a smaller
+users of the storage facade.  The CInstr bridge now exposes the same bundled
+trace consequences from its bounded side condition, so a caller can recover the
+value obligations, mapped events, and private use-def fact without destructing
+the bridge parameter record.  The bridge uses this to offer a smaller
 static-core theorem where
 declared entries, hidden cells, and freshness are checked, while event mapping
 and use-def come from the ordered CInstr trace.
@@ -475,7 +478,9 @@ endpoint while the trace, compatibility, bounds, separation, and non-escape
 proofs remain internal obligations.  Its bounded route is likewise packaged as
 `cscalar_promotion_bounded_family`, so scalar promotion can participate in the
 same parameterized public-view transform family interface as scalar
-privatization.  The generic scalar-promotion core now has the same family layer:
+privatization; its bounded side-condition projection directly exposes value
+obligations and scalar loaded-before-use from the packaged CInstr trace.  The
+generic scalar-promotion core now has the same family layer:
 `ScalarPromotionValidator.scalar_promotion_bounded_compatible_non_escape_value_family`
 packages the finite protocol, value trace, storage compatibility, source/scalar
 bounds, non-escape, and separation obligations below the CInstr bridge.  It

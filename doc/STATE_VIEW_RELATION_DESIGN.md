@@ -1735,7 +1735,9 @@ from `cscalar_promotion_value_trace_simulates`, keeping later bridge proofs at
 the public trace-evidence boundary.  The same trace predicate now also exports
 value-obligation and scalar loaded-before-use consequences directly, so
 pass-level proofs can use promotion trace evidence without opening the
-threaded scalar state.
+threaded scalar state.  The bounded promotion bridge lifts that summary to a
+side-condition projection, so users of the parameterized family can recover the
+trace obligations without unpacking the full side-condition tuple.
 `CInstrScalarPromotionValidatorBridge.v` packages that instruction evidence
 into the existing scalar-promotion public-view wrappers,
 including compatible and bounded/non-escape variants, so the endpoint theorem
@@ -1876,7 +1878,9 @@ also available from `cscalar_expansion_value_trace_simulates`, so callers can
 work at the trace-evidence interface instead of unfolding the initial private
 value map.  That trace interface also exports the bundled value-obligation,
 mapped-event, and private-use-def consequences used by the CInstr validator
-bridge.  This is still below the final
+bridge.  The bounded bridge exposes that same bundle as a side-condition
+projection, keeping record destructuring out of later pass proofs.  This is
+still below the final
 user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to

@@ -563,6 +563,26 @@ Definition cscalar_privatization_bounded_side_condition
     (cspbp_source_view params)
     after.
 
+Theorem cscalar_privatization_bounded_side_condition_trace_summary :
+  forall params before after,
+    cscalar_privatization_bounded_side_condition params before after ->
+    scalar_expansion_value_obligations Values.val
+      (cspbp_value_trace params) /\
+    scalar_expansion_events_mapped
+      (cspbp_entries params)
+      (scalar_expansion_value_trace_events
+         (cspbp_value_trace params)) /\
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events
+            (cspbp_value_trace params))).
+Proof.
+  intros params before after Hside.
+  destruct Hside as [_ [Htrace _]].
+  eapply cscalar_expansion_value_trace_sound_mapped_and_usedef.
+  exact Htrace.
+Qed.
+
 Theorem cscalar_privatization_bounded_family_sound :
   forall params before after ok,
     mayReturn

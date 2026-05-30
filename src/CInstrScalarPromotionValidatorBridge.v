@@ -384,6 +384,21 @@ Definition cscalar_promotion_bounded_side_condition
     (cspmp_source_view params)
     after.
 
+Theorem cscalar_promotion_bounded_side_condition_trace_summary :
+  forall params before after,
+    cscalar_promotion_bounded_side_condition params before after ->
+    scalar_value_simulation_obligations Values.val
+      (cspmp_value_trace params) /\
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events
+         (cspmp_value_trace params)).
+Proof.
+  intros params before after Hside.
+  destruct Hside as [_ [Htrace _]].
+  eapply cscalar_promotion_value_trace_sound_and_usedef.
+  exact Htrace.
+Qed.
+
 Theorem cscalar_promotion_bounded_family_sound :
   forall params before after ok,
     mayReturn
