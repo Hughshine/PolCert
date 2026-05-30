@@ -1827,6 +1827,10 @@ Definition storage_overlap_closure_dependency_consumer_in_targets :=
   overlap_closure_dependency_consumer_in_targets.
 Definition storage_overlap_closure_dependency_available :=
   overlap_closure_dependency_available.
+Definition storage_check_overlap_closureb_dependency_consumer_in_targets :=
+  check_overlap_closureb_dependency_consumer_in_targets.
+Definition storage_check_overlap_closureb_dependency_available :=
+  check_overlap_closureb_dependency_available.
 Definition storage_check_overlap_ordered_closureb :=
   check_overlap_ordered_closureb.
 Definition storage_check_overlap_ordered_closureb_sound :=
@@ -1839,6 +1843,12 @@ Definition storage_overlap_ordered_closure_dependency_available :=
   overlap_ordered_closure_dependency_available.
 Definition storage_overlap_ordered_closure_dependency_ordered :=
   overlap_ordered_closure_dependency_ordered.
+Definition storage_check_overlap_ordered_closureb_dependency_consumer_in_targets :=
+  check_overlap_ordered_closureb_dependency_consumer_in_targets.
+Definition storage_check_overlap_ordered_closureb_dependency_available :=
+  check_overlap_ordered_closureb_dependency_available.
+Definition storage_check_overlap_ordered_closureb_dependency_ordered :=
+  check_overlap_ordered_closureb_dependency_ordered.
 Definition storage_overlap_value_entry :=
   overlap_value_entry.
 Definition storage_check_overlap_valueb :=

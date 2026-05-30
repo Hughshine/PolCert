@@ -479,6 +479,40 @@ Proof.
   exact Hdep.
 Qed.
 
+Theorem check_overlap_closureb_dependency_consumer_in_targets :
+  forall tiles tile dep,
+    check_overlap_closureb tiles = true ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hcheck Htile Hdep.
+  eapply overlap_closure_dependency_consumer_in_targets.
+  - apply check_overlap_closureb_sound.
+    exact Hcheck.
+  - exact Htile.
+  - exact Hdep.
+Qed.
+
+Theorem check_overlap_closureb_dependency_available :
+  forall tiles tile dep,
+    check_overlap_closureb tiles = true ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hcheck Htile Hdep.
+  eapply overlap_closure_dependency_available.
+  - apply check_overlap_closureb_sound.
+    exact Hcheck.
+  - exact Htile.
+  - exact Hdep.
+Qed.
+
 Theorem overlap_ordered_closure_dependency_consumer_in_targets :
   forall tiles tile dep,
     overlap_ordered_closure_obligations tiles ->
@@ -531,4 +565,58 @@ Proof.
   destruct Htile_closed as [_ Hordered].
   apply Hordered.
   exact Hdep.
+Qed.
+
+Theorem check_overlap_ordered_closureb_dependency_consumer_in_targets :
+  forall tiles tile dep,
+    check_overlap_ordered_closureb tiles = true ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_consumer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hcheck Htile Hdep.
+  eapply overlap_ordered_closure_dependency_consumer_in_targets.
+  - apply check_overlap_ordered_closureb_sound.
+    exact Hcheck.
+  - exact Htile.
+  - exact Hdep.
+Qed.
+
+Theorem check_overlap_ordered_closureb_dependency_available :
+  forall tiles tile dep,
+    check_overlap_ordered_closureb tiles = true ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    In (overlap_dependency_producer dep)
+       (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hcheck Htile Hdep.
+  eapply overlap_ordered_closure_dependency_available.
+  - apply check_overlap_ordered_closureb_sound.
+    exact Hcheck.
+  - exact Htile.
+  - exact Hdep.
+Qed.
+
+Theorem check_overlap_ordered_closureb_dependency_ordered :
+  forall tiles tile dep,
+    check_overlap_ordered_closureb tiles = true ->
+    In tile tiles ->
+    In dep (overlap_tile_dependencies tile) ->
+    In (overlap_dependency_producer dep)
+       (overlap_tile_liveins tile) \/
+    source_precedes_in_sources
+      (overlap_dependency_producer dep)
+      (overlap_dependency_consumer dep)
+      (projected_sources (overlap_tile_targets tile)).
+Proof.
+  intros tiles tile dep Hcheck Htile Hdep.
+  eapply overlap_ordered_closure_dependency_ordered.
+  - apply check_overlap_ordered_closureb_sound.
+    exact Hcheck.
+  - exact Htile.
+  - exact Hdep.
 Qed.
