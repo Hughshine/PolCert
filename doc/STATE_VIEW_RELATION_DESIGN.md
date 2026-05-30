@@ -1082,8 +1082,13 @@ contract.  The corresponding
 obligations behind the parameterized public-view family interface, and
 `StoragePhaseFamilyCompose.bounded_phase_projection_then_scalar_promotion_public_semantic_refinement`
 uses the expanded `public_semantic_refinement` theorem shape for the composed
-endpoint.  The derivation of the supplied swap/phase projection and storage specs
-from concrete code remains explicit.
+endpoint.  The strongest phase contract now also exposes direct projection
+facts for later concrete-code lifting: phase projection value entries inherit
+compatible storage specs and target bounds, mapped final targets inherit
+declared bounds, and entry/read/write/next-live protocol cells inherit
+declared phase-buffer bounds and non-escape without manually destructing the
+full record.  The derivation of the supplied swap/phase projection and storage
+specs from concrete code remains explicit.
 
 ### Overlapped Tiling
 

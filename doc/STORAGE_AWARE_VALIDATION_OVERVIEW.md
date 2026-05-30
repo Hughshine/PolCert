@@ -779,6 +779,11 @@ facts without changing the public theorem shape: checked copy contracts can
 project a mapping pair to declared bounds and compatible storage specs, recover
 value-trace entries when the value trace is aligned with the copy trace, and in
 the scratchpad case project helper targets and copy events against each other.
+The phase facade follows the same pattern for the strongest bounded/non-escape
+contract: projection value entries directly inherit compatible storage specs
+and target bounds, mapped final targets inherit declared bounds, and
+entry/read/write/next-live protocol cells directly inherit phase-buffer bounds
+and non-escape facts.
 
 The public-facing composition surface has now been normalized across the
 storage family-compose files.  Copy/scratchpad, inter-array reuse,

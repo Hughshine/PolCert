@@ -1028,6 +1028,64 @@ Proof.
   exact Hmapping.
 Qed.
 
+Theorem phase_projection_non_escape_value_entry_compatible_specs :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after entry,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In entry projection_values ->
+    exists source_spec final_spec,
+      In source_spec source_specs /\
+      In final_spec final_specs /\
+      storage_spec_cell source_spec = ppve_source_cell entry /\
+      storage_spec_cell final_spec = ppve_target_cell entry /\
+      storage_specs_compatible source_spec final_spec.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [Hbounded _ _].
+  destruct Hbounded as [Hvalue Hcompatible _].
+  destruct
+    (phase_projection_value_entry_mapping_pair
+       value input_view output_view entry_live source_liveouts
+       entry_values steps value_steps mapping projection_values
+       source_view after entry Hvalue Hin)
+    as [Hmapping _].
+  eapply storage_compatibility_mapping_pair_specs; eauto.
+Qed.
+
+Theorem phase_projection_non_escape_value_entry_target_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after entry,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In entry projection_values ->
+    cell_within_declared_bounds final_bounds (ppve_target_cell entry).
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after entry Hcontract Hin.
+  destruct Hcontract as [Hbounded _ _].
+  eapply phase_projection_value_entry_target_within_bounds; eauto.
+Qed.
+
 Theorem phase_projection_mapped_target_within_bounds :
   forall (value: Type) input_view output_view entry_live source_liveouts
          entry_values steps value_steps mapping projection_values
@@ -1051,6 +1109,27 @@ Proof.
   eapply phase_projection_pair_target_in_targets; eauto.
 Qed.
 
+Theorem phase_projection_non_escape_mapped_target_within_bounds :
+  forall (value: Type) input_view output_view entry_live source_liveouts
+         entry_values steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         source_view after source_cell target_cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    phase_projection_cell_relation mapping target_cell source_cell ->
+    cell_within_declared_bounds final_bounds target_cell.
+Proof.
+  intros value input_view output_view entry_live source_liveouts
+         entry_values steps value_steps mapping projection_values
+         source_specs final_specs final_bounds phase_bounds escaped_cells
+         source_view after source_cell target_cell Hcontract Hrel.
+  destruct Hcontract as [Hbounded _ _].
+  eapply phase_projection_mapped_target_within_bounds; eauto.
+Qed.
+
 Theorem phase_protocol_entry_live_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after cell,
@@ -1063,6 +1142,32 @@ Proof.
   intros input_view output_view entry_live steps phase_bounds
          source_view after cell Hcontract Hin.
   destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  apply phase_protocol_entry_live_in_cells.
+  exact Hin.
+Qed.
+
+Theorem phase_projection_non_escape_protocol_entry_live_cell_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In cell entry_live ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ Hbounds _].
   eapply storage_bounds_cell_within
     with (cells := phase_protocol_cells entry_live steps); eauto.
   apply phase_protocol_entry_live_in_cells.
@@ -1087,6 +1192,32 @@ Proof.
   exact Hin.
 Qed.
 
+Theorem phase_projection_non_escape_protocol_entry_live_cell_not_escaped :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In cell entry_live ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after cell Hcontract Hin.
+  destruct Hcontract as [_ _ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  apply phase_protocol_entry_live_in_cells.
+  exact Hin.
+Qed.
+
 Theorem phase_protocol_read_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after step cell,
@@ -1100,6 +1231,32 @@ Proof.
   intros input_view output_view entry_live steps phase_bounds
          source_view after step cell Hcontract Hstep Hread.
   destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_read_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_projection_non_escape_protocol_read_cell_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_reads step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hread.
+  destruct Hcontract as [_ Hbounds _].
   eapply storage_bounds_cell_within
     with (cells := phase_protocol_cells entry_live steps); eauto.
   eapply phase_protocol_read_cell_in_cells; eauto.
@@ -1123,6 +1280,32 @@ Proof.
   eapply phase_protocol_read_cell_in_cells; eauto.
 Qed.
 
+Theorem phase_projection_non_escape_protocol_read_cell_not_escaped :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_reads step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hread.
+  destruct Hcontract as [_ _ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply phase_protocol_read_cell_in_cells; eauto.
+Qed.
+
 Theorem phase_protocol_write_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after step cell,
@@ -1136,6 +1319,32 @@ Proof.
   intros input_view output_view entry_live steps phase_bounds
          source_view after step cell Hcontract Hstep Hwrite.
   destruct Hcontract as [_ Hbounds].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_write_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_projection_non_escape_protocol_write_cell_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_writes step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hwrite.
+  destruct Hcontract as [_ Hbounds _].
   eapply storage_bounds_cell_within
     with (cells := phase_protocol_cells entry_live steps); eauto.
   eapply phase_protocol_write_cell_in_cells; eauto.
@@ -1159,6 +1368,32 @@ Proof.
   eapply phase_protocol_write_cell_in_cells; eauto.
 Qed.
 
+Theorem phase_projection_non_escape_protocol_write_cell_not_escaped :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_writes step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hwrite.
+  destruct Hcontract as [_ _ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply phase_protocol_write_cell_in_cells; eauto.
+Qed.
+
 Theorem phase_protocol_next_live_cell_within_bounds :
   forall input_view output_view entry_live steps phase_bounds
          source_view after step cell,
@@ -1177,6 +1412,32 @@ Proof.
   eapply phase_protocol_next_live_cell_in_cells; eauto.
 Qed.
 
+Theorem phase_projection_non_escape_protocol_next_live_cell_within_bounds :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_next_live step) ->
+    cell_within_declared_bounds phase_bounds cell.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hnext.
+  destruct Hcontract as [_ Hbounds _].
+  eapply storage_bounds_cell_within
+    with (cells := phase_protocol_cells entry_live steps); eauto.
+  eapply phase_protocol_next_live_cell_in_cells; eauto.
+Qed.
+
 Theorem phase_protocol_next_live_cell_not_escaped :
   forall input_view output_view entry_live steps phase_bounds escaped_cells
          source_view after step cell,
@@ -1190,6 +1451,32 @@ Proof.
   intros input_view output_view entry_live steps phase_bounds escaped_cells
          source_view after step cell Hcontract Hstep Hnext.
   destruct Hcontract as [_ Hnon_escape].
+  destruct Hnon_escape as [Hdisjoint].
+  eapply Hdisjoint.
+  eapply phase_protocol_next_live_cell_in_cells; eauto.
+Qed.
+
+Theorem phase_projection_non_escape_protocol_next_live_cell_not_escaped :
+  forall (value: Type) input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell,
+    phase_projection_bounded_compatible_non_escape_value_view_contract
+      value input_view output_view entry_live source_liveouts
+      entry_values steps value_steps mapping projection_values
+      source_specs final_specs final_bounds phase_bounds escaped_cells
+      source_view after ->
+    In step steps ->
+    In cell (phase_next_live step) ->
+    ~ In cell escaped_cells.
+Proof.
+  intros value input_view output_view
+         entry_live source_liveouts entry_values steps value_steps
+         mapping projection_values source_specs final_specs
+         final_bounds phase_bounds escaped_cells
+         source_view after step cell Hcontract Hstep Hnext.
+  destruct Hcontract as [_ _ Hnon_escape].
   destruct Hnon_escape as [Hdisjoint].
   eapply Hdisjoint.
   eapply phase_protocol_next_live_cell_in_cells; eauto.
