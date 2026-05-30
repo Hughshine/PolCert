@@ -113,9 +113,9 @@ Definition bounded_scratchpad_copy_semantic_refinement
         left = right)
     (certificate: bounded_scratchpad_copy_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_scratchpad_copy_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_scratchpad_copy_certificate_input_view certificate)
+    (bounded_scratchpad_copy_certificate_output_view certificate)
     source target.
 
 Definition bounded_scratchpad_copy_certificate_accepted
@@ -196,9 +196,9 @@ Definition declared_copy_protocol_semantic_refinement
         left = right)
     (certificate: declared_copy_protocol_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (declared_copy_protocol_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (declared_copy_protocol_certificate_input_view certificate)
+    (declared_copy_protocol_certificate_output_view certificate)
     source target.
 
 Definition declared_copy_protocol_certificate_accepted
@@ -450,13 +450,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (scratchpad_copy_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (bounded_scratchpad_copy_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_bounded_scratchpad_copy_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 
@@ -634,13 +629,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (copy_protocol_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (declared_copy_protocol_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_declared_copy_protocol_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 

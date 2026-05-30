@@ -84,8 +84,9 @@ Definition bounded_inter_array_reuse_certificate_output_states_match
 Definition bounded_inter_array_reuse_semantic_refinement
     (certificate: bounded_inter_array_reuse_certificate)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_inter_array_reuse_pair_certificate certificate)
+  View.public_semantic_refinement
+    (bounded_inter_array_reuse_certificate_input_view certificate)
+    (bounded_inter_array_reuse_certificate_output_view certificate)
     source target.
 
 Definition bounded_inter_array_reuse_certificate_accepted
@@ -159,9 +160,9 @@ Definition bounded_conflict_reuse_semantic_refinement
         left = right)
     (certificate: bounded_conflict_reuse_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_conflict_reuse_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_conflict_reuse_certificate_input_view certificate)
+    (bounded_conflict_reuse_certificate_output_view certificate)
     source target.
 
 Definition bounded_conflict_reuse_certificate_accepted
@@ -356,13 +357,8 @@ Theorem accepted_bounded_inter_array_reuse_certificate_refines :
 Proof.
   intros certificate source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       inter_array_reuse_family
-       scalar_promotion_family
-       (bounded_inter_array_reuse_pair_certificate certificate)
-       source target Haccepted).
+    (accepted_bounded_inter_array_reuse_certificate_public_semantic_refinement
+       certificate source target Haccepted).
 Qed.
 
 Theorem bounded_conflict_reuse_then_scalar_promotion_public_semantic_refinement :
@@ -538,13 +534,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (conflict_reuse_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (bounded_conflict_reuse_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_bounded_conflict_reuse_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 

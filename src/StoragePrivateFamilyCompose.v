@@ -103,9 +103,9 @@ Definition bounded_private_storage_semantic_refinement
         left = right)
     (certificate: bounded_private_storage_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_private_storage_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_private_storage_certificate_input_view certificate)
+    (bounded_private_storage_certificate_output_view certificate)
     source target.
 
 Definition bounded_private_storage_certificate_accepted
@@ -295,13 +295,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (private_storage_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (bounded_private_storage_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_bounded_private_storage_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 

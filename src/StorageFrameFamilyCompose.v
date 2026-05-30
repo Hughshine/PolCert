@@ -97,9 +97,9 @@ Definition bounded_frame_preservation_semantic_refinement
         left = right)
     (certificate: bounded_frame_preservation_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_frame_preservation_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_frame_preservation_certificate_input_view certificate)
+    (bounded_frame_preservation_certificate_output_view certificate)
     source target.
 
 Definition bounded_frame_preservation_certificate_accepted
@@ -258,13 +258,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (frame_preservation_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (bounded_frame_preservation_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_bounded_frame_preservation_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 

@@ -126,10 +126,9 @@ Definition bounded_scalar_storage_semantic_refinement
         left = right)
     (certificate: bounded_scalar_storage_certificate exp_value promo_value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_scalar_storage_pair_certificate
-      exp_value promo_value exp_value_eqb promo_value_eqb
-      exp_value_eqb_sound promo_value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_scalar_storage_certificate_input_view certificate)
+    (bounded_scalar_storage_certificate_output_view certificate)
     source target.
 
 Definition bounded_scalar_storage_certificate_accepted
@@ -347,17 +346,10 @@ Proof.
          exp_value_eqb_sound promo_value_eqb_sound
          certificate source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (scalar_storage_privatization_family
-          exp_value exp_value_eqb exp_value_eqb_sound)
-       (scalar_storage_promotion_family
-          promo_value promo_value_eqb promo_value_eqb_sound)
-       (bounded_scalar_storage_pair_certificate
-          exp_value promo_value exp_value_eqb promo_value_eqb
-          exp_value_eqb_sound promo_value_eqb_sound certificate)
-       source target Haccepted).
+    (accepted_bounded_scalar_storage_certificate_public_semantic_refinement
+       exp_value promo_value exp_value_eqb promo_value_eqb
+       exp_value_eqb_sound promo_value_eqb_sound
+       certificate source target Haccepted).
 Qed.
 
 Theorem accepted_bounded_scalar_storage_certificate_semantic_refinement :

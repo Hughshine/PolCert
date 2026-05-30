@@ -102,9 +102,9 @@ Definition bounded_phase_projection_semantic_refinement
         left = right)
     (certificate: bounded_phase_projection_certificate value)
     (source target: PolIRs.PolyLang.t) : Prop :=
-  View.checked_parameterized_family_pair_certificate_refinement
-    (bounded_phase_projection_pair_certificate
-      value value_eqb value_eqb_sound certificate)
+  View.public_semantic_refinement
+    (bounded_phase_projection_certificate_input_view certificate)
+    (bounded_phase_projection_certificate_output_view certificate)
     source target.
 
 Definition bounded_phase_projection_certificate_accepted
@@ -294,13 +294,8 @@ Proof.
   intros value value_eqb value_eqb_sound certificate
          source target Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_refines
-       _
-       _
-       (phase_projection_family value value_eqb value_eqb_sound)
-       scalar_promotion_family
-       (bounded_phase_projection_pair_certificate
-          value value_eqb value_eqb_sound certificate)
+    (accepted_bounded_phase_projection_certificate_public_semantic_refinement
+       value value_eqb value_eqb_sound certificate
        source target Haccepted).
 Qed.
 

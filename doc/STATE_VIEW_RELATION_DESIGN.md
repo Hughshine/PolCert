@@ -302,9 +302,9 @@ packages local private use-def, boundary copy-in/copy-out, boundary values,
 storage compatibility, private bounds, and non-escape, while
 `StoragePrivateFamilyCompose.bounded_private_storage_then_scalar_promotion_public_semantic_refinement`
 states the composed endpoint as `public_semantic_refinement`.  It also exposes
-`accepted_bounded_private_storage_certificate_refines`, which instantiates the
-generic pair-certificate refinement predicate for private-storage
-certificates.  The
+`accepted_bounded_private_storage_certificate_refines`, whose conclusion is
+the direct `public_semantic_refinement` statement over the certificate's
+input/output views.  The
 scratchpad/packing route now follows the same rule:
 `ScratchpadCopyValidator` exposes a public-only facade for the strongest
 bounded/fully-declared/non-escape copy theorem and packages it as
@@ -312,8 +312,9 @@ bounded/fully-declared/non-escape copy theorem and packages it as
 `StorageCopyFamilyCompose.v` shows that this copy-mediated family composes with
 bounded scalar promotion without exposing the copy contract as the final
 relation.  It also exposes
-`accepted_bounded_scratchpad_copy_certificate_state_sound`, an instance of the
-generic pair-certificate endpoint theorem for scratchpad/packing.  The generic
+`accepted_bounded_scratchpad_copy_certificate_refines`, a direct public-view
+semantic endpoint backed internally by the shared pair-certificate soundness
+lemma.  The generic
 copy-protocol layer now has the same facade before the
 scratchpad-specific wrapper:
 `CopyProtocolValidator.copy_protocol_declared_bounded_compatible_commit_mapping_value_family`
@@ -351,7 +352,10 @@ projection now exposes `accepted_bounded_phase_projection_certificate_refines`.
 The older inter-array reuse composition now has the same public-semantic and
 accepted-certificate wrappers as the general conflict-reuse composition:
 `accepted_bounded_inter_array_reuse_certificate_refines` and
-`accepted_bounded_conflict_reuse_certificate_refines`.
+`accepted_bounded_conflict_reuse_certificate_refines`.  Across these concrete
+family files, the generic pair-certificate layer is now only proof
+infrastructure; feature-facing `*_semantic_refinement` aliases are direct
+`public_semantic_refinement` statements.
 
 ## What a View Must Explain
 
@@ -985,8 +989,9 @@ still only the public endpoint relation.  `StorageReuseFamilyCompose` uses that
 family with scalar promotion through `public_semantic_refinement`, so general
 contraction/rolling-buffer reuse has the same top theorem shape as the phase
 route rather than a bespoke checker theorem.  The accepted-certificate wrapper
-`accepted_bounded_conflict_reuse_certificate_state_sound` now instantiates the
-generic pair-certificate endpoint theorem for this non-injective reuse case.
+`accepted_bounded_conflict_reuse_certificate_refines` now has the same direct
+public-view semantic endpoint shape for this non-injective reuse case; the
+generic pair-certificate layer remains internal proof infrastructure.
 
 ### Inter-Array Reuse
 
@@ -1847,9 +1852,10 @@ back to the direct semantic-refinement quantifiers.  That wrapper is the
 intended top-surface shape for scalar storage: the certificate hides the
 intermediate program and the two family checks, while the conclusion talks only
 about input/output public views and source/target executions.  The scalar
-wrapper is now an instance of the generic pair-certificate layer in
-`StateView.v`, so the same top-surface pattern can be reused by copy, private,
-reuse, phase, and reduction families without duplicating the composition proof.
+wrapper is backed by the generic pair-certificate layer in `StateView.v`, so
+the same top-surface pattern can be reused by copy, private, reuse, phase, and
+reduction families without duplicating the composition proof or exposing the
+proof carrier as the theorem conclusion.
 The paper-facing name for that endpoint is now
 `semantic_refinement_between`: storage features may change representation, but
 the top theorem should still read as ordinary semantic refinement with an
