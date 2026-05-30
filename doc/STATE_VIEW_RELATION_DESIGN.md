@@ -2194,7 +2194,12 @@ instances form an exact, duplicate-free cover of source live-outs.
 The same module now names the derived facts needed by later semantic proofs:
 live-outs are committed, commits are live-outs, commits are duplicate-free,
 commits project to source-domain instances, and therefore live-outs are in the
-source domain.
+source domain.  It also exposes per-target projections: a concrete checked
+target recovers that its projected source is in the source domain, and a
+commit-role target recovers that its projected source is a source live-out.
+`InstanceProjectionValidator.v` lifts those per-target facts to the packaged
+view contract, keeping the top theorem as a view refinement while making the
+role/projection witness directly usable by later overlap proofs.
 `OverlapClosureWitness.v` mechanizes the next finite obligation:
 
 ```text

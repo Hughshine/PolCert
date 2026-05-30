@@ -167,6 +167,37 @@ Fixpoint commit_sources
       end
   end.
 
+Lemma projected_instance_source_in_projected_sources :
+  forall targets target,
+    In target targets ->
+    In (projected_source target) (projected_sources targets).
+Proof.
+  induction targets as [|head tail IH];
+    intros target Hin; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst. left. reflexivity.
+    + right. apply IH. exact Hin_tail.
+Qed.
+
+Lemma projected_commit_source_in_commit_sources :
+  forall targets target,
+    In target targets ->
+    projected_role target = Commit ->
+    In (projected_source target) (commit_sources targets).
+Proof.
+  induction targets as [|head tail IH];
+    intros target Hin Hrole; simpl in Hin |- *.
+  - contradiction.
+  - destruct Hin as [Heq | Hin_tail].
+    + subst head.
+      rewrite Hrole.
+      simpl. left. reflexivity.
+    + destruct (projected_role head); simpl.
+      * apply IH; assumption.
+      * right. apply IH; assumption.
+Qed.
+
 Definition projected_sources_in_domain
     (source_domain: list logical_instance)
     (targets: list projected_instance) : Prop :=
@@ -334,4 +365,32 @@ Proof.
   destruct Hcover as [_ Hiff].
   apply Hiff.
   exact Hliveout.
+Qed.
+
+Theorem instance_projection_target_source_in_domain :
+  forall source_domain source_liveouts targets target,
+    instance_projection_obligations source_domain source_liveouts targets ->
+    In target targets ->
+    In (projected_source target) source_domain.
+Proof.
+  intros source_domain source_liveouts targets target
+         Hobligations Hin.
+  destruct Hobligations as [Hdomain _].
+  apply Hdomain.
+  apply projected_instance_source_in_projected_sources.
+  exact Hin.
+Qed.
+
+Theorem instance_projection_commit_target_liveout :
+  forall source_domain source_liveouts targets target,
+    instance_projection_obligations source_domain source_liveouts targets ->
+    In target targets ->
+    projected_role target = Commit ->
+    In (projected_source target) source_liveouts.
+Proof.
+  intros source_domain source_liveouts targets target
+         Hobligations Hin Hrole.
+  eapply instance_projection_commit_is_liveout.
+  - exact Hobligations.
+  - eapply projected_commit_source_in_commit_sources; eauto.
 Qed.

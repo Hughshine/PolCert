@@ -101,4 +101,49 @@ Proof.
       assumption.
 Qed.
 
+Theorem instance_projection_contract_target_source_in_domain :
+  forall input_view output_view source_domain source_liveouts targets
+         source_view after target,
+    instance_projection_view_contract
+      input_view output_view source_domain source_liveouts targets
+      source_view after ->
+    In target targets ->
+    In (projected_source target) source_domain.
+Proof.
+  intros input_view output_view source_domain source_liveouts targets
+         source_view after target Hcontract Hin.
+  destruct Hcontract as [Hprojection _].
+  eapply instance_projection_target_source_in_domain; eauto.
+Qed.
+
+Theorem instance_projection_contract_commit_target_liveout :
+  forall input_view output_view source_domain source_liveouts targets
+         source_view after target,
+    instance_projection_view_contract
+      input_view output_view source_domain source_liveouts targets
+      source_view after ->
+    In target targets ->
+    projected_role target = Commit ->
+    In (projected_source target) source_liveouts.
+Proof.
+  intros input_view output_view source_domain source_liveouts targets
+         source_view after target Hcontract Hin Hrole.
+  destruct Hcontract as [Hprojection _].
+  eapply instance_projection_commit_target_liveout; eauto.
+Qed.
+
+Theorem instance_projection_contract_commit_sources_nodup :
+  forall input_view output_view source_domain source_liveouts targets
+         source_view after,
+    instance_projection_view_contract
+      input_view output_view source_domain source_liveouts targets
+      source_view after ->
+    NoDup (commit_sources targets).
+Proof.
+  intros input_view output_view source_domain source_liveouts targets
+         source_view after Hcontract.
+  destruct Hcontract as [Hprojection _].
+  eapply instance_projection_commit_sources_nodup; eauto.
+Qed.
+
 End InstanceProjectionValidator.

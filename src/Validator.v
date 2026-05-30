@@ -1460,6 +1460,10 @@ Definition storage_check_instance_projectionb_sound :=
   check_instance_projectionb_sound.
 Definition storage_instance_projection_obligations :=
   instance_projection_obligations.
+Definition storage_projected_instance_source_in_projected_sources :=
+  projected_instance_source_in_projected_sources.
+Definition storage_projected_commit_source_in_commit_sources :=
+  projected_commit_source_in_commit_sources.
 Definition storage_commit_sources_projected_sources_subset :=
   commit_sources_projected_sources_subset.
 Definition storage_instance_projection_commit_sources_nodup :=
@@ -1470,12 +1474,22 @@ Definition storage_instance_projection_commit_is_liveout :=
   instance_projection_commit_is_liveout.
 Definition storage_instance_projection_liveout_in_domain :=
   instance_projection_liveout_in_domain.
+Definition storage_instance_projection_target_source_in_domain :=
+  instance_projection_target_source_in_domain.
+Definition storage_instance_projection_commit_target_liveout :=
+  instance_projection_commit_target_liveout.
 Definition storage_projection_source_view_refines_view :=
   InstanceProjectionCore.projection_source_view_refines_view.
 Definition storage_instance_projection_view_contract :=
   InstanceProjectionCore.instance_projection_view_contract.
 Definition storage_checked_instance_projection_view_correct :=
   InstanceProjectionCore.checked_instance_projection_view_correct.
+Definition storage_instance_projection_contract_target_source_in_domain :=
+  InstanceProjectionCore.instance_projection_contract_target_source_in_domain.
+Definition storage_instance_projection_contract_commit_target_liveout :=
+  InstanceProjectionCore.instance_projection_contract_commit_target_liveout.
+Definition storage_instance_projection_contract_commit_sources_nodup :=
+  InstanceProjectionCore.instance_projection_contract_commit_sources_nodup.
 Definition storage_overlap_dependency := overlap_dependency.
 Definition storage_overlap_tile := overlap_tile.
 Definition storage_overlap_tiles_targets :=
