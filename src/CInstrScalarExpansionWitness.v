@@ -738,3 +738,40 @@ Proof.
   simpl in Hvalues.
   exact Hvalues.
 Qed.
+
+Theorem cscalar_expansion_value_trace_simulates_event_cinstr_and_matched :
+  forall entries trace event value_event,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    In (event, value_event) trace ->
+    cscalar_expansion_value_event_cinstr_semantics
+      entries event value_event /\
+    scalar_expansion_event_mapped entries event /\
+    scalar_expansion_value_event_kind_matches event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros entries trace event value_event Htrace Hin.
+  unfold cscalar_expansion_value_trace_simulates in Htrace.
+  eapply cscalar_expansion_value_trace_event_cinstr_and_matched; eauto.
+Qed.
+
+Theorem cscalar_expansion_value_trace_simulates_event_write_values_equal :
+  forall entries trace event source_value private_value,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    In (event, ExpansionValueWrite source_value private_value) trace ->
+    source_value = private_value.
+Proof.
+  intros entries trace event source_value private_value Htrace Hin.
+  unfold cscalar_expansion_value_trace_simulates in Htrace.
+  eapply cscalar_expansion_value_trace_event_write_values_equal; eauto.
+Qed.
+
+Theorem cscalar_expansion_value_trace_simulates_event_read_values_equal :
+  forall entries trace event source_value private_value,
+    cscalar_expansion_value_trace_simulates entries trace ->
+    In (event, ExpansionValueRead source_value private_value) trace ->
+    source_value = private_value.
+Proof.
+  intros entries trace event source_value private_value Htrace Hin.
+  unfold cscalar_expansion_value_trace_simulates in Htrace.
+  eapply cscalar_expansion_value_trace_event_read_values_equal; eauto.
+Qed.

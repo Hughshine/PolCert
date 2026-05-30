@@ -822,7 +822,10 @@ and non-escape facts.
 The concrete CInstr scalar witnesses now follow the same direct-projection
 style: scalar expansion and scalar promotion expose named selected-event
 write/read or load/store equality facts instead of requiring callers to unpack
-generic value-match predicates.
+generic value-match predicates.  They also expose the same selected-event facts
+from the outer `..._value_trace_simulates` predicates, so later pass-level
+proofs can cite the user-facing trace evidence directly instead of first
+unfolding the initial current-value state.
 
 The public-facing composition surface has now been normalized across the
 storage family-compose files.  Copy/scratchpad, inter-array reuse,

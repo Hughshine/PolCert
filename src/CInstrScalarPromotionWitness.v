@@ -607,6 +607,43 @@ Definition cscalar_promotion_value_trace_simulates
     (trace: scalar_promotion_value_trace Values.val) : Prop :=
   cscalar_promotion_value_trace None trace.
 
+Theorem cscalar_promotion_value_trace_simulates_event_cinstr_and_generic_matched :
+  forall trace event value_event,
+    cscalar_promotion_value_trace_simulates trace ->
+    In (event, value_event) trace ->
+    cscalar_promotion_value_event_cinstr_semantics event value_event /\
+    scalar_promotion_value_event_kind_matches event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros trace event value_event Htrace Hin.
+  unfold cscalar_promotion_value_trace_simulates in Htrace.
+  eapply cscalar_promotion_value_trace_event_cinstr_and_generic_matched; eauto.
+Qed.
+
+Theorem cscalar_promotion_value_trace_simulates_load_values_equal :
+  forall trace source_cell scalar_cell source_value scalar_value,
+    cscalar_promotion_value_trace_simulates trace ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) trace ->
+    source_value = scalar_value.
+Proof.
+  intros trace source_cell scalar_cell source_value scalar_value Htrace Hin.
+  unfold cscalar_promotion_value_trace_simulates in Htrace.
+  eapply cscalar_promotion_value_trace_load_values_equal; eauto.
+Qed.
+
+Theorem cscalar_promotion_value_trace_simulates_store_values_equal :
+  forall trace scalar_cell source_cell scalar_value source_value,
+    cscalar_promotion_value_trace_simulates trace ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) trace ->
+    scalar_value = source_value.
+Proof.
+  intros trace scalar_cell source_cell scalar_value source_value Htrace Hin.
+  unfold cscalar_promotion_value_trace_simulates in Htrace.
+  eapply cscalar_promotion_value_trace_store_values_equal; eauto.
+Qed.
+
 Theorem cscalar_promotion_value_trace_sound :
   forall trace,
     cscalar_promotion_value_trace_simulates trace ->

@@ -1729,7 +1729,10 @@ the value event.  Direct load/store equality corollaries now expose those
 selected-event facts without requiring callers to unfold the generic
 value-match predicate.  It also provides
 `cscalar_promotion_value_trace_event_cinstr_and_generic_matched`, using the
-generic scalar-promotion value witness predicates directly.
+generic scalar-promotion value witness predicates directly.  Simulates-level
+wrappers expose the same generic selected-event and load/store equality facts
+from `cscalar_promotion_value_trace_simulates`, keeping later bridge proofs at
+the public trace-evidence boundary.
 `CInstrScalarPromotionValidatorBridge.v` packages that instruction evidence
 into the existing scalar-promotion public-view wrappers,
 including compatible and bounded/non-escape variants, so the endpoint theorem
@@ -1865,7 +1868,10 @@ source-side scalar event.  The next projection is now mechanized as
 from the ordered trace carries its local CInstr write/read provenance together
 with the mapping, kind, and value-match facts.  The corresponding direct
 write/read equality corollaries keep later simulation proofs from depending on
-the internal shape of that value-match predicate.  This is still below the final
+the internal shape of that value-match predicate.  The same projections are
+also available from `cscalar_expansion_value_trace_simulates`, so callers can
+work at the trace-evidence interface instead of unfolding the initial private
+value map.  This is still below the final
 user-facing theorem: the
 outer theorem should expose only the public-view refinement, with this trace
 witness hidden as one discharged semantic side condition.  The first bridge to
