@@ -292,6 +292,63 @@ Proof.
     exact Hcompatible.
 Qed.
 
+Theorem check_storage_compatibilityb_logical_specs_nodup :
+  forall mapping logical_specs physical_specs,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    storage_specs_nodup logical_specs.
+Proof.
+  intros mapping logical_specs physical_specs Hcheck.
+  destruct
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hcheck)
+    as [Hlogical _ _].
+  exact Hlogical.
+Qed.
+
+Theorem check_storage_compatibilityb_physical_specs_nodup :
+  forall mapping logical_specs physical_specs,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    storage_specs_nodup physical_specs.
+Proof.
+  intros mapping logical_specs physical_specs Hcheck.
+  destruct
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hcheck)
+    as [_ Hphysical _].
+  exact Hphysical.
+Qed.
+
+Theorem check_storage_compatibilityb_mapping_compatible :
+  forall mapping logical_specs physical_specs,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    storage_mapping_compatible mapping logical_specs physical_specs.
+Proof.
+  intros mapping logical_specs physical_specs Hcheck.
+  destruct
+    (check_storage_compatibilityb_sound
+       mapping logical_specs physical_specs Hcheck)
+    as [_ _ Hcompatible].
+  exact Hcompatible.
+Qed.
+
+Theorem check_storage_compatibilityb_mapping_entry_compatible :
+  forall mapping logical_specs physical_specs mapping_entry,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    In mapping_entry mapping ->
+    storage_mapping_entry_compatible
+      logical_specs physical_specs mapping_entry.
+Proof.
+  intros mapping logical_specs physical_specs mapping_entry Hcheck Hin.
+  apply
+    (check_storage_compatibilityb_mapping_compatible
+       mapping logical_specs physical_specs Hcheck).
+  exact Hin.
+Qed.
+
 Theorem storage_compatibility_mapping_entry_specs :
   forall mapping logical_specs physical_specs mapping_entry,
     storage_compatibility_obligations
@@ -310,6 +367,25 @@ Proof.
   apply storage_mapping_entry_compatible_specs.
   apply Hcompatible.
   exact Hin.
+Qed.
+
+Theorem check_storage_compatibilityb_mapping_entry_specs :
+  forall mapping logical_specs physical_specs mapping_entry,
+    check_storage_compatibilityb
+      mapping logical_specs physical_specs = true ->
+    In mapping_entry mapping ->
+    exists logical_spec physical_spec,
+      In logical_spec logical_specs /\
+      In physical_spec physical_specs /\
+      storage_spec_cell logical_spec = fst mapping_entry /\
+      storage_spec_cell physical_spec = snd mapping_entry /\
+      storage_specs_compatible logical_spec physical_spec.
+Proof.
+  intros mapping logical_specs physical_specs mapping_entry Hcheck Hin.
+  eapply storage_compatibility_mapping_entry_specs.
+  - apply check_storage_compatibilityb_sound.
+    exact Hcheck.
+  - exact Hin.
 Qed.
 
 Theorem storage_compatibility_mapping_pair_specs :

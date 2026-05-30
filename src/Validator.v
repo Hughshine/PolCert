@@ -1213,6 +1213,10 @@ Definition storage_check_indices_within_boundsb :=
   check_indices_within_boundsb.
 Definition storage_check_indices_within_boundsb_sound :=
   check_indices_within_boundsb_sound.
+Definition storage_check_array_bounds_list_wfb_ids_nodup :=
+  check_array_bounds_list_wfb_ids_nodup.
+Definition storage_check_array_bounds_list_wfb_bound_wf :=
+  check_array_bounds_list_wfb_bound_wf.
 Definition storage_cell_within_declared_bounds :=
   cell_within_declared_bounds.
 Definition storage_check_cell_within_declared_boundsb :=
@@ -1227,12 +1231,20 @@ Definition storage_check_cells_within_declared_boundsb :=
   check_cells_within_declared_boundsb.
 Definition storage_check_cells_within_declared_boundsb_sound :=
   check_cells_within_declared_boundsb_sound.
+Definition storage_check_cells_within_declared_boundsb_cell_within :=
+  check_cells_within_declared_boundsb_cell_within.
 Definition storage_bounds_obligations :=
   storage_bounds_obligations.
 Definition storage_check_storage_boundsb :=
   check_storage_boundsb.
 Definition storage_check_storage_boundsb_sound :=
   check_storage_boundsb_sound.
+Definition storage_check_storage_boundsb_bounds_wf :=
+  check_storage_boundsb_bounds_wf.
+Definition storage_check_storage_boundsb_cells_within_bounds :=
+  check_storage_boundsb_cells_within_bounds.
+Definition storage_check_storage_boundsb_cell_within :=
+  check_storage_boundsb_cell_within.
 Definition storage_bounds_cell_within :=
   storage_bounds_cell_within.
 Definition storage_bounds_cell_bound_entry :=
@@ -1837,6 +1849,14 @@ Definition storage_check_storage_compatibilityb :=
   check_storage_compatibilityb.
 Definition storage_check_storage_compatibilityb_sound :=
   check_storage_compatibilityb_sound.
+Definition storage_check_storage_compatibilityb_logical_specs_nodup :=
+  check_storage_compatibilityb_logical_specs_nodup.
+Definition storage_check_storage_compatibilityb_physical_specs_nodup :=
+  check_storage_compatibilityb_physical_specs_nodup.
+Definition storage_check_storage_compatibilityb_mapping_compatible :=
+  check_storage_compatibilityb_mapping_compatible.
+Definition storage_check_storage_compatibilityb_mapping_entry_compatible :=
+  check_storage_compatibilityb_mapping_entry_compatible.
 Definition storage_compatibility_obligations :=
   storage_compatibility_obligations.
 Definition storage_mapping_compatible :=
@@ -1849,6 +1869,8 @@ Definition storage_check_storage_mapping_entry_compatibleb_specs :=
   check_storage_mapping_entry_compatibleb_specs.
 Definition storage_compatibility_mapping_entry_specs :=
   storage_compatibility_mapping_entry_specs.
+Definition storage_check_storage_compatibilityb_mapping_entry_specs :=
+  check_storage_compatibilityb_mapping_entry_specs.
 Definition storage_compatibility_mapping_pair_specs :=
   storage_compatibility_mapping_pair_specs.
 Definition storage_compatibility_lookup_specs :=

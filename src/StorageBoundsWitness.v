@@ -238,6 +238,30 @@ Proof.
     exact Hwf.
 Qed.
 
+Theorem check_array_bounds_list_wfb_ids_nodup :
+  forall bounds,
+    check_array_bounds_list_wfb bounds = true ->
+    NoDup (array_bounds_ids bounds).
+Proof.
+  intros bounds Hcheck.
+  destruct (check_array_bounds_list_wfb_sound bounds Hcheck)
+    as [Hnodup _].
+  exact Hnodup.
+Qed.
+
+Theorem check_array_bounds_list_wfb_bound_wf :
+  forall bounds bound,
+    check_array_bounds_list_wfb bounds = true ->
+    In bound bounds ->
+    array_bounds_wf bound.
+Proof.
+  intros bounds bound Hcheck Hin.
+  destruct (check_array_bounds_list_wfb_sound bounds Hcheck)
+    as [_ Hwf].
+  apply Hwf.
+  exact Hin.
+Qed.
+
 Lemma array_bounds_lookup_sound :
   forall bounds id bound,
     array_bounds_lookup id bounds = Some bound ->
@@ -334,6 +358,16 @@ Proof.
     + eapply IH; eauto.
 Qed.
 
+Theorem check_cells_within_declared_boundsb_cell_within :
+  forall bounds cells cell,
+    check_cells_within_declared_boundsb bounds cells = true ->
+    In cell cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros bounds cells cell Hcheck Hin.
+  eapply check_cells_within_declared_boundsb_sound; eauto.
+Qed.
+
 Record storage_bounds_obligations
     (bounds: list array_bounds)
     (cells: list MemCell) : Prop := {
@@ -363,6 +397,38 @@ Proof.
     exact Hbounds.
   - apply check_cells_within_declared_boundsb_sound.
     exact Hcells.
+Qed.
+
+Theorem check_storage_boundsb_bounds_wf :
+  forall bounds cells,
+    check_storage_boundsb bounds cells = true ->
+    array_bounds_list_wf bounds.
+Proof.
+  intros bounds cells Hcheck.
+  destruct (check_storage_boundsb_sound bounds cells Hcheck)
+    as [Hbounds _].
+  exact Hbounds.
+Qed.
+
+Theorem check_storage_boundsb_cells_within_bounds :
+  forall bounds cells,
+    check_storage_boundsb bounds cells = true ->
+    cells_within_declared_bounds bounds cells.
+Proof.
+  intros bounds cells Hcheck.
+  destruct (check_storage_boundsb_sound bounds cells Hcheck)
+    as [_ Hcells].
+  exact Hcells.
+Qed.
+
+Theorem check_storage_boundsb_cell_within :
+  forall bounds cells cell,
+    check_storage_boundsb bounds cells = true ->
+    In cell cells ->
+    cell_within_declared_bounds bounds cell.
+Proof.
+  intros bounds cells cell Hcheck Hin.
+  eapply check_storage_boundsb_cells_within_bounds; eauto.
 Qed.
 
 Theorem storage_bounds_cell_within :

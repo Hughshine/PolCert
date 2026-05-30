@@ -460,9 +460,10 @@ from `check_padding_layoutb`, including per-mapping target allocation and
 per-padding-cell separation from the target image.  `StorageBoundsWitness.v` adds the structured
 in-bounds side: declared array extents are well formed, finite physical cells
 can be checked against those extents, and padding/layout validators can require
-all allocated physical cells to be within declared bounds.  Its derived
-projections now recover the concrete array-bounds entry and per-dimension
-index proof for a checked cell, so later pass-specific corollaries can cite the
+all allocated physical cells to be within declared bounds.  Its checked
+projections now expose the well-formed bounds table, whole-list in-bounds
+predicate, per-cell in-bounds fact, and concrete array-bounds entry with the
+per-dimension index proof, so later pass-specific corollaries can cite the
 actual declared extent rather than only the packed `cell_within_declared_bounds`
 predicate.  `LayoutValueWitness.v` adds the boundary value side:
 each source-to-target layout map entry can be paired with evidence that the
@@ -620,8 +621,10 @@ lookup-based check: every successful spec lookup is tied to a concrete supplied
 spec entry, and every compatible mapping edge can recover the logical and
 physical spec entries whose size/alignment facts were checked.  The shared
 corollaries now work directly from either the compatibility checker or a
-`reuse_lookup` result, so pass-specific wrappers can recover the concrete
-logical/physical spec entries without restating the lookup-to-entry argument.
+`reuse_lookup` result, and the checker also exposes logical/physical spec
+deduplication plus the whole mapping-compatibility predicate directly.  Thus
+pass-specific wrappers can recover the concrete logical/physical spec entries
+without restating the lookup-to-entry argument.
 `InterArrayReuseWitness.v` packages the inter-array reuse case without adding
 a new primitive: it combines live-interval conflict cover, conflict-safe reuse,
 and storage compatibility.  Its derived facts say that mapped live-overlapping
