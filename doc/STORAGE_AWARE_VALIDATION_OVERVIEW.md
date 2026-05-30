@@ -120,12 +120,14 @@ storage: required public live-ins must have copy-in pairs, required public
 live-outs must have copy-out pairs, those pairs must use declared private cells,
 public copy-out destinations must be unique, and an optional private-side
 uniqueness checker prevents multiple boundary pairs from sharing the same
-private cell.  It also adds a value-entry checker showing that copy-in/copy-out
-public and private boundary values match for each aligned boundary pair.  The
-derived projection facts expose both copy-in and copy-out sides separately:
-each checked boundary-value list has the same length as its boundary-pair list,
-and every boundary pair can be projected to a matching value entry with equal
-public/private values.
+private cell.  Its checked projections expose live-in and live-out coverage,
+declared-private use by copy-in/copy-out pairs, public copy-out uniqueness, and
+private-side copy uniqueness directly from the checker.  It also adds a
+value-entry checker showing that copy-in/copy-out public and private boundary
+values match for each aligned boundary pair.  The checked value projections
+expose both copy-in and copy-out sides separately: each checked boundary-value
+list has the same length as its boundary-pair list, and every boundary pair can
+be projected to a matching value entry with equal public/private values.
 Related skeletons include
 `TransformContract.v`, `StateView.v`, `ViewPipeline.v`,
 `StorageWitness.v`, `SourceNoAliasWitness.v`,

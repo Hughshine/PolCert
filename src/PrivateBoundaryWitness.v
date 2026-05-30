@@ -146,6 +146,78 @@ Proof.
            private_cells public_liveins public_liveouts copyins copyouts Hob).
 Qed.
 
+Theorem check_private_boundaryb_liveins_copied :
+  forall private_cells public_liveins public_liveouts copyins copyouts,
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    private_boundary_covers public_liveins copyins.
+Proof.
+  intros private_cells public_liveins public_liveouts copyins copyouts Hcheck.
+  exact
+    (pbo_liveins_copied
+       private_cells public_liveins public_liveouts copyins copyouts
+       (check_private_boundaryb_sound
+          private_cells public_liveins public_liveouts copyins copyouts
+          Hcheck)).
+Qed.
+
+Theorem check_private_boundaryb_liveouts_committed :
+  forall private_cells public_liveins public_liveouts copyins copyouts,
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    private_boundary_covers public_liveouts copyouts.
+Proof.
+  intros private_cells public_liveins public_liveouts copyins copyouts Hcheck.
+  exact
+    (pbo_liveouts_committed
+       private_cells public_liveins public_liveouts copyins copyouts
+       (check_private_boundaryb_sound
+          private_cells public_liveins public_liveouts copyins copyouts
+          Hcheck)).
+Qed.
+
+Theorem check_private_boundaryb_copyin_private_declared :
+  forall private_cells public_liveins public_liveouts copyins copyouts,
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    private_boundary_privates_declared private_cells copyins.
+Proof.
+  intros private_cells public_liveins public_liveouts copyins copyouts Hcheck.
+  exact
+    (pbo_copyin_private_declared
+       private_cells public_liveins public_liveouts copyins copyouts
+       (check_private_boundaryb_sound
+          private_cells public_liveins public_liveouts copyins copyouts
+          Hcheck)).
+Qed.
+
+Theorem check_private_boundaryb_copyout_private_declared :
+  forall private_cells public_liveins public_liveouts copyins copyouts,
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    private_boundary_privates_declared private_cells copyouts.
+Proof.
+  intros private_cells public_liveins public_liveouts copyins copyouts Hcheck.
+  exact
+    (pbo_copyout_private_declared
+       private_cells public_liveins public_liveouts copyins copyouts
+       (check_private_boundaryb_sound
+          private_cells public_liveins public_liveouts copyins copyouts
+          Hcheck)).
+Qed.
+
+Theorem check_private_boundaryb_copyout_public_unique :
+  forall private_cells public_liveins public_liveouts copyins copyouts,
+    check_private_boundaryb
+      private_cells public_liveins public_liveouts copyins copyouts = true ->
+    NoDup (private_boundary_publics copyouts).
+Proof.
+  intros private_cells public_liveins public_liveouts copyins copyouts Hcheck.
+  eapply private_boundary_liveout_unique.
+  apply check_private_boundaryb_sound.
+  exact Hcheck.
+Qed.
+
 Record private_boundary_private_unique_obligations
     (copyins copyouts: list private_boundary_pair) : Prop := {
   pbpu_copyin_private_unique :
@@ -173,6 +245,32 @@ Proof.
     exact Hcopyins.
   - apply mem_cells_nodupb_sound.
     exact Hcopyouts.
+Qed.
+
+Theorem check_private_boundary_private_uniqueb_copyin_private_unique :
+  forall copyins copyouts,
+    check_private_boundary_private_uniqueb copyins copyouts = true ->
+    NoDup (private_boundary_privates copyins).
+Proof.
+  intros copyins copyouts Hcheck.
+  exact
+    (pbpu_copyin_private_unique
+       copyins copyouts
+       (check_private_boundary_private_uniqueb_sound
+          copyins copyouts Hcheck)).
+Qed.
+
+Theorem check_private_boundary_private_uniqueb_copyout_private_unique :
+  forall copyins copyouts,
+    check_private_boundary_private_uniqueb copyins copyouts = true ->
+    NoDup (private_boundary_privates copyouts).
+Proof.
+  intros copyins copyouts Hcheck.
+  exact
+    (pbpu_copyout_private_unique
+       copyins copyouts
+       (check_private_boundary_private_uniqueb_sound
+          copyins copyouts Hcheck)).
 Qed.
 
 Record private_boundary_value_entry (value: Type) := {
@@ -405,5 +503,95 @@ Proof.
   - exact
       (pbvo_copyout_values_match
          value copyins copyouts copyin_values copyout_values Hobligations).
+  - exact Hin.
+Qed.
+
+Theorem check_private_boundary_valueb_copyin_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+            forall left right,
+              value_eqb left right = true ->
+              left = right)
+         copyins copyouts copyin_values copyout_values,
+    check_private_boundary_valueb
+      value_eqb copyins copyouts copyin_values copyout_values = true ->
+    length copyins = length copyin_values.
+Proof.
+  intros value value_eqb value_eqb_sound copyins copyouts
+         copyin_values copyout_values Hcheck.
+  eapply private_boundary_value_obligation_copyin_length_match.
+  apply (check_private_boundary_valueb_sound value value_eqb value_eqb_sound).
+  exact Hcheck.
+Qed.
+
+Theorem check_private_boundary_valueb_copyout_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+            forall left right,
+              value_eqb left right = true ->
+              left = right)
+         copyins copyouts copyin_values copyout_values,
+    check_private_boundary_valueb
+      value_eqb copyins copyouts copyin_values copyout_values = true ->
+    length copyouts = length copyout_values.
+Proof.
+  intros value value_eqb value_eqb_sound copyins copyouts
+         copyin_values copyout_values Hcheck.
+  eapply private_boundary_value_obligation_copyout_length_match.
+  apply (check_private_boundary_valueb_sound value value_eqb value_eqb_sound).
+  exact Hcheck.
+Qed.
+
+Theorem check_private_boundary_valueb_copyin_pair_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+            forall left right,
+              value_eqb left right = true ->
+              left = right)
+         copyins copyouts copyin_values copyout_values boundary,
+    check_private_boundary_valueb
+      value_eqb copyins copyouts copyin_values copyout_values = true ->
+    In boundary copyins ->
+    exists entry,
+      In entry copyin_values /\
+      boundary = private_boundary_value_pair entry /\
+      private_boundary_public_value entry =
+        private_boundary_private_value entry.
+Proof.
+  intros value value_eqb value_eqb_sound copyins copyouts
+         copyin_values copyout_values boundary Hcheck Hin.
+  eapply private_boundary_value_obligation_copyin_pair_matched.
+  - apply (check_private_boundary_valueb_sound
+             value value_eqb value_eqb_sound).
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_private_boundary_valueb_copyout_pair_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool)
+         (value_eqb_sound:
+            forall left right,
+              value_eqb left right = true ->
+              left = right)
+         copyins copyouts copyin_values copyout_values boundary,
+    check_private_boundary_valueb
+      value_eqb copyins copyouts copyin_values copyout_values = true ->
+    In boundary copyouts ->
+    exists entry,
+      In entry copyout_values /\
+      boundary = private_boundary_value_pair entry /\
+      private_boundary_public_value entry =
+        private_boundary_private_value entry.
+Proof.
+  intros value value_eqb value_eqb_sound copyins copyouts
+         copyin_values copyout_values boundary Hcheck Hin.
+  eapply private_boundary_value_obligation_copyout_pair_matched.
+  - apply (check_private_boundary_valueb_sound
+             value value_eqb value_eqb_sound).
+    exact Hcheck.
   - exact Hin.
 Qed.

@@ -659,12 +659,26 @@ Definition storage_private_boundary_obligations :=
   private_boundary_obligations.
 Definition storage_private_boundary_liveout_unique :=
   private_boundary_liveout_unique.
+Definition storage_check_private_boundaryb_liveins_copied :=
+  check_private_boundaryb_liveins_copied.
+Definition storage_check_private_boundaryb_liveouts_committed :=
+  check_private_boundaryb_liveouts_committed.
+Definition storage_check_private_boundaryb_copyin_private_declared :=
+  check_private_boundaryb_copyin_private_declared.
+Definition storage_check_private_boundaryb_copyout_private_declared :=
+  check_private_boundaryb_copyout_private_declared.
+Definition storage_check_private_boundaryb_copyout_public_unique :=
+  check_private_boundaryb_copyout_public_unique.
 Definition storage_check_private_boundary_private_uniqueb :=
   check_private_boundary_private_uniqueb.
 Definition storage_check_private_boundary_private_uniqueb_sound :=
   check_private_boundary_private_uniqueb_sound.
 Definition storage_private_boundary_private_unique_obligations :=
   private_boundary_private_unique_obligations.
+Definition storage_check_private_boundary_private_uniqueb_copyin_private_unique :=
+  check_private_boundary_private_uniqueb_copyin_private_unique.
+Definition storage_check_private_boundary_private_uniqueb_copyout_private_unique :=
+  check_private_boundary_private_uniqueb_copyout_private_unique.
 Definition storage_check_private_boundary_valueb :=
   @check_private_boundary_valueb.
 Definition storage_check_private_boundary_valueb_sound :=
@@ -679,6 +693,14 @@ Definition storage_private_boundary_value_obligation_copyin_pair_matched :=
   private_boundary_value_obligation_copyin_pair_matched.
 Definition storage_private_boundary_value_obligation_copyout_pair_matched :=
   private_boundary_value_obligation_copyout_pair_matched.
+Definition storage_check_private_boundary_valueb_copyin_length_match :=
+  check_private_boundary_valueb_copyin_length_match.
+Definition storage_check_private_boundary_valueb_copyout_length_match :=
+  check_private_boundary_valueb_copyout_length_match.
+Definition storage_check_private_boundary_valueb_copyin_pair_matched :=
+  check_private_boundary_valueb_copyin_pair_matched.
+Definition storage_check_private_boundary_valueb_copyout_pair_matched :=
+  check_private_boundary_valueb_copyout_pair_matched.
 Definition storage_check_private_non_escapeb :=
   check_private_non_escapeb.
 Definition storage_check_private_non_escapeb_sound :=
