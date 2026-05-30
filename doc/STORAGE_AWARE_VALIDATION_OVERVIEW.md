@@ -523,7 +523,10 @@ storage protocol, the optional value-flow witness, scalar-private separation,
 and the remaining instruction-level semantic refinement.
 `CopyProtocolWitness.v` starts the P4 route by checking finite copy-in,
 local-read/local-write, and copy-out traces: local reads require earlier local
-definitions, and copy-out destinations are committed at most once.
+definitions, and copy-out destinations are committed at most once.  Its checked
+projections now expose the well-formed protocol, no-duplicate future commits
+from an already committed target set, and duplicate-free committed targets
+directly from the protocol checker.
 `CopyCommitWitness.v` adds exact copy-out boundary coverage for update-style
 scratchpad transformations: the committed target cells must exactly cover the
 expected observable target set.  Its checked projections expose the resulting

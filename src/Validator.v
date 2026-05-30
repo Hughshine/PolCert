@@ -1502,8 +1502,16 @@ Definition storage_check_copy_protocol_wfb :=
   check_copy_protocol_wfb.
 Definition storage_check_copy_protocol_wfb_sound :=
   check_copy_protocol_wfb_sound.
+Definition storage_check_copy_protocol_wfb_protocol_wf :=
+  check_copy_protocol_wfb_protocol_wf.
+Definition storage_check_copy_protocol_definedb_no_duplicate_future_commit :=
+  check_copy_protocol_definedb_no_duplicate_future_commit.
+Definition storage_check_copy_protocol_definedb_commits_nodup :=
+  check_copy_protocol_definedb_commits_nodup.
 Definition storage_check_copy_protocol_wfb_commits_nodup :=
   check_copy_protocol_wfb_commits_nodup.
+Definition storage_check_copy_protocol_wfb_committed_targets_nodup :=
+  check_copy_protocol_wfb_committed_targets_nodup.
 Definition storage_check_copy_commit_coverb :=
   check_copy_commit_coverb.
 Definition storage_check_copy_commit_coverb_sound :=

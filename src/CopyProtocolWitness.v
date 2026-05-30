@@ -126,6 +126,16 @@ Proof.
   exact Hcheck.
 Qed.
 
+Theorem check_copy_protocol_wfb_protocol_wf :
+  forall trace,
+    check_copy_protocol_wfb trace = true ->
+    copy_protocol_wf trace.
+Proof.
+  intros trace Hcheck.
+  apply check_copy_protocol_wfb_sound.
+  exact Hcheck.
+Qed.
+
 Fixpoint copy_protocol_committed_targets
     (trace: list copy_event) : list MemCell :=
   match trace with
@@ -208,6 +218,34 @@ Proof.
   - constructor.
 Qed.
 
+Theorem check_copy_protocol_definedb_no_duplicate_future_commit :
+  forall trace defined_locals committed_targets target_cell,
+    check_copy_protocol_definedb
+      defined_locals committed_targets trace = true ->
+    In target_cell committed_targets ->
+    ~ In target_cell (copy_protocol_committed_targets trace).
+Proof.
+  intros trace defined_locals committed_targets target_cell Hcheck Hin.
+  eapply copy_protocol_defined_no_duplicate_future_commit.
+  - apply check_copy_protocol_definedb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_copy_protocol_definedb_commits_nodup :
+  forall trace defined_locals committed_targets,
+    check_copy_protocol_definedb
+      defined_locals committed_targets trace = true ->
+    NoDup committed_targets ->
+    NoDup (copy_protocol_committed_targets trace).
+Proof.
+  intros trace defined_locals committed_targets Hcheck Hnodup.
+  eapply copy_protocol_defined_commits_nodup.
+  - apply check_copy_protocol_definedb_sound.
+    exact Hcheck.
+  - exact Hnodup.
+Qed.
+
 Lemma check_copy_protocol_wfb_commits_nodup :
   forall trace,
     check_copy_protocol_wfb trace = true ->
@@ -216,5 +254,15 @@ Proof.
   intros trace Hcheck.
   apply copy_protocol_wf_commits_nodup.
   apply check_copy_protocol_wfb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_copy_protocol_wfb_committed_targets_nodup :
+  forall trace,
+    check_copy_protocol_wfb trace = true ->
+    NoDup (copy_protocol_committed_targets trace).
+Proof.
+  intros trace Hcheck.
+  apply check_copy_protocol_wfb_commits_nodup.
   exact Hcheck.
 Qed.
