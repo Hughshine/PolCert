@@ -357,7 +357,7 @@ Theorem accepted_bounded_scratchpad_copy_certificate_public_semantic_refinement 
 Proof.
   intros value value_eqb value_eqb_sound certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (scratchpad_copy_family value value_eqb value_eqb_sound)
@@ -536,7 +536,7 @@ Theorem accepted_declared_copy_protocol_certificate_public_semantic_refinement :
 Proof.
   intros value value_eqb value_eqb_sound certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (copy_protocol_family value value_eqb value_eqb_sound)

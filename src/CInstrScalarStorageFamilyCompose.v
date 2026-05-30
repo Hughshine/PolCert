@@ -470,7 +470,7 @@ Theorem accepted_bounded_cinstr_scalar_storage_certificate_public_semantic_refin
 Proof.
   intros certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        Expansion.cscalar_privatization_bounded_family

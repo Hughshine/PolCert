@@ -377,6 +377,15 @@ Definition checked_parameterized_family_pair_certificate_public_semantic_sound
         first second) :=
   StateViewCore.checked_parameterized_family_pair_certificate_public_semantic_sound
     params_first params_second first second certificate.
+Definition accepted_parameterized_family_pair_certificate_public_semantic_refinement
+    {params_first params_second}
+    (first: checked_parameterized_view_transform_family params_first)
+    (second: checked_parameterized_view_transform_family params_second)
+    (certificate:
+      StateViewCore.checked_parameterized_family_pair_certificate
+        first second) :=
+  StateViewCore.accepted_parameterized_family_pair_certificate_public_semantic_refinement
+    params_first params_second first second certificate.
 Definition accepted_parameterized_family_pair_certificate_semantic_refinement_between
     {params_first params_second}
     (first: checked_parameterized_view_transform_family params_first)

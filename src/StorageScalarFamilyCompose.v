@@ -255,7 +255,7 @@ Proof.
          exp_value_eqb_sound promo_value_eqb_sound
          certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (scalar_storage_privatization_family

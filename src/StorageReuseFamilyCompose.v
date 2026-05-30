@@ -290,7 +290,7 @@ Theorem accepted_bounded_inter_array_reuse_certificate_public_semantic_refinemen
 Proof.
   intros certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        inter_array_reuse_family
@@ -441,7 +441,7 @@ Theorem accepted_bounded_conflict_reuse_certificate_public_semantic_refinement :
 Proof.
   intros value value_eqb value_eqb_sound certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (conflict_reuse_family value value_eqb value_eqb_sound)

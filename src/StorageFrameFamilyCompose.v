@@ -195,7 +195,7 @@ Theorem accepted_bounded_frame_preservation_certificate_public_semantic_refineme
 Proof.
   intros value value_eqb value_eqb_sound certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (frame_preservation_family value value_eqb value_eqb_sound)

@@ -202,7 +202,7 @@ Theorem accepted_bounded_private_storage_certificate_public_semantic_refinement 
 Proof.
   intros value value_eqb value_eqb_sound certificate before after Haccepted.
   exact
-    (View.checked_parameterized_family_pair_certificate_public_semantic_sound
+    (View.accepted_parameterized_family_pair_certificate_public_semantic_refinement
        _
        _
        (private_storage_family value value_eqb value_eqb_sound)

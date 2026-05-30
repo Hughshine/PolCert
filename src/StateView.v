@@ -1017,6 +1017,26 @@ Proof.
        Hsecond_ret Hsecond_ok Hsecond_side).
 Qed.
 
+Theorem accepted_parameterized_family_pair_certificate_public_semantic_refinement :
+  forall params_first params_second
+         (first: checked_parameterized_view_transform_family params_first)
+         (second: checked_parameterized_view_transform_family params_second)
+         (certificate:
+           checked_parameterized_family_pair_certificate first second)
+         before after,
+    checked_parameterized_family_pair_certificate_accepted
+      certificate before after ->
+    public_semantic_refinement
+      (checked_parameterized_family_pair_certificate_input_view certificate)
+      (checked_parameterized_family_pair_certificate_output_view certificate)
+      before after.
+Proof.
+  intros params_first params_second first second certificate
+         before after Haccepted.
+  eapply checked_parameterized_family_pair_certificate_public_semantic_sound;
+    eauto.
+Qed.
+
 Theorem accepted_parameterized_family_pair_certificate_semantic_refinement_between :
   forall params_first params_second
          (first: checked_parameterized_view_transform_family params_first)
@@ -1036,7 +1056,7 @@ Proof.
   intros params_first params_second first second certificate
          before after Haccepted.
   exact
-    (checked_parameterized_family_pair_certificate_public_semantic_sound
+    (accepted_parameterized_family_pair_certificate_public_semantic_refinement
        params_first params_second first second
        certificate before after Haccepted).
 Qed.
@@ -1058,7 +1078,7 @@ Proof.
   intros params_first params_second first second certificate
          before after Haccepted.
   exact
-    (checked_parameterized_family_pair_certificate_public_semantic_sound
+    (accepted_parameterized_family_pair_certificate_public_semantic_refinement
        params_first params_second first second
        certificate before after Haccepted).
 Qed.
