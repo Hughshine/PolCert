@@ -1079,6 +1079,234 @@ Proof.
   eapply Storage.same_instance_access_remap_read_source_access; eauto.
 Qed.
 
+Theorem check_pinstr_array_rename_write_target_access :
+  forall renames source_view after n target_access,
+    check_pinstr_array_rename_access_remapb
+      renames source_view after = true ->
+    nth_error (PL.pi_waccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_waccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_rename_cell_relation renames)
+        target_access source_access.
+Proof.
+  intros renames source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_rename_access_remapb_sound
+       renames source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_rename_write_source_access :
+  forall renames source_view after n source_access,
+    check_pinstr_array_rename_access_remapb
+      renames source_view after = true ->
+    nth_error (PL.pi_waccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_waccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_rename_cell_relation renames)
+        target_access source_access.
+Proof.
+  intros renames source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_rename_access_remapb_sound
+       renames source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_rename_read_target_access :
+  forall renames source_view after n target_access,
+    check_pinstr_array_rename_access_remapb
+      renames source_view after = true ->
+    nth_error (PL.pi_raccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_raccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_rename_cell_relation renames)
+        target_access source_access.
+Proof.
+  intros renames source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_rename_access_remapb_sound
+       renames source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_rename_read_source_access :
+  forall renames source_view after n source_access,
+    check_pinstr_array_rename_access_remapb
+      renames source_view after = true ->
+    nth_error (PL.pi_raccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_raccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_rename_cell_relation renames)
+        target_access source_access.
+Proof.
+  intros renames source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_rename_access_remapb_sound
+       renames source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_index_permutation_write_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_array_index_permutation_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_waccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_index_permutation_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_index_permutation_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_index_permutation_write_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_array_index_permutation_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_waccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_index_permutation_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_index_permutation_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_index_permutation_read_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_array_index_permutation_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_raccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_index_permutation_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_index_permutation_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_index_permutation_read_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_array_index_permutation_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_raccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_index_permutation_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_index_permutation_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_affine_layout_write_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_array_affine_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_waccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_affine_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_affine_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_affine_layout_write_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_array_affine_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_waccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_affine_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_affine_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_affine_layout_read_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_array_affine_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_raccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (array_affine_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_array_affine_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_array_affine_layout_read_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_array_affine_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_raccess after) n = Some target_access /\
+      same_point_access_relation
+        (array_affine_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_array_affine_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_source_access; eauto.
+Qed.
+
 Fixpoint check_pinstrs_array_rename_access_remapb
     (renames: list array_rename)
     (source_views afters: list PL.PolyInstr) : bool :=
