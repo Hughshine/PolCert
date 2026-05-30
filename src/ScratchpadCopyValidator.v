@@ -12,6 +12,7 @@ Require Import PrivateStorageWitness.
 Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
 Require Import CopyInstanceWitness.
+Require Import InstanceTraceWitness.
 Require Import CopyMappingWitness.
 Require Import CopyProtocolValueWitness.
 Require Import InstanceProjectionWitness.
@@ -1220,6 +1221,137 @@ Proof.
   destruct Hcontract as [Hbase _ _].
   destruct Hbase as [_ Hinstance].
   eapply copy_instance_trace_obligation_event_target; eauto.
+Qed.
+
+Theorem scratchpad_copy_instance_contract_generic_instance_trace_obligations :
+  forall input_view output_view
+         source_domain source_liveouts targets copy_trace
+         local_cells public_cells frame_cells
+         source_view after,
+    scratchpad_copy_instance_view_contract
+      input_view output_view
+      source_domain source_liveouts targets copy_trace
+      local_cells public_cells frame_cells source_view after ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets copy_trace.
+Proof.
+  intros input_view output_view
+         source_domain source_liveouts targets copy_trace
+         local_cells public_cells frame_cells
+         source_view after Hcontract.
+  destruct Hcontract as [_ Hinstance].
+  destruct Hinstance as [Hmatches].
+  constructor.
+  apply copy_instance_trace_matches_generic.
+  exact Hmatches.
+Qed.
+
+Theorem scratchpad_copy_instance_commit_contract_generic_instance_trace_obligations :
+  forall input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         copy_trace local_cells public_cells frame_cells
+         source_view after,
+    scratchpad_copy_instance_commit_view_contract
+      input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      copy_trace local_cells public_cells frame_cells source_view after ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets copy_trace.
+Proof.
+  intros input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         copy_trace local_cells public_cells frame_cells
+         source_view after Hcontract.
+  destruct Hcontract as [_ Hinstance].
+  destruct Hinstance as [Hmatches].
+  constructor.
+  apply copy_instance_trace_matches_generic.
+  exact Hmatches.
+Qed.
+
+Theorem scratchpad_copy_full_contract_generic_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after,
+    scratchpad_copy_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells source_view after ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets copy_trace.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         source_view after Hcontract.
+  destruct Hcontract as [Hbase _ _].
+  eapply scratchpad_copy_instance_commit_contract_generic_instance_trace_obligations.
+  exact Hbase.
+Qed.
+
+Theorem scratchpad_copy_bounded_fully_declared_compatible_contract_generic_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds
+         source_view after,
+    scratchpad_copy_bounded_fully_declared_compatible_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds source_view after ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets copy_trace.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds
+         source_view after Hcontract.
+  destruct Hcontract as [Hdeclared _ _].
+  destruct Hdeclared as [Hcompatible _].
+  destruct Hcompatible as [Hfull _].
+  eapply scratchpad_copy_full_contract_generic_instance_trace_obligations.
+  exact Hfull.
+Qed.
+
+Theorem scratchpad_copy_non_escape_contract_generic_instance_trace_obligations :
+  forall (value: Type)
+         input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after,
+    scratchpad_copy_bounded_fully_declared_compatible_non_escape_full_view_contract
+      value input_view output_view
+      source_domain source_liveouts targets expected_commit_targets
+      mapping copy_trace value_trace
+      local_cells public_cells frame_cells
+      public_specs local_specs public_bounds local_bounds escaped_cells
+      source_view after ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets copy_trace.
+Proof.
+  intros value input_view output_view
+         source_domain source_liveouts targets expected_commit_targets
+         mapping copy_trace value_trace
+         local_cells public_cells frame_cells
+         public_specs local_specs public_bounds local_bounds escaped_cells
+         source_view after Hcontract.
+  destruct Hcontract as [Hbounded _].
+  eapply
+    scratchpad_copy_bounded_fully_declared_compatible_contract_generic_instance_trace_obligations.
+  exact Hbounded.
 Qed.
 
 Theorem scratchpad_copy_full_value_event_entry :
