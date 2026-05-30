@@ -291,7 +291,10 @@ with `State.eq` replaced by certificate-chosen views.  Separate
 accepted-certificate projection facts expose the two CInstr trace summaries
 when a later proof needs them: privatization yields value obligations, mapped
 events, and private use-def, while promotion yields value obligations and
-scalar loaded-before-use.
+scalar loaded-before-use.  The same layer also exposes storage-summary
+projections for the bounded obligations, so later proofs can refer directly to
+bounds, compatibility, protocol, separation, and non-escape facts without
+unpacking the semantic endpoint.
 The generic private-storage layer now follows the same
 discipline below the CInstr wrapper:
 `PrivateStorageValidator.private_bounded_declared_boundary_unique_compatible_non_escape_value_family`

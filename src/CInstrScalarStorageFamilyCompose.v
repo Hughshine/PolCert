@@ -1,13 +1,19 @@
 Require Import CInstrScalarExpansionValidatorBridge.
 Require Import CInstrScalarPromotionValidatorBridge.
 Require Import ImpureAlarmConfig.
+Require Import List.
 Require Import PolIRs.
 Require Import PrivateStorageWitness.
 Require Import ScalarExpansionValueWitness.
 Require Import ScalarExpansionWitness.
 Require Import ScalarPromotionValueWitness.
+Require Import ScalarPromotionWitness.
 Require Import StateObservation.
+Require Import StorageBoundsWitness.
+Require Import StorageCompatibilityWitness.
 Require Import Values.
+
+Import ListNotations.
 
 (** Composition witness for concrete CInstr scalar-storage families.
 
@@ -244,6 +250,110 @@ Proof.
                 [_Hpromotion_ok Hpromotion_side]]]]]]].
   exact
     (Promotion.cscalar_promotion_bounded_side_condition_contract
+       (bcssc_promotion_params certificate)
+       (bcssc_mid_program certificate) after
+       Hpromotion_side).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_privatization_storage_summary :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    storage_bounds_obligations
+      (Expansion.cspbp_private_bounds
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_private_cells
+         (bcssc_privatization_params certificate)) /\
+    storage_compatibility_obligations
+      (Expansion.Scalar.scalar_expansion_storage_mapping
+         (Expansion.cspbp_entries
+            (bcssc_privatization_params certificate)))
+      (Expansion.cspbp_source_specs
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_private_specs
+         (bcssc_privatization_params certificate)) /\
+    private_non_escape_obligations
+      (Expansion.cspbp_private_cells
+         (bcssc_privatization_params certificate))
+      (Expansion.cspbp_escaped_cells
+         (bcssc_privatization_params certificate)).
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret [_Hpriv_ok [Hpriv_side _Hpromotion]]]]].
+  exact
+    (Expansion.cscalar_privatization_bounded_side_condition_storage_summary
+       (bcssc_privatization_params certificate)
+       before (bcssc_mid_program certificate)
+       Hpriv_side).
+Qed.
+
+Theorem accepted_bounded_cinstr_scalar_storage_certificate_promotion_storage_summary :
+  forall certificate before after,
+    bounded_cinstr_scalar_storage_certificate_accepted
+      certificate before after ->
+    scalar_promotion_obligations
+      (Promotion.cspmp_source_cell
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_scalar_cell
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_source_liveout
+         (bcssc_promotion_params certificate))
+      (scalar_promotion_value_trace_events
+         (Promotion.cspmp_value_trace
+            (bcssc_promotion_params certificate))) /\
+    scalar_value_simulation_obligations Values.val
+      (Promotion.cspmp_value_trace
+         (bcssc_promotion_params certificate)) /\
+    private_separation_obligations
+      [Promotion.cspmp_scalar_cell
+         (bcssc_promotion_params certificate)]
+      (Promotion.cspmp_public_cells
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_frame_cells
+         (bcssc_promotion_params certificate)) /\
+    storage_compatibility_obligations
+      [(Promotion.cspmp_source_cell
+          (bcssc_promotion_params certificate),
+        Promotion.cspmp_scalar_cell
+          (bcssc_promotion_params certificate))]
+      (Promotion.cspmp_logical_specs
+         (bcssc_promotion_params certificate))
+      (Promotion.cspmp_scalar_specs
+         (bcssc_promotion_params certificate)) /\
+    storage_bounds_obligations
+      (Promotion.cspmp_source_bounds
+         (bcssc_promotion_params certificate))
+      [Promotion.cspmp_source_cell
+         (bcssc_promotion_params certificate)] /\
+    storage_bounds_obligations
+      (Promotion.cspmp_scalar_bounds
+         (bcssc_promotion_params certificate))
+      [Promotion.cspmp_scalar_cell
+         (bcssc_promotion_params certificate)] /\
+    private_non_escape_obligations
+      [Promotion.cspmp_scalar_cell
+         (bcssc_promotion_params certificate)]
+      (Promotion.cspmp_escaped_cells
+         (bcssc_promotion_params certificate)).
+Proof.
+  intros certificate before after Haccepted.
+  unfold bounded_cinstr_scalar_storage_certificate_accepted in Haccepted.
+  unfold bounded_cinstr_scalar_storage_pair_certificate in Haccepted.
+  destruct Haccepted as
+    [privatization_ok
+      [promotion_ok
+        [_Hpriv_ret
+          [_Hpriv_ok
+            [_Hpriv_side
+              [_Hpromotion_ret
+                [_Hpromotion_ok Hpromotion_side]]]]]]].
+  exact
+    (Promotion.cscalar_promotion_bounded_side_condition_storage_summary
        (bcssc_promotion_params certificate)
        (bcssc_mid_program certificate) after
        Hpromotion_side).

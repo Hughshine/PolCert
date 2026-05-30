@@ -641,6 +641,34 @@ Proof.
   - exact Hnon_escape_obligations.
 Qed.
 
+Theorem cscalar_privatization_bounded_side_condition_storage_summary :
+  forall params before after,
+    cscalar_privatization_bounded_side_condition params before after ->
+    storage_bounds_obligations
+      (cspbp_private_bounds params)
+      (cspbp_private_cells params) /\
+    storage_compatibility_obligations
+      (Scalar.scalar_expansion_storage_mapping
+         (cspbp_entries params))
+      (cspbp_source_specs params)
+      (cspbp_private_specs params) /\
+    private_non_escape_obligations
+      (cspbp_private_cells params)
+      (cspbp_escaped_cells params).
+Proof.
+  intros params before after Hside.
+  pose proof
+    (cscalar_privatization_bounded_side_condition_obligations
+       params before after Hside)
+    as Hobligations.
+  destruct Hobligations as [_Hvalue_core Hbounds Hcompatible Hnon_escape].
+  split.
+  - exact Hbounds.
+  - split.
+    + exact Hcompatible.
+    + exact Hnon_escape.
+Qed.
+
 Theorem cscalar_privatization_bounded_family_sound :
   forall params before after ok,
     mayReturn

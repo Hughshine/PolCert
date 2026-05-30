@@ -476,6 +476,59 @@ Proof.
   - exact Hnon_escape_obligations.
 Qed.
 
+Theorem cscalar_promotion_bounded_side_condition_storage_summary :
+  forall params before after,
+    cscalar_promotion_bounded_side_condition params before after ->
+    scalar_promotion_obligations
+      (cspmp_source_cell params)
+      (cspmp_scalar_cell params)
+      (cspmp_source_liveout params)
+      (scalar_promotion_value_trace_events
+         (cspmp_value_trace params)) /\
+    scalar_value_simulation_obligations Values.val
+      (cspmp_value_trace params) /\
+    private_separation_obligations
+      [cspmp_scalar_cell params]
+      (cspmp_public_cells params)
+      (cspmp_frame_cells params) /\
+    storage_compatibility_obligations
+      [(cspmp_source_cell params, cspmp_scalar_cell params)]
+      (cspmp_logical_specs params)
+      (cspmp_scalar_specs params) /\
+    storage_bounds_obligations
+      (cspmp_source_bounds params)
+      [cspmp_source_cell params] /\
+    storage_bounds_obligations
+      (cspmp_scalar_bounds params)
+      [cspmp_scalar_cell params] /\
+    private_non_escape_obligations
+      [cspmp_scalar_cell params]
+      (cspmp_escaped_cells params).
+Proof.
+  intros params before after Hside.
+  pose proof
+    (cscalar_promotion_bounded_side_condition_contract
+       params before after Hside)
+    as Hcontract.
+  destruct Hcontract as
+    [Hbase Hsource_bounds Hscalar_bounds Hnon_escape].
+  destruct Hbase as
+    [Hprotocol Hvalue_simulation Hseparation Hcompatible _Hsemantics].
+  split.
+  - exact Hprotocol.
+  - split.
+    + exact Hvalue_simulation.
+    + split.
+      * exact Hseparation.
+      * split.
+        { exact Hcompatible. }
+        { split.
+          - exact Hsource_bounds.
+          - split.
+            + exact Hscalar_bounds.
+            + exact Hnon_escape. }
+Qed.
+
 Theorem cscalar_promotion_bounded_family_sound :
   forall params before after ok,
     mayReturn

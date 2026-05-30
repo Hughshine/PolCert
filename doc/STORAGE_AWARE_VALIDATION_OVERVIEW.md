@@ -213,7 +213,10 @@ bounded storage facts: privatization recovers the bounded value/core,
 private-bounds, compatibility, and non-escape obligations, while promotion
 recovers the bounded compatible non-escape value-view contract.  These facts
 stay below the certificate boundary; the top theorem remains the direct
-public-view semantic refinement endpoint.  The expanded helper theorem
+public-view semantic refinement endpoint.  Summary projection lemmas expose the
+storage-only slices directly, so follow-on proofs can consume bounds,
+compatibility, separation, protocol, and non-escape facts without unfolding the
+certificate or contract records.  The expanded helper theorem
 `accepted_bounded_cinstr_scalar_storage_certificate_semantic_refinement` remains
 available for proof scripts that want the state variables explicitly.  The
 generic private-storage layer now also exposes
