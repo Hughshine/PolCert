@@ -1003,6 +1003,82 @@ Proof.
   eapply Storage.same_instance_access_remap_read_access_cell_nth; eauto.
 Qed.
 
+Theorem check_pinstr_declared_layout_write_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_declared_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_waccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_declared_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_declared_layout_write_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_declared_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_waccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_waccess after) n = Some target_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_declared_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_write_source_access; eauto.
+Qed.
+
+Theorem check_pinstr_declared_layout_read_target_access :
+  forall layouts source_view after n target_access,
+    check_pinstr_declared_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess after) n = Some target_access ->
+    exists source_access,
+      nth_error (PL.pi_raccess source_view) n = Some source_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n target_access Hcheck Htarget.
+  pose proof
+    (check_pinstr_declared_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_target_access; eauto.
+Qed.
+
+Theorem check_pinstr_declared_layout_read_source_access :
+  forall layouts source_view after n source_access,
+    check_pinstr_declared_layout_access_remapb
+      layouts source_view after = true ->
+    nth_error (PL.pi_raccess source_view) n = Some source_access ->
+    exists target_access,
+      nth_error (PL.pi_raccess after) n = Some target_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_view after n source_access Hcheck Hsource.
+  pose proof
+    (check_pinstr_declared_layout_access_remapb_sound
+       layouts source_view after Hcheck)
+    as Hremap.
+  eapply Storage.same_instance_access_remap_read_source_access; eauto.
+Qed.
+
 Fixpoint check_pinstrs_array_rename_access_remapb
     (renames: list array_rename)
     (source_views afters: list PL.PolyInstr) : bool :=
@@ -1318,6 +1394,186 @@ Proof.
        Hcheck)
     as Hremap.
   eapply Storage.pprog_same_instance_access_remap_read_access_cell_nth; eauto.
+Qed.
+
+Theorem check_pprog_declared_layout_write_target_access :
+  forall layouts
+         source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n after_instr target_access,
+    check_pprog_declared_layout_access_remapb
+      layouts
+      ((source_pis, source_varctxt), source_vars)
+      ((after_pis, after_varctxt), after_vars) = true ->
+    nth_error after_pis instr_n = Some after_instr ->
+    nth_error (PL.pi_waccess after_instr) access_n = Some target_access ->
+    exists source_instr source_access,
+      nth_error source_pis instr_n = Some source_instr /\
+      nth_error (PL.pi_waccess source_instr) access_n = Some source_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n after_instr target_access
+         Hcheck Hafter_instr Htarget_access.
+  pose proof
+    (check_pprog_declared_layout_access_remapb_sound
+       layouts
+       ((source_pis, source_varctxt), source_vars)
+       ((after_pis, after_varctxt), after_vars)
+       Hcheck)
+    as Hremap.
+  destruct
+    (Storage.pprog_same_instance_access_remap_target_instr
+       (declared_layout_cell_relation layouts)
+       source_pis source_varctxt source_vars
+       after_pis after_varctxt after_vars
+       instr_n after_instr Hremap Hafter_instr)
+    as (source_instr & Hsource_instr & Hsiar).
+  destruct
+    (Storage.same_instance_access_remap_write_target_access
+       (declared_layout_cell_relation layouts)
+       source_instr after_instr access_n target_access Hsiar Htarget_access)
+    as (source_access & Hsource_access & Haccess).
+  exists source_instr, source_access.
+  repeat split; assumption.
+Qed.
+
+Theorem check_pprog_declared_layout_write_source_access :
+  forall layouts
+         source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n source_instr source_access,
+    check_pprog_declared_layout_access_remapb
+      layouts
+      ((source_pis, source_varctxt), source_vars)
+      ((after_pis, after_varctxt), after_vars) = true ->
+    nth_error source_pis instr_n = Some source_instr ->
+    nth_error (PL.pi_waccess source_instr) access_n = Some source_access ->
+    exists after_instr target_access,
+      nth_error after_pis instr_n = Some after_instr /\
+      nth_error (PL.pi_waccess after_instr) access_n = Some target_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n source_instr source_access
+         Hcheck Hsource_instr Hsource_access.
+  pose proof
+    (check_pprog_declared_layout_access_remapb_sound
+       layouts
+       ((source_pis, source_varctxt), source_vars)
+       ((after_pis, after_varctxt), after_vars)
+       Hcheck)
+    as Hremap.
+  destruct
+    (Storage.pprog_same_instance_access_remap_source_instr
+       (declared_layout_cell_relation layouts)
+       source_pis source_varctxt source_vars
+       after_pis after_varctxt after_vars
+       instr_n source_instr Hremap Hsource_instr)
+    as (after_instr & Hafter_instr & Hsiar).
+  destruct
+    (Storage.same_instance_access_remap_write_source_access
+       (declared_layout_cell_relation layouts)
+       source_instr after_instr access_n source_access Hsiar Hsource_access)
+    as (target_access & Htarget_access & Haccess).
+  exists after_instr, target_access.
+  repeat split; assumption.
+Qed.
+
+Theorem check_pprog_declared_layout_read_target_access :
+  forall layouts
+         source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n after_instr target_access,
+    check_pprog_declared_layout_access_remapb
+      layouts
+      ((source_pis, source_varctxt), source_vars)
+      ((after_pis, after_varctxt), after_vars) = true ->
+    nth_error after_pis instr_n = Some after_instr ->
+    nth_error (PL.pi_raccess after_instr) access_n = Some target_access ->
+    exists source_instr source_access,
+      nth_error source_pis instr_n = Some source_instr /\
+      nth_error (PL.pi_raccess source_instr) access_n = Some source_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n after_instr target_access
+         Hcheck Hafter_instr Htarget_access.
+  pose proof
+    (check_pprog_declared_layout_access_remapb_sound
+       layouts
+       ((source_pis, source_varctxt), source_vars)
+       ((after_pis, after_varctxt), after_vars)
+       Hcheck)
+    as Hremap.
+  destruct
+    (Storage.pprog_same_instance_access_remap_target_instr
+       (declared_layout_cell_relation layouts)
+       source_pis source_varctxt source_vars
+       after_pis after_varctxt after_vars
+       instr_n after_instr Hremap Hafter_instr)
+    as (source_instr & Hsource_instr & Hsiar).
+  destruct
+    (Storage.same_instance_access_remap_read_target_access
+       (declared_layout_cell_relation layouts)
+       source_instr after_instr access_n target_access Hsiar Htarget_access)
+    as (source_access & Hsource_access & Haccess).
+  exists source_instr, source_access.
+  repeat split; assumption.
+Qed.
+
+Theorem check_pprog_declared_layout_read_source_access :
+  forall layouts
+         source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n source_instr source_access,
+    check_pprog_declared_layout_access_remapb
+      layouts
+      ((source_pis, source_varctxt), source_vars)
+      ((after_pis, after_varctxt), after_vars) = true ->
+    nth_error source_pis instr_n = Some source_instr ->
+    nth_error (PL.pi_raccess source_instr) access_n = Some source_access ->
+    exists after_instr target_access,
+      nth_error after_pis instr_n = Some after_instr /\
+      nth_error (PL.pi_raccess after_instr) access_n = Some target_access /\
+      same_point_access_relation
+        (declared_layout_cell_relation layouts)
+        target_access source_access.
+Proof.
+  intros layouts source_pis source_varctxt source_vars
+         after_pis after_varctxt after_vars
+         instr_n access_n source_instr source_access
+         Hcheck Hsource_instr Hsource_access.
+  pose proof
+    (check_pprog_declared_layout_access_remapb_sound
+       layouts
+       ((source_pis, source_varctxt), source_vars)
+       ((after_pis, after_varctxt), after_vars)
+       Hcheck)
+    as Hremap.
+  destruct
+    (Storage.pprog_same_instance_access_remap_source_instr
+       (declared_layout_cell_relation layouts)
+       source_pis source_varctxt source_vars
+       after_pis after_varctxt after_vars
+       instr_n source_instr Hremap Hsource_instr)
+    as (after_instr & Hafter_instr & Hsiar).
+  destruct
+    (Storage.same_instance_access_remap_read_source_access
+       (declared_layout_cell_relation layouts)
+       source_instr after_instr access_n source_access Hsiar Hsource_access)
+    as (target_access & Htarget_access & Haccess).
+  exists after_instr, target_access.
+  repeat split; assumption.
 Qed.
 
 Lemma check_pprog_array_index_permutation_access_remapb_sound :

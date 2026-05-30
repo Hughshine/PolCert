@@ -1397,7 +1397,10 @@ facts keep layout-specific simulation proofs from unpacking the generic
 `Forall2` witness.  The declared-layout checker also exposes direct pinstr and
 pprog write/read point-cell corollaries, so a concrete instruction proof can
 move from a successful checker run to the exact declared-layout cell relation
-for a selected access without unpacking the intermediate remap records.
+for a selected access without unpacking the intermediate remap records.  It
+also exposes one-sided source/target access recovery facts: knowing only one
+selected write or read access is enough to recover the paired access and its
+same-point relation.
 
 ### Padding and Alignment
 
