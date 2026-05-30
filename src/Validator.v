@@ -29,6 +29,7 @@ Require Import ScalarPromotionValidator.
 Require Import CopyProtocolWitness.
 Require Import CopyCommitWitness.
 Require Import CopyInstanceWitness.
+Require Import InstanceTraceWitness.
 Require Import CopyMappingWitness.
 Require Import CopyProtocolValueWitness.
 Require Import CopyProtocolValidator.
@@ -1624,6 +1625,12 @@ Definition storage_copy_instance_trace_obligation_event_target :=
   copy_instance_trace_obligation_event_target.
 Definition storage_check_copy_instance_traceb_event_target :=
   check_copy_instance_traceb_event_target.
+Definition storage_copy_instance_trace_matches_generic :=
+  copy_instance_trace_matches_generic.
+Definition storage_copy_instance_trace_matches_from_generic :=
+  copy_instance_trace_matches_from_generic.
+Definition storage_check_copy_instance_traceb_generic_obligations :=
+  check_copy_instance_traceb_generic_obligations.
 Definition storage_copy_source_view_refines_view :=
   CopyProtocolCore.copy_source_view_refines_view.
 Definition storage_copy_protocol_view_contract :=
@@ -2049,6 +2056,32 @@ Definition storage_bounded_compatible_live_reuse_value_entry_compatible_specs :=
   ReuseConflictCore.bounded_compatible_live_reuse_value_entry_compatible_specs.
 Definition storage_logical_instance := logical_instance.
 Definition storage_projected_instance := projected_instance.
+Definition storage_trace_instance_role_eqb :=
+  trace_instance_role_eqb.
+Definition storage_trace_instance_role_eqb_eq :=
+  trace_instance_role_eqb_eq.
+Definition storage_instance_trace_matches :=
+  @instance_trace_matches.
+Definition storage_check_instance_traceb :=
+  @check_instance_traceb.
+Definition storage_check_instance_traceb_sound :=
+  @check_instance_traceb_sound.
+Definition storage_instance_trace_obligations :=
+  @instance_trace_obligations.
+Definition storage_check_instance_traceb_obligations_sound :=
+  @check_instance_traceb_obligations_sound.
+Definition storage_instance_trace_obligations_length_match :=
+  @instance_trace_obligations_length_match.
+Definition storage_instance_trace_obligation_target_event :=
+  @instance_trace_obligation_target_event.
+Definition storage_instance_trace_obligation_event_target :=
+  @instance_trace_obligation_event_target.
+Definition storage_check_instance_traceb_length_match :=
+  @check_instance_traceb_length_match.
+Definition storage_check_instance_traceb_target_event :=
+  @check_instance_traceb_target_event.
+Definition storage_check_instance_traceb_event_target :=
+  @check_instance_traceb_event_target.
 Definition storage_check_instance_projectionb :=
   check_instance_projectionb.
 Definition storage_check_instance_projectionb_sound :=

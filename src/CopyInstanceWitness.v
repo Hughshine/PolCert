@@ -3,6 +3,7 @@ Require Import List.
 
 Require Import CopyProtocolWitness.
 Require Import InstanceProjectionWitness.
+Require Import InstanceTraceWitness.
 
 Import ListNotations.
 
@@ -243,5 +244,52 @@ Proof.
   intros targets trace event Hcheck Hin.
   eapply copy_instance_trace_obligation_event_target; eauto.
   apply check_copy_instance_traceb_obligations_sound.
+  exact Hcheck.
+Qed.
+
+Theorem copy_instance_trace_matches_generic :
+  forall targets trace,
+    copy_instance_trace_matches targets trace ->
+    instance_trace_matches copy_event copy_event_projected_role targets trace.
+Proof.
+  induction targets as [|target targets_tail IH];
+    intros trace Hmatch;
+    destruct trace as [|event trace_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - exact I.
+  - destruct Hmatch as [Hrole Htail].
+    split.
+    + exact Hrole.
+    + apply IH.
+      exact Htail.
+Qed.
+
+Theorem copy_instance_trace_matches_from_generic :
+  forall targets trace,
+    instance_trace_matches copy_event copy_event_projected_role targets trace ->
+    copy_instance_trace_matches targets trace.
+Proof.
+  induction targets as [|target targets_tail IH];
+    intros trace Hmatch;
+    destruct trace as [|event trace_tail];
+    simpl in Hmatch |- *; try contradiction.
+  - exact I.
+  - destruct Hmatch as [Hrole Htail].
+    split.
+    + exact Hrole.
+    + apply IH.
+      exact Htail.
+Qed.
+
+Theorem check_copy_instance_traceb_generic_obligations :
+  forall targets trace,
+    check_copy_instance_traceb targets trace = true ->
+    instance_trace_obligations
+      copy_event copy_event_projected_role targets trace.
+Proof.
+  intros targets trace Hcheck.
+  constructor.
+  apply copy_instance_trace_matches_generic.
+  apply check_copy_instance_traceb_sound.
   exact Hcheck.
 Qed.
