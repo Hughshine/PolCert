@@ -374,6 +374,40 @@ Proof.
     exact Hconflicts.
 Qed.
 
+Theorem check_conflict_safe_reuseb_sources_nodup :
+  forall mapping conflicts,
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    NoDup (reuse_mapping_sources mapping).
+Proof.
+  intros mapping conflicts Hcheck.
+  exact
+    (csro_sources_nodup
+       mapping conflicts
+       (check_conflict_safe_reuseb_sound mapping conflicts Hcheck)).
+Qed.
+
+Theorem check_conflict_safe_reuseb_conflicts_separated :
+  forall mapping conflicts,
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    conflicts_separated mapping conflicts.
+Proof.
+  intros mapping conflicts Hcheck.
+  exact
+    (csro_conflicts_separated
+       mapping conflicts
+       (check_conflict_safe_reuseb_sound mapping conflicts Hcheck)).
+Qed.
+
+Theorem check_conflict_safe_reuseb_conflict_pair_separated :
+  forall mapping conflicts conflict,
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    In conflict conflicts ->
+    conflict_pair_separated mapping conflict.
+Proof.
+  intros mapping conflicts conflict Hcheck Hin.
+  eapply check_conflict_safe_reuseb_conflicts_separated; eauto.
+Qed.
+
 Lemma check_reuse_boundaryb_sound :
   forall mapping source_cells,
     check_reuse_boundaryb mapping source_cells = true ->
@@ -388,6 +422,40 @@ Proof.
     exact Hnodup.
   - apply reuse_mapping_covers_sourcesb_sound.
     exact Hcover.
+Qed.
+
+Theorem check_reuse_boundaryb_sources_nodup :
+  forall mapping source_cells,
+    check_reuse_boundaryb mapping source_cells = true ->
+    NoDup source_cells.
+Proof.
+  intros mapping source_cells Hcheck.
+  exact
+    (rbo_sources_nodup
+       mapping source_cells
+       (check_reuse_boundaryb_sound mapping source_cells Hcheck)).
+Qed.
+
+Theorem check_reuse_boundaryb_sources_covered :
+  forall mapping source_cells,
+    check_reuse_boundaryb mapping source_cells = true ->
+    reuse_mapping_covers_sources mapping source_cells.
+Proof.
+  intros mapping source_cells Hcheck.
+  exact
+    (rbo_sources_covered
+       mapping source_cells
+       (check_reuse_boundaryb_sound mapping source_cells Hcheck)).
+Qed.
+
+Theorem check_reuse_boundaryb_source_covered :
+  forall mapping source_cells source_cell,
+    check_reuse_boundaryb mapping source_cells = true ->
+    In source_cell source_cells ->
+    reuse_source_covered mapping source_cell.
+Proof.
+  intros mapping source_cells source_cell Hcheck Hin.
+  eapply check_reuse_boundaryb_sources_covered; eauto.
 Qed.
 
 Theorem reuse_mapping_sources_covered :
@@ -414,4 +482,31 @@ Proof.
   - exact (csro_sources_nodup mapping conflicts Hobligations).
   - apply reuse_mapping_sources_covered.
     exact (csro_sources_nodup mapping conflicts Hobligations).
+Qed.
+
+Theorem check_conflict_safe_reuseb_boundary_obligations :
+  forall mapping conflicts,
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    reuse_boundary_obligations mapping (reuse_mapping_sources mapping).
+Proof.
+  intros mapping conflicts Hcheck.
+  constructor.
+  - eapply check_conflict_safe_reuseb_sources_nodup; eauto.
+  - apply reuse_mapping_sources_covered.
+    eapply check_conflict_safe_reuseb_sources_nodup; eauto.
+Qed.
+
+Theorem check_conflict_safe_reuseb_mapping_source_covered :
+  forall mapping conflicts source_cell,
+    check_conflict_safe_reuseb mapping conflicts = true ->
+    In source_cell (reuse_mapping_sources mapping) ->
+    reuse_source_covered mapping source_cell.
+Proof.
+  intros mapping conflicts source_cell Hcheck Hin.
+  pose proof
+    (check_conflict_safe_reuseb_boundary_obligations
+       mapping conflicts Hcheck)
+    as Hboundary.
+  destruct Hboundary as [_ Hcovered].
+  eapply Hcovered; eauto.
 Qed.

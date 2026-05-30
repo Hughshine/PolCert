@@ -570,7 +570,10 @@ local-buffer separation into one wrapper for scratchpad/packing-style
 transformations.
 `ReuseConflictWitness.v` starts the contraction/reuse route by checking finite
 logical-to-physical reuse maps against conflict pairs: conflicting logical
-values must not map to the same physical cell.  `LifetimeConflictWitness.v`
+values must not map to the same physical cell.  Its checked projections now
+recover source-key uniqueness, per-conflict physical separation, and the
+reusable boundary obligations for every source in the finite reuse map directly
+from `check_conflict_safe_reuseb`.  `LifetimeConflictWitness.v`
 checks the preceding finite live-range obligation: every pair of overlapping
 live intervals must be listed as a conflict, and conflict-safe reuse then
 implies physical separation for all live overlaps.  `ReuseValueWitness.v` adds
@@ -585,7 +588,8 @@ back to the concrete reuse-map edge it claims to witness.
 live-out selected for final projection must be present in the reuse map.  It
 now also exposes the physical image of a reuse map, so contraction-style
 validators can connect every actually reused physical cell to declared storage
-bounds rather than checking an unrelated cell list.
+bounds rather than checking an unrelated cell list.  The boundary checker also
+exports direct checked facts for source uniqueness and per-source coverage.
 `StorageCompatibilityWitness.v` adds a finite size/alignment compatibility
 checker for logical-to-physical storage maps.  This captures the explicit
 storage-class side condition needed by contraction, inter-array reuse, packing,
