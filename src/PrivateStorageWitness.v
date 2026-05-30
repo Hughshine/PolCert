@@ -258,6 +258,48 @@ Proof.
     exact Hframe.
 Qed.
 
+Theorem check_private_separationb_private_nodup :
+  forall private_cells public_cells frame_cells,
+    check_private_separationb
+      private_cells public_cells frame_cells = true ->
+    NoDup private_cells.
+Proof.
+  intros private_cells public_cells frame_cells Hcheck.
+  exact
+    (pso_private_nodup
+       private_cells public_cells frame_cells
+       (check_private_separationb_sound
+          private_cells public_cells frame_cells Hcheck)).
+Qed.
+
+Theorem check_private_separationb_private_public_disjoint :
+  forall private_cells public_cells frame_cells,
+    check_private_separationb
+      private_cells public_cells frame_cells = true ->
+    mem_cells_disjoint private_cells public_cells.
+Proof.
+  intros private_cells public_cells frame_cells Hcheck.
+  exact
+    (pso_private_public_disjoint
+       private_cells public_cells frame_cells
+       (check_private_separationb_sound
+          private_cells public_cells frame_cells Hcheck)).
+Qed.
+
+Theorem check_private_separationb_private_frame_disjoint :
+  forall private_cells public_cells frame_cells,
+    check_private_separationb
+      private_cells public_cells frame_cells = true ->
+    mem_cells_disjoint private_cells frame_cells.
+Proof.
+  intros private_cells public_cells frame_cells Hcheck.
+  exact
+    (pso_private_frame_disjoint
+       private_cells public_cells frame_cells
+       (check_private_separationb_sound
+          private_cells public_cells frame_cells Hcheck)).
+Qed.
+
 Record private_non_escape_obligations
     (private_cells escaped_cells: list MemCell) : Prop := {
   pneo_private_not_escaped :
@@ -277,6 +319,18 @@ Proof.
   constructor.
   apply mem_cells_disjointb_sound.
   exact Hcheck.
+Qed.
+
+Theorem check_private_non_escapeb_private_not_escaped :
+  forall private_cells escaped_cells,
+    check_private_non_escapeb private_cells escaped_cells = true ->
+    mem_cells_disjoint private_cells escaped_cells.
+Proof.
+  intros private_cells escaped_cells Hcheck.
+  exact
+    (pneo_private_not_escaped
+       private_cells escaped_cells
+       (check_private_non_escapeb_sound private_cells escaped_cells Hcheck)).
 Qed.
 
 Inductive private_event :=
@@ -347,6 +401,19 @@ Proof.
     destruct Hin as [Heq | Hin_tail].
     + subst. exact Hevent.
     + eapply IH; eauto.
+Qed.
+
+Theorem check_private_trace_cells_declaredb_cell_declared :
+  forall private_cells trace cell,
+    check_private_trace_cells_declaredb private_cells trace = true ->
+    In cell (private_trace_cells trace) ->
+    In cell private_cells.
+Proof.
+  intros private_cells trace cell Hcheck Hin.
+  eapply private_trace_cells_declared_in.
+  - apply check_private_trace_cells_declaredb_sound.
+    exact Hcheck.
+  - exact Hin.
 Qed.
 
 Fixpoint private_reads_defined
@@ -695,6 +762,20 @@ Proof.
   - exact Hin_cell.
 Qed.
 
+Theorem check_private_access_instances_declaredb_cell_declared :
+  forall private_cells points trace p cell,
+    check_private_access_instances_declaredb
+      private_cells points trace = true ->
+    In p points ->
+    In cell (private_access_trace_cells_at p trace) ->
+    In cell private_cells.
+Proof.
+  intros private_cells points trace p cell Hcheck Hin_point Hin_cell.
+  eapply private_access_instances_declared_cell; eauto.
+  apply check_private_access_instances_declaredb_sound.
+  exact Hcheck.
+Qed.
+
 Definition public_not_hidden
     (hidden_cells: list MemCell) (cell: MemCell) : Prop :=
   ~ In cell hidden_cells.
@@ -816,6 +897,48 @@ Proof.
     exact Husedef.
 Qed.
 
+Theorem check_private_local_obligationsb_private_hidden :
+  forall hidden_cells private_cells trace,
+    check_private_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_cells_hidden private_cells hidden_cells.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (plo_private_hidden
+       hidden_cells private_cells trace
+       (check_private_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_local_obligationsb_private_nodup :
+  forall hidden_cells private_cells trace,
+    check_private_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    NoDup private_cells.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (plo_private_nodup
+       hidden_cells private_cells trace
+       (check_private_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_local_obligationsb_private_use_def :
+  forall hidden_cells private_cells trace,
+    check_private_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_use_def_trace trace.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (plo_private_use_def
+       hidden_cells private_cells trace
+       (check_private_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
 Record private_declared_local_obligations
     (hidden_cells private_cells: list MemCell)
     (trace: list private_event) : Prop := {
@@ -847,6 +970,48 @@ Proof.
     exact Hlocal.
   - apply check_private_trace_cells_declaredb_sound.
     exact Hdeclared.
+Qed.
+
+Theorem check_private_declared_local_obligationsb_local :
+  forall hidden_cells private_cells trace,
+    check_private_declared_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_local_obligations hidden_cells private_cells trace.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (pdlo_local
+       hidden_cells private_cells trace
+       (check_private_declared_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_declared_local_obligationsb_trace_cells_declared :
+  forall hidden_cells private_cells trace,
+    check_private_declared_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_trace_cells_declared private_cells trace.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (pdlo_trace_cells_declared
+       hidden_cells private_cells trace
+       (check_private_declared_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_declared_local_obligationsb_trace_cell_declared :
+  forall hidden_cells private_cells trace cell,
+    check_private_declared_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    In cell (private_trace_cells trace) ->
+    In cell private_cells.
+Proof.
+  intros hidden_cells private_cells trace cell Hcheck Hin.
+  eapply private_trace_cells_declared_in.
+  - eapply check_private_declared_local_obligationsb_trace_cells_declared.
+    exact Hcheck.
+  - exact Hin.
 Qed.
 
 Record private_access_local_obligations
@@ -894,6 +1059,64 @@ Proof.
   - intro p.
     apply private_access_use_def_trace_instantiates.
     exact Haccess_use_def.
+Qed.
+
+Theorem check_private_access_local_obligationsb_private_hidden :
+  forall hidden_cells private_cells trace,
+    check_private_access_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_cells_hidden private_cells hidden_cells.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (palo_private_hidden
+       hidden_cells private_cells trace
+       (check_private_access_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_access_local_obligationsb_private_nodup :
+  forall hidden_cells private_cells trace,
+    check_private_access_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    NoDup private_cells.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (palo_private_nodup
+       hidden_cells private_cells trace
+       (check_private_access_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_access_local_obligationsb_private_access_use_def :
+  forall hidden_cells private_cells trace,
+    check_private_access_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_access_use_def_trace trace.
+Proof.
+  intros hidden_cells private_cells trace Hcheck.
+  exact
+    (palo_private_access_use_def
+       hidden_cells private_cells trace
+       (check_private_access_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)).
+Qed.
+
+Theorem check_private_access_local_obligationsb_instantiated_use_def :
+  forall hidden_cells private_cells trace p,
+    check_private_access_local_obligationsb
+      hidden_cells private_cells trace = true ->
+    private_use_def_trace
+      (instantiate_private_access_trace p trace).
+Proof.
+  intros hidden_cells private_cells trace p Hcheck.
+  exact
+    (palo_private_instantiated_use_def
+       hidden_cells private_cells trace
+       (check_private_access_local_obligationsb_sound
+          hidden_cells private_cells trace Hcheck)
+       p).
 Qed.
 
 Lemma private_cells_hidden_unobservable :

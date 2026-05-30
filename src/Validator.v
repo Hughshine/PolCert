@@ -647,6 +647,18 @@ Definition storage_frame_preservation_write_within_allowed_bounds :=
   FramePreservationCore.frame_preservation_write_within_allowed_bounds.
 Definition storage_frame_preservation_frame_cell_within_bounds :=
   FramePreservationCore.frame_preservation_frame_cell_within_bounds.
+Definition storage_check_private_separationb :=
+  check_private_separationb.
+Definition storage_check_private_separationb_sound :=
+  check_private_separationb_sound.
+Definition storage_private_separation_obligations :=
+  private_separation_obligations.
+Definition storage_check_private_separationb_private_nodup :=
+  check_private_separationb_private_nodup.
+Definition storage_check_private_separationb_private_public_disjoint :=
+  check_private_separationb_private_public_disjoint.
+Definition storage_check_private_separationb_private_frame_disjoint :=
+  check_private_separationb_private_frame_disjoint.
 Definition storage_private_boundary_pair :=
   private_boundary_pair.
 Definition storage_private_boundary_value_entry :=
@@ -707,6 +719,8 @@ Definition storage_check_private_non_escapeb_sound :=
   check_private_non_escapeb_sound.
 Definition storage_private_non_escape_obligations :=
   private_non_escape_obligations.
+Definition storage_check_private_non_escapeb_private_not_escaped :=
+  check_private_non_escapeb_private_not_escaped.
 Definition storage_private_event := private_event.
 Definition storage_private_event_cell :=
   private_event_cell.
@@ -720,6 +734,8 @@ Definition storage_private_trace_cells_declared :=
   private_trace_cells_declared.
 Definition storage_private_trace_cells_declared_in :=
   private_trace_cells_declared_in.
+Definition storage_check_private_trace_cells_declaredb_cell_declared :=
+  check_private_trace_cells_declaredb_cell_declared.
 Definition storage_private_access_trace_cells_at :=
   private_access_trace_cells_at.
 Definition storage_private_access_trace_declared_at :=
@@ -734,6 +750,8 @@ Definition storage_private_access_instances_declared_obligations :=
   private_access_instances_declared_obligations.
 Definition storage_private_access_instances_declared_cell :=
   private_access_instances_declared_cell.
+Definition storage_check_private_access_instances_declaredb_cell_declared :=
+  check_private_access_instances_declaredb_cell_declared.
 Definition storage_scalar_expansion_entry :=
   scalar_expansion_entry.
 Definition storage_scalar_expansion_event_kind :=

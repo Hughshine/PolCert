@@ -105,12 +105,17 @@ included in a finite hidden-cell set, which proves they are outside the public
 cell relation.  It also contains small proved checkers for duplicate-free
 private-cell lists, concrete private read-after-write traces, and
 access-function read-after-write traces that instantiate to concrete
-`MemCell` traces for every dynamic point.  The concrete private trace route now
-also checks that every trace read/write cell belongs to the declared
-`private_cells` set, so use-def evidence cannot silently refer to cells outside
-the hidden/separated storage region.  The access-function route also has a
-finite instance-declaration witness: for a supplied finite point set, every
-instantiated access trace cell must belong to the declared private cell set.
+`MemCell` traces for every dynamic point.  The finite separation and
+non-escape checkers now expose duplicate-freedom, private/public disjointness,
+private/frame disjointness, and private/non-escaped disjointness directly from
+the checked booleans.  The concrete private trace route now also checks that
+every trace read/write cell belongs to the declared `private_cells` set, so
+use-def evidence cannot silently refer to cells outside the hidden/separated
+storage region, and the checked trace predicate directly projects per-cell
+declaration facts.  The access-function route also has a finite
+instance-declaration witness: for a supplied finite point set, every
+instantiated access trace cell must belong to the declared private cell set,
+with the same per-cell fact available directly from the instance checker.
 Composed with `StorageBoundsWitness`, the
 private-boundary route can now show that every concrete private trace cell lies
 within declared private-storage bounds.  It also factors out reusable finite
