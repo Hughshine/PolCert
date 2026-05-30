@@ -323,6 +323,18 @@ Proof.
   exact Hnodup.
 Qed.
 
+Theorem check_instance_projectionb_commit_sources_nodup :
+  forall source_domain source_liveouts targets,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    NoDup (commit_sources targets).
+Proof.
+  intros source_domain source_liveouts targets Hcheck.
+  eapply instance_projection_commit_sources_nodup.
+  apply check_instance_projectionb_sound.
+  exact Hcheck.
+Qed.
+
 Theorem instance_projection_liveout_committed :
   forall source_domain source_liveouts targets source_instance,
     instance_projection_obligations source_domain source_liveouts targets ->
@@ -337,6 +349,21 @@ Proof.
   exact Hin.
 Qed.
 
+Theorem check_instance_projectionb_liveout_committed :
+  forall source_domain source_liveouts targets source_instance,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    In source_instance source_liveouts ->
+    In source_instance (commit_sources targets).
+Proof.
+  intros source_domain source_liveouts targets source_instance
+         Hcheck Hin.
+  eapply instance_projection_liveout_committed.
+  - apply check_instance_projectionb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
 Theorem instance_projection_commit_is_liveout :
   forall source_domain source_liveouts targets source_instance,
     instance_projection_obligations source_domain source_liveouts targets ->
@@ -349,6 +376,21 @@ Proof.
   destruct Hcover as [_ Hiff].
   apply Hiff.
   exact Hin.
+Qed.
+
+Theorem check_instance_projectionb_commit_is_liveout :
+  forall source_domain source_liveouts targets source_instance,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    In source_instance (commit_sources targets) ->
+    In source_instance source_liveouts.
+Proof.
+  intros source_domain source_liveouts targets source_instance
+         Hcheck Hin.
+  eapply instance_projection_commit_is_liveout.
+  - apply check_instance_projectionb_sound.
+    exact Hcheck.
+  - exact Hin.
 Qed.
 
 Theorem instance_projection_liveout_in_domain :
@@ -367,6 +409,21 @@ Proof.
   exact Hliveout.
 Qed.
 
+Theorem check_instance_projectionb_liveout_in_domain :
+  forall source_domain source_liveouts targets source_instance,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    In source_instance source_liveouts ->
+    In source_instance source_domain.
+Proof.
+  intros source_domain source_liveouts targets source_instance
+         Hcheck Hin.
+  eapply instance_projection_liveout_in_domain.
+  - apply check_instance_projectionb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
 Theorem instance_projection_target_source_in_domain :
   forall source_domain source_liveouts targets target,
     instance_projection_obligations source_domain source_liveouts targets ->
@@ -381,6 +438,20 @@ Proof.
   exact Hin.
 Qed.
 
+Theorem check_instance_projectionb_target_source_in_domain :
+  forall source_domain source_liveouts targets target,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    In target targets ->
+    In (projected_source target) source_domain.
+Proof.
+  intros source_domain source_liveouts targets target Hcheck Hin.
+  eapply instance_projection_target_source_in_domain.
+  - apply check_instance_projectionb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
 Theorem instance_projection_commit_target_liveout :
   forall source_domain source_liveouts targets target,
     instance_projection_obligations source_domain source_liveouts targets ->
@@ -393,4 +464,21 @@ Proof.
   eapply instance_projection_commit_is_liveout.
   - exact Hobligations.
   - eapply projected_commit_source_in_commit_sources; eauto.
+Qed.
+
+Theorem check_instance_projectionb_commit_target_liveout :
+  forall source_domain source_liveouts targets target,
+    check_instance_projectionb
+      source_domain source_liveouts targets = true ->
+    In target targets ->
+    projected_role target = Commit ->
+    In (projected_source target) source_liveouts.
+Proof.
+  intros source_domain source_liveouts targets target
+         Hcheck Hin Hrole.
+  eapply instance_projection_commit_target_liveout.
+  - apply check_instance_projectionb_sound.
+    exact Hcheck.
+  - exact Hin.
+  - exact Hrole.
 Qed.

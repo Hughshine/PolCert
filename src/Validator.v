@@ -1779,16 +1779,28 @@ Definition storage_commit_sources_projected_sources_subset :=
   commit_sources_projected_sources_subset.
 Definition storage_instance_projection_commit_sources_nodup :=
   instance_projection_commit_sources_nodup.
+Definition storage_check_instance_projectionb_commit_sources_nodup :=
+  check_instance_projectionb_commit_sources_nodup.
 Definition storage_instance_projection_liveout_committed :=
   instance_projection_liveout_committed.
+Definition storage_check_instance_projectionb_liveout_committed :=
+  check_instance_projectionb_liveout_committed.
 Definition storage_instance_projection_commit_is_liveout :=
   instance_projection_commit_is_liveout.
+Definition storage_check_instance_projectionb_commit_is_liveout :=
+  check_instance_projectionb_commit_is_liveout.
 Definition storage_instance_projection_liveout_in_domain :=
   instance_projection_liveout_in_domain.
+Definition storage_check_instance_projectionb_liveout_in_domain :=
+  check_instance_projectionb_liveout_in_domain.
 Definition storage_instance_projection_target_source_in_domain :=
   instance_projection_target_source_in_domain.
+Definition storage_check_instance_projectionb_target_source_in_domain :=
+  check_instance_projectionb_target_source_in_domain.
 Definition storage_instance_projection_commit_target_liveout :=
   instance_projection_commit_target_liveout.
+Definition storage_check_instance_projectionb_commit_target_liveout :=
+  check_instance_projectionb_commit_target_liveout.
 Definition storage_projection_source_view_refines_view :=
   InstanceProjectionCore.projection_source_view_refines_view.
 Definition storage_instance_projection_view_contract :=
