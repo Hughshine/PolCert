@@ -392,6 +392,125 @@ Proof.
     exact Husedef.
 Qed.
 
+Theorem check_scalar_expansionb_instances_in_domain :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    forall instance,
+      In instance (scalar_expansion_instances entries) ->
+      In instance source_domain.
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [Hinstances _ _ _ _ _ _].
+  exact Hinstances.
+Qed.
+
+Theorem check_scalar_expansionb_source_cells_declared :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    forall source_cell,
+      In source_cell (scalar_expansion_source_cells entries) ->
+      In source_cell source_cells.
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ Hsources _ _ _ _ _].
+  exact Hsources.
+Qed.
+
+Theorem check_scalar_expansionb_private_cells_declared :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    forall private_cell,
+      In private_cell (scalar_expansion_private_cells entries) ->
+      In private_cell private_cells.
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ _ Hprivates _ _ _ _].
+  exact Hprivates.
+Qed.
+
+Theorem check_scalar_expansionb_entry_keys_unique :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    NoDup (scalar_expansion_entry_keys entries).
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ _ _ Hkeys _ _ _].
+  exact Hkeys.
+Qed.
+
+Theorem check_scalar_expansionb_private_cells_unique :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    NoDup (scalar_expansion_private_cells entries).
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ _ _ _ Hprivates _ _].
+  exact Hprivates.
+Qed.
+
+Theorem check_scalar_expansionb_events_mapped :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    scalar_expansion_events_mapped entries events.
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ _ _ _ _ Hevents _].
+  exact Hevents.
+Qed.
+
+Theorem check_scalar_expansionb_event_mapped :
+  forall source_domain source_cells private_cells entries events event,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    In event events ->
+    scalar_expansion_event_mapped entries event.
+Proof.
+  intros source_domain source_cells private_cells entries events event
+         Hcheck Hin.
+  apply
+    (check_scalar_expansionb_events_mapped
+       source_domain source_cells private_cells entries events Hcheck).
+  exact Hin.
+Qed.
+
+Theorem check_scalar_expansionb_private_use_def :
+  forall source_domain source_cells private_cells entries events,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    private_use_def_trace (scalar_expansion_private_trace events).
+Proof.
+  intros source_domain source_cells private_cells entries events Hcheck.
+  destruct
+    (check_scalar_expansionb_sound
+       source_domain source_cells private_cells entries events Hcheck)
+    as [_ _ _ _ _ _ Husedef].
+  exact Husedef.
+Qed.
+
 Lemma scalar_expansion_entry_private_cell_in :
   forall entries entry,
     In entry entries ->
@@ -451,4 +570,40 @@ Proof.
   rewrite Hleft in Hright.
   inversion Hright.
   reflexivity.
+Qed.
+
+Theorem check_scalar_expansionb_event_uses_declared_private :
+  forall source_domain source_cells private_cells entries events event,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    In event events ->
+    In (expansion_event_private_cell event) private_cells.
+Proof.
+  intros source_domain source_cells private_cells entries events event
+         Hcheck Hin.
+  eapply scalar_expansion_event_uses_declared_private.
+  - apply check_scalar_expansionb_sound.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_scalar_expansionb_events_same_key_same_private :
+  forall source_domain source_cells private_cells entries events left right,
+    check_scalar_expansionb
+      source_domain source_cells private_cells entries events = true ->
+    In left events ->
+    In right events ->
+    expansion_event_instance left = expansion_event_instance right ->
+    expansion_event_source_cell left = expansion_event_source_cell right ->
+    expansion_event_private_cell left = expansion_event_private_cell right.
+Proof.
+  intros source_domain source_cells private_cells entries events left right
+         Hcheck Hin_left Hin_right Hinstance Hsource.
+  eapply scalar_expansion_events_same_key_same_private.
+  - apply check_scalar_expansionb_sound.
+    exact Hcheck.
+  - exact Hin_left.
+  - exact Hin_right.
+  - exact Hinstance.
+  - exact Hsource.
 Qed.

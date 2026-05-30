@@ -494,6 +494,94 @@ Proof.
               exact Htail.
 Qed.
 
+Theorem check_scalar_expansion_value_traceb_trace_simulates :
+  forall trace,
+    check_scalar_expansion_value_traceb value_eqb trace = true ->
+    scalar_expansion_value_trace_simulates trace.
+Proof.
+  unfold check_scalar_expansion_value_traceb.
+  intros trace Hcheck.
+  apply check_scalar_expansion_value_trace_fromb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_expansion_value_traceb_private_use_def :
+  forall trace,
+    check_scalar_expansion_value_traceb value_eqb trace = true ->
+    private_use_def_trace
+      (scalar_expansion_private_trace
+         (scalar_expansion_value_trace_events trace)).
+Proof.
+  intros trace Hcheck.
+  apply scalar_expansion_value_trace_private_use_def.
+  apply check_scalar_expansion_value_traceb_trace_simulates.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_expansion_value_traceb_events_private_use_def :
+  forall value_trace events,
+    check_scalar_expansion_value_traceb value_eqb value_trace = true ->
+    scalar_expansion_value_trace_events value_trace = events ->
+    private_use_def_trace (scalar_expansion_private_trace events).
+Proof.
+  intros value_trace events Hcheck Hevents.
+  subst events.
+  apply check_scalar_expansion_value_traceb_private_use_def.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_expansion_value_traceb_event_matched :
+  forall value_trace storage_event value_event,
+    check_scalar_expansion_value_traceb value_eqb value_trace = true ->
+    In (storage_event, value_event) value_trace ->
+    scalar_expansion_value_event_kind_matches
+      storage_event value_event /\
+    scalar_expansion_value_event_values_match value_event.
+Proof.
+  intros value_trace storage_event value_event Hcheck Hin.
+  unfold scalar_expansion_value_trace_simulates in *.
+  eapply scalar_expansion_value_trace_simulates_from_event_matched.
+  - apply check_scalar_expansion_value_traceb_trace_simulates.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_scalar_expansion_value_traceb_write_values_equal :
+  forall value_trace storage_event source_value private_value,
+    check_scalar_expansion_value_traceb value_eqb value_trace = true ->
+    In (storage_event, ExpansionValueWrite source_value private_value)
+      value_trace ->
+    source_value = private_value.
+Proof.
+  intros value_trace storage_event source_value private_value Hcheck Hin.
+  pose proof
+    (check_scalar_expansion_value_traceb_event_matched
+       value_trace storage_event
+       (ExpansionValueWrite source_value private_value)
+       Hcheck Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem check_scalar_expansion_value_traceb_read_values_equal :
+  forall value_trace storage_event source_value private_value,
+    check_scalar_expansion_value_traceb value_eqb value_trace = true ->
+    In (storage_event, ExpansionValueRead source_value private_value)
+      value_trace ->
+    source_value = private_value.
+Proof.
+  intros value_trace storage_event source_value private_value Hcheck Hin.
+  pose proof
+    (check_scalar_expansion_value_traceb_event_matched
+       value_trace storage_event
+       (ExpansionValueRead source_value private_value)
+       Hcheck Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
 Record scalar_expansion_value_obligations
     (trace: scalar_expansion_value_trace value) : Prop := {
   sevo_trace_simulates :

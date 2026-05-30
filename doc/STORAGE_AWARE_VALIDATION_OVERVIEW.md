@@ -335,7 +335,15 @@ refinement, with the old source temporary and the new private cells both erased
 from the endpoint observation.  `ScalarExpansionValueWitness.v` adds the next
 finite semantic layer: each expansion write carries equal source/private
 values, and each expansion read carries source/private values equal to the
-current value of the selected private cell.  The
+current value of the selected private cell.  `ScalarExpansionWitness.v` now
+also exposes direct checked projections for the storage bookkeeping checker:
+domain/source/private declarations, key and private-cell uniqueness,
+per-event mapping, private use-def, declared-private use, and same-key
+same-private-cell consistency can be recovered from `check_scalar_expansionb`
+without unpacking the full obligation record.  The value-flow checker follows
+the same pattern: `check_scalar_expansion_value_traceb` directly projects trace
+simulation, private use-def, event kind/value matching, and selected write/read
+source-private value equality.  The
 `checked_value_pure_scalar_privatization_correct` wrapper threads this
 value-flow witness through the same public-view refinement statement.  The
 bounded variant
@@ -478,11 +486,14 @@ promotion trace ends in a store-back.
 `ScalarPromotionValueWitness.v` adds the first value-flow layer over that
 protocol: a load initializes the scalar to the source value, scalar reads see
 the current scalar, scalar writes update it, and store-back commits the current
-scalar value.  It now also exposes
+scalar value.  It now also exposes direct checked projections from
+`check_scalar_value_traceb`: trace simulation, scalar use-def, event matching,
+and selected load/store value equality.  The obligation-level names
 `ScalarPromotionValueWitness.scalar_value_obligations_use_def` and
-`ScalarPromotionValueWitness.scalar_value_obligations_events_use_def`, so the
-value trace itself proves that scalar reads, scalar writes, and store-back
-events occur only after the promoted scalar has a current value.  The value
+`ScalarPromotionValueWitness.scalar_value_obligations_events_use_def` remain
+available, so the value trace itself proves that scalar reads, scalar writes,
+and store-back events occur only after the promoted scalar has a current value.
+The value
 trace now also supports arbitrary-event projection through
 `ScalarPromotionValueWitness.scalar_value_obligation_event_matched`, recovering
 the matching promotion-event kind and the load/store value equality carried by
@@ -886,13 +897,14 @@ contract: projection value entries directly inherit compatible storage specs
 and target bounds, mapped final targets inherit declared bounds, and
 entry/read/write/next-live protocol cells directly inherit phase-buffer bounds
 and non-escape facts.
-The concrete CInstr scalar witnesses now follow the same direct-projection
-style: scalar expansion and scalar promotion expose named selected-event
-write/read or load/store equality facts instead of requiring callers to unpack
-generic value-match predicates.  They also expose the same selected-event facts
-from the outer `..._value_trace_simulates` predicates, so later pass-level
-proofs can cite the user-facing trace evidence directly instead of first
-unfolding the initial current-value state.  The same outer trace evidence now
+The generic and concrete CInstr scalar witnesses now follow the same
+direct-projection style: scalar expansion and scalar promotion expose named
+checked selected-event write/read or load/store equality facts instead of
+requiring callers to unpack generic value-match predicates.  They also expose
+the same selected-event facts from the outer `..._value_trace_simulates`
+predicates, so later pass-level proofs can cite the user-facing trace evidence
+directly instead of first unfolding the initial current-value state.  The same
+outer trace evidence now
 exports bundled value-obligation/use-def consequences: expansion traces yield
 value obligations, mapped events, and private use-def; promotion traces yield
 value obligations and scalar loaded-before-use facts.

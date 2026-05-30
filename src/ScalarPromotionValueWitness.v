@@ -415,6 +415,96 @@ Proof.
       exact Hcheck.
 Qed.
 
+Theorem check_scalar_value_traceb_trace_simulates :
+  forall trace,
+    check_scalar_value_traceb value_eqb trace = true ->
+    scalar_value_trace_simulates trace.
+Proof.
+  unfold check_scalar_value_traceb.
+  intros trace Hcheck.
+  apply check_scalar_value_trace_fromb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_value_traceb_use_def :
+  forall trace,
+    check_scalar_value_traceb value_eqb trace = true ->
+    scalar_value_use_def_trace
+      (scalar_promotion_value_trace_events trace).
+Proof.
+  intros trace Hcheck.
+  apply scalar_value_trace_use_def.
+  apply check_scalar_value_traceb_trace_simulates.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_value_traceb_events_use_def :
+  forall value_trace events,
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    scalar_promotion_value_trace_events value_trace = events ->
+    scalar_value_use_def_trace events.
+Proof.
+  intros value_trace events Hcheck Hevents.
+  subst events.
+  apply check_scalar_value_traceb_use_def.
+  exact Hcheck.
+Qed.
+
+Theorem check_scalar_value_traceb_event_matched :
+  forall value_trace storage_event value_event,
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    In (storage_event, value_event) value_trace ->
+    scalar_promotion_value_event_kind_matches storage_event value_event /\
+    scalar_promotion_value_event_values_match value_event.
+Proof.
+  intros value_trace storage_event value_event Hcheck Hin.
+  unfold scalar_value_trace_simulates in *.
+  eapply scalar_value_trace_simulates_from_event_matched.
+  - apply check_scalar_value_traceb_trace_simulates.
+    exact Hcheck.
+  - exact Hin.
+Qed.
+
+Theorem check_scalar_value_traceb_load_values_equal :
+  forall value_trace source_cell scalar_cell source_value scalar_value,
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    In (PromotionLoad source_cell scalar_cell,
+        PromotionValueLoad source_value scalar_value) value_trace ->
+    source_value = scalar_value.
+Proof.
+  intros value_trace source_cell scalar_cell source_value scalar_value
+         Hcheck Hin.
+  pose proof
+    (check_scalar_value_traceb_event_matched
+       value_trace
+       (PromotionLoad source_cell scalar_cell)
+       (PromotionValueLoad source_value scalar_value)
+       Hcheck Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
+Theorem check_scalar_value_traceb_store_values_equal :
+  forall value_trace scalar_cell source_cell scalar_value source_value,
+    check_scalar_value_traceb value_eqb value_trace = true ->
+    In (PromotionStore scalar_cell source_cell,
+        PromotionValueStore scalar_value source_value) value_trace ->
+    scalar_value = source_value.
+Proof.
+  intros value_trace scalar_cell source_cell scalar_value source_value
+         Hcheck Hin.
+  pose proof
+    (check_scalar_value_traceb_event_matched
+       value_trace
+       (PromotionStore scalar_cell source_cell)
+       (PromotionValueStore scalar_value source_value)
+       Hcheck Hin)
+    as [_ Hvalues].
+  simpl in Hvalues.
+  exact Hvalues.
+Qed.
+
 Record scalar_value_simulation_obligations
     (trace: scalar_promotion_value_trace value) : Prop := {
   svso_trace_simulates :

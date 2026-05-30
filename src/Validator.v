@@ -790,6 +790,26 @@ Definition storage_check_scalar_expansionb :=
   check_scalar_expansionb.
 Definition storage_check_scalar_expansionb_sound :=
   check_scalar_expansionb_sound.
+Definition storage_check_scalar_expansionb_instances_in_domain :=
+  check_scalar_expansionb_instances_in_domain.
+Definition storage_check_scalar_expansionb_source_cells_declared :=
+  check_scalar_expansionb_source_cells_declared.
+Definition storage_check_scalar_expansionb_private_cells_declared :=
+  check_scalar_expansionb_private_cells_declared.
+Definition storage_check_scalar_expansionb_entry_keys_unique :=
+  check_scalar_expansionb_entry_keys_unique.
+Definition storage_check_scalar_expansionb_private_cells_unique :=
+  check_scalar_expansionb_private_cells_unique.
+Definition storage_check_scalar_expansionb_events_mapped :=
+  check_scalar_expansionb_events_mapped.
+Definition storage_check_scalar_expansionb_event_mapped :=
+  check_scalar_expansionb_event_mapped.
+Definition storage_check_scalar_expansionb_private_use_def :=
+  check_scalar_expansionb_private_use_def.
+Definition storage_check_scalar_expansionb_event_uses_declared_private :=
+  check_scalar_expansionb_event_uses_declared_private.
+Definition storage_check_scalar_expansionb_events_same_key_same_private :=
+  check_scalar_expansionb_events_same_key_same_private.
 Definition storage_scalar_expansion_event_uses_declared_private :=
   scalar_expansion_event_uses_declared_private.
 Definition storage_scalar_expansion_events_same_key_same_private :=
@@ -810,6 +830,18 @@ Definition storage_check_scalar_expansion_value_traceb :=
   @check_scalar_expansion_value_traceb.
 Definition storage_check_scalar_expansion_value_traceb_sound :=
   check_scalar_expansion_value_traceb_sound.
+Definition storage_check_scalar_expansion_value_traceb_trace_simulates :=
+  check_scalar_expansion_value_traceb_trace_simulates.
+Definition storage_check_scalar_expansion_value_traceb_private_use_def :=
+  check_scalar_expansion_value_traceb_private_use_def.
+Definition storage_check_scalar_expansion_value_traceb_events_private_use_def :=
+  check_scalar_expansion_value_traceb_events_private_use_def.
+Definition storage_check_scalar_expansion_value_traceb_event_matched :=
+  check_scalar_expansion_value_traceb_event_matched.
+Definition storage_check_scalar_expansion_value_traceb_write_values_equal :=
+  check_scalar_expansion_value_traceb_write_values_equal.
+Definition storage_check_scalar_expansion_value_traceb_read_values_equal :=
+  check_scalar_expansion_value_traceb_read_values_equal.
 Definition storage_scalar_expansion_value_obligations :=
   scalar_expansion_value_obligations.
 Definition storage_scalar_expansion_value_obligations_private_use_def :=
@@ -1302,6 +1334,18 @@ Definition storage_check_scalar_value_traceb :=
   @check_scalar_value_traceb.
 Definition storage_check_scalar_value_traceb_sound :=
   check_scalar_value_traceb_sound.
+Definition storage_check_scalar_value_traceb_trace_simulates :=
+  check_scalar_value_traceb_trace_simulates.
+Definition storage_check_scalar_value_traceb_use_def :=
+  check_scalar_value_traceb_use_def.
+Definition storage_check_scalar_value_traceb_events_use_def :=
+  check_scalar_value_traceb_events_use_def.
+Definition storage_check_scalar_value_traceb_event_matched :=
+  check_scalar_value_traceb_event_matched.
+Definition storage_check_scalar_value_traceb_load_values_equal :=
+  check_scalar_value_traceb_load_values_equal.
+Definition storage_check_scalar_value_traceb_store_values_equal :=
+  check_scalar_value_traceb_store_values_equal.
 Definition storage_scalar_value_simulation_obligations :=
   scalar_value_simulation_obligations.
 Definition storage_scalar_value_obligations_use_def :=
