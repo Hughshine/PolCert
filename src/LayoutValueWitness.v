@@ -269,4 +269,50 @@ Proof.
   eapply layout_value_entries_match_entry_in_mapping; eauto.
 Qed.
 
+Theorem check_layout_valueb_length_match :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value)),
+    check_layout_valueb mapping entries = true ->
+    length mapping = length entries.
+Proof.
+  intros mapping entries Hcheck.
+  eapply layout_value_obligation_length_match.
+  apply check_layout_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_layout_valueb_mapping_entry_matched :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (mapping_entry: MemCell * MemCell),
+    check_layout_valueb mapping entries = true ->
+    In mapping_entry mapping ->
+    exists value_entry,
+      In value_entry entries /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  intros mapping entries mapping_entry Hcheck Hin.
+  eapply layout_value_obligation_mapping_entry_matched; eauto.
+  apply check_layout_valueb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_layout_valueb_entry_in_mapping :
+  forall (mapping: padding_layout_mapping)
+         (entries: list (layout_value_entry value))
+         (value_entry: layout_value_entry value),
+    check_layout_valueb mapping entries = true ->
+    In value_entry entries ->
+    exists mapping_entry,
+      In mapping_entry mapping /\
+      layout_value_entry_cells_match mapping_entry value_entry /\
+      layout_value_entry_value_match value_entry.
+Proof.
+  intros mapping entries value_entry Hcheck Hin.
+  eapply layout_value_obligation_entry_in_mapping; eauto.
+  apply check_layout_valueb_sound.
+  exact Hcheck.
+Qed.
+
 End Soundness.

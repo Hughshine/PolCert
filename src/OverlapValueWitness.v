@@ -230,3 +230,38 @@ Proof.
   destruct Hobligations as [Hmatch].
   eapply overlap_value_entries_match_target; eauto.
 Qed.
+
+Theorem check_overlap_valueb_length_match :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall targets entries,
+      check_overlap_valueb value_eqb targets entries = true ->
+      length targets = length entries.
+Proof.
+  intros value value_eqb Hsound targets entries Hcheck.
+  eapply overlap_value_obligation_length_match.
+  eapply check_overlap_valueb_sound; eauto.
+Qed.
+
+Theorem check_overlap_valueb_target_matched :
+  forall (value: Type)
+         (value_eqb: value -> value -> bool),
+    (forall left right,
+       value_eqb left right = true ->
+       left = right) ->
+    forall targets entries target,
+      check_overlap_valueb value_eqb targets entries = true ->
+      In target targets ->
+      exists entry,
+        In entry entries /\
+        overlap_value_target entry = target /\
+        overlap_value_source_value entry =
+          overlap_value_target_value entry.
+Proof.
+  intros value value_eqb Hsound targets entries target Hcheck Hin.
+  eapply overlap_value_obligation_target_matched; eauto.
+  eapply check_overlap_valueb_sound; eauto.
+Qed.

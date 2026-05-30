@@ -1086,10 +1086,16 @@ Definition storage_layout_value_obligations :=
   layout_value_obligations.
 Definition storage_layout_value_obligation_length_match :=
   layout_value_obligation_length_match.
+Definition storage_check_layout_valueb_length_match :=
+  @check_layout_valueb_length_match.
 Definition storage_layout_value_obligation_mapping_entry_matched :=
   layout_value_obligation_mapping_entry_matched.
+Definition storage_check_layout_valueb_mapping_entry_matched :=
+  @check_layout_valueb_mapping_entry_matched.
 Definition storage_layout_value_obligation_entry_in_mapping :=
   layout_value_obligation_entry_in_mapping.
+Definition storage_check_layout_valueb_entry_in_mapping :=
+  @check_layout_valueb_entry_in_mapping.
 Definition storage_array_bounds := array_bounds.
 Definition storage_array_bounds_id := array_bounds_id.
 Definition storage_array_bounds_extents := array_bounds_extents.
@@ -1666,12 +1672,18 @@ Definition storage_reuse_value_obligations :=
   reuse_value_obligations.
 Definition storage_reuse_value_obligation_length_match :=
   reuse_value_obligation_length_match.
+Definition storage_check_reuse_valueb_length_match :=
+  @check_reuse_valueb_length_match.
 Definition storage_reuse_value_obligation_mapping_entry_matched :=
   reuse_value_obligation_mapping_entry_matched.
+Definition storage_check_reuse_valueb_mapping_entry_matched :=
+  @check_reuse_valueb_mapping_entry_matched.
 Definition storage_reuse_value_entries_match_entry_in_mapping :=
   reuse_value_entries_match_entry_in_mapping.
 Definition storage_reuse_value_obligation_entry_in_mapping :=
   reuse_value_obligation_entry_in_mapping.
+Definition storage_check_reuse_valueb_entry_in_mapping :=
+  @check_reuse_valueb_entry_in_mapping.
 Definition storage_storage_spec := storage_spec.
 Definition storage_check_storage_compatibilityb :=
   check_storage_compatibilityb.
@@ -1931,8 +1943,12 @@ Definition storage_overlap_value_entries_match_target :=
   overlap_value_entries_match_target.
 Definition storage_overlap_value_obligation_length_match :=
   overlap_value_obligation_length_match.
+Definition storage_check_overlap_valueb_length_match :=
+  @check_overlap_valueb_length_match.
 Definition storage_overlap_value_obligation_target_matched :=
   overlap_value_obligation_target_matched.
+Definition storage_check_overlap_valueb_target_matched :=
+  @check_overlap_valueb_target_matched.
 Definition storage_overlap_write := overlap_write.
 Definition storage_check_overlap_storageb :=
   check_overlap_storageb.
@@ -1942,16 +1958,28 @@ Definition storage_overlap_storage_obligations :=
   overlap_storage_obligations.
 Definition storage_overlap_storage_entries_length_match :=
   overlap_storage_entries_length_match.
+Definition storage_check_overlap_storageb_entries_length_match :=
+  check_overlap_storageb_entries_length_match.
 Definition storage_overlap_storage_target_write_entry :=
   overlap_storage_target_write_entry.
+Definition storage_check_overlap_storageb_target_write_entry :=
+  check_overlap_storageb_target_write_entry.
 Definition storage_overlap_storage_write_target_in_targets :=
   overlap_storage_write_target_in_targets.
+Definition storage_check_overlap_storageb_write_target_in_targets :=
+  check_overlap_storageb_write_target_in_targets.
 Definition storage_overlap_storage_internal_write_private :=
   overlap_storage_internal_write_private.
+Definition storage_check_overlap_storageb_internal_write_private :=
+  check_overlap_storageb_internal_write_private.
 Definition storage_overlap_storage_commit_write_public :=
   overlap_storage_commit_write_public.
+Definition storage_check_overlap_storageb_commit_write_public :=
+  check_overlap_storageb_commit_write_public.
 Definition storage_overlap_storage_commit_cells_nodup :=
   overlap_storage_commit_cells_nodup.
+Definition storage_check_overlap_storageb_commit_cells_nodup :=
+  check_overlap_storageb_commit_cells_nodup.
 Definition storage_overlap_source_view_refines_view :=
   OverlapTilingCore.overlap_source_view_refines_view.
 Definition storage_overlap_no_private_view_contract :=

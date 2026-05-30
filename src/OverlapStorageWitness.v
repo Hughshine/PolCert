@@ -332,3 +332,87 @@ Proof.
   destruct Hobligations as [_ Hnodup].
   exact Hnodup.
 Qed.
+
+Theorem check_overlap_storageb_entries_length_match :
+  forall private_cells commit_cells targets writes,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    length targets = length writes.
+Proof.
+  intros private_cells commit_cells targets writes Hcheck.
+  eapply overlap_storage_entries_length_match.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_target_write_entry :
+  forall private_cells commit_cells targets writes target,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    In target targets ->
+    exists write,
+      In write writes /\
+      target = overlap_write_target write /\
+      overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets writes target Hcheck Hin.
+  eapply overlap_storage_target_write_entry; eauto.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_write_target_in_targets :
+  forall private_cells commit_cells targets writes write,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    In write writes ->
+    In (overlap_write_target write) targets /\
+    overlap_write_role_cell_ok private_cells commit_cells write.
+Proof.
+  intros private_cells commit_cells targets writes write Hcheck Hin.
+  eapply overlap_storage_write_target_in_targets; eauto.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_internal_write_private :
+  forall private_cells commit_cells targets writes write,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    In write writes ->
+    projected_role (overlap_write_target write) = Internal ->
+    In (overlap_write_cell write) private_cells.
+Proof.
+  intros private_cells commit_cells targets writes write
+         Hcheck Hin Hrole.
+  eapply overlap_storage_internal_write_private; eauto.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_commit_write_public :
+  forall private_cells commit_cells targets writes write,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    In write writes ->
+    projected_role (overlap_write_target write) = Commit ->
+    In (overlap_write_cell write) commit_cells.
+Proof.
+  intros private_cells commit_cells targets writes write
+         Hcheck Hin Hrole.
+  eapply overlap_storage_commit_write_public; eauto.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.
+
+Theorem check_overlap_storageb_commit_cells_nodup :
+  forall private_cells commit_cells targets writes,
+    check_overlap_storageb
+      private_cells commit_cells targets writes = true ->
+    NoDup (overlap_commit_write_cells writes).
+Proof.
+  intros private_cells commit_cells targets writes Hcheck.
+  eapply overlap_storage_commit_cells_nodup.
+  apply check_overlap_storageb_sound.
+  exact Hcheck.
+Qed.

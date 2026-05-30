@@ -447,7 +447,9 @@ index proof for a checked cell, so later pass-specific corollaries can cite the
 actual declared extent rather than only the packed `cell_within_declared_bounds`
 predicate.  `LayoutValueWitness.v` adds the boundary value side:
 each source-to-target layout map entry can be paired with evidence that the
-source logical value equals the represented target physical value.
+source logical value equals the represented target physical value.  Its checked
+projections expose length alignment and both mapping-entry/value-entry
+directions directly.
 `PaddingLayoutValidator.v` composes the structural, optional access-remap, and
 optional value witnesses with the same view-refinement endpoint.  The access
 variants reuse `LayoutWitness.check_pprog_array_rename_access_remapb_sound` to
@@ -563,8 +565,8 @@ checks the preceding finite live-range obligation: every pair of overlapping
 live intervals must be listed as a conflict, and conflict-safe reuse then
 implies physical separation for all live overlaps.  `ReuseValueWitness.v` adds
 a boundary value witness aligned with the logical-to-physical map: each
-physical boundary value must equal the logical value it represents.  The
-derived projection facts expose that the finite value evidence has the same
+physical boundary value must equal the logical value it represents.  Direct
+checked projection facts expose that the finite value evidence has the same
 length as the reuse map and that each reuse-map edge has a corresponding value
 entry with matching logical/physical cells and equal boundary values.  The
 reverse projection is also exposed, so every supplied value entry can be tied
@@ -652,10 +654,11 @@ either by a tile live-in or by a computation projected inside the same tile, and
 tile-produced values must appear before their consumers in the tile target
 trace.  Recomputed-value equivalence remains an explicit semantic obligation.
 The storage-aware overlap variant also composes role-to-write-cell evidence
-with `StorageBoundsWitness`.  Its role-to-write witness now exposes the
-positional table in both directions: targets and writes have matching length,
-each projected target has a write entry, and each write points back to a checked
-target.  Internal recomputation writes can then be checked within declared
+with `StorageBoundsWitness`.  Its checked value and role-to-write witnesses now
+expose their positional tables directly: recomputed targets recover matching
+value entries, targets and writes have matching length, each projected target
+has a write entry, and each write points back to a checked target.  Internal
+recomputation writes can then be checked within declared
 tile-private buffer bounds and commit writes within declared public-output
 bounds.
 `VersionCommitWitness.v` starts the array-expansion/versioning route by
