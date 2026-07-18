@@ -679,6 +679,8 @@ Definition validate_tiling (pp1 pp2: PolyLang.t) :=
     checks have already succeeded. *)
 Definition validate_general := validate_tiling.
 
+(** * Soundness of the Boolean validation checks *)
+
 Lemma check_valid_access_correct:
   forall pil_ext, 
     check_valid_access pil_ext = true ->
@@ -1016,6 +1018,8 @@ Proof.
     eapply check_eqdom_pinstrs_correct; eauto.
   }
 Qed.
+
+(** * Construction and projection of paired instruction instances *)
 
 Definition compose_ip_ext (ip1 ip2: PolyLang.InstrPoint): PolyLang.InstrPoint_ext := 
     {| 
@@ -2001,6 +2005,7 @@ Proof.
   eapply rel_list_implies_rel_nth; eauto.
 Qed.
 
+(** * Finiteness and pairwise access-dependence exclusion *)
 
 Lemma eqdom_perserve_finite_forward: 
   forall pis1 env1 vars1 pis2 env2 vars2 envv,
@@ -3132,6 +3137,8 @@ intros. intros res Hval Hres Hwf1 Hwf2 Henvlen Hext1 Hext2 Ha1 Ha2 ip1 ip2 Hip1 
 Qed.
 
 
+(** * Lifting instruction proofs to flattened instance lists *)
+
 Lemma compose_pinstrs_ext_nil: 
   forall pil1 pil2, 
     length pil1 = length pil2 ->
@@ -3455,16 +3462,7 @@ Lemma nth_error_compose_ipl_ext_inv:
       nth_error ipl2 n = Some ip2 /\
       ip_ext = compose_ip_ext ip1 ip2.
 Proof.
-  induction n; intros ipl1 ipl2 ip_ext Hnth.
-  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
-      simpl in Hnth; try discriminate.
-    inversion Hnth; subst.
-    exists ip1. exists ip2. repeat split; reflexivity.
-  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
-      simpl in Hnth; try discriminate.
-    eapply IHn in Hnth.
-    destruct Hnth as (ip1' & ip2' & Hnth1 & Hnth2 & Heq).
-    exists ip1'. exists ip2'. repeat split; eauto.
+  exact nth_error_compose_ipl_ext_inv_local.
 Qed.
 
 Lemma compose_ipl_ext_nodup:
@@ -4313,6 +4311,8 @@ Proof.
              (nth1:=length pil_head) (nth2:=length pil_head)
              (ipl1_ext:=ipl_tail) (ipl2_ext:=ipl_tail); eauto.
 Qed.
+
+(** * End-to-end schedule-validation correctness *)
 
 Lemma validate_tiling_implies_correspondence:
   forall pp1 pp2 env1 env2 vars1 vars2 poly_instrs1 poly_instrs2,
