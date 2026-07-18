@@ -2402,6 +2402,34 @@ Definition no_write_collision (wl1 wl2 rl1 rl2: list AccessFunction) (ip1 ip2: P
   no_wr_collision wl1 rl2 ip1 ip2 /\ 
   no_wr_collision wl2 rl1 ip2 ip1.
 
+Local Lemma lift_access_noncollision_to_cells:
+  forall p1 p2 cells1 cells2 accesses1 accesses2,
+    valid_access_cells p1 cells1 accesses1 ->
+    valid_access_cells p2 cells2 accesses2 ->
+    Forall
+      (fun access2 =>
+        Forall
+          (fun access1 =>
+            cell_neq (exact_cell access1 p1) (exact_cell access2 p2))
+          accesses1)
+      accesses2 ->
+    Forall (fun cell2 => Forall (fun cell1 => cell_neq cell1 cell2) cells1) cells2.
+Proof.
+  intros p1 p2 cells1 cells2 accesses1 accesses2
+    Hvalid1 Hvalid2 Hnoncollision.
+  eapply Forall_forall. intros cell2 Hcell2.
+  eapply Forall_forall. intros cell1 Hcell1.
+  destruct (Hvalid1 cell1 Hcell1) as
+    (access1 & Haccess1 & Haccess1_cell1).
+  destruct (Hvalid2 cell2 Hcell2) as
+    (access2 & Haccess2 & Haccess2_cell2).
+  eapply Forall_forall in Hnoncollision; [|exact Haccess2].
+  eapply Forall_forall in Hnoncollision; [|exact Haccess1].
+  eapply cell_neq_proper with (x:=cell1) (x0:=cell2) in Hnoncollision.
+  - exact Hnoncollision.
+  - eapply cell_eq_symm. exact Haccess1_cell1.
+  - eapply cell_eq_symm. exact Haccess2_cell2.
+Qed.
 
 Lemma no_w_collision_implies_permutability:
   forall i1 i2 p1 p2 st1 st2 st3 wl1 wl2 rl1 rl2 wcs1 rcs1 wcs2 rcs2,
@@ -2428,69 +2456,24 @@ Lemma no_w_collision_implies_permutability:
             Instr.NonAlias st1 ->
             (Instr.instr_semantics i1 p1 wcs1 rcs1 st1 st2 /\ Instr.instr_semantics i2 p2 wcs2 rcs2 st2 st3) ->
             (exists st2' st3', Instr.instr_semantics i2 p2 wcs2 rcs2 st1 st2' /\ Instr.instr_semantics i1 p1 wcs1 rcs1 st2' st3' /\ State.eq st3 st3').
-  Proof. 
-    intros until rcs2. intros H H0 H1 Halias H2.
-    destruct H1 as [Hww [Hwr Hrw]].
-    destruct H2 as [Hsema1 Hsema2].
-    assert (WW: Forall (fun wc2 => Forall (fun wc1 => cell_neq wc1 wc2) wcs1) wcs2). {
-      clear Hwr Hrw.
-      eapply Forall_forall. intros wc2 Hwc2.
-      eapply Forall_forall. intros wc1 Hwc1.
-      unfolds Instr.valid_access_function.
-      pose proof H p1 st1 st2 wcs1 rcs1 Hsema1.
-      unfolds valid_access_cells.
-      destruct H1 as [W1 R1].
-      pose proof W1 wc1 Hwc1 as W1. destruct W1 as (w1 & Hw1 & Heqw1).  
-      pose proof H0 p2 st2 st3 wcs2 rcs2 Hsema2.
-      destruct H1 as [W2 R2].
-      pose proof W2 wc2 Hwc2 as W2. destruct W2 as (w2 & Hw2 & Heqw2).
-      
-      eapply Forall_forall in Hww; eauto. eapply Forall_forall in Hww; eauto.
-      clear - Heqw1 Heqw2 Hww.
-      eapply cell_neq_proper with (x:=wc1) (x0:=wc2) in Hww; eauto.
-      eapply cell_eq_symm; trivial.
-      eapply cell_eq_symm; trivial.
-    }
-    assert (WR: Forall (fun rc2 => Forall (fun wc1 => cell_neq wc1 rc2) wcs1) rcs2). {
-      clear Hww Hrw.
-      eapply Forall_forall. intros rc2 Hrc2.
-      eapply Forall_forall. intros wc1 Hwc1.
-      unfolds Instr.valid_access_function.
-      pose proof H p1 st1 st2 wcs1 rcs1 Hsema1.
-      unfolds valid_access_cells.
-      destruct H1 as [W1 R1].
-      pose proof W1 wc1 Hwc1 as W1. destruct W1 as (w1 & Hw1 & Heqw1).  
-      pose proof H0 p2 st2 st3 wcs2 rcs2 Hsema2.
-      destruct H1 as [W2 R2].
-      pose proof R2 rc2 Hrc2 as R2. destruct R2 as (r2 & Hr2 & Heqr2).
-      
-      eapply Forall_forall in Hwr; eauto. eapply Forall_forall in Hwr; eauto.
-      clear - Heqw1 Heqr2 Hwr.
-      eapply cell_neq_proper with (x:=wc1) (x0:=rc2) in Hwr; eauto.
-      eapply cell_eq_symm; trivial.
-      eapply cell_eq_symm; trivial.
-    }
-    assert (RW: Forall (fun wc2 => Forall (fun rc1 => cell_neq rc1 wc2) rcs1) wcs2). {
-      clear Hww Hwr.
-      eapply Forall_forall. intros wc2 Hwc2.
-      eapply Forall_forall. intros rc1 Hrc1.
-      unfolds Instr.valid_access_function.
-      pose proof H p1 st1 st2 wcs1 rcs1 Hsema1.
-      unfolds valid_access_cells.
-      destruct H1 as [W1 R1].
-      pose proof R1 rc1 Hrc1 as R1. destruct R1 as (r1 & Hr1 & Heqr1).  
-      pose proof H0 p2 st2 st3 wcs2 rcs2 Hsema2.
-      destruct H1 as [W2 R2].
-      pose proof W2 wc2 Hwc2 as W2. destruct W2 as (w2 & Hw2 & Heqw2).
-      
-      eapply Forall_forall in Hrw; eauto. eapply Forall_forall in Hrw; eauto.
-      clear - Heqr1 Heqw2 Hrw.
-      eapply cell_neq_proper with (x:=rc1) (x0:=wc2) in Hrw; eauto.
-      eapply cell_eq_symm; trivial.
-      eapply cell_eq_symm; trivial.
-    }
-    eapply Instr.bc_condition_implie_permutbility; eauto.
-  Qed.
+Proof.
+  intros until rcs2.
+  intros Hvalid1 Hvalid2 [Hww [Hwr Hrw]] Halias [Hsema1 Hsema2].
+  pose proof (Hvalid1 p1 st1 st2 wcs1 rcs1 Hsema1) as [Hwrites1 Hreads1].
+  pose proof (Hvalid2 p2 st2 st3 wcs2 rcs2 Hsema2) as [Hwrites2 Hreads2].
+  eapply Instr.bc_condition_implie_permutbility.
+  - exact Halias.
+  - split.
+    + exact Hsema1.
+    + exact Hsema2.
+  - repeat split.
+    + exact (lift_access_noncollision_to_cells
+        p1 p2 wcs1 wcs2 wl1 wl2 Hwrites1 Hwrites2 Hww).
+    + exact (lift_access_noncollision_to_cells
+        p1 p2 wcs1 rcs2 wl1 rl2 Hwrites1 Hreads2 Hwr).
+    + exact (lift_access_noncollision_to_cells
+        p1 p2 rcs1 wcs2 rl1 wl2 Hreads1 Hwrites2 Hrw).
+Qed.
 
 Lemma no_write_collision_implies_permutable:
   forall ip1 ip2 wl1 wl2 rl1 rl2,
