@@ -4455,6 +4455,110 @@ Proof.
                 env1 envv ipl_ext); eauto.
 Qed.
 
+Local Lemma permutable_instance_lists_preserve_semantics:
+  forall
+    (pp1 : PolyLang.t)
+    (poly_instrs1 : list PolyLang.PolyInstr)
+    (env1 : list ident)
+    (vars1 : list (ident * Ty.t))
+    (envv : list Z)
+    (st1 st2 : State.t)
+    (ipl1 ipl2 sorted_ipl2 : list PolyLang.InstrPoint)
+    (ipl_ext : list PolyLang.InstrPoint_ext),
+    pp1 = (poly_instrs1, env1, vars1) ->
+    PolyLang.flatten_instrs envv poly_instrs1 ipl1 ->
+    Permutation ipl2 sorted_ipl2 ->
+    Sorted PolyLang.instr_point_sched_le sorted_ipl2 ->
+    PolyLang.instr_point_list_semantics sorted_ipl2 st1 st2 ->
+    PolyLang.new_of_ext_list ipl_ext = ipl2 ->
+    PolyLang.old_of_ext_list ipl_ext = ipl1 ->
+    (forall ip1_ext ip2_ext,
+      In ip1_ext ipl_ext ->
+      In ip2_ext ipl_ext ->
+      PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext ->
+      PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext ->
+      PolyLang.Permutable_ext ip1_ext ip2_ext) ->
+    PolyLang.NonAlias st1 ->
+    exists st2',
+      PolyLang.poly_instance_list_semantics envv pp1 st1 st2' /\
+      Instr.State.eq st2 st2'.
+Proof.
+  intros pp1 poly_instrs1 env1 vars1 envv st1 st2
+    ipl1 ipl2 sorted_ipl2 ipl_ext
+    Hpp1 Hflat1 Htarget_permutation Htarget_sorted Htarget_semantics
+    Hnew Hold Hpermutable Halias.
+  destruct
+    (PolyLang.permut_implies_ext_permut_new
+       ipl_ext ipl2 sorted_ipl2 Htarget_permutation Hnew)
+    as (sorted_new_ipl_ext & Hpermut_ext & Hnew_ext).
+  remember
+    (SelectionSort
+       PolyLang.instr_point_ext_old_sched_ltb
+       PolyLang.instr_point_ext_old_sched_eqb
+       sorted_new_ipl_ext)
+    as sorted_old_ipl_ext.
+  remember (PolyLang.old_of_ext_list sorted_old_ipl_ext) as sorted_ipl1.
+  symmetry in Heqsorted_old_ipl_ext.
+  pose proof Heqsorted_old_ipl_ext as Hselection_sort.
+  assert
+    (Sorted_b PolyLang.instr_point_ext_new_sched_leb sorted_new_ipl_ext)
+    as Hsorted_new_ext.
+  {
+    rewrite <- Hnew_ext in Htarget_sorted.
+    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
+  }
+  eapply PolyLang.selection_sort_instance_list_ext_implies_old_normal
+    in Hselection_sort.
+  eapply PolyLang.selection_sort_instance_list_is_correct in Hselection_sort.
+  destruct Hselection_sort as (Hpermut_old_ext & Hsort_old_ext); eauto.
+  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut
+    in Heqsorted_old_ipl_ext; eauto.
+  assert
+    (forall tau1 tau2 : PolyLang.InstrPoint_ext,
+      In tau1 sorted_new_ipl_ext ->
+      In tau2 sorted_new_ipl_ext ->
+      PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
+      PolyLang.instr_point_ext_new_sched_ge tau1 tau2 ->
+      PolyLang.Permutable_ext tau1 tau2)
+    as Hpermutable_sorted.
+  {
+    clear - Hpermutable Hpermut_ext.
+    eapply Permutation_sym in Hpermut_ext.
+    intros.
+    eapply Hpermutable; eauto;
+      eapply Permutation_in; eauto.
+  }
+  pose proof
+    (PolyLang.stable_permut_ext_lists_are_equivalent
+       sorted_new_ipl_ext sorted_old_ipl_ext
+       Hpermutable_sorted Heqsorted_old_ipl_ext st1 Halias)
+    as Hequivalent.
+  destruct Hequivalent as (Hforward & _).
+  rewrite <- Hnew_ext in Htarget_semantics.
+  rewrite <- PolyLang.list_ext_old_new_equivalence in Htarget_semantics.
+  destruct (Hforward st2 Htarget_semantics) as (st2' & Hsem' & Heq).
+  exists st2'. split; trivial.
+  rewrite Hpp1.
+  eapply PolyLang.PolyPointListSema
+    with (sorted_ipl:=sorted_ipl1) (ipl:=ipl1).
+  - reflexivity.
+  - exact Hflat1.
+  - rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
+    remember
+      (PolyLang.old_of_ext_list sorted_new_ipl_ext)
+      as sorted_new_old_ipl1.
+    eapply Permutation_trans in Hpermut_old_ext; eauto.
+    clear - Hpermut_ext Hold Heqsorted_new_old_ipl1.
+    rewrite <- Hold.
+    rewrite Heqsorted_new_old_ipl1.
+    eapply PolyLang.ext_permut_implies_permut_old; eauto.
+  - rewrite Heqsorted_ipl1.
+    clear - Hsort_old_ext.
+    eapply PolyLang.sortedb_lexorder_implies_sorted_lexorder; eauto.
+  - rewrite Heqsorted_ipl1.
+    exact Hsem'.
+Qed.
+
 Theorem validate_tiling_correct':
   forall pp1 pp2 env1 env2 poly_instrs1 poly_instrs2 vars1 vars2 envv st1 st2,
     WHEN res <- validate_tiling pp1 pp2 THEN
@@ -4471,75 +4575,38 @@ Proof.
   inversion Hsem.
   rename ipl into ipl2.
   rename sorted_ipl into sorted_ipl2.
+  rename H into Hpp2_sem.
+  rename H0 into Hflat2.
+  rename H1 into Htarget_permutation.
+  rename H2 into Htarget_sorted.
+  rename H3 into Htarget_semantics.
   pose proof Hval as G.
   rewrite Hpp1 in G. rewrite Hpp2 in G.
   assert (pis = poly_instrs2) as Hpis.
-  { rewrite Hpp2 in H. inversion H. reflexivity. }
-  rewrite Hpis in H0.
+  { rewrite Hpp2 in Hpp2_sem. inversion Hpp2_sem. reflexivity. }
+  rewrite Hpis in Hflat2.
   pose proof
     (validate_tiling_preserve_finite
        poly_instrs1 env1 vars1 poly_instrs2 env2 vars2 envv res G Htrue)
     as Hfinite.
   destruct Hfinite as [_ Hfinite].
-  specialize (Hfinite (ex_intro _ ipl2 H0)).
+  specialize (Hfinite (ex_intro _ ipl2 Hflat2)).
   destruct Hfinite as (ipl1 & Heqipl1).
   pose proof
     (validate_tiling_implies_permutability
        pp1 pp2 env1 env2 envv vars1 vars2 poly_instrs1 poly_instrs2
-       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 H0)
+       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 Hflat2)
     as Hperm.
   destruct Hperm as (ipl_ext & Hipl2 & Hipl1 & Hpermut).
-  eapply PolyLang.permut_implies_ext_permut_new with (ipl_ext:=ipl_ext) in H1; eauto.
-  destruct H1 as (sorted_new_ipl_ext & Hpermut_ext & Hnew_ext).
-  remember (SelectionSort PolyLang.instr_point_ext_old_sched_ltb PolyLang.instr_point_ext_old_sched_eqb sorted_new_ipl_ext) as sorted_old_ipl_ext.
-  remember (PolyLang.old_of_ext_list sorted_old_ipl_ext) as sorted_ipl1.
-  symmetry in Heqsorted_old_ipl_ext.
-  pose proof Heqsorted_old_ipl_ext.
-  assert (Sorted_b PolyLang.instr_point_ext_new_sched_leb sorted_new_ipl_ext) as Hsorted_new_ext.
-  {
-    rewrite <- Hnew_ext in H2.
-    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
-  }
-  eapply PolyLang.selection_sort_instance_list_ext_implies_old_normal in H1.
-  eapply PolyLang.selection_sort_instance_list_is_correct in H1.
-  destruct H1 as (Hpermut_old_ext & Hsort_old_ext); eauto.
-  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut in Heqsorted_old_ipl_ext; eauto.
-  assert (forall tau1 tau2 : PolyLang.InstrPoint_ext,
-    In tau1 sorted_new_ipl_ext ->
-    In tau2 sorted_new_ipl_ext ->
-    PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
-    PolyLang.instr_point_ext_new_sched_ge tau1 tau2 ->
-    PolyLang.Permutable_ext tau1 tau2) as Hpermut'.
-  {
-    clear - Hpermut Hpermut_ext.
-    eapply Permutation_sym in Hpermut_ext.
-    intros; eapply Hpermut; eauto;
-      eapply Permutation_in; eauto.
-  }
-  pose proof PolyLang.stable_permut_ext_lists_are_equivalent
-    sorted_new_ipl_ext sorted_old_ipl_ext Hpermut' Heqsorted_old_ipl_ext st1 Halias.
-  destruct H1 as (F & B).
-  rewrite <- Hnew_ext in H3.
-  rewrite <- PolyLang.list_ext_old_new_equivalence in H3.
-  pose proof F st2 H3.
-  destruct H1 as (st2' & Hsem' & EQ).
-  exists st2'. split; trivial.
-  rewrite Hpp1.
-  eapply PolyLang.PolyPointListSema with (sorted_ipl:=sorted_ipl1) (ipl:=ipl1).
-  - reflexivity.
-  - exact Heqipl1.
-  - rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
-    remember (PolyLang.old_of_ext_list sorted_new_ipl_ext) as sorted_new_old_ipl1.
-    eapply Permutation_trans in Hpermut_old_ext; eauto.
-    clear - Hpermut_ext Hipl1 Heqsorted_new_old_ipl1.
-    rewrite <- Hipl1.
-    rewrite Heqsorted_new_old_ipl1.
-    eapply PolyLang.ext_permut_implies_permut_old; eauto.
-  - rewrite Heqsorted_ipl1.
-    clear - Hsort_old_ext.
-    eapply PolyLang.sortedb_lexorder_implies_sorted_lexorder; eauto.
-  - rewrite Heqsorted_ipl1.
-    exact Hsem'.
+  eapply permutable_instance_lists_preserve_semantics
+    with
+      (poly_instrs1:=poly_instrs1)
+      (env1:=env1)
+      (vars1:=vars1)
+      (ipl1:=ipl1)
+      (ipl2:=ipl2)
+      (sorted_ipl2:=sorted_ipl2)
+      (ipl_ext:=ipl_ext); eauto.
 Qed.
 
 Lemma validate_implies_correspondence: 
@@ -4721,75 +4788,38 @@ Proof.
   inversion Hsem.
   rename ipl into ipl2.
   rename sorted_ipl into sorted_ipl2.
+  rename H into Hpp2_sem.
+  rename H0 into Hflat2.
+  rename H1 into Htarget_permutation.
+  rename H2 into Htarget_sorted.
+  rename H3 into Htarget_semantics.
   pose proof Hval as G.
   rewrite Hpp1 in G. rewrite Hpp2 in G.
   assert (pis = poly_instrs2) as Hpis.
-  { rewrite Hpp2 in H. inversion H. reflexivity. }
-  rewrite Hpis in H0.
+  { rewrite Hpp2 in Hpp2_sem. inversion Hpp2_sem. reflexivity. }
+  rewrite Hpis in Hflat2.
   pose proof
     (validate_preserve_finite
        poly_instrs1 env1 vars1 poly_instrs2 env2 vars2 envv res G Htrue)
     as Hfinite.
   destruct Hfinite as [_ Hfinite].
-  specialize (Hfinite (ex_intro _ ipl2 H0)).
+  specialize (Hfinite (ex_intro _ ipl2 Hflat2)).
   destruct Hfinite as (ipl1 & Heqipl1).
   pose proof
     (validate_implies_permutability
        pp1 pp2 env1 env2 envv vars1 vars2 poly_instrs1 poly_instrs2
-       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 H0)
+       ipl1 ipl2 res Hval Hpp1 Hpp2 Htrue Henvlen Heqipl1 Hflat2)
     as Hperm.
   destruct Hperm as (ipl_ext & Hipl2 & Hipl1 & Hpermut).
-  eapply PolyLang.permut_implies_ext_permut_new with (ipl_ext:=ipl_ext) in H1; eauto.
-  destruct H1 as (sorted_new_ipl_ext & Hpermut_ext & Hnew_ext).
-  remember (SelectionSort PolyLang.instr_point_ext_old_sched_ltb PolyLang.instr_point_ext_old_sched_eqb sorted_new_ipl_ext) as sorted_old_ipl_ext.
-  remember (PolyLang.old_of_ext_list sorted_old_ipl_ext) as sorted_ipl1.
-  symmetry in Heqsorted_old_ipl_ext.
-  pose proof Heqsorted_old_ipl_ext.
-  assert (Sorted_b PolyLang.instr_point_ext_new_sched_leb sorted_new_ipl_ext) as Hsorted_new_ext.
-  {
-    rewrite <- Hnew_ext in H2.
-    eapply PolyLang.sorted_ge_implies_ext_sorted_ge; eauto.
-  }
-  eapply PolyLang.selection_sort_instance_list_ext_implies_old_normal in H1.
-  eapply PolyLang.selection_sort_instance_list_is_correct in H1.
-  destruct H1 as (Hpermut_old_ext & Hsort_old_ext); eauto.
-  eapply PolyLang.selection_sort_instance_list_ext_is_stable_permut in Heqsorted_old_ipl_ext; eauto.
-  assert (forall tau1 tau2 : PolyLang.InstrPoint_ext,
-    In tau1 sorted_new_ipl_ext ->
-    In tau2 sorted_new_ipl_ext ->
-    PolyLang.instr_point_ext_old_sched_lt tau1 tau2 ->
-    PolyLang.instr_point_ext_new_sched_ge tau1 tau2 ->
-    PolyLang.Permutable_ext tau1 tau2) as Hpermut'.
-  {
-    clear - Hpermut Hpermut_ext.
-    eapply Permutation_sym in Hpermut_ext.
-    intros; eapply Hpermut; eauto;
-      eapply Permutation_in; eauto.
-  }
-  pose proof PolyLang.stable_permut_ext_lists_are_equivalent
-    sorted_new_ipl_ext sorted_old_ipl_ext Hpermut' Heqsorted_old_ipl_ext st1 Halias.
-  destruct H1 as (F & B).
-  rewrite <- Hnew_ext in H3.
-  rewrite <- PolyLang.list_ext_old_new_equivalence in H3.
-  pose proof F st2 H3.
-  destruct H1 as (st2' & Hsem' & EQ).
-  exists st2'. split; trivial.
-  rewrite Hpp1.
-  eapply PolyLang.PolyPointListSema with (sorted_ipl:=sorted_ipl1) (ipl:=ipl1).
-  - reflexivity.
-  - exact Heqipl1.
-  - rewrite <- Heqsorted_ipl1 in Hpermut_old_ext.
-    remember (PolyLang.old_of_ext_list sorted_new_ipl_ext) as sorted_new_old_ipl1.
-    eapply Permutation_trans in Hpermut_old_ext; eauto.
-    clear - Hpermut_ext Hipl1 Heqsorted_new_old_ipl1.
-    rewrite <- Hipl1.
-    rewrite Heqsorted_new_old_ipl1.
-    eapply PolyLang.ext_permut_implies_permut_old; eauto.
-  - rewrite Heqsorted_ipl1.
-    clear - Hsort_old_ext.
-    eapply PolyLang.sortedb_lexorder_implies_sorted_lexorder; eauto.
-  - rewrite Heqsorted_ipl1.
-    exact Hsem'.
+  eapply permutable_instance_lists_preserve_semantics
+    with
+      (poly_instrs1:=poly_instrs1)
+      (env1:=env1)
+      (vars1:=vars1)
+      (ipl1:=ipl1)
+      (ipl2:=ipl2)
+      (sorted_ipl2:=sorted_ipl2)
+      (ipl_ext:=ipl_ext); eauto.
 Qed.
 
 Lemma validate_preserve_wf_pprog: 
