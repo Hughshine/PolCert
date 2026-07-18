@@ -2613,6 +2613,19 @@ Proof.
 Qed.
 
 
+Local Lemma wf_pinstr_ext_tiling_access_transformation_cols:
+  forall env pi_ext,
+    PolyLang.wf_pinstr_ext_tiling env pi_ext ->
+    exact_listzzs_cols
+      (length env + PolyLang.pi_depth_ext pi_ext)
+      (PolyLang.pi_access_transformation_ext pi_ext).
+Proof.
+  intros env pi_ext [Hwf _].
+  unfold PolyLang.wf_pinstr_ext in Hwf.
+  destruct Hwf as (_ & _ & _ & Hcols & _).
+  exact Hcols.
+Qed.
+
 Lemma validate_two_instrs_implies_no_write_collision: 
   forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext,
     WHEN res <- validate_two_instrs pi1_ext pi2_ext (length env) THEN 
@@ -2646,6 +2659,25 @@ Proof.
   do 2 rewrite andb_true_iff in Hval. 
   destruct Hval as ((HwwT & HwrT) & HrwT); subst.
 
+  assert (TF1:
+    PolyLang.ip_access_transformation_ext ip1 =
+    PolyLang.pi_access_transformation_ext pi1_ext).
+  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+  assert (TF2:
+    PolyLang.ip_access_transformation_ext ip2 =
+    PolyLang.pi_access_transformation_ext pi2_ext).
+  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+  assert (HTF1:
+    exact_listzzs_cols
+      (length env + PolyLang.pi_depth_ext pi1_ext)
+      (PolyLang.pi_access_transformation_ext pi1_ext)).
+  { eapply wf_pinstr_ext_tiling_access_transformation_cols; exact Hwf1. }
+  assert (HTF2:
+    exact_listzzs_cols
+      (length env + PolyLang.pi_depth_ext pi2_ext)
+      (PolyLang.pi_access_transformation_ext pi2_ext)).
+  { eapply wf_pinstr_ext_tiling_access_transformation_cols; exact Hwf2. }
+
   assert (NO_WW: no_ww_collision 
                   (pi1_ext.(PolyLang.pi_waccess_ext)) 
                   (pi2_ext.(PolyLang.pi_waccess_ext)) ip1 ip2). {
@@ -2655,22 +2687,6 @@ Proof.
     unfold no_ww_collision.
     intros.
     subst.
-    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (HTF1 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi1_ext)
-        (PolyLang.pi_access_transformation_ext pi1_ext)).
-    { clear - Hwf1. firstorder. }
-    assert (HTF2 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi2_ext)
-        (PolyLang.pi_access_transformation_ext pi2_ext)).
-    { clear - Hwf2. firstorder. }
     assert (HACC1 :
       Forall
         (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
@@ -2721,22 +2737,6 @@ Proof.
     eapply validate_two_accesslist_implies_permut_no_collision1 with (p1 := (PolyLang.ip_index_ext ip1)) (p2 := (PolyLang.ip_index_ext ip2)) in Hwr; eauto.
     unfold no_wr_collision. intros.
     subst.
-    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (HTF1 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi1_ext)
-        (PolyLang.pi_access_transformation_ext pi1_ext)).
-    { clear - Hwf1. firstorder. }
-    assert (HTF2 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi2_ext)
-        (PolyLang.pi_access_transformation_ext pi2_ext)).
-    { clear - Hwf2. firstorder. }
     assert (HACC1 :
       Forall
         (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
@@ -2799,22 +2799,6 @@ Proof.
     eapply validate_two_accesslist_implies_permut_no_collision1 with (p1 := (PolyLang.ip_index_ext ip1)) (p2 := (PolyLang.ip_index_ext ip2)) in Hrw; eauto.
     unfold no_wr_collision. intros.
     subst.
-    assert (PolyLang.ip_access_transformation_ext ip1 = PolyLang.pi_access_transformation_ext pi1_ext) as TF1. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (PolyLang.ip_access_transformation_ext ip2 = PolyLang.pi_access_transformation_ext pi2_ext) as TF2. {
-      eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto.
-    }
-    assert (HTF1 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi1_ext)
-        (PolyLang.pi_access_transformation_ext pi1_ext)).
-    { clear - Hwf1. firstorder. }
-    assert (HTF2 :
-      exact_listzzs_cols
-        (length env + PolyLang.pi_depth_ext pi2_ext)
-        (PolyLang.pi_access_transformation_ext pi2_ext)).
-    { clear - Hwf2. firstorder. }
     assert (HACC1 :
       Forall
         (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
