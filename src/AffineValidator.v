@@ -181,6 +181,36 @@ Proof.
   destruct (f x); reflexivity.
 Qed.
 
+Local Lemma existsb_access_cols_eta :
+  forall accesses cols,
+    existsb
+      (fun access : AccessFunction =>
+         let (_, access_func) := access in
+         if negb (check_listzzs_cols access_func cols) then true else false)
+      accesses =
+    existsb
+      (fun access : AccessFunction =>
+         let (_, access_func) := access in
+         negb (check_listzzs_cols access_func cols))
+      accesses.
+Proof.
+  intros accesses cols.
+  induction accesses as [|[id access_func] accesses IH];
+    simpl; [reflexivity|].
+  rewrite IH.
+  destruct (check_listzzs_cols access_func cols); reflexivity.
+Qed.
+
+Local Lemma false_guard_preserves_conjunction:
+  forall (condition affine_result general_result route_check : bool),
+    affine_result = general_result && route_check ->
+    (if condition then false else affine_result) =
+      (if condition then false else general_result) && route_check.
+Proof.
+  intros [] affine_result general_result route_check Hresults;
+    simpl; [reflexivity|exact Hresults].
+Qed.
+
 Definition check_wf_polyinstr (pi: PolyLang.PolyInstr) (env: list ident) (vars: list (ident * Ty.t)) := 
   let env_dim := length env in 
   let iter_dim := (pi.(PolyLang.pi_depth)) in
@@ -681,6 +711,157 @@ Definition validate_general := validate_tiling.
 
 (** * Soundness of the Boolean validation checks *)
 
+Local Lemma check_wf_polyinstr_affine_as_general:
+  forall pi env vars,
+    check_wf_polyinstr pi env vars =
+      check_wf_polyinstr_tiling pi env vars &&
+      point_space_witness_eqb
+        pi.(PolyLang.pi_point_witness)
+        (PSWIdentity pi.(PolyLang.pi_depth)).
+Proof.
+  intros pi env vars.
+  unfold check_wf_polyinstr, check_wf_polyinstr_tiling.
+  rewrite
+    (existsb_access_cols_eta
+       (PolyLang.pi_waccess pi)
+       (length (PolyLang.pi_transformation pi))).
+  rewrite
+    (existsb_access_cols_eta
+       (PolyLang.pi_raccess pi)
+       (length (PolyLang.pi_transformation pi))).
+  repeat apply false_guard_preserves_conjunction.
+  apply andb_comm.
+Qed.
+
+Local Lemma check_wf_polyinstr_common_correct:
+  forall pi env vars,
+    check_wf_polyinstr_tiling pi env vars = true ->
+    PolyLang.wf_pinstr env vars pi /\
+    pi.(PolyLang.pi_transformation) =
+      pi.(PolyLang.pi_access_transformation).
+Proof.
+  intros pi env vars Hcheck.
+  unfold check_wf_polyinstr_tiling in Hcheck.
+  destruct
+    (negb (Instr.check_never_written env (PolyLang.pi_instr pi)))
+    eqn:Hnever_written; tryfalse.
+  destruct
+    (negb
+       (witness_current_point_dim (PolyLang.pi_point_witness pi) =?
+        PolyLang.pi_depth pi))
+    eqn:Hwitness_dim; tryfalse.
+  destruct
+    ((length env + PolyLang.pi_depth pi <=?
+      PolyLang.pinstr_current_dim env pi)%nat)
+    eqn:Henvlen; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_poly pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat)
+    eqn:Hdom; tryfalse.
+  destruct
+    ((poly_nrl (PolyLang.pi_schedule pi) <=?
+      PolyLang.pinstr_current_dim env pi)%nat)
+    eqn:Hsched; tryfalse.
+  destruct
+    (negb
+       (check_listzzs_cols
+          (PolyLang.pi_poly pi)
+          (length env + PolyLang.pi_depth pi)))
+    eqn:Hcheckdom; tryfalse.
+  destruct
+    (negb
+       (check_listzzs_cols
+          (PolyLang.pi_transformation pi)
+          (length env +
+           witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hchecktf; tryfalse.
+  destruct
+    (negb
+       (check_listzzs_cols
+          (PolyLang.pi_access_transformation pi)
+          (length env +
+           witness_base_point_dim (PolyLang.pi_point_witness pi))))
+    eqn:Hcheckacc_tf; tryfalse.
+  destruct
+    (negb
+       (check_listzzs_cols
+          (PolyLang.pi_schedule pi)
+          (length env + PolyLang.pi_depth pi)))
+    eqn:Hchecksched; tryfalse.
+  destruct
+    (existsb
+       (fun waccess : AccessFunction =>
+          let (_, waccess_aff_func) := waccess in
+          negb
+            (check_listzzs_cols
+               waccess_aff_func
+               (length (PolyLang.pi_transformation pi))))
+       (PolyLang.pi_waccess pi))
+    eqn:Hcheckw; tryfalse.
+  destruct
+    (existsb
+       (fun raccess : AccessFunction =>
+          let (_, raccess_aff_func) := raccess in
+          negb
+            (check_listzzs_cols
+               raccess_aff_func
+               (length (PolyLang.pi_transformation pi))))
+       (PolyLang.pi_raccess pi))
+    eqn:Hcheckr; tryfalse.
+  eapply negb_false_iff in Hwitness_dim.
+  eapply Nat.eqb_eq in Hwitness_dim.
+  eapply Nat.leb_le in Henvlen.
+  eapply Nat.leb_le in Hdom.
+  eapply Nat.leb_le in Hsched.
+  eapply negb_false_iff in Hcheckdom.
+  eapply check_listzzs_cols_correct in Hcheckdom.
+  eapply negb_false_iff in Hchecktf.
+  eapply check_listzzs_cols_correct in Hchecktf.
+  eapply negb_false_iff in Hcheckacc_tf.
+  eapply check_listzzs_cols_correct in Hcheckacc_tf.
+  eapply negb_false_iff in Hchecksched.
+  eapply check_listzzs_cols_correct in Hchecksched.
+  assert
+    (Hwaccesses:
+      Forall
+        (fun waccess : AccessFunction =>
+           let (_, waccess_func) := waccess in
+           exact_listzzs_cols
+             (length (PolyLang.pi_transformation pi))
+             waccess_func)
+        (PolyLang.pi_waccess pi)).
+  {
+    eapply Forall_forall. intros [warrid waccess_func] Hin.
+    rewrite Misc.existsb_forall in Hcheckw.
+    specialize (Hcheckw (warrid, waccess_func) Hin).
+    simpl in Hcheckw.
+    eapply negb_false_iff in Hcheckw.
+    eapply check_listzzs_cols_correct; exact Hcheckw.
+  }
+  assert
+    (Hraccesses:
+      Forall
+        (fun raccess : AccessFunction =>
+           let (_, raccess_func) := raccess in
+           exact_listzzs_cols
+             (length (PolyLang.pi_transformation pi))
+             raccess_func)
+        (PolyLang.pi_raccess pi)).
+  {
+    eapply Forall_forall. intros [rarrid raccess_func] Hin.
+    rewrite Misc.existsb_forall in Hcheckr.
+    specialize (Hcheckr (rarrid, raccess_func) Hin).
+    simpl in Hcheckr.
+    eapply negb_false_iff in Hcheckr.
+    eapply check_listzzs_cols_correct; exact Hcheckr.
+  }
+  eapply listzzs_strict_eqb_eq in Hcheck.
+  split.
+  - unfold PolyLang.wf_pinstr.
+    repeat split; assumption.
+  - exact Hcheck.
+Qed.
+
 Lemma check_valid_access_correct:
   forall pil_ext, 
     check_valid_access pil_ext = true ->
@@ -701,88 +882,19 @@ Lemma check_wf_polyinstr_affine_correct:
     check_wf_polyinstr pi env vars = true -> 
     PolyLang.wf_pinstr_affine env vars pi.
 Proof.
-  intros pi env vars H.
-  unfold check_wf_polyinstr in H.
-  destruct (negb (Instr.check_never_written env (PolyLang.pi_instr pi))) eqn:Hnw; tryfalse.
-  destruct (negb
-              (witness_current_point_dim (PolyLang.pi_point_witness pi) =?
-               PolyLang.pi_depth pi)) eqn:Hwitness_dim; tryfalse.
+  intros pi env vars Hcheck.
+  rewrite check_wf_polyinstr_affine_as_general in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcommon Hwitness_id].
   destruct
-    ((length env + PolyLang.pi_depth pi <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Henvlen; tryfalse.
-  destruct
-    ((poly_nrl (PolyLang.pi_poly pi) <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hdom; tryfalse.
-  destruct
-    ((poly_nrl (PolyLang.pi_schedule pi) <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hsched; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_poly pi)
-                  (length env + PolyLang.pi_depth pi))) eqn:Hcheckdom; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_transformation pi)
-                  (length env +
-                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
-    eqn:Hchecktf; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_access_transformation pi)
-                  (length env +
-                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
-    eqn:Hcheckacc_tf; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_schedule pi)
-                  (length env + PolyLang.pi_depth pi))) eqn:Hchecksched; tryfalse.
-  destruct (existsb
-      (fun waccess : AccessFunction =>
-         let (_, waccess_aff_func) := waccess in
-         if negb (check_listzzs_cols waccess_aff_func
-                    (length (PolyLang.pi_transformation pi)))
-         then true else false)
-      (PolyLang.pi_waccess pi)) eqn:Hcheckw; tryfalse.
-  destruct (existsb
-      (fun raccess : AccessFunction =>
-         let (_, raccess_aff_func) := raccess in
-         if negb (check_listzzs_cols raccess_aff_func
-                    (length (PolyLang.pi_transformation pi)))
-        then true else false)
-      (PolyLang.pi_raccess pi)) eqn:Hcheckr; tryfalse.
-  apply andb_true_iff in H.
-  destruct H as [Hwitness_id Htf_eq].
+    (check_wf_polyinstr_common_correct pi env vars Hcommon)
+    as [Hwf Htransformation].
   unfold PolyLang.wf_pinstr_affine.
   split.
-  - unfold PolyLang.wf_pinstr.
-    repeat split.
-    + eapply Nat.eqb_eq.
-      eapply negb_false_iff in Hwitness_dim.
-      exact Hwitness_dim.
-    + eapply Nat.leb_le; eauto.
-    + eapply Nat.leb_le; eauto.
-    + eapply Nat.leb_le; eauto.
-    + eapply negb_false_iff in Hcheckdom.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hchecktf.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hcheckacc_tf.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hchecksched.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply Forall_forall. intros waccess Hin.
-      rewrite Misc.existsb_forall in Hcheckw.
-      specialize (Hcheckw waccess Hin).
-      destruct waccess as [warrid waccess_func].
-      destruct (if negb (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))) then true else false)
-        eqn:Hcheckw'; tryfalse.
-      simpl in Hcheckw'.
-      destruct (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))) eqn:Hcols; tryfalse.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply Forall_forall. intros raccess Hin.
-      rewrite Misc.existsb_forall in Hcheckr.
-      specialize (Hcheckr raccess Hin).
-      destruct raccess as [rarrid raccess_func].
-      destruct (if negb (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))) then true else false)
-        eqn:Hcheckr'; tryfalse.
-      simpl in Hcheckr'.
-      destruct (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))) eqn:Hcols; tryfalse.
-      eapply check_listzzs_cols_correct; eauto.
+  - exact Hwf.
   - split.
     + eapply point_space_witness_eqb_eq; exact Hwitness_id.
-    + eapply listzzs_strict_eqb_eq; exact Htf_eq.
+    + exact Htransformation.
 Qed.
 
 Lemma check_wf_polyinstr_correct: 
@@ -800,84 +912,33 @@ Lemma check_wf_polyinstr_tiling_correct :
     check_wf_polyinstr_tiling pi env vars = true ->
     PolyLang.wf_pinstr_tiling env vars pi.
 Proof.
-  intros pi env vars H.
-  unfold check_wf_polyinstr_tiling in H.
+  intros pi env vars Hcheck.
   unfold PolyLang.wf_pinstr_tiling.
-  destruct (negb (Instr.check_never_written env (PolyLang.pi_instr pi))) eqn:Hnw; tryfalse.
-  destruct (negb
-              (witness_current_point_dim (PolyLang.pi_point_witness pi) =?
-               PolyLang.pi_depth pi)) eqn:Hwitness_dim; tryfalse.
-  destruct
-    ((length env + PolyLang.pi_depth pi <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Henvlen; tryfalse.
-  destruct
-    ((poly_nrl (PolyLang.pi_poly pi) <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hdom; tryfalse.
-  destruct
-    ((poly_nrl (PolyLang.pi_schedule pi) <=?
-      PolyLang.pinstr_current_dim env pi)%nat) eqn:Hsched; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_poly pi)
-                  (length env + PolyLang.pi_depth pi))) eqn:Hcheckdom; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_transformation pi)
-                  (length env +
-                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
-    eqn:Hchecktf; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_access_transformation pi)
-                  (length env +
-                   witness_base_point_dim (PolyLang.pi_point_witness pi))))
-    eqn:Hcheckacc_tf; tryfalse.
-  destruct (negb (check_listzzs_cols (PolyLang.pi_schedule pi)
-                  (length env + PolyLang.pi_depth pi))) eqn:Hchecksched; tryfalse.
-  destruct (existsb
-      (fun waccess : AccessFunction =>
-         let (_, waccess_aff_func) := waccess in
-         negb
-           (check_listzzs_cols waccess_aff_func
-              (length (PolyLang.pi_transformation pi))))
-      (PolyLang.pi_waccess pi)) eqn:Hcheckw; tryfalse.
-  destruct (existsb
-      (fun raccess : AccessFunction =>
-         let (_, raccess_aff_func) := raccess in
-         negb
-           (check_listzzs_cols raccess_aff_func
-              (length (PolyLang.pi_transformation pi))))
-      (PolyLang.pi_raccess pi)) eqn:Hcheckr; tryfalse.
+  eapply check_wf_polyinstr_common_correct; eauto.
+Qed.
+
+Local Lemma forallb_wf_polyprog_correct:
+  forall
+    (check : PolyLang.PolyInstr -> bool)
+    (wf : PolyLang.PolyInstr -> Prop)
+    (pil : list PolyLang.PolyInstr)
+    (env : list ident)
+    (vars : list (ident * Ty.t)),
+    (forall pi, check pi = true -> wf pi) ->
+    (Nat.leb (length env) (length vars) &&
+     Nat.ltb 0 (length pil) &&
+     forallb check pil) = true ->
+    length env <= length vars /\
+    forall pi, In pi pil -> wf pi.
+Proof.
+  intros check wf pil env vars Hcheck Hprogram.
+  do 2 rewrite andb_true_iff in Hprogram.
+  destruct Hprogram as ((Henv & _) & Hforall).
   split.
-  - unfold PolyLang.wf_pinstr.
-    repeat split.
-    + eapply Nat.eqb_eq.
-      eapply negb_false_iff in Hwitness_dim.
-      exact Hwitness_dim.
-    + eapply Nat.leb_le; eauto.
-    + eapply Nat.leb_le; eauto.
-    + eapply Nat.leb_le; eauto.
-    + eapply negb_false_iff in Hcheckdom.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hchecktf.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hcheckacc_tf.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply negb_false_iff in Hchecksched.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply Forall_forall. intros waccess Hin.
-      rewrite Misc.existsb_forall in Hcheckw.
-      specialize (Hcheckw waccess Hin).
-      destruct waccess as [warrid waccess_func].
-      destruct (negb
-          (check_listzzs_cols waccess_func (length (PolyLang.pi_transformation pi))))
-        eqn:Hcheckw'; tryfalse.
-      eapply negb_false_iff in Hcheckw'.
-      eapply check_listzzs_cols_correct; eauto.
-    + eapply Forall_forall. intros raccess Hin.
-      rewrite Misc.existsb_forall in Hcheckr.
-      specialize (Hcheckr raccess Hin).
-      destruct raccess as [rarrid raccess_func].
-      destruct (negb
-          (check_listzzs_cols raccess_func (length (PolyLang.pi_transformation pi))))
-        eqn:Hcheckr'; tryfalse.
-      eapply negb_false_iff in Hcheckr'.
-      eapply check_listzzs_cols_correct; eauto.
-  - eapply listzzs_strict_eqb_eq; eauto.
+  - eapply Nat.leb_le; exact Henv.
+  - intros pi Hin.
+    eapply Hcheck.
+    eapply forallb_forall with (x:=pi) in Hforall; eauto.
 Qed.
 
 Lemma check_wf_polyprog_affine_correct: 
@@ -886,26 +947,21 @@ Lemma check_wf_polyprog_affine_correct:
     res = true ->
     PolyLang.wf_pprog_affine pp.
 Proof.
-  intros. intros res Hcheckwf Htrue.
-  unfold PolyLang.wf_pprog_affine.
-  intros.
+  intros pp res Hcheckwf Htrue.
   rewrite Htrue in Hcheckwf.
   unfold check_wf_polyprog in Hcheckwf.
   destruct pp as (p & vars).
   destruct p as (pil, varctxt).
   eapply mayReturn_pure in Hcheckwf.
-  do 2 rewrite andb_true_iff in Hcheckwf.
-  destruct Hcheckwf as ((Hvars & Hlen) & Hcheckwf).
-  splits.
-  {
-    eapply Nat.leb_le in Hvars; try lia.
-  }
-  {
-    clear Hlen.
-    intros.
-    eapply forallb_forall with (x:=pi) in Hcheckwf; eauto.
+  unfold PolyLang.wf_pprog_affine.
+  eapply
+    (forallb_wf_polyprog_correct
+       (fun pi => check_wf_polyinstr pi varctxt vars)
+       (fun pi => PolyLang.wf_pinstr_affine varctxt vars pi)
+       pil varctxt vars).
+  - intros pi Hcheck.
     eapply check_wf_polyinstr_affine_correct; eauto.
-  }
+  - exact Hcheckwf.
 Qed. 
 
 Lemma check_wf_polyprog_correct: 
@@ -926,20 +982,20 @@ Lemma check_wf_polyprog_tiling_correct :
     PolyLang.wf_pprog_tiling pp.
 Proof.
   intros pp res Hcheckwf Htrue.
-  unfold PolyLang.wf_pprog_tiling.
-  intros.
   rewrite Htrue in Hcheckwf.
   unfold check_wf_polyprog_tiling in Hcheckwf.
   destruct pp as (p & vars).
   destruct p as (pil, varctxt).
   eapply mayReturn_pure in Hcheckwf.
-  do 2 rewrite andb_true_iff in Hcheckwf.
-  destruct Hcheckwf as ((Hvars & Hlen) & Hcheckwf).
-  split.
-  - eapply Nat.leb_le in Hvars; try lia.
-  - intros pi Hin.
-    eapply forallb_forall with (x:=pi) in Hcheckwf; eauto.
+  unfold PolyLang.wf_pprog_tiling, PolyLang.wf_pprog_general.
+  eapply
+    (forallb_wf_polyprog_correct
+       (fun pi => check_wf_polyinstr_tiling pi varctxt vars)
+       (fun pi => PolyLang.wf_pinstr_tiling varctxt vars pi)
+       pil varctxt vars).
+  - intros pi Hcheck.
     eapply check_wf_polyinstr_tiling_correct; eauto.
+  - exact Hcheckwf.
 Qed.
 
 Lemma check_eqdom_pinstr_correct: 
