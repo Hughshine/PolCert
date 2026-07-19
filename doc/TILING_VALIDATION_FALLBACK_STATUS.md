@@ -28,7 +28,7 @@ The command-line route labels have these meanings:
 | --- | --- | --- |
 | `permutable-band` | The specialized tiling-permutability layer accepted the boundary through the common-band, whole-program ordinary, or hierarchical second-level mode. This is an umbrella route label, not the name of a single narrow checker. | Yes, after the target well-formedness check passes. |
 | `general-fallback` | The specialized tiling-permutability checks did not accept the boundary, but the canonical or general proved tiling validator accepted it. | Yes, after the target well-formedness check passes. |
-| `rejected` | The final tiling-bearing pipeline was not adopted, either because no tiling validator accepted the boundary or because a later parallel/vector consumer rejected it. | No. The optimizer uses the applicable conservative fallback output. |
+| `rejected` | The final tiling-bearing pipeline was not adopted, either because no tiling validator accepted the boundary or because a mandatory parallel consumer rejected it. Automatic vector annotation failures are reported separately and retain the verified producer; explicit vector-current failures terminate without reporting a tiling route. | No. The optimizer uses the applicable conservative fallback output when that route defines one. |
 
 Thus `general-fallback` is a successful validation result. It is neither an
 unchecked acceptance nor a return to the source program. The route theorem
@@ -81,29 +81,32 @@ The diamond diagnostic further reported that the canonical checker rejected
 the boundary while the general checked tiling validator accepted it. This
 confirms that the general fallback is exercised and works for that case.
 
-The complete second-level regression suite ran in a disposable container with
-`/tmp/polcert-final-gate-build` mounted at `/work`. It passed in `954.751s`
-with 20 specialized acceptances, 33 explicit fallback cases, a 20-case
-diamond/current/strict matrix, and focused rejection checks. Across the main
-manifest and dedicated matrices, exact route assertions observed 41
-`permutable-band`, 54 `general-fallback`, and 14 `rejected` reports. The
-manifest gate requires every fallback case to provide an explicit baseline
-comparison; the mixed-depth case compares its 256/32 nested output against
-ordinary tiling.
+The complete second-level regression suite covers 20 specialized acceptances,
+33 explicit fallback cases, a 20-case diamond/current/strict matrix, and
+focused rejection checks. The diamond matrix now separates 16 accepted
+parallel/hinted compositions from four explicit vector-current hard failures;
+the latter report no tiling route. The manifest gate requires every fallback
+case to provide an explicit baseline comparison; the mixed-depth case compares
+its 256/32 nested output against ordinary tiling.
+A prior isolated full-gate run took `954.751s`; budget roughly 16 minutes for
+this suite on the documented container before accounting for concurrent load.
 
-The separate Pluto compatibility matrix passed all 132 checks in `325.64s` in
-`gifted_curie`. A dedicated 90-case one-level route-discipline matrix then ran
+The separate Pluto compatibility matrix passed all 133 checks in about five
+minutes in `gifted_curie`. A dedicated 90-case one-level route-discipline matrix then ran
 ordinary, identity-tiled, diamond, and full-diamond producers; ISS and non-ISS
 routes; uniform and mixed-depth programs; and sequential, hinted, strict,
-multipar, parallel-current, and vector-current consumers. It observed 86
-specialized acceptances and four checked consumer rejections. Every acceptance
-emitted exactly one `permutable-band` report and no alarm. Every checked
-rejection emitted exactly one `rejected` report and an alarm. No case used
-`general-fallback`. The hardened gate rerun took `184.21s`.
+multipar, parallel-current, and vector-current consumers. Under the
+innermost-only vector contract, 84 compositions complete and emit exactly one
+`permutable-band` report. Six explicit vector-current selections are expected
+hard failures because the selected loop is not a certifiable innermost vector
+loop; they emit vector rejection telemetry and no tiling route. Automatic
+missing or rejected hints retain the verified producer. No case uses
+`general-fallback`.
 
-This matrix checks completion, the unique validation-route report, and alarm
-discipline. It does not claim that every flag has a distinct optimization
-effect in every Cartesian-product case. Separate compatibility,
+This matrix checks completion or expected explicit-vector rejection, the
+unique validation-route report for completed cases, and alarm discipline. It
+does not claim that every flag has a distinct optimization effect in every
+Cartesian-product case. Separate compatibility,
 parallel-current, vector-current, and diamond suites provide representative
 effect assertions for those features.
 

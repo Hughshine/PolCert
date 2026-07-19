@@ -93,9 +93,11 @@ label aggregates the proved canonical and general validators; it never denotes
 an unchecked compiler fallback. `rejected` means the final tiling-bearing
 pipeline was not adopted. This can happen because all five tiling validation
 layers rejected the candidate, in which case the already-validated affine
-midpoint is retained, or because a later parallel/vector consumer rejected the
-validated tiled candidate, in which case `polopt` uses that consumer's
-conservative fallback output and also emits its checked-fallback alarm.
+midpoint is retained, or because a mandatory parallel consumer rejected the
+validated tiled candidate. Automatic vector annotation is instead optional:
+an unusable hint reports `status=skipped` and retains the verified producer.
+Explicit `--vector-current` rejection is a hard failure that reports vector
+telemetry, no tiling route, and no optimized fallback.
 
 The ISS-enabled pipeline has the same later stages, but inserts a checked ISS
 structural-validation stage before later scheduling / tiling:

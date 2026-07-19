@@ -9,6 +9,9 @@ import subprocess
 
 
 REJECTED_ROUTE = "[tiling-validation] route=rejected"
+PERMUTABLE_ROUTE = "[tiling-validation] route=permutable-band"
+GENERAL_FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
+NO_VECTOR_HINT = "[vector-validation] status=skipped reason=no-hint"
 
 
 def route_lines(stderr: str) -> list[str]:
@@ -115,16 +118,23 @@ def check_rejected_tiling_route(
             )
             if strict.returncode != 0:
                 raise AssertionError(f"{label} conservative fallback failed")
-            if route_lines(strict.stderr) != [REJECTED_ROUTE]:
-                raise AssertionError(f"{label} did not report exactly one rejected route")
-            if "[alarm]" not in strict.stderr:
-                raise AssertionError(f"{label} did not report its checked fallback alarm")
+            expected_route = GENERAL_FALLBACK_ROUTE if second_level else PERMUTABLE_ROUTE
+            if route_lines(strict.stderr) != [expected_route]:
+                raise AssertionError(
+                    f"{label} did not preserve its verified producer route"
+                )
+            if "[alarm]" in strict.stderr:
+                raise AssertionError(f"{label} raised an alarm for an optional annotation")
+            if NO_VECTOR_HINT not in strict.stderr:
+                raise AssertionError(f"{label} omitted its no-hint vector telemetry")
             if "vector for" in strict.stdout:
                 raise AssertionError(f"{label} adopted a rejected vector consumer")
-            if second_level and any(
-                marker in strict.stdout for marker in ("/ 256", "8 *", "32 *")
-            ):
-                raise AssertionError(f"{label} leaked rejected nested tiling")
+            expected_markers = ("/ 256", "8 *", "32 *") if second_level else ("/ 32", "32 *")
+            for marker in expected_markers:
+                if marker not in strict.stdout:
+                    raise AssertionError(
+                        f"{label} lost verified tiling marker {marker!r}"
+                    )
 
     for second_level in (False, True):
         for use_iss in (False, True):
@@ -149,17 +159,27 @@ def check_rejected_tiling_route(
                 )
                 if current.returncode == 0:
                     raise AssertionError(f"{label} invalid dimension unexpectedly succeeded")
-                if route_lines(current.stderr) != [REJECTED_ROUTE]:
+                expected_routes = [] if current_flag == "--vector-current" else [REJECTED_ROUTE]
+                if route_lines(current.stderr) != expected_routes:
                     raise AssertionError(
-                        f"{label} hard failure did not report exactly one rejected route"
+                        f"{label} hard failure reported unexpected tiling routes"
                     )
+                if current_flag == "--vector-current":
+                    rejection = (
+                        "[vector-validation] status=rejected source=explicit-current "
+                        "reason=not-certifiable-or-non-innermost"
+                    )
+                    if current.stderr.count(rejection) != 1:
+                        raise AssertionError(
+                            f"{label} omitted its unique vector rejection telemetry"
+                        )
                 if "validation failed" not in current.stderr.lower():
                     raise AssertionError(f"{label} omitted its validation failure")
 
     print(
         "rejected tiling route: PASS "
-        "(invalid witness, scalar-only early exit, four strict-consumer "
-        "rejections, and eight explicit-current failures are explicit)"
+        "(invalid witness, scalar-only early exit, four vector skips preserve "
+        "their producers, and eight explicit-current failures are explicit)"
     )
 
 

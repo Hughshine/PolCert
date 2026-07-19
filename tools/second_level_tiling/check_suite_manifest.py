@@ -186,7 +186,17 @@ def check_manifest(path: Path) -> None:
                     f"{required_parallel} parallel loop(s)"
                 )
         if ("--vector" in args or "--vector-current" in args) and "vector for" not in " ".join(needles):
-            raise AssertionError(f"{name}: vector variant lacks a vector loop assertion")
+            skipped = (
+                "[vector-validation] status=skipped "
+                "reason=hint-not-certifiable-or-non-innermost"
+            )
+            if skipped not in stderr_needles or "vector for" not in set(
+                string_list(check, "absent_needles")
+            ):
+                raise AssertionError(
+                    f"{name}: vector variant must assert either an applied loop "
+                    "or an explicit checked skip"
+                )
     by_non_iss_signature = {
         (tuple(arg for arg in string_list(check, "args") if arg != "--iss"), check.get("fixture"))
         for check in tiling_checks

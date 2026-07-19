@@ -81,10 +81,11 @@ It also exposes:
 
 - an optional theorem-aligned ISS path via `--iss`
 - a theorem-aligned explicit-dimension parallel path via `--parallel-current`
-- a theorem-aligned explicit-dimension vector annotation path via `--vector-current`
+- a theorem-aligned innermost vector annotation path via `--vector-current`
 - experimental Pluto-hinted parallel routes via `--parallel` and
   `--parallel-strict`
-- experimental Pluto-hinted vector annotation via `--vector` / `--prevector`
+- experimental Pluto-hinted innermost vector annotation via `--vector` /
+  `--prevector`
 - experimental checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
 - the deprecated ordinary-tiling compatibility alias
@@ -108,10 +109,12 @@ It also exposes:
   - the default verified affine+tiling route
   - the optional verified ISS+affine+tiling route (`--iss`)
   - a theorem-aligned explicit-dimension parallel route (`--parallel-current`)
-  - a theorem-aligned explicit-dimension vector route (`--vector-current`)
+  - a theorem-aligned explicit-dimension innermost vector route
+    (`--vector-current`)
   - experimental Pluto-hinted parallel routes (`--parallel`,
     `--parallel-strict`)
-  - experimental Pluto-hinted vector annotation (`--vector`, `--prevector`)
+  - experimental Pluto-hinted innermost vector annotation (`--vector`,
+    `--prevector`)
 - `polcert` now supports:
   - direct affine validation
   - phase-aligned tiling validation

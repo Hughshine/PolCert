@@ -15,12 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ROUTE_PREFIX = "[tiling-validation] route="
 PERMUTABLE_ROUTE = f"{ROUTE_PREFIX}permutable-band"
 GENERAL_FALLBACK_ROUTE = f"{ROUTE_PREFIX}general-fallback"
-EXPECTED_REJECTIONS = {
-    "identity-vector-strict",
-    "identity-iss-vector-strict",
-    "identity-mixed-depth-vector-strict",
-    "identity-mixed-depth-iss-vector-strict",
-}
+VECTOR_PREFIX = "[vector-validation] "
 
 
 @dataclass(frozen=True)
@@ -30,6 +25,8 @@ class Case:
     args: tuple[str, ...]
     expected_route: str = "permutable-band"
     expect_alarm: bool = False
+    expect_success: bool = True
+    expected_vector_status: str | None = None
 
 
 SYMBOLIC = (
@@ -91,14 +88,37 @@ def route_cases() -> list[Case]:
                     effective_consumer_args = (*consumer_args, "--nodiamond-tile")
                 if producer_name in ("diamond", "full-diamond") and consumer_name.endswith("-current"):
                     effective_consumer_args = (*consumer_args[:-1], "0")
-                rejected = producer_name == "identity" and consumer_name == "vector-strict"
+                elif consumer_name == "vector-current":
+                    effective_consumer_args = (*consumer_args[:-1], "3")
+                vector_current_rejected = (
+                    producer_name in ("diamond", "full-diamond")
+                    and consumer_name == "vector-current"
+                )
+                if consumer_name in ("vector-hint", "vector-strict"):
+                    vector_status = (
+                        "status=skipped reason=hint-not-certifiable-or-non-innermost"
+                        if producer_name in ("diamond", "full-diamond")
+                        else "status=applied source=pluto-hint scope=innermost"
+                    )
+                elif consumer_name == "vector-current":
+                    vector_status = (
+                        "status=rejected source=explicit-current "
+                        "reason=not-certifiable-or-non-innermost"
+                        if vector_current_rejected
+                        else "status=applied source=explicit-current scope=innermost"
+                    )
+                else:
+                    vector_status = None
                 cases.append(
                     Case(
                         name=f"{producer_name}{iss_name}-{consumer_name}",
                         fixture=fixture,
                         args=(*producer_args, *iss_args, *effective_consumer_args),
-                        expected_route="rejected" if rejected else "permutable-band",
-                        expect_alarm=rejected,
+                        expected_route=(
+                            "rejected" if vector_current_rejected else "permutable-band"
+                        ),
+                        expect_success=not vector_current_rejected,
+                        expected_vector_status=vector_status,
                     )
                 )
 
@@ -137,14 +157,26 @@ def route_cases() -> list[Case]:
         ):
             if "--multipar" in consumer_args:
                 consumer_args = (*consumer_args, "--nodiamond-tile")
-            rejected = consumer_name == "vector-strict"
+            vector_current_rejected = consumer_name == "vector-current"
+            if consumer_name in ("vector-hint", "vector-strict"):
+                vector_status = "status=skipped reason=no-hint"
+            elif vector_current_rejected:
+                vector_status = (
+                    "status=rejected source=explicit-current "
+                    "reason=not-certifiable-or-non-innermost"
+                )
+            else:
+                vector_status = None
             cases.append(
                 Case(
                     name=f"identity-mixed-depth{iss_name}-{consumer_name}",
                     fixture=MATMUL_INIT,
                     args=("--identity-tiled", *iss_args, *consumer_args),
-                    expected_route="rejected" if rejected else "permutable-band",
-                    expect_alarm=rejected,
+                    expected_route=(
+                        "rejected" if vector_current_rejected else "permutable-band"
+                    ),
+                    expect_success=not vector_current_rejected,
+                    expected_vector_status=vector_status,
                 )
             )
     return cases
@@ -170,6 +202,32 @@ def run_case(polopt: Path, case: Case, timeout: int) -> str | None:
         return f"{case.name}: timed out after {timeout}s"
 
     output = proc.stdout + proc.stderr
+    if not case.expect_success:
+        route_lines = [
+            line.strip()
+            for line in proc.stderr.splitlines()
+            if line.strip().startswith(ROUTE_PREFIX)
+        ]
+        expected_vector = f"{VECTOR_PREFIX}{case.expected_vector_status}"
+        if proc.returncode == 0:
+            return f"{case.name}: expected explicit vector rejection\n{output}"
+        if not any(
+            marker in output
+            for marker in (
+                "Parallel validation failed",
+                "non-innermost vector loop, or no vector loop",
+            )
+        ):
+            return f"{case.name}: missing explicit validation failure\n{output}"
+        if route_lines:
+            return f"{case.name}: vector rejection leaked tiling route {route_lines!r}\n{output}"
+        if proc.stderr.count(expected_vector) != 1:
+            return f"{case.name}: missing unique vector rejection telemetry\n{output}"
+        if GENERAL_FALLBACK_ROUTE in proc.stderr or "status=applied" in proc.stderr:
+            return f"{case.name}: explicit rejection leaked an accepted route\n{output}"
+        if "== Optimized Loop ==" in proc.stdout or "[alarm]" in proc.stderr:
+            return f"{case.name}: explicit rejection produced fallback output\n{output}"
+        return None
     if proc.returncode != 0:
         return (
             f"{case.name}: expected a completed one-level route, got exit "
@@ -196,6 +254,21 @@ def run_case(polopt: Path, case: Case, timeout: int) -> str | None:
             f"{case.name}: expected alarm={case.expect_alarm}, got "
             f"alarm={has_alarm}\n{output}"
         )
+    vector_lines = [
+        line.strip()
+        for line in proc.stderr.splitlines()
+        if line.strip().startswith(VECTOR_PREFIX)
+    ]
+    expected_vector_lines = (
+        []
+        if case.expected_vector_status is None
+        else [f"{VECTOR_PREFIX}{case.expected_vector_status}"]
+    )
+    if vector_lines != expected_vector_lines:
+        return (
+            f"{case.name}: expected vector telemetry {expected_vector_lines!r}, "
+            f"got {vector_lines!r}\n{output}"
+        )
     return None
 
 
@@ -215,9 +288,6 @@ def main() -> int:
     failures: list[str] = []
     cases = route_cases()
     names = [case.name for case in cases]
-    rejected_names = {
-        case.name for case in cases if case.expected_route == "rejected"
-    }
     invalid_routes = {
         case.expected_route
         for case in cases
@@ -229,17 +299,14 @@ def main() -> int:
         failures.append("matrix contains duplicate case names")
     if invalid_routes:
         failures.append(f"matrix contains invalid expected routes: {sorted(invalid_routes)}")
-    if rejected_names != EXPECTED_REJECTIONS:
-        failures.append(
-            "checked-rejection whitelist mismatch: "
-            f"expected {sorted(EXPECTED_REJECTIONS)}, got {sorted(rejected_names)}"
-        )
     for case in cases:
-        expected_alarm = case.expected_route == "rejected"
-        if case.expect_alarm != expected_alarm:
+        if case.expect_alarm:
             failures.append(
-                f"{case.name}: expected_route={case.expected_route!r} requires "
-                f"expect_alarm={expected_alarm}"
+                f"{case.name}: non-second-level matrix must not expect an alarm"
+            )
+        if case.expect_success != (case.expected_route == "permutable-band"):
+            failures.append(
+                f"{case.name}: success/route expectation is inconsistent"
             )
     for case in cases:
         failure = run_case(polopt, case, args.timeout)
@@ -254,15 +321,17 @@ def main() -> int:
         return 1
     accepted = sum(case.expected_route == "permutable-band" for case in cases)
     rejected = len(cases) - accepted
-    if accepted != 86 or rejected != 4:
+    if accepted != 84 or rejected != 6:
         print(
             "[non-second-level-routes] FAIL: "
-            f"expected 86 acceptances/4 rejections, got {accepted}/{rejected}"
+            f"expected 84 completed compositions/6 explicit vector rejections, "
+            f"got {accepted}/{rejected}"
         )
         return 1
     print(
         f"[non-second-level-routes] OK "
-        f"({accepted} specialized acceptances, {rejected} checked rejections)"
+        f"({accepted} permutable-band compositions, {rejected} explicit vector "
+        "rejections, 0 general fallbacks)"
     )
     return 0
 

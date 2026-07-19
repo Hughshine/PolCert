@@ -109,13 +109,13 @@ let usage prog =
       "                         tiled paths, including their `--iss` variants and the\n";
       "                         non-ISS and ISS diamond routes\n";
       "  --vector          : experimental checked `vector for` route driven by Pluto\n";
-      "                       `--prevector` loop hints; it reuses the same doall checker\n";
-      "                       as --parallel because Pluto marks vector loops from the\n";
-      "                       same parallel-loop analysis\n";
-      "  --vector-strict   : with `--vector`, require the certified vector loop to be the\n";
-      "                       Pluto-hinted dimension\n";
+      "                       `--prevector` loop hints; only a certified structurally\n";
+      "                       innermost hinted loop is annotated, otherwise the verified\n";
+      "                       sequential producer is retained\n";
+      "  --vector-strict   : compatibility spelling for explicit hint-only vector intent;\n";
+      "                       the current vector route is already innermost-hint-only\n";
       "  --vector-current d : theorem-aligned checked `vector for` on explicit current\n";
-      "                         dimension d, using the parallel/doall certificate\n";
+      "                         dimension d, requiring both doall and innermost checks\n";
       "  --pluto-compat    : parse Pluto-style optimizer flags in this OCaml driver,\n";
       "                      reject unsupported Pluto defaults/features with explicit\n";
       "                      reasons, then run the matching checked polopt route\n";
@@ -489,7 +489,7 @@ let validate_pluto_compat prog cfg =
     if not cfg.pluto_no_prevector_seen then begin
       cfg.force_vector <- true;
       add_pluto_note cfg
-        "Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel"
+        "Pluto --prevector consumes only a mapped innermost hint and checks both doall and structural innermostness"
     end;
     if not (cfg.pluto_no_unrolljam_seen || cfg.pluto_unrolljam_seen) then
       pluto_reject prog "Pluto enables --unrolljam by default; pass --nounrolljam or explicit --unrolljam";
@@ -777,7 +777,7 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_prevector_seen <- true;
           cfg.force_vector <- true;
-          add_pluto_note cfg "--prevector selects the checked vector annotation route";
+          add_pluto_note cfg "--prevector selects the innermost-hint-only checked vector annotation route";
           go (i + 1)
       | "--nounrolljam" ->
           enable_pluto_compat cfg;

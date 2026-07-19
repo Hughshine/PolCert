@@ -35,9 +35,8 @@ def check_second_level_diamond_route_matrix(
     tile_modes = ("--diamond-tile", "--full-diamond-tile")
     consumers = (
         ("parallel-current", ("--parallel-current", "0"), "parallel for"),
-        ("vector-current", ("--vector-current", "0"), "vector for"),
         ("parallel-strict", ("--parallel", "--parallel-strict"), "parallel for"),
-        ("vector-strict", ("--vector", "--vector-strict"), "vector for"),
+        ("vector-strict", ("--vector", "--vector-strict"), None),
         (
             "multipar-strict",
             (
@@ -82,11 +81,30 @@ def check_second_level_diamond_route_matrix(
                 f"{label} did not report exactly one explicit fallback route\n"
                 f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
             )
-        if "[alarm]" in proc.stderr or loop_marker not in proc.stdout or "32 *" not in proc.stdout:
+        if (
+            "[alarm]" in proc.stderr
+            or (loop_marker is not None and loop_marker not in proc.stdout)
+            or "32 *" not in proc.stdout
+        ):
             raise AssertionError(
                 f"{label} omitted its accepted tiled {consumer} result\n"
                 f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
             )
+        if consumer == "vector-strict":
+            skipped = (
+                "[vector-validation] status=skipped "
+                "reason=hint-not-certifiable-or-non-innermost"
+            )
+            vector_lines = [
+                line.strip()
+                for line in proc.stderr.splitlines()
+                if line.strip().startswith("[vector-validation] ")
+            ]
+            if vector_lines != [skipped] or "vector for" in proc.stdout:
+                raise AssertionError(
+                    f"{label} did not preserve the producer after vector rejection\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
         baseline_args = [tile_mode, *consumer_args]
         if use_iss:
             baseline_args.append("--iss")
@@ -112,7 +130,35 @@ def check_second_level_diamond_route_matrix(
                 f"{label} did not differ after removing --second-level-tile"
             )
 
-    print("second-level diamond route matrix: PASS (20 current/strict variants)")
+    vector_rejection = (
+        "[vector-validation] status=rejected source=explicit-current "
+        "reason=not-certifiable-or-non-innermost"
+    )
+    for tile_mode, use_iss in product(tile_modes, (False, True)):
+        label = f"second-level {tile_mode} vector-current{' ISS' if use_iss else ''}"
+        args = ["--second-level-tile", tile_mode, "--vector-current", "0"]
+        if use_iss:
+            args.append("--iss")
+        proc = subprocess.run(
+            [str(polopt), *args, str(fixture)],
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+        if proc.returncode == 0:
+            raise AssertionError(f"{label} unexpectedly accepted a non-innermost loop")
+        if route_lines(proc.stderr):
+            raise AssertionError(f"{label} mislabeled vector rejection as a tiling route")
+        if proc.stderr.count(vector_rejection) != 1:
+            raise AssertionError(f"{label} omitted unique vector rejection telemetry")
+        if "== Optimized Loop ==" in proc.stdout or "[alarm]" in proc.stderr:
+            raise AssertionError(f"{label} emitted a fallback after explicit rejection")
+
+    print(
+        "second-level diamond route matrix: PASS "
+        "(16 accepted parallel/hinted variants, 4 explicit vector rejections)"
+    )
 
 
 if __name__ == "__main__":

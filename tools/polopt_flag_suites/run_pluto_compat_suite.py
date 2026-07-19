@@ -26,6 +26,7 @@ class Check:
     effect_needles: tuple[str, ...] = ()
     effect_absent: tuple[str, ...] = ()
     stderr_needles: tuple[str, ...] = ()
+    stderr_absent: tuple[str, ...] = ()
     tiling_route: str | None = None
     differs_from_args: tuple[tuple[str, ...], ...] = ()
     implicit_control_file: str | None = None
@@ -33,6 +34,7 @@ class Check:
     explicit_control_flag: str | None = None
     explicit_control_file_content: str = "16\n"
     env: dict[str, str] | None = None
+    same_as_args: tuple[str, ...] | None = None
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -543,8 +545,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --diamond-tile --vector",
-        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
-        differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--noparallel"]),),
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple([*FLAGS, "--diamond-tile", "--noparallel"]),
     ),
     Check(
         "diamond-vector-strict-hint-only",
@@ -553,8 +560,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --diamond-tile --vector --vector-strict",
-        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
-        differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--noparallel"]),),
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple([*FLAGS, "--diamond-tile", "--noparallel"]),
     ),
     Check(
         "diamond-iss-parallel-multipar",
@@ -640,8 +652,13 @@ CHECKS = [
         DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
-        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
-        differs_from_args=(tuple(JACOBI_FULL_DIAMOND),),
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple(JACOBI_FULL_DIAMOND),
     ),
     Check(
         "full-diamond-vector-iss",
@@ -649,8 +666,13 @@ CHECKS = [
         DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
-        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
-        differs_from_args=(tuple(JACOBI_FULL_DIAMOND_ISS),),
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple(JACOBI_FULL_DIAMOND_ISS),
     ),
     Check(
         "full-diamond-multipar",
@@ -700,8 +722,12 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_needles=("vector for",),
-        differs_from_args=(tuple(MATMUL_TILED),),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
     ),
     Check(
         "native-vector",
@@ -710,8 +736,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_needles=("vector for", "32 *", "/ 32"),
-        differs_from_args=(tuple(MATMUL_TILED),),
+        effect_needles=("32 *", "/ 32"),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
     ),
     Check(
         "native-vector-strict-hint-only",
@@ -730,8 +761,12 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_needles=("vector for",),
-        differs_from_args=(tuple(MATMUL_TILED),),
+        effect_absent=("vector for",),
+        stderr_needles=(
+            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
     ),
     Check(
         "const-unrolljam-constant-loop",
@@ -1016,7 +1051,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --identity --tile --parallel",
-        effect_needles=("parallel for i1", "32 *", "/ 32"),
+        effect_needles=("parallel for i0", "32 *", "/ 32"),
         tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
@@ -1027,7 +1062,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --identity --tile --parallel --parallel-strict",
-        effect_needles=("parallel for i1", "32 *", "/ 32"),
+        effect_needles=("parallel for i0", "32 *", "/ 32"),
         tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
@@ -1038,9 +1073,25 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --identity --tile --vector --vector-strict",
-        effect_absent=("vector for", "32 *", "/ 32"),
-        stderr_needles=("[alarm]",),
-        tiling_route="rejected",
+        effect_needles=("32 *", "/ 32"),
+        effect_absent=("vector for",),
+        stderr_needles=("[vector-validation] status=skipped reason=no-hint",),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "identity-tiled-vector-strict-valid-hint",
+        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --vector --vector-strict",
+        effect_needles=("vector for i3", "32 *", "/ 32"),
+        stderr_needles=(
+            "[vector-validation] status=applied source=pluto-hint scope=innermost",
+        ),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
     ),
     Check(
         "identity-tiled-multipar",
@@ -1060,8 +1111,8 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --multipar",
-        effect_needles=("parallel for i1", "32 *", "/ 32"),
-        effect_absent=("parallel for i0",),
+        effect_needles=("parallel for i0", "32 *", "/ 32"),
+        effect_absent=("parallel for i1",),
         tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED_MULTIPAR),),
     ),
@@ -1488,6 +1539,9 @@ def run_check(check: Check, timeout: int) -> str | None:
         for needle in check.stderr_needles:
             if needle not in proc.stderr:
                 return f"{check.name}: missing stderr marker {needle!r}\n{output}"
+        for needle in check.stderr_absent:
+            if needle in proc.stderr:
+                return f"{check.name}: unexpected stderr marker {needle!r}\n{output}"
         if "--second-level-tile" in check.args:
             is_diamond = (
                 "--diamond-tile" in check.args
@@ -1522,6 +1576,19 @@ def run_check(check: Check, timeout: int) -> str | None:
                 )
             if optimized_loop(baseline.stdout) == optimized:
                 return f"{check.name}: optimized loop did not differ from baseline args {list(baseline_args)!r}\n{output}"
+        if check.same_as_args is not None:
+            try:
+                baseline = run_polopt_compat(list(check.same_as_args), check.fixture, timeout)
+            except subprocess.TimeoutExpired:
+                return f"{check.name}: baseline equality comparison timed out for args {list(check.same_as_args)!r}"
+            baseline_output = baseline.stdout + baseline.stderr
+            if baseline.returncode != 0:
+                return (
+                    f"{check.name}: baseline equality command failed with exit {baseline.returncode} "
+                    f"for args {list(check.same_as_args)!r}\n{baseline_output}"
+                )
+            if optimized_loop(baseline.stdout) != optimized:
+                return f"{check.name}: optimized loop differed from baseline args {list(check.same_as_args)!r}\n{output}"
     else:
         if proc.returncode == 0:
             return f"{check.name}: expected rejection, but command succeeded\n{output}"

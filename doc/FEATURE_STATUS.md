@@ -90,9 +90,12 @@ Command:
 
 Status:
 
-- theorem-aligned checked vector annotation for an explicit current dimension
-- reuses the parallel/doall certificate, matching Pluto's prevector source
-- also exposed through Pluto compatibility as `--prevector`
+- theorem-aligned checked innermost vector annotation for an explicit current
+  dimension
+- reuses the parallel/doall certificate and additionally rejects every output
+  with a non-innermost vector loop or no vector loop
+- the separate `--prevector` / `--vector` route consumes only Pluto's mapped
+  hint and skips the optional annotation when that hint is missing or rejected
 
 Proof objects:
 
@@ -140,9 +143,12 @@ external `permutable-band` label covers all three specialized modes. Every
 completed tiling attempt prints exactly one
 `[tiling-validation] route=...` line: `permutable-band`, `general-fallback`, or
 `rejected` when the final tiling-bearing pipeline is not adopted. A validator
-rejection retains the already-validated affine midpoint; rejection by a later
-parallel/vector consumer uses that consumer's conservative fallback output and
-emits the checked-fallback alarm. The
+rejection retains the already-validated affine midpoint. A mandatory parallel
+consumer may reject the complete pipeline and report its conservative fallback.
+Automatic vector annotation is optional: a missing or rejected hint retains the
+verified producer and reports `status=skipped` without an alarm. Explicit
+`--vector-current` is a hard assertion; rejection reports only vector telemetry,
+does not emit a tiling route, and produces no optimized fallback. The
 `general-fallback` label intentionally aggregates the canonical and general
 proved fallback validators. The
 second-level regression suite covers ordinary, identity-tiled, diamond,

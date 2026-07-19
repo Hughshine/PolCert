@@ -108,6 +108,58 @@ Definition vectorize_dim (d : nat) (p : t) : t :=
   let '(s, ctxt, vars) := p in
   (vectorize_dim_stmt d s, ctxt, vars).
 
+Fixpoint has_loopb_stmt (s : stmt) : bool
+with has_loopb_stmts (ss : stmt_list) : bool.
+Proof.
+  - destruct s.
+    + exact true.
+    + exact false.
+    + exact (has_loopb_stmts s).
+    + exact (has_loopb_stmt s).
+  - destruct ss.
+    + exact false.
+    + exact (has_loopb_stmt s || has_loopb_stmts ss).
+Defined.
+
+Fixpoint has_vector_modeb_stmt (s : stmt) : bool
+with has_vector_modeb_stmts (ss : stmt_list) : bool.
+Proof.
+  - destruct s.
+    + destruct l.
+      * exact (has_vector_modeb_stmt s).
+      * exact (has_vector_modeb_stmt s).
+      * exact true.
+    + exact false.
+    + exact (has_vector_modeb_stmts s).
+    + exact (has_vector_modeb_stmt s).
+  - destruct ss.
+    + exact false.
+    + exact (has_vector_modeb_stmt s || has_vector_modeb_stmts ss).
+Defined.
+
+Fixpoint vector_modes_innermostb_stmt (s : stmt) : bool
+with vector_modes_innermostb_stmts (ss : stmt_list) : bool.
+Proof.
+  - destruct s.
+    + destruct l.
+      * exact (vector_modes_innermostb_stmt s).
+      * exact (vector_modes_innermostb_stmt s).
+      * exact (negb (has_loopb_stmt s)).
+    + exact true.
+    + exact (vector_modes_innermostb_stmts s).
+    + exact (vector_modes_innermostb_stmt s).
+  - destruct ss.
+    + exact true.
+    + exact (vector_modes_innermostb_stmt s && vector_modes_innermostb_stmts ss).
+Defined.
+
+(** A vector annotation is useful only when at least one loop is annotated, and
+    it is backend-safe only when every annotated loop is structurally
+    innermost. *)
+Definition vector_annotations_innermostb (p : t) : bool :=
+  let '(s, _, _) := p in
+  vector_modes_innermostb_stmt s && has_vector_modeb_stmt s.
+
 Fixpoint of_loop_stmt (s : BaseLoop.stmt) : stmt :=
   match s with
   | BaseLoop.Loop lb ub body => Loop SeqMode None lb ub (of_loop_stmt body)

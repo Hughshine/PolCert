@@ -86,16 +86,21 @@ produce and validate it?
 - `--parallel-current d`
   - use the theorem-aligned explicit-dimension parallel route
 - `--vector`, `--prevector`
-  - use Pluto's vector loop hint when possible, then certify a doall current
-    dimension and emit `vector for`
+  - map Pluto's vector loop hint to the generated loop nest, certify doall, and
+    emit `vector for` only when every annotated loop is structurally innermost
+  - if no usable hint exists, retain the verified sequential producer without a
+    vector annotation
 - `--vector-strict`
-  - refine `--vector`: require the certified loop to match Pluto's vector hint
+  - compatibility spelling for explicit hint-only intent; the current vector
+    route is already innermost-hint-only
 - `--vector-current d`
-  - use the theorem-aligned explicit-dimension vector route
+  - use the theorem-aligned explicit-dimension vector route; reject `d` unless
+    the resulting annotation is structurally innermost
 
 These flags answer: do we stay sequential, follow Pluto's hint, or certify a
-user-selected current dimension? Vector routes reuse the same parallel/doall
-checker because Pluto's prevector marker is derived from parallel-loop analysis.
+user-selected current dimension? Vector routes reuse the parallel/doall checker
+but add a structural innermost-only gate because doall alone does not establish
+the supported vector annotation shape.
 
 ### 1.5 Standalone validation actions
 
@@ -144,8 +149,8 @@ The practically important user-visible route shapes are:
 | `./polopt --parallel --parallel-strict file.loop` | Pluto-hinted route with strict hinted-dimension requirement |
 | `./polopt --parallel-current d file.loop` | Explicit-dimension theorem-aligned parallel route |
 | `./polopt --iss --parallel-current d file.loop` | ISS + explicit-dimension parallel route |
-| `./polopt --vector file.loop` | Pluto-hinted checked vector route |
-| `./polopt --vector-current d file.loop` | Explicit-dimension theorem-aligned vector route |
+| `./polopt --vector file.loop` | Pluto-hinted, innermost-only checked vector route |
+| `./polopt --vector-current d file.loop` | Explicit-dimension, innermost-only theorem-aligned vector route |
 
 Two important details:
 
@@ -169,7 +174,8 @@ particular:
   - `--iss --notile`
   - `--iss --identity`
 - `--vector-current d` follows the same explicit-current support shape as
-  `--parallel-current d`, but emits `vector for`
+  `--parallel-current d`, but emits `vector for` only when `d` produces a
+  structurally innermost annotation
 - bare sequential `--iss --identity` and `--iss --notile` are rejected; their
   ISS identity/affine variants require a checked parallel or vector consumer
 - `--second-level-tile` is also valid with:
@@ -278,8 +284,8 @@ The frontend makes the route choice in roughly this order:
    vector family.
 3. Otherwise, if `--parallel-current d` is present, use the explicit-dimension
    parallel family.
-4. Otherwise, if `--vector` or `--prevector` is present, use the Pluto-hinted
-   vector family.
+4. Otherwise, if `--vector` or `--prevector` is present, consume only Pluto's
+   mapped innermost hint; never scan other dimensions for a vector candidate.
 5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
 6. Otherwise, if `--diamond-tile` is present, use the diamond producer/phase
    family; a checked sequential, parallel, vector, or multipar consumer may

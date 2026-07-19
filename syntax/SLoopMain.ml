@@ -1000,8 +1000,9 @@ let debug_parallel_hint_if name hints =
         List.iter
           (fun hint ->
              Printf.eprintf
-               "[debug-parallel] Pluto hint iterator=%s current_dim=%d\n"
+               "[debug-parallel] Pluto hint iterator=%s raw_dim=%d current_dim=%d\n"
                hint.Scheduler.hint_iterator
+               hint.Scheduler.hint_raw_dim
                hint.Scheduler.hint_current_dim)
           hints
 
@@ -1014,8 +1015,9 @@ let debug_vector_hint_if name hints =
         List.iter
           (fun hint ->
              Printf.eprintf
-               "[debug-vector] Pluto vector hint iterator=%s current_dim=%d directive=%d\n"
+               "[debug-vector] Pluto vector hint iterator=%s raw_dim=%d current_dim=%d directive=%d\n"
                hint.Scheduler.hint_iterator
+               hint.Scheduler.hint_raw_dim
                hint.Scheduler.hint_current_dim
                hint.Scheduler.hint_directive)
           hints
@@ -1103,28 +1105,16 @@ let try_pluto_parallel_codegen pol hint_dim strict =
       try_pluto_hint_preferred_parallel_codegen pol hint_dim
 
 let try_pluto_hint_preferred_vector_codegen pol hint_dim =
-  let dims = parallel_candidate_dims pol hint_dim in
-  let rec go = function
-    | [] -> None
-    | dim :: rest ->
-        begin match try_checked_vector_current_codegen pol dim with
-        | Some pl -> Some (pl, true)
-        | None -> go rest
-        end
-  in
-  go dims
-
-let try_pluto_vector_codegen pol hint_dim strict =
   match hint_dim with
-  | Some dim when strict ->
+  | None -> None
+  | Some dim ->
       begin match try_checked_vector_current_codegen pol dim with
       | Some pl -> Some (pl, true)
       | None -> None
       end
-  | None when strict ->
-      None
-  | _ ->
-      try_pluto_hint_preferred_vector_codegen pol hint_dim
+
+let try_pluto_vector_codegen pol hint_dim _strict =
+  try_pluto_hint_preferred_vector_codegen pol hint_dim
 
 let parallel_multipar_candidate_dims pol hinted_dims strict =
   let hinted_dims = unique_ints hinted_dims in
@@ -1272,13 +1262,8 @@ let try_diamond_parallel_codegen use_iss loop hint_dim strict =
   in
   go dims
 
-let try_diamond_vector_codegen use_iss loop hint_dim strict =
-  let dims =
-    match hint_dim, strict with
-    | Some d, true -> [d]
-    | None, true -> []
-    | _ -> diamond_parallel_candidate_dims hint_dim
-  in
+let try_diamond_vector_codegen use_iss loop hint_dim _strict =
+  let dims = match hint_dim with Some d -> [d] | None -> [] in
   let rec go = function
     | [] -> None
     | dim :: rest ->
@@ -3495,22 +3480,32 @@ let run_selected_parallel_optimization cfg loop =
   else
     run_verified_hinted_parallel_optimization cfg loop
 
+let report_vector_validation details =
+  prerr_endline ("[vector-validation] " ^ details)
+
+let verified_sequential_vector_fallback cfg loop reason =
+  report_vector_validation ("status=skipped reason=" ^ reason);
+  let (optimized, ok) = run_selected_sequential_loop_optimization cfg loop in
+  (tag_loop_for_parallel_pretty optimized, ok)
+
 let run_selected_vector_optimization cfg loop =
   let hinted_dims = unique_ints (vector_hint_dims_of_cli cfg loop) in
-  let candidates =
-    if cfg.force_vector_strict then
-      hinted_dims
-    else
-      unique_ints (hinted_dims @ int_range 0 16)
-  in
+  (* Vectorization follows Pluto's innermost-loop hints.  The checked codegen
+     independently rejects any annotation that is not structurally innermost. *)
+  let candidates = hinted_dims in
   let rec go = function
     | [] ->
-        report_rejected_tiling_if_requested cfg;
-        (tag_loop_for_parallel_pretty loop, false)
+        let reason =
+          if hinted_dims = [] then "no-hint"
+          else "hint-not-certifiable-or-non-innermost"
+        in
+        verified_sequential_vector_fallback cfg loop reason
     | dim :: rest ->
         begin match try_verified_vector_current_compile cfg loop dim with
         | Some (pl, routes) ->
             TilingValidationRoute.report routes;
+            report_vector_validation
+              "status=applied source=pluto-hint scope=innermost";
             (pl, true)
         | None -> go rest
         end
@@ -3541,12 +3536,20 @@ let run_selected_vector_current_optimization cfg loop dim =
           (verified_vector_current_config_of_cli cfg dim)
           loop)
     in
-    if ok then TilingValidationRoute.report routes
-    else report_rejected_tiling_if_requested cfg;
-    (optimized, ok)
+    if ok then begin
+      TilingValidationRoute.report routes;
+      report_vector_validation
+        "status=applied source=explicit-current scope=innermost";
+      (optimized, true)
+    end else begin
+      report_vector_validation
+        "status=rejected source=explicit-current reason=not-certifiable-or-non-innermost";
+      frontend_failf "explicit vector-current validation failed"
+    end
   with
   | CertcheckerConfig.CertCheckerFailure _ as exn ->
-      report_rejected_tiling_if_requested cfg;
+      report_vector_validation
+        "status=rejected source=explicit-current reason=not-certifiable-or-non-innermost";
       raise exn
 
 let pluto_unroll_factor cfg =

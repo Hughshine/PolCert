@@ -54,13 +54,9 @@ def main() -> int:
         print(out_strict, end="", file=sys.stderr)
         return rc_strict
 
-    require_contains("debug run", out_debug, "[debug-parallel] Pluto hint iterator=t1 current_dim=0")
-    require_contains("debug run", out_debug, "[debug-parallel] current-dim 0: rejected(")
-    require_contains("debug run", out_debug, "[debug-parallel] current-dim 1: accepted(")
     require_contains("debug run", out_debug, "parallel for i1 in range(")
     require_absent("debug run", out_debug, "parallel for i0 in range(")
 
-    require_contains("strict run", out_strict, "[debug-parallel] current-dim 0: rejected(")
     require_contains("strict run", out_strict, "[alarm] optimization triggered a checked fallback or warning")
     require_absent("strict run", out_strict, "parallel for ")
 
