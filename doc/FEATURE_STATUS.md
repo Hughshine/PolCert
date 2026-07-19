@@ -21,8 +21,9 @@ Status:
 
 Proof object:
 
-- optimizer: `Opt`
-- theorem: `Opt_correct`
+- optimizer: `Opt_band`
+- route theorem: `Opt_band_correct`
+- extracted dispatcher theorem: `extracted_sequential_compile_correct`
 
 ### Optional ISS mode
 
@@ -39,24 +40,15 @@ Status:
 
 Proof object:
 
-- optimizer: `Opt_with_iss`
-- theorem: `Opt_with_iss_correct`
+- optimizer: `Opt_band_with_iss`
+- route theorem: `Opt_band_with_iss_correct`
+- extracted dispatcher theorem: `extracted_sequential_compile_correct`
 
-### ISS-only split checking
-
-Command:
-
-```sh
-./polopt --iss --identity file.loop
-```
-
-Status:
-
-- checked ISS split path
-- useful for examining ISS itself without later scheduling
-
-This route is centered on the verified ISS structural validator rather than the
-default end-to-end optimizer theorem.
+Bare sequential `--iss --identity` and `--iss --notile` are rejected because
+the extracted sequential dispatcher has no such configuration. Identity
+tiling with ISS is supported with `--identity --tile`; ISS identity/affine
+forms are also available when followed by a checked parallel or vector
+consumer.
 
 ### Experimental parallel modes
 
@@ -129,17 +121,33 @@ Commands:
 Status:
 
 - `--second-level-tile`
-  - experimental checked second-level tiling family
-  - only valid on full tiled optimization routes and tiling witness/validation
-    actions
+  - checked second-level tiling family
+  - valid on ordinary full-tiled and identity-tiled routes, their checked
+    consumers, and tiling witness/validation actions
 - `--diamond-tile` / `--full-diamond-tile`
-  - theorem-backed opt-in sequential diamond route family
-  - currently only supported on the default non-ISS full tiled route
-  - reject ISS, Pluto-hinted parallel, explicit-current parallel, second-level,
-    and legacy-generic ordinary tiling
+  - theorem-backed opt-in diamond route family
+  - composes with second-level tiling, ISS, and checked parallel/vector
+    consumers on the covered routes
 - `--legacy-generic-tiling`
-  - compatibility selector for the historical generic ordinary-tiling validator
-  - only supported on the default non-ISS full tiled route
+  - deprecated compatibility alias
+  - no longer selects a generic-primary path; it uses the same band-first
+    ordinary route as the default
+
+Every tiling-bearing route first tries the ordinary common-band checker,
+whole-program ordinary-tiling permutability, and the hierarchical second-level
+checker, then the proved canonical and general fallback validators. The
+external `permutable-band` label covers all three specialized modes. Every
+completed tiling attempt prints exactly one
+`[tiling-validation] route=...` line: `permutable-band`, `general-fallback`, or
+`rejected` when the final tiling-bearing pipeline is not adopted. A validator
+rejection retains the already-validated affine midpoint; rejection by a later
+parallel/vector consumer uses that consumer's conservative fallback output and
+emits the checked-fallback alarm. The
+`general-fallback` label intentionally aggregates the canonical and general
+proved fallback validators. The
+second-level regression suite covers ordinary, identity-tiled, diamond,
+full-diamond, ISS, parallel, vector, multipar, explicit-current, and strict
+combinations, including explicit general-fallback cases.
 
 ### Standalone validation / inspection actions exposed by `polopt`
 
@@ -176,6 +184,8 @@ Commands:
 ./polcert before.scop after.scop
 ./polcert --kind tiling mid.scop after.scop
 ./polcert before.scop mid.scop after.scop
+./polcert before.scop mid.scop posttile.scop after.scop
+./polcert --second-level-tile --kind tiling mid.scop after.scop
 ```
 
 Status:
@@ -183,6 +193,10 @@ Status:
 - affine validation uses OpenScop
 - tiling validation uses OpenScop
 - phase-aligned affine+tiling validation is supported
+- four-input affine/tiling/final-affine validation is supported for diamond
+  phase dumps
+- second-level tiling uses the same permutable-band-first dispatcher and
+  reports its adopted route
 
 ### ISS validation modes
 
@@ -218,14 +232,13 @@ Main workflow:
 - `make test`
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
-- `make test-parallel-current-suite`
-- `make test-vector-current-suite`
-- `make test-second-level-tile-suite`
+- `make test-tiling-route-suites`, which aggregates one-level route discipline,
+  Pluto compatibility, parallel-current, vector-current, second-level tiling,
+  and diamond tiling
 - `make test-polopt-loop-suite`
 
 Not in default `ci` today:
 
-- `make test-diamond-tiling-suite`
 - handwritten whole-C perf harness: `tests/end-to-end-c`
 - generated whole-C perf harness: `tests/end-to-end-generated`
 - one-command local refresh:
@@ -234,8 +247,8 @@ Not in default `ci` today:
 Additional workflow:
 
 - `.github/workflows/full-tiling-suite.yml`
-- runs the strict `polopt` loop suite, both ISS suites, and the
-  `parallel-current` / `second-level-tile` suite targets
+- runs the strict `polopt` loop suite, both ISS suites, and the aggregate
+  tiling-route suite
 
 The strict `.loop -> .loop` gate is CI-enforced. The whole-C harnesses are
 artifact-strengthening workflows and local perf campaigns, not default

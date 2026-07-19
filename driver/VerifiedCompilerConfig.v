@@ -4,7 +4,6 @@ Require Import ImpureAlarmConfig.
 Require Import PolIRs.
 Require Import PolOptCorrect.
 Require Import PolOptBandTiling.
-Require Import PolOptIdentityGenericISS.
 Require Import Result.
 Require Import Vpl.Impure.
 
@@ -13,9 +12,9 @@ Local Open Scope string_scope.
 
 Module VerifiedCompilerConfig (PolIRs: POLIRS).
 
-Module CoreCorrect := PolOptCorrect PolIRs.
+Module Core := PolOpt.PolOpt PolIRs.
+Module CoreCorrect := PolOptCorrect PolIRs Core.
 Module BandCorrect := PolOptBandTiling PolIRs.
-Module IdentityGenericISSCorrect := PolOptIdentityGenericISS PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module State := PolIRs.State.
 
@@ -24,6 +23,8 @@ Inductive raw_config : Type :=
 | RawAffine
 | RawDefault
 | RawDefaultBand
+| RawSecondLevel
+| RawSecondLevelISS
 | RawIdentitySecondLevel
 | RawIdentitySecondLevelISS
 | RawIdentityBand
@@ -38,6 +39,8 @@ Inductive verified_config : Type :=
 | VAffine
 | VDefault
 | VDefaultBand
+| VSecondLevel
+| VSecondLevelISS
 | VIdentitySecondLevel
 | VIdentitySecondLevelISS
 | VIdentityBand
@@ -52,6 +55,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawAffine => Okk VAffine
   | RawDefault => Okk VDefault
   | RawDefaultBand => Okk VDefaultBand
+  | RawSecondLevel => Okk VSecondLevel
+  | RawSecondLevelISS => Okk VSecondLevelISS
   | RawIdentitySecondLevel => Okk VIdentitySecondLevel
   | RawIdentitySecondLevelISS => Okk VIdentitySecondLevelISS
   | RawIdentityBand => Okk VIdentityBand
@@ -72,16 +77,17 @@ Definition compile_verified (cfg: verified_config) (loop: LoopIR.t)
   match cfg with
   | VIdentity => CoreCorrect.Core.identity_opt_prepared loop
   | VAffine => CoreCorrect.Core.affine_opt_prepared loop
-  | VDefault => CoreCorrect.Core.Opt loop
+  | VDefault => BandCorrect.Opt_band loop
   | VDefaultBand => BandCorrect.Opt_band loop
+  | VSecondLevel => BandCorrect.Opt_band loop
+  | VSecondLevelISS => BandCorrect.Opt_band_with_iss loop
   | VIdentitySecondLevel =>
-      CoreCorrect.Core.identity_tiling_generic_opt_prepared loop
+      BandCorrect.Opt_identity_tiled_band loop
   | VIdentitySecondLevelISS =>
-      IdentityGenericISSCorrect.BaseOpt
-        .identity_tiling_generic_opt_prepared_with_iss loop
+      BandCorrect.Opt_identity_tiled_band_with_iss loop
   | VIdentityBand => BandCorrect.Opt_identity_tiled_band loop
   | VIdentityBandISS => BandCorrect.Opt_identity_tiled_band_with_iss loop
-  | VISS => CoreCorrect.Core.Opt_with_iss loop
+  | VISS => BandCorrect.Opt_band_with_iss loop
   | VDiamond => BandCorrect.Opt_diamond_band loop
   | VDiamondISS => BandCorrect.Opt_diamond_band_with_iss loop
   end.
@@ -104,14 +110,15 @@ Proof.
   destruct cfg; simpl in Hcompile.
   - eapply CoreCorrect.Identity_opt_prepared_correct; eauto.
   - eapply CoreCorrect.Affine_opt_prepared_correct; eauto.
-  - eapply CoreCorrect.Opt_correct; eauto.
   - eapply BandCorrect.Opt_band_correct; eauto.
-  - eapply CoreCorrect.Identity_tiling_generic_opt_prepared_correct; eauto.
-  - eapply IdentityGenericISSCorrect
-      .identity_tiling_generic_opt_prepared_with_iss_correct; eauto.
+  - eapply BandCorrect.Opt_band_correct; eauto.
+  - eapply BandCorrect.Opt_band_correct; eauto.
+  - eapply BandCorrect.Opt_band_with_iss_correct; eauto.
   - eapply BandCorrect.Opt_identity_tiled_band_correct; eauto.
   - eapply BandCorrect.Opt_identity_tiled_band_with_iss_correct; eauto.
-  - eapply CoreCorrect.Opt_with_iss_correct; eauto.
+  - eapply BandCorrect.Opt_identity_tiled_band_correct; eauto.
+  - eapply BandCorrect.Opt_identity_tiled_band_with_iss_correct; eauto.
+  - eapply BandCorrect.Opt_band_with_iss_correct; eauto.
   - eapply BandCorrect.Opt_diamond_band_correct; eauto.
   - eapply BandCorrect.Opt_diamond_band_with_iss_correct; eauto.
 Qed.

@@ -156,9 +156,15 @@ Definition try_verified_tiling_after_phase_mid_poly
       | Err _ =>
           pure pol_mid
       | Okk pol_after =>
-          BIND ok <- ValidatorCore.checked_tiling_validate_poly pol_mid pol_after ws -;
-          if ok then
-            pure (PolyLang.current_view_pprog pol_after)
+          BIND route <-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_after ws -;
+          if TilingSched.tiling_band_validation_route_acceptsb route then
+            BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
+            if wf_after then
+              pure (PolyLang.current_view_pprog pol_after)
+            else
+              pure pol_mid
           else
             pure pol_mid
       end
@@ -197,40 +203,28 @@ Definition try_verified_diamond_after_phase_mid_poly
       | Err _ =>
           pure pol_mid
       | Okk pol_posttile =>
-          BIND ok_shape <- TilingSched.checked_tiling_schedule_stripmined_validate_poly pol_mid pol_posttile ws -;
-          if ok_shape then
-            match TilingSched.infer_pprog_tiling_bands
-                    (TilingSched.Base.outer_to_tiling_pprog pol_mid) ws with
-            | None =>
-                pure pol_mid
-            | Some bands =>
-                BIND ok_perm <-
-                  TilingSched.check_pprog_permutable_tiling_bands_via_validate_tiling
-                    (TilingSched.Base.outer_to_tiling_pprog pol_mid)
-                    (TilingSched.Base.outer_to_tiling_pprog pol_posttile)
-                    ws bands -;
-                if ok_perm then
-                  BIND wf_posttile <- ValidatorCore.check_wf_polyprog_general pol_posttile -;
-                  if wf_posttile then
-                    match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
-                    | Err _ =>
-                        pure pol_mid
-                    | Okk pol_after =>
-                        BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
-                        if final_ok then
-                          BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
-                          if wf_after then
-                            pure (PolyLang.current_view_pprog pol_after)
-                          else
-                            pure pol_mid
-                        else
-                          pure pol_mid
-                    end
+          BIND route <-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_posttile ws -;
+          if TilingSched.tiling_band_validation_route_acceptsb route then
+            BIND wf_posttile <- ValidatorCore.check_wf_polyprog_general pol_posttile -;
+            if wf_posttile then
+              match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
+              | Err _ =>
+                  pure pol_mid
+              | Okk pol_after =>
+                  BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
+                  if final_ok then
+                    BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
+                    if wf_after then
+                      pure (PolyLang.current_view_pprog pol_after)
+                    else
+                      pure pol_mid
                   else
                     pure pol_mid
-                else
-                  pure pol_mid
-            end
+              end
+            else
+              pure pol_mid
           else
             pure pol_mid
       end
@@ -391,6 +385,12 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
   else
     pure pol.
 
+Definition identity_tiling_opt_prepared_from_poly_with_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  BIND pol_iss <- iss_only_prepared_from_poly pol -;
+  identity_tiling_opt_prepared_from_poly_no_iss_poly pol_iss.
+
 Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
   : imp PolyLang.t :=
@@ -444,6 +444,13 @@ Definition parallel_current_identity_tiled_prepared_from_poly
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
+Definition parallel_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol' d.
+
 Definition parallel_current_diamond_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
@@ -490,6 +497,13 @@ Definition parallel_current_many_identity_tiled_prepared_from_poly
     (dims : list nat)
   : imp (result ParallelCodegenCore.ParallelLoop.t) :=
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol' dims.
+
+Definition parallel_current_many_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_many_annotated_codegen_at pol' dims.
 
 Definition parallel_current_many_affine_prepared_from_poly
@@ -555,6 +569,13 @@ Definition vector_current_identity_tiled_prepared_from_poly
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
   checked_vector_current_annotated_codegen_at pol' d.
 
+Definition vector_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
 Definition vector_current_diamond_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
@@ -608,6 +629,14 @@ Definition Opt_parallel_current_identity_tiled_result
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   parallel_current_identity_tiled_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_tiled_prepared_from_poly_with_iss pol d.
 
 Definition Opt_parallel_current_affine_result
     (loop : LoopIR.t)
@@ -681,6 +710,14 @@ Definition Opt_parallel_current_many_identity_tiled_result
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   parallel_current_many_identity_tiled_prepared_from_poly pol dims.
 
+Definition Opt_parallel_current_many_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_identity_tiled_prepared_from_poly_with_iss pol dims.
+
 Definition Opt_parallel_current_many_affine_result
     (loop : LoopIR.t)
     (dims : list nat)
@@ -753,6 +790,14 @@ Definition Opt_vector_current_identity_tiled_result
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   vector_current_identity_tiled_prepared_from_poly pol d.
 
+Definition Opt_vector_current_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_tiled_prepared_from_poly_with_iss pol d.
+
 Definition Opt_vector_current_affine_result
     (loop : LoopIR.t)
     (d : nat)
@@ -823,6 +868,13 @@ Definition Opt_parallel_current_identity_tiled
   BIND res <- Opt_parallel_current_identity_tiled_result loop d -;
   res_to_alarm parallel_dummy res.
 
+Definition Opt_parallel_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_parallel_current_identity_tiled_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
 Definition Opt_parallel_current_affine
     (loop : LoopIR.t)
     (d : nat)
@@ -886,6 +938,13 @@ Definition Opt_parallel_current_many_identity_tiled
   BIND res <- Opt_parallel_current_many_identity_tiled_result loop dims -;
   res_to_alarm parallel_dummy res.
 
+Definition Opt_parallel_current_many_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_parallel_current_many_identity_tiled_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
 Definition Opt_parallel_current_many_affine
     (loop : LoopIR.t)
     (dims : list nat)
@@ -947,6 +1006,13 @@ Definition Opt_vector_current_identity_tiled
     (d : nat)
   : imp ParallelCodegenCore.ParallelLoop.t :=
   BIND res <- Opt_vector_current_identity_tiled_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res <- Opt_vector_current_identity_tiled_with_iss_result loop d -;
   res_to_alarm parallel_dummy res.
 
 Definition Opt_vector_current_affine

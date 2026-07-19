@@ -13,6 +13,8 @@ Inductive raw_config : Type :=
 | RawAffine
 | RawDefault
 | RawDefaultBand
+| RawSecondLevel
+| RawSecondLevelISS
 | RawIdentitySecondLevel
 | RawIdentitySecondLevelISS
 | RawIdentityBand
@@ -27,6 +29,8 @@ Inductive verified_config : Type :=
 | VAffine
 | VDefault
 | VDefaultBand
+| VSecondLevel
+| VSecondLevelISS
 | VIdentitySecondLevel
 | VIdentitySecondLevelISS
 | VIdentityBand
@@ -41,6 +45,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawAffine => Okk VAffine
   | RawDefault => Okk VDefault
   | RawDefaultBand => Okk VDefaultBand
+  | RawSecondLevel => Okk VSecondLevel
+  | RawSecondLevelISS => Okk VSecondLevelISS
   | RawIdentitySecondLevel => Okk VIdentitySecondLevel
   | RawIdentitySecondLevelISS => Okk VIdentitySecondLevelISS
   | RawIdentityBand => Okk VIdentityBand
@@ -50,7 +56,6 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawDiamondISS => Okk VDiamondISS
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
-
 (* This executable dispatcher is intentionally enumerated for now. A later
    version can replace [verified_config] with a compositional pass descriptor
    list once the route theorems are exposed in a uniform pass-composition form. *)
@@ -60,14 +65,16 @@ Definition compile_verified
   match cfg with
   | VIdentity => SPolOpt.opt_identity loop
   | VAffine => SPolOpt.opt_affine loop
-  | VDefault => SPolOpt.opt loop
+  | VDefault => SBandTilingOpt.opt loop
   | VDefaultBand => SBandTilingOpt.opt loop
-  | VIdentitySecondLevel => SPolOpt.opt_identity_tiled_generic loop
+  | VSecondLevel => SBandTilingOpt.opt loop
+  | VSecondLevelISS => SBandTilingOpt.opt_with_iss loop
+  | VIdentitySecondLevel => SBandTilingOpt.opt_identity_tiled loop
   | VIdentitySecondLevelISS =>
-      SPolOpt.opt_identity_tiled_generic_with_iss loop
+      SBandTilingOpt.opt_identity_tiled_with_iss loop
   | VIdentityBand => SBandTilingOpt.opt_identity_tiled loop
   | VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop
-  | VISS => SPolOpt.opt_with_iss loop
+  | VISS => SBandTilingOpt.opt_with_iss loop
   | VDiamond => SBandTilingOpt.opt_diamond loop
   | VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop
   end.

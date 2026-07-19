@@ -18,6 +18,5 @@ opam exec -- make polcert
 opam exec -- make test
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
-opam exec -- make test-parallel-current-suite
-opam exec -- make test-second-level-tile-suite
+opam exec -- make test-tiling-route-suites
 opam exec -- make test-polopt-loop-suite

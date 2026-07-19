@@ -1,8 +1,10 @@
 {
   "suite_name": "VECTOR-CURRENT",
+  "stderr_needles_exactly_once": true,
   "fixtures": {
     "positive": "../parallel_current/fixtures/positive.loop",
     "matmul-init": "../second_level_tiling/fixtures/matmul-init.loop",
+    "diamond-example-inner-batch": "../parallel_current/fixtures/diamond-example-inner-batch.loop",
     "dependent": "../parallel_current/fixtures/dependent.loop"
   },
   "checks": [
@@ -15,7 +17,21 @@
       ],
       "expect": "success",
       "needle": "vector for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": []
+    },
+    {
+      "name": "vector-current-positive-iss",
+      "fixture": "positive",
+      "args": ["--iss", "--vector-current", "0"],
+      "expect": "success",
+      "needle": "vector for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": ["--iss"]
     },
     {
       "name": "identity-tiled-vector-current-combined-effect",
@@ -31,9 +47,45 @@
         "32 *",
         "/ 32"
       ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["route=general-fallback", "[alarm]"],
       "differs_from_args": [
         "--identity-tiled"
       ]
+    },
+    {
+      "name": "identity-tiled-vector-current-iss-combined-effect",
+      "fixture": "matmul-init",
+      "args": ["--identity-tiled", "--iss", "--vector-current", "1"],
+      "expect": "success",
+      "needles": ["vector for i1", "32 *", "/ 32"],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["route=general-fallback", "[alarm]"],
+      "differs_from_args": ["--identity-tiled", "--iss"]
+    },
+    {
+      "name": "diamond-vector-current-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": ["--diamond-tile", "--vector-current", "0"],
+      "expect": "success",
+      "needles": ["vector for", "32 *", "/ 32", "i4 + (-1 * i5)"],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": ["--diamond-tile"]
+    },
+    {
+      "name": "diamond-vector-current-iss-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": ["--diamond-tile", "--iss", "--vector-current", "0"],
+      "expect": "success",
+      "needles": ["vector for", "32 *", "/ 32", "i4 + (-1 * i5)"],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": ["--diamond-tile", "--iss"]
     },
     {
       "name": "vector-current-out-of-bounds",

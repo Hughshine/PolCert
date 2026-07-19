@@ -32,7 +32,8 @@ In the normalized flag model, a user-visible run is built from:
   - default band-aware ordinary tiling
   - `--band-tiling-experiment` (compatibility alias for the default band-aware
     ordinary tiling route)
-  - `--legacy-generic-tiling`
+  - `--legacy-generic-tiling` (deprecated spelling for the same band-first
+    ordinary route; it does not select a generic-primary validator)
   - `--second-level-tile`
   - `--diamond-tile`
   - `--full-diamond-tile`
@@ -105,7 +106,7 @@ Three important extensions now sit beside that default path:
 
 - `--iss`
   - switches to the separate theorem-aligned ISS+affine+tiling route
-  - this route is proved by `Opt_with_iss_correct`
+  - this public route is proved by `Opt_band_with_iss_correct`
 - `--parallel-current`
   - switches to theorem-aligned explicit-dimension parallel routes
   - these routes are proved in `ParallelPolOptCorrect.v`
@@ -301,7 +302,9 @@ What changed:
 
 - the outer tile loops now step in `256`-sized blocks, while the inner tiles remain `32`
 - the generated nest is visibly hierarchical instead of single-level strip-mined
-- this is the checked second-level tiling route; it is separate from the ordinary tiling example above
+- this mixed-depth example is accepted by the proved fallback layer and prints
+  `[tiling-validation] route=general-fallback`; uniform second-level examples
+  in the dedicated suite are accepted directly by `permutable-band`
 
 ## ISS example: reversal split (`--iss`)
 
@@ -368,14 +371,17 @@ What changed:
 
 ## What is proved
 
-The final optimizer definitions and theorems are in
-[driver/PolOpt.v](./driver/PolOpt.v) and
-[driver/PolOptCorrect.v](./driver/PolOptCorrect.v):
+The public tiling-bearing optimizer definitions and theorems are in
+[driver/PolOptBandTiling.v](./driver/PolOptBandTiling.v):
 
-- default optimizer: `Opt = Opt_prepared`
-- default theorem: `Opt_correct`
-- optional ISS optimizer: `Opt_with_iss`
-- optional ISS theorem: `Opt_with_iss_correct`
+- default optimizer: `Opt_band`
+- default theorem: `Opt_band_correct`
+- optional ISS optimizer: `Opt_band_with_iss`
+- optional ISS theorem: `Opt_band_with_iss_correct`
+
+[driver/ExtractedPipelineCorrect.v](./driver/ExtractedPipelineCorrect.v)
+then proves the concrete extracted sequential and parallel configuration
+dispatchers branch by branch.
 
 The explicit-dimension parallel optimizer definitions and theorems are in
 [driver/ParallelPolOpt.v](./driver/ParallelPolOpt.v) and
@@ -415,11 +421,11 @@ The proved passes used by `Opt` are:
 
 At a high level:
 
-- `Opt_correct` states:
+- `Opt_band_correct` states:
   - if the default verified optimizer returns an optimized loop
   - and that optimized loop runs to a final state
   - then the original input loop can also run to an equivalent final state
-- `Opt_with_iss_correct` states the analogous result for the ISS-enabled
+- `Opt_band_with_iss_correct` states the analogous result for the ISS-enabled
   theorem-aligned pipeline
 
 The repository also contains verified parallel components:
@@ -433,7 +439,8 @@ Interpretation:
 
 - `--parallel-current d` is theorem-aligned and uses the proved explicit-dimension parallel pipeline
 - `--parallel` / `--parallel-strict` are still the experimental Pluto-hinted parallel routes
-- none of the parallel routes change the default `Opt_correct` theorem object; they have their own proof objects
+- parallel routes have their own route theorems and are also covered by the
+  extracted top-level dispatcher theorem
 - the route-family flag model itself is documented in
   [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
 
@@ -444,7 +451,6 @@ Important user-facing modes are:
 ```sh
 ./polopt file.loop
 ./polopt --iss file.loop
-./polopt --iss --identity file.loop
 ./polopt --notile file.loop
 ./polopt --identity file.loop
 ./polopt --parallel file.loop
@@ -457,17 +463,17 @@ Interpretation:
 
 - default: theorem-aligned affine+tiling pipeline
 - `--iss`: theorem-aligned ISS+affine+tiling pipeline
-- `--iss --identity`: checked ISS-only split path
 - `--notile`: affine-only checked path
-- `--identity`: no Pluto scheduling phase
+- `--identity`: no Pluto scheduling phase; bare sequential `--iss --identity`
+  is rejected, while `--identity --tile --iss` is supported
 - `--parallel-current d`: theorem-aligned explicit-dimension parallel route
 - `--parallel`, `--parallel-strict`: Pluto-hinted experimental verified parallel routes
-- `--second-level-tile`: experimental second-level tiling extension for the
-  tiled validation path
+- `--second-level-tile`: checked second-level tiling producer; it composes with
+  the covered ISS, identity-tiled, parallel, vector, and diamond routes
 
 ## What the default theorem does not cover
 
-`Opt_correct` does not by itself say anything about:
+`Opt_band_correct` does not by itself say anything about:
 
 - the optional `--iss` pipeline
 - the explicit-dimension parallel theorem objects
@@ -598,6 +604,9 @@ Useful modes:
 ./polopt --legacy-generic-tiling file.loop
 ```
 
+The last command is retained only for command-line compatibility and adopts
+the same permutable-band-first policy as the default route.
+
 ## How to write your own example
 
 Start from a small structured loop fragment, for example:
@@ -637,10 +646,8 @@ opam exec -- make polcert
 make test
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
-opam exec -- make test-parallel-current-suite
-opam exec -- make test-second-level-tile-suite
+opam exec -- make test-tiling-route-suites
 opam exec -- make test-polopt-loop-suite
-opam exec -- make test-diamond-tiling-suite
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -651,12 +658,11 @@ opam exec -- make materialize-polopt-loop-suite
 ```
 
 Heavier end-to-end performance checks are intentionally **not** part of default
-CI, and neither is the dedicated Pluto-backed diamond live suite. The default
-gate asserts the main proof/build/test path plus the strict loop manifest
-thresholds; it does not assert the exact current `59` / `39` snapshot shown
-above. The current non-default strengthening workflows are:
+CI. The default gate asserts the main proof/build/test path, the aggregated
+tiling-route suites, and the strict loop manifest thresholds; it does not
+assert the exact current `59` / `39` snapshot shown
+above. The current non-default performance workflows are:
 
-- `make test-diamond-tiling-suite`
 - handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
 - generated whole-C cases in
   [tests/end-to-end-generated](./tests/end-to-end-generated)
@@ -698,9 +704,11 @@ The generated per-case results live under:
 
 - [tests/polopt-generated/cases](./tests/polopt-generated/cases)
 
-The strict suite now reports progress case by case and uses a `300s` per-case
-timeout instead of a suite-wide timeout, so slow kernels such as `advect3d` are
-visible during the run instead of appearing to hang silently.
+The strict suite reports progress case by case and uses a `300s` default
+per-case timeout instead of a suite-wide timeout. The manifest gives the known
+slow `tce` case a `600s` budget; explicit `--timeout-seconds` still overrides
+all manifest budgets. Slow kernels are therefore visible during the run
+instead of appearing to hang silently.
 
 ## Key source files
 

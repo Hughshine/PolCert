@@ -6,6 +6,7 @@ Require Import PolIRs.
 Require Import Result.
 Require Import Vpl.Impure.
 Require Import VerifiedCompilerConfig.
+Require Import ParallelPolOpt.
 Require Import ParallelPolOptCorrect.
 
 Local Open Scope impure_scope.
@@ -14,8 +15,8 @@ Local Open Scope string_scope.
 Module VerifiedParallelCompilerConfig (PolIRs: POLIRS).
 
 Module SeqCompiler := VerifiedCompilerConfig PolIRs.
-Module ParallelCorrect := ParallelPolOptCorrect PolIRs.
-Module ParallelCore := ParallelCorrect.Core.
+Module ParallelCore := ParallelPolOpt.ParallelPolOpt PolIRs.
+Module ParallelCorrect := ParallelPolOptCorrect PolIRs ParallelCore.
 Module LoopIR := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
@@ -26,6 +27,7 @@ Inductive raw_config : Type :=
 | RawSeq (cfg: SeqCompiler.raw_config)
 | RawParallelCurrentIdentity (d: nat)
 | RawParallelCurrentIdentityTiled (d: nat)
+| RawParallelCurrentIdentityTiledISS (d: nat)
 | RawParallelCurrentAffine (d: nat)
 | RawParallelCurrentDefault (d: nat)
 | RawParallelCurrentDiamond (d: nat)
@@ -33,8 +35,19 @@ Inductive raw_config : Type :=
 | RawParallelCurrentIdentityISS (d: nat)
 | RawParallelCurrentAffineISS (d: nat)
 | RawParallelCurrentDefaultISS (d: nat)
+| RawVectorCurrentIdentity (d: nat)
+| RawVectorCurrentIdentityTiled (d: nat)
+| RawVectorCurrentIdentityTiledISS (d: nat)
+| RawVectorCurrentAffine (d: nat)
+| RawVectorCurrentDefault (d: nat)
+| RawVectorCurrentDiamond (d: nat)
+| RawVectorCurrentDiamondISS (d: nat)
+| RawVectorCurrentIdentityISS (d: nat)
+| RawVectorCurrentAffineISS (d: nat)
+| RawVectorCurrentDefaultISS (d: nat)
 | RawParallelCurrentManyIdentity (dims: list nat)
 | RawParallelCurrentManyIdentityTiled (dims: list nat)
+| RawParallelCurrentManyIdentityTiledISS (dims: list nat)
 | RawParallelCurrentManyAffine (dims: list nat)
 | RawParallelCurrentManyDefault (dims: list nat)
 | RawParallelCurrentManyDiamond (dims: list nat)
@@ -48,6 +61,7 @@ Inductive verified_config : Type :=
 | VSeq (cfg: SeqCompiler.verified_config)
 | VParallelCurrentIdentity (d: nat)
 | VParallelCurrentIdentityTiled (d: nat)
+| VParallelCurrentIdentityTiledISS (d: nat)
 | VParallelCurrentAffine (d: nat)
 | VParallelCurrentDefault (d: nat)
 | VParallelCurrentDiamond (d: nat)
@@ -55,8 +69,19 @@ Inductive verified_config : Type :=
 | VParallelCurrentIdentityISS (d: nat)
 | VParallelCurrentAffineISS (d: nat)
 | VParallelCurrentDefaultISS (d: nat)
+| VVectorCurrentIdentity (d: nat)
+| VVectorCurrentIdentityTiled (d: nat)
+| VVectorCurrentIdentityTiledISS (d: nat)
+| VVectorCurrentAffine (d: nat)
+| VVectorCurrentDefault (d: nat)
+| VVectorCurrentDiamond (d: nat)
+| VVectorCurrentDiamondISS (d: nat)
+| VVectorCurrentIdentityISS (d: nat)
+| VVectorCurrentAffineISS (d: nat)
+| VVectorCurrentDefaultISS (d: nat)
 | VParallelCurrentManyIdentity (dims: list nat)
 | VParallelCurrentManyIdentityTiled (dims: list nat)
+| VParallelCurrentManyIdentityTiledISS (dims: list nat)
 | VParallelCurrentManyAffine (dims: list nat)
 | VParallelCurrentManyDefault (dims: list nat)
 | VParallelCurrentManyDiamond (dims: list nat)
@@ -74,6 +99,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
       end
   | RawParallelCurrentIdentity d => Okk (VParallelCurrentIdentity d)
   | RawParallelCurrentIdentityTiled d => Okk (VParallelCurrentIdentityTiled d)
+  | RawParallelCurrentIdentityTiledISS d =>
+      Okk (VParallelCurrentIdentityTiledISS d)
   | RawParallelCurrentAffine d => Okk (VParallelCurrentAffine d)
   | RawParallelCurrentDefault d => Okk (VParallelCurrentDefault d)
   | RawParallelCurrentDiamond d => Okk (VParallelCurrentDiamond d)
@@ -81,8 +108,20 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawParallelCurrentIdentityISS d => Okk (VParallelCurrentIdentityISS d)
   | RawParallelCurrentAffineISS d => Okk (VParallelCurrentAffineISS d)
   | RawParallelCurrentDefaultISS d => Okk (VParallelCurrentDefaultISS d)
+  | RawVectorCurrentIdentity d => Okk (VVectorCurrentIdentity d)
+  | RawVectorCurrentIdentityTiled d => Okk (VVectorCurrentIdentityTiled d)
+  | RawVectorCurrentIdentityTiledISS d => Okk (VVectorCurrentIdentityTiledISS d)
+  | RawVectorCurrentAffine d => Okk (VVectorCurrentAffine d)
+  | RawVectorCurrentDefault d => Okk (VVectorCurrentDefault d)
+  | RawVectorCurrentDiamond d => Okk (VVectorCurrentDiamond d)
+  | RawVectorCurrentDiamondISS d => Okk (VVectorCurrentDiamondISS d)
+  | RawVectorCurrentIdentityISS d => Okk (VVectorCurrentIdentityISS d)
+  | RawVectorCurrentAffineISS d => Okk (VVectorCurrentAffineISS d)
+  | RawVectorCurrentDefaultISS d => Okk (VVectorCurrentDefaultISS d)
   | RawParallelCurrentManyIdentity dims => Okk (VParallelCurrentManyIdentity dims)
   | RawParallelCurrentManyIdentityTiled dims => Okk (VParallelCurrentManyIdentityTiled dims)
+  | RawParallelCurrentManyIdentityTiledISS dims =>
+      Okk (VParallelCurrentManyIdentityTiledISS dims)
   | RawParallelCurrentManyAffine dims => Okk (VParallelCurrentManyAffine dims)
   | RawParallelCurrentManyDefault dims => Okk (VParallelCurrentManyDefault dims)
   | RawParallelCurrentManyDiamond dims => Okk (VParallelCurrentManyDiamond dims)
@@ -122,48 +161,7 @@ Definition compile_seq_verified
     (cfg: SeqCompiler.verified_config)
     (loop: LoopIR.t)
   : imp ParallelLoop.t :=
-  BIND pol0 <-
-    res_to_alarm
-      PolIRs.PolyLang.dummy
-      (ParallelCore.CoreOpt.Extractor.extractor loop) -;
-  let pol := ParallelCore.CoreOpt.Strengthen.strengthen_pprog pol0 in
-  match cfg with
-  | SeqCompiler.VIdentity =>
-      checked_sequential_current_annotated_codegen pol
-  | SeqCompiler.VAffine =>
-      BIND pol' <- ParallelCore.CoreOpt.checked_affine_schedule pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VDefault =>
-      BIND pol' <-
-        ParallelCore.phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VDefaultBand =>
-      BIND pol' <-
-        ParallelCore.phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VIdentitySecondLevel =>
-      lift_sequential_compile (SeqCompiler.compile_verified cfg loop)
-  | SeqCompiler.VIdentitySecondLevelISS =>
-      lift_sequential_compile (SeqCompiler.compile_verified cfg loop)
-  | SeqCompiler.VIdentityBand =>
-      BIND pol' <-
-        ParallelCore.identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VIdentityBandISS =>
-      lift_sequential_compile (SeqCompiler.compile_verified cfg loop)
-  | SeqCompiler.VISS =>
-      BIND pol' <-
-        ParallelCore.phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VDiamond =>
-      BIND pol' <-
-        ParallelCore.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SeqCompiler.VDiamondISS =>
-      BIND pol' <-
-        ParallelCore.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  end.
+  lift_sequential_compile (SeqCompiler.compile_verified cfg loop).
 
 Definition compile_verified
     (cfg: verified_config) (loop: LoopIR.t)
@@ -175,6 +173,8 @@ Definition compile_verified
       ParallelCore.Opt_parallel_current_identity loop d
   | VParallelCurrentIdentityTiled d =>
       ParallelCore.Opt_parallel_current_identity_tiled loop d
+  | VParallelCurrentIdentityTiledISS d =>
+      ParallelCore.Opt_parallel_current_identity_tiled_with_iss loop d
   | VParallelCurrentAffine d =>
       ParallelCore.Opt_parallel_current_affine loop d
   | VParallelCurrentDefault d =>
@@ -189,10 +189,32 @@ Definition compile_verified
       ParallelCore.Opt_parallel_current_affine_with_iss loop d
   | VParallelCurrentDefaultISS d =>
       ParallelCore.Opt_parallel_current_with_iss loop d
+  | VVectorCurrentIdentity d =>
+      ParallelCore.Opt_vector_current_identity loop d
+  | VVectorCurrentIdentityTiled d =>
+      ParallelCore.Opt_vector_current_identity_tiled loop d
+  | VVectorCurrentIdentityTiledISS d =>
+      ParallelCore.Opt_vector_current_identity_tiled_with_iss loop d
+  | VVectorCurrentAffine d =>
+      ParallelCore.Opt_vector_current_affine loop d
+  | VVectorCurrentDefault d =>
+      ParallelCore.Opt_vector_current loop d
+  | VVectorCurrentDiamond d =>
+      ParallelCore.Opt_vector_current_diamond loop d
+  | VVectorCurrentDiamondISS d =>
+      ParallelCore.Opt_vector_current_diamond_with_iss loop d
+  | VVectorCurrentIdentityISS d =>
+      ParallelCore.Opt_vector_current_identity_with_iss loop d
+  | VVectorCurrentAffineISS d =>
+      ParallelCore.Opt_vector_current_affine_with_iss loop d
+  | VVectorCurrentDefaultISS d =>
+      ParallelCore.Opt_vector_current_with_iss loop d
   | VParallelCurrentManyIdentity dims =>
       ParallelCore.Opt_parallel_current_many_identity loop dims
   | VParallelCurrentManyIdentityTiled dims =>
       ParallelCore.Opt_parallel_current_many_identity_tiled loop dims
+  | VParallelCurrentManyIdentityTiledISS dims =>
+      ParallelCore.Opt_parallel_current_many_identity_tiled_with_iss loop dims
   | VParallelCurrentManyAffine dims =>
       ParallelCore.Opt_parallel_current_many_affine loop dims
   | VParallelCurrentManyDefault dims =>
@@ -330,165 +352,19 @@ Lemma compile_seq_verified_correct :
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros cfg loop pl st st' Hcompile Hsem.
-  unfold compile_seq_verified in Hcompile.
-  bind_imp_destruct Hcompile pol0 Hextimp.
-  set (pol := ParallelCore.CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (ParallelCore.CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (ParallelCore.CoreOpt.extractor_success_wf_pprog_affine
-          loop pol0 Hextok))
-    as Hwf_pol.
-  destruct cfg; simpl in Hcompile.
-  - pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol pl st st' Hcompile
-         (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_pol)
-         Hsem)
-      as Hroute.
-    finish_strengthened_source loop pol0 st Hextok Hroute.
-  - bind_imp_destruct Hcompile pol_mid Hsched.
-    pose proof
-      (ParallelCore.CoreOpt.scheduler'_preserve_wf
-         pol pol_mid Hwf_pol pol_mid Hsched eq_refl)
-      as Hwf_mid.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_mid pl st st' Hcompile
-         (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-         Hsem)
-      as Hmid_corr.
-    destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-    pose proof
-      (ParallelCore.CoreOpt.scheduler'_correct
-         pol st st_mid pol_mid Hsched Hmid_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_mid Hextok Hroute.
-  - bind_imp_destruct Hcompile pol_after Hphase.
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-         pol pol_after Hwf_pol Hphase)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hphase Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
-  - bind_imp_destruct Hcompile pol_after Hphase.
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-         pol pol_after Hwf_pol Hphase)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hphase Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
-  - unfold lift_sequential_compile in Hcompile.
-    apply mayReturn_bind in Hcompile.
-    destruct Hcompile as [loop' [Hseq Hlift]].
-    destruct
-      (checked_lift_sequential_loop_correct loop' pl st st' Hlift Hsem)
-      as [st_mid [Hmid_sem Heq_mid]].
-    destruct
-      (SeqCompiler.compile_verified_correct
-         SeqCompiler.VIdentitySecondLevel loop st st_mid loop' Hseq Hmid_sem)
-      as [st_src [Hsrc_sem Heq_src]].
-    exists st_src. split; auto. eapply State.eq_trans; eauto.
-  - unfold lift_sequential_compile in Hcompile.
-    apply mayReturn_bind in Hcompile.
-    destruct Hcompile as [loop' [Hseq Hlift]].
-    destruct
-      (checked_lift_sequential_loop_correct loop' pl st st' Hlift Hsem)
-      as [st_mid [Hmid_sem Heq_mid]].
-    destruct
-      (SeqCompiler.compile_verified_correct
-         SeqCompiler.VIdentitySecondLevelISS loop st st_mid loop' Hseq Hmid_sem)
-      as [st_src [Hsrc_sem Heq_src]].
-    exists st_src. split; auto. eapply State.eq_trans; eauto.
-  - bind_imp_destruct Hcompile pol_after Hidentity.
-    pose proof
-      (ParallelCorrect.identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-         pol pol_after Hwf_pol Hidentity)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hidentity Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
-  - unfold lift_sequential_compile in Hcompile.
-    apply mayReturn_bind in Hcompile.
-    destruct Hcompile as [loop' [Hseq Hlift]].
-    destruct
-      (checked_lift_sequential_loop_correct loop' pl st st' Hlift Hsem)
-      as [st_mid [Hmid_sem Heq_mid]].
-    destruct
-      (SeqCompiler.compile_verified_correct
-         SeqCompiler.VIdentityBandISS loop st st_mid loop' Hseq Hmid_sem)
-      as [st_src [Hsrc_sem Heq_src]].
-    exists st_src. split; auto. eapply State.eq_trans; eauto.
-  - bind_imp_destruct Hcompile pol_after Hphase.
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-         pol pol_after Hwf_pol Hphase)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hphase Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
-  - bind_imp_destruct Hcompile pol_after Hdiamond.
-    pose proof
-      (ParallelCorrect.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-         pol pol_after Hwf_pol Hdiamond)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hdiamond Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
-  - bind_imp_destruct Hcompile pol_after Hdiamond.
-    pose proof
-      (ParallelCorrect.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-         pol pol_after Hwf_pol Hdiamond)
-      as Hwf_after.
-    pose proof
-      (checked_sequential_current_annotated_codegen_correct
-         pol_after pl st st' Hcompile Hwf_after Hsem)
-      as Hafter_corr.
-    destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-    pose proof
-      (ParallelCorrect.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-         pol pol_after st st_after Hwf_pol Hdiamond Hafter_sem)
-      as Hroute.
-    finish_strengthened_source_with loop pol0 st Heq_after Hextok Hroute.
+  unfold compile_seq_verified, lift_sequential_compile in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [loop' [Hseq Hlift]].
+  destruct
+    (checked_lift_sequential_loop_correct loop' pl st st' Hlift Hsem)
+    as [st_mid [Hmid_sem Heq_mid]].
+  destruct
+    (SeqCompiler.compile_verified_correct
+       cfg loop st st_mid loop' Hseq Hmid_sem)
+    as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; [exact Hsrc_sem|].
+  eapply State.eq_trans; eauto.
 Qed.
 
 Theorem compile_verified_correct :
@@ -503,6 +379,8 @@ Proof.
   - eapply compile_seq_verified_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_identity_correct; eauto.
   - eapply opt_parallel_current_identity_tiled_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_identity_tiled_with_iss_correct;
+      eauto.
   - eapply ParallelCorrect.Opt_parallel_current_affine_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_diamond_correct; eauto.
@@ -510,8 +388,21 @@ Proof.
   - eapply ParallelCorrect.Opt_parallel_current_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_identity_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_identity_tiled_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_identity_tiled_with_iss_correct;
+      eauto.
+  - eapply ParallelCorrect.Opt_vector_current_affine_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_diamond_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_diamond_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_identity_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_affine_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_tiled_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_many_identity_tiled_with_iss_correct;
+      eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_affine_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_diamond_correct; eauto.

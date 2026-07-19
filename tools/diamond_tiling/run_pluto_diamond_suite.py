@@ -31,9 +31,21 @@ COMMON_PLUTO_FLAGS = [
 SUPPORTED_CASES: dict[str, dict[str, object]] = {
     "diamond-tile-example.c": {"kind": "diamond", "phase_ok": True},
     "fdtd-2d.c": {"kind": "diamond", "phase_ok": True},
-    "heat-3d-imperfect.c": {"kind": "diamond", "phase_ok": True},
-    "jacobi-1d-imper.c": {"kind": "diamond", "phase_ok": True},
-    "jacobi-2d-imper.c": {"kind": "diamond", "phase_ok": True},
+    "heat-3d-imperfect.c": {
+        "kind": "diamond",
+        "phase_ok": False,
+        "route": "rejected",
+    },
+    "jacobi-1d-imper.c": {
+        "kind": "diamond",
+        "phase_ok": False,
+        "route": "rejected",
+    },
+    "jacobi-2d-imper.c": {
+        "kind": "diamond",
+        "phase_ok": False,
+        "route": "rejected",
+    },
     "jacobi-2d.c": {"kind": "diamond", "phase_ok": True},
     "multi-stmt-stencil-seq.c": {"kind": "no_effect", "phase_ok": True},
     "seidel.c": {"kind": "no_effect", "phase_ok": True},
@@ -90,12 +102,22 @@ def witness_has_mixed_affine(text: str) -> bool:
     return False
 
 
-def phase_validation_succeeds(text: str) -> bool:
+def phase_validation_succeeds(text: str, expected_route: str) -> bool:
+    tiling_marker = f"[PHASE] tiling(mid, posttile): OK route={expected_route}"
     return (
         "[PHASE] affine(before, mid): OK" in text
-        and "[PHASE] tiling(mid, posttile): OK" in text
+        and text.count(tiling_marker) == 1
         and "[PHASE] affine(posttile, after): OK" in text
         and "[OK] Diamond phase-aligned validation succeeded" in text
+    )
+
+
+def phase_validation_rejects_tiling(text: str) -> bool:
+    return (
+        "[PHASE] affine(before, mid): OK" in text
+        and text.count("[PHASE] tiling(mid, posttile): FAIL route=rejected") == 1
+        and "[PHASE] affine(posttile, after): OK" in text
+        and "[FAIL] Diamond phase-aligned validation failed" in text
     )
 
 
@@ -231,6 +253,8 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
     )
     observed_kind = "diamond" if midpoint_changed else "no_effect"
     expected_kind = str(expectation["kind"])
+    expected_route = str(expectation.get("route", "permutable-band"))
+    expects_tiling_acceptance = expected_route != "rejected"
     if observed_kind != expected_kind:
         failures.append(
             f"{case_name}: expected {expected_kind}, observed {observed_kind}"
@@ -261,10 +285,30 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         case_root,
         timeout,
     )
+    tiling_routes = [
+        line.strip()
+        for line in tiling.stderr.splitlines()
+        if line.strip().startswith("[tiling-validation] route=")
+    ]
     if tiling.returncode == 124:
         failures.append(f"{case_name}: OpenScop tiling validator timed out")
-    elif tiling.returncode != 0 or "overall: PASS" not in tiling.stdout:
+    elif "overall: PASS" not in tiling.stdout:
+        failures.append(f"{case_name}: structural tiling inspection failed")
+    elif expects_tiling_acceptance and (
+        tiling.returncode != 0 or "formal: PASS" not in tiling.stdout
+    ):
         failures.append(f"{case_name}: OpenScop tiling validator failed")
+    elif not expects_tiling_acceptance and (
+        tiling.returncode == 0 or "formal: FAIL" not in tiling.stdout
+    ):
+        failures.append(f"{case_name}: expected a checked tiling rejection")
+    elif tiling_routes != [f"[tiling-validation] route={expected_route}"]:
+        failures.append(
+            f"{case_name}: OpenScop tiling validator did not report exactly "
+            f"one {expected_route} route"
+        )
+    elif "[alarm]" in tiling.stderr:
+        failures.append(f"{case_name}: OpenScop tiling validator reported an alarm")
 
     witness = run_polopt(
         "witness",
@@ -292,12 +336,17 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         case_root,
         timeout,
     )
-    phase_ok = phase_validation_succeeds(phase.stdout)
+    phase_ok = phase_validation_succeeds(phase.stdout, expected_route)
+    phase_rejected = phase_validation_rejects_tiling(phase.stdout)
     if phase.returncode == 124:
         failures.append(f"{case_name}: phase validator timed out")
-    elif phase_ok != bool(expectation["phase_ok"]):
+    elif bool(expectation["phase_ok"]) and not phase_ok:
         failures.append(
-            f"{case_name}: expected phase_ok={expectation['phase_ok']}, observed {phase_ok}"
+            f"{case_name}: expected an accepted phase route, observed failure"
+        )
+    elif not bool(expectation["phase_ok"]) and not phase_rejected:
+        failures.append(
+            f"{case_name}: expected an explicit checked tiling rejection"
         )
 
     result = {
@@ -305,7 +354,8 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         "status": observed_kind,
         "midpoint_changed": midpoint_changed,
         "affine_ok": affine.returncode == 0 and "overall: PASS" in affine.stdout,
-        "tiling_ok": tiling.returncode == 0 and "overall: PASS" in tiling.stdout,
+        "tiling_ok": expects_tiling_acceptance and tiling.returncode == 0,
+        "tiling_route": expected_route,
         "witness_mixed_affine": mixed_affine,
         "phase_ok": phase_ok,
     }

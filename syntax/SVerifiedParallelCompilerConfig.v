@@ -17,6 +17,7 @@ Inductive raw_config : Type :=
 | RawSeq (cfg: SVerifiedCompilerConfig.raw_config)
 | RawParallelCurrentIdentity (d: nat)
 | RawParallelCurrentIdentityTiled (d: nat)
+| RawParallelCurrentIdentityTiledISS (d: nat)
 | RawParallelCurrentAffine (d: nat)
 | RawParallelCurrentDefault (d: nat)
 | RawParallelCurrentDiamond (d: nat)
@@ -24,8 +25,19 @@ Inductive raw_config : Type :=
 | RawParallelCurrentIdentityISS (d: nat)
 | RawParallelCurrentAffineISS (d: nat)
 | RawParallelCurrentDefaultISS (d: nat)
+| RawVectorCurrentIdentity (d: nat)
+| RawVectorCurrentIdentityTiled (d: nat)
+| RawVectorCurrentIdentityTiledISS (d: nat)
+| RawVectorCurrentAffine (d: nat)
+| RawVectorCurrentDefault (d: nat)
+| RawVectorCurrentDiamond (d: nat)
+| RawVectorCurrentDiamondISS (d: nat)
+| RawVectorCurrentIdentityISS (d: nat)
+| RawVectorCurrentAffineISS (d: nat)
+| RawVectorCurrentDefaultISS (d: nat)
 | RawParallelCurrentManyIdentity (dims: list nat)
 | RawParallelCurrentManyIdentityTiled (dims: list nat)
+| RawParallelCurrentManyIdentityTiledISS (dims: list nat)
 | RawParallelCurrentManyAffine (dims: list nat)
 | RawParallelCurrentManyDefault (dims: list nat)
 | RawParallelCurrentManyDiamond (dims: list nat)
@@ -39,6 +51,7 @@ Inductive verified_config : Type :=
 | VSeq (cfg: SVerifiedCompilerConfig.verified_config)
 | VParallelCurrentIdentity (d: nat)
 | VParallelCurrentIdentityTiled (d: nat)
+| VParallelCurrentIdentityTiledISS (d: nat)
 | VParallelCurrentAffine (d: nat)
 | VParallelCurrentDefault (d: nat)
 | VParallelCurrentDiamond (d: nat)
@@ -46,8 +59,19 @@ Inductive verified_config : Type :=
 | VParallelCurrentIdentityISS (d: nat)
 | VParallelCurrentAffineISS (d: nat)
 | VParallelCurrentDefaultISS (d: nat)
+| VVectorCurrentIdentity (d: nat)
+| VVectorCurrentIdentityTiled (d: nat)
+| VVectorCurrentIdentityTiledISS (d: nat)
+| VVectorCurrentAffine (d: nat)
+| VVectorCurrentDefault (d: nat)
+| VVectorCurrentDiamond (d: nat)
+| VVectorCurrentDiamondISS (d: nat)
+| VVectorCurrentIdentityISS (d: nat)
+| VVectorCurrentAffineISS (d: nat)
+| VVectorCurrentDefaultISS (d: nat)
 | VParallelCurrentManyIdentity (dims: list nat)
 | VParallelCurrentManyIdentityTiled (dims: list nat)
+| VParallelCurrentManyIdentityTiledISS (dims: list nat)
 | VParallelCurrentManyAffine (dims: list nat)
 | VParallelCurrentManyDefault (dims: list nat)
 | VParallelCurrentManyDiamond (dims: list nat)
@@ -65,6 +89,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
       end
   | RawParallelCurrentIdentity d => Okk (VParallelCurrentIdentity d)
   | RawParallelCurrentIdentityTiled d => Okk (VParallelCurrentIdentityTiled d)
+  | RawParallelCurrentIdentityTiledISS d =>
+      Okk (VParallelCurrentIdentityTiledISS d)
   | RawParallelCurrentAffine d => Okk (VParallelCurrentAffine d)
   | RawParallelCurrentDefault d => Okk (VParallelCurrentDefault d)
   | RawParallelCurrentDiamond d => Okk (VParallelCurrentDiamond d)
@@ -72,8 +98,20 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawParallelCurrentIdentityISS d => Okk (VParallelCurrentIdentityISS d)
   | RawParallelCurrentAffineISS d => Okk (VParallelCurrentAffineISS d)
   | RawParallelCurrentDefaultISS d => Okk (VParallelCurrentDefaultISS d)
+  | RawVectorCurrentIdentity d => Okk (VVectorCurrentIdentity d)
+  | RawVectorCurrentIdentityTiled d => Okk (VVectorCurrentIdentityTiled d)
+  | RawVectorCurrentIdentityTiledISS d => Okk (VVectorCurrentIdentityTiledISS d)
+  | RawVectorCurrentAffine d => Okk (VVectorCurrentAffine d)
+  | RawVectorCurrentDefault d => Okk (VVectorCurrentDefault d)
+  | RawVectorCurrentDiamond d => Okk (VVectorCurrentDiamond d)
+  | RawVectorCurrentDiamondISS d => Okk (VVectorCurrentDiamondISS d)
+  | RawVectorCurrentIdentityISS d => Okk (VVectorCurrentIdentityISS d)
+  | RawVectorCurrentAffineISS d => Okk (VVectorCurrentAffineISS d)
+  | RawVectorCurrentDefaultISS d => Okk (VVectorCurrentDefaultISS d)
   | RawParallelCurrentManyIdentity dims => Okk (VParallelCurrentManyIdentity dims)
   | RawParallelCurrentManyIdentityTiled dims => Okk (VParallelCurrentManyIdentityTiled dims)
+  | RawParallelCurrentManyIdentityTiledISS dims =>
+      Okk (VParallelCurrentManyIdentityTiledISS dims)
   | RawParallelCurrentManyAffine dims => Okk (VParallelCurrentManyAffine dims)
   | RawParallelCurrentManyDefault dims => Okk (VParallelCurrentManyDefault dims)
   | RawParallelCurrentManyDiamond dims => Okk (VParallelCurrentManyDiamond dims)
@@ -83,7 +121,6 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawParallelCurrentManyDefaultISS dims => Okk (VParallelCurrentManyDefaultISS dims)
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
-
 Definition checked_lift_sequential_loop
     (loop: SPolIRs.Loop.t)
   : imp ParallelLoop.t :=
@@ -114,51 +151,7 @@ Definition compile_seq_verified
     (cfg: SVerifiedCompilerConfig.verified_config)
     (loop: SPolIRs.Loop.t)
   : imp ParallelLoop.t :=
-  BIND pol0 <-
-    res_to_alarm
-      SPolIRs.PolyLang.dummy
-      (SParallelPolOpt.CoreOpt.Extractor.extractor loop) -;
-  let pol := SParallelPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
-  match cfg with
-  | SVerifiedCompilerConfig.VIdentity =>
-      checked_sequential_current_annotated_codegen pol
-  | SVerifiedCompilerConfig.VAffine =>
-      BIND pol' <- SParallelPolOpt.CoreOpt.checked_affine_schedule pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VDefault =>
-      BIND pol' <-
-        SParallelPolOpt.phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VDefaultBand =>
-      BIND pol' <-
-        SParallelPolOpt.phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VIdentitySecondLevel =>
-      lift_sequential_compile
-        (SVerifiedCompilerConfig.compile_verified cfg loop)
-  | SVerifiedCompilerConfig.VIdentitySecondLevelISS =>
-      lift_sequential_compile
-        (SVerifiedCompilerConfig.compile_verified cfg loop)
-  | SVerifiedCompilerConfig.VIdentityBand =>
-      BIND pol' <-
-        SParallelPolOpt.identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VIdentityBandISS =>
-      lift_sequential_compile
-        (SVerifiedCompilerConfig.compile_verified cfg loop)
-  | SVerifiedCompilerConfig.VISS =>
-      BIND pol' <-
-        SParallelPolOpt.phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VDiamond =>
-      BIND pol' <-
-        SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  | SVerifiedCompilerConfig.VDiamondISS =>
-      BIND pol' <-
-        SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
-      checked_sequential_current_annotated_codegen pol'
-  end.
+  lift_sequential_compile (SVerifiedCompilerConfig.compile_verified cfg loop).
 
 (* This executable dispatcher deliberately exposes a single Loop -> ParallelLoop
    surface.  Sequential routes are checked-lifted into ParallelLoop; parallel
@@ -174,6 +167,8 @@ Definition compile_verified
       SParallelPolOpt.opt_parallel_current_identity loop d
   | VParallelCurrentIdentityTiled d =>
       SParallelPolOpt.opt_parallel_current_identity_tiled loop d
+  | VParallelCurrentIdentityTiledISS d =>
+      SParallelPolOpt.opt_parallel_current_identity_tiled_with_iss loop d
   | VParallelCurrentAffine d =>
       SParallelPolOpt.opt_parallel_current_affine loop d
   | VParallelCurrentDefault d =>
@@ -188,10 +183,32 @@ Definition compile_verified
       SParallelPolOpt.opt_parallel_current_affine_with_iss loop d
   | VParallelCurrentDefaultISS d =>
       SParallelPolOpt.opt_parallel_current_with_iss loop d
+  | VVectorCurrentIdentity d =>
+      SParallelPolOpt.opt_vector_current_identity loop d
+  | VVectorCurrentIdentityTiled d =>
+      SParallelPolOpt.opt_vector_current_identity_tiled loop d
+  | VVectorCurrentIdentityTiledISS d =>
+      SParallelPolOpt.opt_vector_current_identity_tiled_with_iss loop d
+  | VVectorCurrentAffine d =>
+      SParallelPolOpt.opt_vector_current_affine loop d
+  | VVectorCurrentDefault d =>
+      SParallelPolOpt.opt_vector_current loop d
+  | VVectorCurrentDiamond d =>
+      SParallelPolOpt.opt_vector_current_diamond loop d
+  | VVectorCurrentDiamondISS d =>
+      SParallelPolOpt.opt_vector_current_diamond_with_iss loop d
+  | VVectorCurrentIdentityISS d =>
+      SParallelPolOpt.opt_vector_current_identity_with_iss loop d
+  | VVectorCurrentAffineISS d =>
+      SParallelPolOpt.opt_vector_current_affine_with_iss loop d
+  | VVectorCurrentDefaultISS d =>
+      SParallelPolOpt.opt_vector_current_with_iss loop d
   | VParallelCurrentManyIdentity dims =>
       SParallelPolOpt.opt_parallel_current_many_identity loop dims
   | VParallelCurrentManyIdentityTiled dims =>
       SParallelPolOpt.opt_parallel_current_many_identity_tiled loop dims
+  | VParallelCurrentManyIdentityTiledISS dims =>
+      SParallelPolOpt.opt_parallel_current_many_identity_tiled_with_iss loop dims
   | VParallelCurrentManyAffine dims =>
       SParallelPolOpt.opt_parallel_current_many_affine loop dims
   | VParallelCurrentManyDefault dims =>

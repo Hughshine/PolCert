@@ -16,20 +16,23 @@ It is the direct CLI for the PolCert validation story, which now includes:
 Use `polcert` when you already have transformation results and want to validate
 them without running the optimizer frontend.
 
-There are now four common validation modes:
+There are five common validation modes:
 
 1. direct affine validation of a single `before.scop -> after.scop`
 2. phase-aligned validation of
    - `before -> mid` using the affine validator
    - `mid -> after` using the checked tiling validator
 3. tiling-only validation of `mid.scop -> after.scop`
-4. ISS structural validation through:
+4. four-stage validation of `before -> mid -> posttile -> after`, including
+   the final affine phase used by diamond pipelines
+5. ISS structural validation through:
    - `--iss-bridge`
    - `--iss-debug-dumps`
 
-This CLI surface is about the affine / ordinary-tiling OpenScop story plus the
-ISS bridge story. The newer diamond pipeline and parallel codegen routes live
-on the `polopt` side; they are not exposed as separate `polcert` user modes.
+Tiling modes accept `--second-level-tile` when the OpenScop pair contains a
+nested tiling transformation. Parallel and vector code generation remain on
+the `polopt` side because they consume the validated schedule rather than add
+another OpenScop validation phase.
 
 ## CLI shapes
 
@@ -39,6 +42,8 @@ OpenScop modes:
 ./polcert before.scop after.scop
 ./polcert --kind tiling mid.scop after.scop
 ./polcert before.scop mid.scop after.scop
+./polcert before.scop mid.scop posttile.scop after.scop
+./polcert --second-level-tile --kind tiling mid.scop after.scop
 ```
 
 ISS modes:
@@ -100,9 +105,9 @@ For the phase-aligned tiling route, the common workflow is instead:
    - only `mid -> after` with `--kind tiling`
    - or the full `before, mid, after` phase-aligned route
 
-In other words, `polcert` still validates the OpenScop-facing affine/tiling
-artifacts directly. It does not currently expose the internal post-tile/final
-affine split that the diamond `polopt` harness reasons about.
+For a diamond pipeline with a final affine phase, pass all four artifacts. The
+validator checks `before -> mid` as affine scheduling, `mid -> posttile` as
+tiling, and `posttile -> after` as affine scheduling.
 
 ISS is different:
 
@@ -117,11 +122,15 @@ For the affine route, `polcert` checks schedule-preserving
 refinement/equivalence between two polyhedral models that share the same
 instruction/access structure and differ only by scheduling.
 
-For the tiling route, it checks:
-
-1. a structural tiling/witness relation
-2. a canonical imported tiled program
-3. the generic schedule/dependence validator on that imported program
+For every tiling route, including second-level tiling, the dispatcher first
+tries three specialized modes: an ordinary common-band check, a whole-program
+ordinary-tiling permutability check over the composed tiling semantics, and a
+hierarchical second-level check. If none accepts, the same extracted dispatcher
+tries the proved canonical and general schedule validators. The CLI reports
+exactly one route: `permutable-band`, `general-fallback`, or `rejected`. The
+`permutable-band` label covers all three specialized modes. The fallback label
+aggregates the canonical and general proved validators; rejection and alarms
+are distinct outcomes.
 
 For the ISS route, it checks a structural split relation centered on Pluto ISS
 bridge / dump inputs rather than OpenScop.
@@ -143,6 +152,9 @@ The top-level validation entrypoints are built from:
 
 For ISS CLI modes, success/failure is reported directly as bridge/dump
 validation output rather than `EQ/LT/GT/NE`.
+
+Successful tiling modes also report the adopted validation route. This output
+is part of the artifact tests and makes fallback observable.
 
 ## Proof boundary
 

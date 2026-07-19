@@ -62,6 +62,12 @@ let has_parallel_current (cfg : SLoopConfig.config) =
 let has_vector_current (cfg : SLoopConfig.config) =
   Option.is_some cfg.vector_current_dim
 
+let has_parallel_or_vector_consumer (cfg : SLoopConfig.config) =
+  cfg.force_parallel
+  || cfg.force_vector
+  || has_parallel_current cfg
+  || has_vector_current cfg
+
 let explicit_phase_control_selected (cfg : SLoopConfig.config) =
   cfg.force_identity
   || cfg.force_notile
@@ -126,8 +132,6 @@ let optimize_route_of_config (cfg : SLoopConfig.config) =
              else DiamondNormal)
         else if cfg.force_second_level_tile then
           SecondLevel
-        else if cfg.force_legacy_generic_tiling then
-          Ordinary Generic
         else
           Ordinary BandAware
   in
@@ -189,6 +193,16 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--vector-current cannot be combined with --extract-only"
       else if cfg.force_const_unroll && cfg.extract_only then
         Error "--const-unroll cannot be combined with --extract-only"
+      else if cfg.force_iss && cfg.force_identity && not cfg.pluto_tile_seen
+              && not (has_parallel_or_vector_consumer cfg)
+      then
+        Error
+          "sequential --iss --identity is not a verified compiler route; add --tile or a checked parallel/vector consumer"
+      else if cfg.force_iss && cfg.force_notile
+              && not (has_parallel_or_vector_consumer cfg)
+      then
+        Error
+          "sequential --iss --notile is not a verified compiler route; use --iss or add a checked parallel/vector consumer"
       else if cfg.force_parallel_strict && not cfg.force_parallel then
         Error "--parallel-strict requires --parallel"
       else if cfg.force_vector_strict && not cfg.force_vector then
@@ -228,6 +242,7 @@ let normalize (cfg : SLoopConfig.config) =
                   || cfg.force_parallel_strict
                   || cfg.force_vector
                   || cfg.force_vector_strict
+                  || cfg.force_second_level_tile
                   || has_parallel_current cfg
                   || has_vector_current cfg)
       then
@@ -241,6 +256,7 @@ let normalize (cfg : SLoopConfig.config) =
                   || cfg.force_parallel_strict
                   || cfg.force_vector
                   || cfg.force_vector_strict
+                  || cfg.force_second_level_tile
                   || has_parallel_current cfg
                   || has_vector_current cfg)
       then

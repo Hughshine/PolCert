@@ -176,7 +176,6 @@ def explore_second_level(case: Case, out_dir: pathlib.Path) -> dict[str, object]
     polopt_second = run_polopt(["--identity-tiled", "--second-level-tile"], case)
     polopt_ordinary_iss = run_polopt(["--identity-tiled", "--iss"], case)
     polopt_second_iss = run_polopt(["--identity-tiled", "--iss", "--second-level-tile"], case)
-    legacy = run_polopt(["--legacy-generic-tiling", "--second-level-tile"], case)
     return {
         "case": case.name,
         "mode": "identity-second-level",
@@ -195,7 +194,6 @@ def explore_second_level(case: Case, out_dir: pathlib.Path) -> dict[str, object]
         "polopt_identity_second_level_iss_differs_from_identity_tile_iss": (
             polopt_ordinary_iss["stdout"] != polopt_second_iss["stdout"]
         ),
-        "polopt_legacy_generic_second_level_c": classify_c(legacy["stdout"]),
     }
 
 

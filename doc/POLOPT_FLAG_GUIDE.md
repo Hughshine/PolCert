@@ -50,20 +50,21 @@ inserting the checked ISS structural stage before later scheduling.
 
 ### 1.3 Tiling family selection
 
-These flags only matter on full tiled routes.
+These flags matter on ordinary full-tiled routes and on the explicit
+identity-tiled route. Tiling-only standalone actions also accept the
+second-level selector.
 
 - no tiling-family flag
   - default ordinary tiling route, currently using the band-aware checked
     tiling validator
 - `--legacy-generic-tiling`
-  - use the historical generic ordinary-tiling validator instead of the
-    default band-aware route
+  - deprecated compatibility alias for the default band-first ordinary route
 - `--band-tiling-experiment`
   - compatibility alias for the current default band-aware ordinary tiling
     route
 - `--second-level-tile`
-  - switch the producer/checker pair to the hierarchical second-level tiling
-    family
+  - switch the producer to hierarchical second-level tiling; validation still
+    enters the common permutable-band-first dispatcher
 - `--diamond-tile`
   - switch the producer/checker pair to the sequential diamond phase family
 - `--full-diamond-tile`
@@ -136,8 +137,6 @@ The practically important user-visible route shapes are:
 | `./polopt --notile file.loop` | Sequential affine-only route |
 | `./polopt --identity file.loop` | Identity/no-Pluto route |
 | `./polopt --iss file.loop` | ISS + affine + ordinary tiling |
-| `./polopt --iss --notile file.loop` | ISS + affine-only |
-| `./polopt --iss --identity file.loop` | ISS-only checked split path |
 | `./polopt --second-level-tile file.loop` | Sequential second-level tiling route |
 | `./polopt --diamond-tile file.loop` | Sequential diamond phase route |
 | `./polopt --full-diamond-tile file.loop` | Diamond route with stronger producer mode |
@@ -171,6 +170,8 @@ particular:
   - `--iss --identity`
 - `--vector-current d` follows the same explicit-current support shape as
   `--parallel-current d`, but emits `vector for`
+- bare sequential `--iss --identity` and `--iss --notile` are rejected; their
+  ISS identity/affine variants require a checked parallel or vector consumer
 - `--second-level-tile` is also valid with:
   - `--extract-tiling-witness-openscop`
   - `--validate-tiling-openscop`
@@ -209,40 +210,28 @@ Reason:
   actions
 - it does not ask for a second pipeline family
 
-### 3.2 `--identity` and `--notile` reject tiling-family flags
+### 3.2 Tiling selectors require an actual tiling producer
 
-Rejected combinations:
+`--notile` rejects second-level and diamond tiling because it stops before a
+tiling phase exists. Diamond tiling also rejects `--identity`, which produces no
+Pluto schedule. Identity second-level tiling is supported only with `--tile`
+(or the `--identity-tiled` alias), so that Pluto supplies the tiled schedule to
+validate.
 
-- `--second-level-tile --identity`
-- `--second-level-tile --notile`
-- `--diamond-tile --identity`
-- `--diamond-tile --notile`
+### 3.3 Diamond and second-level families compose with checked consumers
 
-Reason:
+Diamond and second-level tiling can be followed by ISS, hinted or
+explicit-current parallelization, vectorization, and multipar consumers. These
+options do not replace tiling validation: the produced tiling artifact still
+enters the same permutable-band-first dispatcher before any consumer is
+applied.
 
-- second-level and diamond are tiling-family selectors
-- `--identity` creates no Pluto scheduling artifact at all
-- `--notile` stops before any tiling phase exists
-
-### 3.3 `--diamond-tile` is currently a narrow sequential family
-
-Rejected combinations:
-
-- `--diamond-tile --iss`
-- `--diamond-tile --parallel`
-- `--diamond-tile --parallel-current d`
-- `--diamond-tile --second-level-tile`
-- `--diamond-tile --band-tiling-experiment`
-- `--diamond-tile --legacy-generic-tiling`
-
-Reason:
-
-- diamond currently means a dedicated sequential phase family:
-  - `affine(before, mid)`
-  - `tiling(mid, posttile)`
-  - optional `affine(posttile, after)`
-- that family is not yet wired together with ISS, the theorem-aligned explicit
-  parallel routes, or the Pluto-hinted parallel routes
+`--diamond-tile` and `--full-diamond-tile` are alternative strengths of the
+diamond producer. Either may be combined with `--second-level-tile`; this asks
+Pluto for nested diamond tiling and validates that nested result. The
+compatibility-only `--band-tiling-experiment` and
+`--legacy-generic-tiling` aliases do not compose with diamond or second-level
+tiling.
 
 ### 3.4 `--parallel` and `--parallel-current` choose different parallel families
 
@@ -270,13 +259,15 @@ Rejected combinations:
   - `--iss`
   - `--parallel`
   - `--parallel-current`
+- either legacy selector with `--second-level-tile`
 - `--band-tiling-experiment` with the same families above
 
 Reason:
 
-- both flags are about how the ordinary full-tiled default route validates
-  tiling
+- both flags are compatibility names for the ordinary full-tiled default route
 - they are not general modifiers for every pipeline family
+- both aliases now select the same permutable-band-first validator; the legacy
+  name is retained only for command-line compatibility
 
 ## 4. How route selection actually works
 
@@ -290,7 +281,9 @@ The frontend makes the route choice in roughly this order:
 4. Otherwise, if `--vector` or `--prevector` is present, use the Pluto-hinted
    vector family.
 5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family.
-6. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
+6. Otherwise, if `--diamond-tile` is present, use the diamond producer/phase
+   family; a checked sequential, parallel, vector, or multipar consumer may
+   adopt its result.
 7. Otherwise, choose among:
    - default route
    - `--iss`
@@ -314,14 +307,16 @@ The current support boundary is:
 - Pluto-hinted parallel route
   - experimental but user-facing
 - second-level tiling
-  - supported as a separate tiling family on sequential full tiled runs
+  - supported with sequential, ISS, identity-tiled, parallel, vector, and
+    multipar consumers
 - diamond tiling
-  - supported as a theorem-backed, opt-in sequential route
-  - currently not composed with ISS, parallel, or second-level tiling
+  - supported in normal and full forms
+  - supported with ISS, second-level tiling, parallel, vector, and multipar
+    consumers
 
-When in doubt, treat `--iss`, `--second-level-tile`, `--diamond-tile`,
-`--parallel`, and `--parallel-current` as selectors for distinct pipeline
-families rather than as independent booleans that should freely stack.
+The producer family (ordinary, second-level, or diamond) and a later consumer
+(ISS, parallel, or vector) are separate choices. The route normalizer rejects
+only combinations for which no coherent producer or consumer exists.
 
 ## 6. Assessment of the current flag model
 
@@ -334,12 +329,12 @@ after a cleanup:
 
 - standalone validation actions should stay separate from loop-to-loop
   optimization routes
-- `--identity` and `--notile` should reject tiling-family flags, because those
-  flags require a tiling artifact that does not exist on those routes
+- `--notile` should reject tiling-family flags, and identity tiling should
+  require an explicit tiled identity route
 - `--parallel` and `--parallel-current` should remain distinct, because they
   choose different mechanisms for selecting the loop to parallelize
-- `--diamond-tile` should continue to reject combinations whose composed proof
-  story does not exist yet
+- compatibility-only ordinary-tiling aliases should not silently alter or
+  disappear inside another tiling family
 
 These are semantic constraints, not parser accidents.
 
@@ -437,10 +432,10 @@ The likely next step is:
 - mark it as deprecated in help text
 - eventually remove it
 
-At that point the ordinary route becomes simpler:
-
-- default ordinary band-aware tiling
-- optional `--legacy-generic-tiling` only while comparison is still needed
+`--legacy-generic-tiling` is likewise only a deprecated command-line alias; it
+does not select a generic-primary validator and should be retired with the
+experiment alias. The ordinary route has one validation policy regardless of
+which compatibility spelling selected it.
 
 ### 7.4 Unify tiling-family selection more explicitly
 
@@ -449,34 +444,29 @@ expressed through different flag relationships:
 
 - second-level refines the ordinary family and is also allowed on tiling-only
   standalone actions
-- diamond selects a narrower sequential route family with an optional stronger
-  producer mode
+- diamond selects a producer/phase family with an optional stronger producer
+  mode; checked consumers are selected independently
 
 That is defensible, but the documentation and implementation would become
 clearer if the frontend treated tiling-family choice as one explicit layer with
 sub-options, instead of several unrelated booleans.
 
-### 7.5 Decide which future compositions are worth supporting
+### 7.5 Keep future compositions theorem-led
 
-Not every currently rejected combination should become legal. The right next
-questions are:
-
-- should diamond compose with `--iss`?
-- should diamond compose with `--parallel-current` before it composes with the
-  Pluto-hinted parallel family?
-- should second-level tiling compose with explicit-current parallelization?
-- should standalone tiling witness/validation actions grow a diamond-aware
-  mode, or should diamond remain a loop-to-loop optimizer family only?
-
-These are proof-architecture questions, not just CLI questions. The flag model
-should follow the supported proof combinations, not lead them.
+The current producer families already compose with ISS and the checked
+parallel/vector consumers. Further combinations should be exposed only when
+their end-to-end route is represented by the extracted dispatcher and its
+top-level correctness theorem. Standalone witness/validation actions remain
+separate because they consume external artifacts rather than a `.loop`
+pipeline.
 
 ### 7.6 Keep the error messages route-oriented
 
 Even before a larger refactor, the rejection messages can improve by explaining
 the route family conflict directly. For example:
 
-- "diamond is currently a sequential non-ISS full-tiled family"
+- "diamond requires a tiled producer and cannot be combined with identity or
+  notile"
 - "parallel-current selects a different parallel family than --parallel"
 - "second-level only refines tiled routes and tiling-only validation actions"
 

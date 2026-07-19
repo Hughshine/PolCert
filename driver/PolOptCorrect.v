@@ -7,9 +7,15 @@ Require Import PolOpt.
 
 Local Open Scope impure_scope.
 
-Module PolOptCorrect (PolIRs: POLIRS).
+Module Type POL_OPT_CORE (P : POLIRS).
+  Include PolOpt.PolOpt P.
+End POL_OPT_CORE.
 
-Module Core := PolOpt PolIRs.
+Module PolOptCorrect
+    (PolIRs: POLIRS)
+    (ExecutableCore: POL_OPT_CORE PolIRs).
+
+Module Core := ExecutableCore.
 Module ISSValidatorCorrectCore := ISSValidatorCorrect PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.

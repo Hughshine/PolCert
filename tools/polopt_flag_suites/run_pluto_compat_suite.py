@@ -25,6 +25,8 @@ class Check:
     normalized: str | None = None
     effect_needles: tuple[str, ...] = ()
     effect_absent: tuple[str, ...] = ()
+    stderr_needles: tuple[str, ...] = ()
+    tiling_route: str | None = None
     differs_from_args: tuple[tuple[str, ...], ...] = ()
     implicit_control_file: str | None = None
     implicit_control_file_content: str = "16\n"
@@ -107,6 +109,7 @@ CORCOL = ROOT / "tests" / "polopt-regression" / "inputs" / "corcol.loop"
 JACOBI_1D = ROOT / "tests" / "polopt-generated" / "inputs" / "jacobi-1d-imper.loop"
 NODEP = ROOT / "tests" / "polopt-regression" / "inputs" / "nodep.loop"
 MATMUL_INIT = ROOT / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
+SYMBOLIC_SECOND_LEVEL = ROOT / "tools" / "second_level_tiling" / "fixtures" / "symbolic-independent-2d.loop"
 DIAMOND_PARALLEL_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "diamond-example-inner-batch.loop"
 JACOBI_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "jacobi-batch.loop"
 
@@ -119,6 +122,34 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: <default>",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(MATMUL_NOTILE),),
+    ),
+    Check(
+        "ordinary-tiled-iss",
+        [*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss",
+        effect_needles=("32 *", "/ 32"),
+    ),
+    Check(
+        "ordinary-legacy-alias-band",
+        [*MATMUL_TILED, "--legacy-generic-tiling"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: <default>",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(MATMUL_NOTILE),),
+    ),
+    Check(
+        "ordinary-band-experiment-alias",
+        [*MATMUL_TILED, "--band-tiling-experiment"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
         effect_needles=("32 *", "/ 32"),
         differs_from_args=(tuple(MATMUL_NOTILE),),
     ),
@@ -313,6 +344,20 @@ CHECKS = [
     ),
     Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
     Check(
+        "reject-sequential-iss-identity",
+        ["--identity", "--notile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        False,
+        "sequential --iss --identity is not a verified compiler route",
+    ),
+    Check(
+        "reject-sequential-iss-notile",
+        [*MATMUL_NOTILE, "--iss"],
+        MATMUL,
+        False,
+        "sequential --iss --notile is not a verified compiler route",
+    ),
+    Check(
         "partial-tiling-levels",
         MATMUL_TILED_PARTIAL_LEVELS,
         MATMUL,
@@ -327,6 +372,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
@@ -337,6 +383,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile",
         effect_needles=("8 *", "/ 256", "32 *"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]),),
     ),
     Check(
@@ -348,6 +395,16 @@ CHECKS = [
         "polopt args: --parallel",
         effect_needles=("parallel for",),
         differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "parallel-strict-hint-only",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--parallel-strict", "--innerpar"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --parallel --parallel-strict",
+        effect_needles=("parallel for", "32 *", "/ 32"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
         "parallel-multipar",
@@ -373,42 +430,60 @@ CHECKS = [
     Check(
         "second-level-parallel",
         [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile"],
-        NODEP,
+        SYMBOLIC_SECOND_LEVEL,
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --parallel",
-        effect_needles=("parallel for", "32 *"),
+        effect_needles=("parallel for", "/ 256", "8 *", "32 *"),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"]),),
     ),
     Check(
         "second-level-parallel-multipar",
         [*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar", "--second-level-tile"],
-        NODEP,
+        SYMBOLIC_SECOND_LEVEL,
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --multipar",
-        effect_needles=("parallel for i0", "parallel for i1"),
+        effect_needles=("parallel for i0", "parallel for i1", "/ 256", "8 *", "32 *"),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile"]),),
+    ),
+    Check(
+        "second-level-parallel-iss",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile", "--iss"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --second-level-tile --parallel",
+        effect_needles=("parallel for", "/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile", "--iss"]),),
+    ),
+    Check(
+        "second-level-parallel-multipar-iss",
+        [*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar", "--second-level-tile", "--iss"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --multipar",
+        effect_needles=("parallel for i0", "parallel for i1", "/ 256", "8 *", "32 *"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile", "--iss"]),),
     ),
     Check(
         "diamond",
         JACOBI_DIAMOND,
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --diamond-tile",
-        effect_needles=("% 4", "32 *"),
-        differs_from_args=(tuple(JACOBI_NODIAMOND),),
+        effect_needles=("32 *",),
     ),
     Check(
         "diamond-iss",
         JACOBI_DIAMOND_ISS,
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --iss --diamond-tile",
-        effect_needles=("% 4", "32 *"),
-        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS),),
+        effect_needles=("32 *",),
     ),
     Check(
         "diamond-parallel",
@@ -419,6 +494,16 @@ CHECKS = [
         "polopt args: --diamond-tile --parallel",
         effect_needles=("parallel for", "32 *", "/ 32", "i4 + (-1 * i5)"),
         differs_from_args=(tuple(JACOBI_DIAMOND),),
+    ),
+    Check(
+        "diamond-parallel-strict-hint-only",
+        [*FLAGS, "--diamond-tile", "--parallel", "--parallel-strict"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile --parallel --parallel-strict",
+        effect_needles=("parallel for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--noparallel"]),),
     ),
     Check(
         "diamond-parallel-multipar",
@@ -452,6 +537,26 @@ CHECKS = [
         differs_from_args=(tuple(JACOBI_DIAMOND_ISS),),
     ),
     Check(
+        "diamond-vector",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--diamond-tile", "--noparallel", "--vector"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile --vector",
+        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--noparallel"]),),
+    ),
+    Check(
+        "diamond-vector-strict-hint-only",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--diamond-tile", "--noparallel", "--vector", "--vector-strict"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile --vector --vector-strict",
+        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--noparallel"]),),
+    ),
+    Check(
         "diamond-iss-parallel-multipar",
         [*FLAGS, "--diamond-tile", "--parallel", "--multipar", "--innerpar", "--iss"],
         DIAMOND_PARALLEL_BATCH,
@@ -474,61 +579,117 @@ CHECKS = [
     Check(
         "diamond-second-level",
         [*FLAGS, "--diamond-tile", "--noparallel", "--second-level-tile"],
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --diamond-tile",
-        effect_needles=("% 4",),
+        effect_needles=("32 *",),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_DIAMOND)),
     ),
     Check(
         "diamond-iss-second-level",
         [*FLAGS, "--diamond-tile", "--noparallel", "--iss", "--second-level-tile"],
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile --diamond-tile",
-        effect_needles=("% 4",),
+        effect_needles=("32 *",),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_DIAMOND_ISS)),
     ),
     Check(
         "full-diamond",
         JACOBI_FULL_DIAMOND,
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --full-diamond-tile",
-        effect_needles=("% 4", "32 *"),
-        differs_from_args=(tuple(JACOBI_NODIAMOND),),
+        effect_needles=("32 *",),
     ),
     Check(
         "full-diamond-iss",
         JACOBI_FULL_DIAMOND_ISS,
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --iss --full-diamond-tile",
-        effect_needles=("% 4", "32 *"),
-        differs_from_args=(tuple(JACOBI_NODIAMOND_ISS),),
+        effect_needles=("32 *",),
+    ),
+    Check(
+        "full-diamond-parallel",
+        [*FLAGS, "--full-diamond-tile", "--parallel"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("parallel for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple(JACOBI_FULL_DIAMOND),),
+    ),
+    Check(
+        "full-diamond-parallel-iss",
+        [*FLAGS, "--full-diamond-tile", "--parallel", "--iss"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("parallel for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple(JACOBI_FULL_DIAMOND_ISS),),
+    ),
+    Check(
+        "full-diamond-vector",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--full-diamond-tile", "--noparallel", "--vector"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple(JACOBI_FULL_DIAMOND),),
+    ),
+    Check(
+        "full-diamond-vector-iss",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--full-diamond-tile", "--noparallel", "--vector", "--iss"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("vector for", "32 *", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple(JACOBI_FULL_DIAMOND_ISS),),
+    ),
+    Check(
+        "full-diamond-multipar",
+        [*FLAGS, "--full-diamond-tile", "--parallel", "--multipar", "--innerpar"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("parallel for i0", "parallel for i5", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple([*FLAGS, "--full-diamond-tile", "--parallel", "--innerpar"]),),
+    ),
+    Check(
+        "full-diamond-multipar-iss",
+        [*FLAGS, "--full-diamond-tile", "--parallel", "--multipar", "--innerpar", "--iss"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("parallel for i0", "parallel for i5", "i4 + (-1 * i5)"),
+        differs_from_args=(tuple([*FLAGS, "--full-diamond-tile", "--parallel", "--innerpar", "--iss"]),),
     ),
     Check(
         "full-diamond-second-level",
         [*FLAGS, "--full-diamond-tile", "--noparallel", "--second-level-tile"],
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --full-diamond-tile",
-        effect_needles=("% 4",),
+        effect_needles=("32 *",),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_FULL_DIAMOND)),
     ),
     Check(
         "full-diamond-iss-second-level",
         [*FLAGS, "--full-diamond-tile", "--noparallel", "--iss", "--second-level-tile"],
-        JACOBI_1D,
+        DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile --full-diamond-tile",
-        effect_needles=("% 4",),
+        effect_needles=("32 *",),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_FULL_DIAMOND_ISS)),
     ),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
@@ -541,6 +702,26 @@ CHECKS = [
         "polopt args: --vector",
         effect_needles=("vector for",),
         differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "native-vector",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--noparallel", "--vector"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --vector",
+        effect_needles=("vector for", "32 *", "/ 32"),
+        differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "native-vector-strict-hint-only",
+        ["--tile", "--smartfuse", "--nointratileopt", "--nounrolljam", "--rar", "--nodiamond-tile", "--noparallel", "--vector", "--vector-strict"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --vector --vector-strict",
+        effect_needles=("vector for", "32 *", "/ 32"),
+        differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
         "default-prevector",
@@ -678,6 +859,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --second-level-tile",
         effect_needles=("/ 256", "8 *", "32 *"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(
@@ -688,6 +870,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --identity --tile --second-level-tile",
         effect_needles=("/ 256", "8 *", "32 *"),
+        tiling_route="permutable-band",
         differs_from_args=(tuple(["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
@@ -807,6 +990,26 @@ CHECKS = [
         differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
+        "identity-tiled-mixed-depth",
+        IDENTITY_TILED,
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
+    Check(
+        "identity-tiled-mixed-depth-iss",
+        [*IDENTITY_TILED, "--iss"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+    ),
+    Check(
         "identity-tiled-parallel",
         IDENTITY_TILED_PARALLEL,
         MATMUL_INIT,
@@ -814,7 +1017,30 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --parallel",
         effect_needles=("parallel for i1", "32 *", "/ 32"),
+        tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED),),
+    ),
+    Check(
+        "identity-tiled-parallel-strict-hint-only",
+        [*IDENTITY_TILED_PARALLEL, "--parallel-strict"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --parallel --parallel-strict",
+        effect_needles=("parallel for i1", "32 *", "/ 32"),
+        tiling_route="permutable-band",
+        differs_from_args=(tuple(IDENTITY_TILED),),
+    ),
+    Check(
+        "identity-tiled-vector-strict-hint-only",
+        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        MATMUL_INIT,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile --vector --vector-strict",
+        effect_absent=("vector for", "32 *", "/ 32"),
+        stderr_needles=("[alarm]",),
+        tiling_route="rejected",
     ),
     Check(
         "identity-tiled-multipar",
@@ -824,6 +1050,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "pluto oracle flags: --multipar",
         effect_needles=("parallel for i0", "parallel for i1", "32 *", "/ 32"),
+        tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED_PARALLEL),),
     ),
     Check(
@@ -835,6 +1062,7 @@ CHECKS = [
         "pluto oracle flags: --multipar",
         effect_needles=("parallel for i1", "32 *", "/ 32"),
         effect_absent=("parallel for i0",),
+        tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED_MULTIPAR),),
     ),
     Check(
@@ -1038,8 +1266,9 @@ def active_checks() -> list[Check]:
                     True,
                     "== Optimized Loop ==",
                     "pluto oracle flags: --smartfuse --candldep --scalpriv",
-                    effect_needles=("b[i0] = a", "[alarm] optimization triggered a checked fallback or warning"),
+                    effect_needles=("b[i0] = a",),
                     effect_absent=("parallel for",),
+                    stderr_needles=("[alarm] optimization triggered a checked fallback or warning",),
                 ),
                 Check(
                     "reject-candldep-lastwriter",
@@ -1083,24 +1312,32 @@ ROUTE_BINDINGS = {
         "parallel-current routes must be represented in the unified extracted dispatcher",
     ("syntax/SLoopMain.ml", "module VerifiedSequentialCompiler = SVerifiedCompilerConfig"):
         "sequential Loop routes used by post-codegen checks must still have the extracted verified dispatcher available",
-    ("syntax/SLoopMain.ml", "VerifiedSequentialCompiler.compile (verified_sequential_config_of_cli cfg) loop"):
+    ("syntax/SLoopMain.ml", "VerifiedSequentialCompiler.compile"):
         "sequential post-codegen routes must still call the extracted verified compiler dispatcher",
     ("syntax/SVerifiedCompilerConfig.v", "| VDefaultBand => SBandTilingOpt.opt loop"):
         "default sequential route must use the extracted band-aware optimizer",
+    ("syntax/SVerifiedCompilerConfig.v", "| VDefault => SBandTilingOpt.opt loop"):
+        "the public RawDefault compatibility config must also be band-first",
     ("syntax/SVerifiedCompilerConfig.v", "| VDiamond => SBandTilingOpt.opt_diamond loop"):
         "diamond route must use the extracted SBandTilingOpt.opt_diamond entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop"):
         "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentity => SPolOpt.opt_identity loop"):
         "identity route must use the extracted SPolOpt.opt_identity entry",
-    ("syntax/SVerifiedCompilerConfig.v", "| VIdentitySecondLevel => SPolOpt.opt_identity_tiled_generic loop"):
-        "second-level identity tiling must use the extracted generic theorem-facing entry",
+    ("syntax/SVerifiedCompilerConfig.v", "| VSecondLevel => SBandTilingOpt.opt loop"):
+        "second-level tiling must use the unified band-first optimizer",
+    ("syntax/SVerifiedCompilerConfig.v", "| VSecondLevelISS => SBandTilingOpt.opt_with_iss loop"):
+        "ISS second-level tiling must use the unified band-first optimizer",
+    ("syntax/SVerifiedCompilerConfig.v", "| VISS => SBandTilingOpt.opt_with_iss loop"):
+        "ordinary ISS tiling must use the unified band-first optimizer",
+    ("syntax/SVerifiedCompilerConfig.v", "| VIdentitySecondLevel => SBandTilingOpt.opt_identity_tiled loop"):
+        "second-level identity tiling must use the unified band-first entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBand => SBandTilingOpt.opt_identity_tiled loop"):
         "ordinary identity tiling must still use the extracted band-aware theorem-facing entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentitySecondLevelISS =>"):
         "ISS second-level identity tiling must be represented in the extracted dispatcher",
-    ("syntax/SVerifiedCompilerConfig.v", "SPolOpt.opt_identity_tiled_generic_with_iss loop"):
-        "ISS second-level identity tiling must use the extracted generic ISS theorem-facing entry",
+    ("syntax/SVerifiedCompilerConfig.v", "SBandTilingOpt.opt_identity_tiled_with_iss loop"):
+        "ISS second-level identity tiling must use the unified band-first entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop"):
         "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
     "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
@@ -1114,7 +1351,23 @@ FORBIDDEN_ROUTE_BINDINGS = {
         "normal sequential optimization must not bypass SVerifiedCompilerConfig",
     ("syntax/SLoopMain.ml", "let sequential_handlers ="):
         "the old sequential handler table should not remain as the normal dispatch path",
+    ("syntax/SVerifiedCompilerConfig.v", "SPolOpt.opt_identity_tiled_generic"):
+        "second-level identity tiling must not bypass the unified band-first route",
+    ("syntax/SVerifiedCompilerConfig.v", "| VDefault => SPolOpt.opt loop"):
+        "the public RawDefault compatibility config must not bypass band-first validation",
 }
+
+
+TILING_FLAGS = {
+    "--tile",
+    "--second-level-tile",
+    "--diamond-tile",
+    "--full-diamond-tile",
+}
+
+
+def has_tiling_phase(check: Check) -> bool:
+    return check.success and any(flag in check.args for flag in TILING_FLAGS)
 
 
 def check_route_bindings() -> list[str]:
@@ -1131,6 +1384,15 @@ def check_route_bindings() -> list[str]:
         source = (ROOT / relpath).read_text()
         if pattern in source:
             failures.append(f"forbidden route binding in {relpath}: {pattern!r}; {reason}")
+    for check in CHECKS:
+        if has_tiling_phase(check) and check.needle != "== Optimized Loop ==":
+            failures.append(
+                f"tiling route check {check.name!r} must be a final optimized-loop check"
+            )
+        if check.tiling_route is not None and not has_tiling_phase(check):
+            failures.append(
+                f"non-tiling check {check.name!r} declares route {check.tiling_route!r}"
+            )
     return failures
 
 
@@ -1204,7 +1466,7 @@ def run_check(check: Check, timeout: int) -> str | None:
         except subprocess.TimeoutExpired:
             return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
-    optimized = optimized_loop(output)
+    optimized = optimized_loop(proc.stdout)
     if control_target is not None and (ROOT / control_target).exists():
         return (
             f"{check.name}: explicit control file target {control_target!r} "
@@ -1223,6 +1485,30 @@ def run_check(check: Check, timeout: int) -> str | None:
         for needle in check.effect_absent:
             if needle in optimized:
                 return f"{check.name}: unexpected optimization marker {needle!r}\n{output}"
+        for needle in check.stderr_needles:
+            if needle not in proc.stderr:
+                return f"{check.name}: missing stderr marker {needle!r}\n{output}"
+        if "--second-level-tile" in check.args:
+            is_diamond = (
+                "--diamond-tile" in check.args
+                or "--full-diamond-tile" in check.args
+            )
+            nested_markers = ("32 *",) if is_diamond else ("/ 256", "8 *", "32 *")
+            for marker in nested_markers:
+                if marker not in optimized:
+                    return f"{check.name}: missing nested second-level tile marker {marker!r}\n{output}"
+        if has_tiling_phase(check):
+            route_name = check.tiling_route or "permutable-band"
+            route_marker = f"[tiling-validation] route={route_name}"
+            route_lines = [
+                line.strip()
+                for line in proc.stderr.splitlines()
+                if line.strip().startswith("[tiling-validation] route=")
+            ]
+            if route_lines != [route_marker]:
+                return f"{check.name}: expected only {route_marker!r}, got {route_lines!r}\n{output}"
+            if route_name != "rejected" and "[alarm]" in proc.stderr:
+                return f"{check.name}: tiling reported an alarm\n{output}"
         for baseline_args in check.differs_from_args:
             try:
                 baseline = run_polopt_compat(list(baseline_args), check.fixture, timeout)
@@ -1234,7 +1520,7 @@ def run_check(check: Check, timeout: int) -> str | None:
                     f"{check.name}: baseline comparison command failed with exit {baseline.returncode} "
                     f"for args {list(baseline_args)!r}\n{baseline_output}"
                 )
-            if optimized_loop(baseline_output) == optimized:
+            if optimized_loop(baseline.stdout) == optimized:
                 return f"{check.name}: optimized loop did not differ from baseline args {list(baseline_args)!r}\n{output}"
     else:
         if proc.returncode == 0:

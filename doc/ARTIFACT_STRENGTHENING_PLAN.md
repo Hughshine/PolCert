@@ -133,30 +133,20 @@ This workstream is now partially complete:
 
 This harness is intentionally not part of default CI.
 
-### Immediate review follow-ups (2026-04-10)
+### Closed review follow-ups (2026-07-19)
 
-Recent review passes identified several harness / coverage gaps that should be
-tracked as explicit artifact-TODO items until they are re-verified and closed:
+The April harness gaps are now implemented: strict generated-corpus invariants
+are CI gates, subprocess timeouts cover compiled benchmarks, numeric summaries
+use documented tolerances, and the aggregate tiling-route target in
+`tools/ci/run_ci.sh` covers one-level route discipline, Pluto compatibility,
+parallel-current, vector-current, second-level tiling, and the Pluto-backed
+diamond matrix.
 
-1. CI currently materializes the generated `polopt` regression corpus, but does
-   not yet assert the strict checker invariants (`--expect-total`,
-   `--min-changed`, `--require-tiled`). The CI path needs to run the checker
-   stage as a real gate, not only refresh the materialized outputs.
-2. `--timeout-seconds` needs to cover not only `polopt` itself but also the
-   compiled benchmark executables in both handwritten and generated end-to-end
-   harnesses. A hung baseline or optimized binary should fail the case rather
-   than stall the suite.
-3. The generated whole-C harness should compare numeric summaries with a small
-   documented tolerance for floating-point drift, especially on `--parallel` /
-   OpenMP paths, instead of requiring exact zero drift everywhere.
-4. Public user modes need direct automated regression coverage:
-   - theorem-aligned `--parallel-current`
-   - `--second-level-tile`
-   The current CI surface is still too indirect to guarantee that those routes
-   have not silently regressed.
-
-These remain TODO items until the fixes are landed and then re-checked in the
-real container / CI path.
+The one-level matrix is a route-discipline gate: it excludes fallback and
+checks exact route/alarm reporting across the CLI combinations. It does not
+assert a distinct optimization effect for every flag in every combination.
+The compatibility, parallel-current, vector-current, and diamond suites carry
+the representative effect checks.
 
 ## 2. Codegen Performance: `advect3d`
 
@@ -213,7 +203,68 @@ On the affine-only checked route, the prepared codegen input still has only
 problem is driven by internal codegen cell decomposition rather than by
 pre-codegen statement explosion in the verified pipeline.
 
-The current comparison against the identity route is also important:
+### Clean-build reproduction baseline
+
+On 2026-07-18, the current Docker workspace was rebuilt from `make clean` with:
+
+```sh
+make clean
+make depend
+opam exec --switch=polcert -- make -j8 polopt polcert
+```
+
+The measured build used `15:36.07` wall time, `2262.00s` user CPU,
+`685.87s` system CPU, and `11,768,328 KiB` peak resident memory. This is a
+clean Coq extraction plus OCaml link measurement inside the existing artifact
+container, not a Docker image build. This single `-j8` observation reached
+about 11.2 GiB peak RSS; it is not yet a machine-independent memory requirement.
+Artifact instructions should budget about 20 minutes on a comparable machine.
+Dynamic suite times must be recorded separately because they also depend on
+Pluto and solver runs.
+
+Final-gate measurements used two containers. The long-lived `gifted_curie`
+container measured:
+
+- Pluto compatibility matrix: `132 / 132` in `325.64s`;
+- full 69-fixture identity-composition exploration: `332.39s`.
+
+The strict loop corpus exposed one additional slow case. A focused `tce` run
+completed the optimizer invocation in `324.91s` (`5:14.59` for the materializer
+process, `38,572 KiB` peak RSS). The manifest therefore keeps the `300s`
+default but assigns `tce` a `600s` case budget. This is an observed runtime and
+timeout allowance, not a performance claim.
+
+A disposable container with `/tmp/polcert-final-gate-build` mounted at `/work`
+measured the full second-level tiling suite at `954.751s`. The hardened 90-case
+one-level route gate passed against the clean binary in `gifted_curie` in
+`184.21s`.
+
+These measurements motivated outer timeouts of `900s` for identity-composition
+exploration and `1800s` for the second-level suite. They are timeout budgets,
+not expected runtimes.
+
+On 2026-07-19, `artifact-check-full` completed against the prepared clean
+binary. The outer `/usr/bin/time` process reported `44:02.91` wall time
+(`2618.67s` user CPU, `20.78s` system CPU, and `204,020 KiB` peak RSS), while
+the artifact runner's monotonic per-stage measurements sum to `45:33.9`.
+Because the two clocks disagreed by about 91 seconds, the larger monotonic sum
+is the conservative reproduction time. Major stage times were:
+
+- identity-composition exploration: `341.4s`;
+- one-level route discipline: `183.6s`;
+- Pluto compatibility: `334.9s`;
+- second-level tiling: `997.7s`;
+- diamond tiling: `152.2s`;
+- strict 62-case loop corpus: `614.8s`;
+- parallel-current: `49.1s`;
+- vector-current: `29.5s`.
+
+This full-check time excludes the clean proof/extraction build. Running the
+measured clean build and full check serially requires about one hour on the
+measured container; artifact instructions should budget roughly 65 minutes,
+excluding the Docker image build itself.
+
+The pre-fast-path comparison against the identity route was:
 
 - identity route:
   - `4` instruction leaves
@@ -402,8 +453,10 @@ polish, not route closure.
 The implemented route follows the architecture from the design notes:
 
 - import and validate the diamond-aware affine midpoint
-- validate the `mid_diamond -> posttile` tiling boundary with the existing
-  tiling relation
+- validate the `mid_diamond -> posttile` boundary with the unified dispatcher:
+  ordinary common-band, whole-program ordinary-tiling permutability,
+  hierarchical second-level permutability, canonical fallback, then general
+  fallback
 - validate the final post-tile affine cleanup boundary
 - regenerate code through the PolOpt code generator
 
@@ -425,13 +478,6 @@ opam exec -- make test-diamond-tiling-suite
 
 The default `artifact-check` also runs the diamond suite.
 
-Relevant existing notes:
-
-- `doc/pluto-comprehensive/second-level-and-diamond-design.md`
-- `doc/pluto-comprehensive/polopt-second-level-diamond-support.md`
-- `doc/pluto-comprehensive/tiling-validation-design.md`
-- `doc/DIAMOND_TILING_IMPLEMENTATION_TODO.md`
-
 ### Remaining tasks
 
 1. Broaden effect fixtures for:
@@ -439,11 +485,9 @@ Relevant existing notes:
    - `--diamond-tile --iss`
    - `--diamond-tile --second-level-tile`
    - `--diamond-tile --parallel --multipar`
-2. Add strict-mode checks for Pluto-hinted diamond parallel routes, so the
-   suite distinguishes "hint accepted" from "checked fallback".
-3. Polish raw-codegen fallback output for singleton-loop cleanup cases where
+2. Polish raw-codegen fallback output for singleton-loop cleanup cases where
    the checked raw route is correct but less readable.
-4. Keep identity-diamond rejected unless a distinct Pluto output effect is
+3. Keep identity-diamond rejected unless a distinct Pluto output effect is
    found. The current bounded search over the regression corpus found
    `--identity --tile --diamond-tile` identical to ordinary identity tiling.
 
@@ -498,3 +542,19 @@ the following:
 At that point, the artifact is no longer only "proved and correct on loop
 fragments". It starts to look like a genuinely usable verified polyhedral
 compiler artifact.
+
+## 7. Release Artifact TODO
+
+After the proof-cleanup pass and paper claims are frozen:
+
+1. create a release tag for the exact reviewed commit;
+2. build a fresh Docker image from that tag without a source bind mount;
+3. record the image digest, Git revision, Pluto baseline, Coq/OCaml versions,
+   build command, and host resource limits;
+4. run `artifact-check-full` inside the image and retain its JSON summary;
+5. publish the measured clean-build and dynamic-suite times, including the
+   `tce` slow-case allowance and the roughly 65-minute sequential budget
+   observed on the current container.
+
+The release image is not complete until the digest and the passing
+`artifact-results.json` refer to the same tagged source snapshot.

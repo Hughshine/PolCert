@@ -541,6 +541,11 @@ let tile_only_parallel_second_level_flags =
 let tile_only_vector_second_level_flags =
   tile_only_vector_flags @ ["--second-level-tile"]
 
+let second_level_tiling_flags () =
+  if second_level_tiling_enabled ()
+  then ["--second-level-tile"]
+  else []
+
 let diamond_phase_flags () =
   [
     "--tile";
@@ -556,9 +561,7 @@ let diamond_phase_flags () =
    then ["--diamond-tile"; "--full-diamond-tile"]
    else ["--diamond-tile"])
   @
-  (if second_level_tiling_enabled ()
-   then ["--second-level-tile"]
-   else [])
+  second_level_tiling_flags ()
 
 let diamond_phase_parallel_flags () =
   [
@@ -573,7 +576,9 @@ let diamond_phase_parallel_flags () =
   @
   (if full_diamond_tiling_enabled ()
    then ["--diamond-tile"; "--full-diamond-tile"]
-  else ["--diamond-tile"])
+   else ["--diamond-tile"])
+  @
+  second_level_tiling_flags ()
 
 let diamond_phase_parallel_with_iss_flags () =
   "--iss" :: diamond_phase_parallel_flags ()
@@ -592,6 +597,8 @@ let diamond_phase_vector_flags () =
   (if full_diamond_tiling_enabled ()
    then ["--diamond-tile"; "--full-diamond-tile"]
    else ["--diamond-tile"])
+  @
+  second_level_tiling_flags ()
 
 let diamond_phase_vector_with_iss_flags () =
   "--iss" :: diamond_phase_vector_flags ()

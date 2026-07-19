@@ -1,11 +1,11 @@
 Require Import SPolIRs.
 Require Import OpenScop.
 Require Import Result.
-Require Import PolOpt.
+Require Import SPolOptShared.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
-Module CoreOpt := PolOpt SPolIRs.
+Module CoreOpt := SPolOptShared.Core.
 Module Extractor := CoreOpt.Extractor.
 
 Definition add_var_nodup := SPolIRs.add_var_nodup.

@@ -7,15 +7,18 @@ Require Import OpenScop.
 Require Import ParallelCodegen.
 Require Import Validator.
 Require Import PolOpt.
+Require Import SParallelPolOptShared.
 Require Import STilingBandSched.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
-Module CoreOpt := PolOpt SPolIRs.
-Module PolyLang := SPolIRs.PolyLang.
-Module ValidatorCore := Validator SPolIRs.
-Module ParallelCodegenCore := ParallelCodegen SPolIRs.
-Module LoopIR := SPolIRs.Loop.
+Module FunctorCore := SParallelPolOptShared.Core.
+Module CoreOpt := FunctorCore.CoreOpt.
+Module PolyLang := FunctorCore.PolyLang.
+Module ValidatorCore := FunctorCore.ValidatorCore.
+Module ParallelCodegenCore := FunctorCore.ParallelCodegenCore.
+Module TilingSched := FunctorCore.TilingSched.
+Module LoopIR := FunctorCore.LoopIR.
 Module ParallelLoop := ParallelCodegenCore.ParallelLoop.
 
 Definition parallel_plan_of_dim (d : nat) : ValidatorCore.parallel_plan :=
@@ -127,23 +130,75 @@ Definition parallel_current_affine_prepared_from_poly
   BIND pol' <- CoreOpt.checked_affine_schedule pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
+Definition tiling_validation_route_label
+    (route: TilingSched.tiling_band_validation_route) : string :=
+  match route with
+  | TilingSched.TilingBandAccepted => "permutable-band"%string
+  | TilingSched.TilingBandGeneralFallbackAccepted => "general-fallback"%string
+  | TilingSched.TilingBandRejected => "rejected"%string
+  end.
+
+Definition observe_tiling_validation_route
+    (route: TilingSched.tiling_band_validation_route)
+  : TilingSched.tiling_band_validation_route :=
+  PolOpt.print
+    (fun selected =>
+       STilingBandSched.print_tiling_validation_route_label
+         (tiling_validation_route_label selected))
+    route.
+
+Lemma observe_tiling_validation_route_eq :
+  forall route, observe_tiling_validation_route route = route.
+Proof. reflexivity. Qed.
+
+Definition reject_tiling_then {A: Type}
+    (fallback: unit -> imp A) (_: unit) : imp A :=
+  match observe_tiling_validation_route TilingSched.TilingBandRejected with
+  | TilingSched.TilingBandRejected => fallback tt
+  | TilingSched.TilingBandAccepted
+  | TilingSched.TilingBandGeneralFallbackAccepted =>
+      BIND result <- fallback tt -; pure result
+  end.
+
+Definition select_after_tiling_route
+    (pol_mid pol_after: PolyLang.t)
+    (route: TilingSched.tiling_band_validation_route)
+  : imp PolyLang.t :=
+  match observe_tiling_validation_route route with
+  | TilingSched.TilingBandAccepted
+  | TilingSched.TilingBandGeneralFallbackAccepted =>
+      pure (PolyLang.current_view_pprog pol_after)
+  | TilingSched.TilingBandRejected =>
+      pure pol_mid
+  end.
+
 Definition try_verified_tiling_after_phase_mid_poly
     (pol_mid : PolyLang.t)
     (mid_scop after_scop : OpenScop)
   : imp PolyLang.t :=
+  let rejected := reject_tiling_then (fun _ => pure pol_mid) in
   match CoreOpt.infer_tiling_witness_scops mid_scop after_scop with
   | Err _ =>
-      pure pol_mid
+      rejected tt
   | Okk ws =>
       match ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws with
       | Err _ =>
-          pure pol_mid
+          rejected tt
       | Okk pol_after =>
-          BIND ok <- ValidatorCore.checked_tiling_validate_poly pol_mid pol_after ws -;
-          if ok then
-            pure (PolyLang.current_view_pprog pol_after)
-          else
-            pure pol_mid
+          BIND route <-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_after ws -;
+          match route with
+          | TilingSched.TilingBandAccepted
+          | TilingSched.TilingBandGeneralFallbackAccepted =>
+              BIND wf_after <-
+                ValidatorCore.check_wf_polyprog_general pol_after -;
+              if wf_after then
+                select_after_tiling_route pol_mid pol_after route
+              else rejected tt
+          | TilingSched.TilingBandRejected =>
+              rejected tt
+          end
       end
   end.
 
@@ -152,19 +207,22 @@ Definition try_phase_pipeline_from_source_pol_poly
     (phase_runner : OpenScop -> result (OpenScop * OpenScop))
     (before_scop : OpenScop)
   : imp PolyLang.t :=
+  let rejected :=
+    reject_tiling_then
+      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
   match phase_runner before_scop with
   | Err _ =>
-      CoreOpt.checked_affine_schedule pol_source
+      rejected tt
   | Okk (mid_scop, after_scop) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          CoreOpt.checked_affine_schedule pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_tiling_after_phase_mid_poly pol_mid mid_scop after_scop
           else
-            CoreOpt.checked_affine_schedule pol_source
+            rejected tt
       end
   end.
 
@@ -172,50 +230,42 @@ Definition try_verified_diamond_after_phase_mid_poly
     (pol_mid : PolyLang.t)
     (mid_scop posttile_scop after_scop : OpenScop)
   : imp PolyLang.t :=
+  let rejected := reject_tiling_then (fun _ => pure pol_mid) in
   match CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop with
   | Err _ =>
-      pure pol_mid
+      rejected tt
   | Okk ws =>
       match ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws with
       | Err _ =>
-          pure pol_mid
+          rejected tt
       | Okk pol_posttile =>
-          BIND ok_shape <- STilingBandSched.checked_tiling_schedule_stripmined_validate_poly pol_mid pol_posttile ws -;
-          if ok_shape then
-            match STilingBandSched.infer_pprog_tiling_bands
-                    (STilingBandSched.outer_to_tiling_pprog pol_mid) ws with
-            | None =>
-                pure pol_mid
-            | Some bands =>
-                BIND ok_perm <-
-                  STilingBandSched.check_pprog_permutable_tiling_bands
-                    (STilingBandSched.outer_to_tiling_pprog pol_mid)
-                    (STilingBandSched.outer_to_tiling_pprog pol_posttile)
-                    ws bands -;
-                if ok_perm then
-                  BIND wf_posttile <- ValidatorCore.check_wf_polyprog_general pol_posttile -;
-                  if wf_posttile then
-                    match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
-                    | Err _ =>
-                        pure pol_mid
-                    | Okk pol_after =>
-                        BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
-                        if final_ok then
-                          BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
-                          if wf_after then
-                            pure (PolyLang.current_view_pprog pol_after)
-                          else
-                            pure pol_mid
-                        else
-                          pure pol_mid
-                    end
-                  else
-                    pure pol_mid
-                else
-                  pure pol_mid
-            end
-          else
-            pure pol_mid
+          BIND route <-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_posttile ws -;
+          match route with
+          | TilingSched.TilingBandAccepted
+          | TilingSched.TilingBandGeneralFallbackAccepted =>
+              BIND wf_posttile <-
+                ValidatorCore.check_wf_polyprog_general pol_posttile -;
+              if wf_posttile then
+                match PolyLang.from_openscop_schedule_only
+                        pol_posttile after_scop with
+                | Err _ => rejected tt
+                | Okk pol_after =>
+                    BIND final_ok <-
+                      ValidatorCore.validate_general pol_posttile pol_after -;
+                    if final_ok then
+                      BIND wf_after <-
+                        ValidatorCore.check_wf_polyprog_general pol_after -;
+                      if wf_after then
+                        select_after_tiling_route pol_mid pol_after route
+                      else rejected tt
+                    else rejected tt
+                end
+              else rejected tt
+          | TilingSched.TilingBandRejected =>
+              rejected tt
+          end
       end
   end.
 
@@ -223,20 +273,23 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly
     (pol_source : PolyLang.t)
     (before_scop : OpenScop)
   : imp PolyLang.t :=
+  let rejected :=
+    reject_tiling_then
+      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
   match CoreOpt.run_pluto_diamond_phase_pipeline before_scop with
   | Err _ =>
-      CoreOpt.checked_affine_schedule pol_source
+      rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          CoreOpt.checked_affine_schedule pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_diamond_after_phase_mid_poly
               pol_mid mid_scop posttile_scop after_scop
           else
-            CoreOpt.checked_affine_schedule pol_source
+            rejected tt
       end
   end.
 
@@ -244,20 +297,23 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
     (pol_source : PolyLang.t)
     (before_scop : OpenScop)
   : imp PolyLang.t :=
+  let rejected :=
+    reject_tiling_then
+      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
   match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
   | Err _ =>
-      CoreOpt.checked_affine_schedule pol_source
+      rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          CoreOpt.checked_affine_schedule pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_diamond_after_phase_mid_poly
               pol_mid mid_scop posttile_scop after_scop
           else
-            CoreOpt.checked_affine_schedule pol_source
+            rejected tt
       end
   end.
 
@@ -348,7 +404,8 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        CoreOpt.checked_affine_schedule pol
+        reject_tiling_then
+          (fun _ => CoreOpt.checked_affine_schedule pol) tt
     | Some before_scop =>
         try_phase_pipeline_from_source_pol_poly
           pol
@@ -356,7 +413,7 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
           before_scop
     end
   else
-    pure pol.
+    reject_tiling_then (fun _ => pure pol) tt.
 
 Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
@@ -364,12 +421,13 @@ Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        CoreOpt.checked_affine_schedule pol
+        reject_tiling_then
+          (fun _ => CoreOpt.checked_affine_schedule pol) tt
     | Some before_scop =>
         try_checked_iss_phase_pipeline_from_poly_poly pol before_scop
     end
   else
-    pure pol.
+    reject_tiling_then (fun _ => pure pol) tt.
 
 Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
     (pol : PolyLang.t)
@@ -377,7 +435,8 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        CoreOpt.checked_affine_schedule pol
+        reject_tiling_then
+          (fun _ => CoreOpt.checked_affine_schedule pol) tt
     | Some before_scop =>
         try_phase_pipeline_from_source_pol_poly
           pol
@@ -385,7 +444,13 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
           before_scop
     end
   else
-    pure pol.
+    reject_tiling_then (fun _ => pure pol) tt.
+
+Definition identity_tiling_opt_prepared_from_poly_with_iss_poly
+    (pol : SPolIRs.PolyLang.t)
+  : imp SPolIRs.PolyLang.t :=
+  BIND pol_iss <- iss_only_prepared_from_poly pol -;
+  identity_tiling_opt_prepared_from_poly_no_iss_poly pol_iss.
 
 Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
     (pol : PolyLang.t)
@@ -393,12 +458,13 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        CoreOpt.checked_affine_schedule pol
+        reject_tiling_then
+          (fun _ => CoreOpt.checked_affine_schedule pol) tt
     | Some before_scop =>
         try_diamond_phase_pipeline_from_source_pol_poly pol before_scop
     end
   else
-    pure pol.
+    reject_tiling_then (fun _ => pure pol) tt.
 
 Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
@@ -406,12 +472,13 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        CoreOpt.checked_affine_schedule pol
+        reject_tiling_then
+          (fun _ => CoreOpt.checked_affine_schedule pol) tt
     | Some before_scop =>
         try_checked_iss_diamond_phase_pipeline_from_poly_poly pol before_scop
     end
   else
-    pure pol.
+    reject_tiling_then (fun _ => pure pol) tt.
 
 Definition parallel_current_prepared_from_poly
     (pol : PolyLang.t)
@@ -425,6 +492,13 @@ Definition parallel_current_identity_tiled_prepared_from_poly
     (d : nat)
   : imp (result ParallelLoop.t) :=
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol' d.
+
+Definition parallel_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : SPolIRs.PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
 Definition parallel_current_diamond_prepared_from_poly
@@ -489,6 +563,13 @@ Definition parallel_current_many_identity_tiled_prepared_from_poly
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
   checked_parallel_current_many_annotated_codegen_at pol' dims.
 
+Definition parallel_current_many_identity_tiled_prepared_from_poly_with_iss
+    (pol : SPolIRs.PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol' dims.
+
 Definition parallel_current_many_affine_prepared_from_poly
     (pol : PolyLang.t)
     (dims : list nat)
@@ -551,6 +632,13 @@ Definition vector_current_identity_tiled_prepared_from_poly
   BIND pol' <- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
   checked_vector_current_annotated_codegen_at pol' d.
 
+Definition vector_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : SPolIRs.PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol' d.
+
 Definition vector_current_diamond_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
@@ -597,7 +685,6 @@ Definition opt_parallel_current_identity
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   BIND res <- parallel_current_identity_prepared_from_poly pol d -;
   res_to_alarm parallel_dummy res.
-
 Definition opt_parallel_current_identity_tiled
     (loop : LoopIR.t)
     (d : nat)
@@ -605,6 +692,15 @@ Definition opt_parallel_current_identity_tiled
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   BIND res <- parallel_current_identity_tiled_prepared_from_poly pol d -;
+  res_to_alarm parallel_dummy res.
+
+Definition opt_parallel_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelLoop.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  BIND res <- parallel_current_identity_tiled_prepared_from_poly_with_iss pol d -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_parallel_current_affine
@@ -677,6 +773,15 @@ Definition opt_parallel_current_many_identity_tiled
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   BIND res <- parallel_current_many_identity_tiled_prepared_from_poly pol dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition opt_parallel_current_many_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelLoop.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  BIND res <- parallel_current_many_identity_tiled_prepared_from_poly_with_iss pol dims -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_parallel_current_many_affine
@@ -767,6 +872,15 @@ Definition opt_vector_current_identity_tiled
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   BIND res <- vector_current_identity_tiled_prepared_from_poly pol d -;
+  res_to_alarm parallel_dummy res.
+
+Definition opt_vector_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelLoop.t :=
+  BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  BIND res <- vector_current_identity_tiled_prepared_from_poly_with_iss pol d -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_vector_current_affine

@@ -58,7 +58,6 @@ type 'loop sequential_handlers = {
   seq_optimize_identity : 'loop -> 'loop * bool;
   seq_optimize_identity_tiled : 'loop -> 'loop * bool;
   seq_optimize_affine : 'loop -> 'loop * bool;
-  seq_optimize_legacy : 'loop -> 'loop * bool;
   seq_optimize_default : 'loop -> 'loop * bool;
 }
 
@@ -85,8 +84,6 @@ let run_selected_optimization (cfg : SLoopCli.config) handlers loop =
       handlers.seq_optimize_identity loop
   else if cfg.force_notile then
     handlers.seq_optimize_affine loop
-  else if cfg.force_legacy_generic_tiling then
-    handlers.seq_optimize_legacy loop
   else
     handlers.seq_optimize_default loop
 
@@ -127,6 +124,8 @@ type ('loop, 'parallel_loop) current_parallel_handlers = {
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_identity_tiled :
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
+  cur_optimize_identity_tiled_iss :
+    'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_identity :
     'loop -> Datatypes.nat -> 'parallel_loop * bool;
   cur_optimize_iss_affine :
@@ -152,8 +151,11 @@ let run_selected_parallel_current_optimization
       handlers.cur_optimize_diamond_iss loop dim
     else
       handlers.cur_optimize_diamond loop dim
-  else if cfg.force_identity && cfg.pluto_tile_seen && not cfg.force_iss then
-    handlers.cur_optimize_identity_tiled loop dim
+  else if cfg.force_identity && cfg.pluto_tile_seen then
+    if cfg.force_iss then
+      handlers.cur_optimize_identity_tiled_iss loop dim
+    else
+      handlers.cur_optimize_identity_tiled loop dim
   else if cfg.force_iss then
     if cfg.force_identity then
       handlers.cur_optimize_iss_identity loop dim

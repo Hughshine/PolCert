@@ -48,11 +48,8 @@ For the full local regression flow, also run:
 ```sh
 opam exec -- make test-iss-pluto-suite
 opam exec -- make test-iss-pluto-live-suite
-opam exec -- make test-parallel-current-suite
-opam exec -- make test-vector-current-suite
-opam exec -- make test-second-level-tile-suite
+opam exec -- make test-tiling-route-suites
 opam exec -- make test-polopt-loop-suite
-opam exec -- make test-diamond-tiling-suite
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -90,7 +87,8 @@ It also exposes:
 - experimental Pluto-hinted vector annotation via `--vector` / `--prevector`
 - experimental checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
-- the ordinary-tiling compatibility selector `--legacy-generic-tiling`
+- the deprecated ordinary-tiling compatibility alias
+  `--legacy-generic-tiling`, which now uses the default band-first route
 - CLI-side profiling / inspection flags such as `--profile-stages`,
   `--extract-only`, and the standalone validation actions documented in
   [`POLOPT.md`](./POLOPT.md) and
@@ -99,10 +97,11 @@ It also exposes:
 ## Status
 
 - The verified optimization core lives in [driver/PolOpt.v](./driver/PolOpt.v).
-- The default optimizer definition is `Opt = Opt_prepared`.
-- The default end-to-end theorem is `Opt_correct`.
-- The ISS-enabled optimizer definition is `Opt_with_iss`.
-- The ISS-enabled end-to-end theorem is `Opt_with_iss_correct`.
+- The public default optimizer is `Opt_band`, proved by `Opt_band_correct`.
+- The public ISS-enabled optimizer is `Opt_band_with_iss`, proved by
+  `Opt_band_with_iss_correct`.
+- `driver/ExtractedPipelineCorrect.v` proves the concrete extracted compiler
+  configurations used by the executables.
 - The explicit-dimension parallel optimizer theorems live in
   [driver/ParallelPolOptCorrect.v](./driver/ParallelPolOptCorrect.v).
 - `polopt` now supports:
@@ -144,14 +143,10 @@ The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 - `make test`
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
-- `make test-parallel-current-suite`
-- `make test-vector-current-suite`
-- `make test-second-level-tile-suite`
+- `make test-tiling-route-suites`, which aggregates the one-level route,
+  Pluto-compatibility, parallel-current, vector-current, second-level, and
+  diamond suites
 - the strict `polopt` benchmark suite
-
-Notably, `test-diamond-tiling-suite` is a separate Pluto-backed regression
-script. It is part of the documented local regression surface, but it is not in
-the default `ci` workflow today.
 
 ## Documentation map
 

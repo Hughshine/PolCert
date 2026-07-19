@@ -83,19 +83,18 @@ let usage prog =
       "                      tile-only route; can compose with --parallel-current\n";
       "  --notile          : stop after affine scheduling validation\n";
       "  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n";
-      "                       (`SPolOpt.opt_with_iss`); with `--identity`, run the ISS-only checked split path\n";
-      "  --second-level-tile : experimental verified second-level tiling path; only valid on\n";
-      "                        full tiled optimization routes and tiling witness/validation\n";
-      "                        actions\n";
-      "  --diamond-tile    : experimental sequential checked diamond midpoint + tiling route;\n";
-      "                      supported on non-ISS/ISS and ordinary/second-level tiled paths\n";
+      "                       (`SBandTilingOpt.opt_with_iss`); identity+ISS requires --tile\n";
+      "  --second-level-tile : checked nested tiling producer for tiled optimization routes\n";
+      "                        and tiling witness/validation actions\n";
+      "  --diamond-tile    : checked diamond midpoint + tiling route; composes with ISS,\n";
+      "                      second-level tiling, and checked parallel/vector consumers\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
       "                        supported on non-ISS/ISS and ordinary/second-level tiled paths\n";
       "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
-      "  --legacy-generic-tiling : use the historical generic ordinary-tiling validator path\n";
-      "                            instead of the default band-aware path\n";
+      "  --legacy-generic-tiling : deprecated compatibility alias; tiled routes still use\n";
+      "                            permutable-band checking before general fallback\n";
       "  --const-unroll    : checked post pass that fully unrolls statically constant\n";
       "                       loop bounds in the final sequential Loop IR\n";
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
@@ -108,7 +107,7 @@ let usage prog =
       "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
       "                         dimension d; supported on identity, affine-only, and full\n";
       "                         tiled paths, including their `--iss` variants and the\n";
-      "                         non-ISS diamond route\n";
+      "                         non-ISS and ISS diamond routes\n";
       "  --vector          : experimental checked `vector for` route driven by Pluto\n";
       "                       `--prevector` loop hints; it reuses the same doall checker\n";
       "                       as --parallel because Pluto marks vector loops from the\n";
@@ -139,7 +138,7 @@ let usage prog =
       Printf.sprintf "  %s --validate-affine-openscop before.scop mid.scop\n" prog;
       Printf.sprintf "  %s --validate-tiling-openscop mid.scop after.scop\n" prog;
       Printf.sprintf "  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n" prog;
-      Printf.sprintf "  %s --iss --identity file.loop       # ISS-only checked split path\n" prog;
+      Printf.sprintf "  %s --identity --tile --iss file.loop # checked ISS plus identity-tiling path\n" prog;
       Printf.sprintf "  %s --pluto-compat --tile --smartfuse --nointratileopt --prevector --nounrolljam --rar --nodiamond-tile --noparallel file.loop\n" prog;
     ]
 
@@ -421,7 +420,9 @@ let pluto_polopt_args cfg =
     else if cfg.force_diamond_tile then args := !args @ ["--diamond-tile"]
   end;
   if cfg.force_parallel then args := !args @ ["--parallel"];
+  if cfg.force_parallel_strict then args := !args @ ["--parallel-strict"];
   if cfg.force_vector then args := !args @ ["--vector"];
+  if cfg.force_vector_strict then args := !args @ ["--vector-strict"];
   if cfg.force_const_unroll then args := !args @ ["--const-unroll"];
   !args
 
@@ -514,9 +515,9 @@ let validate_pluto_compat prog cfg =
     if cfg.force_identity && cfg.pluto_tile_seen then
       add_pluto_note cfg
         (if cfg.force_iss && cfg.force_second_level_tile then
-           "--identity --tile --iss --second-level-tile uses the checked ISS plus generic second-level identity-tiling route"
+           "--identity --tile --iss --second-level-tile uses the checked ISS plus permutable-band-first identity-tiling route"
          else if cfg.force_second_level_tile then
-           "--identity --tile --second-level-tile uses the checked generic second-level identity-tiling route"
+           "--identity --tile --second-level-tile uses the checked permutable-band-first identity-tiling route"
          else if cfg.force_iss then
            "--identity --tile --iss uses the checked ISS plus identity-tiling route"
          else

@@ -58,9 +58,13 @@ The main stages are:
   Runs Pluto's affine scheduling result and validates it with the verified
   affine validator.
 - optional checked tiling phase
-  Runs the phase-aligned tiling route. This route checks the imported tiling
-  witness and then reuses the generic validator core on the canonical imported
-  tiled program.
+  Runs the phase-aligned tiling route. The dispatcher first tries the ordinary
+  common-band check, then whole-program ordinary-tiling permutability over the
+  composed tiling semantics, and then the hierarchical second-level checker.
+  Only after those specialized modes fail does it try the proved canonical and
+  general fallback validators.
+  Ordinary, second-level, identity-tiled, diamond, ISS, parallel, vector, and
+  multipar CLI paths all share this order.
 - `current_view_pprog`
   Materializes the witness-centered program as an explicit current-space affine
   view so the existing affine codegen story can be reused without teaching the
@@ -75,8 +79,23 @@ The main stages are:
   Removes singleton loops and performs small structural cleanups on the
   generated loop tree.
 
-If the tiling-specific route fails at any stage, the optimizer falls back to
-the already-validated affine result instead of failing the whole pipeline.
+The specialized tiling-permutability-first guarantee is an entrypoint property
+of the verified compiler configurations used by `polopt` and `polcert`.
+The external `permutable-band` route label covers the ordinary common-band,
+ordinary whole-program, and hierarchical second-level modes. Canonical and
+general validator functions remain extracted as lower-level proof components
+because the unified dispatcher calls them; they are not alternative compiler
+route selectors.
+
+For every completed tiling attempt, `polopt` reports exactly one final route on
+stderr: `permutable-band`, `general-fallback`, or `rejected`. The fallback
+label aggregates the proved canonical and general validators; it never denotes
+an unchecked compiler fallback. `rejected` means the final tiling-bearing
+pipeline was not adopted. This can happen because all five tiling validation
+layers rejected the candidate, in which case the already-validated affine
+midpoint is retained, or because a later parallel/vector consumer rejected the
+validated tiled candidate, in which case `polopt` uses that consumer's
+conservative fallback output and also emits its checked-fallback alarm.
 
 The ISS-enabled pipeline has the same later stages, but inserts a checked ISS
 structural-validation stage before later scheduling / tiling:
@@ -94,10 +113,9 @@ structural-validation stage before later scheduling / tiling:
 -> cleanup
 ```
 
-In theorem terms:
-
-- default route: `Opt_correct`
-- ISS route: `Opt_with_iss_correct`
+In theorem terms, the public routes are `Opt_band_correct` and
+`Opt_band_with_iss_correct`. `ExtractedPipelineCorrect.v` proves the concrete
+extracted sequential and parallel compiler configurations branch by branch.
 
 Current strict-suite snapshot:
 
@@ -142,17 +160,25 @@ Performance-harness status:
 
 ## `polcert`
 
-`polcert` now exposes four practically important validation modes:
+`polcert` now exposes five practically important validation modes:
 
 - direct affine validation of `before.scop -> after.scop`
 - tiling-only validation of `mid.scop -> after.scop` with `--kind tiling`
 - phase-aligned validation of `before -> mid -> after`
+- four-input validation of `before -> mid -> posttile -> after`, including the
+  final affine phase used by diamond pipelines
 - ISS validation through `--iss-bridge` / `--iss-debug-dumps`
+
+Tiling-only, three-input, and four-input modes accept `--second-level-tile` and
+report whether the permutable-band layer or the proved fallback was adopted.
 
 The phase-aligned route checks:
 
 1. `before -> mid` with the affine validator
 2. `mid -> after` with the checked tiling validator
+
+The four-input route checks the same first two boundaries and then validates
+`posttile -> after` with the affine validator.
 
 The ISS route is separate:
 
@@ -173,7 +199,7 @@ Because of that, the pipeline needs several distinct "format-fixing" stages:
   Improves domain precision before any external scheduling step.
 - canonical tiling import
   Rebuilds the imported tiled program into the canonical internal form expected
-  by the checked tiling validator.
+  by the permutable-band, canonical, and general tiling validators.
 - `current_view_pprog`
   Eliminates witness indirection by materializing explicit current-space
   transformations.
