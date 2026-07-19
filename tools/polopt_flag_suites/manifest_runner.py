@@ -236,6 +236,28 @@ def evaluate_check(
         for needle in needles:
             if needle not in haystack:
                 return f"{spec['name']}: missing {needle!r} in failure output\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            if (
+                stderr_needles_exactly_once
+                and needle.startswith("[vector-validation]")
+                and proc.stderr.count(needle) != 1
+            ):
+                return (
+                    f"{spec['name']}: expected exactly one occurrence of {needle!r} "
+                    f"in failure stderr\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+        for needle in absent_needles:
+            if needle in haystack:
+                return f"{spec['name']}: unexpected {needle!r} in failure output\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle in stderr_absent_needles:
+            if needle in proc.stderr:
+                return f"{spec['name']}: unexpected {needle!r} in failure stderr\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle, expected_count in stderr_counts.items():
+            actual_count = proc.stderr.count(needle)
+            if actual_count != expected_count:
+                return (
+                    f"{spec['name']}: expected {expected_count} occurrences of {needle!r} "
+                    f"in failure stderr, got {actual_count}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
         return None
     raise SystemExit(f"{spec['name']}: unsupported expect value {expected!r}")
 

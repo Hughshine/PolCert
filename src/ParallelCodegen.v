@@ -503,6 +503,23 @@ Proof.
   eapply all_es_safeb_stmt_sound; eauto.
 Qed.
 
+Definition vector_codegen_safeb (p : ParallelLoop.t) : bool :=
+  all_es_safeb p && ParallelLoop.vector_annotations_innermostb p.
+
+Lemma vector_codegen_safeb_sound :
+  forall p,
+    vector_codegen_safeb p = true ->
+    ParallelLoop.trace_safe p /\
+    ParallelLoop.vector_annotations_innermostb p = true.
+Proof.
+  intros p Hsafe.
+  apply andb_true_iff in Hsafe.
+  destruct Hsafe as [Htrace Hvector].
+  split.
+  - eapply all_es_safeb_sound; eauto.
+  - exact Hvector.
+Qed.
+
 Definition checked_annotated_codegen
   (pp : PolyLang.t)
   (cert : ParallelValidator.parallel_cert)
@@ -519,11 +536,14 @@ Definition checked_vector_annotated_codegen
   (cert : ParallelValidator.parallel_cert)
   : imp (result ParallelLoop.t) :=
   BIND pl <- vector_annotated_codegen pp cert -;
-  if all_es_safeb pl then pure (Okk pl)
+  if vector_codegen_safeb pl then pure (Okk pl)
   else
     BIND pl_raw <- vector_annotated_codegen_raw pp cert -;
-    if all_es_safeb pl_raw then pure (Okk pl_raw)
-    else pure (Err "Annotated vector codegen produced non-affine instruction trace loop"%string).
+    if vector_codegen_safeb pl_raw then pure (Okk pl_raw)
+    else
+      pure
+        (Err
+           "Annotated vector codegen produced a non-affine trace, a non-innermost vector loop, or no vector loop"%string).
 
 Definition checked_annotated_codegen_many
   (pp : PolyLang.t)
@@ -1038,30 +1058,32 @@ Lemma checked_vector_annotated_codegen_ok_inv :
   forall pp cert pl,
     mayReturn (checked_vector_annotated_codegen pp cert) (Okk pl) ->
     (mayReturn (vector_annotated_codegen pp cert) pl /\
-     ParallelLoop.trace_safe pl) \/
+     ParallelLoop.trace_safe pl /\
+     ParallelLoop.vector_annotations_innermostb pl = true) \/
     (mayReturn (vector_annotated_codegen_raw pp cert) pl /\
-     ParallelLoop.trace_safe pl).
+     ParallelLoop.trace_safe pl /\
+     ParallelLoop.vector_annotations_innermostb pl = true).
 Proof.
   intros pp cert pl Hcodegen.
   unfold checked_vector_annotated_codegen in Hcodegen.
   apply mayReturn_bind in Hcodegen.
   destruct Hcodegen as [pl' [Hann Hret]].
-  destruct (all_es_safeb pl') eqn:Hsafe.
+  destruct (vector_codegen_safeb pl') eqn:Hsafe.
   - apply mayReturn_pure in Hret.
     inversion Hret; subst pl'.
     left.
     split.
     + exact Hann.
-    + eapply all_es_safeb_sound; eauto.
+    + eapply vector_codegen_safeb_sound; eauto.
   - apply mayReturn_bind in Hret.
     destruct Hret as [pl_raw [Hraw Hret]].
-    destruct (all_es_safeb pl_raw) eqn:Hsafe_raw.
+    destruct (vector_codegen_safeb pl_raw) eqn:Hsafe_raw.
     + apply mayReturn_pure in Hret.
       inversion Hret; subst pl_raw.
       right.
       split.
       * exact Hraw.
-      * eapply all_es_safeb_sound; eauto.
+      * eapply vector_codegen_safeb_sound; eauto.
     + apply mayReturn_pure in Hret.
       discriminate.
 Qed.
@@ -1127,7 +1149,7 @@ Proof.
   intros pol cert pl st st' Hcodegen Hwf Hsem.
   destruct (checked_vector_annotated_codegen_ok_inv
               (PolyLang.current_view_pprog pol) cert pl Hcodegen)
-    as [[Hann Hsafe] | [Hann Hsafe]].
+    as [[Hann [Hsafe _]] | [Hann [Hsafe _]]].
   - eapply vector_annotated_codegen_correct_general; eauto.
   - eapply vector_annotated_codegen_raw_correct_general; eauto.
 Qed.

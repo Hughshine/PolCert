@@ -429,7 +429,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag == "--prevector":
             state.prevector_seen = True
             state.vector = True
-            state.add_note("--prevector selects the checked vector annotation route")
+            state.add_note("--prevector selects the innermost-hint-only checked vector annotation route")
         elif flag == "--nounrolljam":
             state.no_unrolljam_seen = True
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
@@ -505,7 +505,7 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly")
     if not state.no_prevector_seen:
         state.vector = True
-        state.add_note("Pluto --prevector is represented as checked vector annotation over the same doall certificate used by --parallel")
+        state.add_note("Pluto --prevector consumes only a mapped innermost hint and checks both doall and structural innermostness")
     if not (state.no_unrolljam_seen or state.unrolljam_seen):
         raise Reject("Pluto enables --unrolljam by default; pass --nounrolljam or explicit --unrolljam")
     if not state.parallel and not state.no_parallel_seen:

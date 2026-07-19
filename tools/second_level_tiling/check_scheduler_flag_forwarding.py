@@ -391,6 +391,16 @@ def main() -> None:
             "VerifiedParallelCompiler.compile" if route == "try_verified_vector_current_compile" else "try_verified_vector_current_compile",
             "proved vector config execution",
         )
+    automatic_vector = definition_body(main_source, "run_selected_vector_optimization")
+    require(automatic_vector, "let candidates = hinted_dims", "hint-only automatic vector execution")
+    if "int_range" in automatic_vector:
+        raise AssertionError("automatic vector execution must not scan unhinted dimensions")
+    for route in (
+        "try_pluto_hint_preferred_vector_codegen",
+        "try_diamond_vector_codegen",
+    ):
+        if "int_range" in definition_body(main_source, route):
+            raise AssertionError(f"{route} must not scan unhinted dimensions")
     require(
         definition_body(main_source, "run_selected_vector_current_optimization"),
         "VerifiedParallelCompiler.compile",

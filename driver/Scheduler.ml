@@ -10,6 +10,8 @@ open Str  (* Required for regular expressions *)
 
 type pluto_parallel_hint = {
   hint_iterator : string;
+  hint_stmt_ids : int list;
+  hint_raw_dim : int;
   hint_current_dim : int;
   hint_directive : int;
 }
@@ -310,7 +312,10 @@ let extract_loop_hints_from_outscop directive_mask outscop_file =
                     match drop stmt_nb tail with
                     | _private_vars :: directive_s :: rest' ->
                         let directive = int_of_string directive_s in
-                        parse (count - 1) ((iterator, directive) :: acc) rest'
+                        parse
+                          (count - 1)
+                          ((iterator, List.map int_of_string stmt_ids, directive) :: acc)
+                          rest'
                     | _ ->
                         raise (Failure "truncated loop extension")
                   end
@@ -328,24 +333,27 @@ let extract_loop_hints_from_outscop directive_mask outscop_file =
     in
     let rec add_unique seen acc = function
       | [] -> List.rev acc
-      | (iterator, directive) :: rest ->
+      | (iterator, stmt_ids, directive) :: rest ->
           if directive land directive_mask = 0 then
             add_unique seen acc rest
           else
             match find_index iterator 0 scatnames with
             | None -> add_unique seen acc rest
             | Some dim ->
-                if List.mem dim seen then
+                let key = (iterator, stmt_ids, directive) in
+                if List.mem key seen then
                   add_unique seen acc rest
                 else
                   let hint =
                     {
                       hint_iterator = iterator;
+                      hint_stmt_ids = stmt_ids;
+                      hint_raw_dim = dim;
                       hint_current_dim = dim;
                       hint_directive = directive;
                     }
                   in
-                  add_unique (dim :: seen) (hint :: acc) rest
+                  add_unique (key :: seen) (hint :: acc) rest
     in
     add_unique [] [] loop_entries
   with
@@ -368,12 +376,110 @@ let extract_vector_hint_from_outscop outscop_file =
   | [] -> None
   | hint :: _ -> Some hint
 
+type pluto_stmt_loop_path = {
+  path_stmt_id : int;
+  path_iterators : string list;
+}
+
+let leading_spaces line =
+  let rec go idx =
+    if idx < String.length line && line.[idx] = ' ' then go (idx + 1)
+    else idx
+  in
+  go 0
+
+let for_iterator_of_line line =
+  let line = String.trim line in
+  let is_for =
+    String.length line >= 3
+    && String.sub line 0 3 = "for"
+    && (String.length line = 3 || line.[3] = ' ' || line.[3] = '\t' || line.[3] = '(')
+  in
+  if not is_for then None
+  else
+    try
+      let left = String.index line '(' in
+      let right = String.index_from line (left + 1) '=' in
+      let iterator =
+        String.sub line (left + 1) (right - left - 1) |> String.trim
+      in
+      if iterator = "" || String.contains iterator ' ' then None
+      else Some iterator
+    with Not_found -> None
+
+let stmt_id_of_line line =
+  let line = String.trim line in
+  if String.length line < 3 || line.[0] <> 'S' then None
+  else
+    let rec digits_end idx =
+      if idx < String.length line && line.[idx] >= '0' && line.[idx] <= '9'
+      then digits_end (idx + 1)
+      else idx
+    in
+    let stop = digits_end 1 in
+    if stop = 1 || stop >= String.length line || line.[stop] <> '(' then None
+    else
+      try Some (int_of_string (String.sub line 1 (stop - 1)))
+      with Failure _ -> None
+
+let pluto_c_stmt_loop_paths pluto_c_file =
+  let rec scan stack paths = function
+    | [] -> List.rev paths
+    | line :: rest ->
+        let indent = leading_spaces line in
+        let stack = List.filter (fun (loop_indent, _) -> loop_indent < indent) stack in
+        begin match for_iterator_of_line line, stmt_id_of_line line with
+        | Some iterator, _ -> scan (stack @ [(indent, iterator)]) paths rest
+        | None, Some stmt_id ->
+            let iterators = List.map snd stack in
+            scan stack ({ path_stmt_id = stmt_id; path_iterators = iterators } :: paths) rest
+        | None, None -> scan stack paths rest
+        end
+  in
+  try
+    read_file pluto_c_file
+    |> String.split_on_char '\n'
+    |> scan [] []
+  with Sys_error _ -> []
+
+let remap_loop_hints_to_current_dims _outscop_file pluto_c_file hints =
+  let paths = pluto_c_stmt_loop_paths pluto_c_file in
+  let rec find_index iterator idx = function
+    | [] -> None
+    | current :: rest ->
+        if String.equal iterator current then Some idx
+        else find_index iterator (idx + 1) rest
+  in
+  let add_unique value values =
+    if List.mem value values then values else value :: values
+  in
+  List.filter_map
+    (fun hint ->
+      let dims =
+        List.fold_left
+          (fun dims path ->
+            if hint.hint_stmt_ids <> []
+               && not (List.mem path.path_stmt_id hint.hint_stmt_ids)
+            then dims
+            else
+              match find_index hint.hint_iterator 0 path.path_iterators with
+              | None -> dims
+              | Some dim -> add_unique dim dims)
+          []
+          paths
+      in
+      match dims with
+      | [dim] -> Some { hint with hint_current_dim = dim }
+      | _ -> None)
+    hints
+
 let run_pluto_scop_with_loop_hint extractor flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
   let inscop_file = tmp_file_abs ".scop" in
   let outscop_file = inscop_file ^ ".afterscheduling.scop" in
+  let pluto_c_file = inscop_file ^ ".pluto.c" in
   OpenScopPrinter.openscop_printer inscop_file inscop;
   let cmd =
     List.concat
@@ -392,7 +498,10 @@ let run_pluto_scop_with_loop_hint extractor flags inscop =
   in
   let hints = extractor outscop_file in
   match read_outscop () with
-  | Some outscop -> Okk (outscop, hints)
+  | Some outscop ->
+      Okk
+        (outscop,
+         remap_loop_hints_to_current_dims outscop_file pluto_c_file hints)
   | None ->
       if exc <> 0 then (
         safe_remove outscop_file;
