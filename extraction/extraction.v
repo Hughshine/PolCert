@@ -232,6 +232,8 @@ Require Import SVerifiedCompilerConfig.
 Require Import SVerifiedParallelCompilerConfig.
 Require Import TPolValidator.
 
+Extract Constant STilingBandSched.print_tiling_validation_route_label =>
+  "TilingValidationRoute.record_coq_label".
 
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)

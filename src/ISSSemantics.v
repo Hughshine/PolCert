@@ -2,12 +2,12 @@ Require Import Bool.
 Require Import List.
 Require Import ZArith.
 Require Import Lia.
-Require Import ClassicalDescription.
 Require Import Sorting.Permutation.
 Require Import Sorting.Sorted.
 Require Import SetoidList.
 Require Import SelectionSort.
 Require Import Base.
+Require Import Linalg.
 Require Import PolyBase.
 Require Import PolyLang.
 Require Import ISSWitness.
@@ -68,8 +68,7 @@ Fixpoint find_after_stmt_index
   | after_pi :: after_pis', w :: stmt_ws' =>
       if Nat.eqb (isw_parent_stmt w) parent
       then
-        if excluded_middle_informative
-             (Refine.point_in_pinstr_domain point after_pi)
+        if in_poly point after_pi.(PolyLang.pi_poly)
         then Some 0%nat
         else option_map S (find_after_stmt_index parent point after_pis' stmt_ws')
       else option_map S (find_after_stmt_index parent point after_pis' stmt_ws')
@@ -345,9 +344,7 @@ Proof.
   - destruct stmt_ws; simpl in Hfind; discriminate.
   - destruct stmt_ws as [|w stmt_ws']; simpl in Hfind; try discriminate.
     destruct (Nat.eqb (isw_parent_stmt w) parent) eqn:Hparent.
-    + destruct (excluded_middle_informative
-                  (Refine.point_in_pinstr_domain point after_pi))
-        as [Hdom|Hdom].
+    + destruct (in_poly point after_pi.(PolyLang.pi_poly)) eqn:Hdom.
       * inversion Hfind; subst.
         exists after_pi, w.
         split.
@@ -357,7 +354,8 @@ Proof.
            ++ split.
               ** apply Nat.eqb_eq in Hparent.
                  exact Hparent.
-              ** exact Hdom.
+              ** unfold Refine.point_in_pinstr_domain.
+                 exact Hdom.
       * destruct (find_after_stmt_index parent point after_pis stmt_ws')
           as [n'|] eqn:Htail; try discriminate.
         inversion Hfind; subst.

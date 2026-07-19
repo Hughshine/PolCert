@@ -7,6 +7,7 @@ import subprocess
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+OPTIMIZED_LOOP_MARKER = "== Optimized Loop =="
 
 
 def load_manifest(path: pathlib.Path) -> dict[str, object]:
@@ -31,14 +32,27 @@ def load_fixture_map(manifest_path: pathlib.Path, data: dict[str, object]) -> di
     return fixtures
 
 
-def run_polopt(polopt: pathlib.Path, loop_path: pathlib.Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+def run_polopt(
+    polopt: pathlib.Path,
+    input_paths: list[pathlib.Path],
+    args: list[str],
+    timeout: int | None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(polopt), *args, str(loop_path)],
+        [str(polopt), *args, *(str(path) for path in input_paths)],
         cwd=str(ROOT),
         text=True,
         capture_output=True,
+        timeout=timeout,
         check=False,
     )
+
+
+def optimized_loop(stdout: str) -> str | None:
+    pos = stdout.find(OPTIMIZED_LOOP_MARKER)
+    if pos < 0:
+        return None
+    return stdout[pos:]
 
 
 def string_list_field(spec: dict[str, object], field: str) -> list[str]:
@@ -57,15 +71,59 @@ def args_list_field(spec: dict[str, object], field: str) -> list[str] | None:
     return list(raw)
 
 
+def input_paths_field(
+    fixtures: dict[str, pathlib.Path],
+    spec: dict[str, object],
+) -> list[pathlib.Path]:
+    raw_input_fixtures = spec.get("input_fixtures")
+    if raw_input_fixtures is None:
+        raw_input_fixtures = [spec.get("fixture")]
+    if (
+        not isinstance(raw_input_fixtures, list)
+        or not raw_input_fixtures
+        or not all(isinstance(name, str) for name in raw_input_fixtures)
+    ):
+        raise SystemExit(
+            f"{spec.get('name', '<unnamed>')}: input_fixtures must be a nonempty string list"
+        )
+    paths: list[pathlib.Path] = []
+    for fixture_name in raw_input_fixtures:
+        if fixture_name not in fixtures:
+            raise SystemExit(
+                f"{spec.get('name', '<unnamed>')}: unknown fixture {fixture_name!r}"
+            )
+        paths.append(fixtures[fixture_name])
+    return paths
+
+
+def string_count_field(spec: dict[str, object], field: str) -> dict[str, int]:
+    raw = spec.get(field, {})
+    if not isinstance(raw, dict):
+        raise SystemExit(f"{spec.get('name', '<unnamed>')}: {field} must be an object")
+    counts: dict[str, int] = {}
+    for needle, count in raw.items():
+        if not isinstance(needle, str) or not isinstance(count, int) or count < 0:
+            raise SystemExit(
+                f"{spec.get('name', '<unnamed>')}: {field} must map strings to nonnegative integers"
+            )
+        counts[needle] = count
+    return counts
+
+
 def evaluate_check(
     fixtures: dict[str, pathlib.Path],
     polopt: pathlib.Path,
     spec: dict[str, object],
+    *,
+    stderr_needles_exactly_once: bool,
+    timeout: int | None,
 ) -> str | None:
     if not isinstance(spec.get("name"), str):
         raise SystemExit("check name must be a string")
-    if not isinstance(spec.get("fixture"), str):
-        raise SystemExit(f"{spec.get('name', '<unnamed>')}: fixture must be a string")
+    if "input_fixtures" not in spec and not isinstance(spec.get("fixture"), str):
+        raise SystemExit(
+            f"{spec.get('name', '<unnamed>')}: fixture must be a string"
+        )
     if not isinstance(spec.get("expect"), str):
         raise SystemExit(f"{spec.get('name', '<unnamed>')}: expect must be a string")
     if "needle" in spec and not isinstance(spec.get("needle"), str):
@@ -73,35 +131,99 @@ def evaluate_check(
     raw_args = spec.get("args", [])
     if not isinstance(raw_args, list) or not all(isinstance(arg, str) for arg in raw_args):
         raise SystemExit(f"{spec['name']}: args must be a string list")
-    fixture_name = str(spec["fixture"])
-    if fixture_name not in fixtures:
-        raise SystemExit(f"{spec['name']}: unknown fixture {fixture_name!r}")
+    input_paths = input_paths_field(fixtures, spec)
 
-    proc = run_polopt(polopt, fixtures[fixture_name], list(raw_args))
+    try:
+        proc = run_polopt(polopt, input_paths, list(raw_args), timeout)
+    except subprocess.TimeoutExpired:
+        return f"{spec['name']}: command timed out after {timeout} seconds"
     expected = str(spec["expect"])
     needles = []
     if "needle" in spec:
         needles.append(str(spec["needle"]))
     needles.extend(string_list_field(spec, "needles"))
     absent_needles = string_list_field(spec, "absent_needles")
+    stdout_min_counts = string_count_field(spec, "stdout_min_counts")
+    stderr_needles = string_list_field(spec, "stderr_needles")
+    stderr_absent_needles = string_list_field(spec, "stderr_absent_needles")
+    stderr_counts = string_count_field(spec, "stderr_counts")
     differs_from_args = args_list_field(spec, "differs_from_args")
     if expected == "success":
         if proc.returncode != 0:
             return f"{spec['name']}: expected success, got exit {proc.returncode}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        optimized = optimized_loop(proc.stdout)
+        if optimized is None:
+            return (
+                f"{spec['name']}: successful optimization omitted the final optimized-loop section"
+                f"\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
         for needle in needles:
-            if needle not in proc.stdout:
+            if needle not in optimized:
                 return f"{spec['name']}: missing {needle!r} in stdout\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
         for needle in absent_needles:
-            if needle in proc.stdout:
+            if needle in optimized:
                 return f"{spec['name']}: unexpected {needle!r} in stdout\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle, minimum in stdout_min_counts.items():
+            actual = optimized.count(needle)
+            if actual < minimum:
+                return (
+                    f"{spec['name']}: expected at least {minimum} occurrences of {needle!r} "
+                    f"in stdout, found {actual}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+        for needle in stderr_needles:
+            if needle not in proc.stderr:
+                return f"{spec['name']}: missing {needle!r} in stderr\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            if stderr_needles_exactly_once:
+                actual_count = proc.stderr.count(needle)
+                if actual_count != 1:
+                    return (
+                        f"{spec['name']}: expected exactly one occurrence of {needle!r} "
+                        f"in stderr, got {actual_count}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                    )
+        expected_route_lines = [
+            needle
+            for needle in stderr_needles
+            if needle.startswith("[tiling-validation] route=")
+        ]
+        if stderr_needles_exactly_once and expected_route_lines:
+            actual_route_lines = [
+                line.strip()
+                for line in proc.stderr.splitlines()
+                if line.strip().startswith("[tiling-validation] route=")
+            ]
+            if actual_route_lines != expected_route_lines:
+                return (
+                    f"{spec['name']}: expected complete route list "
+                    f"{expected_route_lines!r}, got {actual_route_lines!r}"
+                    f"\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+        for needle in stderr_absent_needles:
+            if needle in proc.stderr:
+                return f"{spec['name']}: unexpected {needle!r} in stderr\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        for needle, expected_count in stderr_counts.items():
+            actual_count = proc.stderr.count(needle)
+            if actual_count != expected_count:
+                return (
+                    f"{spec['name']}: expected {expected_count} occurrences of {needle!r} "
+                    f"in stderr, got {actual_count}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
         if differs_from_args is not None:
-            baseline = run_polopt(polopt, fixtures[fixture_name], differs_from_args)
+            try:
+                baseline = run_polopt(polopt, input_paths, differs_from_args, timeout)
+            except subprocess.TimeoutExpired:
+                return f"{spec['name']}: baseline command timed out after {timeout} seconds"
             if baseline.returncode != 0:
                 return (
                     f"{spec['name']}: baseline command failed with exit {baseline.returncode}\n"
                     f"baseline stdout:\n{baseline.stdout}\nbaseline stderr:\n{baseline.stderr}"
                 )
-            if baseline.stdout == proc.stdout:
+            baseline_optimized = optimized_loop(baseline.stdout)
+            if baseline_optimized is None:
+                return (
+                    f"{spec['name']}: baseline command omitted the optimized-loop section"
+                    f"\nbaseline stdout:\n{baseline.stdout}\nbaseline stderr:\n{baseline.stderr}"
+                )
+            if baseline_optimized == optimized:
                 return (
                     f"{spec['name']}: stdout did not differ from baseline args {differs_from_args!r}\n"
                     f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
@@ -123,6 +245,12 @@ def run_manifest_suite(*, manifest_path: pathlib.Path, polopt: pathlib.Path) -> 
     suite_name = data.get("suite_name", "POLOPT-FLAG-SUITE")
     if not isinstance(suite_name, str):
         raise SystemExit("suite_name must be a string")
+    stderr_needles_exactly_once = data.get("stderr_needles_exactly_once", False)
+    if not isinstance(stderr_needles_exactly_once, bool):
+        raise SystemExit("stderr_needles_exactly_once must be a boolean")
+    timeout = data.get("timeout_seconds")
+    if timeout is not None and (not isinstance(timeout, int) or timeout < 1):
+        raise SystemExit("timeout_seconds must be a positive integer")
     raw_checks = data.get("checks", [])
     if not isinstance(raw_checks, list) or not all(isinstance(spec, dict) for spec in raw_checks):
         raise SystemExit("checks must be a list of objects")
@@ -130,7 +258,13 @@ def run_manifest_suite(*, manifest_path: pathlib.Path, polopt: pathlib.Path) -> 
     fixtures = load_fixture_map(manifest_path, data)
     failures: list[str] = []
     for spec in raw_checks:
-        failure = evaluate_check(fixtures, polopt, spec)
+        failure = evaluate_check(
+            fixtures,
+            polopt,
+            spec,
+            stderr_needles_exactly_once=stderr_needles_exactly_once,
+            timeout=timeout,
+        )
         if failure is not None:
             failures.append(failure)
 

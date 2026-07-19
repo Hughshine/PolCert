@@ -1,5 +1,6 @@
 {
   "suite_name": "PARALLEL-CURRENT",
+  "stderr_needles_exactly_once": true,
   "fixtures": {
     "positive": "fixtures/positive.loop",
     "diamond-example-inner-batch": "fixtures/diamond-example-inner-batch.loop",
@@ -17,6 +18,9 @@
       ],
       "expect": "success",
       "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": []
     },
     {
@@ -29,6 +33,9 @@
       ],
       "expect": "success",
       "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--diamond-tile"
       ]
@@ -48,6 +55,9 @@
         "/ 32",
         "i4 + (-1 * i5)"
       ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--diamond-tile"
       ]
@@ -68,6 +78,9 @@
         "/ 32",
         "i4 + (-1 * i5)"
       ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--diamond-tile",
         "--iss"
@@ -89,6 +102,9 @@
         "a[",
         "b["
       ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--diamond-tile"
       ]
@@ -103,6 +119,9 @@
       ],
       "expect": "success",
       "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--iss"
       ]
@@ -121,6 +140,9 @@
         "32 *",
         "/ 32"
       ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["route=general-fallback", "[alarm]"],
       "differs_from_args": [
         "--identity-tiled"
       ]

@@ -9,6 +9,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "polopt_flag_suites"))
 
 from manifest_runner import run_manifest_suite
+from check_rejected_tiling_route import check_rejected_tiling_route
+from check_second_level_diamond_routes import check_second_level_diamond_route_matrix
+from check_suite_manifest import check_manifest
+from check_standalone_formal_route import check_standalone_formal_route
 
 
 def main() -> int:
@@ -18,10 +22,38 @@ def main() -> int:
         "--manifest",
         default=str(pathlib.Path(__file__).resolve().with_name("suite_manifest.json")),
     )
+    ap.add_argument("--timeout", type=int, default=120)
     args = ap.parse_args()
 
+    manifest_path = pathlib.Path(args.manifest).resolve()
+    check_manifest(manifest_path)
+    check_standalone_formal_route(
+        polopt=pathlib.Path(args.polopt).resolve(),
+        loop_fixture=pathlib.Path(__file__).resolve().parent
+        / "fixtures"
+        / "symbolic-independent-2d.loop",
+        timeout=args.timeout,
+    )
+    check_rejected_tiling_route(
+        polopt=pathlib.Path(args.polopt).resolve(),
+        fixture=pathlib.Path(__file__).resolve().parent
+        / "fixtures"
+        / "symbolic-independent-2d.loop",
+        timeout=args.timeout,
+    )
+    check_second_level_diamond_route_matrix(
+        polopt=pathlib.Path(args.polopt).resolve(),
+        fixture=(
+            pathlib.Path(__file__).resolve().parents[1]
+            / "parallel_current"
+            / "fixtures"
+            / "diamond-example-inner-batch.loop"
+        ),
+        timeout=args.timeout,
+    )
+
     return run_manifest_suite(
-        manifest_path=pathlib.Path(args.manifest).resolve(),
+        manifest_path=manifest_path,
         polopt=pathlib.Path(args.polopt).resolve(),
     )
 

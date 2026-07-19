@@ -143,8 +143,8 @@ def main() -> None:
     parser.add_argument(
         "--timeout-seconds",
         type=int,
-        default=300,
-        help="Per-case timeout for invoking polopt",
+        default=None,
+        help="Per-case timeout for invoking polopt (default: 300 unless set by a manifest)",
     )
     parser.add_argument(
         "--polopt-arg",
@@ -172,9 +172,29 @@ def main() -> None:
     polopt_path = pathlib.Path(str(manifest.get("polopt", args.polopt)))
     if args.polopt != parser.get_default("polopt"):
         polopt_path = pathlib.Path(args.polopt)
-    timeout_seconds = int(manifest.get("timeout_seconds", args.timeout_seconds))
-    if args.timeout_seconds != parser.get_default("timeout_seconds"):
+    manifest_timeout = manifest.get("timeout_seconds", 300)
+    if (
+        not isinstance(manifest_timeout, int)
+        or isinstance(manifest_timeout, bool)
+        or manifest_timeout <= 0
+    ):
+        raise SystemExit("timeout_seconds must be a positive integer")
+    timeout_overridden = args.timeout_seconds is not None
+    timeout_seconds = manifest_timeout
+    if timeout_overridden:
         timeout_seconds = args.timeout_seconds
+    if timeout_seconds is None or timeout_seconds <= 0:
+        raise SystemExit("timeout_seconds must be positive")
+
+    case_timeouts = manifest.get("case_timeouts", {})
+    if not isinstance(case_timeouts, dict) or not all(
+        isinstance(name, str)
+        and isinstance(value, int)
+        and not isinstance(value, bool)
+        and value > 0
+        for name, value in case_timeouts.items()
+    ):
+        raise SystemExit("case_timeouts must map case stems to positive integers")
 
     polopt_args = manifest.get("polopt_args", [])
     if not isinstance(polopt_args, list) or not all(isinstance(arg, str) for arg in polopt_args):
@@ -220,12 +240,17 @@ def main() -> None:
         )
         print(f"[{index}/{total}] {src.stem}: running", flush=True)
         try:
+            case_timeout = (
+                timeout_seconds
+                if timeout_overridden
+                else case_timeouts.get(src.stem, timeout_seconds)
+            )
             outcome = run_case(
                 polopt,
                 list(polopt_args),
                 src,
                 scratch_dir,
-                timeout_seconds,
+                case_timeout,
             )
             if case_dir.exists():
                 shutil.rmtree(case_dir)

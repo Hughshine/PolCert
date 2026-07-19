@@ -101,8 +101,17 @@ def base_checks(
                 "tools/end_to_end_c/run_case.py",
                 "tools/end_to_end_c/runner_common.py",
                 "tools/diamond_tiling/run_pluto_diamond_suite.py",
+                "tools/parallel_current/run_parallel_current_suite.py",
+                "tools/vector_current/run_vector_current_suite.py",
+                "tools/tiling_routes/check_non_second_level_routes.py",
+                "tools/polopt_flag_suites/manifest_runner.py",
                 "tools/polopt_flag_suites/pluto_compat_driver.py",
                 "tools/polopt_flag_suites/run_pluto_compat_suite.py",
+                "tools/second_level_tiling/check_second_level_diamond_routes.py",
+                "tools/second_level_tiling/check_scheduler_flag_forwarding.py",
+                "tools/second_level_tiling/check_standalone_formal_route.py",
+                "tools/second_level_tiling/check_suite_manifest.py",
+                "tools/second_level_tiling/run_second_level_tile_suite.py",
             ],
             60,
         ),
@@ -153,7 +162,19 @@ def base_checks(
         (
             "identity-composition-exploration",
             identity_composition_command,
-            180,
+            900,
+        ),
+        (
+            "non-second-level-tiling-routes",
+            [
+                sys.executable,
+                "tools/tiling_routes/check_non_second_level_routes.py",
+                "--polopt",
+                "./polopt",
+                "--timeout",
+                "180",
+            ],
+            900,
         ),
         (
             "pluto-compat-suite",
@@ -241,14 +262,24 @@ def base_checks(
             120,
         ),
         (
+            "second-level-scheduler-forwarding",
+            [
+                sys.executable,
+                "tools/second_level_tiling/check_scheduler_flag_forwarding.py",
+            ],
+            60,
+        ),
+        (
             "second-level-suite",
             [
                 sys.executable,
                 "tools/second_level_tiling/run_second_level_tile_suite.py",
                 "--polopt",
                 "./polopt",
+                "--timeout",
+                "180",
             ],
-            300,
+            1800,
         ),
         (
             "diamond-suite",
@@ -267,10 +298,31 @@ def base_checks(
 
 def full_checks() -> list[tuple[str, list[str], int | None]]:
     return [
-        ("check-admitted", ["make", "-s", "check-admitted"], 120),
-        ("strict-loop-suite", ["make", "test-polopt-loop-suite"], None),
-        ("iss-suite", ["make", "test-iss-pluto-suite"], None),
-        ("parallel-current-suite", ["make", "test-parallel-current-suite"], None),
+        (
+            "check-admitted",
+            ["opam", "exec", "--", "make", "-s", "check-admitted"],
+            120,
+        ),
+        (
+            "strict-loop-suite",
+            ["opam", "exec", "--", "make", "test-polopt-loop-suite"],
+            None,
+        ),
+        (
+            "iss-suite",
+            ["opam", "exec", "--", "make", "test-iss-pluto-suite"],
+            None,
+        ),
+        (
+            "parallel-current-suite",
+            ["opam", "exec", "--", "make", "test-parallel-current-suite"],
+            None,
+        ),
+        (
+            "vector-current-suite",
+            ["opam", "exec", "--", "make", "test-vector-current-suite"],
+            None,
+        ),
     ]
 
 

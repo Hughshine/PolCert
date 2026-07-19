@@ -196,6 +196,7 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     syntax/SLoopDispatch.cmi \
     syntax/SLoopProfile.cmi \
     syntax/SLoopIss.cmi \
+    syntax/TilingValidationRoute.cmi \
     lib/Camlcoq.cmi
 
 # These modules have no .mli file.  Their .cmi files are produced as a
@@ -203,9 +204,26 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
 # parallel builds that see the hand-written .cmi dependencies above.
 lib/Camlcoq.cmi: lib/Camlcoq.cmx
 	@true
+
+syntax/TilingValidationRoute.cmi: syntax/TilingValidationRoute.cmx
+	@true
 extraction/ImpureConfig.cmi: extraction/ImpureConfig.cmx
 	@true
 extraction/SParallelPolOpt.cmi: extraction/SParallelPolOpt.cmx
+	@true
+extraction/ParallelPolOpt.cmi: extraction/ParallelPolOpt.cmx
+	@true
+extraction/PolOptBandTiling.cmi: extraction/PolOptBandTiling.cmx
+	@true
+extraction/TilingBandScheduleValidator.cmi: extraction/TilingBandScheduleValidator.cmx
+	@true
+extraction/STilingBandSched.cmi: extraction/STilingBandSched.cmx
+	@true
+extraction/SBandTilingOptShared.cmi: extraction/SBandTilingOptShared.cmx
+	@true
+extraction/SParallelPolOptShared.cmi: extraction/SParallelPolOptShared.cmx
+	@true
+extraction/SBandTilingOpt.cmi: extraction/SBandTilingOpt.cmx
 	@true
 driver/Scheduler.cmi: driver/Scheduler.cmx
 	@true

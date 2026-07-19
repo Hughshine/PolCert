@@ -10,10 +10,16 @@ Require Import List.
 
 Local Open Scope impure_scope.
 
-Module ParallelPolOptCorrect (PolIRs: POLIRS).
+Module Type PARALLEL_POL_OPT_CORE (P : POLIRS).
+  Include ParallelPolOpt.ParallelPolOpt P.
+End PARALLEL_POL_OPT_CORE.
 
-Module Core := ParallelPolOpt PolIRs.
-Module CoreOpt := PolOpt PolIRs.
+Module ParallelPolOptCorrect
+    (PolIRs: POLIRS)
+    (ExecutableCore: PARALLEL_POL_OPT_CORE PolIRs).
+
+Module Core := ExecutableCore.
+Module CoreOpt := Core.CoreOpt.
 Module ISSValidatorCorrectCore := ISSValidatorCorrect PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
@@ -31,6 +37,19 @@ Proof.
   intros pol d pl st st' Hopt Hwf Hsem.
   unfold Core.checked_parallel_current_annotated_codegen_at in Hopt.
   eapply Core.checked_parallel_current_annotated_codegen_correct; eauto.
+Qed.
+
+Lemma checked_vector_current_annotated_codegen_at_correct :
+  forall pol d pl st st',
+    mayReturn (Core.checked_vector_current_annotated_codegen_at pol d) (Okk pl) ->
+    PolyLang.wf_pprog_general pol ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hopt Hwf Hsem.
+  unfold Core.checked_vector_current_annotated_codegen_at in Hopt.
+  eapply Core.checked_vector_current_annotated_codegen_correct; eauto.
 Qed.
 
 Lemma checked_parallel_current_many_annotated_codegen_at_correct :
@@ -69,32 +88,37 @@ Proof.
   { remember (Core.ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws)
       as after_res eqn:Hafter.
     destruct after_res as [pol_after|msg_after].
+    { cbn beta iota zeta in Hopt.
+      bind_imp_destruct Hopt route Hroute.
+      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route)
+        eqn:Haccept.
+      { bind_imp_destruct Hopt wf_after_ok Hwf_check.
+        destruct wf_after_ok.
+        { apply mayReturn_pure in Hopt. subst pol_out.
+          pose proof
+            (Core.ValidatorCore.check_wf_polyprog_general_correct
+               pol_after true Hwf_check eq_refl)
+            as Hwf_after.
+          pose proof
+            (proj1 (PolyLang.instance_list_semantics_current_view_iff
+                      pol_after st st' Hwf_after) Hsem_out)
+            as Hsem_after.
+          destruct
+            (Core.TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
+               pol_mid pol_after ws st st' route
+               Hwf_mid Hwf_after Hroute Haccept Hsem_after)
+            as [st_mid [Hmid_sem Heq_mid]].
+          exists st_mid. split; assumption. }
+        { apply mayReturn_pure in Hopt. subst pol_out.
+          exists st'. split; auto. apply State.eq_refl. } }
+      { apply mayReturn_pure in Hopt. subst pol_out.
+        exists st'. split; auto. apply State.eq_refl. } }
     { simpl in Hopt.
-      bind_imp_destruct Hopt ok Hcheck.
-      destruct ok.
-      { eapply mayReturn_pure in Hopt. subst pol_out.
-        pose proof
-          (Core.ValidatorCore.checked_tiling_validate_poly_implies_wf_after
-             pol_mid pol_after ws Hcheck)
-          as Hwf_after.
-        pose proof
-          (proj1 (PolyLang.instance_list_semantics_current_view_iff
-                    pol_after st st' Hwf_after) Hsem_out)
-          as Hsem_after.
-        destruct
-          (Core.ValidatorCore.checked_tiling_validate_poly_correct
-             pol_mid pol_after ws st st' Hcheck Hsem_after)
-          as [st_mid [Hmid_sem Heq_mid]].
-        exists st_mid.
-        split; assumption. }
-      { eapply mayReturn_pure in Hopt. subst pol_out.
-        exists st'. split; auto. eapply State.eq_refl. } }
-    { simpl in Hopt.
-      eapply mayReturn_pure in Hopt. subst pol_out.
-      exists st'. split; auto. eapply State.eq_refl. } }
+      apply mayReturn_pure in Hopt. subst pol_out.
+      exists st'. split; auto. apply State.eq_refl. } }
   { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    apply mayReturn_pure in Hopt. subst pol_out.
+    exists st'. split; auto. apply State.eq_refl. }
 Qed.
 
 Lemma try_verified_tiling_after_phase_mid_poly_wf :
@@ -113,25 +137,29 @@ Proof.
   { remember (Core.ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws)
       as after_res eqn:Hafter.
     destruct after_res as [pol_after|msg_after].
-    { simpl in Hopt.
-      bind_imp_destruct Hopt ok Hcheck.
-      destruct ok.
-      { eapply mayReturn_pure in Hopt. subst pol_out.
-        pose proof
-          (Core.ValidatorCore.checked_tiling_validate_poly_implies_wf_after
-             pol_mid pol_after ws Hcheck)
-          as Hwf_after.
-        pose proof
-          (PolyLang.wf_pprog_general_current_view_affine pol_after Hwf_after)
-          as Hwf_cur_aff.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
-      { eapply mayReturn_pure in Hopt. subst pol_out.
+    { cbn beta iota zeta in Hopt.
+      bind_imp_destruct Hopt route Hroute.
+      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route).
+      { bind_imp_destruct Hopt wf_after_ok Hwf_check.
+        destruct wf_after_ok.
+        { apply mayReturn_pure in Hopt. subst pol_out.
+          pose proof
+            (Core.ValidatorCore.check_wf_polyprog_general_correct
+               pol_after true Hwf_check eq_refl)
+            as Hwf_after.
+          pose proof
+            (PolyLang.wf_pprog_general_current_view_affine pol_after Hwf_after)
+            as Hwf_cur_aff.
+          eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+        { apply mayReturn_pure in Hopt. subst pol_out.
+          eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
+      { apply mayReturn_pure in Hopt. subst pol_out.
         eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
     { simpl in Hopt.
-      eapply mayReturn_pure in Hopt. subst pol_out.
+      apply mayReturn_pure in Hopt. subst pol_out.
       eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
   { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
+    apply mayReturn_pure in Hopt. subst pol_out.
     eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
 Qed.
 
@@ -234,155 +262,61 @@ Proof.
   - destruct
       (Core.ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws)
       as [pol_posttile|msg_after] eqn:Hposttile.
-    + bind_imp_destruct Hopt ok_shape Hcheck_shape.
-      destruct ok_shape.
-      * destruct (Core.TilingSched.infer_pprog_tiling_bands
-                    (Core.TilingSched.Base.outer_to_tiling_pprog pol_mid) ws)
-          as [bands|] eqn:Hbands.
-        -- bind_imp_destruct Hopt ok_perm Hcheck_perm.
-           destruct ok_perm.
-           ++ bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
-              destruct wf_posttile_ok.
-              ** destruct (PolyLang.from_openscop_schedule_only
-                             pol_posttile after_scop)
-                   as [pol_after|msg_final] eqn:Hafter.
-                 --- bind_imp_destruct Hopt final_ok Hfinal.
-                     destruct final_ok.
-                     +++ bind_imp_destruct Hopt wf_after_ok Hwf_check.
-                         destruct wf_after_ok.
-                         *** apply mayReturn_pure in Hopt.
-                             subst pol_out.
-                             pose proof
-                               (Core.ValidatorCore.check_wf_polyprog_general_correct
-                                  pol_after true Hwf_check eq_refl)
-                               as Hwf_after.
-                             pose proof
-                               (proj1
-                                  (PolyLang.instance_list_semantics_current_view_iff
-                                     pol_after st st' Hwf_after)
-                                  Hsem_out)
-                               as Hsem_after.
-                             pose proof
-                               (Core.ValidatorCore.validate_general_correct
-                                  pol_posttile pol_after st st'
-                                  true Hfinal eq_refl Hsem_after)
-                               as Hfinal_corr.
-                             destruct Hfinal_corr as [st_post [Hpost_sem Heq_post]].
-                             remember (Core.TilingSched.Base.outer_to_tiling_pprog pol_mid)
-                               as before_tiling eqn:Hbefore_tiling_eq.
-                             remember (Core.TilingSched.Base.outer_to_tiling_pprog pol_posttile)
-                               as after_tiling eqn:Hafter_tiling_eq.
-                             pose proof Hcheck_shape as Hcheck_shape_sched.
-                             unfold Core.TilingSched.checked_tiling_schedule_stripmined_validate_poly,
-                                    Core.TilingSched.checked_tiling_schedule_stripmined_validate_outer
-                               in Hcheck_shape.
-                             unfold Core.TilingSched.checked_tiling_schedule_stripmined_validate_poly,
-                                    Core.TilingSched.checked_tiling_schedule_stripmined_validate_outer,
-                                    Core.TilingSched.checked_tiling_schedule_stripmined_validate
-                               in Hcheck_shape_sched.
-                             apply mayReturn_pure in Hcheck_shape_sched.
-                             apply andb_true_iff in Hcheck_shape_sched.
-                             destruct Hcheck_shape_sched as [_ Hsched_only].
-                             destruct before_tiling as [[before_pis before_ctxt] before_vars].
-                             destruct after_tiling as [[after_pis after_ctxt] after_vars].
-                             simpl in Hbefore_tiling_eq, Hafter_tiling_eq.
-                             rewrite <- Hbefore_tiling_eq in Hcheck_shape, Hsched_only.
-                             rewrite <- Hafter_tiling_eq in Hcheck_shape, Hsched_only.
-                             simpl in Hcheck_shape, Hsched_only, Hbands.
-                             pose proof
-                               (Core.TilingSched.check_pprog_tiling_schedule_stripminedb_ctxt_sound
-                                  (before_pis, before_ctxt, before_vars)
-                                  (after_pis, after_ctxt, after_vars)
-                                  ws Hsched_only)
-                               as [Hctxt_eq Hvars_eq].
-                             pose proof
-                               (Core.TilingSched.Base.outer_to_tiling_wf_pprog_affine
-                                  pol_mid Hwf_mid)
-                               as Hwf_before_tiling.
-                             rewrite <- Hbefore_tiling_eq in Hwf_before_tiling.
-                             destruct Hwf_before_tiling as [_ Hwf_before_tiling].
-                             assert (Hwfbefore_pis :
-                               List.Forall
-                                 (Core.TilingSched.Base.Tiling.PL.wf_pinstr_tiling
-                                    before_ctxt before_vars)
-                                 before_pis).
-                             {
-                               eapply List.Forall_forall.
-                               intros pi Hin.
-                               eapply
-                                 Core.TilingSched.Base.Tiling.PL.wf_pinstr_affine_implies_wf_pinstr_tiling.
-                               eapply Hwf_before_tiling; eauto.
-                             }
-                             pose proof
-                               (Core.ValidatorCore.check_wf_polyprog_general_correct
-                                  pol_posttile true Hwf_posttile_check eq_refl)
-                               as Hwf_posttile.
-                             pose proof
-                               (Core.TilingSched.Base.outer_to_tiling_wf_pprog_general
-                                  pol_posttile Hwf_posttile)
-                               as Hwf_after_tiling.
-                             rewrite <- Hafter_tiling_eq in Hwf_after_tiling.
-                             rewrite <- Hctxt_eq, <- Hvars_eq in Hwf_after_tiling.
-                             destruct Hwf_after_tiling as [_ Hwf_after_tiling].
-                             assert (Hwfafter_pis :
-                               List.Forall
-                                 (Core.TilingSched.Base.Tiling.PL.wf_pinstr_tiling
-                                    before_ctxt before_vars)
-                                 after_pis).
-                             {
-                               eapply List.Forall_forall.
-                               intros pi Hin.
-                               eapply Hwf_after_tiling; eauto.
-                             }
-                             rewrite <- Hctxt_eq, <- Hvars_eq in Hcheck_shape, Hcheck_perm.
-                             pose proof
-                               (Core.TilingSched.checked_tiling_schedule_stripmined_and_band_validate_correct_same_ctxt
-                                  before_pis before_ctxt before_vars
-                                  after_pis
-                                  ws bands st st_post
-                                  Hcheck_shape Hbands
-                                  Hwfbefore_pis Hwfafter_pis
-                                  Hcheck_perm)
-                               as Hcorr.
-                             apply Core.TilingSched.Base.outer_to_tiling_instance_list_semantics_iff
-                               in Hpost_sem.
-                             rewrite <- Hafter_tiling_eq in Hpost_sem.
-                             rewrite <- Hctxt_eq, <- Hvars_eq in Hpost_sem.
-                             specialize (Hcorr Hpost_sem).
-                             destruct Hcorr as [st_mid [Hmid_tiling Heq_mid]].
-                             rewrite Hbefore_tiling_eq in Hmid_tiling.
-                             apply Core.TilingSched.Base.outer_to_tiling_instance_list_semantics_iff
-                               in Hmid_tiling.
-                             exists st_mid.
-                             split; auto.
-                             eapply State.eq_trans; eauto.
-                         *** apply mayReturn_pure in Hopt.
-                             subst pol_out.
-                             exists st'. split; auto. eapply State.eq_refl.
-                     +++ apply mayReturn_pure in Hopt.
-                         subst pol_out.
-                         exists st'. split; auto. eapply State.eq_refl.
-                 --- apply mayReturn_pure in Hopt.
-                     subst pol_out.
-                     exists st'. split; auto. eapply State.eq_refl.
-              ** apply mayReturn_pure in Hopt.
-                 subst pol_out.
-                 exists st'. split; auto. eapply State.eq_refl.
-           ++ apply mayReturn_pure in Hopt.
-              subst pol_out.
-              exists st'. split; auto. eapply State.eq_refl.
-        -- apply mayReturn_pure in Hopt.
-           subst pol_out.
-           exists st'. split; auto. eapply State.eq_refl.
-      * apply mayReturn_pure in Hopt.
-        subst pol_out.
-        exists st'. split; auto. eapply State.eq_refl.
+    + cbn beta iota zeta in Hopt.
+      bind_imp_destruct Hopt route Hroute.
+      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route)
+        eqn:Haccept.
+      * bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
+        destruct wf_posttile_ok.
+        -- pose proof
+             (Core.ValidatorCore.check_wf_polyprog_general_correct
+                pol_posttile true Hwf_posttile_check eq_refl)
+             as Hwf_posttile.
+           destruct (PolyLang.from_openscop_schedule_only pol_posttile after_scop)
+             as [pol_after|msg_final] eqn:Hafter.
+           ++ bind_imp_destruct Hopt final_ok Hfinal.
+              destruct final_ok.
+              ** bind_imp_destruct Hopt wf_after_ok Hwf_check.
+                 destruct wf_after_ok.
+                 --- apply mayReturn_pure in Hopt. subst pol_out.
+                     pose proof
+                       (Core.ValidatorCore.check_wf_polyprog_general_correct
+                          pol_after true Hwf_check eq_refl)
+                       as Hwf_after.
+                     pose proof
+                       (proj1
+                          (PolyLang.instance_list_semantics_current_view_iff
+                             pol_after st st' Hwf_after)
+                          Hsem_out)
+                       as Hsem_after.
+                     destruct
+                       (Core.ValidatorCore.validate_general_correct
+                          pol_posttile pol_after st st'
+                          true Hfinal eq_refl Hsem_after)
+                       as [st_post [Hpost_sem Heq_post]].
+                     destruct
+                       (Core.TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
+                          pol_mid pol_posttile ws st st_post route
+                          Hwf_mid Hwf_posttile Hroute Haccept Hpost_sem)
+                       as [st_mid [Hmid_sem Heq_mid]].
+                     exists st_mid. split; auto.
+                     eapply State.eq_trans; eauto.
+                 --- apply mayReturn_pure in Hopt. subst pol_out.
+                     exists st'. split; auto. apply State.eq_refl.
+              ** apply mayReturn_pure in Hopt. subst pol_out.
+                 exists st'. split; auto. apply State.eq_refl.
+           ++ apply mayReturn_pure in Hopt. subst pol_out.
+              exists st'. split; auto. apply State.eq_refl.
+        -- apply mayReturn_pure in Hopt. subst pol_out.
+           exists st'. split; auto. apply State.eq_refl.
+      * apply mayReturn_pure in Hopt. subst pol_out.
+        exists st'. split; auto. apply State.eq_refl.
     + apply mayReturn_pure in Hopt.
       subst pol_out.
-      exists st'. split; auto. eapply State.eq_refl.
+      exists st'. split; auto. apply State.eq_refl.
   - apply mayReturn_pure in Hopt.
     subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl.
+    exists st'. split; auto. apply State.eq_refl.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_poly_wf :
@@ -401,53 +335,38 @@ Proof.
   - destruct
       (Core.ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws)
       as [pol_posttile|msg_after] eqn:Hposttile.
-    + bind_imp_destruct Hopt ok_shape Hcheck_shape.
-      destruct ok_shape.
-      * destruct (Core.TilingSched.infer_pprog_tiling_bands
-                    (Core.TilingSched.Base.outer_to_tiling_pprog pol_mid) ws)
-          as [bands|] eqn:Hbands.
-        -- bind_imp_destruct Hopt ok_perm Hcheck_perm.
-           destruct ok_perm.
-           ++ bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
-              destruct wf_posttile_ok.
-              ** destruct (PolyLang.from_openscop_schedule_only
-                             pol_posttile after_scop)
-                   as [pol_after|msg_final] eqn:Hafter.
-                 --- bind_imp_destruct Hopt final_ok Hfinal.
-                     destruct final_ok.
-                     +++ bind_imp_destruct Hopt wf_after_ok Hwf_check.
-                         destruct wf_after_ok.
-                         *** apply mayReturn_pure in Hopt.
-                             subst pol_out.
-                             pose proof
-                               (Core.ValidatorCore.check_wf_polyprog_general_correct
-                                  pol_after true Hwf_check eq_refl)
-                               as Hwf_after.
-                             pose proof
-                               (PolyLang.wf_pprog_general_current_view_affine
-                                  pol_after Hwf_after)
-                               as Hwf_cur_aff.
-                             eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-                         *** apply mayReturn_pure in Hopt.
-                             subst pol_out.
-                             eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-                     +++ apply mayReturn_pure in Hopt.
-                         subst pol_out.
-                         eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-                 --- apply mayReturn_pure in Hopt.
-                     subst pol_out.
-                     eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-              ** apply mayReturn_pure in Hopt.
-                 subst pol_out.
+    + cbn beta iota zeta in Hopt.
+      bind_imp_destruct Hopt route Hroute.
+      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route).
+      * bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
+        destruct wf_posttile_ok.
+        -- destruct (PolyLang.from_openscop_schedule_only pol_posttile after_scop)
+             as [pol_after|msg_final] eqn:Hafter.
+           ++ bind_imp_destruct Hopt final_ok Hfinal.
+              destruct final_ok.
+              ** bind_imp_destruct Hopt wf_after_ok Hwf_check.
+                 destruct wf_after_ok.
+                 --- apply mayReturn_pure in Hopt. subst pol_out.
+                     pose proof
+                       (Core.ValidatorCore.check_wf_polyprog_general_correct
+                          pol_after true Hwf_check eq_refl)
+                       as Hwf_after.
+                     pose proof
+                       (PolyLang.wf_pprog_general_current_view_affine
+                          pol_after Hwf_after)
+                       as Hwf_cur_aff.
+                     eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general;
+                       eauto.
+                 --- apply mayReturn_pure in Hopt. subst pol_out.
+                     eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general;
+                       eauto.
+              ** apply mayReturn_pure in Hopt. subst pol_out.
                  eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-           ++ apply mayReturn_pure in Hopt.
-              subst pol_out.
+           ++ apply mayReturn_pure in Hopt. subst pol_out.
               eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-        -- apply mayReturn_pure in Hopt.
-           subst pol_out.
+        -- apply mayReturn_pure in Hopt. subst pol_out.
            eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-      * apply mayReturn_pure in Hopt.
-        subst pol_out.
+      * apply mayReturn_pure in Hopt. subst pol_out.
         eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
     + apply mayReturn_pure in Hopt.
       subst pol_out.
@@ -1074,6 +993,50 @@ Proof.
   - eapply mayReturn_pure in Hopt. subst pol_out. exact Hwf.
 Qed.
 
+Lemma identity_tiling_opt_prepared_from_poly_with_iss_poly_correct :
+  forall pol pol_out st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.identity_tiling_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
+    PolyLang.instance_list_semantics pol_out st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol pol_out st st' Hwf Hopt Hsem_out.
+  unfold Core.identity_tiling_opt_prepared_from_poly_with_iss_poly in Hopt.
+  bind_imp_destruct Hopt pol_iss Hiss.
+  pose proof
+    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
+    as Hwf_iss.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+       pol_iss pol_out st st' Hwf_iss Hopt Hsem_out)
+    as Hidentity_corr.
+  destruct Hidentity_corr as [st_iss [Hiss_sem Heq_iss]].
+  pose proof
+    (iss_only_prepared_from_poly_correct
+       pol pol_iss st st_iss Hwf Hiss Hiss_sem)
+    as Hiss_corr.
+  destruct Hiss_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma identity_tiling_opt_prepared_from_poly_with_iss_poly_wf :
+  forall pol pol_out,
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.identity_tiling_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
+    PolyLang.wf_pprog_general pol_out.
+Proof.
+  intros pol pol_out Hwf Hopt.
+  unfold Core.identity_tiling_opt_prepared_from_poly_with_iss_poly in Hopt.
+  bind_imp_destruct Hopt pol_iss Hiss.
+  pose proof
+    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
+    as Hwf_iss.
+  eapply identity_tiling_opt_prepared_from_poly_no_iss_poly_wf; eauto.
+Qed.
+
 Lemma iss_affine_prepared_from_poly_correct :
   forall pol pol_out st st',
     PolyLang.wf_pprog_affine pol ->
@@ -1212,6 +1175,38 @@ Proof.
   destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
   pose proof
     (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
+    as Hidentity_corr.
+  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma parallel_current_identity_tiled_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.parallel_current_identity_tiled_prepared_from_poly_with_iss pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.parallel_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_after Hidentity_tiled.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+       pol pol_after Hwf Hidentity_tiled)
+    as Hwf_after.
+  pose proof
+    (checked_parallel_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
        pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
     as Hidentity_corr.
   destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
@@ -1476,6 +1471,40 @@ Proof.
   eapply State.eq_trans; eauto.
 Qed.
 
+Lemma parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct :
+  forall pol dims pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.parallel_current_many_identity_tiled_prepared_from_poly_with_iss
+         pol dims)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol dims pl st st' Hwf Hopt Hsem.
+  unfold Core.parallel_current_many_identity_tiled_prepared_from_poly_with_iss
+    in Hopt.
+  bind_imp_destruct Hopt pol_after Hidentity_tiled.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+       pol pol_after Hwf Hidentity_tiled)
+    as Hwf_after.
+  pose proof
+    (checked_parallel_current_many_annotated_codegen_at_correct
+       pol_after dims pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
+    as Hidentity_corr.
+  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
 Lemma parallel_current_many_diamond_prepared_from_poly_correct :
   forall pol dims pl st st',
     PolyLang.wf_pprog_affine pol ->
@@ -1682,6 +1711,42 @@ Proof.
     as Hwf_pol.
   pose proof
     (parallel_current_identity_tiled_prepared_from_poly_correct
+       pol d pl st st' Hwf_pol Hopt Hsem)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
+  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
+    as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans.
+  - exact Heq_str.
+  - exact Heq_src.
+Qed.
+
+Theorem Opt_parallel_current_identity_tiled_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn
+      (Core.Opt_parallel_current_identity_tiled_with_iss_result loop d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_parallel_current_identity_tiled_with_iss_result in Hopt.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
+       pol0
+       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
+    as Hwf_pol.
+  pose proof
+    (parallel_current_identity_tiled_prepared_from_poly_with_iss_correct
        pol d pl st st' Hwf_pol Hopt Hsem)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
@@ -2004,6 +2069,42 @@ Proof.
   - exact Heq_src.
 Qed.
 
+Theorem Opt_parallel_current_many_identity_tiled_with_iss_result_correct :
+  forall loop dims pl st st',
+    mayReturn
+      (Core.Opt_parallel_current_many_identity_tiled_with_iss_result loop dims)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop dims pl st st' Hopt Hsem.
+  unfold Core.Opt_parallel_current_many_identity_tiled_with_iss_result in Hopt.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
+       pol0
+       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
+    as Hwf_pol.
+  pose proof
+    (parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct
+       pol dims pl st st' Hwf_pol Hopt Hsem)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
+  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
+    as Hext_corr.
+  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans.
+  - exact Heq_str.
+  - exact Heq_src.
+Qed.
+
 Theorem Opt_parallel_current_many_affine_result_correct :
   forall loop dims pl st st',
     mayReturn (Core.Opt_parallel_current_many_affine_result loop dims) (Okk pl) ->
@@ -2258,6 +2359,38 @@ Proof.
   eapply Opt_parallel_current_identity_result_correct; eauto.
 Qed.
 
+Theorem Opt_parallel_current_identity_tiled_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_parallel_current_identity_tiled loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_parallel_current_identity_tiled in Hopt.
+  bind_imp_destruct Hopt res Hres.
+  pose proof Hopt as Hopt_ok.
+  apply res_to_alarm_correct in Hopt_ok.
+  subst res.
+  eapply Opt_parallel_current_identity_tiled_result_correct; eauto.
+Qed.
+
+Theorem Opt_parallel_current_identity_tiled_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_parallel_current_identity_tiled_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_parallel_current_identity_tiled_with_iss in Hopt.
+  bind_imp_destruct Hopt res Hres.
+  pose proof Hopt as Hopt_ok.
+  apply res_to_alarm_correct in Hopt_ok.
+  subst res.
+  eapply Opt_parallel_current_identity_tiled_with_iss_result_correct; eauto.
+Qed.
+
 Theorem Opt_parallel_current_affine_correct :
   forall loop d pl st st',
     mayReturn (Core.Opt_parallel_current_affine loop d) pl ->
@@ -2402,6 +2535,24 @@ Proof.
   eapply Opt_parallel_current_many_identity_tiled_result_correct; eauto.
 Qed.
 
+Theorem Opt_parallel_current_many_identity_tiled_with_iss_correct :
+  forall loop dims pl st st',
+    mayReturn
+      (Core.Opt_parallel_current_many_identity_tiled_with_iss loop dims)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop dims pl st st' Hopt Hsem.
+  unfold Core.Opt_parallel_current_many_identity_tiled_with_iss in Hopt.
+  bind_imp_destruct Hopt res Hres.
+  pose proof Hopt as Hopt_ok.
+  apply res_to_alarm_correct in Hopt_ok.
+  subst res.
+  eapply Opt_parallel_current_many_identity_tiled_with_iss_result_correct; eauto.
+Qed.
+
 Theorem Opt_parallel_current_many_affine_correct :
   forall loop dims pl st st',
     mayReturn (Core.Opt_parallel_current_many_affine loop dims) pl ->
@@ -2512,6 +2663,611 @@ Proof.
   apply res_to_alarm_correct in Hopt_ok.
   subst res.
   eapply Opt_parallel_current_many_with_iss_result_correct; eauto.
+Qed.
+
+Lemma vector_current_identity_prepared_from_poly_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.vector_current_identity_prepared_from_poly pol d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_identity_prepared_from_poly in Hopt.
+  eapply checked_vector_current_annotated_codegen_at_correct; eauto.
+  eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+Qed.
+
+Lemma vector_current_affine_prepared_from_poly_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.vector_current_affine_prepared_from_poly pol d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_affine_prepared_from_poly in Hopt.
+  bind_imp_destruct Hopt pol_mid Hsched.
+  pose proof
+    (CoreOpt.scheduler'_preserve_wf pol pol_mid Hwf pol_mid Hsched eq_refl)
+    as Hwf_mid.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_mid d pl st st' Hopt
+       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
+       Hsem)
+    as Hmid_corr.
+  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
+  pose proof
+    (CoreOpt.scheduler'_correct pol st st_mid pol_mid Hsched Hmid_sem)
+    as Hsched_corr.
+  destruct Hsched_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_prepared_from_poly_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.vector_current_prepared_from_poly pol d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_prepared_from_poly in Hopt.
+  bind_imp_destruct Hopt pol_after Hphase.
+  pose proof
+    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+       pol pol_after Hwf Hphase)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+       pol pol_after st st_after Hwf Hphase Hafter_sem)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_identity_tiled_prepared_from_poly_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.vector_current_identity_tiled_prepared_from_poly pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_identity_tiled_prepared_from_poly in Hopt.
+  bind_imp_destruct Hopt pol_after Hidentity_tiled.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+       pol pol_after Hwf Hidentity_tiled)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
+    as Hidentity_corr.
+  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_identity_tiled_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.vector_current_identity_tiled_prepared_from_poly_with_iss pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_after Hidentity_tiled.
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+       pol pol_after Hwf Hidentity_tiled)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
+    as Hidentity_corr.
+  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_diamond_prepared_from_poly_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.vector_current_diamond_prepared_from_poly pol d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_diamond_prepared_from_poly in Hopt.
+  bind_imp_destruct Hopt pol_after Hdiamond.
+  pose proof
+    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+       pol pol_after Hwf Hdiamond)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
+    as Hdiamond_corr.
+  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.vector_current_diamond_prepared_from_poly_with_iss pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_diamond_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_after Hdiamond.
+  pose proof
+    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+       pol pol_after Hwf Hdiamond)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
+    as Hdiamond_corr.
+  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_identity_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.vector_current_identity_prepared_from_poly_with_iss pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_identity_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_iss Hiss.
+  pose proof
+    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
+    as Hwf_iss.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_iss d pl st st' Hopt
+       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_iss)
+       Hsem)
+    as Hiss_corr.
+  destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
+  pose proof
+    (iss_only_prepared_from_poly_correct pol pol_iss st st_iss Hwf Hiss Hiss_sem)
+    as Hsrc_corr.
+  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_affine_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (Core.vector_current_affine_prepared_from_poly_with_iss pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_affine_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_mid Hiss_affine.
+  pose proof
+    (iss_affine_prepared_from_poly_wf_affine pol pol_mid Hwf Hiss_affine)
+    as Hwf_mid.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_mid d pl st st' Hopt
+       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
+       Hsem)
+    as Hmid_corr.
+  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
+  pose proof
+    (iss_affine_prepared_from_poly_correct
+       pol pol_mid st st_mid Hwf Hiss_affine Hmid_sem)
+    as Hsrc_corr.
+  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma vector_current_prepared_from_poly_with_iss_correct :
+  forall pol d pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.vector_current_prepared_from_poly_with_iss pol d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
+Proof.
+  intros pol d pl st st' Hwf Hopt Hsem.
+  unfold Core.vector_current_prepared_from_poly_with_iss in Hopt.
+  bind_imp_destruct Hopt pol_after Hphase.
+  pose proof
+    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+       pol pol_after Hwf Hphase)
+    as Hwf_after.
+  pose proof
+    (checked_vector_current_annotated_codegen_at_correct
+       pol_after d pl st st' Hopt Hwf_after Hsem)
+    as Hafter_corr.
+  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
+  pose proof
+    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+       pol pol_after st st_after Hwf Hphase Hafter_sem)
+    as Hphase_corr.
+  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Lemma opt_vector_current_result_from_prepared_correct :
+  forall
+    (prepared : PolyLang.t -> nat ->
+      imp (result Core.ParallelCodegenCore.ParallelLoop.t))
+    loop d pl st st',
+    (forall pol d pl st st',
+      PolyLang.wf_pprog_affine pol ->
+      mayReturn (prepared pol d) (Okk pl) ->
+      ParallelLoop.semantics pl st st' ->
+      exists st'',
+        PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st'') ->
+    mayReturn
+      (BIND pol0 <-
+         res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+       let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+       prepared pol d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros prepared loop d pl st st' Hprepared Hopt Hsem.
+  bind_imp_destruct Hopt pol0 Hextimp.
+  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextimp as Hextok.
+  apply res_to_alarm_correct in Hextok.
+  pose proof
+    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
+       pol0
+       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
+    as Hwf_pol.
+  destruct (Hprepared pol d pl st st' Hwf_pol Hopt Hsem)
+    as [st_str [Hstr_sem Heq_str]].
+  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
+  destruct
+    (CoreOpt.Extractor.extractor_correct
+       loop pol0 st st_str Hextok Hstr_sem)
+    as [st_src [Hloop_src Heq_src]].
+  exists st_src.
+  split; auto.
+  eapply State.eq_trans; eauto.
+Qed.
+
+Theorem Opt_vector_current_identity_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_identity_prepared_from_poly_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_tiled_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_tiled_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_tiled_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_identity_tiled_prepared_from_poly_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_tiled_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn
+      (Core.Opt_vector_current_identity_tiled_with_iss_result loop d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_tiled_with_iss_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_identity_tiled_prepared_from_poly_with_iss_correct.
+Qed.
+
+Theorem Opt_vector_current_affine_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_affine_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_affine_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_affine_prepared_from_poly_correct.
+Qed.
+
+Theorem Opt_vector_current_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_prepared_from_poly_correct.
+Qed.
+
+Theorem Opt_vector_current_diamond_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_diamond_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_diamond_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_diamond_prepared_from_poly_correct.
+Qed.
+
+Theorem Opt_vector_current_diamond_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn
+      (Core.Opt_vector_current_diamond_with_iss_result loop d)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_diamond_with_iss_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_diamond_prepared_from_poly_with_iss_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_with_iss_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_with_iss_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_identity_prepared_from_poly_with_iss_correct.
+Qed.
+
+Theorem Opt_vector_current_affine_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_affine_with_iss_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_affine_with_iss_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_affine_prepared_from_poly_with_iss_correct.
+Qed.
+
+Theorem Opt_vector_current_with_iss_result_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_with_iss_result loop d) (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_with_iss_result in Hopt.
+  eapply opt_vector_current_result_from_prepared_correct; eauto.
+  exact vector_current_prepared_from_poly_with_iss_correct.
+Qed.
+
+Lemma opt_vector_current_from_result_correct :
+  forall
+    (result_route : LoopIR.t -> nat ->
+      imp (result Core.ParallelCodegenCore.ParallelLoop.t))
+    loop d pl st st',
+    (forall loop d pl st st',
+      mayReturn (result_route loop d) (Okk pl) ->
+      ParallelLoop.semantics pl st st' ->
+      exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st'') ->
+    mayReturn
+      (BIND res <- result_route loop d -;
+       res_to_alarm Core.parallel_dummy res)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros result_route loop d pl st st' Hresult Hopt Hsem.
+  bind_imp_destruct Hopt res Hres.
+  pose proof Hopt as Hopt_ok.
+  apply res_to_alarm_correct in Hopt_ok.
+  subst res.
+  eapply Hresult; eauto.
+Qed.
+
+Theorem Opt_vector_current_identity_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_identity_result_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_tiled_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_tiled loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_tiled in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_identity_tiled_result_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_tiled_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_tiled_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_tiled_with_iss in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_identity_tiled_with_iss_result_correct.
+Qed.
+
+Theorem Opt_vector_current_affine_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_affine loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_affine in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_affine_result_correct.
+Qed.
+
+Theorem Opt_vector_current_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_result_correct.
+Qed.
+
+Theorem Opt_vector_current_diamond_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_diamond loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_diamond in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_diamond_result_correct.
+Qed.
+
+Theorem Opt_vector_current_diamond_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_diamond_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_diamond_with_iss in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_diamond_with_iss_result_correct.
+Qed.
+
+Theorem Opt_vector_current_identity_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_identity_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_identity_with_iss in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_identity_with_iss_result_correct.
+Qed.
+
+Theorem Opt_vector_current_affine_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_affine_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_affine_with_iss in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_affine_with_iss_result_correct.
+Qed.
+
+Theorem Opt_vector_current_with_iss_correct :
+  forall loop d pl st st',
+    mayReturn (Core.Opt_vector_current_with_iss loop d) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop d pl st st' Hopt Hsem.
+  unfold Core.Opt_vector_current_with_iss in Hopt.
+  eapply opt_vector_current_from_result_correct; eauto.
+  exact Opt_vector_current_with_iss_result_correct.
 Qed.
 
 End ParallelPolOptCorrect.
