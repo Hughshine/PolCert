@@ -157,6 +157,8 @@ reader/*.scop
 log.txt
 
 *.scop
+!tools/tiling_routes/fixtures/diamond-tile-example.midtransform.scop
+!tools/tiling_routes/fixtures/diamond-tile-example.posttile.scop
 .outfilename
 .regtile
 .srcfilename

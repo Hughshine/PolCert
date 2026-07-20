@@ -254,6 +254,37 @@ let run_tiling_pair ~second_level before_path after_path =
   let (before_pol, after_pol) =
     normalize_tiling_validator_inputs before_pol after_pol
   in
+  let debug_band_tiling =
+    match Sys.getenv_opt "POLCERT_DEBUG_BAND_TILING" with
+    | Some value ->
+        let value = String.lowercase_ascii (String.trim value) in
+        value = "1" || value = "true" || value = "yes"
+    | None -> false
+  in
+  if debug_band_tiling then begin
+    let before_t = TBandSched.Base.outer_to_tiling_pprog before_pol in
+    let after_t = TBandSched.Base.outer_to_tiling_pprog after_pol in
+    match TBandSched.infer_pprog_tiling_bands before_t ws with
+    | Some bands ->
+        let (strong_res, strong_ok) =
+          TBandSched.check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
+            before_t after_t ws bands
+        in
+        let (direct_res, direct_ok) =
+          TBandSched.check_pprog_pluto_permutable_tiling_bands_direct
+            before_t after_t ws bands
+        in
+        let (whole_res, whole_ok) =
+          TBandSched.check_pprog_permutable_tiling_bands_via_validate_tiling
+            before_t after_t ws bands
+        in
+        Printf.eprintf
+          "[debug-band-tiling] old-strong=%b(ok=%b) direct-band=%b(ok=%b) whole=%b(ok=%b)\n"
+          strong_res strong_ok direct_res direct_ok whole_res whole_ok
+    | None ->
+        Printf.eprintf
+          "[debug-band-tiling] band-inference=failed\n"
+  end;
   let (res, ok, route) =
     checked_tiling_validate_with_bands before_pol after_pol ws
   in

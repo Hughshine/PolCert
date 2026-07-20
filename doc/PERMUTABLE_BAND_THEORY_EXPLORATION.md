@@ -171,6 +171,48 @@ The isolated prototype currently establishes the following facts:
    pair, and every component in the common band.
 4. Compiled guard-soundness lemmas show that a semantic bad pair belongs to
    both generated polyhedron lists.
-5. The prototype is not connected to the runtime dispatcher. It still needs a
-   checker-result soundness proof, list/component aggregation, heterogeneous
-   second-level bands, and executable regression tests.
+5. A compiled checker-result theorem turns successful guard queries into the
+   absence of WW, WR, and RW collisions, and then into `Permutable_ext` for the
+   concrete instance pair.
+6. Compiled aggregation theorems cover arbitrary ordered statement pairs, all
+   dimensions of the common band, and the program-level common-band wrapper.
+   The final wrapper proves the same strong common-band proposition as the
+   legacy synthetic-schedule checker.
+7. Extraction and OCaml builds succeed. Automated differential checks report
+   `old-strong=true`, `direct-band=true`, and `whole=true`, with no alarms, for
+   ordinary and a frozen diamond phase pair. A mixed-depth example reports
+   `false`, `false`, and `true`, respectively, which is the intended
+   distinction between the common-band and whole-program scopes. Separate
+   phase-pair checks give `true`, `true`, and `true` for both Pluto diamond
+   modes on the current example; both modes produce the same frozen pair.
+8. The 90-case one-level route matrix passes unchanged: 84 compositions use
+   the permutable-band route, six non-innermost vector requests are rejected,
+   and no case uses the general fallback.
+
+The direct wrapper is still disconnected from the runtime dispatcher. The
+remaining work is to support heterogeneous and second-level bands, connect the
+direct wrapper without weakening the existing inference precondition, add a
+frozen negative dependence case, and reuse the existing strong-property proof
+to obtain the final `State.eq` theorem for the new route. Identity and the
+current second-level fixture do not pass the common-band inference gate; their
+existing specialized routes remain unchanged.
+
+## 6. Reproduction Notes
+
+The following wall-clock times were observed on the current machine and
+checkout. They are planning estimates rather than performance claims.
+
+- Recompiling `TilingBandScheduleValidator.vo` after a proof edit took about
+  43 seconds.
+- Regenerating extraction after invalidating its Coq dependency closure took
+  about 7 minutes. Incremental OCaml relinking was much shorter.
+- The four-case direct differential gate took about 8 seconds with warm
+  binaries.
+- The 90-case one-level route matrix took about 3 minutes.
+- The complete second-level tiling suite took about 18 minutes.
+
+The Coq and OCaml builds used `hughshine/polcert:latest`. Diamond execution
+tests used Pluto commit `6f43860` from `gifted_curie`. The Pluto binary currently
+stored in that image reports commit `7cb0892`; it is not the execution baseline
+for the diamond and full-diamond results above. A new artifact image must pin
+and verify `6f43860` before running the route suites.
