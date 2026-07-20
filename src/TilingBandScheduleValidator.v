@@ -9,6 +9,7 @@ Require Import Linalg.
 Require Import Misc.
 Require Import PolyBase.
 Require Import PolyLang.
+Require Import PolyOperations.
 Require Import TilingRelation.
 Require Import TilingBoolChecker.
 Require Import TilingWitness.
@@ -6226,6 +6227,126 @@ Proof.
     discriminate.
 Qed.
 
+(** The synthetic component schedule characterizes exactly the local Pluto
+    band obligation when the selected component exists in both timestamps.
+    The length hypotheses are essential because [lex_compare] zero-extends
+    lists of different lengths. *)
+Lemma project_pluto_band_component_ip_ext_new_sched_ge_iff :
+  forall band dim tau1 tau2,
+    Tiling.PL.instr_point_ext_old_sched_lt tau1 tau2 ->
+    (dim < ptb_len band)%nat ->
+    (ptb_start band + dim <
+       List.length (Tiling.PL.ip_time_stamp1_ext tau1))%nat ->
+    (ptb_start band + dim <
+       List.length (Tiling.PL.ip_time_stamp1_ext tau2))%nat ->
+    (Tiling.PL.instr_point_ext_new_sched_ge
+       (project_pluto_band_component_ip_ext band dim tau1)
+       (project_pluto_band_component_ip_ext band dim tau2) <->
+     instr_point_ext_same_band_slice band tau1 tau2 /\
+     instr_point_ext_band_component_decreases_at band dim tau1 tau2).
+Proof.
+  intros band dim tau1 tau2 Hold Hdim Hlen1 Hlen2.
+  split.
+  - intro Hnew.
+    assert (Hx_some :
+      nth_error
+        (Tiling.PL.ip_time_stamp1_ext tau1)
+        (ptb_start band + dim) <> None).
+    {
+      apply nth_error_Some.
+      lia.
+    }
+    assert (Hy_some :
+      nth_error
+        (Tiling.PL.ip_time_stamp1_ext tau2)
+        (ptb_start band + dim) <> None).
+    {
+      apply nth_error_Some.
+      lia.
+    }
+    destruct
+      (nth_error
+         (Tiling.PL.ip_time_stamp1_ext tau1)
+         (ptb_start band + dim)) as [x|] eqn:Hx;
+      [|contradiction].
+    destruct
+      (nth_error
+         (Tiling.PL.ip_time_stamp1_ext tau2)
+         (ptb_start band + dim)) as [y|] eqn:Hy;
+      [|contradiction].
+    assert (Hone1 :
+      firstn 1
+        (skipn (ptb_start band + dim)
+           (Tiling.PL.ip_time_stamp1_ext tau1)) = [x]).
+    {
+      eapply firstn_one_skipn_of_nth_error_local; exact Hx.
+    }
+    assert (Hone2 :
+      firstn 1
+        (skipn (ptb_start band + dim)
+           (Tiling.PL.ip_time_stamp1_ext tau2)) = [y]).
+    {
+      eapply firstn_one_skipn_of_nth_error_local; exact Hy.
+    }
+    assert (Hnew_not_lt :
+      lex_compare
+        (prioritize_pluto_band_component_ts band dim
+           (Tiling.PL.ip_time_stamp1_ext tau1))
+        (prioritize_pluto_band_component_ts band dim
+           (Tiling.PL.ip_time_stamp1_ext tau2)) <> Lt).
+    {
+      unfold Tiling.PL.instr_point_ext_new_sched_ge,
+             project_pluto_band_component_ip_ext in Hnew.
+      simpl in Hnew.
+      destruct Hnew; congruence.
+    }
+    unfold prioritize_pluto_band_component_ts in Hnew_not_lt.
+    rewrite Hone1, Hone2 in Hnew_not_lt.
+    assert (Hprefix :
+      firstn (ptb_start band)
+        (Tiling.PL.ip_time_stamp1_ext tau1) =
+      firstn (ptb_start band)
+        (Tiling.PL.ip_time_stamp1_ext tau2)).
+    {
+      eapply preserved_equal_length_prefix_reversal_implies_prefix_eq
+        with
+          (old_rest1 :=
+             skipn (ptb_start band)
+               (Tiling.PL.ip_time_stamp1_ext tau1))
+          (old_rest2 :=
+             skipn (ptb_start band)
+               (Tiling.PL.ip_time_stamp1_ext tau2))
+          (new_rest1 := [x] ++ Tiling.PL.ip_time_stamp1_ext tau1)
+          (new_rest2 := [y] ++ Tiling.PL.ip_time_stamp1_ext tau2).
+      - rewrite !firstn_length. lia.
+      - rewrite !firstn_skipn. exact Hold.
+      - exact Hnew_not_lt.
+    }
+    split.
+    + exact Hprefix.
+    + exists x, y.
+      repeat split; try assumption.
+      assert (Hxy : (x > y)%Z).
+      {
+        rewrite Hprefix in Hnew_not_lt.
+        rewrite lex_compare_app in Hnew_not_lt by reflexivity.
+        rewrite lex_compare_reflexive in Hnew_not_lt.
+        simpl in Hnew_not_lt.
+        destruct (Z.compare x y) eqn:Hcmp.
+        - exfalso.
+          apply Hnew_not_lt.
+          exact Hold.
+        - exfalso.
+          apply Hnew_not_lt.
+          reflexivity.
+        - apply Z.compare_gt_iff in Hcmp.
+          lia.
+      }
+      exact Hxy.
+  - intros [Hprefix Hcomponent].
+    eapply project_pluto_band_component_ip_ext_new_sched_ge; eauto.
+Qed.
+
 Lemma stripmined_reversal_implies_prefix_eq_and_band_lt :
   forall prefix1 prefix2 tiles1 tiles2 band1 band2 suffix1 suffix2,
     List.length prefix1 = List.length prefix2 ->
@@ -7559,6 +7680,398 @@ Proof.
     + apply Nat.leb_le. exact Hhd.
     + eapply IH. exact Htl.
 Qed.
+
+(** Direct executable prototype for the Pluto band condition.  Unlike the
+    reduction-based checker below, this constructs the bad-pair region
+    explicitly and does not synthesize a second schedule.  It is deliberately
+    not wired into the runtime dispatcher yet. *)
+Definition make_pluto_band_component_guard_polys
+    (pi1 pi2: Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band)
+    (dim env_size: nat)
+    : option (list polyhedron * list polyhedron) :=
+  let dom_dim1 := (env_size + Tiling.PL.pi_depth_ext pi1)%nat in
+  let dom_dim2 := (env_size + Tiling.PL.pi_depth_ext pi2)%nat in
+  let sched1 := Tiling.PL.pi_schedule1_ext pi1 in
+  let sched2 := Tiling.PL.pi_schedule1_ext pi2 in
+  match nth_error sched1 (ptb_start band + dim),
+        nth_error sched2 (ptb_start band + dim) with
+  | Some row1, Some row2 =>
+      let old_order := make_poly_lt sched1 sched2 dom_dim1 dom_dim2 [] in
+      let same_prefix :=
+        make_poly_eq
+          (firstn (ptb_start band) sched1)
+          (firstn (ptb_start band) sched2)
+          dom_dim1 dom_dim2 [] in
+      let component_decreases := make_constr_gt row1 row2 in
+      Some (old_order, [[component_decreases] ++ same_prefix])
+  | _, _ => None
+  end.
+
+Lemma make_pluto_band_component_guard_polys_old_order_sound :
+  forall pi1 pi2 band dim env_size old_order bad_component p1 p2,
+    make_pluto_band_component_guard_polys
+      pi1 pi2 band dim env_size = Some (old_order, bad_component) ->
+    List.length p1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat ->
+    List.length p2 =
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+      (Tiling.PL.pi_schedule1_ext pi1) ->
+    lex_compare
+      (affine_product (Tiling.PL.pi_schedule1_ext pi1) p1)
+      (affine_product (Tiling.PL.pi_schedule1_ext pi2) p2) = Lt ->
+    Exists
+      (fun pol => in_poly (p1 ++ p2) pol = true)
+      old_order.
+Proof.
+  intros pi1 pi2 band dim env_size old_order bad_component p1 p2
+         Hmake Hlen1 Hlen2 Hcols Hold.
+  unfold make_pluto_band_component_guard_polys in Hmake.
+  destruct
+    (nth_error
+       (Tiling.PL.pi_schedule1_ext pi1) (ptb_start band + dim));
+    try discriminate.
+  destruct
+    (nth_error
+       (Tiling.PL.pi_schedule1_ext pi2) (ptb_start band + dim));
+    try discriminate.
+  inversion Hmake; subst old_order bad_component; clear Hmake.
+  eapply make_poly_lt_correct; eauto.
+Qed.
+
+Lemma make_pluto_band_component_guard_polys_bad_component_sound :
+  forall pi1 pi2 band dim env_size old_order bad_component p1 p2,
+    make_pluto_band_component_guard_polys
+      pi1 pi2 band dim env_size = Some (old_order, bad_component) ->
+    List.length p1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat ->
+    List.length p2 =
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+      (Tiling.PL.pi_schedule1_ext pi1) ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat
+      (Tiling.PL.pi_schedule1_ext pi2) ->
+    affine_product
+      (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi1)) p1 =
+    affine_product
+      (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi2)) p2 ->
+    (exists row1 row2,
+       nth_error
+         (Tiling.PL.pi_schedule1_ext pi1)
+         (ptb_start band + dim) = Some row1 /\
+       nth_error
+         (Tiling.PL.pi_schedule1_ext pi2)
+         (ptb_start band + dim) = Some row2 /\
+       (Linalg.dot_product (fst row1) p1 + snd row1 >
+        Linalg.dot_product (fst row2) p2 + snd row2)%Z) ->
+    Exists
+      (fun pol => in_poly (p1 ++ p2) pol = true)
+      bad_component.
+Proof.
+  intros pi1 pi2 band dim env_size old_order bad_component p1 p2
+         Hmake Hlen1 Hlen2 Hcols1 Hcols2 Hprefix
+         [row1 [row2 [Hrow1 [Hrow2 Hcomponent]]]].
+  unfold make_pluto_band_component_guard_polys in Hmake.
+  rewrite Hrow1, Hrow2 in Hmake.
+  inversion Hmake; subst old_order bad_component; clear Hmake.
+  destruct row1 as [v1 c1].
+  destruct row2 as [v2 c2].
+  simpl in Hcomponent.
+  assert (Hv1 :
+    List.length v1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat).
+  {
+    eapply Hcols1.
+    - eapply nth_error_In. exact Hrow1.
+    - reflexivity.
+  }
+  assert (Hprefix_poly :
+    in_poly (p1 ++ p2)
+      (make_poly_eq
+         (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi1))
+         (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi2))
+         (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+         (env_size + Tiling.PL.pi_depth_ext pi2)%nat []) = true).
+  {
+    apply
+      (proj2
+         (make_poly_eq_correct_true
+            (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi1))
+            (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi2))
+            (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+            (env_size + Tiling.PL.pi_depth_ext pi2)%nat
+            p1 p2 Hlen1 Hlen2
+            (exact_listzzs_cols_firstn_local
+               _ _ _ Hcols1))).
+    rewrite Hprefix.
+    apply veq_refl.
+  }
+  assert (Hcomponent_poly :
+    satisfies_constraint
+      (p1 ++ p2)
+      (make_constr_gt (v1, c1) (v2, c2)) = true).
+  {
+    apply
+      (proj2
+         (make_constr_gt_correct p1 p2 v1 v2 c1 c2
+            (eq_trans Hlen1 (eq_sym Hv1)))).
+    exact Hcomponent.
+  }
+  apply Exists_cons_hd.
+  change
+    (satisfies_constraint
+       (p1 ++ p2) (make_constr_gt (v1, c1) (v2, c2)) &&
+     in_poly
+       (p1 ++ p2)
+       (make_poly_eq
+          (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi1))
+          (firstn (ptb_start band) (Tiling.PL.pi_schedule1_ext pi2))
+          (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+          (env_size + Tiling.PL.pi_depth_ext pi2)%nat []) = true).
+  rewrite Hcomponent_poly, Hprefix_poly.
+  reflexivity.
+Qed.
+
+Lemma make_pluto_band_component_guard_polys_point_sound :
+  forall env envv nth1 nth2 pi1 pi2 ipl1 ipl2 band dim
+         old_order bad_component ip1 ip2,
+    make_pluto_band_component_guard_polys
+      pi1 pi2 band dim (List.length env) =
+      Some (old_order, bad_component) ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi1 ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi2 ->
+    List.length env = List.length envv ->
+    Tiling.PL.flatten_instr_nth_ext envv nth1 pi1 ipl1 ->
+    Tiling.PL.flatten_instr_nth_ext envv nth2 pi2 ipl2 ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    instr_point_ext_same_band_slice band ip1 ip2 ->
+    instr_point_ext_band_component_decreases_at band dim ip1 ip2 ->
+    Exists
+      (fun pol =>
+         in_poly
+           (Tiling.PL.ip_index_ext ip1 ++ Tiling.PL.ip_index_ext ip2)
+           pol = true)
+      old_order /\
+    Exists
+      (fun pol =>
+         in_poly
+           (Tiling.PL.ip_index_ext ip1 ++ Tiling.PL.ip_index_ext ip2)
+           pol = true)
+      bad_component.
+Proof.
+  intros env envv nth1 nth2 pi1 pi2 ipl1 ipl2 band dim
+         old_order bad_component ip1 ip2
+         Hmake Hwf1 Hwf2 Henv Hflat1 Hflat2 Hin1 Hin2
+         Hold Hprefix Hcomponent.
+  pose proof
+    (Tiling.PL.expand_ts1_eq_sched_index_product_ext
+       envv nth1 pi1 ipl1 ip1 Hflat1 Hin1) as Hts1.
+  pose proof
+    (Tiling.PL.expand_ts1_eq_sched_index_product_ext
+       envv nth2 pi2 ipl2 ip2 Hflat2 Hin2) as Hts2.
+  assert (Hidx1 :
+    List.length (Tiling.PL.ip_index_ext ip1) =
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat).
+  {
+    rewrite Henv.
+    eapply Tiling.PL.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (Hidx2 :
+    List.length (Tiling.PL.ip_index_ext ip2) =
+      (List.length env + Tiling.PL.pi_depth_ext pi2)%nat).
+  {
+    rewrite Henv.
+    eapply Tiling.PL.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (Hcols1 :
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat
+      (Tiling.PL.pi_schedule1_ext pi1)).
+  {
+    pose proof
+      (Tiling.PL.wf_pinstr_ext_tiling_implies_wf_pinstr_ext
+         env pi1 Hwf1) as Hwf.
+    firstorder.
+  }
+  assert (Hcols2 :
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi2)%nat
+      (Tiling.PL.pi_schedule1_ext pi2)).
+  {
+    pose proof
+      (Tiling.PL.wf_pinstr_ext_tiling_implies_wf_pinstr_ext
+         env pi2 Hwf2) as Hwf.
+    firstorder.
+  }
+  split.
+  - eapply make_pluto_band_component_guard_polys_old_order_sound;
+      eauto.
+    unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
+    rewrite Hts1, Hts2 in Hold.
+    exact Hold.
+  - eapply make_pluto_band_component_guard_polys_bad_component_sound;
+      eauto.
+    + unfold instr_point_ext_same_band_slice,
+             instr_point_ext_band_prefix_ts in Hprefix.
+      rewrite Hts1, Hts2 in Hprefix.
+      rewrite !affine_product_firstn_local.
+      exact Hprefix.
+    + destruct Hcomponent as [x [y [Hdim [Hx [Hy Hgt]]]]].
+      rewrite Hts1 in Hx.
+      rewrite Hts2 in Hy.
+      unfold affine_product in Hx, Hy.
+      rewrite nth_error_map_iff in Hx, Hy.
+      destruct Hx as [row1 [Hrow1 Hx]].
+      destruct Hy as [row2 [Hrow2 Hy]].
+      subst x y.
+      exists row1, row2.
+      repeat split; assumption.
+Qed.
+
+Definition validate_two_instrs_pluto_band_component_direct
+    (pi1 pi2: Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band)
+    (dim env_size: nat) : imp bool :=
+  match
+    make_pluto_band_component_guard_polys pi1 pi2 band dim env_size
+  with
+  | None => pure false
+  | Some (old_order, bad_component) =>
+      let iter_dim1 := Tiling.PL.pi_depth_ext pi1 in
+      let iter_dim2 := Tiling.PL.pi_depth_ext pi2 in
+      let dom_dim1 := (env_size + iter_dim1)%nat in
+      let dom_dim2 := (env_size + iter_dim2)%nat in
+      let env_eq_poly := make_poly_env_eq env_size iter_dim1 iter_dim2 in
+      BIND in_domain_poly <-
+        poly_product
+          (Tiling.PL.pi_poly_ext pi1)
+          (Tiling.PL.pi_poly_ext pi2)
+          dom_dim1 dom_dim2 -;
+      BIND env_eq_in_domain <- poly_inter env_eq_poly in_domain_poly -;
+      BIND ww <-
+        BandAffine.forallb_imp
+          (fun w1 =>
+             BandAffine.forallb_imp
+               (fun w2 =>
+                  BandAffine.validate_two_accesses
+                    w1 w2
+                    (Tiling.PL.pi_access_transformation_ext pi1)
+                    (Tiling.PL.pi_access_transformation_ext pi2)
+                    env_eq_in_domain old_order bad_component
+                    dom_dim1 dom_dim2)
+               (Tiling.PL.pi_waccess_ext pi2))
+          (Tiling.PL.pi_waccess_ext pi1) -;
+      BIND wr <-
+        BandAffine.forallb_imp
+          (fun w1 =>
+             BandAffine.forallb_imp
+               (fun r2 =>
+                  BandAffine.validate_two_accesses
+                    w1 r2
+                    (Tiling.PL.pi_access_transformation_ext pi1)
+                    (Tiling.PL.pi_access_transformation_ext pi2)
+                    env_eq_in_domain old_order bad_component
+                    dom_dim1 dom_dim2)
+               (Tiling.PL.pi_raccess_ext pi2))
+          (Tiling.PL.pi_waccess_ext pi1) -;
+      BIND rw <-
+        BandAffine.forallb_imp
+          (fun r1 =>
+             BandAffine.forallb_imp
+               (fun w2 =>
+                  BandAffine.validate_two_accesses
+                    r1 w2
+                    (Tiling.PL.pi_access_transformation_ext pi1)
+                    (Tiling.PL.pi_access_transformation_ext pi2)
+                    env_eq_in_domain old_order bad_component
+                    dom_dim1 dom_dim2)
+               (Tiling.PL.pi_waccess_ext pi2))
+          (Tiling.PL.pi_raccess_ext pi1) -;
+      pure (ww && wr && rw)
+  end.
+
+Fixpoint validate_instr_and_list_pluto_band_component_direct
+    (pi: Tiling.PL.PolyInstr_ext)
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band)
+    (dim env_size: nat) : imp bool :=
+  match pis with
+  | [] => pure true
+  | pi' :: pis' =>
+      BIND forward <-
+        validate_two_instrs_pluto_band_component_direct
+          pi pi' band dim env_size -;
+      if forward then
+        BIND backward <-
+          validate_two_instrs_pluto_band_component_direct
+            pi' pi band dim env_size -;
+        if backward then
+          validate_instr_and_list_pluto_band_component_direct
+            pi pis' band dim env_size
+        else pure false
+      else pure false
+  end.
+
+Fixpoint validate_instr_list_pluto_band_component_direct
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band)
+    (dim env_size: nat) : imp bool :=
+  match pis with
+  | [] => pure true
+  | pi :: pis' =>
+      BIND self <-
+        validate_two_instrs_pluto_band_component_direct
+          pi pi band dim env_size -;
+      if self then
+        BIND cross <-
+          validate_instr_and_list_pluto_band_component_direct
+            pi pis' band dim env_size -;
+        if cross then
+          validate_instr_list_pluto_band_component_direct
+            pis' band dim env_size
+        else pure false
+      else pure false
+  end.
+
+Fixpoint validate_instr_list_pluto_band_components_direct_from
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (band: pinstr_tiling_band)
+    (remaining dim env_size: nat) : imp bool :=
+  match remaining with
+  | O => pure true
+  | S remaining' =>
+      BIND component_ok <-
+        validate_instr_list_pluto_band_component_direct
+          pis band dim env_size -;
+      if component_ok then
+        validate_instr_list_pluto_band_components_direct_from
+          pis band remaining' (S dim) env_size
+      else pure false
+  end.
+
+Definition check_pinstr_list_pluto_permutable_band_direct
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (band: pinstr_tiling_band) : imp bool :=
+  let pis :=
+    Tiling.compose_tiling_pinstrs_ext_from_after
+      env_size before_pis after_pis ws in
+  let aligned :=
+    Nat.eqb (List.length before_pis) (List.length after_pis) &&
+    Nat.eqb (List.length before_pis) (List.length ws) &&
+    Nat.eqb (List.length before_pis) (List.length pis) in
+  let valid_access := BandAffine.check_valid_access pis in
+  BIND res <-
+    validate_instr_list_pluto_band_components_direct_from
+      pis band (ptb_len band) O env_size -;
+  pure (aligned && res && valid_access).
 
 Definition check_pinstr_list_permutable_tiling_band_via_validate_tiling
     (env_size: nat)
