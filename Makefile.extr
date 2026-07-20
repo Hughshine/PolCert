@@ -97,6 +97,7 @@ ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) \
   extraction/TilingBandScheduleValidator.cmx \
+  extraction/TilingBandDirectRuntime.cmx \
   extraction/TPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
   driver/Entry.cmx)
@@ -161,7 +162,7 @@ clightgen.byte: $(CLIGHTGEN_OBJS:.cmx=.cmo)
 include .depend.extr
 
 driver/Entry.cmo driver/Entry.cmx: \
-    extraction/TilingBandScheduleValidator.cmi \
+    extraction/TilingBandDirectRuntime.cmi \
     extraction/TPolOpt.cmi \
     extraction/TilingWitness.cmi \
     syntax/PlutoTilingValidator.cmi \
@@ -216,6 +217,8 @@ extraction/ParallelPolOpt.cmi: extraction/ParallelPolOpt.cmx
 extraction/PolOptBandTiling.cmi: extraction/PolOptBandTiling.cmx
 	@true
 extraction/TilingBandScheduleValidator.cmi: extraction/TilingBandScheduleValidator.cmx
+	@true
+extraction/TilingBandDirectRuntime.cmi: extraction/TilingBandDirectRuntime.cmx
 	@true
 extraction/STilingBandSched.cmi: extraction/STilingBandSched.cmx
 	@true

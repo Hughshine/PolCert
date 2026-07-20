@@ -8,7 +8,7 @@ Require Import OpenScop.
 Require Import ParallelCodegen.
 Require Import Validator.
 Require Import PolOpt.
-Require Import TilingBandScheduleValidator.
+Require Import TilingBandDirectRuntime.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
@@ -19,7 +19,7 @@ Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
 Module ValidatorCore := Validator PolIRs.
 Module ParallelCodegenCore := ParallelCodegen PolIRs.
-Module TilingSched := TilingBandScheduleValidator PolIRs.
+Module TilingSched := TilingBandDirectRuntime PolIRs.
 Module LoopIR := PolIRs.Loop.
 
 Definition parallel_plan_of_dim (d : nat) : ValidatorCore.parallel_plan :=

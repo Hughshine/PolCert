@@ -9,7 +9,7 @@ import subprocess
 
 
 REJECTED_ROUTE = "[tiling-validation] route=rejected"
-PERMUTABLE_ROUTE = "[tiling-validation] route=permutable-band"
+FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
 NO_VECTOR_HINT = "[vector-validation] status=skipped reason=no-hint"
 
 
@@ -117,9 +117,9 @@ def check_rejected_tiling_route(
             )
             if strict.returncode != 0:
                 raise AssertionError(f"{label} conservative fallback failed")
-            if route_lines(strict.stderr) != [PERMUTABLE_ROUTE]:
+            if route_lines(strict.stderr) != [FALLBACK_ROUTE]:
                 raise AssertionError(
-                    f"{label} did not preserve its verified producer route"
+                    f"{label} did not preserve its verified fallback route"
                 )
             if "[alarm]" in strict.stderr:
                 raise AssertionError(f"{label} raised an alarm for an optional annotation")
@@ -177,7 +177,7 @@ def check_rejected_tiling_route(
     print(
         "rejected tiling route: PASS "
         "(invalid witness, scalar-only early exit, four vector skips preserve "
-        "their producers, and eight explicit-current failures are explicit)"
+        "their verified fallbacks, and eight explicit-current failures are explicit)"
     )
 
 
