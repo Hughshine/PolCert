@@ -264,6 +264,15 @@ measured clean build and full check serially requires about one hour on the
 measured container; artifact instructions should budget roughly 65 minutes,
 excluding the Docker image build itself.
 
+After the identity-like second-level direct route was added, two serial
+core-change rebuilds from `src/TilingBandScheduleValidator.v` through extracted
+`polopt` took `2020s` (`33:40`) and `1707s` (`28:27`) in the long-lived
+`gifted_curie` container. The final focused gates measured `1040s` (`17:20`)
+for the second-level suite, `332s` (`5:32`) for all 133 Pluto-compatibility
+checks, and `209s` (`3:29`) for the 90-case one-level route matrix. These are
+observed serial runtimes on a prepared container, not universal performance
+claims; a clean artifact run still needs the larger budget above.
+
 The pre-fast-path comparison against the identity route was:
 
 - identity route:
@@ -455,8 +464,8 @@ The implemented route follows the architecture from the design notes:
 - import and validate the diamond-aware affine midpoint
 - validate the `mid_diamond -> posttile` boundary with the unified dispatcher:
   ordinary common-band, whole-program ordinary-tiling permutability,
-  hierarchical second-level permutability, canonical fallback, then general
-  fallback
+  hierarchical second-level permutability, source-like second-level
+  whole-program permutability, canonical fallback, then general fallback
 - validate the final post-tile affine cleanup boundary
 - regenerate code through the PolOpt code generator
 

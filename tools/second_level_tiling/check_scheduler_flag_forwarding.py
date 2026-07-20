@@ -131,6 +131,7 @@ def main() -> None:
         "check_pprog_pluto_permutable_tiling_bands_primary",
         "check_pprog_ordinary_tiling_permutability_via_validate_tiling",
         "check_pprog_second_level_permutable_bands_via_validate_tiling",
+        "check_pprog_source_like_second_level_permutability_via_validate_tiling",
     )
     positions = [band_dispatcher.find(needle) for needle in band_checks]
     if any(position < 0 for position in positions) or positions != sorted(positions):
@@ -151,6 +152,43 @@ def main() -> None:
         raise AssertionError(
             "whole-program ordinary tiling mode must be guarded by the "
             "ordinary-witness classifier"
+        )
+    source_like_recipe = coq_definition_body(
+        band_source,
+        "check_pinstr_source_like_second_level_recipeb",
+    )
+    for needle in (
+        "second_level_recipe_has_strict_zero_rootb",
+        "Tiling.PL.remove_zero_schedule_dims",
+        "listzzs_strict_eqb",
+    ):
+        require(
+            source_like_recipe,
+            needle,
+            "source-like second-level recipe classifier",
+        )
+    for regression in (
+        "source_like_guard_rejects_normalized_schedule_mismatch",
+        "source_like_guard_requires_strict_zero_recipe_root",
+    ):
+        require(
+            band_source,
+            f"Example {regression}",
+            "source-like second-level classifier negative regression",
+        )
+    source_like_direct = coq_definition_body(
+        band_source,
+        "check_pprog_source_like_second_level_permutability_via_validate_tiling",
+    )
+    source_like_checks = (
+        "check_pprog_source_like_second_level_recipesb",
+        "check_pprog_permutable_tiling_bands_via_validate_tiling",
+    )
+    positions = [source_like_direct.find(needle) for needle in source_like_checks]
+    if any(position < 0 for position in positions) or positions != sorted(positions):
+        raise AssertionError(
+            "source-like second-level mode must be guarded by exact recipe/source "
+            "zero-row equivalence"
         )
     fallback_dispatcher = coq_definition_body(band_source, unified_route)
     fallback_checks = (
@@ -348,7 +386,6 @@ def main() -> None:
         "AFFINE_PLUTO_FLAGS",
         "TILING_PLUTO_FLAGS",
         "expected_route=BAND_ROUTE",
-        "expected_route=FALLBACK_ROUTE",
         "if route_lines != [expected_route]",
         '"--validate-tiling-openscop"',
     ):

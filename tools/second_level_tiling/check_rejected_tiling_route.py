@@ -10,7 +10,6 @@ import subprocess
 
 REJECTED_ROUTE = "[tiling-validation] route=rejected"
 PERMUTABLE_ROUTE = "[tiling-validation] route=permutable-band"
-GENERAL_FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
 NO_VECTOR_HINT = "[vector-validation] status=skipped reason=no-hint"
 
 
@@ -118,8 +117,7 @@ def check_rejected_tiling_route(
             )
             if strict.returncode != 0:
                 raise AssertionError(f"{label} conservative fallback failed")
-            expected_route = GENERAL_FALLBACK_ROUTE if second_level else PERMUTABLE_ROUTE
-            if route_lines(strict.stderr) != [expected_route]:
+            if route_lines(strict.stderr) != [PERMUTABLE_ROUTE]:
                 raise AssertionError(
                     f"{label} did not preserve its verified producer route"
                 )

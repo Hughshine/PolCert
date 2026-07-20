@@ -10,7 +10,6 @@ import tempfile
 
 
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
-FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
 
 AFFINE_PLUTO_FLAGS = [
     "--dumpscop",
@@ -194,7 +193,7 @@ def check_standalone_formal_route(
             polopt=polopt,
             before=direct_source,
             after=direct_posttile,
-            expected_route=FALLBACK_ROUTE,
+            expected_route=BAND_ROUTE,
             timeout=timeout,
-            label="source-like standalone formal fallback validation",
+            label="source-like standalone formal permutability validation",
         )
