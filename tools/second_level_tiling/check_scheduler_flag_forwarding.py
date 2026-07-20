@@ -224,10 +224,20 @@ def main() -> None:
         "check_pinstr_list_second_level_schedule_variantb",
     )
     for needle in (
-        "check_pinstr_second_level_schedule_stripminedb",
-        "check_pinstr_second_level_schedule_interleavedb",
+        "check_pinstr_second_level_schedule_stripmined_normalizedb",
+        "check_pinstr_second_level_schedule_interleaved_normalizedb",
     ):
         require(schedule_variants, needle, "second-level target schedule variants")
+    normalized_schedule = coq_definition_body(
+        band_source,
+        "check_schedule_up_to_trailing_zero_rowsb",
+    )
+    require_count(
+        normalized_schedule,
+        "Tiling.PL.drop_trailing_zero_schedule",
+        2,
+        "symmetric trailing-zero schedule normalization",
+    )
     strict_shape = coq_definition_body(
         band_source,
         "check_pprog_second_level_schedule_stripminedb",
@@ -245,6 +255,8 @@ def main() -> None:
     for regression in (
         "structural_second_level_guard_rejects_schedule_mismatch",
         "structural_second_level_guard_accepts_interleaved_schedule",
+        "structural_second_level_guard_accepts_dropped_trailing_zero",
+        "structural_second_level_guard_rejects_dropped_internal_zero",
         "structural_second_level_guard_rejects_wrong_same_arity_schedule",
         "structural_second_level_guard_accepts_heterogeneous_band_lengths",
     ):
@@ -265,6 +277,46 @@ def main() -> None:
             "runtime tiling dispatcher must try band checks, canonical fallback, "
             "then general fallback"
         )
+    require_count(
+        fallback_dispatcher,
+        "TilingBandGeneralFallbackAccepted",
+        2,
+        "canonical and general fallback result constructors",
+    )
+
+    for path in (
+        ROOT / "syntax" / "STilingBandSched.v",
+        ROOT / "syntax" / "SBandTilingOpt.v",
+        ROOT / "syntax" / "SParallelPolOpt.v",
+    ):
+        labeler = coq_definition_body(
+            path.read_text(encoding="utf-8"),
+            "tiling_validation_route_label",
+        )
+        for needle in ("TilingBandGeneralFallbackAccepted", '"general-fallback"'):
+            require(labeler, needle, f"fallback Coq label mapping in {path.name}")
+
+    for path in (ROOT / "syntax" / "SLoopMain.ml", ROOT / "driver" / "Entry.ml"):
+        classifier = definition_body(
+            path.read_text(encoding="utf-8"),
+            "classify_tiling_band_route",
+        )
+        for needle in (
+            "TilingBandGeneralFallbackAccepted",
+            'accept_if_wf "general-fallback"',
+        ):
+            require(classifier, needle, f"fallback route mapping in {path.name}")
+
+    require(
+        (ROOT / "extraction" / "extraction.v").read_text(encoding="utf-8"),
+        '"TilingValidationRoute.record_coq_label"',
+        "extracted tiling route recorder hook",
+    )
+    require(
+        (ROOT / "syntax" / "TilingValidationRoute.ml").read_text(encoding="utf-8"),
+        '"[tiling-validation] route=%s\\n"',
+        "tiling route stderr format",
+    )
 
     for path, prefix in (
         (ROOT / "driver" / "VerifiedParallelCompilerConfig.v", "ParallelCore.Opt_"),
