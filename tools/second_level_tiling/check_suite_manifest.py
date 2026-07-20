@@ -24,13 +24,7 @@ BAND_STEMS = {
     "vector-strict",
     "fusion",
 }
-REQUIRED_BAND_ROUTES = {
-    f"second-level-{stem}{'-iss' if iss else ''}-band"
-    for stem in BAND_STEMS
-    for iss in (False, True)
-}
-
-IDENTITY_FALLBACK_STEMS = {
+IDENTITY_BAND_STEMS = {
     "identity-tiled",
     "identity-parallel-current",
     "identity-vector-current",
@@ -40,6 +34,12 @@ IDENTITY_FALLBACK_STEMS = {
     "identity-multipar",
     "identity-multipar-strict",
 }
+REQUIRED_BAND_ROUTES = {
+    f"second-level-{stem}{'-iss' if iss else ''}-band"
+    for stem in BAND_STEMS | IDENTITY_BAND_STEMS
+    for iss in (False, True)
+}
+
 DIAMOND_FALLBACK_STEMS = {
     "diamond",
     "full-diamond",
@@ -52,7 +52,7 @@ DIAMOND_FALLBACK_STEMS = {
 }
 REQUIRED_FALLBACK_ROUTES = {
     f"second-level-{stem}{'-iss' if iss else ''}-general-fallback"
-    for stem in IDENTITY_FALLBACK_STEMS | DIAMOND_FALLBACK_STEMS
+    for stem in DIAMOND_FALLBACK_STEMS
     for iss in (False, True)
 } | {FALLBACK_CHECK}
 

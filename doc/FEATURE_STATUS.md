@@ -138,8 +138,13 @@ Status:
 
 Every tiling-bearing route first tries the ordinary common-band checker,
 whole-program ordinary-tiling permutability, and the hierarchical second-level
-checker, then the proved canonical and general fallback validators. The
-external `permutable-band` label covers all three specialized modes. Every
+checker. A structurally recognized source-like class of second-level schedules
+also has a guarded whole-program permutability mode, selected by an exact
+zero-row-erasure comparison between the parsed recipe roots and source
+schedule. Current identity producers exercise this class; the selector does
+not inspect CLI flags. The proved canonical and general
+fallback validators run only after these checks fail. The external
+`permutable-band` label covers all four specialized modes. Every
 completed tiling attempt prints exactly one
 `[tiling-validation] route=...` line: `permutable-band`, `general-fallback`, or
 `rejected` when the final tiling-bearing pipeline is not adopted. A validator

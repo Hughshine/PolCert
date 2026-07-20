@@ -894,7 +894,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --second-level-tile",
         effect_needles=("/ 256", "8 *", "32 *"),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(

@@ -61,8 +61,12 @@ The main stages are:
   Runs the phase-aligned tiling route. The dispatcher first tries the ordinary
   common-band check, then whole-program ordinary-tiling permutability over the
   composed tiling semantics, and then the hierarchical second-level checker.
-  Only after those specialized modes fail does it try the proved canonical and
-  general fallback validators.
+  A structurally recognized source-like class of second-level schedules whose
+  recipe roots differ from the source only by strict zero scattering rows uses
+  a guarded whole-program permutability check. Current identity producers
+  exercise this class; the selector does not inspect CLI flags.
+  Only after those specialized modes fail does the dispatcher try the proved
+  canonical and general fallback validators.
   Ordinary, second-level, identity-tiled, diamond, ISS, parallel, vector, and
   multipar CLI paths all share this order.
 - `current_view_pprog`
@@ -82,7 +86,8 @@ The main stages are:
 The specialized tiling-permutability-first guarantee is an entrypoint property
 of the verified compiler configurations used by `polopt` and `polcert`.
 The external `permutable-band` route label covers the ordinary common-band,
-ordinary whole-program, and hierarchical second-level modes. Canonical and
+ordinary whole-program, hierarchical second-level, and source-like
+second-level whole-program modes. Canonical and
 general validator functions remain extracted as lower-level proof components
 because the unified dispatcher calls them; they are not alternative compiler
 route selectors.
@@ -91,7 +96,7 @@ For every completed tiling attempt, `polopt` reports exactly one final route on
 stderr: `permutable-band`, `general-fallback`, or `rejected`. The fallback
 label aggregates the proved canonical and general validators; it never denotes
 an unchecked compiler fallback. `rejected` means the final tiling-bearing
-pipeline was not adopted. This can happen because all five tiling validation
+pipeline was not adopted. This can happen because all six tiling validation
 layers rejected the candidate, in which case the already-validated affine
 midpoint is retained, or because a mandatory parallel consumer rejected the
 validated tiled candidate. Automatic vector annotation is instead optional:
