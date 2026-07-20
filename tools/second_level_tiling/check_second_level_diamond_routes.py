@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 
 
-ROUTE = "[tiling-validation] route=general-fallback"
+ROUTE = "[tiling-validation] route=permutable-band"
 BASELINE_ROUTE = "[tiling-validation] route=permutable-band"
 
 
@@ -78,11 +78,12 @@ def check_second_level_diamond_route_matrix(
             )
         if route_lines(proc.stderr) != [ROUTE]:
             raise AssertionError(
-                f"{label} did not report exactly one explicit fallback route\n"
+                f"{label} did not report exactly one direct band route\n"
                 f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
             )
         if (
             "[alarm]" in proc.stderr
+            or "fallback" in proc.stderr
             or (loop_marker is not None and loop_marker not in proc.stdout)
             or "32 *" not in proc.stdout
         ):

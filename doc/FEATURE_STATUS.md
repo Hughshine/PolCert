@@ -138,13 +138,17 @@ Status:
 
 Every tiling-bearing route first tries the ordinary common-band checker,
 whole-program ordinary-tiling permutability, and the hierarchical second-level
-checker. A structurally recognized source-like class of second-level schedules
+checker. A statementwise second-level recognizer accepts exact grouped or
+interleaved target layouts with independently inferred statement bands. Those
+targets receive a whole-program permutability check over the complete composed
+schedule; mixed-depth and diamond/full-diamond second-level routes use this
+mode. A structurally recognized source-like class of second-level schedules
 also has a guarded whole-program permutability mode, selected by an exact
 zero-row-erasure comparison between the parsed recipe roots and source
 schedule. Current identity producers exercise this class; the selector does
 not inspect CLI flags. The proved canonical and general
 fallback validators run only after these checks fail. The external
-`permutable-band` label covers all four specialized modes. Every
+`permutable-band` label covers all five specialized modes. Every
 completed tiling attempt prints exactly one
 `[tiling-validation] route=...` line: `permutable-band`, `general-fallback`, or
 `rejected` when the final tiling-bearing pipeline is not adopted. A validator
@@ -158,7 +162,11 @@ does not emit a tiling route, and produces no optimized fallback. The
 proved fallback validators. The
 second-level regression suite covers ordinary, identity-tiled, diamond,
 full-diamond, ISS, parallel, vector, multipar, explicit-current, and strict
-combinations, including explicit general-fallback cases.
+combinations. Mixed-depth second-level tiling is the explicit
+direct-band regression for heterogeneous statement shapes; the current matrix
+contains no known successful fallback case. A frozen nontrivial OpenScop pair
+separately checks that a successful proved fallback still reports exactly one
+`general-fallback` route without an alarm.
 
 ### Standalone validation / inspection actions exposed by `polopt`
 

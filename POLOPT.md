@@ -302,9 +302,8 @@ What changed:
 
 - the outer tile loops now step in `256`-sized blocks, while the inner tiles remain `32`
 - the generated nest is visibly hierarchical instead of single-level strip-mined
-- this mixed-depth example is accepted by the proved fallback layer and prints
-  `[tiling-validation] route=general-fallback`; uniform second-level examples
-  in the dedicated suite are accepted directly by `permutable-band`
+- this mixed-depth example is accepted directly by the proved whole-program
+  second-level checker and prints `[tiling-validation] route=permutable-band`
 
 ## ISS example: reversal split (`--iss`)
 

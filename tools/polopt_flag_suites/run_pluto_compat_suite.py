@@ -374,7 +374,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile",
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
@@ -385,7 +385,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile",
         effect_needles=("8 *", "/ 256", "32 *"),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]),),
     ),
     Check(
@@ -596,7 +596,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --diamond-tile",
         effect_needles=("32 *",),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_DIAMOND)),
     ),
     Check(
@@ -607,7 +607,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile --diamond-tile",
         effect_needles=("32 *",),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_DIAMOND_ISS)),
     ),
     Check(
@@ -700,7 +700,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --full-diamond-tile",
         effect_needles=("32 *",),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(JACOBI_NODIAMOND), tuple(JACOBI_FULL_DIAMOND)),
     ),
     Check(
@@ -711,7 +711,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile --full-diamond-tile",
         effect_needles=("32 *",),
-        tiling_route="general-fallback",
+        tiling_route="permutable-band",
         differs_from_args=(tuple(JACOBI_NODIAMOND_ISS), tuple(JACOBI_FULL_DIAMOND_ISS)),
     ),
     Check("reject-bare-default", [], MATMUL, False, "Pluto enables --intratileopt by default"),
