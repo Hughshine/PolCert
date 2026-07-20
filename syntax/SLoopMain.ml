@@ -1615,6 +1615,17 @@ let debug_band_tiling_runtime cfg loop =
   in
   begin match bands_opt with
   | Some bands ->
+      let (strong_res, strong_ok) =
+        STilingBandSched.check_pprog_pluto_permutable_tiling_bands_strong
+          before_t after_t ws bands
+      in
+      let (direct_band_res, direct_band_ok) =
+        STilingBandSched.check_pprog_pluto_permutable_tiling_bands_direct_band
+          before_t after_t ws bands
+      in
+      Printf.eprintf
+        "[debug-band-tiling] old-strong=%b(ok=%b) direct-band=%b(ok=%b) whole=%b(ok=%b)\n"
+        strong_res strong_ok direct_band_res direct_band_ok whole_res whole_ok;
       if debug_env_enabled "POLCERT_DEBUG_BAND_TILING" then
         List.iteri
           (fun i band ->

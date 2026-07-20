@@ -25,6 +25,9 @@ Definition check_pprog_permutable_tiling_bands_direct :=
 Definition check_pprog_pluto_permutable_tiling_bands_strong :=
   CoreBandSched.check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling.
 
+Definition check_pprog_pluto_permutable_tiling_bands_direct_band :=
+  CoreBandSched.check_pprog_pluto_permutable_tiling_bands_direct.
+
 Definition checked_tiling_schedule_stripmined_validate_poly :=
   CoreBandSched.checked_tiling_schedule_stripmined_validate_poly.
 

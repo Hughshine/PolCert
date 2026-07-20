@@ -548,6 +548,50 @@ Definition validate_two_instrs (pi1 pi2: PolyLang.PolyInstr_ext) (env_dim: nat) 
 
   pure (res1 && res2 && res3).
 
+Definition validate_two_instrs_under_guards
+    (pi1 pi2: PolyLang.PolyInstr_ext)
+    (env_dim: nat)
+    (order_guards bad_guards: list polyhedron) :=
+  let iter_dim1 := pi1.(PolyLang.pi_depth_ext) in
+  let iter_dim2 := pi2.(PolyLang.pi_depth_ext) in
+  let dom_dim1 := (env_dim + iter_dim1)%nat in
+  let dom_dim2 := (env_dim + iter_dim2)%nat in
+  let env_eq_poly := make_poly_env_eq env_dim iter_dim1 iter_dim2 in
+  BIND in_domain_poly <-
+    poly_product
+      pi1.(PolyLang.pi_poly_ext)
+      pi2.(PolyLang.pi_poly_ext)
+      dom_dim1 dom_dim2 -;
+  BIND env_eq_in_domain <- poly_inter env_eq_poly in_domain_poly -;
+  BIND ww <- forallb_imp (
+    fun waccess1 => forallb_imp (fun waccess2 =>
+      validate_two_accesses
+        waccess1 waccess2
+        pi1.(PolyLang.pi_access_transformation_ext)
+        pi2.(PolyLang.pi_access_transformation_ext)
+        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
+    ) pi2.(PolyLang.pi_waccess_ext)
+  ) pi1.(PolyLang.pi_waccess_ext) -;
+  BIND wr <- forallb_imp (
+    fun waccess1 => forallb_imp (fun raccess2 =>
+      validate_two_accesses
+        waccess1 raccess2
+        pi1.(PolyLang.pi_access_transformation_ext)
+        pi2.(PolyLang.pi_access_transformation_ext)
+        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
+    ) pi2.(PolyLang.pi_raccess_ext)
+  ) pi1.(PolyLang.pi_waccess_ext) -;
+  BIND rw <- forallb_imp (
+    fun raccess1 => forallb_imp (fun waccess2 =>
+      validate_two_accesses
+        raccess1 waccess2
+        pi1.(PolyLang.pi_access_transformation_ext)
+        pi2.(PolyLang.pi_access_transformation_ext)
+        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
+    ) pi2.(PolyLang.pi_waccess_ext)
+  ) pi1.(PolyLang.pi_raccess_ext) -;
+  pure (ww && wr && rw).
+
 Fixpoint validate_instr_and_list (pi_ext: PolyLang.PolyInstr_ext) (pil_ext: list PolyLang.PolyInstr_ext) (env_dim: nat) := 
   match pil_ext with
     | [] => pure true 
@@ -2842,6 +2886,192 @@ Proof.
         eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
   clear - NO_WW NO_WR NO_RW. firstorder.
+Qed.
+
+Lemma validate_two_instrs_under_guards_implies_no_write_collision:
+  forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
+         order_guards bad_guards,
+    WHEN res <-
+      validate_two_instrs_under_guards
+        pi1_ext pi2_ext (length env) order_guards bad_guards
+    THEN
+    res = true ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
+    PolyLang.wf_pinstr_ext_tiling env pi2_ext ->
+    length env = length envv ->
+    PolyLang.flatten_instr_nth_ext envv nth1 pi1_ext ipl1_ext ->
+    PolyLang.flatten_instr_nth_ext envv nth2 pi2_ext ipl2_ext ->
+    forall ip1_ext ip2_ext,
+      In ip1_ext ipl1_ext ->
+      In ip2_ext ipl2_ext ->
+      Exists
+        (fun pol =>
+           in_poly
+             (PolyLang.ip_index_ext ip1_ext ++
+              PolyLang.ip_index_ext ip2_ext) pol = true)
+        order_guards ->
+      Exists
+        (fun pol =>
+           in_poly
+             (PolyLang.ip_index_ext ip1_ext ++
+              PolyLang.ip_index_ext ip2_ext) pol = true)
+        bad_guards ->
+      no_write_collision
+        (pi1_ext.(PolyLang.pi_waccess_ext))
+        (pi2_ext.(PolyLang.pi_waccess_ext))
+        (pi1_ext.(PolyLang.pi_raccess_ext))
+        (pi2_ext.(PolyLang.pi_raccess_ext))
+        ip1_ext ip2_ext.
+Proof.
+  intros pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
+         order_guards bad_guards res Hval Hres Hwf1 Hwf2 Henvlen
+         Hext1 Hext2 ip1 ip2 Hip1 Hip2 Horder Hbad.
+  unfold validate_two_instrs_under_guards in Hval.
+  bind_imp_destruct Hval in_domain_poly Hdomain.
+  bind_imp_destruct Hval env_eq_in_domain Henv.
+  bind_imp_destruct Hval ww Hww.
+  bind_imp_destruct Hval wr Hwr.
+  bind_imp_destruct Hval rw Hrw.
+  apply mayReturn_pure in Hval.
+  rewrite Hres in Hval.
+  do 2 rewrite andb_true_iff in Hval.
+  destruct Hval as ((HwwT & HwrT) & HrwT).
+  subst ww wr rw.
+
+  assert (Hidx1 :
+    length (PolyLang.ip_index_ext ip1) =
+      (length env + PolyLang.pi_depth_ext pi1_ext)%nat).
+  {
+    rewrite Henvlen.
+    eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (Hidx2 :
+    length (PolyLang.ip_index_ext ip2) =
+      (length env + PolyLang.pi_depth_ext pi2_ext)%nat).
+  {
+    rewrite Henvlen.
+    eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (HTF1 :
+    exact_listzzs_cols
+      (length env + PolyLang.pi_depth_ext pi1_ext)
+      (PolyLang.pi_access_transformation_ext pi1_ext)).
+  { clear - Hwf1. firstorder. }
+  assert (HTF2 :
+    exact_listzzs_cols
+      (length env + PolyLang.pi_depth_ext pi2_ext)
+      (PolyLang.pi_access_transformation_ext pi2_ext)).
+  { clear - Hwf2. firstorder. }
+  assert (HTFIP1 :
+    PolyLang.ip_access_transformation_ext ip1 =
+      PolyLang.pi_access_transformation_ext pi1_ext).
+  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+  assert (HTFIP2 :
+    PolyLang.ip_access_transformation_ext ip2 =
+      PolyLang.pi_access_transformation_ext pi2_ext).
+  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+  assert (HW1 :
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
+      (PolyLang.pi_waccess_ext pi1_ext)).
+  { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
+  assert (HR1 :
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
+      (PolyLang.pi_raccess_ext pi1_ext)).
+  { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
+  assert (HW2 :
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
+      (PolyLang.pi_waccess_ext pi2_ext)).
+  { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
+  assert (HR2 :
+    Forall
+      (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
+      (PolyLang.pi_raccess_ext pi2_ext)).
+  { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
+  assert (Hbase :
+    in_poly
+      (PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)
+      env_eq_in_domain = true).
+  {
+    eapply poly_inter_def
+      with (p := PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)
+      in Henv.
+    rewrite poly_inter_pure_def in Henv.
+    rewrite Henv.
+    apply andb_true_intro; split.
+    - rewrite Henvlen.
+      eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto.
+    - rewrite Henvlen in Hdomain.
+      eapply PolyLang.expand_same_env_implies_in_domain_product_pol;
+        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
+  }
+
+  assert (NO_WW :
+    no_ww_collision
+      (pi1_ext.(PolyLang.pi_waccess_ext))
+      (pi2_ext.(PolyLang.pi_waccess_ext)) ip1 ip2).
+  {
+    pose proof Hww as Hww_no_collision.
+    eapply validate_two_accesslist_implies_permut_no_collision1
+      with (p1 := PolyLang.ip_index_ext ip1)
+           (p2 := PolyLang.ip_index_ext ip2)
+      in Hww_no_collision.
+    specialize
+      (Hww_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HW1 HW2
+         Hbase Horder Hbad).
+    unfold no_ww_collision.
+    rewrite HTFIP1, HTFIP2.
+    exact Hww_no_collision.
+  }
+  assert (NO_WR :
+    no_wr_collision
+      (pi1_ext.(PolyLang.pi_waccess_ext))
+      (pi2_ext.(PolyLang.pi_raccess_ext)) ip1 ip2).
+  {
+    pose proof Hwr as Hwr_no_collision.
+    eapply validate_two_accesslist_implies_permut_no_collision1
+      with (p1 := PolyLang.ip_index_ext ip1)
+           (p2 := PolyLang.ip_index_ext ip2)
+      in Hwr_no_collision.
+    specialize
+      (Hwr_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HW1 HR2
+         Hbase Horder Hbad).
+    unfold no_wr_collision.
+    rewrite HTFIP1, HTFIP2.
+    apply Forall_forall.
+    intros r2 Hr2.
+    apply Forall_forall.
+    intros w1 Hw1.
+    eapply Forall_forall in Hwr_no_collision; eauto.
+    eapply Forall_forall in Hwr_no_collision; eauto.
+  }
+  assert (NO_RW :
+    no_wr_collision
+      (pi2_ext.(PolyLang.pi_waccess_ext))
+      (pi1_ext.(PolyLang.pi_raccess_ext)) ip2 ip1).
+  {
+    pose proof Hrw as Hrw_no_collision.
+    eapply validate_two_accesslist_implies_permut_no_collision1
+      with (p1 := PolyLang.ip_index_ext ip1)
+           (p2 := PolyLang.ip_index_ext ip2)
+      in Hrw_no_collision.
+    specialize
+      (Hrw_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HR1 HW2
+         Hbase Horder Hbad).
+    unfold no_wr_collision.
+    rewrite HTFIP1, HTFIP2.
+    apply Forall_forall.
+    intros r1 Hr1in.
+    apply Forall_forall.
+    intros w2 Hw2in.
+    eapply Forall_forall in Hrw_no_collision; eauto.
+    eapply Forall_forall in Hrw_no_collision; eauto.
+    apply cell_neq_symm.
+    exact Hrw_no_collision.
+  }
+  exact (conj NO_WW (conj NO_WR NO_RW)).
 Qed.
 
 

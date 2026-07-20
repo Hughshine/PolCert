@@ -7943,57 +7943,8 @@ Definition validate_two_instrs_pluto_band_component_direct
   with
   | None => pure false
   | Some (old_order, bad_component) =>
-      let iter_dim1 := Tiling.PL.pi_depth_ext pi1 in
-      let iter_dim2 := Tiling.PL.pi_depth_ext pi2 in
-      let dom_dim1 := (env_size + iter_dim1)%nat in
-      let dom_dim2 := (env_size + iter_dim2)%nat in
-      let env_eq_poly := make_poly_env_eq env_size iter_dim1 iter_dim2 in
-      BIND in_domain_poly <-
-        poly_product
-          (Tiling.PL.pi_poly_ext pi1)
-          (Tiling.PL.pi_poly_ext pi2)
-          dom_dim1 dom_dim2 -;
-      BIND env_eq_in_domain <- poly_inter env_eq_poly in_domain_poly -;
-      BIND ww <-
-        BandAffine.forallb_imp
-          (fun w1 =>
-             BandAffine.forallb_imp
-               (fun w2 =>
-                  BandAffine.validate_two_accesses
-                    w1 w2
-                    (Tiling.PL.pi_access_transformation_ext pi1)
-                    (Tiling.PL.pi_access_transformation_ext pi2)
-                    env_eq_in_domain old_order bad_component
-                    dom_dim1 dom_dim2)
-               (Tiling.PL.pi_waccess_ext pi2))
-          (Tiling.PL.pi_waccess_ext pi1) -;
-      BIND wr <-
-        BandAffine.forallb_imp
-          (fun w1 =>
-             BandAffine.forallb_imp
-               (fun r2 =>
-                  BandAffine.validate_two_accesses
-                    w1 r2
-                    (Tiling.PL.pi_access_transformation_ext pi1)
-                    (Tiling.PL.pi_access_transformation_ext pi2)
-                    env_eq_in_domain old_order bad_component
-                    dom_dim1 dom_dim2)
-               (Tiling.PL.pi_raccess_ext pi2))
-          (Tiling.PL.pi_waccess_ext pi1) -;
-      BIND rw <-
-        BandAffine.forallb_imp
-          (fun r1 =>
-             BandAffine.forallb_imp
-               (fun w2 =>
-                  BandAffine.validate_two_accesses
-                    r1 w2
-                    (Tiling.PL.pi_access_transformation_ext pi1)
-                    (Tiling.PL.pi_access_transformation_ext pi2)
-                    env_eq_in_domain old_order bad_component
-                    dom_dim1 dom_dim2)
-               (Tiling.PL.pi_waccess_ext pi2))
-          (Tiling.PL.pi_raccess_ext pi1) -;
-      pure (ww && wr && rw)
+      BandAffine.validate_two_instrs_under_guards
+        pi1 pi2 env_size old_order bad_component
   end.
 
 Fixpoint validate_instr_and_list_pluto_band_component_direct
@@ -8420,6 +8371,28 @@ Definition check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
         | Some band =>
             if check_common_tiling_band_recipeb ws then
               check_pinstr_list_pluto_permutable_band_components_via_validate_tiling
+                (List.length before_ctxt) before_pis after_pis ws band
+            else pure false
+        | None => pure false
+        end
+      else pure false
+    else pure false
+  else pure false.
+
+Definition check_pprog_pluto_permutable_tiling_bands_direct
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    (bands: list pinstr_tiling_band) : imp bool :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars then
+    if Nat.eqb (List.length bands) (List.length before_pis) then
+      if check_uniform_schedule_arityb before_pis then
+        match infer_common_tiling_band bands with
+        | Some band =>
+            if check_common_tiling_band_recipeb ws then
+              check_pinstr_list_pluto_permutable_band_direct
                 (List.length before_ctxt) before_pis after_pis ws band
             else pure false
         | None => pure false
@@ -12422,6 +12395,561 @@ Proof.
   intros before_pis before_ctxt before_vars after_pis ws st1 st2
          Hcheck Harity_before _ Hwf_before_pis Hpluto Hsem_after.
   eapply checked_tiling_schedule_stripmined_validate_correct_same_ctxt_pluto_wf; eauto.
+Qed.
+
+Lemma validate_instr_and_list_pluto_band_component_direct_true_pair :
+  forall pi pis band dim env_size,
+    mayReturn
+      (validate_instr_and_list_pluto_band_component_direct
+         pi pis band dim env_size)
+      true ->
+    forall pi',
+      In pi' pis ->
+      mayReturn
+        (validate_two_instrs_pluto_band_component_direct
+           pi pi' band dim env_size)
+        true /\
+      mayReturn
+        (validate_two_instrs_pluto_band_component_direct
+           pi' pi band dim env_size)
+        true.
+Proof.
+  intros pi pis.
+  induction pis as [|pi' pis IH];
+    intros band dim env_size Hcheck target Hin.
+  - inversion Hin.
+  - simpl in Hcheck.
+    bind_imp_destruct Hcheck forward Hforward.
+    destruct forward.
+    + bind_imp_destruct Hcheck backward Hbackward.
+      destruct backward.
+      * destruct Hin as [Heq | Hin].
+        -- subst target. split; assumption.
+        -- eapply IH; eauto.
+      * apply mayReturn_pure in Hcheck. discriminate.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma validate_instr_list_pluto_band_component_direct_true_pair :
+  forall pis band dim env_size,
+    mayReturn
+      (validate_instr_list_pluto_band_component_direct
+         pis band dim env_size)
+      true ->
+    forall pi1 pi2,
+      In pi1 pis ->
+      In pi2 pis ->
+      mayReturn
+        (validate_two_instrs_pluto_band_component_direct
+           pi1 pi2 band dim env_size)
+        true.
+Proof.
+  intros pis.
+  induction pis as [|pi pis IH];
+    intros band dim env_size Hcheck pi1 pi2 Hin1 Hin2.
+  - inversion Hin1.
+  - simpl in Hcheck.
+    bind_imp_destruct Hcheck self Hself.
+    destruct self.
+    + bind_imp_destruct Hcheck cross Hcross.
+      destruct cross.
+      * destruct Hin1 as [Heq1 | Hin1];
+        destruct Hin2 as [Heq2 | Hin2].
+        -- subst pi1 pi2. exact Hself.
+        -- subst pi1.
+           eapply
+             (proj1
+                (validate_instr_and_list_pluto_band_component_direct_true_pair
+                   pi pis band dim env_size Hcross pi2 Hin2)).
+        -- subst pi2.
+           eapply
+             (proj2
+                (validate_instr_and_list_pluto_band_component_direct_true_pair
+                   pi pis band dim env_size Hcross pi1 Hin1)).
+        -- eapply IH; eauto.
+      * apply mayReturn_pure in Hcheck. discriminate.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma validate_instr_list_pluto_band_components_direct_from_true_component :
+  forall pis band remaining start env_size,
+    mayReturn
+      (validate_instr_list_pluto_band_components_direct_from
+         pis band remaining start env_size)
+      true ->
+    forall dim,
+      (start <= dim < start + remaining)%nat ->
+      mayReturn
+        (validate_instr_list_pluto_band_component_direct
+           pis band dim env_size)
+        true.
+Proof.
+  intros pis band remaining.
+  induction remaining as [|remaining IH];
+    intros start env_size Hcheck dim Hrange.
+  - lia.
+  - simpl in Hcheck.
+    bind_imp_destruct Hcheck component_ok Hcomponent.
+    destruct component_ok.
+    + destruct (Nat.eq_dec dim start) as [Heq | Hneq].
+      * subst dim. exact Hcomponent.
+      * eapply IH.
+        -- exact Hcheck.
+        -- lia.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma HdRel_filter_trans_local :
+  forall (A: Type) (R: A -> A -> Prop) (keep: A -> bool) xs,
+    Relations_1.Transitive R ->
+    Sorted R xs ->
+    forall x,
+      HdRel R x xs ->
+      HdRel R x (filter keep xs).
+Proof.
+  intros A R keep xs Htrans Hsorted.
+  induction Hsorted as [|head xs Hsorted IH Hhead].
+  - intros x Hbefore. constructor.
+  - intros x Hbefore.
+    inversion Hbefore as [|? ? Hx_head]; subst.
+    simpl.
+    destruct (keep head) eqn:Hkeep.
+    + constructor. exact Hx_head.
+    + eapply IH.
+      destruct xs as [|next rest].
+      * constructor.
+      * inversion Hhead as [|? ? Hhead_next]; subst.
+        constructor.
+        eapply Htrans; eauto.
+Qed.
+
+Lemma Sorted_filter_trans_local :
+  forall (A: Type) (R: A -> A -> Prop) (keep: A -> bool) xs,
+    Relations_1.Transitive R ->
+    Sorted R xs ->
+    Sorted R (filter keep xs).
+Proof.
+  intros A R keep xs Htrans Hsorted.
+  induction Hsorted as [|x xs Hsorted IH Hhead].
+  - constructor.
+  - simpl.
+    destruct (keep x) eqn:Hkeep.
+    + constructor.
+      * exact IH.
+      * eapply HdRel_filter_trans_local; eauto.
+    + exact IH.
+Qed.
+
+Lemma flatten_instrs_ext_member_slice_local :
+  forall envv pis ipl ip pi,
+    Tiling.PL.flatten_instrs_ext envv pis ipl ->
+    In ip ipl ->
+    nth_error pis (Tiling.PL.ip_nth_ext ip) = Some pi ->
+    exists ipli,
+      Tiling.PL.flatten_instr_nth_ext
+        envv (Tiling.PL.ip_nth_ext ip) pi ipli /\
+      In ip ipli.
+Proof.
+  intros envv pis ipl ip pi Hflat Hin Hnth.
+  destruct Hflat as [Henv [Hmem [Hnodup Hsorted]]].
+  exists
+    (filter
+       (fun candidate =>
+          Nat.eqb
+            (Tiling.PL.ip_nth_ext candidate)
+            (Tiling.PL.ip_nth_ext ip))
+       ipl).
+  split.
+  - split.
+    + intros candidate Hcandidate.
+      apply filter_In in Hcandidate.
+      destruct Hcandidate as [Hcandidate _].
+      eapply Henv; eauto.
+    + split.
+      * intros candidate.
+        split; intro Hcandidate.
+        -- apply filter_In in Hcandidate.
+           destruct Hcandidate as [Hcandidate Hsame].
+           apply Nat.eqb_eq in Hsame.
+           apply Hmem in Hcandidate.
+           destruct Hcandidate as
+             [pi' [Hnth' [Hprefix [Hbelongs Hlength]]]].
+           rewrite Hsame in Hnth'.
+           rewrite Hnth in Hnth'.
+           inversion Hnth'; subst pi'.
+           split; [exact Hprefix|].
+           split; [exact Hbelongs|].
+           split; [exact Hsame|exact Hlength].
+        -- destruct Hcandidate as
+             [Hprefix [Hbelongs [Hsame Hlength]]].
+           apply filter_In.
+           split.
+           ++ apply Hmem.
+              exists pi.
+              rewrite Hsame.
+              split; [exact Hnth|].
+              split; [exact Hprefix|].
+              split; [exact Hbelongs|exact Hlength].
+           ++ apply Nat.eqb_eq. exact Hsame.
+      * split.
+        -- eapply NoDup_filter; eauto.
+        -- eapply Sorted_filter_trans_local; eauto.
+           eapply Tiling.PL.np_lt_ext_trans.
+  - apply filter_In.
+    split; [exact Hin|].
+    apply Nat.eqb_refl.
+Qed.
+
+Lemma validate_two_instrs_pluto_band_component_direct_sound :
+  forall env envv nth1 nth2 pi1 pi2 ipl1 ipl2 band dim ip1 ip2,
+    mayReturn
+      (validate_two_instrs_pluto_band_component_direct
+         pi1 pi2 band dim (List.length env))
+      true ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi1 ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi2 ->
+    List.length env = List.length envv ->
+    Tiling.PL.flatten_instr_nth_ext envv nth1 pi1 ipl1 ->
+    Tiling.PL.flatten_instr_nth_ext envv nth2 pi2 ipl2 ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi1)
+      (Tiling.PL.pi_raccess_ext pi1)
+      (Tiling.PL.pi_instr_ext pi1) ->
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi2)
+      (Tiling.PL.pi_raccess_ext pi2)
+      (Tiling.PL.pi_instr_ext pi2) ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    instr_point_ext_same_band_slice band ip1 ip2 ->
+    instr_point_ext_band_component_decreases_at band dim ip1 ip2 ->
+    Tiling.PL.Permutable_ext ip1 ip2.
+Proof.
+  intros env envv nth1 nth2 pi1 pi2 ipl1 ipl2 band dim ip1 ip2
+         Hcheck Hwf1 Hwf2 Henv Hflat1 Hflat2 Hin1 Hin2
+         Hvalid1 Hvalid2 Hold Hprefix Hcomponent.
+  unfold validate_two_instrs_pluto_band_component_direct in Hcheck.
+  destruct
+    (make_pluto_band_component_guard_polys
+       pi1 pi2 band dim (List.length env))
+    as [[old_order bad_component]|] eqn:Hguards.
+  - pose proof
+      (make_pluto_band_component_guard_polys_point_sound
+         env envv nth1 nth2 pi1 pi2 ipl1 ipl2 band dim
+         old_order bad_component ip1 ip2 Hguards Hwf1 Hwf2 Henv
+         Hflat1 Hflat2 Hin1 Hin2 Hold Hprefix Hcomponent)
+      as [Horder Hbad].
+    assert (Hcollision :
+      BandAffine.no_write_collision
+        (Tiling.PL.pi_waccess_ext pi1)
+        (Tiling.PL.pi_waccess_ext pi2)
+        (Tiling.PL.pi_raccess_ext pi1)
+        (Tiling.PL.pi_raccess_ext pi2)
+        ip1 ip2).
+    {
+      eapply
+        (BandAffine.validate_two_instrs_under_guards_implies_no_write_collision
+           pi1 pi2 env nth1 nth2 envv ipl1 ipl2
+           old_order bad_component true Hcheck eq_refl);
+        eauto.
+    }
+    assert (Hinstr1 :
+      Tiling.PL.ip_instruction_ext ip1 =
+      Tiling.PL.pi_instr_ext pi1).
+    {
+      eapply Tiling.PL.expand_ip_instr_eq_pi_instr_ext; eauto.
+    }
+    assert (Hinstr2 :
+      Tiling.PL.ip_instruction_ext ip2 =
+      Tiling.PL.pi_instr_ext pi2).
+    {
+      eapply Tiling.PL.expand_ip_instr_eq_pi_instr_ext; eauto.
+    }
+    assert (Htf1 :
+      Tiling.PL.ip_access_transformation_ext ip1 =
+      Tiling.PL.ip_transformation_ext ip1).
+    {
+      assert (Haccess :
+        Tiling.PL.ip_access_transformation_ext ip1 =
+        Tiling.PL.pi_access_transformation_ext pi1).
+      { eapply Tiling.PL.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+      assert (Hcurrent :
+        Tiling.PL.ip_transformation_ext ip1 =
+        Tiling.PL.pi_transformation_ext pi1).
+      { eapply Tiling.PL.expand_ip_instr_eq_pi_tf_ext; eauto. }
+      destruct Hwf1 as [_ Hpi_eq].
+      rewrite Haccess, Hcurrent, Hpi_eq.
+      reflexivity.
+    }
+    assert (Htf2 :
+      Tiling.PL.ip_access_transformation_ext ip2 =
+      Tiling.PL.ip_transformation_ext ip2).
+    {
+      assert (Haccess :
+        Tiling.PL.ip_access_transformation_ext ip2 =
+        Tiling.PL.pi_access_transformation_ext pi2).
+      { eapply Tiling.PL.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+      assert (Hcurrent :
+        Tiling.PL.ip_transformation_ext ip2 =
+        Tiling.PL.pi_transformation_ext pi2).
+      { eapply Tiling.PL.expand_ip_instr_eq_pi_tf_ext; eauto. }
+      destruct Hwf2 as [_ Hpi_eq].
+      rewrite Haccess, Hcurrent, Hpi_eq.
+      reflexivity.
+    }
+    eapply BandAffine.no_write_collision_implies_permutable; eauto.
+    + rewrite Hinstr1. exact Hvalid1.
+    + rewrite Hinstr2. exact Hvalid2.
+  - apply mayReturn_pure in Hcheck.
+    discriminate.
+Qed.
+
+Lemma validate_instr_list_pluto_band_component_direct_sound :
+  forall env envv pis band dim flat ip1 ip2,
+    List.length env = List.length envv ->
+    Forall (Tiling.PL.wf_pinstr_ext_tiling env) pis ->
+    Forall
+      (fun pi =>
+         Instr.valid_access_function
+           (Tiling.PL.pi_waccess_ext pi)
+           (Tiling.PL.pi_raccess_ext pi)
+           (Tiling.PL.pi_instr_ext pi))
+      pis ->
+    mayReturn
+      (validate_instr_list_pluto_band_component_direct
+         pis band dim (List.length env))
+      true ->
+    Tiling.PL.flatten_instrs_ext envv pis flat ->
+    In ip1 flat ->
+    In ip2 flat ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    instr_point_ext_same_band_slice band ip1 ip2 ->
+    instr_point_ext_band_component_decreases_at band dim ip1 ip2 ->
+    Tiling.PL.Permutable_ext ip1 ip2.
+Proof.
+  intros env envv pis band dim flat ip1 ip2 Henv Hwf Hvalid Hcheck
+         Hflat Hin1 Hin2 Hold Hprefix Hcomponent.
+  pose proof Hflat as Hflat_membership.
+  destruct Hflat_membership as [_ [Hmem _]].
+  apply Hmem in Hin1 as Hmember1.
+  apply Hmem in Hin2 as Hmember2.
+  destruct Hmember1 as
+    [pi1 [Hnth1 [Henv1 [Hbelongs1 Hlen1]]]].
+  destruct Hmember2 as
+    [pi2 [Hnth2 [Henv2 [Hbelongs2 Hlen2]]]].
+  assert (Hin_pi1 : In pi1 pis).
+  { eapply nth_error_In; eauto. }
+  assert (Hin_pi2 : In pi2 pis).
+  { eapply nth_error_In; eauto. }
+  destruct
+    (flatten_instrs_ext_member_slice_local
+       envv pis flat ip1 pi1 Hflat Hin1 Hnth1)
+    as [slice1 [Hslice1 Hin_slice1]].
+  destruct
+    (flatten_instrs_ext_member_slice_local
+       envv pis flat ip2 pi2 Hflat Hin2 Hnth2)
+    as [slice2 [Hslice2 Hin_slice2]].
+  assert (Hpair :
+    mayReturn
+      (validate_two_instrs_pluto_band_component_direct
+         pi1 pi2 band dim (List.length env))
+      true).
+  {
+    eapply validate_instr_list_pluto_band_component_direct_true_pair;
+      eauto.
+  }
+  assert (Hwf1 : Tiling.PL.wf_pinstr_ext_tiling env pi1).
+  {
+    eapply Tiling.Forall_nth_error;
+      eauto.
+  }
+  assert (Hwf2 : Tiling.PL.wf_pinstr_ext_tiling env pi2).
+  {
+    eapply Tiling.Forall_nth_error;
+      eauto.
+  }
+  assert (Hvalid1 :
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi1)
+      (Tiling.PL.pi_raccess_ext pi1)
+      (Tiling.PL.pi_instr_ext pi1)).
+  {
+    exact
+      (Tiling.Forall_nth_error
+         _
+         (fun pi =>
+            Instr.valid_access_function
+              (Tiling.PL.pi_waccess_ext pi)
+              (Tiling.PL.pi_raccess_ext pi)
+              (Tiling.PL.pi_instr_ext pi))
+         pis (Tiling.PL.ip_nth_ext ip1) pi1 Hvalid Hnth1).
+  }
+  assert (Hvalid2 :
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi2)
+      (Tiling.PL.pi_raccess_ext pi2)
+      (Tiling.PL.pi_instr_ext pi2)).
+  {
+    exact
+      (Tiling.Forall_nth_error
+         _
+         (fun pi =>
+            Instr.valid_access_function
+              (Tiling.PL.pi_waccess_ext pi)
+              (Tiling.PL.pi_raccess_ext pi)
+              (Tiling.PL.pi_instr_ext pi))
+         pis (Tiling.PL.ip_nth_ext ip2) pi2 Hvalid Hnth2).
+  }
+  eapply
+    (validate_two_instrs_pluto_band_component_direct_sound
+       env envv
+       (Tiling.PL.ip_nth_ext ip1)
+       (Tiling.PL.ip_nth_ext ip2)
+       pi1 pi2 slice1 slice2 band dim ip1 ip2);
+    eauto.
+Qed.
+
+Lemma check_pinstr_list_pluto_permutable_band_direct_sound :
+  forall env envv before_pis after_pis ws band,
+    List.length env = List.length envv ->
+    Forall
+      (Tiling.PL.wf_pinstr_ext_tiling env)
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+         (List.length env) before_pis after_pis ws) ->
+    mayReturn
+      (check_pinstr_list_pluto_permutable_band_direct
+         (List.length env) before_pis after_pis ws band)
+      true ->
+    pprog_pluto_componentwise_permutable_band
+      envv before_pis after_pis ws band.
+Proof.
+  intros env envv before_pis after_pis ws band Henv Hwf Hcheck.
+  unfold check_pinstr_list_pluto_permutable_band_direct in Hcheck.
+  bind_imp_destruct Hcheck components_ok Hcomponents.
+  apply mayReturn_pure in Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  destruct Hcheck as [[_ Hcomponents_true] Hvalid_true].
+  subst components_ok.
+  set (pis :=
+    Tiling.compose_tiling_pinstrs_ext_from_after
+      (List.length env) before_pis after_pis ws).
+  assert (Hvalid :
+    Forall
+      (fun pi =>
+         Instr.valid_access_function
+           (Tiling.PL.pi_waccess_ext pi)
+           (Tiling.PL.pi_raccess_ext pi)
+           (Tiling.PL.pi_instr_ext pi))
+      pis).
+  {
+    unfold pis.
+    eapply BandAffine.check_valid_access_correct.
+    exact Hvalid_true.
+  }
+  unfold pprog_pluto_componentwise_permutable_band,
+         pprog_pluto_permutable_band.
+  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hprefix Hdecreases.
+  destruct Hdecreases as [dim Hcomponent].
+  assert (Hcomponent_check :
+    mayReturn
+      (validate_instr_list_pluto_band_component_direct
+         pis band dim (List.length env))
+      true).
+  {
+    eapply
+      validate_instr_list_pluto_band_components_direct_from_true_component.
+    - exact Hcomponents.
+    - destruct Hcomponent as
+        [x [y [Hdim [Hx [Hy Hgt]]]]].
+      lia.
+  }
+  assert (Hflat_env : Tiling.PL.flatten_instrs_ext envv pis flat).
+  {
+    unfold pis.
+    rewrite Henv.
+    exact Hflat.
+  }
+  eapply
+    (validate_instr_list_pluto_band_component_direct_sound
+       env envv pis band dim flat ip1 ip2);
+    eauto.
+Qed.
+
+Lemma check_pprog_pluto_permutable_tiling_bands_direct_sound_with_env_len :
+  forall before_pis before_ctxt before_vars after_pis ws bands envv,
+    List.length before_ctxt = List.length envv ->
+    infer_pinstr_list_tiling_bands before_pis ws = Some bands ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    Forall2
+      (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Forall2 Tiling.after_matches_tiling_witness after_pis ws ->
+    mayReturn
+      (check_pprog_pluto_permutable_tiling_bands_direct
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws bands)
+      true ->
+    pprog_pluto_permutable_tiling_bands_strong
+      envv before_pis after_pis ws bands /\
+    uniform_schedule_arity before_pis.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws bands envv
+         Henv Hinfer Hwf_before Hwf_after Hdepths Hwits Hcheck.
+  unfold check_pprog_pluto_permutable_tiling_bands_direct in Hcheck.
+  assert (Hctxt_refl :
+    TilingCheck.ctxt_eqb before_ctxt before_ctxt = true).
+  {
+    apply (proj2 (TilingCheck.ctxt_eqb_eq before_ctxt before_ctxt)).
+    reflexivity.
+  }
+  assert (Hvars_refl :
+    TilingCheck.ctxt_ty_eqb before_vars before_vars = true).
+  { apply ctxt_ty_eqb_refl_local. }
+  rewrite Hctxt_refl, Hvars_refl in Hcheck.
+  destruct (infer_pinstr_list_tiling_bands_lengths _ _ _ Hinfer)
+    as [_ Hlen_bands].
+  rewrite <- Hlen_bands, Nat.eqb_refl in Hcheck.
+  destruct (check_uniform_schedule_arityb before_pis) eqn:Huniform.
+  2:{
+    simpl in Hcheck.
+    apply mayReturn_pure in Hcheck.
+    discriminate.
+  }
+  destruct (infer_common_tiling_band bands) as [band|] eqn:Hcommon.
+  2:{
+    simpl in Hcheck.
+    apply mayReturn_pure in Hcheck.
+    discriminate.
+  }
+  destruct (check_common_tiling_band_recipeb ws) eqn:Hrecipe.
+  2:{
+    simpl in Hcheck.
+    apply mayReturn_pure in Hcheck.
+    discriminate.
+  }
+  simpl in Hcheck.
+  split.
+  - destruct (check_common_tiling_band_recipeb_sound _ Hrecipe)
+      as [sizes Hrecipe_sound].
+    exists band, sizes.
+    split.
+    + eapply infer_common_tiling_band_sound; exact Hcommon.
+    + split.
+      * exact Hrecipe_sound.
+      * eapply
+          (check_pinstr_list_pluto_permutable_band_direct_sound
+             before_ctxt envv before_pis after_pis ws band);
+          eauto.
+        eapply compose_tiling_pinstrs_ext_from_after_wf_tiling; eauto.
+  - eapply check_uniform_schedule_arityb_sound.
+    exact Huniform.
 Qed.
 
 End TilingBandScheduleValidator.
