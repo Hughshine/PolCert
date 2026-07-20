@@ -724,11 +724,11 @@ let classify_tiling_band_route after_pol route route_ok =
     (false, false, "alarm")
   else
     match route with
-    | STilingBandSched.CoreBandSched.TilingBandRejected ->
+    | STilingBandSched.CoreBandRuntime.Rejected ->
         (false, true, "rejected")
-    | STilingBandSched.CoreBandSched.TilingBandAccepted ->
+    | STilingBandSched.CoreBandRuntime.DirectBandAccepted ->
         accept_if_wf "permutable-band"
-    | STilingBandSched.CoreBandSched.TilingBandGeneralFallbackAccepted ->
+    | STilingBandSched.CoreBandRuntime.GeneralFallbackAccepted ->
         accept_if_wf "general-fallback"
 
 let checked_tiling_validate_with_band_route before_pol after_pol ws =

@@ -159,6 +159,8 @@ log.txt
 *.scop
 !tools/tiling_routes/fixtures/diamond-tile-example.midtransform.scop
 !tools/tiling_routes/fixtures/diamond-tile-example.posttile.scop
+!tools/tiling_routes/fixtures/nonpermutable-band.midtransform.scop
+!tools/tiling_routes/fixtures/nonpermutable-band.posttile.scop
 .outfilename
 .regtile
 .srcfilename

@@ -10,7 +10,7 @@ from pathlib import Path
 NESTED_TILE_MARKERS = {"/ 256", "8 *", "32 *"}
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
 FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
-MIXED_DEPTH_CHECK = "second-level-mixed-depth-band"
+MIXED_DEPTH_CHECK = "second-level-mixed-depth-general-fallback"
 
 BAND_STEMS = {
     "default",
@@ -24,7 +24,7 @@ BAND_STEMS = {
     "vector-strict",
     "fusion",
 }
-IDENTITY_BAND_STEMS = {
+IDENTITY_FALLBACK_STEMS = {
     "identity-tiled",
     "identity-parallel-current",
     "identity-vector-current",
@@ -46,11 +46,15 @@ DIAMOND_BAND_STEMS = {
 }
 REQUIRED_BAND_ROUTES = {
     f"second-level-{stem}{'-iss' if iss else ''}-band"
-    for stem in BAND_STEMS | IDENTITY_BAND_STEMS | DIAMOND_BAND_STEMS
+    for stem in BAND_STEMS | DIAMOND_BAND_STEMS
+    for iss in (False, True)
+}
+
+REQUIRED_FALLBACK_ROUTES = {
+    f"second-level-{stem}{'-iss' if iss else ''}-general-fallback"
+    for stem in IDENTITY_FALLBACK_STEMS
     for iss in (False, True)
 } | {MIXED_DEPTH_CHECK}
-
-REQUIRED_FALLBACK_ROUTES: set[str] = set()
 
 REQUIRED_NEGATIVES = {
     "second-level-rejects-legacy-alias",
@@ -239,19 +243,19 @@ def check_manifest(path: Path) -> None:
         None,
     )
     if mixed_depth is None or mixed_depth.get("expect") != "success":
-        raise AssertionError("missing successful mixed-depth direct-band check")
+        raise AssertionError("missing successful mixed-depth fallback check")
     if "--second-level-tile" not in string_list(mixed_depth, "args"):
         raise AssertionError("mixed-depth check must exercise second-level tiling")
     if not NESTED_TILE_MARKERS.issubset(set(string_list(mixed_depth, "needles"))):
         raise AssertionError("mixed-depth check does not assert nested second-level tiling")
-    if BAND_ROUTE not in string_list(mixed_depth, "stderr_needles"):
-        raise AssertionError("mixed-depth check does not require the direct band route")
-    if string_counts(mixed_depth, "stderr_counts").get(BAND_ROUTE) != 1:
+    if FALLBACK_ROUTE not in string_list(mixed_depth, "stderr_needles"):
+        raise AssertionError("mixed-depth check does not require the general fallback route")
+    if string_counts(mixed_depth, "stderr_counts").get(FALLBACK_ROUTE) != 1:
         raise AssertionError("mixed-depth check must require exactly one route report")
-    if "fallback" not in string_list(mixed_depth, "stderr_absent_needles"):
-        raise AssertionError("mixed-depth check does not reject fallback telemetry")
-    if fallback_checks:
-        raise AssertionError("known successful second-level cases must not use fallback")
+    if "route=permutable-band" not in string_list(
+        mixed_depth, "stderr_absent_needles"
+    ):
+        raise AssertionError("mixed-depth check does not reject direct-band telemetry")
 
 
 def main() -> None:

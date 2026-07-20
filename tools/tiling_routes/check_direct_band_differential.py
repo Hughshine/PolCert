@@ -101,6 +101,16 @@ def main() -> int:
             ],
             (True, True, True),
         ),
+        (
+            "frozen-nonpermutable-band",
+            polcert,
+            [
+                "--tiling",
+                str(ROOT / "tools" / "tiling_routes" / "fixtures" / "nonpermutable-band.midtransform.scop"),
+                str(ROOT / "tools" / "tiling_routes" / "fixtures" / "nonpermutable-band.posttile.scop"),
+            ],
+            (False, False, False),
+        ),
     ]
 
     failures: list[str] = []

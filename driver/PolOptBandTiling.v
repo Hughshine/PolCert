@@ -1,4 +1,4 @@
-Require Import TilingBandScheduleValidator.
+Require Import TilingBandDirectRuntime.
 Require Import TilingWitness.
 Require Import PolIRs.
 Require Import OpenScop.
@@ -13,7 +13,7 @@ Module PolOptBandTiling (PolIRs: POLIRS).
 Module BaseOpt := PolOpt PolIRs.
 Module ValidatorCore := BaseOpt.ValidatorCore.
 Module PrepareCore := BaseOpt.PrepareCore.
-Module TilingSched := TilingBandScheduleValidator PolIRs.
+Module TilingSched := TilingBandDirectRuntime PolIRs.
 Module ISSValidatorCorrectCore := ISSValidatorCorrect PolIRs.
 Module PolyLang := PolIRs.PolyLang.
 Module LoopIR := PolIRs.Loop.

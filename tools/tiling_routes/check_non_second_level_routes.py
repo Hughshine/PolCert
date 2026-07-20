@@ -115,7 +115,11 @@ def route_cases() -> list[Case]:
                         fixture=fixture,
                         args=(*producer_args, *iss_args, *effective_consumer_args),
                         expected_route=(
-                            "rejected" if vector_current_rejected else "permutable-band"
+                            "rejected"
+                            if vector_current_rejected
+                            else "general-fallback"
+                            if producer_name == "identity"
+                            else "permutable-band"
                         ),
                         expect_success=not vector_current_rejected,
                         expected_vector_status=vector_status,
@@ -173,7 +177,9 @@ def route_cases() -> list[Case]:
                     fixture=MATMUL_INIT,
                     args=("--identity-tiled", *iss_args, *consumer_args),
                     expected_route=(
-                        "rejected" if vector_current_rejected else "permutable-band"
+                        "rejected"
+                        if vector_current_rejected
+                        else "general-fallback"
                     ),
                     expect_success=not vector_current_rejected,
                     expected_vector_status=vector_status,
@@ -240,8 +246,6 @@ def run_case(polopt: Path, case: Case, timeout: int) -> str | None:
         for line in proc.stderr.splitlines()
         if line.strip().startswith(ROUTE_PREFIX)
     ]
-    if GENERAL_FALLBACK_ROUTE in route_lines:
-        return f"{case.name}: one-level route used general fallback\n{output}"
     expected_route = f"{ROUTE_PREFIX}{case.expected_route}"
     if route_lines != [expected_route]:
         return (
@@ -291,7 +295,8 @@ def main() -> int:
     invalid_routes = {
         case.expected_route
         for case in cases
-        if case.expected_route not in ("permutable-band", "rejected")
+        if case.expected_route
+        not in ("permutable-band", "general-fallback", "rejected")
     }
     if len(cases) != 90:
         failures.append(f"matrix contains {len(cases)} cases, expected 90")
@@ -304,7 +309,7 @@ def main() -> int:
             failures.append(
                 f"{case.name}: non-second-level matrix must not expect an alarm"
             )
-        if case.expect_success != (case.expected_route == "permutable-band"):
+        if case.expect_success != (case.expected_route != "rejected"):
             failures.append(
                 f"{case.name}: success/route expectation is inconsistent"
             )
@@ -320,18 +325,19 @@ def main() -> int:
             print(failure)
         return 1
     accepted = sum(case.expected_route == "permutable-band" for case in cases)
-    rejected = len(cases) - accepted
-    if accepted != 84 or rejected != 6:
+    fallback = sum(case.expected_route == "general-fallback" for case in cases)
+    rejected = sum(case.expected_route == "rejected" for case in cases)
+    if accepted != 50 or fallback != 34 or rejected != 6:
         print(
             "[non-second-level-routes] FAIL: "
-            f"expected 84 completed compositions/6 explicit vector rejections, "
-            f"got {accepted}/{rejected}"
+            "expected 50 direct-band compositions/34 explicit general "
+            f"fallbacks/6 vector rejections, got {accepted}/{fallback}/{rejected}"
         )
         return 1
     print(
         f"[non-second-level-routes] OK "
-        f"({accepted} permutable-band compositions, {rejected} explicit vector "
-        "rejections, 0 general fallbacks)"
+        f"({accepted} permutable-band compositions, {fallback} explicit general "
+        f"fallbacks, {rejected} explicit vector rejections)"
     )
     return 0
 

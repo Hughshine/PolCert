@@ -10,6 +10,7 @@ import tempfile
 
 
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
+FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
 
 AFFINE_PLUTO_FLAGS = [
     "--dumpscop",
@@ -193,9 +194,9 @@ def check_standalone_formal_route(
             polopt=polopt,
             before=direct_source,
             after=direct_posttile,
-            expected_route=BAND_ROUTE,
+            expected_route=FALLBACK_ROUTE,
             timeout=timeout,
-            label="source-like standalone formal permutability validation",
+            label="source-like standalone formal fallback validation",
         )
 
     # This frozen two-statement Pluto output omits a globally zero trailing

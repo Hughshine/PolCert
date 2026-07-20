@@ -4,7 +4,7 @@ open TPolValidator
 open TPolOpt
 open TilingWitness
 
-module TBandSched = TilingBandScheduleValidator.TilingBandScheduleValidator(TPolIRs.TPolIRs)
+module TBandSched = TilingBandDirectRuntime.TilingBandDirectRuntime(TPolIRs.TPolIRs)
 
 let tool_name = "Verified Validator for Affine Scheduling and Tiling"
 
@@ -225,11 +225,11 @@ let classify_tiling_band_route after_pol route route_ok =
     (false, false, "alarm")
   else
     match route with
-    | TBandSched.TilingBandRejected ->
+    | TBandSched.Rejected ->
         (false, true, "rejected")
-    | TBandSched.TilingBandAccepted ->
+    | TBandSched.DirectBandAccepted ->
         accept_if_wf "permutable-band"
-    | TBandSched.TilingBandGeneralFallbackAccepted ->
+    | TBandSched.GeneralFallbackAccepted ->
         accept_if_wf "general-fallback"
 
 let checked_tiling_validate_with_bands before_pol after_pol ws =
@@ -262,20 +262,20 @@ let run_tiling_pair ~second_level before_path after_path =
     | None -> false
   in
   if debug_band_tiling then begin
-    let before_t = TBandSched.Base.outer_to_tiling_pprog before_pol in
-    let after_t = TBandSched.Base.outer_to_tiling_pprog after_pol in
-    match TBandSched.infer_pprog_tiling_bands before_t ws with
+    let before_t = TBandSched.Legacy.Base.outer_to_tiling_pprog before_pol in
+    let after_t = TBandSched.Legacy.Base.outer_to_tiling_pprog after_pol in
+    match TBandSched.Legacy.infer_pprog_tiling_bands before_t ws with
     | Some bands ->
         let (strong_res, strong_ok) =
-          TBandSched.check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
+          TBandSched.Legacy.check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
             before_t after_t ws bands
         in
         let (direct_res, direct_ok) =
-          TBandSched.check_pprog_pluto_permutable_tiling_bands_direct
+          TBandSched.Legacy.check_pprog_pluto_permutable_tiling_bands_direct
             before_t after_t ws bands
         in
         let (whole_res, whole_ok) =
-          TBandSched.check_pprog_permutable_tiling_bands_via_validate_tiling
+          TBandSched.Legacy.check_pprog_permutable_tiling_bands_via_validate_tiling
             before_t after_t ws bands
         in
         Printf.eprintf

@@ -124,6 +124,24 @@ def main() -> None:
     band_source = (ROOT / "src" / "TilingBandScheduleValidator.v").read_text(
         encoding="utf-8"
     )
+    runtime_source = (ROOT / "src" / "TilingBandDirectRuntime.v").read_text(
+        encoding="utf-8"
+    )
+    legacy_source_route = coq_definition_body(band_source, unified_route)
+    require(
+        legacy_source_route,
+        "if band_ok then pure TilingBandGeneralFallbackAccepted",
+        "legacy aggregate route must not claim direct-band acceptance",
+    )
+    legacy_explicit_bands_route = coq_definition_body(
+        band_source,
+        "check_pprog_permutable_tiling_bands_runtime_route",
+    )
+    require(
+        legacy_explicit_bands_route,
+        "then TilingBandGeneralFallbackAccepted",
+        "legacy whole-affine route must report fallback",
+    )
     band_dispatcher = coq_definition_body(
         band_source, "checked_tiling_sourceb_first_band_check"
     )
@@ -265,23 +283,71 @@ def main() -> None:
             f"Example {regression}",
             "structural second-level classifier regression",
         )
-    fallback_dispatcher = coq_definition_body(band_source, unified_route)
-    fallback_checks = (
+    for regression in (
+        "direct_second_level_guard_accepts_grouped_reverse_padding",
+        "direct_second_level_guard_accepts_interleaved_reverse_padding",
+        "direct_second_level_guard_rejects_internal_zero_removal",
+        "direct_second_level_guard_rejects_mixed_statement_layouts",
+    ):
+        require(
+            band_source,
+            f"Example {regression}",
+            "direct symmetric second-level classifier regression",
+        )
+    direct_check = coq_definition_body(
+        runtime_source,
+        "checked_tiling_sourceb_first_direct_band_check",
+    )
+    for needle in (
+        "check_pprog_pluto_permutable_tiling_bands_direct",
+        "check_pprog_second_level_schedule_symmetricb",
+        "check_pinstr_list_pluto_componentwise_permutable_bands_direct",
+    ):
+        require(direct_check, needle, "direct ordinary and second-level dispatch")
+    symmetric_shape = coq_definition_body(
+        band_source,
+        "check_pprog_second_level_schedule_symmetricb",
+    )
+    for needle in (
+        "check_common_second_level_recipe_sizesb",
+        "check_common_band_startb",
+        "SecondLevelGrouped",
+        "SecondLevelInterleaved",
+        "check_pinstr_list_second_level_schedule_symmetricb",
+    ):
+        require(
+            symmetric_shape,
+            needle,
+            "uniform-layout symmetric trailing-zero second-level classifier",
+        )
+    for forbidden in (
+        "check_pprog_permutable_tiling_bands_via_validate_tiling",
         "checked_tiling_sourceb_first_band_check",
-        "Canonical.checked_tiling_schedule_canonical_validate",
-        "Base.checked_tiling_validate",
+    ):
+        if forbidden in direct_check:
+            raise AssertionError(
+                f"DirectBandAccepted path contains affine fallback {forbidden}"
+            )
+
+    direct_route = "checked_tiling_schedule_sourceb_first_direct_runtime_validate_route"
+    fallback_dispatcher = coq_definition_body(runtime_source, direct_route)
+    fallback_checks = (
+        "checked_tiling_sourceb_first_direct_band_check",
+        "Legacy.checked_tiling_sourceb_first_band_check",
+        "Legacy.Canonical.checked_tiling_schedule_canonical_validate",
+        "Legacy.Base.checked_tiling_validate",
     )
     positions = [fallback_dispatcher.find(needle) for needle in fallback_checks]
     if any(position < 0 for position in positions) or positions != sorted(positions):
         raise AssertionError(
-            "runtime tiling dispatcher must try band checks, canonical fallback, "
-            "then general fallback"
+            "runtime tiling dispatcher must try direct band checks, legacy affine "
+            "fallback, canonical fallback, then general fallback"
         )
     require_count(
         fallback_dispatcher,
-        "TilingBandGeneralFallbackAccepted",
-        2,
-        "canonical and general fallback result constructors",
+        "GeneralFallbackAccepted",
+        3,
+        "legacy, canonical, and general fallback result constructors",
     )
 
     for path in (
@@ -293,7 +359,7 @@ def main() -> None:
             path.read_text(encoding="utf-8"),
             "tiling_validation_route_label",
         )
-        for needle in ("TilingBandGeneralFallbackAccepted", '"general-fallback"'):
+        for needle in ("GeneralFallbackAccepted", '"general-fallback"'):
             require(labeler, needle, f"fallback Coq label mapping in {path.name}")
 
     for path in (ROOT / "syntax" / "SLoopMain.ml", ROOT / "driver" / "Entry.ml"):
@@ -302,7 +368,7 @@ def main() -> None:
             "classify_tiling_band_route",
         )
         for needle in (
-            "TilingBandGeneralFallbackAccepted",
+            "GeneralFallbackAccepted",
             'accept_if_wf "general-fallback"',
         ):
             require(classifier, needle, f"fallback route mapping in {path.name}")
@@ -384,7 +450,7 @@ def main() -> None:
             f"RawDefault band-first dispatch in {path.relative_to(ROOT)}",
         )
     for path in (
-        ROOT / "src" / "TilingBandScheduleValidator.v",
+        ROOT / "src" / "TilingBandDirectRuntime.v",
         ROOT / "driver" / "PolOptBandTiling.v",
         ROOT / "driver" / "ParallelPolOpt.v",
         ROOT / "syntax" / "STilingBandSched.v",
@@ -407,12 +473,12 @@ def main() -> None:
         require(source, "Definition reject_tiling_then", "observable rejected route helper")
         require(
             source,
-            "observe_tiling_validation_route TilingSched.TilingBandRejected",
+            "observe_tiling_validation_route TilingSched.Rejected",
             "rejected tiling telemetry",
         )
 
     for path in (
-        ROOT / "src" / "TilingBandScheduleValidator.v",
+        ROOT / "src" / "TilingBandDirectRuntime.v",
         ROOT / "driver" / "PolOptBandTiling.v",
         ROOT / "driver" / "ParallelPolOptCorrect.v",
     ):
@@ -501,6 +567,7 @@ def main() -> None:
         "AFFINE_PLUTO_FLAGS",
         "TILING_PLUTO_FLAGS",
         "expected_route=BAND_ROUTE",
+        "expected_route=FALLBACK_ROUTE",
         "if route_lines != [expected_route]",
         '"--validate-tiling-openscop"',
     ):
