@@ -123,14 +123,16 @@ refinement/equivalence between two polyhedral models that share the same
 instruction/access structure and differ only by scheduling.
 
 For every tiling route, including second-level tiling, the dispatcher first
-tries three specialized modes: an ordinary common-band check, a whole-program
-ordinary-tiling permutability check over the composed tiling semantics, and a
-hierarchical second-level check. If none accepts, the same extracted dispatcher
-tries the proved canonical and general schedule validators. The CLI reports
-exactly one route: `permutable-band`, `general-fallback`, or `rejected`. The
-`permutable-band` label covers all three specialized modes. The fallback label
-aggregates the canonical and general proved validators; rejection and alarms
-are distinct outcomes.
+tries five specialized modes: an ordinary common-band check, a whole-program
+ordinary-tiling permutability check over the composed tiling semantics, a
+hierarchical second-level check, a statementwise structural second-level check
+followed by whole-program permutability validation, and a guarded source-like
+second-level whole-program check. If none accepts, the same extracted
+dispatcher tries the proved canonical and general schedule validators. The CLI
+reports exactly one route: `permutable-band`, `general-fallback`, or `rejected`.
+The `permutable-band` label covers all five specialized modes. The fallback
+label aggregates the canonical and general proved validators; rejection and
+alarms are distinct outcomes.
 
 For the ISS route, it checks a structural split relation centered on Pluto ISS
 bridge / dump inputs rather than OpenScop.

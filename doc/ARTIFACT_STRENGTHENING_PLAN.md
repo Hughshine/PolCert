@@ -464,8 +464,9 @@ The implemented route follows the architecture from the design notes:
 - import and validate the diamond-aware affine midpoint
 - validate the `mid_diamond -> posttile` boundary with the unified dispatcher:
   ordinary common-band, whole-program ordinary-tiling permutability,
-  hierarchical second-level permutability, source-like second-level
-  whole-program permutability, canonical fallback, then general fallback
+  hierarchical second-level permutability, structural second-level
+  whole-program permutability, source-like second-level whole-program
+  permutability, canonical fallback, then general fallback
 - validate the final post-tile affine cleanup boundary
 - regenerate code through the PolOpt code generator
 

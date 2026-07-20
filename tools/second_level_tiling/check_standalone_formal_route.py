@@ -10,6 +10,7 @@ import tempfile
 
 
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
+GENERAL_FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
 
 AFFINE_PLUTO_FLAGS = [
     "--dumpscop",
@@ -197,3 +198,15 @@ def check_standalone_formal_route(
             timeout=timeout,
             label="source-like standalone formal permutability validation",
         )
+
+    # This frozen two-statement Pluto output is a nontrivial 256/32 tiling
+    # accepted by the proved general validator after all direct modes reject it.
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    validate_expected_route(
+        polopt=polopt,
+        before=fixtures / "fusion7-second-level-fallback.mid.openscop",
+        after=fixtures / "fusion7-second-level-fallback.post.openscop",
+        expected_route=GENERAL_FALLBACK_ROUTE,
+        timeout=timeout,
+        label="nontrivial standalone formal fallback validation",
+    )

@@ -3392,12 +3392,41 @@ Definition stripmine_second_level_schedule_after_env
     total_cols env_size (second_level_root_positions root_count) ++
   lifted_band ++ suffix.
 
+Definition stripmine_second_level_schedule_interleaved_after_env
+    (env_size: nat)
+    (before_sched: Schedule)
+    (band: pinstr_tiling_band) : Schedule :=
+  let root_count := ptb_len band in
+  let added_dims := (2 * root_count)%nat in
+  let lifted :=
+    Tiling.lift_schedule_after_env added_dims env_size before_sched in
+  let total_cols :=
+    match lifted with
+    | [] => (env_size + added_dims)%nat
+    | (coeffs, _) :: _ => List.length coeffs
+    end in
+  let prefix := firstn (ptb_start band) lifted in
+  let lifted_band := firstn root_count (skipn (ptb_start band) lifted) in
+  let suffix := skipn (ptb_start band + root_count)%nat lifted in
+  prefix ++
+  Tiling.identity_affine_rows_from total_cols env_size added_dims ++
+  lifted_band ++ suffix.
+
 Definition check_pinstr_second_level_schedule_stripminedb
     (env_size: nat)
     (before after: Tiling.PL.PolyInstr)
     (band: pinstr_tiling_band) : bool :=
   check_schedule_with_trailing_zero_paddingb
     (stripmine_second_level_schedule_after_env
+       env_size (Tiling.PL.pi_schedule before) band)
+    (Tiling.PL.pi_schedule after).
+
+Definition check_pinstr_second_level_schedule_interleavedb
+    (env_size: nat)
+    (before after: Tiling.PL.PolyInstr)
+    (band: pinstr_tiling_band) : bool :=
+  check_schedule_with_trailing_zero_paddingb
+    (stripmine_second_level_schedule_interleaved_after_env
        env_size (Tiling.PL.pi_schedule before) band)
     (Tiling.PL.pi_schedule after).
 
@@ -3414,6 +3443,41 @@ Fixpoint check_pinstr_list_second_level_schedule_stripminedb
         env_size before_pis' after_pis' bands'
   | _, _, _ => false
   end.
+
+Fixpoint check_pinstr_list_second_level_schedule_variantb
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : bool :=
+  match before_pis, after_pis, bands with
+  | [], [], [] => true
+  | before_pi :: before_pis', after_pi :: after_pis', band :: bands' =>
+      (check_pinstr_second_level_schedule_stripminedb
+         env_size before_pi after_pi band ||
+       check_pinstr_second_level_schedule_interleavedb
+         env_size before_pi after_pi band) &&
+      check_pinstr_list_second_level_schedule_variantb
+        env_size before_pis' after_pis' bands'
+  | _, _, _ => false
+  end.
+
+Definition check_pprog_statementwise_second_level_scheduleb
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    : option (list pinstr_tiling_band * list second_level_band_recipe) :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars
+  then
+    match infer_pinstr_list_second_level_bands before_pis ws with
+    | Some (bands, recipes) =>
+        if check_pinstr_list_second_level_schedule_variantb
+             (List.length before_ctxt) before_pis after_pis bands
+        then Some (bands, recipes)
+        else None
+    | None => None
+    end
+  else None.
 
 Definition check_pprog_second_level_schedule_stripminedb
     (before after: Tiling.PL.t)
@@ -7666,6 +7730,91 @@ Definition check_pprog_permutable_tiling_bands_via_validate_tiling
 Definition dummy_tiling_band : pinstr_tiling_band :=
   {| ptb_start := O; ptb_len := O |}.
 
+(** A structurally recognized second-level schedule may be permutable as a
+    complete lexicographic order even when the componentwise projection is too
+    strong.  Keep the existing second-level shape check as the guard, then
+    validate the complete composed schedule. *)
+Definition check_pprog_structural_second_level_permutability_via_validate_tiling
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness) : imp bool :=
+  let '(before_pis, _, _) := before in
+  match check_pprog_statementwise_second_level_scheduleb before after ws with
+  | Some _ =>
+      check_pprog_permutable_tiling_bands_via_validate_tiling
+        before after ws
+        (repeat dummy_tiling_band (List.length before_pis))
+  | None => pure false
+  end.
+
+Example structural_second_level_guard_rejects_schedule_mismatch :
+  check_pprog_statementwise_second_level_scheduleb
+    ([source_like_guard_test_pinstr [([1%Z], 0%Z)]], [], [])
+    ([source_like_guard_test_pinstr []], [], [])
+    [source_like_guard_test_witness [1%Z]] = None.
+Proof. reflexivity. Qed.
+
+Example structural_second_level_guard_accepts_interleaved_schedule :
+  match
+    check_pprog_statementwise_second_level_scheduleb
+      ([source_like_guard_test_pinstr [([1%Z], 0%Z)]], [], [])
+      ([source_like_guard_test_pinstr
+          [([1%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 1%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 1%Z], 0%Z)]], [], [])
+      [source_like_guard_test_witness [1%Z]]
+  with
+  | Some _ => true
+  | None => false
+  end = true.
+Proof. reflexivity. Qed.
+
+Example structural_second_level_guard_rejects_wrong_same_arity_schedule :
+  check_pprog_statementwise_second_level_scheduleb
+    ([source_like_guard_test_pinstr [([1%Z], 0%Z)]], [], [])
+    ([source_like_guard_test_pinstr
+        [([1%Z; 0%Z; 0%Z], 0%Z);
+         ([0%Z; 0%Z; 1%Z], 0%Z);
+         ([0%Z; 1%Z; 0%Z], 0%Z)]], [], [])
+    [source_like_guard_test_witness [1%Z]] = None.
+Proof. reflexivity. Qed.
+
+Definition structural_guard_test_witness_2d : statement_tiling_witness :=
+  {|
+    stw_point_dim := 2;
+    stw_links :=
+      [source_like_guard_test_link [1%Z; 0%Z] 32%Z;
+       source_like_guard_test_link [1%Z; 0%Z; 0%Z] 8%Z;
+       source_like_guard_test_link [0%Z; 0%Z; 0%Z; 1%Z] 32%Z;
+       source_like_guard_test_link [0%Z; 0%Z; 1%Z; 0%Z; 0%Z] 8%Z];
+  |}.
+
+Example structural_second_level_guard_accepts_heterogeneous_band_lengths :
+  match
+    check_pprog_statementwise_second_level_scheduleb
+      ([source_like_guard_test_pinstr [([1%Z], 0%Z)];
+        source_like_guard_test_pinstr
+          [([1%Z; 0%Z], 0%Z); ([0%Z; 1%Z], 0%Z)]],
+       [], [])
+      ([source_like_guard_test_pinstr
+          [([1%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 1%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 1%Z], 0%Z)];
+        source_like_guard_test_pinstr
+          [([1%Z; 0%Z; 0%Z; 0%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 1%Z; 0%Z; 0%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 1%Z; 0%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 0%Z; 1%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 0%Z; 0%Z; 1%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 0%Z; 0%Z; 0%Z; 1%Z], 0%Z)]],
+       [], [])
+      [source_like_guard_test_witness [1%Z];
+       structural_guard_test_witness_2d]
+  with
+  | Some _ => true
+  | None => false
+  end = true.
+Proof. reflexivity. Qed.
+
 (** Source-like schedules can omit or place strict zero scattering
     rows differently from the roots in a valid second-level tiling witness.
     Require exact equality after erasing those rows, then validate the complete
@@ -7765,8 +7914,13 @@ Definition checked_tiling_sourceb_first_band_check
             before after ws -;
         if second_level_ok then pure true
         else
-          check_pprog_source_like_second_level_permutability_via_validate_tiling
-            before after ws
+          BIND structural_second_level_ok <-
+            check_pprog_structural_second_level_permutability_via_validate_tiling
+              before after ws -;
+          if structural_second_level_ok then pure true
+          else
+            check_pprog_source_like_second_level_permutability_via_validate_tiling
+              before after ws
   else pure false.
 
 Definition checked_tiling_schedule_sourceb_first_runtime_validate_route
@@ -10943,7 +11097,7 @@ Proof.
          before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
 Qed.
 
-Lemma checked_tiling_ordinary_direct_validate_correct_same_ctxt :
+Lemma checked_tiling_whole_program_permutability_validate_correct_same_ctxt :
   forall before_pis before_ctxt before_vars after_pis ws st1 st2,
     TilingCheck.check_pprog_tiling_sourceb
       (before_pis, before_ctxt, before_vars)
@@ -10956,10 +11110,10 @@ Lemma checked_tiling_ordinary_direct_validate_correct_same_ctxt :
       (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
       after_pis ->
     mayReturn
-      (check_pprog_ordinary_tiling_permutability_via_validate_tiling
+      (check_pprog_permutable_tiling_bands_via_validate_tiling
          (before_pis, before_ctxt, before_vars)
          (after_pis, before_ctxt, before_vars)
-         ws)
+         ws (repeat dummy_tiling_band (List.length before_pis)))
       true ->
     Tiling.PL.instance_list_semantics
       (after_pis, before_ctxt, before_vars) st1 st2 ->
@@ -11002,9 +11156,6 @@ Proof.
     [exact Hsource| |exact Hsem].
   simpl.
   intros envv Hlen_env.
-  unfold check_pprog_ordinary_tiling_permutability_via_validate_tiling in Hcheck.
-  destruct (check_ordinary_tiling_witnessesb ws) eqn:Hordinary.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
   eapply
     (check_pprog_permutable_tiling_bands_via_validate_tiling_sound_with_lengths
        before_pis before_ctxt before_vars after_pis ws
@@ -11018,6 +11169,82 @@ Proof.
   - exact Hdepths.
   - exact Hwits.
   - exact Hcheck.
+Qed.
+
+Lemma checked_tiling_ordinary_direct_validate_correct_same_ctxt :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars)
+      ws = true ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (check_pprog_ordinary_tiling_permutability_via_validate_tiling
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws)
+      true ->
+    Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      TilingPolIRs.State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hsource Hwf_before Hwf_after Hcheck Hsem.
+  unfold check_pprog_ordinary_tiling_permutability_via_validate_tiling in Hcheck.
+  destruct (check_ordinary_tiling_witnessesb ws) eqn:Hordinary.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  eapply
+    (checked_tiling_whole_program_permutability_validate_correct_same_ctxt
+       before_pis before_ctxt before_vars after_pis ws st1 st2); eauto.
+Qed.
+
+Lemma checked_tiling_structural_second_level_direct_validate_correct_same_ctxt :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars)
+      ws = true ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (check_pprog_structural_second_level_permutability_via_validate_tiling
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws)
+      true ->
+    Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      TilingPolIRs.State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hsource Hwf_before Hwf_after Hcheck Hsem.
+  unfold
+    check_pprog_structural_second_level_permutability_via_validate_tiling
+    in Hcheck.
+  destruct
+    (check_pprog_statementwise_second_level_scheduleb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws)
+    as [[bands recipes]|] eqn:Hshape.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  eapply
+    (checked_tiling_whole_program_permutability_validate_correct_same_ctxt
+       before_pis before_ctxt before_vars after_pis ws st1 st2); eauto.
 Qed.
 
 Lemma checked_tiling_source_like_second_level_direct_validate_correct_same_ctxt :
@@ -11047,38 +11274,6 @@ Lemma checked_tiling_source_like_second_level_direct_validate_correct_same_ctxt 
 Proof.
   intros before_pis before_ctxt before_vars after_pis ws st1 st2
          Hsource Hwf_before Hwf_after Hcheck Hsem.
-  pose proof
-    (TilingCheck.check_pprog_tiling_sourceb_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws Hsource)
-    as [Hprog [_ [_ [_ Hdepths]]]].
-  pose proof
-    (Tiling.tiling_rel_pprog_structure_source_lengths
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       (List.map Tiling.compiled_pinstr_tiling_witness ws) Hprog)
-    as [Hlen_after Hlen_ws_map].
-  assert (Hlen_ws : List.length before_pis = List.length ws).
-  {
-    rewrite List.map_length in Hlen_ws_map.
-    lia.
-  }
-  assert (Hwits :
-    Forall2 Tiling.after_matches_tiling_witness after_pis ws).
-  {
-    eapply
-      (tiling_rel_pprog_structure_source_after_matches
-         before_pis before_ctxt before_vars
-         after_pis before_ctxt before_vars ws); eauto.
-  }
-  eapply
-    (tiling_sourceb_validate_correct_with_reordering
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars)
-       ws (repeat dummy_tiling_band (List.length before_pis)) st1 st2);
-    [exact Hsource| |exact Hsem].
-  simpl.
-  intros envv Hlen_env.
   unfold
     check_pprog_source_like_second_level_permutability_via_validate_tiling
     in Hcheck.
@@ -11086,18 +11281,8 @@ Proof.
     eqn:Hrecipes.
   2:{ apply mayReturn_pure in Hcheck. discriminate. }
   eapply
-    (check_pprog_permutable_tiling_bands_via_validate_tiling_sound_with_lengths
-       before_pis before_ctxt before_vars after_pis ws
-       (repeat dummy_tiling_band (List.length before_pis)) envv).
-  - exact Hlen_env.
-  - exact Hlen_after.
-  - exact Hlen_ws.
-  - rewrite repeat_length. reflexivity.
-  - exact Hwf_before.
-  - exact Hwf_after.
-  - exact Hdepths.
-  - exact Hwits.
-  - exact Hcheck.
+    (checked_tiling_whole_program_permutability_validate_correct_same_ctxt
+       before_pis before_ctxt before_vars after_pis ws st1 st2); eauto.
 Qed.
 
 Lemma checked_tiling_sourceb_first_band_check_correct :
@@ -11167,10 +11352,17 @@ Proof.
           (checked_tiling_second_level_band_validate_correct_same_ctxt
              before_pis before_ctxt before_vars after_pis ws st1 st2);
           eauto.
-      * eapply
-          (checked_tiling_source_like_second_level_direct_validate_correct_same_ctxt
-             before_pis before_ctxt before_vars after_pis ws st1 st2);
-          eauto.
+      * bind_imp_destruct Hcheck structural_second_level_ok Hstructural.
+        destruct structural_second_level_ok.
+        -- apply mayReturn_pure in Hcheck.
+           eapply
+             (checked_tiling_structural_second_level_direct_validate_correct_same_ctxt
+                before_pis before_ctxt before_vars after_pis ws st1 st2);
+             eauto.
+        -- eapply
+             (checked_tiling_source_like_second_level_direct_validate_correct_same_ctxt
+                before_pis before_ctxt before_vars after_pis ws st1 st2);
+             eauto.
 Qed.
 
 Lemma checked_tiling_sourceb_first_band_check_outer_correct :
