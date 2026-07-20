@@ -81,12 +81,12 @@ binary:
 | Source-like identity, second level, `symbolic-independent-2d.loop` | exit 0 | `permutable-band` | absent | present |
 | Mixed-depth second level, `matmul-init.loop` | exit 0 | `permutable-band` | absent | present |
 | Diamond plus second level, `diamond-example-inner-batch.loop` | exit 0 | `permutable-band` | absent | present |
-| Frozen nontrivial second-level OpenScop pair, `fusion7-second-level-fallback.*.openscop` | exit 0 | `general-fallback` | absent | validated target accepted |
+| Trailing-zero-normalized second-level OpenScop pair, `fusion7-second-level-zero-normalized.*.openscop` | exit 0 | `permutable-band` | absent | validated target accepted |
 
 The complete second-level regression suite covers 53 specialized acceptances,
-one dedicated successful fallback boundary, a 20-case diamond/current/strict
-matrix, and focused rejection checks. The 53 manifest acceptances themselves
-all require the direct route. The diamond matrix now separates 16 accepted
+one standalone trailing-zero normalization boundary, a 20-case
+diamond/current/strict matrix, and focused rejection checks. Every successful
+case requires the direct route. The diamond matrix now separates 16 accepted
 parallel/hinted compositions from four explicit vector-current hard failures;
 the latter report no tiling route. The mixed-depth case retains an explicit
 256/32 nested-output check.
@@ -94,7 +94,9 @@ The final isolated run after adding statementwise mixed-depth and interleaved
 diamond recognition took `1029.41s` (`17:09`). The focused 20-case diamond
 route matrix took `390.30s` (`6:30`). Earlier complete runs took `1040s` and
 `954.751s`; retain the `1800s` outer timeout to account for container and host
-load.
+load. The complete recheck after adding trailing-zero normalization took
+`1063.03s` (`17:43`) while the other route matrices ran concurrently during
+its first six minutes.
 
 The separate Pluto compatibility matrix passed all 133 checks in `333.01s`
 (`5:33`) in `gifted_curie`. A dedicated 90-case one-level route-discipline

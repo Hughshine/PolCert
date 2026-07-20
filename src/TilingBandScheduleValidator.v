@@ -3430,6 +3430,30 @@ Definition check_pinstr_second_level_schedule_interleavedb
        env_size (Tiling.PL.pi_schedule before) band)
     (Tiling.PL.pi_schedule after).
 
+Definition check_schedule_up_to_trailing_zero_rowsb
+    (expected actual: Schedule) : bool :=
+  listzzs_strict_eqb
+    (Tiling.PL.drop_trailing_zero_schedule expected)
+    (Tiling.PL.drop_trailing_zero_schedule actual).
+
+Definition check_pinstr_second_level_schedule_stripmined_normalizedb
+    (env_size: nat)
+    (before after: Tiling.PL.PolyInstr)
+    (band: pinstr_tiling_band) : bool :=
+  check_schedule_up_to_trailing_zero_rowsb
+    (stripmine_second_level_schedule_after_env
+       env_size (Tiling.PL.pi_schedule before) band)
+    (Tiling.PL.pi_schedule after).
+
+Definition check_pinstr_second_level_schedule_interleaved_normalizedb
+    (env_size: nat)
+    (before after: Tiling.PL.PolyInstr)
+    (band: pinstr_tiling_band) : bool :=
+  check_schedule_up_to_trailing_zero_rowsb
+    (stripmine_second_level_schedule_interleaved_after_env
+       env_size (Tiling.PL.pi_schedule before) band)
+    (Tiling.PL.pi_schedule after).
+
 Fixpoint check_pinstr_list_second_level_schedule_stripminedb
     (env_size: nat)
     (before_pis after_pis: list Tiling.PL.PolyInstr)
@@ -3451,9 +3475,9 @@ Fixpoint check_pinstr_list_second_level_schedule_variantb
   match before_pis, after_pis, bands with
   | [], [], [] => true
   | before_pi :: before_pis', after_pi :: after_pis', band :: bands' =>
-      (check_pinstr_second_level_schedule_stripminedb
+      (check_pinstr_second_level_schedule_stripmined_normalizedb
          env_size before_pi after_pi band ||
-       check_pinstr_second_level_schedule_interleavedb
+       check_pinstr_second_level_schedule_interleaved_normalizedb
          env_size before_pi after_pi band) &&
       check_pinstr_list_second_level_schedule_variantb
         env_size before_pis' after_pis' bands'
@@ -7766,6 +7790,34 @@ Example structural_second_level_guard_accepts_interleaved_schedule :
   | Some _ => true
   | None => false
   end = true.
+Proof. reflexivity. Qed.
+
+Example structural_second_level_guard_accepts_dropped_trailing_zero :
+  match
+    check_pprog_statementwise_second_level_scheduleb
+      ([source_like_guard_test_pinstr
+          [([1%Z], 0%Z); ([0%Z], 0%Z); ([0%Z], 0%Z)]], [], [])
+      ([source_like_guard_test_pinstr
+          [([0%Z; 1%Z; 0%Z], 0%Z);
+           ([1%Z; 0%Z; 0%Z], 0%Z);
+           ([0%Z; 0%Z; 1%Z], 0%Z)]], [], [])
+      [source_like_guard_test_witness [1%Z]]
+  with
+  | Some _ => true
+  | None => false
+  end = true.
+Proof. reflexivity. Qed.
+
+Example structural_second_level_guard_rejects_dropped_internal_zero :
+  check_pprog_statementwise_second_level_scheduleb
+    ([source_like_guard_test_pinstr
+        [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)]], [], [])
+    ([source_like_guard_test_pinstr
+        [([0%Z; 1%Z; 0%Z], 0%Z);
+         ([1%Z; 0%Z; 0%Z], 0%Z);
+         ([0%Z; 0%Z; 1%Z], 0%Z);
+         ([0%Z; 0%Z; 2%Z], 0%Z)]], [], [])
+    [source_like_guard_test_witness [1%Z]] = None.
 Proof. reflexivity. Qed.
 
 Example structural_second_level_guard_rejects_wrong_same_arity_schedule :

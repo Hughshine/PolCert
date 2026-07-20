@@ -165,8 +165,8 @@ full-diamond, ISS, parallel, vector, multipar, explicit-current, and strict
 combinations. Mixed-depth second-level tiling is the explicit
 direct-band regression for heterogeneous statement shapes; the current matrix
 contains no known successful fallback case. A frozen nontrivial OpenScop pair
-separately checks that a successful proved fallback still reports exactly one
-`general-fallback` route without an alarm.
+also checks direct recognition when target schedule canonicalization removes a
+globally zero trailing row.
 
 ### Standalone validation / inspection actions exposed by `polopt`
 
