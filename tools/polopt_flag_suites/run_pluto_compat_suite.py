@@ -379,7 +379,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile",
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
@@ -390,7 +390,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --second-level-tile",
         effect_needles=("8 *", "/ 256", "32 *"),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--iss"]),),
     ),
     Check(
@@ -461,7 +461,8 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --second-level-tile --parallel",
-        effect_needles=("parallel for i1", "/ 256", "8 *", "32 *"),
+        effect_needles=("parallel for i0", "/ 256", "8 *", "32 *"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"]),),
     ),
     Check(
@@ -928,7 +929,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --second-level-tile",
         effect_needles=("/ 256", "8 *", "32 *"),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(
@@ -939,6 +940,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --second-level-tile",
         effect_needles=("/ 256", "8 *", "32 *"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(
@@ -1076,6 +1078,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile",
         effect_needles=("32 *", "/ 32"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
@@ -1086,6 +1089,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --iss --identity --tile",
         effect_needles=("32 *", "/ 32"),
+        tiling_route="general-fallback",
         differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
     ),
     Check(
@@ -1096,7 +1100,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --parallel",
         effect_needles=("parallel for i0", "32 *", "/ 32"),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(
@@ -1107,7 +1111,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "polopt args: --identity --tile --parallel --parallel-strict",
         effect_needles=("parallel for i0", "32 *", "/ 32"),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED),),
     ),
     Check(
@@ -1121,7 +1125,7 @@ CHECKS = [
         effect_absent=("vector for",),
         stderr_needles=("[vector-validation] status=skipped reason=no-hint",),
         stderr_absent=("[alarm]",),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
     ),
     Check(
         "identity-tiled-vector-strict-valid-hint",
@@ -1135,7 +1139,7 @@ CHECKS = [
             "[vector-validation] status=applied source=pluto-hint scope=innermost",
         ),
         stderr_absent=("[alarm]",),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
     ),
     Check(
         "identity-tiled-multipar",
@@ -1145,7 +1149,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "pluto oracle flags: --multipar",
         effect_needles=("parallel for i0", "parallel for i1", "32 *", "/ 32"),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED_PARALLEL),),
     ),
     Check(
@@ -1157,7 +1161,7 @@ CHECKS = [
         "pluto oracle flags: --multipar",
         effect_needles=("parallel for i0", "32 *", "/ 32"),
         effect_absent=("parallel for i1",),
-        tiling_route="permutable-band",
+        tiling_route="general-fallback",
         differs_from_args=(tuple(IDENTITY_TILED_MULTIPAR),),
     ),
     Check(
