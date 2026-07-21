@@ -3561,19 +3561,22 @@ let run_verified_hinted_multipar_parallel_optimization cfg loop =
     | Some _ -> true
     | None -> false
   in
-  match try_verified_parallel_current_many_compile cfg loop candidates with
-  | Some (pl, routes) ->
+  let selected =
+    match try_verified_parallel_current_many_compile cfg loop candidates with
+    | Some (pl, routes) -> Some (pl, routes, hinted_accepted)
+    | None ->
+        begin match hinted_result with
+        | Some (pl, routes) -> Some (pl, routes, true)
+        | None -> None
+        end
+  in
+  match selected with
+  | Some (pl, routes, accepted_hint) ->
       TilingValidationRoute.report routes;
-      (pl, hinted_accepted)
+      (pl, accepted_hint)
   | None ->
-      begin match hinted_result with
-      | Some (pl, routes) ->
-          TilingValidationRoute.report routes;
-          (pl, true)
-      | None ->
-          report_rejected_tiling_if_requested cfg;
-          (tag_loop_for_parallel_pretty loop, false)
-      end
+      report_rejected_tiling_if_requested cfg;
+      (tag_loop_for_parallel_pretty loop, false)
 
 let run_selected_parallel_optimization cfg loop =
   if cfg.force_multipar then

@@ -61,14 +61,14 @@
         "/ 32"
       ],
       "stderr_needles": [
-        "[tiling-validation] route=permutable-band",
+        "[tiling-validation] route=general-fallback",
         "[vector-validation] status=applied source=explicit-current scope=innermost"
       ],
       "stderr_counts": {
-        "[tiling-validation] route=permutable-band": 1,
+        "[tiling-validation] route=general-fallback": 1,
         "[vector-validation] status=applied source=explicit-current scope=innermost": 1
       },
-      "stderr_absent_needles": ["route=general-fallback", "[alarm]"],
+      "stderr_absent_needles": ["route=permutable-band", "[alarm]"],
       "differs_from_args": [
         "--identity-tiled"
       ]
@@ -80,14 +80,14 @@
       "expect": "success",
       "needles": ["vector for i3", "32 *", "/ 32"],
       "stderr_needles": [
-        "[tiling-validation] route=permutable-band",
+        "[tiling-validation] route=general-fallback",
         "[vector-validation] status=applied source=explicit-current scope=innermost"
       ],
       "stderr_counts": {
-        "[tiling-validation] route=permutable-band": 1,
+        "[tiling-validation] route=general-fallback": 1,
         "[vector-validation] status=applied source=explicit-current scope=innermost": 1
       },
-      "stderr_absent_needles": ["route=general-fallback", "[alarm]"],
+      "stderr_absent_needles": ["route=permutable-band", "[alarm]"],
       "differs_from_args": ["--identity-tiled", "--iss"]
     },
     {
