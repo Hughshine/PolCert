@@ -27,6 +27,21 @@ condition for each dimension to be a legal tiling hyperplane and for the band
 to remain legal under arbitrary permutations, in the sense of Bondhugula's
 thesis, Definition 12 and Theorem 1.
 
+This is the thesis's strict permutable-band definition, not a claim that the
+checker duplicates every heuristic in Pluto's implementation.  Pluto's later
+tilability detection also permits a refinement for dependences already
+satisfied at a scalar scattering dimension that remains fixed inside the tiled
+schedule.  The direct validator does not trust that detection or reproduce its
+dependence metadata.  It accepts only when its semantic band check and the
+checked target-shape bridge establish the reordering; structurally unmatched
+targets remain on the explicitly reported general fallback.
+
+The validator checks the legality of the schedule block selected by the
+tiling witness. It does not rerun Pluto's ILP search for independent
+hyperplanes or certify that search procedure. Linear independence is part of
+finding a useful nondegenerate loop band; it is not needed by the semantic
+argument that the checked target preserves program behavior.
+
 This is not a necessary condition for every fixed tiled target. A dependence
 vector such as `(1, -1)` is not fully permutable, but a particular tile size or
 fixed tile-loop order can preserve that dependence. The condition also does
@@ -154,6 +169,8 @@ Do not claim:
 - necessity of the band condition for one arbitrary concrete target;
 - equivalence with a conservative Pluto dependence graph without an exactness
   hypothesis;
+- that the validator reconstructs or certifies Pluto's independent-hyperplane
+  discovery algorithm;
 - that whole-program affine validation establishes a permutable band.
 
 ## 5. Runtime design and proved coverage
