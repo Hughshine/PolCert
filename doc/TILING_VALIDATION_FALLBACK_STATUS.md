@@ -1,137 +1,127 @@
-# Tiling Validation Fallback Status
+# Tiling Validation Routes
 
-Status date: 2026-07-19
+Status date: 2026-07-21
 
 ## Scope
 
-This note records what `[tiling-validation] route=general-fallback` means and
-how the direct permutable-band route covers the current supported tiling
-matrix. The fallback remains available for valid future schedules outside the
-specialized recognizers; no known successful case in the current second-level
-matrix requires it.
+This note defines the observable tiling-validation routes in the integrated
+runtime. It also records which layout classes the direct permutable-band
+checker recognizes. A successful tiling boundary prints exactly one of
+`permutable-band` or `general-fallback`.
 
-## Validation Routes
+## What the Direct Check Establishes
 
-The unified dispatcher tries the following proved checks in order:
+The direct check is PolCert's semantic analogue of Pluto's fully
+permutable-band condition. For each selected band component, it asks whether a
+source-ordered conflicting instance pair can have the same prefix before the
+band and a decreasing value in that component. The checker covers WW, WR, and
+RW conflicts and requires every counterexample polyhedron to be certified
+empty.
 
-1. the ordinary common-band checker;
-2. whole-program ordinary-tiling permutability over the composed tiling
-   semantics;
-3. the second-level componentwise permutable-band checker;
-4. for a structurally recognized second-level target, whole-program
-   permutability over the composed tiling semantics;
-5. for a structurally recognized source-like class of second-level schedules,
-   whole-program permutability over the composed tiling semantics;
-6. the canonical tiling validator;
-7. the general tiling validator.
+The implementation reuses the proved access-conflict construction and
+polyhedral-emptiness kernels from affine validation. It does not construct a
+synthetic schedule or call the complete affine-schedule validator. It also does
+not reproduce or certify Pluto's band detector, independent-hyperplane search,
+or profitability heuristics. The result is a sound semantic property for the
+layouts recognized by PolCert's structural bridge.
 
-The command-line route labels have these meanings:
+## Dispatcher Order
 
-| Reported route | Meaning | Optimized tiled result used? |
+`TilingBandDirectRuntime.checked_tiling_schedule_sourceb_first_direct_runtime_validate_route`
+tries these proved checks in order:
+
+1. the direct common-band checker for a recognized ordinary strip-mined
+   schedule;
+2. the direct componentwise checker for a recognized grouped or interleaved
+   second-level schedule;
+3. the legacy source-first tiling checks;
+4. the canonical tiling validator;
+5. the general tiling validator.
+
+The first two checks can return `permutable-band`. The last three are all
+reported as `general-fallback`. The public label deliberately does not hide a
+fallback acceptance under the band name.
+
+| Reported route | Meaning | Candidate used? |
 | --- | --- | --- |
-| `permutable-band` | The specialized tiling-permutability layer accepted the boundary through the common-band, whole-program ordinary, hierarchical second-level, structural second-level whole-program, or source-like second-level whole-program mode. This is an umbrella route label, not the name of a single narrow checker. | Yes, after the target well-formedness check passes. |
-| `general-fallback` | The specialized tiling-permutability checks did not accept the boundary, but the canonical or general proved tiling validator accepted it. | Yes, after the target well-formedness check passes. |
-| `rejected` | The final tiling-bearing pipeline was not adopted, either because no tiling validator accepted the boundary or because a mandatory parallel consumer rejected it. Automatic vector annotation failures are reported separately and retain the verified producer; explicit vector-current failures terminate without reporting a tiling route. | No. The optimizer uses the applicable conservative fallback output when that route defines one. |
+| `permutable-band` | A direct semantic band check and its layout-specific reordering theorem established the tiling boundary. | Yes, after the target well-formedness check. |
+| `general-fallback` | A proved legacy, canonical, or general tiling validator established the boundary after the direct check returned `false`. | Yes, after the target well-formedness check. |
+| `rejected` | No tiling validator accepted the candidate, or a mandatory later consumer rejected the selected route. | No; the enclosing optimizer uses its conservative route behavior. |
 
-Thus `general-fallback` is a successful validation result. It is neither an
-unchecked acceptance nor a return to the source program. The route theorem
-`checked_tiling_schedule_sourceb_first_runtime_validate_route_correct` covers
-both accepted labels. Its general branch invokes
-`checked_tiling_validate_poly_correct`.
+`general-fallback` is a successful, proved validation result. It does not mean
+that the optimizer returned to the source or trusted Pluto. The theorem
+`checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct`
+covers both successful labels.
 
-The current output intentionally combines canonical and general acceptance
-under one `general-fallback` label. This public contract answers whether the
-specialized band route or a proved fallback accepted the candidate. A deeper
-diagnostic mode could distinguish the two fallback validators without changing
-the acceptance contract.
+An impure solver alarm is not `false`: it propagates out of the direct check and
+does not fall through to a fallback validator.
 
-## Current Coverage
+## Recognized Layouts
 
-The current second-level suite manifest contains 53 direct permutable-band
-acceptances and no known fallback acceptance. ISS and parallel, vector, and
-multipar consumers repeat the same tiling boundary under different later
-compilation routes.
+The common-band direct path can accept ordinary rectangular tiling and the
+tiling leg of diamond and full-diamond pipelines. It additionally requires an
+exact strip-mined schedule shape with target-side trailing-zero padding, one
+inferred common band and tile recipe, and uniform source schedule arity. The
+second-level direct path requires a common
+band start and recipe sizes, one program-wide grouped or interleaved layout,
+and the supported symmetric trailing-zero equivalence. In each case, the
+structural theorem connects a target-order reversal to a decreasing component
+of the checked band.
 
-Ordinary one-level tiling uses either the common-band fast path or the
-whole-program ordinary-tiling permutability mode. One-level diamond tiling and
-regular phase-aligned second-level tiling use their specialized checks.
-The statementwise second-level recognizer parses each recipe, independently
-infers its source band, and checks either the grouped child/root target layout
-or the canonical interleaved root/child layout. It therefore covers both
-mixed-depth programs with statement-specific band lengths and diamond or
-full-diamond targets whose added iterators are interleaved. The dispatcher then
-checks permutability of the complete composed schedule, including cross-
-statement ordering. This recognizes semantic structure rather than command-
-line provenance.
-The source-like class uses a guarded whole-program permutability check; current
-identity producers exercise this class, but the selector does not inspect CLI
-flags.
-For every statement, the validator parses the second-level recipe, requires a
-strict zero root row, and checks that deleting strict zero rows makes the
-recipe roots equal the source schedule. It then checks the complete composed
-schedule.
+Recognition is intentionally narrower than semantic validity. Source-like
+identity schedules and mixed-depth layouts may lack the program-wide slot
+mapping required by the direct bridge, so valid instances can report
+`general-fallback`. Identity-tiled routes are therefore not classified as
+direct merely because they visibly contain tile loops.
 
-## Final-Gate Checks
+For diamond and full-diamond pipelines, the route label describes the tiling
+leg from the affine midpoint to the tiled program. The later affine leg is a
+separate proof obligation checked by `validate_general`, even when the tiling
+leg reported `permutable-band`.
 
-The following targeted checks used the current `gifted_curie:/polcert/polopt`
-binary:
+## Current Route Accounting
 
-| Case | Result | Route | Alarm | Optimized output |
-| --- | --- | --- | --- | --- |
-| Source-like identity, second level, `symbolic-independent-2d.loop` | exit 0 | `permutable-band` | absent | present |
-| Mixed-depth second level, `matmul-init.loop` | exit 0 | `permutable-band` | absent | present |
-| Diamond plus second level, `diamond-example-inner-batch.loop` | exit 0 | `permutable-band` | absent | present |
-| Trailing-zero-normalized second-level OpenScop pair, `fusion7-second-level-zero-normalized.*.openscop` | exit 0 | `permutable-band` | absent | validated target accepted |
+The direct differential gate contains five comparisons. The direct checker
+accepts three and rejects two; of the two direct rejections, the whole-program
+checker accepts one and all three compared checkers reject the other. No case
+raises an alarm.
 
-The complete second-level regression suite covers 53 specialized acceptances,
-one standalone trailing-zero normalization boundary, a 20-case
-diamond/current/strict matrix, and focused rejection checks. Every successful
-case requires the direct route. The diamond matrix now separates 16 accepted
-parallel/hinted compositions from four explicit vector-current hard failures;
-the latter report no tiling route. The mixed-depth case retains an explicit
-256/32 nested-output check.
-The final isolated run after adding statementwise mixed-depth and interleaved
-diamond recognition took `1029.41s` (`17:09`). The focused 20-case diamond
-route matrix took `390.30s` (`6:30`). Earlier complete runs took `1040s` and
-`954.751s`; retain the `1800s` outer timeout to account for container and host
-load. The complete recheck after adding trailing-zero normalization took
-`1063.03s` (`17:43`) while the other route matrices ran concurrently during
-its first six minutes.
+The route matrices record the following final dispatcher outcomes:
 
-The separate Pluto compatibility matrix passed all 133 checks in `333.01s`
-(`5:33`) in `gifted_curie`. A dedicated 90-case one-level route-discipline
-matrix passed in `209s` (`3:29`). It ran ordinary, identity-tiled, diamond, and
-full-diamond producers; ISS and non-ISS
-routes; uniform and mixed-depth programs; and sequential, hinted, strict,
-multipar, parallel-current, and vector-current consumers. Under the
-innermost-only vector contract, 84 compositions complete and emit exactly one
-`permutable-band` report. Six explicit vector-current selections are expected
-hard failures because the selected loop is not a certifiable innermost vector
-loop; they emit vector rejection telemetry and no tiling route. Automatic
-missing or rejected hints retain the verified producer. No case uses
-`general-fallback`.
+| Regression | Direct | General fallback | Expected rejection | Notes |
+| --- | ---: | ---: | ---: | --- |
+| Non-second-level composition matrix | 50 | 34 | 6 | The six rejections are explicit non-innermost vector selections. |
+| Second-level manifest | 36 | 17 | 5 | 53 successful validations across direct and fallback routes. |
+| Diamond plus second-level consumer matrix | 16 | 0 | 4 | The four rejections are explicit vector-current failures. |
 
-This matrix checks completion or expected explicit-vector rejection, the
-unique validation-route report for completed cases, and alarm discipline. It
-does not claim that every flag has a distinct optimization effect in every
-Cartesian-product case. Separate compatibility,
-parallel-current, vector-current, and diamond suites provide representative
-effect assertions for those features.
+The standalone probes also distinguish the intended boundary: a phase-aligned
+ordinary case takes the direct route, a source-like identity case takes the
+fallback, and the supported trailing-zero-normalized second-level case takes
+the direct route. These counts are route accounting, not a claim that every
+future Pluto schedule belongs to one of the direct recognizers.
 
-This is a claim about the current supported matrix, not every schedule a future
-Pluto version might produce. A future valid schedule outside the specialized
-recognizers may still succeed through the proved fallback, with
-`general-fallback` reported explicitly.
+## Parallel and Vector Consumers
 
-## Follow-Up Acceptance Criteria
+The tiling route is established before checked parallel or vector annotation.
+`--multipar` sends every dimension in the finite candidate list constructed for
+that route to the checked multi-current configuration; no two-element
+truncation remains. The proved route filters the list to certified dimensions
+before emitting parallel annotations.
 
-Optional direct-recognition work may:
+Vector annotation is innermost-only. Pluto-hinted mode considers only the
+reported vector hints and does not search non-innermost dimensions. Explicit
+`--vector-current d` rejects a selection that is not both certifiable and
+structurally innermost. Such an explicit rejection is not a tiling-validator
+fallback.
 
-1. expose the failed direct-check stage or predicate in diagnostic mode;
-2. broaden effect fixtures for heterogeneous and interleaved second-level
-   schedules;
-3. retain the proved fallback validators for valid schedules outside the
-   direct checker's intended recognition language.
+## Maintenance Rules
 
-Fallback is retained, but direct permutable-band validation is now the required
-route for every successful case in the advertised Pluto tiling matrix.
+Future recognizers may broaden the direct route, but they must preserve these
+properties:
+
+1. `permutable-band` is emitted only by a theorem chain that checks the band
+   property directly.
+2. Every accepted non-direct route is reported as `general-fallback`.
+3. Regression manifests state the expected route instead of checking success
+   alone.
+4. Layout classes without a proved structural bridge remain on the fallback.

@@ -33,7 +33,8 @@ In the normalized flag model, a user-visible run is built from:
   - default band-aware ordinary tiling
   - `--band-tiling-experiment` (compatibility alias for the default band-aware
     ordinary tiling route)
-  - `--legacy-generic-tiling`
+  - `--legacy-generic-tiling` (deprecated compatibility alias for that same
+    direct-first route)
   - `--second-level-tile`
   - `--diamond-tile`
   - `--full-diamond-tile`
@@ -56,8 +57,13 @@ At a high level, the default pipeline is:
 -> Extractor.extractor
 -> StrengthenDomain.strengthen_pprog
 -> affine Pluto route with verified affine validation
--> if the phase-aligned tiling route succeeds:
-   -> checked tiling validation
+-> import the phase-aligned tiling candidate and witness
+-> try the direct semantic permutable-band checker
+   -> report permutable-band if its layout and band checks succeed
+-> if the direct checker returns false, try the proved legacy, canonical, and
+   general tiling validators
+   -> report general-fallback if one succeeds
+-> if either tiling validation route succeeds:
    -> current_view_pprog
 -> otherwise:
    -> verified affine-only fallback
@@ -73,6 +79,26 @@ For a concise summary of the current verified pipeline shape and the role of
 - [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md)
 - [doc/FEATURE_STATUS.md](./doc/FEATURE_STATUS.md)
 - [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
+- [doc/TILING_VALIDATION_FALLBACK_STATUS.md](./doc/TILING_VALIDATION_FALLBACK_STATUS.md)
+- [doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md](./doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md)
+
+The direct checker validates a semantic counterpart of Pluto's fully
+permutable-band property for recognized tiling layouts. It checks that no
+source-ordered conflicting pair with the same prefix before the band decreases
+in any selected band component. It reuses the certified access-conflict and
+polyhedral-emptiness kernels, but does not invoke the whole affine-schedule
+validator. The check is sound for the recognized layouts; it is not a
+formalization of Pluto's detector, independent-hyperplane search, or
+profitability heuristics. An impure solver alarm propagates and aborts this
+route; it is not converted into a fallback attempt.
+
+Ordinary rectangular tiling and the tiling leg of diamond/full-diamond routes
+can use the common-band direct check. Recognized grouped or interleaved
+second-level schedules use a componentwise direct check. Source-like identity
+layouts and structurally unmatched mixed-depth layouts may use the proved
+general fallback instead. The
+diamond route has a separate final affine leg after tiling; that leg is checked
+by `validate_general` even when the tiling leg reported `permutable-band`.
 
 ## Pluto configuration used by `polopt`
 
@@ -413,6 +439,9 @@ The proved passes used by `Opt` are:
    - `phase_pipeline_opt_prepared_from_poly`
    - the final verified optimizer route, including checked affine scheduling,
      checked tiling validation, and verified fallback
+   - tiling validation first tries the direct semantic band checker in
+     [src/TilingBandDirectRuntime.v](./src/TilingBandDirectRuntime.v), then the
+     proved legacy, canonical, and general validators
 4. [src/PrepareCodegen.v](./src/PrepareCodegen.v)
    - `prepare_codegen`
    - regularizes the validated program into the codegen-ready representation
@@ -442,7 +471,12 @@ Interpretation:
 
 - `--parallel-current d` uses the checked explicit-dimension parallel pipeline
 - `--parallel` / `--parallel-strict` use Pluto-hinted checked one-current routes
-- `--parallel --multipar` uses checked multi-current configs
+- `--parallel --multipar` submits every dimension in the finite candidate list
+  constructed for that route to checked multi-current configs; no two-element
+  truncation remains
+- vector routes accept only a certified innermost loop; automatic rejected
+  hints retain the verified sequential result, while explicit
+  `--vector-current` rejection is a hard failure
 - all of these routes are selected by the unified wrapper theorem rather than by
   changing the sequential `Opt_correct` theorem object
 - the route-family flag model itself is documented in
@@ -607,7 +641,6 @@ Useful modes:
 ./polopt --second-level-tile file.loop
 ./polopt --diamond-tile file.loop
 ./polopt --full-diamond-tile file.loop
-./polopt --legacy-generic-tiling file.loop
 ```
 
 ## How to write your own example

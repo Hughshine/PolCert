@@ -1,6 +1,6 @@
 # Pluto-Polopt Compatibility Surface
 
-Date: 2026-05-25
+Date: 2026-07-21
 
 Audience: PolCert developers who need to align `polopt` with Pluto as the reference optimizer.
 
@@ -72,7 +72,8 @@ The current assessment is based on these concrete checks.
   - public entry: `./polopt --pluto-compat`
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
-  - default GLPK-enabled Pluto baseline result after multipar and broader effect coverage: `114 / 114` checks passed
+  - integrated GLPK-enabled Pluto baseline result after direct-band routing,
+    multipar, and broader effect coverage: `138 / 138` checks passed
   - the suite also checks Pluto's default-on `--prevector` mapping, stale-current-Pluto flag rejections, missing explicit control-file rejection, non-matmul explicit control-file effects, and cleanup of temporary `tile.sizes`, `.fst`, and `.precut` files after explicit control-file runs
 - Flag-effect exploration:
   - `tools/artifact/explore_flag_effects.py` compares `polopt --pluto-compat --explain` optimized loops for paired Pluto-style flag sets and writes JSON or Markdown evidence
@@ -86,10 +87,13 @@ The current assessment is based on these concrete checks.
   - `--identity --tile --second-level-tile` and `--identity --tile --iss --second-level-tile` are now accepted through checked generic identity-tiling routes; the focused `fusion7` probe shows a PolOpt 256/32 second-level tile shape that differs from ordinary identity tiling
   - over 63 regression `.loop` fixtures, direct Pluto `--identity --tile --diamond-tile` produced the same C output as `--identity --tile`; no identity-diamond-specific output effect was found
   - over 63 regression `.loop` fixtures, `--identity --tile` and `--identity --tile --iss` both succeeded with identical optimized loops; no ISS-only or ISS-different identity-tiling fixture was found in that bounded corpus
-- Executed artifact smoke check:
-  - `make artifact-check`
-  - result: py-compile, proof report, capability matrix, codegen-gap exploration, unrolljam effect corpus, Pluto-compatible suite, focused end-to-end C unroll checks, second-level suite, and diamond suite all passed
-  - extended mode: `python3 tools/artifact/run_artifact_check.py --mode extended` adds the flag-effect exploration after the ordinary proof and suite checks
+- Historical v2 artifact smoke check:
+  - `make artifact-check` passed the pre-direct-band proof report, capability
+    matrix, codegen and route suites
+  - this result does not cover the direct-band integration; the final v3 image
+    review must rerun the full claim suite and retain its raw result bundle
+  - extended mode: `python3 tools/artifact/run_artifact_check.py --mode extended`
+    adds the flag-effect exploration after the ordinary proof and suite checks
 
 One important correction: Pluto's `--help` is not reliable for defaults in this build. The help text says some features are disabled by default, but `lib/program.cpp` initializes `tile=1`, `parallel=1`, `diamondtile=1`, `intratileopt=1`, `prevector=1`, `unrolljam=1`, and `smartfuse`.
 
@@ -109,25 +113,34 @@ This document uses five status classes.
 
 The supported surface is already nontrivial.
 
+For tiling, `permutable-band` means that PolOpt's direct semantic analogue of
+Pluto's fully permutable-band condition accepted a recognized layout. The
+checker proves absence of decreasing conflicting pairs with certified
+polyhedral emptiness queries. It does not call the whole affine-schedule
+validator and does not certify Pluto's band detector or search procedure.
+`general-fallback` means that a proved legacy, canonical, or general tiling
+validator accepted the same boundary. Both labels are successful outcomes;
+the driver reports which one occurred.
+
 | Pluto-style request | Current `polopt` behavior | Evidence |
 |---|---|---|
-| Default full tiled route | Runs checked affine + ordinary band-aware tiling route. | generated suite and native compat `ordinary-tiled` |
+| Default full tiled route | Runs checked affine scheduling, then tries the direct semantic permutable-band checker for ordinary tiling. A proved fallback remains available and is reported explicitly. | generated suite and native compat `ordinary-tiled` |
 | `--notile` | Runs affine-only checked route. | native compat `affine-only` |
 | `--identity --notile` | Runs no-Pluto identity extraction/codegen route. | existing CLI route |
-| `--identity --tile` | Runs the checked identity-tiling route: identity extraction followed by Pluto's tile-only phase and the existing tiling validator/codegen chain. This gives a real tiling effect when the original schedule already exposes a directly tileable band. | native compat `identity-tiled`; `SBandTilingOpt.opt_identity_tiled`; `Opt_identity_tiled_band_correct` |
-| `--identity --tile --parallel`, `--identity --tile --parallel --multipar` | Runs the same checked identity tiling boundary, then feeds Pluto's parallel loop hint(s) to the extracted checked parallel validator/codegen path. The explicit-current native route has a Coq theorem-facing entry as well. The positive fixture shows 32x32 identity tiling plus one or two `parallel for` annotations. | native compat `identity-tiled-parallel`, `identity-tiled-multipar`; `Opt_parallel_current_identity_tiled_result_correct`; extracted tiling and parallel validators/codegen |
+| `--identity --tile` | Runs the checked identity-tiling route: identity extraction followed by Pluto's tile-only phase and the tiling validator/codegen chain. Source-like and mixed-depth identity layouts may use the proved `general-fallback`; they are not automatically classified as direct permutable bands. | native compat `identity-tiled`; `SBandTilingOpt.opt_identity_tiled`; `Opt_identity_tiled_band_correct` |
+| `--identity --tile --parallel`, `--identity --tile --parallel --multipar` | Runs the same checked identity tiling boundary, then feeds Pluto's parallel loop hint(s) to the extracted checked parallel validator/codegen path. The explicit-current native route has a Coq theorem-facing entry as well. The positive fixture shows 32x32 identity tiling plus one or more certified `parallel for` annotations. The tiling boundary may report `general-fallback`. | native compat `identity-tiled-parallel`, `identity-tiled-multipar`; `Opt_parallel_current_identity_tiled_result_correct`; extracted tiling and parallel validators/codegen |
 | `--identity --tile --iss` | Runs checked ISS complete-cut recovery, then checked identity tiling over the split program. Current tests show the tiling effect remains available under `--iss`; the current `.loop` corpus did not contain a case where ISS uniquely enables identity tiling. | native compat `identity-tiled-iss`; `SBandTilingOpt.opt_identity_tiled_with_iss`; `Opt_identity_tiled_band_with_iss_correct` |
-| `--identity --tile --second-level-tile` | Runs a checked generic identity-tiling route: identity extraction, Pluto tile-only second-level oracle, second-level tiling witness validation, and canonical PolOpt code generation. The positive cases show the expected 256/32 outer-first shape and differ from ordinary identity tiling. | native compat `identity-second-level` and `identity-second-level-matmul-init`; `Identity_tiling_generic_opt_prepared_correct`; identity-composition `fusion7` probe |
+| `--identity --tile --second-level-tile` | Runs a checked generic identity-tiling route: identity extraction, Pluto tile-only second-level oracle, second-level tiling witness validation, and canonical PolOpt code generation. Recognized grouped/interleaved layouts can use the direct checker; source-like or mixed-depth layouts may report `general-fallback`. | native compat `identity-second-level` and `identity-second-level-matmul-init`; `Identity_tiling_generic_opt_prepared_correct`; identity-composition `fusion7` probe |
 | `--identity --tile --iss --second-level-tile` | Runs checked ISS complete-cut recovery before the generic second-level identity-tiling route. The focused case shows the same 256/32 second-level shape under `--iss`. | native compat `identity-second-level-iss`; `identity_tiling_generic_opt_prepared_with_iss_correct` |
 | `--iss` | Runs ISS + affine + tiling route when the input satisfies ISS shape constraints. | existing ISS suite |
-| `--second-level-tile` | Runs checked second-level tiling route on full tiled paths, including parallel composition on both `nodep.loop` and `matmul-init.loop`. | native compat `second-level`, `second-level-parallel`, and `second-level-parallel-matmul-init`; second-level suite |
+| `--second-level-tile` | Runs the checked second-level tiling route on full tiled paths. Grouped and interleaved layouts satisfying the structural gate can use the componentwise direct checker; other valid layouts may use the proved fallback. | native compat `second-level`, `second-level-parallel`, and `second-level-parallel-matmul-init`; second-level suite |
 | `--iss --second-level-tile` | Runs the sequential ISS + second-level route; the focused native compat case shows the expected two-level tile shape. | native compat `second-level-iss` |
 | `--parallel` | Runs Pluto-hinted checked parallel route for one parallel loop. | native compat `parallel`; parallel tests |
 | `--parallel-current d` | Runs explicit-dimension checked parallel route. The native `--identity-tiled --parallel-current d` form exercises the extracted identity-tiling plus explicit-current theorem route without pretending that `--parallel-current` is a Pluto flag. | parallel-current suite; `identity-tiled-current-combined-effect` |
-| `--prevector`, `--vector` | Runs a checked vector annotation route. Pluto's vector marking is derived from the same parallel-loop analysis used for `--parallel`, so PolOpt reuses the parallel/doall checker and emits `vector for`. | native compat `prevector` and `default-prevector`; `checked_vector_annotated_codegen_correct_general`; vector-current suite |
-| `--vector-current d` | Runs explicit-dimension checked vector annotation. This is a native PolOpt theorem-facing route, not a Pluto flag. | vector-current suite |
+| `--prevector`, `--vector` | Runs an innermost-only checked vector annotation route. PolOpt considers Pluto's vector hints, reuses the parallel/doall checker, and emits `vector for` only when the hinted loop is certifiable and structurally innermost. | native compat `prevector` and `default-prevector`; `checked_vector_annotated_codegen_correct_general`; vector-current suite |
+| `--vector-current d` | Runs explicit-dimension checked vector annotation and rejects `d` unless it is certifiable and structurally innermost. This is a native PolOpt theorem-facing route, not a Pluto flag. | vector-current suite |
 | `--unrolljam` | Runs checked Loop IR post passes. Constant-bounded loops are fully unrolled under the theorem-facing `checked-all-depths` selector. Variable-bound sequential loops use `--ufactor` as a checked block factor, emit repeated factor offsets, leave a residual remainder loop, and run verified cleanup. The default selector is Pluto-profitability-compatible: it selects concrete depth/path candidates using temporal-reuse and register-budget tests, then lets the extracted checked pass validate every selected transformation. | native compat `const-unrolljam-constant-loop`, `const-unrolljam-ufactor-constant-loop`, `block-unrolljam-ufactor-variable-loop`, `mixed-const-and-block-unrolljam`, and `unrolljam-empty-selector-policy`; direct Pluto unroll-jam effect corpus covers 6/6 native codegen effects in the default 11-fixture set and records 0 additional checked PolOpt effects where native Pluto has no clean codegen effect; end-to-end C `const_unroll` and `unrolljam_block_variable`; `LoopUnroll.const_unroll_correct`; `LoopUnroll.block_unroll_correct`; `LoopSingletonCleanup.cleanup_correct` |
-| `--diamond-tile` | Runs sequential diamond phase-aligned route on default full tiled path. | native compat `diamond`; diamond suite |
+| `--diamond-tile` | Runs the sequential diamond phase-aligned route. Its tiling leg can report direct `permutable-band`; its separate final affine leg is checked by `validate_general`. | native compat `diamond`; diamond suite |
 | `--full-diamond-tile` | Runs stronger diamond producer mode on the same checked route. The `jacobi-1d` case shows a route-level difference from non-diamond tiling; the batch fixture checks the same diamond-shaped output is accepted on a more complex stencil. | native compat `full-diamond` and `full-diamond-batch` |
 | `--smartfuse` | Passed through to Pluto's checked scheduler oracle; this is also the default fusion policy in current recipes. | native compat `ordinary-tiled`; oracle flag note |
 | `--nofuse` | Passed through to Pluto's checked scheduler oracle. | native compat `optimizer-nofuse-affine`; differs from smartfuse baseline |
@@ -154,7 +167,27 @@ The supported surface is already nontrivial.
 
 The current default `polopt` route is not "Pluto default". It intentionally uses phase-aligned recipes. For ordinary sequential optimization, it runs an affine-only Pluto phase with tiling and codegen effects disabled, then a tile-only Pluto phase with `--identity --tile`. This makes the output easier to validate because affine scheduling and tiling are separated.
 
-The bare Pluto flag `--identity` needs special care. In the current Pluto source, tiling is enabled by default, so `--identity` can still reach the tiling phase. The compatible `polopt` no-tiling identity route is therefore modeled as `--identity --notile`. Plain sequential `--identity --tile` has its own theorem-facing route: it exports the identity schedule, runs Pluto's tile-only phase, and validates the tiling boundary before code generation. This route is intentionally narrower than the default affine+tiling route: it tiles programs whose source-order band is already accepted by the band validator, while programs that need Pluto's affine scheduling first still belong to the default route. The `--identity --tile --second-level-tile` and `--identity --tile --iss --second-level-tile` forms now use generic identity-tiling routes so the checked output preserves Pluto's outer-first 256/32 second-level shape. The `--identity --tile --parallel` route composes the checked tiling boundary with the extracted checked parallel validator/codegen path; `--multipar` now uses the same verified compiler wrapper via a list-of-dimensions config and certifies every accepted dimension in the candidate list. The `--identity --tile --iss` form has the corresponding theorem-facing composition with ISS split validation first; it is supported, but current tests do not claim an ISS-sensitive extra tiling effect.
+The bare Pluto flag `--identity` needs special care. In the current Pluto
+source, tiling is enabled by default, so `--identity` can still reach the tiling
+phase. The compatible `polopt` no-tiling identity route is therefore modeled as
+`--identity --notile`. Plain sequential `--identity --tile` has its own
+theorem-facing route: it exports the identity schedule, runs Pluto's tile-only
+phase, and validates the tiling boundary before code generation. This route is
+intentionally narrower than the default affine+tiling route. It tiles programs
+whose source-order schedule yields a candidate accepted by the unified tiling
+dispatcher; source-like layouts may report `general-fallback`. Programs that
+need Pluto's affine scheduling first still belong to the default route.
+
+The `--identity --tile --second-level-tile` and
+`--identity --tile --iss --second-level-tile` forms use generic identity-tiling
+routes so the checked output preserves Pluto's outer-first 256/32 second-level
+shape. The `--identity --tile --parallel` route composes the checked tiling
+boundary with the extracted checked parallel validator/codegen path.
+`--multipar` uses the same verified compiler wrapper through a
+list-of-dimensions config and certifies every accepted dimension in the
+candidate list. The `--identity --tile --iss` form has the corresponding
+theorem-facing composition with ISS split validation first. Current tests do
+not claim an ISS-sensitive extra tiling effect.
 
 The compatibility mode also requires callers to say how they want to handle Pluto defaults. A bare invocation is rejected. The caller must explicitly handle intratile optimization with `--nointratileopt` or `--intratileopt`, and unroll-jam with either `--nounrolljam` or explicit `--unrolljam`; must choose either `--noparallel` or `--parallel`; and must choose either `--nodiamond-tile` or a diamond route. For vectorization, Pluto's default-on `--prevector` now maps to PolOpt's checked vector route, while `--noprevector` disables that annotation.
 
@@ -192,7 +225,7 @@ These are not proof limitations. They are interface-boundary choices.
 
 | Pluto flag | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
-| `--prevector` | Supported narrow | Pluto records vector loops as OpenScop loop directives. PolOpt parses directive bit `4`, then reuses the checked parallel/doall certificate to emit `vector for`. If Pluto's hinted current dimension is not certifiable, non-strict mode scans for a certifiable current dimension and reports a checked warning. | Already supported by the checked vector annotation route. | Add specialized vector checkers only if future semantics need fixed-width SIMD, reductions, or backend-specific pragmas. |
+| `--prevector` | Supported narrow | Pluto records vector loops as OpenScop loop directives. PolOpt parses directive bit `4`, then reuses the checked parallel/doall certificate to emit `vector for`. The driver considers only Pluto's innermost vector hints. If none is certifiable and structurally innermost, automatic mode retains the verified sequential producer; it does not scan non-innermost dimensions. | Already supported by the checked vector annotation route. | Add specialized vector checkers only if future semantics need fixed-width SIMD, reductions, or backend-specific pragmas. |
 | `--noprevector` | Compatible no-op | Disables checked vector annotation. | Already acceptable. | Keep as no-op with explanation. |
 | `--unrolljam` | Supported narrow | Pluto performs loop-body rewriting after codegen. PolOpt implements checked Loop IR post passes: complete unrolling for constant bounds under the theorem-facing selector, block/remainder unroll for variable-bound sequential loops, same-bound sibling-loop jam fusion through a per-candidate extracted validator, and verified cleanup. The heuristic/policy layer is factored as an untrusted candidate depth/path plan. | Yes for the checked block/remainder route and for true jam shape when the local candidate validates; otherwise PolOpt falls back only for that candidate. The default Pluto-profitability selector covers every native clean effect in the default corpus with no extra PolOpt-only effects, and the empty-selector regression shows the policy can suppress effects independently of correctness. | Broaden the corpus beyond the current 11 fixtures and compare against more Pluto flag combinations. |
 | `--nounrolljam` | Compatible no-op | Current checked recipes already disable Pluto unroll-jam. | Already acceptable. | Keep as no-op with explanation. |
@@ -204,7 +237,29 @@ These are not proof limitations. They are interface-boundary choices.
 
 These are mostly not "missing Pluto optimization". They are backend features. A direct Pluto probe on `matmul.loop` shows that `--prevector` adds an OpenScop `<loop>` extension with directive `4`; PolOpt now imports that directive as a checked vector annotation. The unroll-jam probe is different: Pluto's after-scheduling OpenScop is byte-identical with and without `--unrolljam`, but the generated C differs by unrolling/jamming two loops and adding remainder loops. The corpus driver now checks this across multiple fixtures: all native clean unroll-jam effects in the default set have a corresponding checked PolOpt structure, and the default selector records no extra PolOpt-only effects on that corpus. The current PolOpt support is therefore deliberately not pass-through: `LoopUnroll` proves real post passes for statically constant-bounded full unrolling and variable-bound block/remainder unrolling, while the extracted unroll-jam route emits true same-bound sibling-loop jam shape for each local candidate that validates. The heuristic is separate: `checked_unrolljam_loop_with_plan` takes an untrusted candidate depth/path plan, so the Pluto-profitability policy can change without changing the semantic argument. `--ufactor` is split accordingly: it is supported as an automatic tile-size-model parameter when `--determine-tile-size` is present, and as the checked block factor when `--unrolljam` is selected without tile-size-modeling.
 
-The vector path deliberately follows the checked parallel route: recover or choose a vectorizable loop, validate the doall precondition, and emit a checked vector annotation. This is sound for Pluto-style prevectorization because Pluto's vector marker is derived from parallel loop analysis. The checked unroll path is separate: the current theorem coverage handles complete unrolling of constant-bound loops, block/remainder unrolling for variable bounds, and a loop-native trace theorem for same-bound sibling-loop jam. The extracted lowerer validates each same-bound sibling-loop fusion candidate before emitting the true jammed shape; the local validator builds unjammed/jammed candidate programs at the current Loop depth and uses an abstract affine bound rather than trusting non-affine block bounds such as `M / 3`. If a candidate rejects, only that candidate remains in order-preserving block/remainder form. The candidate depth/path plan is not trusted: `POLCERT_UNROLLJAM_POLICY=none` exercises the same `--unrolljam` path with an empty selector and confirms that the command succeeds with no factor/remainder markers, while `POLCERT_UNROLLJAM_POLICY=checked-all-depths` exposes the broad theorem-facing route. A second optional extension is first-class stride loops in `Loop` itself; that is broader than unroll-jam and would affect substitution, cleanup, codegen, parallel/vector tag erasure, extraction, and their preservation proofs. The disabling flags `--noprevector` and `--nounrolljam` remain accepted because they are how callers turn off Pluto's default codegen-side behavior for checked routes.
+The vector path follows the checked parallel route: recover an innermost Pluto
+vector hint, validate the doall precondition and innermost structure, and emit a
+checked vector annotation. This is sound for Pluto-style prevectorization
+because Pluto derives its vector marker from parallel-loop analysis.
+
+The checked unroll path is separate. Current theorems cover complete unrolling
+of constant-bound loops, block/remainder unrolling for variable bounds, and a
+loop-native trace theorem for same-bound sibling-loop jam. The extracted
+lowerer validates each sibling-loop fusion candidate before emitting the jammed
+shape. Its local validator builds unjammed and jammed candidate programs at the
+current Loop depth and uses an abstract affine bound instead of trusting a
+non-affine block bound such as `M / 3`. If a candidate rejects, that candidate
+remains in order-preserving block/remainder form.
+
+The candidate depth/path plan is untrusted. `POLCERT_UNROLLJAM_POLICY=none`
+exercises the same `--unrolljam` path with an empty selector and confirms that
+the command succeeds without factor/remainder markers.
+`POLCERT_UNROLLJAM_POLICY=checked-all-depths` exposes the broad theorem-facing
+route. First-class stride loops would be a separate extension to `Loop`; they
+would affect substitution, cleanup, codegen, parallel/vector tag erasure,
+extraction, and their preservation proofs. The disabling flags `--noprevector`
+and `--nounrolljam` remain accepted because callers use them to disable Pluto's
+default codegen-side behavior for checked routes.
 
 ## DFP and Typed Fusion
 
@@ -298,6 +353,10 @@ Tile size control is likely easy from a proof perspective if the validator alrea
 
 The remaining `--multipar` work is no longer a route-closure gap for the main checked surface. The residual scope is broader regression coverage and any future runtime/backend interpretation beyond the current checked `ParallelLoop` annotations.
 
+The multi-current driver passes every dimension in the finite candidate list
+constructed for that route to the checked `RawParallelCurrentMany*` route. No
+two-element truncation remains.
+
 ## Diamond Tiling and Diamond Combinations
 
 `--diamond-tile` and `--full-diamond-tile` are no longer single-route support.
@@ -307,7 +366,7 @@ remaining work is breadth of fixtures and output polish, not route closure.
 
 | Combination | Current state | Reason | Can support? | How to support |
 |---|---|---|---|---|
-| `--diamond-tile` | Supported | Phase-aligned route validates before -> mid affine, mid -> posttile tiling, and posttile -> after affine. | Already supported. | Keep suite coverage. |
+| `--diamond-tile` | Supported | The phase-aligned route validates before -> mid affine, mid -> posttile tiling, and posttile -> after affine. The tiling leg can use the direct common-band checker; the final leg is checked separately by `validate_general`. | Already supported. | Keep suite coverage. |
 | `--full-diamond-tile` | Supported | Same checked route with stronger Pluto producer mode. | Already supported. | Add more full-diamond cases beyond smoke. |
 | `--diamond-tile --parallel` | Supported narrow | Diamond validation composes with the checked Pluto-hinted parallel route. | Already supported for current fixtures. | Broaden OpenMP/codegen fixtures and keep strict-mode checks separate. |
 | `--diamond-tile --multipar` / `--diamond-tile --iss --multipar` | Supported narrow | The diamond route feeds candidate current dimensions through the verified `RawParallelCurrentManyDiamond*` wrapper path into checked multi-cert parallel codegen, with the ISS variant routed through `RawParallelCurrentManyDiamondISS`. | Current fixtures pass; proof surface includes `Opt_parallel_current_many_diamond_correct` and `Opt_parallel_current_many_diamond_with_iss_correct`. | Broaden beyond the current batch fixtures; strict-mode positive hint-only behavior is covered. |
@@ -392,7 +451,7 @@ make test-vector-current-suite
 Current result with the pinned GLPK-enabled Pluto baseline:
 
 ```text
-[pluto-compat-suite] OK (114 checks)
+[pluto-compat-suite] OK (138 checks)
 ```
 
 The suite should add one test per supported flag group and one test per rejection class. For every new supported flag, the acceptance criterion should be:

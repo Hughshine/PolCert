@@ -8355,10 +8355,11 @@ Proof.
     + eapply IH. exact Htl.
 Qed.
 
-(** Direct executable checker for the Pluto band condition.  Unlike the
-    reduction-based checker below, this constructs the bad-pair region
-    explicitly and does not synthesize a second schedule.  The direct runtime
-    dispatcher invokes this checker for structurally recognized tilings. *)
+(** Direct executable checker for PolCert's semantic analogue of the Pluto band
+    condition.  Unlike the reduction-based checker below, this constructs the
+    bad-pair region explicitly and does not synthesize a second schedule.  The
+    direct runtime dispatcher invokes this checker for structurally recognized
+    tilings. *)
 Definition make_pluto_band_component_guard_polys
     (pi1 pi2: Tiling.PL.PolyInstr_ext)
     (band: pinstr_tiling_band)
@@ -13784,7 +13785,9 @@ Qed.
 (** Direct componentwise checking for statement-specific bands.  The
     componentwise semantic property only relates instruction points whose
     statements have the same inferred band.  Pairs with distinct bands, and
-    components outside that shared band, therefore introduce no obligation. *)
+    components outside that shared band, therefore introduce no obligation.
+    The independent structural bridge proves that the endpoints of every
+    relevant target reversal have the same inferred band. *)
 Definition validate_two_instr_band_entries_component_direct
     (entry1 entry2: Tiling.PL.PolyInstr_ext * pinstr_tiling_band)
     (dim env_size: nat) : imp bool :=

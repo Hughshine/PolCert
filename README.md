@@ -80,7 +80,10 @@ It checks whether the schedule change preserves the polyhedral dependence semant
 
 Use [`polopt`](./POLOPT.md).
 By default it runs the checked affine+tiling route through the unified
-`Loop -> ParallelLoop` compiler wrapper. It also exposes:
+`Loop -> ParallelLoop` compiler wrapper. A successful tiling boundary reports
+exactly one of two routes: `permutable-band` when the direct semantic band
+checker accepts it, or `general-fallback` when a proved fallback tiling
+validator accepts it. It also exposes:
 
 - an optional checked ISS path via `--iss`
 - checked explicit-dimension parallel paths via `--parallel-current`
@@ -90,11 +93,27 @@ By default it runs the checked affine+tiling route through the unified
 - checked Pluto-hinted vector annotation via `--vector` / `--prevector`
 - checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
-- the ordinary-tiling compatibility selector `--legacy-generic-tiling`
+- the deprecated ordinary-tiling compatibility alias
+  `--legacy-generic-tiling`
 - CLI-side profiling / inspection flags such as `--profile-stages`,
   `--extract-only`, and the standalone validation actions documented in
   [`POLOPT.md`](./POLOPT.md) and
   [`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md)
+
+The direct checker is a semantic analogue of Pluto's fully permutable-band
+condition for the layouts it recognizes. It checks that no conflicting,
+source-ordered pair with the same prefix before the band decreases in a checked
+band component, using the certified polyhedral emptiness kernel. It does not
+call the whole affine-schedule validator or certify Pluto's band-search
+algorithm.
+Ordinary rectangular, diamond, full-diamond, and recognized grouped or
+interleaved second-level layouts can take this route. Source-like identity
+layouts and structurally unmatched mixed-depth layouts may instead use the
+explicitly reported proved fallback.
+
+Vector annotations are restricted to certifiable innermost loops. `--multipar`
+passes every dimension in the finite candidate list constructed for that route
+to the checked multi-current validator; no two-element truncation remains.
 
 ## Status
 
@@ -117,7 +136,8 @@ By default it runs the checked affine+tiling route through the unified
   - checked Pluto-hinted vector annotation (`--vector`, `--prevector`)
 - `polcert` now supports:
   - direct affine validation
-  - phase-aligned tiling validation
+  - phase-aligned tiling validation with explicit `permutable-band` and
+    `general-fallback` outcomes
   - ISS bridge / debug-dump validation modes
 - The strict proved-path `polopt` regression suite is manifest-gated in CI and
   currently succeeds on all generated benchmark inputs:
@@ -163,6 +183,12 @@ the default `ci` workflow today.
 - [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the default and optional verified pipelines, fallback behavior, and the main normalization stages.
 - [`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md): current user-facing mode matrix, including ISS and parallel status.
 - [`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md): route-family flag model, legal combinations, and why rejected combinations are rejected.
+- [`doc/TILING_VALIDATION_FALLBACK_STATUS.md`](./doc/TILING_VALIDATION_FALLBACK_STATUS.md):
+  direct-band and proved-fallback route meanings, recognition boundary, and
+  regression accounting.
+- [`doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md`](./doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md):
+  relation to Pluto's fully permutable-band definition and the direct checker's
+  soundness boundary.
 - [`doc/ARTIFACT_STRENGTHENING_PLAN.md`](./doc/ARTIFACT_STRENGTHENING_PLAN.md): next-step roadmap for whole-C benchmarking, `advect3d` codegen performance, Pluto bug studies, and diamond tiling.
 - [`syntax/README.md`](./syntax/README.md): textual `.loop` syntax reference and authoring notes.
 - [`tests/polopt-generated/README.md`](./tests/polopt-generated/README.md): generated strict-suite inputs, outputs, and how to inspect changes.

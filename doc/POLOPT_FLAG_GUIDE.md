@@ -53,11 +53,11 @@ inserting the checked ISS structural stage before later scheduling.
 These flags only matter on full tiled routes.
 
 - no tiling-family flag
-  - default ordinary tiling route, currently using the band-aware checked
-    tiling validator
+  - default ordinary tiling route; the dispatcher first tries the direct
+    semantic permutable-band checker, then proved fallback validators
 - `--legacy-generic-tiling`
-  - use the historical generic ordinary-tiling validator instead of the
-    default band-aware route
+  - deprecated compatibility alias for the same default direct-first ordinary
+    tiling route; it does not bypass the permutable-band checker
 - `--band-tiling-experiment`
   - compatibility alias for the current default band-aware ordinary tiling
     route
@@ -84,20 +84,24 @@ produce and validate it?
     dimension
 - `--multipar`
   - refine `--parallel`: use Pluto's multi-parallel hints and certify a list of
-    current dimensions through the checked multi-current route
+    current dimensions through the checked multi-current route; every dimension
+    in the finite candidate list constructed for that route is considered, and
+    no two-element truncation remains
 - `--parallel-current d`
   - use the theorem-aligned explicit-dimension parallel route
 - `--vector`, `--prevector`
   - use Pluto's vector loop hint when possible, then certify a doall current
-    dimension and emit `vector for`
+    dimension and emit `vector for`; only innermost hints are considered
 - `--vector-strict`
   - refine `--vector`: require the certified loop to match Pluto's vector hint
 - `--vector-current d`
-  - use the theorem-aligned explicit-dimension vector route
+  - use the theorem-aligned explicit-dimension vector route; reject `d` unless
+    it is certifiable and structurally innermost
 
 These flags answer: do we stay sequential, follow Pluto's hint, or certify a
 user-selected current dimension? Vector routes reuse the same parallel/doall
 checker because Pluto's prevector marker is derived from parallel-loop analysis.
+They deliberately do not search or annotate non-innermost loops.
 
 ### 1.5 Standalone validation actions
 
@@ -166,7 +170,9 @@ particular:
   normal affine/tiling, ISS, identity-tiling, second-level, and diamond-family
   compositions covered by the current wrapper
 - `--parallel --multipar` follows the same hinted family but certifies a list of
-  current dimensions through `RawParallelCurrentMany*` configs
+  current dimensions through `RawParallelCurrentMany*` configs. The driver
+  passes every dimension in the finite candidate list constructed for that
+  route; no two-element truncation remains
 - `--parallel-current d` supports:
   - default full tiled
   - `--notile`
@@ -175,7 +181,8 @@ particular:
   - `--iss --notile`
   - `--iss --identity`
 - `--vector-current d` follows the same explicit-current support shape as
-  `--parallel-current d`, but emits `vector for`
+  `--parallel-current d`, but emits `vector for` only for a certified innermost
+  loop
 - `--second-level-tile` is also valid with:
   - `--extract-tiling-witness-openscop`
   - `--validate-tiling-openscop`
@@ -266,7 +273,7 @@ Reason:
 - hinted and explicit-current selection are different route families, so the
   frontend forces the user to pick one
 
-### 3.5 Legacy ordinary-tiling selectors are intentionally narrow
+### 3.5 Ordinary-Tiling Compatibility Selectors Are Intentionally Narrow
 
 Rejected combinations:
 
@@ -280,8 +287,8 @@ Rejected combinations:
 
 Reason:
 
-- both flags are about how the ordinary full-tiled default route validates
-  tiling
+- both deprecated flags select the default ordinary full-tiled route
+- both use the same direct-first tiling dispatcher as the unflagged route
 - they are not general modifiers for every pipeline family
 
 ## 4. How route selection actually works
@@ -302,10 +309,30 @@ The frontend makes the route choice in roughly this order:
    - `--iss`
    - `--notile`
    - `--identity`
-   - optional ordinary-tiling refinements such as `--legacy-generic-tiling`
+   - deprecated ordinary-tiling aliases such as `--legacy-generic-tiling`
 
 This explains why some flags feel "stronger" than others: some choose the whole
 route family, while others only refine a family that is already selected.
+
+Within every tiling-bearing family, a second dispatcher classifies the tiling
+boundary. It first tries the direct semantic permutable-band checker for an
+ordinary common band or a recognized grouped/interleaved second-level layout.
+If that check does not apply or returns false, it tries the proved legacy,
+canonical, and general tiling validators. A successful run prints exactly one
+of these labels:
+
+- `permutable-band`: the direct band property and its tiling-specific structural
+  bridge established the boundary;
+- `general-fallback`: a proved fallback validator established the boundary;
+- `rejected`: no tiling validator accepted the candidate.
+
+The direct checker reuses access-conflict construction and certified
+polyhedral-emptiness queries. It does not invoke the complete affine-schedule
+validator and does not reproduce Pluto's detector or schedule search. Ordinary,
+diamond, full-diamond, and recognized second-level candidates can take the
+direct route. Source-like identity layouts and structurally unmatched
+mixed-depth layouts may take the proved fallback. In a diamond route, the
+post-tiling affine leg is checked separately by `validate_general`.
 
 ## 5. Current support boundary in one page
 
@@ -434,19 +461,18 @@ validation-only actions cannot be mixed.
 
 ### 7.3 Retire compatibility-only tiling flags
 
-`--band-tiling-experiment` is already documented and implemented as a
-compatibility alias for the default ordinary checked tiling route.
+`--band-tiling-experiment` and `--legacy-generic-tiling` are implemented as
+compatibility aliases for the default ordinary direct-first tiling route.
 
 The likely next step is:
 
-- keep it temporarily for backward compatibility
-- mark it as deprecated in help text
-- eventually remove it
+- keep them temporarily for backward compatibility
+- keep them marked as deprecated in help text
+- eventually remove them
 
 At that point the ordinary route becomes simpler:
 
-- default ordinary band-aware tiling
-- optional `--legacy-generic-tiling` only while comparison is still needed
+- default ordinary direct-first tiling
 
 ### 7.4 Unify tiling-family selection more explicitly
 

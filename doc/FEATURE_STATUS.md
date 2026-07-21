@@ -26,6 +26,9 @@ Status:
 
 - theorem-aligned verified optimizer route
 - affine scheduling + checked tiling
+- tiling reports `permutable-band` when the direct semantic checker accepts the
+  recognized layout, otherwise `general-fallback` when a proved fallback
+  validator accepts it
 - no ISS by default
 
 Proof object:
@@ -82,7 +85,9 @@ Status:
 - CLI-exposed checked routes through the unified compiler wrapper
 - backed by verified parallel certification and code generation components
 - `--parallel-strict` requires the certified loop to match Pluto's hint
-- `--multipar` uses checked multi-current configs (`RawParallelCurrentMany*`)
+- `--multipar` submits every dimension in the finite candidate list constructed
+  for that route to checked multi-current configs (`RawParallelCurrentMany*`);
+  no two-element truncation remains
 
 ### Explicit-dimension parallel mode
 
@@ -111,6 +116,8 @@ Status:
 - theorem-aligned checked vector annotation for an explicit current dimension
 - reuses the parallel/doall certificate, matching Pluto's prevector source
 - also exposed through Pluto compatibility as `--prevector`
+- accepts only a certified innermost loop; non-innermost explicit selections
+  are rejected
 
 Proof objects:
 
@@ -129,7 +136,8 @@ Relevant components:
 The vector route reuses the same doall certificate family as checked
 parallelization, but emitted `vector for` annotations are justified by the vector
 codegen correctness lemmas rather than by the ordinary parallel route theorem
-alone.
+alone. Pluto-hinted vector mode searches only the supplied innermost hints. It
+does not search non-innermost current dimensions.
 
 ### Additional tiling-family selectors
 
@@ -148,14 +156,27 @@ Status:
   - checked second-level tiling family
   - valid on supported full tiled optimization routes and tiling
     witness/validation actions
+  - grouped and interleaved layouts that satisfy the direct structural gate can
+    report `permutable-band`; other valid layouts may report `general-fallback`
 - `--diamond-tile` / `--full-diamond-tile`
   - theorem-backed opt-in diamond phase route family
   - supported by the current route map for sequential, ISS-aware, and checked
     parallel compositions documented in `doc/pluto-polopt-compatibility.md`
-  - still distinct from second-level and legacy-generic ordinary tiling
+  - still distinct from second-level and ordinary-tiling compatibility flags
+  - their tiling leg can use the direct common-band check; the final affine leg
+    is checked separately by `validate_general`
 - `--legacy-generic-tiling`
-  - compatibility selector for the historical generic ordinary-tiling validator
+  - deprecated compatibility alias for the default direct-first ordinary
+    tiling dispatcher; it no longer bypasses the permutable-band check
   - only supported on the default non-ISS full tiled route
+
+The direct checker is a semantic analogue of Pluto's fully permutable-band
+condition, not Pluto's detector or band-search algorithm. It reuses the proved
+access-conflict and polyhedral-emptiness kernels without calling the whole
+affine-schedule validator. Ordinary rectangular, diamond, full-diamond, and
+recognized second-level layouts can take the direct route. Source-like identity
+layouts and structurally unmatched mixed-depth layouts may take the proved
+fallback.
 
 ### Standalone validation / inspection actions exposed by `polopt`
 

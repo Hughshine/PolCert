@@ -180,8 +180,8 @@ The runtime has three observable outcomes:
 ```text
 permutable-band   a direct band checker and a tiling-specific reversal bridge
                   establish reordering safety
-general-fallback  a complete source/target affine validation, the canonical
-                  validator, or the general tiling validator succeeds
+general-fallback  a proved legacy, canonical, or general tiling validator
+                  succeeds after the direct checker returns false
 rejected          no validator accepts the candidate
 ```
 
@@ -200,13 +200,16 @@ The direct implementation establishes the following facts:
    semantic permutable-band property. This layer reuses the certified access
    conflict and polyhedral-emptiness kernel, but it does not call the complete
    affine schedule validator.
-3. Ordinary rectangular tiling, diamond tiling, and full-diamond tiling use the
-   common-band checker. The final affine phase of a diamond pipeline remains a
-   separate affine-validation step.
-4. Strict second-level schedules use a componentwise direct checker. The
-   structural classifier accepts both exact grouped tile coordinates and exact
-   interleaved root/child tile coordinates; Pluto's diamond plus second-level
-   output uses the latter layout. A layout-parameterized local reversal theorem
+3. Ordinary rectangular tiling and the ordinary tiling leg of diamond and
+   full-diamond pipelines can use the common-band checker. Diamond plus
+   second-level tiling can instead use the interleaved componentwise checker.
+   The final affine phase of a diamond pipeline is a separate step checked by
+   `validate_general`.
+4. Recognized grouped or interleaved second-level layouts use a componentwise
+   direct checker. The structural classifier accepts both exact grouped tile
+   coordinates and exact interleaved root/child tile coordinates; Pluto's
+   diamond plus second-level output uses the latter layout. A
+   layout-parameterized local reversal theorem
    proves that every relevant target reversal identifies the same band for both
    statements and exposes a decreasing component in that band. The checker
    therefore need not impose obligations on statement pairs with distinct band
@@ -246,12 +249,14 @@ global tile slots to zero-extended source components, common positive tile
 sizes, and a proof that pointwise order of the padded source timestamps implies
 pointwise order of the padded tile timestamps.
 
-That normalization theorem is not part of the current runtime. Ordinary
-identity and mixed-depth identity schedules therefore report
-`general-fallback`. They remain verified by the existing complete validator,
-but they are not counted as direct permutable-band cases. Strict second-level
-instances that satisfy the existing common-start and common-recipe shape gate
-continue to use the proved componentwise direct route.
+That normalization theorem is not part of the current runtime. Source-like
+identity layouts and mixed-depth layouts without the recognized global slot
+mapping therefore report `general-fallback`; the identity flag alone does not
+determine the route. Such layouts remain verified by the proved fallback
+dispatcher, but they are not counted as direct permutable-band cases.
+Recognized grouped or interleaved second-level instances that satisfy the
+existing common-start and common-recipe shape gate continue to use the proved
+componentwise direct route.
 
 ## 6. Reproduction Notes
 

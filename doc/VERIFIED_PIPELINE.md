@@ -41,6 +41,28 @@ A normal schedule, tiling, or parallel optimizer run has this shape:
 Pluto is an oracle: it proposes schedules, phase outputs, and loop annotation
 hints. PolOpt accepts those artifacts only through checked routes.
 
+For a tiling boundary, the extracted dispatcher first tries a direct semantic
+permutable-band check. It checks source-ordered WW, WR, and RW conflicts with
+the same prefix before the band for decreases in the selected band components,
+using certified polyhedral emptiness queries. A successful direct check reports
+`permutable-band`. If the direct checker returns `false` because the layout is
+outside its recognizer or the property is not established,
+the dispatcher tries proved legacy, canonical, and general tiling validators;
+successful acceptance reports `general-fallback`. No accepted fallback is
+relabeled as a band result. An impure solver alarm propagates instead of
+triggering fallback.
+
+This check is a semantic analogue of Pluto's fully permutable-band condition
+for recognized layouts. It is not a verification of Pluto's band detector,
+independent-hyperplane search, or optimization heuristics. The implementation
+reuses the affine validator's certified conflict and emptiness kernels, but it
+does not call the whole affine-schedule validator. Ordinary rectangular,
+diamond, full-diamond, and recognized grouped/interleaved second-level layouts
+can use the direct route. Source-like identity layouts and structurally
+unmatched mixed-depth layouts may use the proved fallback. Diamond pipelines
+validate their final affine leg
+separately, and that leg is checked by `validate_general`.
+
 The important route families are:
 
 - sequential configs through `RawSeq`, including identity, affine-only, ordinary
@@ -69,22 +91,19 @@ supported unroll/jam subset.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
 parallel-loop hints, builds a list of candidate current dimensions, and calls a
-`RawParallelCurrentMany*` config in the verified wrapper.
+`RawParallelCurrentMany*` config in the verified wrapper. It submits every
+dimension in the finite candidate list constructed for that route; no
+two-element truncation remains. Vector routes are
+innermost-only: hinted mode does not search other dimensions, and explicit
+`--vector-current` rejects a non-innermost selection.
 
 ## Proof and artifact evidence
 
-The last full code-artifact smoke was run on the pushed `end-to-end` state at
-commit `72deba1`, tagged
-`state-eq-polyhedral-verification-complete-2026-05-25`. Later `end-to-end`
-commits may be documentation-only. That code state passed:
-
-```sh
-make -j4 artifact-check
-```
-
-That smoke includes the proof report, capability matrix, generated-C stride and
-unroll/jam checks, the second-level suite, the diamond suite, and the Pluto
-compatibility suite with 114 checks.
+The direct-band integration is not represented by the older May 2026 artifact
+record. The release procedure must run the full claim suite on the final v3 tag
+and record its commit, image digest, route summary, and raw result bundle. A
+pre-freeze integration run passed the 138-case Pluto compatibility suite; it is
+not a substitute for the final image review.
 
 ## Boundary
 

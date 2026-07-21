@@ -31,9 +31,10 @@ Definition tiling_band_validation_route_acceptsb
   end.
 
 (** The direct source-first layer recognizes ordinary common-band strip mining
-    and uniform grouped or interleaved second-level schedules, allowing only
-    symmetric trailing-zero padding.  Other proved cases remain available
-    through the legacy fallback in the route dispatcher below. *)
+    with target-side trailing-zero padding, and uniform grouped or interleaved
+    second-level schedules with symmetric trailing-zero equivalence.  Other
+    proved cases remain available through the legacy fallback in the route
+    dispatcher below. *)
 Definition checked_tiling_sourceb_first_direct_band_check
     (before after: Legacy.Tiling.PL.t)
     (ws: list statement_tiling_witness) : imp bool :=
