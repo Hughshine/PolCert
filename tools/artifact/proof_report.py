@@ -32,13 +32,26 @@ TOP_LEVEL_ROUTES = [
     {
         "route": "unified permutable-band-first tiling dispatcher",
         "cli": "every ordinary, second-level, identity-tiled, ISS, diamond, parallel, vector, and multipar tiling boundary",
+        "theorem_file": "src/TilingBandDirectRuntime.v",
+        "theorem_names": [
+            "checked_second_level_direct_band_check_correct",
+            "checked_tiling_sourceb_first_direct_band_check_correct",
+            "checked_tiling_sourceb_first_direct_band_check_outer_correct",
+            "checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct",
+        ],
+        "note": "The executable dispatcher first tries the proved direct semantic permutable-band checks for recognized ordinary and structured second-level layouts, then retains the legacy tiling-specific, canonical, and general proved validators as explicit general-fallback routes.",
+    },
+    {
+        "route": "direct semantic permutable-band checker",
+        "cli": "internal primary tiling validator for recognized common-band and componentwise second-level layouts",
         "theorem_file": "src/TilingBandScheduleValidator.v",
         "theorem_names": [
-            "checked_tiling_sourceb_first_band_check_correct",
-            "checked_tiling_sourceb_first_band_check_outer_correct",
-            "checked_tiling_schedule_sourceb_first_runtime_validate_route_correct",
+            "validate_two_instrs_pluto_band_component_direct_sound",
+            "check_pinstr_list_pluto_permutable_band_direct_sound",
+            "check_pprog_pluto_permutable_tiling_bands_direct_sound_with_env_len",
+            "check_pinstr_list_pluto_componentwise_permutable_bands_direct_sound",
         ],
-        "note": "The executable dispatcher tries ordinary common-band, whole-program ordinary-tiling permutability, and hierarchical second-level checks before canonical and general proved fallbacks.",
+        "note": "This is a sound semantic analogue of Pluto's fully permutable-band condition. It does not claim to verify Pluto's dependence-graph construction, band search, or detector implementation.",
     },
     {
         "route": "identity extraction/codegen route",

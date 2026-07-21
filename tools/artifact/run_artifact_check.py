@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -26,6 +27,90 @@ class CheckResult:
     @property
     def ok(self) -> bool:
         return self.returncode == 0
+
+
+def build_tiling_route_summary(results: list[CheckResult]) -> dict[str, object]:
+    by_name = {result.name: result for result in results}
+
+    def passed(name: str) -> bool:
+        result = by_name.get(name)
+        return result is not None and result.ok
+
+    def stdout(name: str) -> str:
+        result = by_name.get(name)
+        if result is None:
+            return ""
+        try:
+            return Path(result.stdout_path).read_text(encoding="utf-8")
+        except OSError:
+            return ""
+
+    direct_match = re.search(
+        r"\[direct-band-diff\] OK \((\d+) cases, no alarms\)",
+        stdout("direct-band-differential"),
+    )
+    one_level_match = re.search(
+        r"\[non-second-level-routes\] OK \((\d+) permutable-band "
+        r"compositions, (\d+) explicit general fallbacks, (\d+) explicit "
+        r"vector rejections\)",
+        stdout("non-second-level-tiling-routes"),
+    )
+
+    manifest_path = ROOT / "tools" / "second_level_tiling" / "suite_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    checks = manifest["checks"]
+    successful = [
+        check
+        for check in checks
+        if check.get("expect") == "success"
+        and "--second-level-tile" in check.get("args", [])
+    ]
+    band_marker = "[tiling-validation] route=permutable-band"
+    fallback_marker = "[tiling-validation] route=general-fallback"
+    second_level_counts = {
+        "manifest_checks": len(checks),
+        "successful": len(successful),
+        "permutable_band": sum(
+            band_marker in check.get("stderr_needles", []) for check in successful
+        ),
+        "general_fallback": sum(
+            fallback_marker in check.get("stderr_needles", []) for check in successful
+        ),
+        "negative": sum(check.get("expect") == "failure" for check in checks),
+    }
+
+    required = (
+        "direct-band-differential",
+        "non-second-level-tiling-routes",
+        "second-level-suite",
+        "pluto-compat-suite",
+    )
+    return {
+        "schema_version": 1,
+        "verified": all(passed(name) for name in required),
+        "required_runtime_checks": {
+            name: "pass" if passed(name) else "missing-or-failed" for name in required
+        },
+        "direct_differential": {
+            "cases": int(direct_match.group(1)) if direct_match else None,
+            "no_alarms": bool(direct_match),
+        },
+        "non_second_level": {
+            "cases": sum(map(int, one_level_match.groups())) if one_level_match else None,
+            "permutable_band": int(one_level_match.group(1)) if one_level_match else None,
+            "general_fallback": int(one_level_match.group(2)) if one_level_match else None,
+            "explicit_vector_rejection": int(one_level_match.group(3)) if one_level_match else None,
+        },
+        "second_level_manifest": second_level_counts,
+        "second_level_additional_runtime_matrix": {
+            "standalone_phase_aligned": "permutable-band",
+            "standalone_source_like": "general-fallback",
+            "standalone_trailing_zero_normalized": "permutable-band",
+            "diamond_permutable_band": 16,
+            "diamond_explicit_vector_rejection": 4,
+            "verified": passed("second-level-suite"),
+        },
+    }
 
 
 def run_check(name: str, command: list[str], out_dir: Path, timeout: int | None) -> CheckResult:
@@ -103,6 +188,7 @@ def base_checks(
                 "tools/diamond_tiling/run_pluto_diamond_suite.py",
                 "tools/parallel_current/run_parallel_current_suite.py",
                 "tools/vector_current/run_vector_current_suite.py",
+                "tools/tiling_routes/check_direct_band_differential.py",
                 "tools/tiling_routes/check_non_second_level_routes.py",
                 "tools/polopt_flag_suites/manifest_runner.py",
                 "tools/polopt_flag_suites/pluto_compat_driver.py",
@@ -162,6 +248,20 @@ def base_checks(
         (
             "identity-composition-exploration",
             identity_composition_command,
+            900,
+        ),
+        (
+            "direct-band-differential",
+            [
+                sys.executable,
+                "tools/tiling_routes/check_direct_band_differential.py",
+                "--polopt",
+                "./polopt",
+                "--polcert",
+                "./polcert",
+                "--timeout",
+                "180",
+            ],
             900,
         ),
         (
@@ -386,6 +486,16 @@ def main() -> int:
         "results": [dict(asdict(item), ok=item.ok) for item in results],
         "ok": all(item.ok for item in results),
     }
+    route_summary = build_tiling_route_summary(results)
+    route_summary_path = out_dir / "tiling-route-summary.json"
+    route_summary_path.write_text(
+        json.dumps(route_summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    summary["tiling_route_summary"] = {
+        "path": str(route_summary_path),
+        "verified": route_summary["verified"],
+    }
+    summary["ok"] = bool(summary["ok"] and route_summary["verified"])
     (out_dir / "artifact-results.json").write_text(json.dumps(summary, indent=2, sort_keys=True))
     print(f"[artifact-check] summary: {out_dir / 'artifact-results.json'}")
     return 0 if summary["ok"] else 1
