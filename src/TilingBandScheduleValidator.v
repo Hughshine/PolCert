@@ -8355,10 +8355,10 @@ Proof.
     + eapply IH. exact Htl.
 Qed.
 
-(** Direct executable prototype for the Pluto band condition.  Unlike the
+(** Direct executable checker for the Pluto band condition.  Unlike the
     reduction-based checker below, this constructs the bad-pair region
-    explicitly and does not synthesize a second schedule.  It is deliberately
-    not wired into the runtime dispatcher yet. *)
+    explicitly and does not synthesize a second schedule.  The direct runtime
+    dispatcher invokes this checker for structurally recognized tilings. *)
 Definition make_pluto_band_component_guard_polys
     (pi1 pi2: Tiling.PL.PolyInstr_ext)
     (band: pinstr_tiling_band)
