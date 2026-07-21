@@ -3367,40 +3367,48 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma validate_instr_and_list_implies_permutability1: 
-  forall pil_ext pi1_ext env envv nth ipl1_ext ipl_ext,
+Local Lemma validate_instr_and_list_implies_pointwise:
+  forall
+    (P : PolyLang.InstrPoint_ext -> Prop)
+    (R : PolyLang.InstrPoint_ext -> PolyLang.InstrPoint_ext -> Prop)
+    pil_ext pi1_ext env envv ipl_ext,
     WHEN res <- validate_instr_and_list pi1_ext (rev pil_ext) (length env) THEN
     res = true ->
-    PolyLang.wf_pinstr_ext_tiling env pi1_ext -> 
     Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
-    length env = length envv ->
-    PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext -> 
-    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext -> 
-    Instr.valid_access_function 
-      (PolyLang.pi_waccess_ext pi1_ext) 
-      (PolyLang.pi_raccess_ext pi1_ext) (PolyLang.pi_instr_ext pi1_ext) ->  
-    Forall (fun pi2_ext => 
-      Instr.valid_access_function 
-        (PolyLang.pi_waccess_ext pi2_ext) 
-        (PolyLang.pi_raccess_ext pi2_ext) (PolyLang.pi_instr_ext pi2_ext)  
-    ) pil_ext ->
-    forall ip1_ext ip2_ext, 
-      In ip1_ext ipl1_ext -> 
-      In ip2_ext ipl_ext -> 
-      PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext -> 
-      PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext -> 
-      PolyLang.Permutable_ext ip1_ext ip2_ext.
+    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
+    Forall (fun pi2_ext =>
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi2_ext)
+        (PolyLang.pi_raccess_ext pi2_ext)
+        (PolyLang.pi_instr_ext pi2_ext)) pil_ext ->
+    (forall pi2_ext nth2 ipl2_ext,
+      PolyLang.wf_pinstr_ext_tiling env pi2_ext ->
+      PolyLang.flatten_instr_nth_ext envv nth2 pi2_ext ipl2_ext ->
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi2_ext)
+        (PolyLang.pi_raccess_ext pi2_ext)
+        (PolyLang.pi_instr_ext pi2_ext) ->
+      mayReturn (validate_two_instrs pi1_ext pi2_ext (length env)) true ->
+      mayReturn (validate_two_instrs pi2_ext pi1_ext (length env)) true ->
+      forall ip1_ext ip2_ext,
+        P ip1_ext ->
+        In ip2_ext ipl2_ext ->
+        R ip1_ext ip2_ext) ->
+    forall ip1_ext ip2_ext,
+      P ip1_ext ->
+      In ip2_ext ipl_ext ->
+      R ip1_ext ip2_ext.
 Proof.
+  intros P R pil_ext.
   induction pil_ext using rev_ind.
   {
-    intros. intros res Hval Htrue Hwf1 Hwf2 Henvlen. intros.
+    intros. intros res Hval Htrue Hwf Hflat Hacc Hpointwise ip1_ext ip2_ext Hip1 Hin.
     simpls.
-    eapply PolyLang.flatten_instrs_ext_nil_implies_nil in H0.
-    inv H0. tryfalse.
-  } 
+    eapply PolyLang.flatten_instrs_ext_nil_implies_nil in Hflat.
+    subst; tryfalse.
+  }
   {
-    intros. intros res Hval Htrue Hwf1 Hwf2 Henvlen. 
-    intros H H0 Ha1 Ha2. intros.
+    intros. intros res Hval Htrue Hwf Hflat Hacc Hpointwise ip1_ext ip2_ext Hip1 Hin.
     rewrite rev_app_distr in Hval. simpl in Hval.
     rewrite Htrue in Hval.
     bind_imp_destruct Hval res1 Hval1.
@@ -3412,37 +3420,92 @@ Proof.
     bind_imp_destruct Hval res3 Hval3.
     eapply mayReturn_pure in Hval.
 
-    rename x into pi'_ext. rename pil_ext into pil'_ext.
-    eapply PolyLang.flatten_instrs_ext_app_singleton_inv in H0.
-    destruct H0 as (ipl'_ext & ipll'_ext & Hpiexpand & Hpilexpand & APP).
-    
-    rewrite APP in H2.
-    eapply in_app_or in H2.
-    destruct H2.
+    rename x into pi2_ext.
+    rename pil_ext into pil_head.
+    eapply PolyLang.flatten_instrs_ext_app_singleton_inv in Hflat.
+    destruct Hflat as
+      (ipl_head & ipl_tail & Hflat_tail & Hflat_head & Hipl_app).
+    rewrite Hipl_app in Hin.
+    eapply in_app_or in Hin.
+    destruct Hin as [Hin_head | Hin_tail].
     {
       eapply IHpil_ext; eauto.
-      clear - Hwf2.
-      rewrite Forall_app in Hwf2. destruct Hwf2; trivial.
-      clear - Ha2. eapply Forall_app in Ha2. destruct Ha2; trivial.
+      clear - Hwf.
+      rewrite Forall_app in Hwf. destruct Hwf; trivial.
+      clear - Hacc.
+      rewrite Forall_app in Hacc. destruct Hacc; trivial.
     }
     {
-      eapply validate_pinstr_implies_permutability1 with (pi1_ext:=pi1_ext) (pi2_ext:=pi'_ext) (ipl1_ext:=ipl1_ext) (ipl2_ext:=ipll'_ext) (env:=env); eauto.
+      eapply Hpointwise with
+        (pi2_ext:=pi2_ext)
+        (nth2:=length pil_head)
+        (ipl2_ext:=ipl_tail); eauto.
       {
-        clear - Hres1.
-        eapply eqb_false_iff in Hres1; destruct res1; tryfalse; trivial.
-      } 
-      {
-        clear - Hwf2.
-        eapply Forall_app in Hwf2; eauto. destruct Hwf2.
+        clear - Hwf.
+        rewrite Forall_app in Hwf. destruct Hwf.
         inv H0; eauto.
       }
       {
-        clear - Ha2.
-        eapply Forall_app in Ha2; eauto. destruct Ha2.
+        clear - Hacc.
+        rewrite Forall_app in Hacc. destruct Hacc.
         inv H0; eauto.
+      }
+      {
+        clear - Hres1 Hval1.
+        eapply eqb_false_iff in Hres1.
+        destruct res1; tryfalse; trivial.
+      }
+      {
+        clear - Hres2 Hval2.
+        eapply eqb_false_iff in Hres2.
+        destruct res2; tryfalse; trivial.
       }
     }
   }
+Qed.
+
+Lemma validate_instr_and_list_implies_permutability1:
+  forall pil_ext pi1_ext env envv nth ipl1_ext ipl_ext,
+    WHEN res <- validate_instr_and_list pi1_ext (rev pil_ext) (length env) THEN
+    res = true ->
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
+    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
+    length env = length envv ->
+    PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext ->
+    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
+    Instr.valid_access_function
+      (PolyLang.pi_waccess_ext pi1_ext)
+      (PolyLang.pi_raccess_ext pi1_ext) (PolyLang.pi_instr_ext pi1_ext) ->
+    Forall (fun pi2_ext =>
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi2_ext)
+        (PolyLang.pi_raccess_ext pi2_ext) (PolyLang.pi_instr_ext pi2_ext)
+    ) pil_ext ->
+    forall ip1_ext ip2_ext,
+      In ip1_ext ipl1_ext ->
+      In ip2_ext ipl_ext ->
+      PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext ->
+      PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext ->
+      PolyLang.Permutable_ext ip1_ext ip2_ext.
+Proof.
+  intros pil_ext pi1_ext env envv nth ipl1_ext ipl_ext.
+  intros res Hval Htrue Hwf1 Hwf2 Henvlen Hflat1 Hflat Ha1 Ha2.
+  eapply
+    (@validate_instr_and_list_implies_pointwise
+      (fun ip1_ext => In ip1_ext ipl1_ext)
+      (fun ip1_ext ip2_ext =>
+        PolyLang.instr_point_ext_old_sched_lt ip1_ext ip2_ext ->
+        PolyLang.instr_point_ext_new_sched_ge ip1_ext ip2_ext ->
+        PolyLang.Permutable_ext ip1_ext ip2_ext)
+      pil_ext pi1_ext env envv ipl_ext res); eauto.
+  intros pi2_ext nth2 ipl2_ext Hwf2' Hflat2 Ha2' Hforward Hreverse.
+  intros ip1_ext ip2_ext Hin1 Hin2 Hold Hnew.
+  eapply validate_pinstr_implies_permutability1
+    with
+      (env:=env) (envv:=envv)
+      (pi1_ext:=pi1_ext) (pi2_ext:=pi2_ext)
+      (nth1:=nth) (nth2:=nth2)
+      (ipl1_ext:=ipl1_ext) (ipl2_ext:=ipl2_ext); eauto.
 Qed.
 
 Lemma nth_error_compose_ipl_ext_inv:
@@ -4037,83 +4100,49 @@ Proof.
         eapply new_of_compose_list_at_ok; [exact Hrel_tail | reflexivity].
 Qed.
 
-Lemma validate_instr_and_list_implies_permutability2: 
+Lemma validate_instr_and_list_implies_permutability2:
   forall pi1_ext pil_ext env envv nth ipl1_ext ipl_ext,
     WHEN res <- validate_instr_and_list pi1_ext (rev pil_ext) (length env) THEN
     res = true ->
-    PolyLang.wf_pinstr_ext_tiling env pi1_ext -> 
+    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
     Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
     length env = length envv ->
-    PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext -> 
-    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext -> 
-    Instr.valid_access_function 
-      (PolyLang.pi_waccess_ext pi1_ext) 
-      (PolyLang.pi_raccess_ext pi1_ext) (PolyLang.pi_instr_ext pi1_ext) ->  
-    Forall (fun pi2_ext => 
-      Instr.valid_access_function 
-        (PolyLang.pi_waccess_ext pi2_ext) 
-        (PolyLang.pi_raccess_ext pi2_ext) (PolyLang.pi_instr_ext pi2_ext)  
+    PolyLang.flatten_instr_nth_ext envv nth pi1_ext ipl1_ext ->
+    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
+    Instr.valid_access_function
+      (PolyLang.pi_waccess_ext pi1_ext)
+      (PolyLang.pi_raccess_ext pi1_ext) (PolyLang.pi_instr_ext pi1_ext) ->
+    Forall (fun pi2_ext =>
+      Instr.valid_access_function
+        (PolyLang.pi_waccess_ext pi2_ext)
+        (PolyLang.pi_raccess_ext pi2_ext) (PolyLang.pi_instr_ext pi2_ext)
     ) pil_ext ->
-    forall ip1_ext ip2_ext, 
-      In ip1_ext ipl1_ext -> 
-      In ip2_ext ipl_ext -> 
-      PolyLang.instr_point_ext_old_sched_lt ip2_ext ip1_ext -> 
-      PolyLang.instr_point_ext_new_sched_ge ip2_ext ip1_ext -> 
+    forall ip1_ext ip2_ext,
+      In ip1_ext ipl1_ext ->
+      In ip2_ext ipl_ext ->
+      PolyLang.instr_point_ext_old_sched_lt ip2_ext ip1_ext ->
+      PolyLang.instr_point_ext_new_sched_ge ip2_ext ip1_ext ->
       PolyLang.Permutable_ext ip1_ext ip2_ext.
 Proof.
-  induction pil_ext using rev_ind.
-  {
-    intros. intros res Hval Htrue Hwf1 Hwf2 Henvlen. intros.
-    simpls.
-    eapply PolyLang.flatten_instrs_ext_nil_implies_nil in H0.
-    inv H0. tryfalse.
-  } 
-  {
-    intros. intros res Hval Htrue Hwf1 Hwf2 Henvlen. 
-    intros H H0 Ha1 Ha2. intros.
-    rewrite rev_app_distr in Hval. simpl in Hval.
-    rewrite Htrue in Hval.
-    bind_imp_destruct Hval res1 Hval1.
-    destruct (eqb res1 false) eqn:Hres1.
-    eapply mayReturn_pure in Hval; tryfalse.
-    bind_imp_destruct Hval res2 Hval2.
-    destruct (eqb res2 false) eqn:Hres2.
-    eapply mayReturn_pure in Hval; tryfalse.
-    bind_imp_destruct Hval res3 Hval3.
-    eapply mayReturn_pure in Hval.
-
-    rename x into pi'_ext. rename pil_ext into pil'_ext.
-    eapply PolyLang.flatten_instrs_ext_app_singleton_inv in H0.
-    destruct H0 as (ipl'_ext & ipll'_ext & Hpiexpand & Hpilexpand & APP).
-    
-    rewrite APP in H2.
-    eapply in_app_or in H2.
-    destruct H2.
-    {
-      eapply IHpil_ext; eauto.
-      clear - Hwf2.
-      rewrite Forall_app in Hwf2. destruct Hwf2; trivial.
-      clear - Ha2. eapply Forall_app in Ha2. destruct Ha2; trivial.
-    }
-    {
-      eapply PolyLang.Permutable_ext_symm.
-      eapply validate_pinstr_implies_permutability1 with (pi2_ext:=pi1_ext) (pi1_ext:=pi'_ext) (ipl2_ext:=ipl1_ext) (ipl1_ext:=ipll'_ext) (env:=env); eauto. 
-      {
-        clear - Hres2.
-        eapply eqb_false_iff in Hres2; destruct res2; tryfalse; trivial.
-      }
-      {
-        clear - Hwf2.
-        eapply Forall_app in Hwf2; eauto. destruct Hwf2.
-        inv H0; eauto.
-      } 
-      {
-        clear - Ha2.
-        eapply Forall_app in Ha2; eauto. destruct Ha2.
-        inv H0; eauto.
-      }
-    }
-  }
+  intros pi1_ext pil_ext env envv nth ipl1_ext ipl_ext.
+  intros res Hval Htrue Hwf1 Hwf2 Henvlen Hflat1 Hflat Ha1 Ha2.
+  eapply
+    (@validate_instr_and_list_implies_pointwise
+      (fun ip1_ext => In ip1_ext ipl1_ext)
+      (fun ip1_ext ip2_ext =>
+        PolyLang.instr_point_ext_old_sched_lt ip2_ext ip1_ext ->
+        PolyLang.instr_point_ext_new_sched_ge ip2_ext ip1_ext ->
+        PolyLang.Permutable_ext ip1_ext ip2_ext)
+      pil_ext pi1_ext env envv ipl_ext res); eauto.
+  intros pi2_ext nth2 ipl2_ext Hwf2' Hflat2 Ha2' Hforward Hreverse.
+  intros ip1_ext ip2_ext Hin1 Hin2 Hold Hnew.
+  eapply PolyLang.Permutable_ext_symm.
+  eapply validate_pinstr_implies_permutability1
+    with
+      (env:=env) (envv:=envv)
+      (pi1_ext:=pi2_ext) (pi2_ext:=pi1_ext)
+      (nth1:=nth2) (nth2:=nth)
+      (ipl1_ext:=ipl2_ext) (ipl2_ext:=ipl1_ext); eauto.
 Qed.
 
 Lemma eqdom_pinstrs_implies_flatten_same_length:
