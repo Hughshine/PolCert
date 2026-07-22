@@ -209,6 +209,10 @@ VPL/test/coq_extracted/*
 **/*.pluto.*
 **/*.cpol
 **/*.scop
+!tools/tiling_routes/fixtures/diamond-tile-example.midtransform.scop
+!tools/tiling_routes/fixtures/diamond-tile-example.posttile.scop
+!tools/tiling_routes/fixtures/nonpermutable-band.midtransform.scop
+!tools/tiling_routes/fixtures/nonpermutable-band.posttile.scop
 **/.beforescheduling
 **/.afterscheduling
 !tests/readscop/scops/.afterscheduling
