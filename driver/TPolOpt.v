@@ -12,6 +12,8 @@ Module Tiling := TilingRelation TPolIRs.Instr.
 
 Definition opt : TPolIRs.Loop.t -> imp TPolIRs.Loop.t := CoreOpt.Opt.
 
+Definition validate := CoreOpt.ValidatorCore.validate.
+
 Definition opt_poly (pol : TPolIRs.PolyLang.t) : imp TPolIRs.Loop.t :=
   CoreOpt.phase_opt_prepared_from_poly (CoreOpt.Strengthen.strengthen_pprog pol).
 
