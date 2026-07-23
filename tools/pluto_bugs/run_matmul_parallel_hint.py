@@ -49,16 +49,26 @@ def main() -> int:
         return rc_debug
 
     rc_strict, out_strict = run(strict_cmd, env=env)
-    if rc_strict != 0:
-        print("[pluto-bug] polopt --parallel --parallel-strict failed", file=sys.stderr)
+    if rc_strict == 0:
+        print("[pluto-bug] strict non-certifiable hint unexpectedly succeeded", file=sys.stderr)
         print(out_strict, end="", file=sys.stderr)
-        return rc_strict
+        return 1
 
     require_contains("debug run", out_debug, "parallel for i1 in range(")
     require_absent("debug run", out_debug, "parallel for i0 in range(")
 
-    require_contains("strict run", out_strict, "[alarm] optimization triggered a checked fallback or warning")
+    strict_rejection = (
+        "[parallel-validation] status=rejected source=pluto-hint "
+        "reason=no-certifiable-dimension"
+    )
+    require_contains("strict run", out_strict, strict_rejection)
+    require_contains("strict run", out_strict, "[alarm] requested checked optimization was rejected")
+    if out_strict.count(strict_rejection) != 1:
+        raise AssertionError("strict run: parallel rejection telemetry was not unique")
+    if out_strict.count("[alarm] requested checked optimization was rejected") != 1:
+        raise AssertionError("strict run: fail-closed alarm was not unique")
     require_absent("strict run", out_strict, "parallel for ")
+    require_absent("strict run", out_strict, "== Optimized Loop ==")
 
     print("[pluto-bug] matmul parallel-hint case reproduced")
     return 0

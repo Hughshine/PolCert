@@ -3447,6 +3447,88 @@ Definition stripmine_second_level_schedule_after_env_by_layout
         env_size before_sched band
   end.
 
+Definition strict_zero_schedule_mask (sched: Schedule) : list bool :=
+  List.map Tiling.PL.affine_function_is_zero sched.
+
+Fixpoint list_bool_strict_eqb (xs ys: list bool) : bool :=
+  match xs, ys with
+  | [], [] => true
+  | x :: xs', y :: ys' =>
+      Bool.eqb x y && list_bool_strict_eqb xs' ys'
+  | _, _ => false
+  end.
+
+Fixpoint check_schedule_masks_eqb
+    (mask: list bool) (schedules: list Schedule) : bool :=
+  match schedules with
+  | [] => true
+  | sched :: schedules' =>
+      list_bool_strict_eqb mask (strict_zero_schedule_mask sched) &&
+      check_schedule_masks_eqb mask schedules'
+  end.
+
+Fixpoint check_schedule_lists_after_zero_erasureb
+    (expected actual: list Schedule) : bool :=
+  match expected, actual with
+  | [], [] => true
+  | expected_sched :: expected',
+    actual_sched :: actual' =>
+      listzzs_strict_eqb
+        (Tiling.PL.remove_zero_schedule_dims expected_sched)
+        (Tiling.PL.remove_zero_schedule_dims actual_sched) &&
+      check_schedule_lists_after_zero_erasureb expected' actual'
+  | _, _ => false
+  end.
+
+Fixpoint second_level_expected_schedules
+    (layout: second_level_schedule_layout)
+    (env_size: nat)
+    (before_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : option (list Schedule) :=
+  match before_pis, bands with
+  | [], [] => Some []
+  | before_pi :: before_pis', band :: bands' =>
+      match
+        second_level_expected_schedules
+          layout env_size before_pis' bands'
+      with
+      | Some schedules =>
+          Some
+            (stripmine_second_level_schedule_after_env_by_layout
+               layout env_size (Tiling.PL.pi_schedule before_pi) band
+             :: schedules)
+      | None => None
+      end
+  | _, _ => None
+  end.
+
+Definition check_pinstr_list_second_level_schedule_zero_erasureb
+    (layout: second_level_schedule_layout)
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : bool :=
+  match
+    second_level_expected_schedules layout env_size before_pis bands
+  with
+  | Some (expected0 :: expected') =>
+      match List.map Tiling.PL.pi_schedule after_pis with
+      | actual0 :: actual' =>
+          check_schedule_masks_eqb
+            (strict_zero_schedule_mask expected0) expected' &&
+          check_schedule_masks_eqb
+            (strict_zero_schedule_mask actual0) actual' &&
+          check_schedule_lists_after_zero_erasureb
+            (expected0 :: expected') (actual0 :: actual')
+      | [] => false
+      end
+  | Some [] =>
+      match after_pis with
+      | [] => true
+      | _ => false
+      end
+  | None => false
+  end.
+
 Definition second_level_schedule_tile_block_by_layout
     (layout: second_level_schedule_layout)
     (recipe: second_level_band_recipe)
@@ -3567,6 +3649,16 @@ Fixpoint check_pinstr_list_second_level_schedule_symmetricb
   | _, _, _ => false
   end.
 
+Definition check_pinstr_list_second_level_schedule_directb
+    (layout: second_level_schedule_layout)
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : bool :=
+  check_pinstr_list_second_level_schedule_symmetricb
+    layout env_size before_pis after_pis bands ||
+  check_pinstr_list_second_level_schedule_zero_erasureb
+    layout env_size before_pis after_pis bands.
+
 Fixpoint check_pinstr_list_second_level_schedule_variantb
     (env_size: nat)
     (before_pis after_pis: list Tiling.PL.PolyInstr)
@@ -3670,6 +3762,39 @@ Definition check_pprog_second_level_schedule_symmetricb
                     before_pis after_pis bands
                then Some (bands, recipes, SecondLevelInterleaved)
                else None
+        else None
+    | None => None
+    end
+  else None.
+
+Definition check_pprog_second_level_schedule_directb
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    : option
+        (list pinstr_tiling_band *
+         list second_level_band_recipe *
+         second_level_schedule_layout) :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars
+  then
+    match infer_pinstr_list_second_level_bands before_pis ws with
+    | Some (bands, recipes) =>
+        if check_common_second_level_recipe_sizesb recipes &&
+           check_common_band_startb bands
+        then
+          if
+            check_pinstr_list_second_level_schedule_directb
+              SecondLevelGrouped (List.length before_ctxt)
+              before_pis after_pis bands
+          then Some (bands, recipes, SecondLevelGrouped)
+          else if
+            check_pinstr_list_second_level_schedule_directb
+              SecondLevelInterleaved (List.length before_ctxt)
+              before_pis after_pis bands
+          then Some (bands, recipes, SecondLevelInterleaved)
+          else None
         else None
     | None => None
     end
@@ -5919,6 +6044,409 @@ Proof.
     + eapply check_common_band_startb_sound. exact Hstart.
 Qed.
 
+Lemma list_bool_strict_eqb_eq :
+  forall xs ys,
+    list_bool_strict_eqb xs ys = true ->
+    xs = ys.
+Proof.
+  induction xs as [|x xs IH]; intros ys Hcheck;
+    destruct ys as [|y ys]; simpl in Hcheck; try discriminate.
+  - reflexivity.
+  - apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    destruct x, y; simpl in Hhead; try discriminate;
+      f_equal; eapply IH; exact Htail.
+Qed.
+
+Lemma check_schedule_masks_eqb_sound :
+  forall mask schedules,
+    check_schedule_masks_eqb mask schedules = true ->
+    Forall
+      (fun sched => strict_zero_schedule_mask sched = mask)
+      schedules.
+Proof.
+  intros mask schedules.
+  induction schedules as [|sched schedules IH]; intros Hcheck.
+  - constructor.
+  - simpl in Hcheck.
+    apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    constructor.
+    + symmetry.
+      eapply list_bool_strict_eqb_eq.
+      exact Hhead.
+    + eapply IH.
+      exact Htail.
+Qed.
+
+Lemma check_schedule_lists_after_zero_erasureb_sound :
+  forall expected actual,
+    check_schedule_lists_after_zero_erasureb expected actual = true ->
+    Forall2
+      (fun expected_sched actual_sched =>
+         Tiling.PL.remove_zero_schedule_dims expected_sched =
+         Tiling.PL.remove_zero_schedule_dims actual_sched)
+      expected actual.
+Proof.
+  intros expected.
+  induction expected as [|expected_sched expected IH];
+    intros actual Hcheck;
+    destruct actual as [|actual_sched actual];
+    simpl in Hcheck; try discriminate.
+  - constructor.
+  - apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    constructor.
+    + eapply listzzs_strict_eqb_eq.
+      exact Hhead.
+    + eapply IH.
+      exact Htail.
+Qed.
+
+Definition second_level_schedule_zero_erasure_match
+    (layout: second_level_schedule_layout)
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : Prop :=
+  exists expected expected_mask actual_mask,
+    second_level_expected_schedules
+      layout env_size before_pis bands = Some expected /\
+    Forall
+      (fun sched => strict_zero_schedule_mask sched = expected_mask)
+      expected /\
+    Forall
+      (fun sched => strict_zero_schedule_mask sched = actual_mask)
+      (List.map Tiling.PL.pi_schedule after_pis) /\
+    Forall2
+      (fun expected_sched actual_sched =>
+         Tiling.PL.remove_zero_schedule_dims expected_sched =
+         Tiling.PL.remove_zero_schedule_dims actual_sched)
+      expected (List.map Tiling.PL.pi_schedule after_pis).
+
+Lemma check_pinstr_list_second_level_schedule_zero_erasureb_sound :
+  forall layout env_size before_pis after_pis bands,
+    check_pinstr_list_second_level_schedule_zero_erasureb
+      layout env_size before_pis after_pis bands = true ->
+    second_level_schedule_zero_erasure_match
+      layout env_size before_pis after_pis bands.
+Proof.
+  intros layout env_size before_pis after_pis bands Hcheck.
+  unfold check_pinstr_list_second_level_schedule_zero_erasureb in Hcheck.
+  destruct
+    (second_level_expected_schedules
+       layout env_size before_pis bands)
+    as [expected|] eqn:Hexpected; try discriminate.
+  destruct expected as [|expected0 expected'].
+  - destruct after_pis as [|after_pi after_pis]; try discriminate.
+    exists [], [], [].
+    repeat split; try constructor.
+    exact Hexpected.
+  - destruct after_pis as [|after0 after_pis]; try discriminate.
+    simpl in Hcheck.
+    repeat rewrite andb_true_iff in Hcheck.
+    destruct Hcheck as [[Hexpected_masks Hactual_masks] Hpairs].
+    exists
+      (expected0 :: expected'),
+      (strict_zero_schedule_mask expected0),
+      (strict_zero_schedule_mask (Tiling.PL.pi_schedule after0)).
+    repeat split.
+    + exact Hexpected.
+    + constructor.
+      * reflexivity.
+      * eapply check_schedule_masks_eqb_sound.
+        exact Hexpected_masks.
+    + constructor.
+      * reflexivity.
+      * eapply check_schedule_masks_eqb_sound.
+        exact Hactual_masks.
+    + eapply check_schedule_lists_after_zero_erasureb_sound.
+      simpl.
+      apply andb_true_iff.
+      exact Hpairs.
+Qed.
+
+Lemma second_level_expected_schedules_nth_error :
+  forall layout env_size before_pis bands expected
+         n before_pi band,
+    second_level_expected_schedules
+      layout env_size before_pis bands = Some expected ->
+    nth_error before_pis n = Some before_pi ->
+    nth_error bands n = Some band ->
+    nth_error expected n =
+      Some
+        (stripmine_second_level_schedule_after_env_by_layout
+           layout env_size (Tiling.PL.pi_schedule before_pi) band).
+Proof.
+  intros layout env_size before_pis.
+  induction before_pis as [|before0 before_pis IH];
+    intros bands expected n before_pi band
+           Hexpected Hbefore Hband.
+  - destruct n; discriminate.
+  - destruct bands as [|band0 bands]; simpl in Hexpected; try discriminate.
+    destruct
+      (second_level_expected_schedules
+         layout env_size before_pis bands)
+      as [expected'|] eqn:Htail; try discriminate.
+    inversion Hexpected; subst expected; clear Hexpected.
+    destruct n as [|n].
+    + inversion Hbefore; inversion Hband; subst.
+      reflexivity.
+    + simpl in Hbefore, Hband.
+      eapply IH with (expected := expected'); eauto.
+Qed.
+
+Lemma affine_function_is_zero_eval_for_erasure :
+  forall row idx,
+    Tiling.PL.affine_function_is_zero row = true ->
+    (Linalg.dot_product (fst row) idx + snd row)%Z = 0%Z.
+Proof.
+  intros [coeffs c] idx Hzero.
+  unfold Tiling.PL.affine_function_is_zero in Hzero.
+  simpl in Hzero.
+  apply andb_true_iff in Hzero.
+  destruct Hzero as [Hcoeffs Hc].
+  apply Z.eqb_eq in Hc.
+  subst c.
+  change (Linalg.dot_product coeffs idx + 0 = 0)%Z.
+  revert idx.
+  induction coeffs as [|x coeffs IH]; intros idx.
+  - rewrite Linalg.dot_product_nil_left. reflexivity.
+  - change
+      (Z.eqb 0%Z x && forallb (Z.eqb 0%Z) coeffs = true)
+      in Hcoeffs.
+    apply andb_true_iff in Hcoeffs.
+    destruct Hcoeffs as [Hx Htail].
+    apply Z.eqb_eq in Hx.
+    subst x.
+    destruct idx as [|value idx].
+    + reflexivity.
+    + cbn.
+      eapply IH.
+      exact Htail.
+Qed.
+
+Lemma lex_compare_affine_product_remove_zero_same_mask :
+  forall sched1 sched2 idx1 idx2,
+    strict_zero_schedule_mask sched1 =
+      strict_zero_schedule_mask sched2 ->
+    lex_compare
+      (affine_product sched1 idx1)
+      (affine_product sched2 idx2) =
+    lex_compare
+      (affine_product
+         (Tiling.PL.remove_zero_schedule_dims sched1) idx1)
+      (affine_product
+         (Tiling.PL.remove_zero_schedule_dims sched2) idx2).
+Proof.
+  intros sched1.
+  induction sched1 as [|row1 sched1 IH];
+    intros sched2 idx1 idx2 Hmask;
+    destruct sched2 as [|row2 sched2]; simpl in Hmask; try discriminate.
+  - reflexivity.
+  - injection Hmask as Hhead Htail.
+    destruct (Tiling.PL.affine_function_is_zero row1)
+      eqn:Hzero1;
+      destruct (Tiling.PL.affine_function_is_zero row2)
+      eqn:Hzero2;
+      try discriminate.
+    + unfold Tiling.PL.remove_zero_schedule_dims.
+      simpl.
+      rewrite Hzero1, Hzero2.
+      unfold affine_product at 1 2.
+      simpl.
+      rewrite
+        (affine_function_is_zero_eval_for_erasure
+           row1 idx1 Hzero1).
+      rewrite
+        (affine_function_is_zero_eval_for_erasure
+           row2 idx2 Hzero2).
+      simpl.
+      eapply IH.
+      exact Htail.
+    + unfold Tiling.PL.remove_zero_schedule_dims.
+      simpl.
+      rewrite Hzero1, Hzero2.
+      unfold affine_product.
+      simpl.
+      destruct
+        ((Linalg.dot_product (fst row1) idx1 + snd row1)%Z
+           ?=
+         (Linalg.dot_product (fst row2) idx2 + snd row2)%Z);
+        try reflexivity.
+      eapply IH.
+      exact Htail.
+Qed.
+
+Definition second_level_schedule_layout_lex_equivalent
+    (layout: second_level_schedule_layout)
+    (env_size: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (bands: list pinstr_tiling_band) : Prop :=
+  forall i j before_i after_i band_i before_j after_j band_j idx_i idx_j,
+    nth_error before_pis i = Some before_i ->
+    nth_error after_pis i = Some after_i ->
+    nth_error bands i = Some band_i ->
+    nth_error before_pis j = Some before_j ->
+    nth_error after_pis j = Some after_j ->
+    nth_error bands j = Some band_j ->
+    lex_compare
+      (affine_product (Tiling.PL.pi_schedule after_i) idx_i)
+      (affine_product (Tiling.PL.pi_schedule after_j) idx_j) =
+    lex_compare
+      (affine_product
+         (stripmine_second_level_schedule_after_env_by_layout
+            layout env_size (Tiling.PL.pi_schedule before_i) band_i)
+         idx_i)
+      (affine_product
+         (stripmine_second_level_schedule_after_env_by_layout
+            layout env_size (Tiling.PL.pi_schedule before_j) band_j)
+         idx_j).
+
+Lemma zero_erasure_second_level_schedule_layout_lex_equivalent :
+  forall layout env_size before_pis after_pis bands,
+    second_level_schedule_zero_erasure_match
+      layout env_size before_pis after_pis bands ->
+    second_level_schedule_layout_lex_equivalent
+      layout env_size before_pis after_pis bands.
+Proof.
+  intros layout env_size before_pis after_pis bands
+         [expected [expected_mask [actual_mask
+          [Hexpected [Hexpected_masks [Hactual_masks Hpairs]]]]]].
+  unfold second_level_schedule_layout_lex_equivalent.
+  intros i j before_i after_i band_i before_j after_j band_j idx_i idx_j
+         Hbefore_i Hafter_i Hband_i Hbefore_j Hafter_j Hband_j.
+  pose proof
+    (second_level_expected_schedules_nth_error
+       layout env_size before_pis bands expected
+       i before_i band_i Hexpected Hbefore_i Hband_i)
+    as Hexpected_i.
+  pose proof
+    (second_level_expected_schedules_nth_error
+       layout env_size before_pis bands expected
+       j before_j band_j Hexpected Hbefore_j Hband_j)
+    as Hexpected_j.
+  pose proof
+    (Tiling.nth_error_map_some
+       _ _ Tiling.PL.pi_schedule after_pis
+       i after_i Hafter_i) as Hactual_i.
+  pose proof
+    (Tiling.nth_error_map_some
+       _ _ Tiling.PL.pi_schedule after_pis
+       j after_j Hafter_j) as Hactual_j.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _ expected i
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_i) band_i)
+       Hexpected_masks Hexpected_i) as Hexpected_mask_i.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _ expected j
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_j) band_j)
+       Hexpected_masks Hexpected_j) as Hexpected_mask_j.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _ (List.map Tiling.PL.pi_schedule after_pis) i
+       (Tiling.PL.pi_schedule after_i)
+       Hactual_masks Hactual_i) as Hactual_mask_i.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _ (List.map Tiling.PL.pi_schedule after_pis) j
+       (Tiling.PL.pi_schedule after_j)
+       Hactual_masks Hactual_j) as Hactual_mask_j.
+  pose proof
+    (Tiling.Forall2_nth_error
+       _ _
+       (fun expected_sched actual_sched =>
+          Tiling.PL.remove_zero_schedule_dims expected_sched =
+          Tiling.PL.remove_zero_schedule_dims actual_sched)
+       expected (List.map Tiling.PL.pi_schedule after_pis)
+       i
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_i) band_i)
+       (Tiling.PL.pi_schedule after_i)
+       Hpairs Hexpected_i Hactual_i) as Hpair_i.
+  pose proof
+    (Tiling.Forall2_nth_error
+       _ _
+       (fun expected_sched actual_sched =>
+          Tiling.PL.remove_zero_schedule_dims expected_sched =
+          Tiling.PL.remove_zero_schedule_dims actual_sched)
+       expected (List.map Tiling.PL.pi_schedule after_pis)
+       j
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_j) band_j)
+       (Tiling.PL.pi_schedule after_j)
+       Hpairs Hexpected_j Hactual_j) as Hpair_j.
+  pose proof
+    (lex_compare_affine_product_remove_zero_same_mask
+       (Tiling.PL.pi_schedule after_i)
+       (Tiling.PL.pi_schedule after_j)
+       idx_i idx_j
+       (eq_trans Hactual_mask_i (eq_sym Hactual_mask_j)))
+    as Hactual_compact.
+  pose proof
+    (lex_compare_affine_product_remove_zero_same_mask
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_i) band_i)
+       (stripmine_second_level_schedule_after_env_by_layout
+          layout env_size (Tiling.PL.pi_schedule before_j) band_j)
+       idx_i idx_j
+       (eq_trans Hexpected_mask_i (eq_sym Hexpected_mask_j)))
+    as Hexpected_compact.
+  rewrite Hactual_compact.
+  rewrite <- Hpair_i, <- Hpair_j.
+  symmetry.
+  exact Hexpected_compact.
+Qed.
+
+Lemma check_pprog_second_level_schedule_directb_sound :
+  forall before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws bands recipes layout,
+    check_pprog_second_level_schedule_directb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, after_ctxt, after_vars)
+      ws = Some (bands, recipes, layout) ->
+    infer_pinstr_list_second_level_bands before_pis ws =
+      Some (bands, recipes) /\
+    check_pinstr_list_second_level_schedule_directb
+      layout (List.length before_ctxt) before_pis after_pis bands = true /\
+    common_second_level_recipe_sizes recipes /\
+    common_band_start bands.
+Proof.
+  intros before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws bands recipes layout Hcheck.
+  unfold check_pprog_second_level_schedule_directb in Hcheck.
+  destruct
+    (TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars) eqn:Hctxt;
+    try discriminate.
+  destruct (infer_pinstr_list_second_level_bands before_pis ws)
+    as [[bands0 recipes0]|] eqn:Hinfer; try discriminate.
+  destruct (check_common_second_level_recipe_sizesb recipes0)
+    eqn:Hsizes; try discriminate.
+  destruct (check_common_band_startb bands0) eqn:Hstart; try discriminate.
+  destruct
+    (check_pinstr_list_second_level_schedule_directb
+       SecondLevelGrouped (List.length before_ctxt)
+       before_pis after_pis bands0)
+    eqn:Hgrouped.
+  - inversion Hcheck; subst bands recipes layout.
+    repeat split; auto.
+    + eapply check_common_second_level_recipe_sizesb_sound. exact Hsizes.
+    + eapply check_common_band_startb_sound. exact Hstart.
+  - destruct
+      (check_pinstr_list_second_level_schedule_directb
+         SecondLevelInterleaved (List.length before_ctxt)
+         before_pis after_pis bands0)
+      eqn:Hinterleaved; try discriminate.
+    inversion Hcheck; subst bands recipes layout.
+    repeat split; auto.
+    + eapply check_common_second_level_recipe_sizesb_sound. exact Hsizes.
+    + eapply check_common_band_startb_sound. exact Hstart.
+Qed.
+
 Fixpoint check_pinstr_list_tiling_bandb
     (before_pis: list Tiling.PL.PolyInstr)
     (ws: list statement_tiling_witness) : bool :=
@@ -7608,6 +8136,64 @@ Proof.
     apply is_eq_app_repeat_zero.
 Qed.
 
+Lemma symmetric_second_level_schedule_layout_lex_equivalent :
+  forall layout env_size before_pis after_pis bands,
+    check_pinstr_list_second_level_schedule_symmetricb
+      layout env_size before_pis after_pis bands = true ->
+    second_level_schedule_layout_lex_equivalent
+      layout env_size before_pis after_pis bands.
+Proof.
+  intros layout env_size before_pis after_pis bands Hcheck.
+  unfold second_level_schedule_layout_lex_equivalent.
+  intros i j before_i after_i band_i before_j after_j band_j idx_i idx_j
+         Hbefore_i Hafter_i Hband_i Hbefore_j Hafter_j Hband_j.
+  pose proof
+    (check_pinstr_list_second_level_schedule_symmetricb_nth_error
+       layout env_size before_pis after_pis bands
+       i before_i after_i band_i
+       Hcheck Hbefore_i Hafter_i Hband_i) as Hmatch_i.
+  pose proof
+    (check_pinstr_list_second_level_schedule_symmetricb_nth_error
+       layout env_size before_pis after_pis bands
+       j before_j after_j band_j
+       Hcheck Hbefore_j Hafter_j Hband_j) as Hmatch_j.
+  pose proof
+    (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+       _ _ idx_i Hmatch_i) as Heq_i.
+  pose proof
+    (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+       _ _ idx_j Hmatch_j) as Heq_j.
+  transitivity
+    (lex_compare
+       (affine_product
+          (stripmine_second_level_schedule_after_env_by_layout
+             layout env_size (Tiling.PL.pi_schedule before_i) band_i)
+          idx_i)
+       (affine_product (Tiling.PL.pi_schedule after_j) idx_j)).
+  - apply lex_compare_left_eq.
+    exact Heq_i.
+  - apply lex_compare_right_eq.
+    exact Heq_j.
+Qed.
+
+Lemma check_pinstr_list_second_level_schedule_directb_sound :
+  forall layout env_size before_pis after_pis bands,
+    check_pinstr_list_second_level_schedule_directb
+      layout env_size before_pis after_pis bands = true ->
+    second_level_schedule_layout_lex_equivalent
+      layout env_size before_pis after_pis bands.
+Proof.
+  intros layout env_size before_pis after_pis bands Hcheck.
+  unfold check_pinstr_list_second_level_schedule_directb in Hcheck.
+  apply orb_true_iff in Hcheck.
+  destruct Hcheck as [Hsymmetric | Herasure].
+  - eapply symmetric_second_level_schedule_layout_lex_equivalent.
+    exact Hsymmetric.
+  - eapply zero_erasure_second_level_schedule_layout_lex_equivalent.
+    eapply check_pinstr_list_second_level_schedule_zero_erasureb_sound.
+    exact Herasure.
+Qed.
+
 Lemma lex_compare_app_repeat_zero :
   forall xs ys n m,
     lex_compare
@@ -8383,6 +8969,21 @@ Definition make_pluto_band_component_guard_polys
   | _, _ => None
   end.
 
+Lemma wf_pinstr_ext_tiling_schedule1_exact_cols :
+  forall env pi,
+    Tiling.PL.wf_pinstr_ext_tiling env pi ->
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi)%nat
+      (Tiling.PL.pi_schedule1_ext pi).
+Proof.
+  intros env pi Hwf.
+  unfold Tiling.PL.wf_pinstr_ext_tiling in Hwf.
+  destruct Hwf as [Hwf _].
+  unfold Tiling.PL.wf_pinstr_ext in Hwf.
+  destruct Hwf as [_ [_ [_ [_ [Hsched1 _]]]]].
+  exact Hsched1.
+Qed.
+
 Lemma make_pluto_band_component_guard_polys_old_order_sound :
   forall pi1 pi2 band dim env_size old_order bad_component p1 p2,
     make_pluto_band_component_guard_polys
@@ -8569,20 +9170,14 @@ Proof.
       (List.length env + Tiling.PL.pi_depth_ext pi1)%nat
       (Tiling.PL.pi_schedule1_ext pi1)).
   {
-    pose proof
-      (Tiling.PL.wf_pinstr_ext_tiling_implies_wf_pinstr_ext
-         env pi1 Hwf1) as Hwf.
-    firstorder.
+    exact (wf_pinstr_ext_tiling_schedule1_exact_cols env pi1 Hwf1).
   }
   assert (Hcols2 :
     exact_listzzs_cols
       (List.length env + Tiling.PL.pi_depth_ext pi2)%nat
       (Tiling.PL.pi_schedule1_ext pi2)).
   {
-    pose proof
-      (Tiling.PL.wf_pinstr_ext_tiling_implies_wf_pinstr_ext
-         env pi2 Hwf2) as Hwf.
-    firstorder.
+    exact (wf_pinstr_ext_tiling_schedule1_exact_cols env pi2 Hwf2).
   }
   split.
   - eapply make_pluto_band_component_guard_polys_old_order_sound;
@@ -9027,6 +9622,93 @@ Example direct_second_level_guard_rejects_mixed_statement_layouts :
      source_like_guard_test_witness [1%Z]] = None.
 Proof. reflexivity. Qed.
 
+Definition direct_second_level_guard_suffix_two : (list Z * Z) :=
+  ([0%Z; 0%Z; 2%Z], 0%Z).
+
+Definition direct_second_level_guard_suffix_three : (list Z * Z) :=
+  ([0%Z; 0%Z; 3%Z], 0%Z).
+
+Definition direct_second_level_guard_zero_row : (list Z * Z) :=
+  ([0%Z; 0%Z; 0%Z], 0%Z).
+
+Example direct_second_level_guard_accepts_grouped_internal_zero_erasure :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelGrouped O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       (direct_second_level_guard_grouped_schedule ++
+        [direct_second_level_guard_suffix_two])]
+    [direct_second_level_guard_test_band] = true.
+Proof. reflexivity. Qed.
+
+Example direct_second_level_guard_accepts_interleaved_internal_zero_erasure :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelInterleaved O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       (direct_second_level_guard_interleaved_schedule ++
+        [direct_second_level_guard_suffix_two])]
+    [direct_second_level_guard_test_band] = true.
+Proof. reflexivity. Qed.
+
+Example direct_second_level_guard_rejects_nonzero_row_deletion :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelGrouped O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([2%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       direct_second_level_guard_grouped_schedule]
+    [direct_second_level_guard_test_band] = false.
+Proof. reflexivity. Qed.
+
+Example direct_second_level_guard_rejects_nonzero_row_reordering :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelGrouped O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([2%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       (direct_second_level_guard_suffix_two ::
+        direct_second_level_guard_grouped_schedule)]
+    [direct_second_level_guard_test_band] = false.
+Proof. reflexivity. Qed.
+
+Example direct_second_level_guard_rejects_nonuniform_expected_zero_masks :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelGrouped O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)];
+     source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([3%Z], 0%Z); ([0%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       (direct_second_level_guard_grouped_schedule ++
+        [direct_second_level_guard_suffix_two]);
+     source_like_guard_test_pinstr
+       (direct_second_level_guard_grouped_schedule ++
+        [direct_second_level_guard_suffix_three])]
+    [direct_second_level_guard_test_band;
+     direct_second_level_guard_test_band] = false.
+Proof. reflexivity. Qed.
+
+Example direct_second_level_guard_rejects_nonuniform_actual_zero_masks :
+  check_pinstr_list_second_level_schedule_directb
+    SecondLevelGrouped O
+    [source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)];
+     source_like_guard_test_pinstr
+       [([1%Z], 0%Z); ([0%Z], 0%Z); ([2%Z], 0%Z)]]
+    [source_like_guard_test_pinstr
+       (direct_second_level_guard_grouped_schedule ++
+        [direct_second_level_guard_suffix_two]);
+     source_like_guard_test_pinstr
+       (direct_second_level_guard_grouped_schedule ++
+        [direct_second_level_guard_zero_row;
+         direct_second_level_guard_suffix_two])]
+    [direct_second_level_guard_test_band;
+     direct_second_level_guard_test_band] = false.
+Proof. reflexivity. Qed.
+
 Definition structural_guard_test_witness_2d : statement_tiling_witness :=
   {|
     stw_point_dim := 2;
@@ -9133,133 +9815,6 @@ Definition check_pprog_pluto_permutable_tiling_bands_direct
       else pure false
     else pure false
   else pure false.
-
-Inductive tiling_band_validation_route : Type :=
-| TilingBandAccepted
-| TilingBandGeneralFallbackAccepted
-| TilingBandRejected.
-
-Definition tiling_band_validation_route_acceptsb
-    (route: tiling_band_validation_route) : bool :=
-  match route with
-  | TilingBandAccepted
-  | TilingBandGeneralFallbackAccepted => true
-  | TilingBandRejected => false
-  end.
-
-Definition check_pprog_pluto_permutable_tiling_bands_primary
-    (before after: Tiling.PL.t)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : imp bool :=
-  BIND strong_ok <-
-    check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
-      before after ws bands -;
-  if strong_ok then pure true
-  else
-    check_pprog_permutable_tiling_bands_via_validate_tiling
-      before after ws bands.
-
-Definition checked_tiling_sourceb_first_band_check
-    (before after: Tiling.PL.t)
-    (ws: list statement_tiling_witness) : imp bool :=
-  if TilingCheck.check_pprog_tiling_sourceb before after ws then
-  let ordinary_band_check :=
-      if check_pprog_tiling_schedule_stripminedb before after ws then
-        match infer_pprog_tiling_bands before ws with
-        | Some bands =>
-            check_pprog_pluto_permutable_tiling_bands_primary
-              before after ws bands
-        | None => pure false
-        end
-      else pure false in
-    BIND ordinary_ok <- ordinary_band_check -;
-    if ordinary_ok then pure true
-    else
-      BIND ordinary_direct_ok <-
-        check_pprog_ordinary_tiling_permutability_via_validate_tiling
-          before after ws -;
-      if ordinary_direct_ok then pure true
-      else
-        BIND second_level_ok <-
-          check_pprog_second_level_permutable_bands_via_validate_tiling
-            before after ws -;
-        if second_level_ok then pure true
-        else
-          BIND structural_second_level_ok <-
-            check_pprog_structural_second_level_permutability_via_validate_tiling
-              before after ws -;
-          if structural_second_level_ok then pure true
-          else
-            check_pprog_source_like_second_level_permutability_via_validate_tiling
-              before after ws
-  else pure false.
-
-Definition checked_tiling_schedule_sourceb_first_runtime_validate_route
-    (before after: PolIRs.PolyLang.t)
-    (ws: list statement_tiling_witness) : imp tiling_band_validation_route :=
-  BIND band_ok <-
-    checked_tiling_sourceb_first_band_check
-      (Base.outer_to_tiling_pprog before)
-      (Base.outer_to_tiling_pprog after)
-      ws -;
-  if band_ok then pure TilingBandGeneralFallbackAccepted
-  else
-    BIND canonical_ok <-
-      Canonical.checked_tiling_schedule_canonical_validate_poly
-        before after ws -;
-    if canonical_ok then pure TilingBandGeneralFallbackAccepted
-    else
-      BIND fallback_ok <- Base.checked_tiling_validate_poly before after ws -;
-      pure
-        (if fallback_ok
-         then TilingBandGeneralFallbackAccepted
-         else TilingBandRejected).
-
-Definition check_pprog_permutable_tiling_bands_runtime_route
-    (before after: Tiling.PL.t)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : imp tiling_band_validation_route :=
-  BIND band_ok <-
-    check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
-      before after ws bands -;
-  if band_ok then
-    pure TilingBandAccepted
-  else
-    BIND fallback_ok <-
-      check_pprog_permutable_tiling_bands_via_validate_tiling
-        before after ws bands -;
-    pure
-      (if fallback_ok
-       then TilingBandGeneralFallbackAccepted
-       else TilingBandRejected).
-
-Definition check_pprog_permutable_tiling_bands_runtime
-    (before after: Tiling.PL.t)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : imp bool :=
-  BIND route <-
-    check_pprog_permutable_tiling_bands_runtime_route
-      before after ws bands -;
-  pure (tiling_band_validation_route_acceptsb route).
-
-Definition checked_tiling_schedule_stripmined_and_runtime_validate_outer
-    (before after: PolIRs.PolyLang.t)
-    (ws: list statement_tiling_witness) : imp bool :=
-  BIND shape_ok <-
-    checked_tiling_schedule_stripmined_validate_outer before after ws -;
-  if shape_ok then
-    let before_tiling := Base.outer_to_tiling_pprog before in
-    let after_tiling := Base.outer_to_tiling_pprog after in
-    match infer_pprog_tiling_bands before_tiling ws with
-    | Some bands =>
-        check_pprog_permutable_tiling_bands_runtime
-          before_tiling after_tiling ws bands
-    | None => pure false
-    end
-  else pure false.
-
-Definition checked_tiling_schedule_stripmined_and_runtime_validate_poly :=
-  checked_tiling_schedule_stripmined_and_runtime_validate_outer.
 
 Lemma check_pprog_permutable_tiling_bands_via_validate_tiling_true_inv :
   forall before after ws bands,
@@ -11301,8 +11856,8 @@ Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
     List.length before_ctxt = List.length envv ->
     infer_pinstr_list_second_level_bands before_pis ws =
       Some (bands, recipes) ->
-    check_pinstr_list_second_level_schedule_symmetricb
-      layout (List.length before_ctxt) before_pis after_pis bands = true ->
+    second_level_schedule_layout_lex_equivalent
+      layout (List.length before_ctxt) before_pis after_pis bands ->
     common_second_level_recipe_sizes recipes ->
     common_band_start bands ->
     Tiling.tiling_rel_pprog_structure_source
@@ -11487,16 +12042,6 @@ Proof.
     (Tiling.Forall_nth_error
        _ _ before_pis (Tiling.PL.ip_nth_ext tau2) before_pi2
        Hwf_before Hbefore2) as Hwf_before2.
-  pose proof
-    (check_pinstr_list_second_level_schedule_symmetricb_nth_error
-       layout (List.length before_ctxt) before_pis after_pis bands
-       (Tiling.PL.ip_nth_ext tau1) before_pi1 after_pi1 band1
-       Hsched Hbefore1 Hafter1 Hband1) as Hsched_match1.
-  pose proof
-    (check_pinstr_list_second_level_schedule_symmetricb_nth_error
-       layout (List.length before_ctxt) before_pis after_pis bands
-       (Tiling.PL.ip_nth_ext tau2) before_pi2 after_pi2 band2
-       Hsched Hbefore2 Hafter2 Hband2) as Hsched_match2.
   assert (Hstmt1_env :
     Tiling.tiling_rel_pinstr_structure_source
       (List.length envv) before_pi1 after_pi1
@@ -11851,15 +12396,17 @@ Proof.
     exact Heval2.
   }
   pose proof
-    (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
-       _ _ (Tiling.PL.ip_index_ext tau1) Hsched_match1) as Htime_eq1.
-  pose proof
-    (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
-       _ _ (Tiling.PL.ip_index_ext tau2) Hsched_match2) as Htime_eq2.
-  rewrite <- Hts21_after in Htime_eq1.
-  rewrite <- Hts22_after in Htime_eq2.
-  rewrite Hlen_env, Hexpected_ts1 in Htime_eq1.
-  rewrite Hlen_env, Hexpected_ts2 in Htime_eq2.
+    (Hsched
+       (Tiling.PL.ip_nth_ext tau1)
+       (Tiling.PL.ip_nth_ext tau2)
+       before_pi1 after_pi1 band1
+       before_pi2 after_pi2 band2
+       (Tiling.PL.ip_index_ext tau1)
+       (Tiling.PL.ip_index_ext tau2)
+       Hbefore1 Hafter1 Hband1 Hbefore2 Hafter2 Hband2)
+    as Hschedule_compare.
+  rewrite <- Hts21_after, <- Hts22_after in Hschedule_compare.
+  rewrite Hlen_env, Hexpected_ts1, Hexpected_ts2 in Hschedule_compare.
   assert (Hnew_not_lt :
     lex_compare
       (Tiling.PL.ip_time_stamp2_ext tau1)
@@ -11874,22 +12421,7 @@ Proof.
       (prefix1 ++ tiles1 ++ band_ts1 ++ suffix1)
       (prefix2 ++ tiles2 ++ band_ts2 ++ suffix2) <> Lt).
   {
-    assert (Hcompare :
-      lex_compare
-        (Tiling.PL.ip_time_stamp2_ext tau1)
-        (Tiling.PL.ip_time_stamp2_ext tau2) =
-      lex_compare
-        (prefix1 ++ tiles1 ++ band_ts1 ++ suffix1)
-        (prefix2 ++ tiles2 ++ band_ts2 ++ suffix2)).
-    {
-      transitivity
-        (lex_compare
-           (prefix1 ++ tiles1 ++ band_ts1 ++ suffix1)
-           (Tiling.PL.ip_time_stamp2_ext tau2)).
-      - apply lex_compare_left_eq. exact Htime_eq1.
-      - apply lex_compare_right_eq. exact Htime_eq2.
-    }
-    rewrite Hcompare in Hnew_not_lt.
+    rewrite Hschedule_compare in Hnew_not_lt.
     exact Hnew_not_lt.
   }
   assert (Hprefix_eq : prefix1 = prefix2).
@@ -12002,9 +12534,11 @@ Proof.
   intros.
   eapply
     (second_level_local_reversal_bridge_by_layout_wf_with_env_len
-       SecondLevelGrouped);
-    eauto using
-      check_pinstr_list_second_level_schedule_by_layoutb_implies_symmetricb.
+       SecondLevelGrouped); eauto.
+  eapply symmetric_second_level_schedule_layout_lex_equivalent.
+  eapply
+    check_pinstr_list_second_level_schedule_by_layoutb_implies_symmetricb.
+  eauto.
 Qed.
 
 Lemma second_level_local_reversal_bridge_interleaved_wf_with_env_len :
@@ -12052,9 +12586,11 @@ Proof.
   intros.
   eapply
     (second_level_local_reversal_bridge_by_layout_wf_with_env_len
-       SecondLevelInterleaved);
-    eauto using
-      check_pinstr_list_second_level_schedule_by_layoutb_implies_symmetricb.
+       SecondLevelInterleaved); eauto.
+  eapply symmetric_second_level_schedule_layout_lex_equivalent.
+  eapply
+    check_pinstr_list_second_level_schedule_by_layoutb_implies_symmetricb.
+  eauto.
 Qed.
 
 Lemma lift_schedule_after_env_nonempty_local :
@@ -12386,85 +12922,6 @@ Proof.
   exact Hsafe.
 Qed.
 
-Lemma checked_tiling_ordinary_band_validate_correct_same_ctxt :
-  forall before_pis before_ctxt before_vars after_pis ws bands st1 st2,
-    TilingCheck.check_pprog_tiling_sourceb
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars)
-      ws = true ->
-    check_pprog_tiling_schedule_stripminedb
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars)
-      ws = true ->
-    infer_pprog_tiling_bands
-      (before_pis, before_ctxt, before_vars) ws = Some bands ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    mayReturn
-      (check_pprog_pluto_permutable_tiling_bands_primary
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws bands)
-      true ->
-    Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 ->
-    exists st2',
-      Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws bands st1 st2
-         Hsource Hschedule Hinfer Hwf_before Hwf_after Hcheck Hsem.
-  pose proof
-    (TilingCheck.check_pprog_tiling_sourceb_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws Hsource)
-    as [Hprog [Hbefore_ids [Hwf_ws [Hsizes_ws Hdepths]]]].
-  assert (Hwits :
-    Forall2 Tiling.after_matches_tiling_witness after_pis ws).
-  {
-    eapply
-      (tiling_rel_pprog_structure_source_after_matches
-         before_pis before_ctxt before_vars
-         after_pis before_ctxt before_vars ws); eauto.
-  }
-  destruct
-    (check_pprog_tiling_schedule_stripminedb_sound_flat
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars ws Hschedule)
-    as [bands' [Hinfer' [Hbands [_ _]]]].
-  unfold infer_pprog_tiling_bands in Hinfer.
-  simpl in Hinfer.
-  rewrite Hinfer in Hinfer'.
-  inversion Hinfer'; subst bands'; clear Hinfer'.
-  eapply
-    (tiling_sourceb_validate_correct_with_reordering
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars)
-       ws bands st1 st2); [exact Hsource| |exact Hsem].
-  simpl.
-  intros envv Hlen_env.
-  unfold check_pprog_pluto_permutable_tiling_bands_primary in Hcheck.
-  bind_imp_destruct Hcheck strong_ok Hstrong_check.
-  destruct strong_ok.
-  - apply mayReturn_pure in Hcheck.
-    destruct
-      (check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling_sound_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv
-         Hlen_env Hinfer Hwf_before Hwf_after Hdepths Hwits Hstrong_check)
-      as [Hstrong Harity].
-    eapply
-      (pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-  - eapply
-      (check_pprog_permutable_tiling_bands_via_validate_tiling_sound_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-Qed.
-
 Lemma checked_tiling_whole_program_permutability_validate_correct_same_ctxt :
   forall before_pis before_ctxt before_vars after_pis ws st1 st2,
     TilingCheck.check_pprog_tiling_sourceb
@@ -12651,409 +13108,6 @@ Proof.
   eapply
     (checked_tiling_whole_program_permutability_validate_correct_same_ctxt
        before_pis before_ctxt before_vars after_pis ws st1 st2); eauto.
-Qed.
-
-Lemma checked_tiling_sourceb_first_band_check_correct :
-  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    mayReturn
-      (checked_tiling_sourceb_first_band_check
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws)
-      true ->
-    Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 ->
-    exists st2',
-      Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws st1 st2
-         Hwf_before Hwf_after Hcheck Hsem.
-  unfold checked_tiling_sourceb_first_band_check in Hcheck.
-  destruct
-    (TilingCheck.check_pprog_tiling_sourceb
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws)
-    eqn:Hsource.
-  2:{
-    apply mayReturn_pure in Hcheck.
-    discriminate.
-  }
-  cbn beta iota zeta in Hcheck.
-  bind_imp_destruct Hcheck ordinary_ok Hordinary.
-  destruct ordinary_ok.
-  - apply mayReturn_pure in Hcheck.
-    destruct
-      (check_pprog_tiling_schedule_stripminedb
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws)
-      eqn:Hschedule.
-    2:{ apply mayReturn_pure in Hordinary. discriminate. }
-    destruct
-      (infer_pprog_tiling_bands
-         (before_pis, before_ctxt, before_vars) ws)
-      as [bands|] eqn:Hinfer.
-    2:{ apply mayReturn_pure in Hordinary. discriminate. }
-    simpl in Hordinary.
-    eapply
-      (checked_tiling_ordinary_band_validate_correct_same_ctxt
-         before_pis before_ctxt before_vars after_pis ws bands st1 st2);
-      eauto.
-  - bind_imp_destruct Hcheck ordinary_direct_ok Hordinary_direct.
-    destruct ordinary_direct_ok.
-    + apply mayReturn_pure in Hcheck.
-      eapply
-        (checked_tiling_ordinary_direct_validate_correct_same_ctxt
-           before_pis before_ctxt before_vars after_pis ws st1 st2);
-        eauto.
-    + bind_imp_destruct Hcheck second_level_ok Hsecond.
-      destruct second_level_ok.
-      * apply mayReturn_pure in Hcheck.
-        eapply
-          (checked_tiling_second_level_band_validate_correct_same_ctxt
-             before_pis before_ctxt before_vars after_pis ws st1 st2);
-          eauto.
-      * bind_imp_destruct Hcheck structural_second_level_ok Hstructural.
-        destruct structural_second_level_ok.
-        -- apply mayReturn_pure in Hcheck.
-           eapply
-             (checked_tiling_structural_second_level_direct_validate_correct_same_ctxt
-                before_pis before_ctxt before_vars after_pis ws st1 st2);
-             eauto.
-        -- eapply
-             (checked_tiling_source_like_second_level_direct_validate_correct_same_ctxt
-                before_pis before_ctxt before_vars after_pis ws st1 st2);
-             eauto.
-Qed.
-
-Lemma checked_tiling_sourceb_first_band_check_outer_correct :
-  forall before after ws st1 st2,
-    PolIRs.PolyLang.wf_pprog_affine before ->
-    PolIRs.PolyLang.wf_pprog_general after ->
-    mayReturn
-      (checked_tiling_sourceb_first_band_check
-         (Base.outer_to_tiling_pprog before)
-         (Base.outer_to_tiling_pprog after)
-         ws)
-      true ->
-    PolIRs.PolyLang.instance_list_semantics after st1 st2 ->
-    exists st2',
-      PolIRs.PolyLang.instance_list_semantics before st1 st2' /\
-      State.eq st2 st2'.
-Proof.
-  intros before after ws st1 st2 Hwf_before Hwf_after Hcheck Hsem_after.
-  remember (Base.outer_to_tiling_pprog before)
-    as before_tiling eqn:Hbefore_tiling_eq.
-  remember (Base.outer_to_tiling_pprog after)
-    as after_tiling eqn:Hafter_tiling_eq.
-  destruct before_tiling as [[before_pis before_ctxt] before_vars].
-  destruct after_tiling as [[after_pis after_ctxt] after_vars].
-  simpl in Hbefore_tiling_eq, Hafter_tiling_eq.
-  assert (Hsource :
-    TilingCheck.check_pprog_tiling_sourceb
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, after_ctxt, after_vars)
-      ws = true).
-  {
-    pose proof Hcheck as Hcheck_source.
-    unfold checked_tiling_sourceb_first_band_check in Hcheck_source.
-    destruct
-      (TilingCheck.check_pprog_tiling_sourceb
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, after_ctxt, after_vars) ws)
-      eqn:Hsource_check; [reflexivity|].
-    apply mayReturn_pure in Hcheck_source.
-    discriminate.
-  }
-  pose proof
-    (TilingCheck.check_pprog_tiling_sourceb_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, after_ctxt, after_vars) ws Hsource)
-    as [Hprog _].
-  unfold Tiling.tiling_rel_pprog_structure_source in Hprog.
-  simpl in Hprog.
-  destruct Hprog as [Hctxt_eq [Hvars_eq _]].
-  subst after_ctxt after_vars.
-  pose proof
-    (Base.outer_to_tiling_wf_pprog_affine before Hwf_before)
-    as Hwf_before_tiling.
-  rewrite <- Hbefore_tiling_eq in Hwf_before_tiling.
-  destruct Hwf_before_tiling as [_ Hwf_before_tiling].
-  assert (Hwfbefore_pis :
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Tiling.PL.wf_pinstr_affine_implies_wf_pinstr_tiling.
-    eapply Hwf_before_tiling; eauto.
-  }
-  pose proof
-    (Base.outer_to_tiling_wf_pprog_general after Hwf_after)
-    as Hwf_after_tiling.
-  rewrite <- Hafter_tiling_eq in Hwf_after_tiling.
-  destruct Hwf_after_tiling as [_ Hwf_after_tiling].
-  assert (Hwfafter_pis :
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Hwf_after_tiling; eauto.
-  }
-  pose proof
-    (checked_tiling_sourceb_first_band_check_correct
-       before_pis before_ctxt before_vars after_pis ws st1 st2
-       Hwfbefore_pis Hwfafter_pis Hcheck) as Hcorr.
-  apply Base.outer_to_tiling_instance_list_semantics_iff in Hsem_after.
-  rewrite <- Hafter_tiling_eq in Hsem_after.
-  specialize (Hcorr Hsem_after).
-  destruct Hcorr as [st2' [Hbefore_tiling Heq]].
-  rewrite Hbefore_tiling_eq in Hbefore_tiling.
-  apply Base.outer_to_tiling_instance_list_semantics_iff in Hbefore_tiling.
-  exists st2'. split; assumption.
-Qed.
-
-Lemma checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :
-  forall before after ws st1 st2 route,
-    PolIRs.PolyLang.wf_pprog_affine before ->
-    PolIRs.PolyLang.wf_pprog_general after ->
-    mayReturn
-      (checked_tiling_schedule_sourceb_first_runtime_validate_route
-         before after ws)
-      route ->
-    tiling_band_validation_route_acceptsb route = true ->
-    PolIRs.PolyLang.instance_list_semantics after st1 st2 ->
-    exists st2',
-      PolIRs.PolyLang.instance_list_semantics before st1 st2' /\
-      State.eq st2 st2'.
-Proof.
-  intros before after ws st1 st2 route Hwf_before Hwf_after
-         Hroute Haccept Hsem_after.
-  unfold checked_tiling_schedule_sourceb_first_runtime_validate_route in Hroute.
-  bind_imp_destruct Hroute band_ok Hband.
-  destruct band_ok.
-  - apply mayReturn_pure in Hroute.
-    subst route.
-    eapply checked_tiling_sourceb_first_band_check_outer_correct; eauto.
-  - bind_imp_destruct Hroute canonical_ok Hcanonical.
-    destruct canonical_ok.
-    + apply mayReturn_pure in Hroute.
-      subst route.
-      eapply Canonical.checked_tiling_schedule_canonical_validate_poly_correct;
-        eauto.
-    + bind_imp_destruct Hroute fallback_ok Hfallback.
-      apply mayReturn_pure in Hroute.
-      destruct fallback_ok.
-      * subst route.
-        eapply Base.checked_tiling_validate_poly_correct; eauto.
-      * subst route. simpl in Haccept. discriminate.
-Qed.
-
-Lemma check_pprog_permutable_tiling_bands_runtime_sound_with_env_len :
-  forall before_pis before_ctxt before_vars after_pis ws bands envv,
-    List.length before_ctxt = List.length envv ->
-    infer_pinstr_list_tiling_bands before_pis ws = Some bands ->
-    pprog_tiling_bands_cert
-      (List.length before_ctxt) before_pis after_pis ws bands ->
-    Tiling.tiling_rel_pprog_structure_source
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars)
-      (List.map Tiling.compiled_pinstr_tiling_witness ws) ->
-    Forall
-      (Tiling.wf_statement_tiling_witness_with_param_dim
-         (List.length before_ctxt))
-      ws ->
-    Forall
-      (fun w => Forall (fun link => 0 < tl_tile_size link) (stw_links w))
-      ws ->
-    Forall2
-      (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
-      before_pis ws ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    Forall2 Tiling.after_matches_tiling_witness after_pis ws ->
-    mayReturn
-      (check_pprog_permutable_tiling_bands_runtime
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws bands)
-      true ->
-    pprog_tiling_reordering_safe envv before_pis after_pis ws bands.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws bands envv
-         Hlen_env Hinfer_bands Hbands Hprog_full Hwf_ws Hsizes_ws Hdepths
-         Hwf_before Hwf_after Hwits Hcheck.
-  unfold check_pprog_permutable_tiling_bands_runtime in Hcheck.
-  bind_imp_destruct Hcheck route Hroute.
-  apply mayReturn_pure in Hcheck.
-  unfold check_pprog_permutable_tiling_bands_runtime_route in Hroute.
-  bind_imp_destruct Hroute band_ok Hband_check.
-  destruct band_ok.
-  - apply mayReturn_pure in Hroute.
-    subst route.
-    destruct
-      (check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling_sound_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv
-         Hlen_env Hinfer_bands Hwf_before Hwf_after Hdepths Hwits Hband_check)
-      as [Hstrong Harity].
-    eapply
-      (pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-  - bind_imp_destruct Hroute fallback_ok Hfallback_check.
-    apply mayReturn_pure in Hroute.
-    destruct fallback_ok.
-    + subst route.
-      eapply
-      (check_pprog_permutable_tiling_bands_via_validate_tiling_sound_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-    + subst route.
-      simpl in Hcheck.
-      discriminate.
-Qed.
-
-Lemma checked_tiling_schedule_stripmined_and_runtime_validate_correct_same_ctxt :
-  forall before_pis before_ctxt before_vars after_pis ws bands st1 st2,
-    mayReturn
-      (checked_tiling_schedule_stripmined_validate
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws)
-      true ->
-    infer_pinstr_list_tiling_bands before_pis ws = Some bands ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    mayReturn
-      (check_pprog_permutable_tiling_bands_runtime
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws bands)
-      true ->
-    Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 ->
-    exists st2',
-      Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws bands st1 st2
-         Hshape Hinfer Hwf_before Hwf_after Hcheck Hsem.
-  eapply
-    checked_tiling_schedule_stripmined_validate_correct_same_ctxt_with_reordering_checker;
-    eauto.
-  intros envv Hlen Hbands Hprog Hwf_ws Hsizes Hdepths Hwits.
-  eapply
-    (check_pprog_permutable_tiling_bands_runtime_sound_with_env_len
-       before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-Qed.
-
-Lemma checked_tiling_schedule_stripmined_and_runtime_validate_outer_correct :
-  forall before after ws st1 st2,
-    PolIRs.PolyLang.wf_pprog_affine before ->
-    PolIRs.PolyLang.wf_pprog_general after ->
-    mayReturn
-      (checked_tiling_schedule_stripmined_and_runtime_validate_outer
-         before after ws)
-      true ->
-    PolIRs.PolyLang.instance_list_semantics after st1 st2 ->
-    exists st2',
-      PolIRs.PolyLang.instance_list_semantics before st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before after ws st1 st2 Hwf_before Hwf_after Hcheck Hsem_after.
-  unfold checked_tiling_schedule_stripmined_and_runtime_validate_outer in Hcheck.
-  bind_imp_destruct Hcheck shape_ok Hshape.
-  destruct shape_ok.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  remember (Base.outer_to_tiling_pprog before)
-    as before_tiling eqn:Hbefore_tiling_eq.
-  remember (Base.outer_to_tiling_pprog after)
-    as after_tiling eqn:Hafter_tiling_eq.
-  destruct (infer_pprog_tiling_bands before_tiling ws)
-    as [bands|] eqn:Hbands.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  pose proof Hshape as Hshape_sched.
-  unfold checked_tiling_schedule_stripmined_validate_outer in Hshape.
-  unfold checked_tiling_schedule_stripmined_validate_outer,
-         checked_tiling_schedule_stripmined_validate
-    in Hshape_sched.
-  apply mayReturn_pure in Hshape_sched.
-  apply andb_true_iff in Hshape_sched.
-  destruct Hshape_sched as [_ Hsched_only].
-  destruct before_tiling as [[before_pis before_ctxt] before_vars].
-  destruct after_tiling as [[after_pis after_ctxt] after_vars].
-  simpl in Hbefore_tiling_eq, Hafter_tiling_eq.
-  rewrite <- Hbefore_tiling_eq in Hshape, Hsched_only.
-  rewrite <- Hafter_tiling_eq in Hshape, Hsched_only.
-  simpl in Hshape, Hsched_only, Hbands.
-  pose proof
-    (check_pprog_tiling_schedule_stripminedb_ctxt_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, after_ctxt, after_vars)
-       ws Hsched_only)
-    as [Hctxt_eq Hvars_eq].
-  pose proof
-    (Base.outer_to_tiling_wf_pprog_affine before Hwf_before)
-    as Hwf_before_tiling.
-  rewrite <- Hbefore_tiling_eq in Hwf_before_tiling.
-  destruct Hwf_before_tiling as [_ Hwf_before_tiling].
-  assert (Hwfbefore_pis :
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Tiling.PL.wf_pinstr_affine_implies_wf_pinstr_tiling.
-    eapply Hwf_before_tiling; eauto.
-  }
-  pose proof
-    (Base.outer_to_tiling_wf_pprog_general after Hwf_after)
-    as Hwf_after_tiling.
-  rewrite <- Hafter_tiling_eq in Hwf_after_tiling.
-  rewrite <- Hctxt_eq, <- Hvars_eq in Hwf_after_tiling.
-  destruct Hwf_after_tiling as [_ Hwf_after_tiling].
-  assert (Hwfafter_pis :
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Hwf_after_tiling; eauto.
-  }
-  rewrite <- Hctxt_eq, <- Hvars_eq in Hshape, Hcheck.
-  pose proof
-    (checked_tiling_schedule_stripmined_and_runtime_validate_correct_same_ctxt
-       before_pis before_ctxt before_vars after_pis ws bands st1 st2
-       Hshape Hbands Hwfbefore_pis Hwfafter_pis Hcheck)
-    as Hcorr.
-  apply Base.outer_to_tiling_instance_list_semantics_iff in Hsem_after.
-  rewrite <- Hafter_tiling_eq in Hsem_after.
-  rewrite <- Hctxt_eq, <- Hvars_eq in Hsem_after.
-  specialize (Hcorr Hsem_after).
-  destruct Hcorr as [st_mid [Hmid_tiling Heq_mid]].
-  rewrite Hbefore_tiling_eq in Hmid_tiling.
-  apply Base.outer_to_tiling_instance_list_semantics_iff in Hmid_tiling.
-  exists st_mid.
-  split; assumption.
 Qed.
 
 Lemma checked_tiling_schedule_stripmined_validate_correct_same_ctxt_pluto_wf :
@@ -14166,6 +14220,6385 @@ Proof.
     eauto.
   exists x, y.
   repeat split; assumption.
+Qed.
+
+(** A semantic band is represented by explicit affine rows reconstructed from
+    the tiling witness.  Different statements may omit trailing global slots;
+    an omitted slot denotes the constant-zero row. *)
+Definition semantic_band_row
+    (dom_dim dim: nat) (rows: Schedule) : list Z * Z :=
+  match nth_error rows dim with
+  | Some row => row
+  | None => zero_schedule_row dom_dim
+  end.
+
+Definition semantic_band_value
+    (dom_dim dim: nat) (rows: Schedule) (idx: list Z) : Z :=
+  let row := semantic_band_row dom_dim dim rows in
+  Linalg.dot_product (fst row) idx + snd row.
+
+Definition make_semantic_band_component_guard_polys
+    (pi1 pi2: Tiling.PL.PolyInstr_ext)
+    (rows1 rows2: Schedule)
+    (dim env_size: nat) : list polyhedron * list polyhedron :=
+  let dom_dim1 := (env_size + Tiling.PL.pi_depth_ext pi1)%nat in
+  let dom_dim2 := (env_size + Tiling.PL.pi_depth_ext pi2)%nat in
+  let row1 := semantic_band_row dom_dim1 dim rows1 in
+  let row2 := semantic_band_row dom_dim2 dim rows2 in
+  let old_order :=
+    make_poly_lt
+      (Tiling.PL.pi_schedule1_ext pi1)
+      (Tiling.PL.pi_schedule1_ext pi2)
+      dom_dim1 dom_dim2 [] in
+  let component_decreases := make_constr_gt row1 row2 in
+  (old_order, [[component_decreases]]).
+
+Definition validate_two_instrs_semantic_band_component_direct
+    (pi1 pi2: Tiling.PL.PolyInstr_ext)
+    (rows1 rows2: Schedule)
+    (dim env_size: nat) : imp bool :=
+  let '(old_order, bad_component) :=
+    make_semantic_band_component_guard_polys
+      pi1 pi2 rows1 rows2 dim env_size in
+  BandAffine.validate_two_instrs_under_guards
+    pi1 pi2 env_size old_order bad_component.
+
+Definition semantic_band_entry :=
+  (Tiling.PL.PolyInstr_ext * Schedule)%type.
+
+Fixpoint validate_semantic_band_entry_and_list_component_direct
+    (entry: semantic_band_entry)
+    (entries: list semantic_band_entry)
+    (dim env_size: nat) : imp bool :=
+  match entries with
+  | [] => pure true
+  | entry' :: entries' =>
+      let '(pi, rows) := entry in
+      let '(pi', rows') := entry' in
+      BIND forward <-
+        validate_two_instrs_semantic_band_component_direct
+          pi pi' rows rows' dim env_size -;
+      if forward then
+        BIND backward <-
+          validate_two_instrs_semantic_band_component_direct
+            pi' pi rows' rows dim env_size -;
+        if backward then
+          validate_semantic_band_entry_and_list_component_direct
+            entry entries' dim env_size
+        else pure false
+      else pure false
+  end.
+
+Fixpoint validate_semantic_band_entry_list_component_direct
+    (entries: list semantic_band_entry)
+    (dim env_size: nat) : imp bool :=
+  match entries with
+  | [] => pure true
+  | entry :: entries' =>
+      let '(pi, rows) := entry in
+      BIND self <-
+        validate_two_instrs_semantic_band_component_direct
+          pi pi rows rows dim env_size -;
+      if self then
+        BIND cross <-
+          validate_semantic_band_entry_and_list_component_direct
+            entry entries' dim env_size -;
+        if cross then
+          validate_semantic_band_entry_list_component_direct
+            entries' dim env_size
+        else pure false
+      else pure false
+  end.
+
+Fixpoint validate_semantic_band_entry_list_components_direct_from
+    (entries: list semantic_band_entry)
+    (remaining dim env_size: nat) : imp bool :=
+  match remaining with
+  | O => pure true
+  | S remaining' =>
+      BIND component_ok <-
+        validate_semantic_band_entry_list_component_direct
+          entries dim env_size -;
+      if component_ok then
+        validate_semantic_band_entry_list_components_direct_from
+          entries remaining' (S dim) env_size
+      else pure false
+  end.
+
+Fixpoint max_schedule_length (rows: list Schedule) : nat :=
+  match rows with
+  | [] => O
+  | schedule :: rows' =>
+      Nat.max (List.length schedule) (max_schedule_length rows')
+  end.
+
+Definition check_semantic_band_components_direct_aligned
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (rows: list Schedule)
+    (env_size: nat) : imp bool :=
+  let valid_access := BandAffine.check_valid_access pis in
+  BIND res <-
+    validate_semantic_band_entry_list_components_direct_from
+      (combine pis rows) (max_schedule_length rows) O env_size -;
+  pure (res && valid_access).
+
+Definition check_semantic_band_components_direct
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (rows: list Schedule)
+    (env_size: nat) : imp bool :=
+  if Nat.eqb (List.length pis) (List.length rows)
+  then check_semantic_band_components_direct_aligned pis rows env_size
+  else pure false.
+
+Lemma semantic_band_row_exact_cols :
+  forall dom_dim dim rows,
+    exact_listzzs_cols dom_dim rows ->
+    List.length (fst (semantic_band_row dom_dim dim rows)) = dom_dim.
+Proof.
+  intros dom_dim dim rows Hcols.
+  unfold semantic_band_row.
+  destruct (nth_error rows dim) as [row|] eqn:Hrow.
+  - destruct row as [coeffs c]. simpl.
+    eapply Hcols.
+    + eapply nth_error_In. exact Hrow.
+    + reflexivity.
+  - unfold zero_schedule_row. simpl. apply repeat_length.
+Qed.
+
+Lemma make_semantic_band_component_guard_polys_old_order_sound :
+  forall pi1 pi2 rows1 rows2 dim env_size
+         old_order bad_component p1 p2,
+    make_semantic_band_component_guard_polys
+      pi1 pi2 rows1 rows2 dim env_size =
+      (old_order, bad_component) ->
+    List.length p1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat ->
+    List.length p2 =
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat
+      (Tiling.PL.pi_schedule1_ext pi1) ->
+    lex_compare
+      (affine_product (Tiling.PL.pi_schedule1_ext pi1) p1)
+      (affine_product (Tiling.PL.pi_schedule1_ext pi2) p2) = Lt ->
+    Exists
+      (fun pol => in_poly (p1 ++ p2) pol = true)
+      old_order.
+Proof.
+  intros pi1 pi2 rows1 rows2 dim env_size
+         old_order bad_component p1 p2
+         Hmake Hlen1 Hlen2 Hcols Hold.
+  unfold make_semantic_band_component_guard_polys in Hmake.
+  inversion Hmake; subst old_order bad_component; clear Hmake.
+  eapply make_poly_lt_correct; eauto.
+Qed.
+
+Lemma make_semantic_band_component_guard_polys_bad_component_sound :
+  forall pi1 pi2 rows1 rows2 dim env_size
+         old_order bad_component p1 p2,
+    make_semantic_band_component_guard_polys
+      pi1 pi2 rows1 rows2 dim env_size =
+      (old_order, bad_component) ->
+    List.length p1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat ->
+    List.length p2 =
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat rows1 ->
+    exact_listzzs_cols
+      (env_size + Tiling.PL.pi_depth_ext pi2)%nat rows2 ->
+    (semantic_band_value
+       (env_size + Tiling.PL.pi_depth_ext pi1) dim rows1 p1 >
+     semantic_band_value
+       (env_size + Tiling.PL.pi_depth_ext pi2) dim rows2 p2)%Z ->
+    Exists
+      (fun pol => in_poly (p1 ++ p2) pol = true)
+      bad_component.
+Proof.
+  intros pi1 pi2 rows1 rows2 dim env_size
+         old_order bad_component p1 p2
+         Hmake Hlen1 Hlen2 Hcols1 Hcols2 Hcomponent.
+  unfold make_semantic_band_component_guard_polys in Hmake.
+  inversion Hmake; subst old_order bad_component; clear Hmake.
+  unfold semantic_band_value in Hcomponent.
+  remember
+    (semantic_band_row
+       (env_size + Tiling.PL.pi_depth_ext pi1) dim rows1)
+    as row1 eqn:Hrow1.
+  remember
+    (semantic_band_row
+       (env_size + Tiling.PL.pi_depth_ext pi2) dim rows2)
+    as row2 eqn:Hrow2.
+  pose proof
+    (semantic_band_row_exact_cols
+       (env_size + Tiling.PL.pi_depth_ext pi1) dim rows1 Hcols1)
+    as Hrow1_cols.
+  rewrite <- Hrow1 in Hrow1_cols.
+  destruct row1 as [v1 c1], row2 as [v2 c2].
+  simpl in Hcomponent.
+  assert (Hv1 :
+    List.length v1 =
+      (env_size + Tiling.PL.pi_depth_ext pi1)%nat).
+  {
+    exact Hrow1_cols.
+  }
+  assert (Hcomponent_poly :
+    satisfies_constraint
+      (p1 ++ p2)
+      (make_constr_gt (v1, c1) (v2, c2)) = true).
+  {
+    apply
+      (proj2
+         (make_constr_gt_correct p1 p2 v1 v2 c1 c2
+            (eq_trans Hlen1 (eq_sym Hv1)))).
+    exact Hcomponent.
+  }
+  apply Exists_cons_hd.
+  change
+    (satisfies_constraint
+       (p1 ++ p2) (make_constr_gt (v1, c1) (v2, c2)) &&
+     true = true).
+  rewrite Hcomponent_poly.
+  reflexivity.
+Qed.
+
+Lemma validate_two_instrs_semantic_band_component_direct_sound :
+  forall env envv nth1 nth2 pi1 pi2 ipl1 ipl2 rows1 rows2 dim ip1 ip2,
+    mayReturn
+      (validate_two_instrs_semantic_band_component_direct
+         pi1 pi2 rows1 rows2 dim (List.length env))
+      true ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi1 ->
+    Tiling.PL.wf_pinstr_ext_tiling env pi2 ->
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat rows1 ->
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi2)%nat rows2 ->
+    List.length env = List.length envv ->
+    Tiling.PL.flatten_instr_nth_ext envv nth1 pi1 ipl1 ->
+    Tiling.PL.flatten_instr_nth_ext envv nth2 pi2 ipl2 ->
+    In ip1 ipl1 ->
+    In ip2 ipl2 ->
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi1)
+      (Tiling.PL.pi_raccess_ext pi1)
+      (Tiling.PL.pi_instr_ext pi1) ->
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi2)
+      (Tiling.PL.pi_raccess_ext pi2)
+      (Tiling.PL.pi_instr_ext pi2) ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    (semantic_band_value
+       (List.length env + Tiling.PL.pi_depth_ext pi1)
+       dim rows1 (Tiling.PL.ip_index_ext ip1) >
+     semantic_band_value
+       (List.length env + Tiling.PL.pi_depth_ext pi2)
+       dim rows2 (Tiling.PL.ip_index_ext ip2))%Z ->
+    Tiling.PL.Permutable_ext ip1 ip2.
+Proof.
+  intros env envv nth1 nth2 pi1 pi2 ipl1 ipl2 rows1 rows2 dim ip1 ip2
+         Hcheck Hwf1 Hwf2 Hrows1 Hrows2 Henv Hflat1 Hflat2 Hin1 Hin2
+         Hvalid1 Hvalid2 Hold Hcomponent.
+  unfold validate_two_instrs_semantic_band_component_direct in Hcheck.
+  destruct
+    (make_semantic_band_component_guard_polys
+       pi1 pi2 rows1 rows2 dim (List.length env))
+    as [old_order bad_component] eqn:Hguards.
+  pose proof
+    (Tiling.PL.expand_ts1_eq_sched_index_product_ext
+       envv nth1 pi1 ipl1 ip1 Hflat1 Hin1) as Hts1.
+  pose proof
+    (Tiling.PL.expand_ts1_eq_sched_index_product_ext
+       envv nth2 pi2 ipl2 ip2 Hflat2 Hin2) as Hts2.
+  assert (Hidx1 :
+    List.length (Tiling.PL.ip_index_ext ip1) =
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat).
+  {
+    rewrite Henv.
+    eapply Tiling.PL.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (Hidx2 :
+    List.length (Tiling.PL.ip_index_ext ip2) =
+      (List.length env + Tiling.PL.pi_depth_ext pi2)%nat).
+  {
+    rewrite Henv.
+    eapply Tiling.PL.ip_index_size_eq_pi_dom_size_ext; eauto.
+  }
+  assert (Hcols1 :
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat
+      (Tiling.PL.pi_schedule1_ext pi1)).
+  {
+    exact (wf_pinstr_ext_tiling_schedule1_exact_cols env pi1 Hwf1).
+  }
+  assert (Horder :
+    Exists
+      (fun pol =>
+         in_poly
+           (Tiling.PL.ip_index_ext ip1 ++ Tiling.PL.ip_index_ext ip2)
+           pol = true)
+      old_order).
+  {
+    eapply make_semantic_band_component_guard_polys_old_order_sound;
+      eauto.
+    unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
+    rewrite Hts1, Hts2 in Hold.
+    exact Hold.
+  }
+  assert (Hbad :
+    Exists
+      (fun pol =>
+         in_poly
+           (Tiling.PL.ip_index_ext ip1 ++ Tiling.PL.ip_index_ext ip2)
+           pol = true)
+      bad_component).
+  {
+    eapply make_semantic_band_component_guard_polys_bad_component_sound;
+      eauto.
+  }
+  assert (Hcollision :
+    BandAffine.no_write_collision
+      (Tiling.PL.pi_waccess_ext pi1)
+      (Tiling.PL.pi_waccess_ext pi2)
+      (Tiling.PL.pi_raccess_ext pi1)
+      (Tiling.PL.pi_raccess_ext pi2)
+      ip1 ip2).
+  {
+    eapply
+      (BandAffine.validate_two_instrs_under_guards_implies_no_write_collision
+         pi1 pi2 env nth1 nth2 envv ipl1 ipl2
+         old_order bad_component true Hcheck eq_refl);
+      eauto.
+  }
+  assert (Hinstr1 :
+    Tiling.PL.ip_instruction_ext ip1 =
+    Tiling.PL.pi_instr_ext pi1).
+  { eapply Tiling.PL.expand_ip_instr_eq_pi_instr_ext; eauto. }
+  assert (Hinstr2 :
+    Tiling.PL.ip_instruction_ext ip2 =
+    Tiling.PL.pi_instr_ext pi2).
+  { eapply Tiling.PL.expand_ip_instr_eq_pi_instr_ext; eauto. }
+  assert (Htf1 :
+    Tiling.PL.ip_access_transformation_ext ip1 =
+    Tiling.PL.ip_transformation_ext ip1).
+  {
+    assert (Haccess :
+      Tiling.PL.ip_access_transformation_ext ip1 =
+      Tiling.PL.pi_access_transformation_ext pi1).
+    { eapply Tiling.PL.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+    assert (Hcurrent :
+      Tiling.PL.ip_transformation_ext ip1 =
+      Tiling.PL.pi_transformation_ext pi1).
+    { eapply Tiling.PL.expand_ip_instr_eq_pi_tf_ext; eauto. }
+    destruct Hwf1 as [_ Hpi_eq].
+    rewrite Haccess, Hcurrent, Hpi_eq.
+    reflexivity.
+  }
+  assert (Htf2 :
+    Tiling.PL.ip_access_transformation_ext ip2 =
+    Tiling.PL.ip_transformation_ext ip2).
+  {
+    assert (Haccess :
+      Tiling.PL.ip_access_transformation_ext ip2 =
+      Tiling.PL.pi_access_transformation_ext pi2).
+    { eapply Tiling.PL.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
+    assert (Hcurrent :
+      Tiling.PL.ip_transformation_ext ip2 =
+      Tiling.PL.pi_transformation_ext pi2).
+    { eapply Tiling.PL.expand_ip_instr_eq_pi_tf_ext; eauto. }
+    destruct Hwf2 as [_ Hpi_eq].
+    rewrite Haccess, Hcurrent, Hpi_eq.
+    reflexivity.
+  }
+  eapply BandAffine.no_write_collision_implies_permutable; eauto.
+  - rewrite Hinstr1. exact Hvalid1.
+  - rewrite Hinstr2. exact Hvalid2.
+Qed.
+
+Lemma validate_semantic_band_entry_and_list_component_direct_true_pair :
+  forall entry entries dim env_size,
+    mayReturn
+      (validate_semantic_band_entry_and_list_component_direct
+         entry entries dim env_size)
+      true ->
+    forall entry',
+      In entry' entries ->
+      mayReturn
+        (let '(pi, rows) := entry in
+         let '(pi', rows') := entry' in
+         validate_two_instrs_semantic_band_component_direct
+           pi pi' rows rows' dim env_size)
+        true /\
+      mayReturn
+        (let '(pi, rows) := entry in
+         let '(pi', rows') := entry' in
+         validate_two_instrs_semantic_band_component_direct
+           pi' pi rows' rows dim env_size)
+        true.
+Proof.
+  intros entry entries.
+  induction entries as [|entry' entries IH];
+    intros dim env_size Hcheck target Hin.
+  - inversion Hin.
+  - simpl in Hcheck.
+    destruct entry as [pi rows].
+    destruct entry' as [pi' rows'].
+    simpl in Hcheck.
+    bind_imp_destruct Hcheck forward Hforward.
+    destruct forward.
+    + bind_imp_destruct Hcheck backward Hbackward.
+      destruct backward.
+      * destruct Hin as [Heq | Hin].
+        -- inversion Heq; subst target. simpl. split; assumption.
+        -- eapply IH; eauto.
+      * apply mayReturn_pure in Hcheck. discriminate.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma validate_semantic_band_entry_list_component_direct_true_pair :
+  forall entries dim env_size,
+    mayReturn
+      (validate_semantic_band_entry_list_component_direct
+         entries dim env_size)
+      true ->
+    forall entry1 entry2,
+      In entry1 entries ->
+      In entry2 entries ->
+      mayReturn
+        (let '(pi1, rows1) := entry1 in
+         let '(pi2, rows2) := entry2 in
+         validate_two_instrs_semantic_band_component_direct
+           pi1 pi2 rows1 rows2 dim env_size)
+        true.
+Proof.
+  intros entries.
+  induction entries as [|entry entries IH];
+    intros dim env_size Hcheck entry1 entry2 Hin1 Hin2.
+  - inversion Hin1.
+  - simpl in Hcheck.
+    destruct entry as [pi rows].
+    simpl in Hcheck.
+    bind_imp_destruct Hcheck self Hself.
+    destruct self.
+    + bind_imp_destruct Hcheck cross Hcross.
+      destruct cross.
+      * destruct Hin1 as [Heq1 | Hin1];
+        destruct Hin2 as [Heq2 | Hin2].
+        -- inversion Heq1; inversion Heq2; subst. simpl. exact Hself.
+        -- subst entry1.
+           eapply
+             (proj1
+                (validate_semantic_band_entry_and_list_component_direct_true_pair
+                   (pi, rows) entries dim env_size Hcross entry2 Hin2)).
+        -- subst entry2.
+           eapply
+             (proj2
+                (validate_semantic_band_entry_and_list_component_direct_true_pair
+                   (pi, rows) entries dim env_size Hcross entry1 Hin1)).
+        -- eapply IH; eauto.
+      * apply mayReturn_pure in Hcheck. discriminate.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma validate_semantic_band_entry_list_components_direct_from_true_component :
+  forall entries remaining start env_size,
+    mayReturn
+      (validate_semantic_band_entry_list_components_direct_from
+         entries remaining start env_size)
+      true ->
+    forall dim,
+      (start <= dim < start + remaining)%nat ->
+      mayReturn
+        (validate_semantic_band_entry_list_component_direct
+           entries dim env_size)
+        true.
+Proof.
+  intros entries remaining.
+  induction remaining as [|remaining IH];
+    intros start env_size Hcheck dim Hrange.
+  - lia.
+  - simpl in Hcheck.
+    bind_imp_destruct Hcheck component_ok Hcomponent.
+    destruct component_ok.
+    + destruct (Nat.eq_dec dim start) as [Heq | Hneq].
+      * subst dim. exact Hcomponent.
+      * eapply IH.
+        -- exact Hcheck.
+        -- lia.
+    + apply mayReturn_pure in Hcheck. discriminate.
+Qed.
+
+Lemma max_schedule_length_ge_nth_error :
+  forall schedules n schedule,
+    nth_error schedules n = Some schedule ->
+    (List.length schedule <= max_schedule_length schedules)%nat.
+Proof.
+  intros schedules.
+  induction schedules as [|schedule0 schedules IH];
+    intros n schedule Hnth.
+  - destruct n; discriminate.
+  - destruct n as [|n].
+    + inversion Hnth; subst schedule.
+      simpl. apply Nat.le_max_l.
+    + simpl in Hnth.
+      simpl.
+      eapply Nat.le_trans.
+      * eapply IH. exact Hnth.
+      * apply Nat.le_max_r.
+Qed.
+
+Definition pinstr_list_semantic_componentwise_permutable
+    (envv: list Z)
+    (pis: list Tiling.PL.PolyInstr_ext)
+    (rows: list Schedule) : Prop :=
+  forall flat ip1 ip2 pi1 pi2 rows1 rows2 dim,
+    Tiling.PL.flatten_instrs_ext envv pis flat ->
+    In ip1 flat ->
+    In ip2 flat ->
+    nth_error pis (Tiling.PL.ip_nth_ext ip1) = Some pi1 ->
+    nth_error pis (Tiling.PL.ip_nth_ext ip2) = Some pi2 ->
+    nth_error rows (Tiling.PL.ip_nth_ext ip1) = Some rows1 ->
+    nth_error rows (Tiling.PL.ip_nth_ext ip2) = Some rows2 ->
+    (dim < max_schedule_length rows)%nat ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    (semantic_band_value
+       (List.length envv + Tiling.PL.pi_depth_ext pi1)
+       dim rows1 (Tiling.PL.ip_index_ext ip1) >
+     semantic_band_value
+       (List.length envv + Tiling.PL.pi_depth_ext pi2)
+       dim rows2 (Tiling.PL.ip_index_ext ip2))%Z ->
+    Tiling.PL.Permutable_ext ip1 ip2.
+
+Lemma check_semantic_band_components_direct_sound :
+  forall env envv pis rows,
+    List.length env = List.length envv ->
+    Forall (Tiling.PL.wf_pinstr_ext_tiling env) pis ->
+    Forall2
+      (fun pi schedule =>
+         exact_listzzs_cols
+           (List.length env + Tiling.PL.pi_depth_ext pi)%nat
+           schedule)
+      pis rows ->
+    mayReturn
+      (check_semantic_band_components_direct pis rows (List.length env))
+      true ->
+    pinstr_list_semantic_componentwise_permutable envv pis rows.
+Proof.
+  intros env envv pis rows Henv Hwf Hrows_cols Hcheck.
+  assert (Haligned :
+    Nat.eqb (List.length pis) (List.length rows) = true).
+  {
+    apply Nat.eqb_eq.
+    eapply Forall2_length.
+    exact Hrows_cols.
+  }
+  assert (Hchecker_eq :
+    check_semantic_band_components_direct pis rows (List.length env) =
+    check_semantic_band_components_direct_aligned
+      pis rows (List.length env)).
+  {
+    change
+      ((if Nat.eqb (List.length pis) (List.length rows)
+        then check_semantic_band_components_direct_aligned
+               pis rows (List.length env)
+        else pure false) =
+       check_semantic_band_components_direct_aligned
+         pis rows (List.length env)).
+    rewrite Haligned.
+    reflexivity.
+  }
+  rewrite Hchecker_eq in Hcheck.
+  unfold check_semantic_band_components_direct_aligned in Hcheck.
+  bind_imp_destruct Hcheck components_ok Hcomponents.
+  apply mayReturn_pure in Hcheck.
+  apply andb_true_iff in Hcheck.
+  destruct Hcheck as [Hcomponents_true Hvalid_true].
+  subst components_ok.
+  assert (Hvalid :
+    Forall
+      (fun pi =>
+         Instr.valid_access_function
+           (Tiling.PL.pi_waccess_ext pi)
+           (Tiling.PL.pi_raccess_ext pi)
+           (Tiling.PL.pi_instr_ext pi))
+      pis).
+  {
+    eapply BandAffine.check_valid_access_correct.
+    exact Hvalid_true.
+  }
+  unfold pinstr_list_semantic_componentwise_permutable.
+  intros flat ip1 ip2 pi1 pi2 rows1 rows2 dim
+         Hflat Hin1 Hin2 Hnth1 Hnth2 Hrows1 Hrows2
+         Hdim Hold Hcomponent.
+  destruct
+    (flatten_instrs_ext_member_slice_local
+       envv pis flat ip1 pi1 Hflat Hin1 Hnth1)
+    as [slice1 [Hslice1 Hin_slice1]].
+  destruct
+    (flatten_instrs_ext_member_slice_local
+       envv pis flat ip2 pi2 Hflat Hin2 Hnth2)
+    as [slice2 [Hslice2 Hin_slice2]].
+  assert (Hcomponent_check :
+    mayReturn
+      (validate_semantic_band_entry_list_component_direct
+         (combine pis rows) dim (List.length env))
+      true).
+  {
+    eapply
+      validate_semantic_band_entry_list_components_direct_from_true_component.
+    - exact Hcomponents.
+    - lia.
+  }
+  assert (Hentry1 : In (pi1, rows1) (combine pis rows)).
+  { eapply nth_error_combine_some_in_local; eauto. }
+  assert (Hentry2 : In (pi2, rows2) (combine pis rows)).
+  { eapply nth_error_combine_some_in_local; eauto. }
+  assert (Hpair_check :
+    mayReturn
+      (validate_two_instrs_semantic_band_component_direct
+         pi1 pi2 rows1 rows2 dim (List.length env))
+      true).
+  {
+    exact
+      (validate_semantic_band_entry_list_component_direct_true_pair
+         (combine pis rows) dim (List.length env) Hcomponent_check
+         (pi1, rows1) (pi2, rows2) Hentry1 Hentry2).
+  }
+  assert (Hwf1 : Tiling.PL.wf_pinstr_ext_tiling env pi1).
+  { eapply Tiling.Forall_nth_error; eauto. }
+  assert (Hwf2 : Tiling.PL.wf_pinstr_ext_tiling env pi2).
+  { eapply Tiling.Forall_nth_error; eauto. }
+  assert (Hrows_cols1 :
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi1)%nat rows1).
+  {
+    exact
+      (Tiling.Forall2_nth_error
+         _ _
+         (fun pi schedule =>
+            exact_listzzs_cols
+              (List.length env + Tiling.PL.pi_depth_ext pi)%nat
+              schedule)
+         pis rows (Tiling.PL.ip_nth_ext ip1) pi1 rows1
+         Hrows_cols Hnth1 Hrows1).
+  }
+  assert (Hrows_cols2 :
+    exact_listzzs_cols
+      (List.length env + Tiling.PL.pi_depth_ext pi2)%nat rows2).
+  {
+    exact
+      (Tiling.Forall2_nth_error
+         _ _
+         (fun pi schedule =>
+            exact_listzzs_cols
+              (List.length env + Tiling.PL.pi_depth_ext pi)%nat
+              schedule)
+         pis rows (Tiling.PL.ip_nth_ext ip2) pi2 rows2
+         Hrows_cols Hnth2 Hrows2).
+  }
+  assert (Hvalid1 :
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi1)
+      (Tiling.PL.pi_raccess_ext pi1)
+      (Tiling.PL.pi_instr_ext pi1)).
+  {
+    exact
+      (Tiling.Forall_nth_error
+         _
+         (fun pi =>
+            Instr.valid_access_function
+              (Tiling.PL.pi_waccess_ext pi)
+              (Tiling.PL.pi_raccess_ext pi)
+              (Tiling.PL.pi_instr_ext pi))
+         pis (Tiling.PL.ip_nth_ext ip1) pi1 Hvalid Hnth1).
+  }
+  assert (Hvalid2 :
+    Instr.valid_access_function
+      (Tiling.PL.pi_waccess_ext pi2)
+      (Tiling.PL.pi_raccess_ext pi2)
+      (Tiling.PL.pi_instr_ext pi2)).
+  {
+    exact
+      (Tiling.Forall_nth_error
+         _
+         (fun pi =>
+            Instr.valid_access_function
+              (Tiling.PL.pi_waccess_ext pi)
+              (Tiling.PL.pi_raccess_ext pi)
+              (Tiling.PL.pi_instr_ext pi))
+         pis (Tiling.PL.ip_nth_ext ip2) pi2 Hvalid Hnth2).
+  }
+  assert (Hcomponent_env :
+    (semantic_band_value
+       (List.length env + Tiling.PL.pi_depth_ext pi1)
+       dim rows1 (Tiling.PL.ip_index_ext ip1) >
+     semantic_band_value
+       (List.length env + Tiling.PL.pi_depth_ext pi2)
+       dim rows2 (Tiling.PL.ip_index_ext ip2))%Z).
+  {
+    rewrite Henv.
+    exact Hcomponent.
+  }
+  eapply
+    (validate_two_instrs_semantic_band_component_direct_sound
+       env envv
+       (Tiling.PL.ip_nth_ext ip1)
+       (Tiling.PL.ip_nth_ext ip2)
+       pi1 pi2 slice1 slice2 rows1 rows2 dim ip1 ip2);
+    eauto.
+Qed.
+
+(** Program-wide reconstruction for source-like and mixed-depth tiling.
+    Slots are removed only when every statement has a strict zero row there.
+    This preserves cross-statement schedule coordinates. *)
+Definition listz_prefixb (xs ys: list Z) : bool :=
+  Nat.leb (List.length xs) (List.length ys) &&
+  listz_strict_eqb xs (firstn (List.length xs) ys).
+
+Definition merge_prefix_sizes
+    (xs ys: list Z) : option (list Z) :=
+  if listz_prefixb xs ys then Some ys
+  else if listz_prefixb ys xs then Some xs
+       else None.
+
+Fixpoint infer_global_prefix_sizes
+    (sizes: list (list Z)) : option (list Z) :=
+  match sizes with
+  | [] => Some []
+  | sizes0 :: sizes' =>
+      match infer_global_prefix_sizes sizes' with
+      | Some global => merge_prefix_sizes sizes0 global
+      | None => None
+      end
+  end.
+
+Fixpoint parse_ordinary_semantic_data
+    (ws: list statement_tiling_witness)
+    : option (list (Schedule * list Z)) :=
+  match ws with
+  | [] => Some []
+  | w :: ws' =>
+      match schedule_rows_of_links w,
+            parse_ordinary_semantic_data ws' with
+      | Some rows, Some rest =>
+          Some ((rows, tile_sizes_of_witness w) :: rest)
+      | _, _ => None
+      end
+  end.
+
+Fixpoint parse_second_level_semantic_recipes
+    (ws: list statement_tiling_witness)
+    : option (list second_level_band_recipe) :=
+  match ws with
+  | [] => Some []
+  | w :: ws' =>
+      match second_level_band_recipe_of_witness w,
+            parse_second_level_semantic_recipes ws' with
+      | Some recipe, Some rest => Some (recipe :: rest)
+      | _, _ => None
+      end
+  end.
+
+Fixpoint select_by_mask {A: Type}
+    (mask: list bool) (xs: list A) : list A :=
+  match mask, xs with
+  | keep :: mask', x :: xs' =>
+      if keep
+      then x :: select_by_mask mask' xs'
+      else select_by_mask mask' xs'
+  | _, _ => []
+  end.
+
+Definition semantic_schedule_slot_zerob
+    (slot: nat) (raw_schedules: list Schedule) : bool :=
+  forallb
+    (fun rows =>
+       match nth_error rows slot with
+       | Some row => Tiling.PL.affine_function_is_zero row
+       | None => true
+       end)
+    raw_schedules.
+
+Definition global_semantic_schedule_mask
+    (raw_schedules: list Schedule) : list bool :=
+  List.map
+    (fun slot => negb (semantic_schedule_slot_zerob slot raw_schedules))
+    (List.seq O (max_schedule_length raw_schedules)).
+
+Definition compact_semantic_schedule
+    (dom_dim: nat) (mask: list bool) (raw: Schedule) : Schedule :=
+  select_by_mask mask
+    (Tiling.PL.pad_schedule_to_len dom_dim (List.length mask) raw).
+
+Fixpoint compact_semantic_schedules
+    (env_size: nat)
+    (before_pis: list Tiling.PL.PolyInstr)
+    (raw_schedules: list Schedule)
+    (mask: list bool) : option (list Schedule) :=
+  match before_pis, raw_schedules with
+  | [], [] => Some []
+  | before_pi :: before_pis', raw :: raw_schedules' =>
+      match
+        compact_semantic_schedules
+          env_size before_pis' raw_schedules' mask
+      with
+      | Some rest =>
+          Some
+            (compact_semantic_schedule
+               (env_size + Tiling.PL.pi_depth before_pi)%nat
+               mask raw :: rest)
+      | None => None
+      end
+  | _, _ => None
+  end.
+
+Fixpoint lift_semantic_schedules_for_tiling
+    (env_size: nat)
+    (ws: list statement_tiling_witness)
+    (semantic_rows: list Schedule) : option (list Schedule) :=
+  match ws, semantic_rows with
+  | [], [] => Some []
+  | w :: ws', rows :: semantic_rows' =>
+      match
+        lift_semantic_schedules_for_tiling
+          env_size ws' semantic_rows'
+      with
+      | Some rest =>
+          Some
+            (Tiling.lift_schedule_after_env
+               (List.length (stw_links w)) env_size rows :: rest)
+      | None => None
+      end
+  | _, _ => None
+  end.
+
+Definition semantic_ordinary_target_schedule
+    (env_size global_width: nat)
+    (semantic_rows: Schedule)
+    (w: statement_tiling_witness) : Schedule :=
+  let local_width := List.length (stw_links w) in
+  let total_cols := (env_size + local_width + stw_point_dim w)%nat in
+  Tiling.identity_affine_rows_from total_cols env_size local_width ++
+  repeat (zero_schedule_row total_cols) (global_width - local_width) ++
+  Tiling.lift_schedule_after_env local_width env_size semantic_rows.
+
+Definition semantic_second_level_grouped_target_schedule
+    (env_size global_width: nat)
+    (semantic_rows: Schedule)
+    (w: statement_tiling_witness)
+    (recipe: second_level_band_recipe) : Schedule :=
+  let local_width := List.length (slbr_root_rows recipe) in
+  let added_dims := (2 * local_width)%nat in
+  let total_cols := (env_size + added_dims + stw_point_dim w)%nat in
+  identity_affine_rows_at
+    total_cols env_size (second_level_child_positions local_width) ++
+  repeat (zero_schedule_row total_cols) (global_width - local_width) ++
+  identity_affine_rows_at
+    total_cols env_size (second_level_root_positions local_width) ++
+  repeat (zero_schedule_row total_cols) (global_width - local_width) ++
+  Tiling.lift_schedule_after_env added_dims env_size semantic_rows.
+
+Definition semantic_second_level_interleaved_target_schedule
+    (env_size global_width: nat)
+    (semantic_rows: Schedule)
+    (w: statement_tiling_witness)
+    (recipe: second_level_band_recipe) : Schedule :=
+  let local_width := List.length (slbr_root_rows recipe) in
+  let added_dims := (2 * local_width)%nat in
+  let total_cols := (env_size + added_dims + stw_point_dim w)%nat in
+  Tiling.identity_affine_rows_from total_cols env_size added_dims ++
+  repeat (zero_schedule_row total_cols)
+    (2 * (global_width - local_width)) ++
+  Tiling.lift_schedule_after_env added_dims env_size semantic_rows.
+
+Definition semantic_second_level_target_schedule
+    (layout: second_level_schedule_layout)
+    (env_size global_width: nat)
+    (semantic_rows: Schedule)
+    (w: statement_tiling_witness)
+    (recipe: second_level_band_recipe) : Schedule :=
+  match layout with
+  | SecondLevelGrouped =>
+      semantic_second_level_grouped_target_schedule
+        env_size global_width semantic_rows w recipe
+  | SecondLevelInterleaved =>
+      semantic_second_level_interleaved_target_schedule
+        env_size global_width semantic_rows w recipe
+  end.
+
+Fixpoint check_ordinary_semantic_schedulesb
+    (env_size global_width: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (semantic_rows: list Schedule) : bool :=
+  match before_pis, after_pis, ws, semantic_rows with
+  | [], [], [], [] => true
+  | before_pi :: before_pis', after_pi :: after_pis',
+    w :: ws', rows :: semantic_rows' =>
+      check_schedule_with_symmetric_trailing_zero_paddingb
+        rows (Tiling.PL.pi_schedule before_pi) &&
+      check_schedule_with_symmetric_trailing_zero_paddingb
+        (semantic_ordinary_target_schedule
+           env_size global_width rows w)
+        (Tiling.PL.pi_schedule after_pi) &&
+      check_ordinary_semantic_schedulesb
+        env_size global_width before_pis' after_pis' ws' semantic_rows'
+  | _, _, _, _ => false
+  end.
+
+Fixpoint check_second_level_semantic_schedulesb
+    (layout: second_level_schedule_layout)
+    (env_size global_width: nat)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (recipes: list second_level_band_recipe)
+    (semantic_rows: list Schedule) : bool :=
+  match before_pis, after_pis, ws, recipes, semantic_rows with
+  | [], [], [], [], [] => true
+  | before_pi :: before_pis', after_pi :: after_pis',
+    w :: ws', recipe :: recipes', rows :: semantic_rows' =>
+      check_schedule_with_symmetric_trailing_zero_paddingb
+        rows (Tiling.PL.pi_schedule before_pi) &&
+      check_schedule_with_symmetric_trailing_zero_paddingb
+        (semantic_second_level_target_schedule
+           layout env_size global_width rows w recipe)
+        (Tiling.PL.pi_schedule after_pi) &&
+      check_second_level_semantic_schedulesb
+        layout env_size global_width
+        before_pis' after_pis' ws' recipes' semantic_rows'
+  | _, _, _, _, _ => false
+  end.
+
+Record ordinary_semantic_band_shape := {
+  osbs_rows : list Schedule;
+  osbs_global_sizes : list Z;
+  osbs_mask : list bool;
+}.
+
+Record second_level_semantic_band_shape := {
+  slsbs_rows : list Schedule;
+  slsbs_recipes : list second_level_band_recipe;
+  slsbs_global_root_sizes : list Z;
+  slsbs_global_child_sizes : list Z;
+  slsbs_mask : list bool;
+  slsbs_layout : second_level_schedule_layout;
+}.
+
+Definition infer_pprog_ordinary_semantic_band_shape
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    : option ordinary_semantic_band_shape :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars
+  then
+    match parse_ordinary_semantic_data ws with
+    | Some data =>
+        let raw_schedules := List.map fst data in
+        let local_sizes := List.map snd data in
+        let mask := global_semantic_schedule_mask raw_schedules in
+        let global_width := List.length mask in
+        match
+          infer_global_prefix_sizes local_sizes,
+          compact_semantic_schedules
+            (List.length before_ctxt) before_pis raw_schedules mask
+        with
+        | Some global_sizes, Some semantic_rows =>
+            if Nat.ltb O global_width &&
+               Nat.eqb (List.length global_sizes) global_width &&
+               check_ordinary_semantic_schedulesb
+                 (List.length before_ctxt) global_width
+                 before_pis after_pis ws semantic_rows
+            then
+              Some
+                {| osbs_rows := semantic_rows;
+                   osbs_global_sizes := global_sizes;
+                   osbs_mask := mask |}
+            else None
+        | _, _ => None
+        end
+    | None => None
+    end
+  else None.
+
+Definition infer_pprog_second_level_semantic_band_shape
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    : option second_level_semantic_band_shape :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  if TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars
+  then
+    match parse_second_level_semantic_recipes ws with
+    | Some recipes =>
+        let raw_schedules := List.map slbr_root_rows recipes in
+        let root_sizes := List.map slbr_root_sizes recipes in
+        let child_sizes := List.map slbr_child_sizes recipes in
+        let mask := global_semantic_schedule_mask raw_schedules in
+        let global_width := List.length mask in
+        match
+          infer_global_prefix_sizes root_sizes,
+          infer_global_prefix_sizes child_sizes,
+          compact_semantic_schedules
+            (List.length before_ctxt) before_pis raw_schedules mask
+        with
+        | Some global_root_sizes,
+          Some global_child_sizes,
+          Some semantic_rows =>
+            if Nat.ltb O global_width &&
+               Nat.eqb (List.length global_root_sizes) global_width &&
+               Nat.eqb (List.length global_child_sizes) global_width
+            then
+              if check_second_level_semantic_schedulesb
+                   SecondLevelGrouped
+                   (List.length before_ctxt) global_width
+                   before_pis after_pis ws recipes semantic_rows
+              then
+                Some
+                  {| slsbs_rows := semantic_rows;
+                     slsbs_recipes := recipes;
+                     slsbs_global_root_sizes := global_root_sizes;
+                     slsbs_global_child_sizes := global_child_sizes;
+                     slsbs_mask := mask;
+                     slsbs_layout := SecondLevelGrouped |}
+              else
+                if check_second_level_semantic_schedulesb
+                     SecondLevelInterleaved
+                     (List.length before_ctxt) global_width
+                     before_pis after_pis ws recipes semantic_rows
+                then
+                  Some
+                    {| slsbs_rows := semantic_rows;
+                       slsbs_recipes := recipes;
+                       slsbs_global_root_sizes := global_root_sizes;
+                       slsbs_global_child_sizes := global_child_sizes;
+                       slsbs_mask := mask;
+                       slsbs_layout := SecondLevelInterleaved |}
+                else None
+            else None
+        | _, _, _ => None
+        end
+    | None => None
+    end
+  else None.
+
+Definition checked_tiling_sourceb_semantic_band_direct
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness) : imp bool :=
+  let '(before_pis, before_ctxt, _) := before in
+  let '(after_pis, _, _) := after in
+  let pis :=
+    Tiling.compose_tiling_pinstrs_ext_from_after
+      (List.length before_ctxt) before_pis after_pis ws in
+  if TilingCheck.check_pprog_tiling_sourceb before after ws then
+    match infer_pprog_ordinary_semantic_band_shape before after ws with
+    | Some shape =>
+        match
+          lift_semantic_schedules_for_tiling
+            (List.length before_ctxt) ws (osbs_rows shape)
+        with
+        | Some lifted_rows =>
+            check_semantic_band_components_direct
+              pis lifted_rows (List.length before_ctxt)
+        | None => pure false
+        end
+    | None =>
+        match infer_pprog_second_level_semantic_band_shape before after ws with
+        | Some shape =>
+            match
+              lift_semantic_schedules_for_tiling
+                (List.length before_ctxt) ws (slsbs_rows shape)
+            with
+            | Some lifted_rows =>
+                check_semantic_band_components_direct
+                  pis lifted_rows (List.length before_ctxt)
+            | None => pure false
+            end
+        | None => pure false
+        end
+    end
+  else pure false.
+
+Lemma select_by_mask_map :
+  forall (A B: Type) (f: A -> B) mask xs,
+    List.map f (select_by_mask mask xs) =
+    select_by_mask mask (List.map f xs).
+Proof.
+  intros A B f mask.
+  induction mask as [|keep mask IH]; intros xs; destruct xs as [|x xs];
+    simpl; try reflexivity.
+  destruct keep; simpl; rewrite IH; reflexivity.
+Qed.
+
+Lemma affine_product_select_by_mask :
+  forall mask rows idx,
+    affine_product (select_by_mask mask rows) idx =
+    select_by_mask mask (affine_product rows idx).
+Proof.
+  intros mask rows idx.
+  unfold affine_product.
+  apply select_by_mask_map.
+Qed.
+
+Lemma select_by_mask_length_same :
+  forall (A B: Type) mask (xs: list A) (ys: list B),
+    List.length xs = List.length mask ->
+    List.length ys = List.length mask ->
+    List.length (select_by_mask mask xs) =
+    List.length (select_by_mask mask ys).
+Proof.
+  intros A B mask.
+  induction mask as [|keep mask IH]; intros xs ys Hxs Hys;
+    destruct xs as [|x xs]; destruct ys as [|y ys];
+    simpl in *; try discriminate; try reflexivity.
+  destruct keep; simpl; f_equal; eapply IH; lia.
+Qed.
+
+Lemma select_by_mask_in :
+  forall (A: Type) mask (xs: list A) x,
+    In x (select_by_mask mask xs) ->
+    In x xs.
+Proof.
+  intros A mask.
+  induction mask as [|keep mask IH]; intros xs x Hin;
+    destruct xs as [|head xs]; simpl in *; try contradiction.
+  destruct keep.
+  - destruct Hin as [Hin | Hin].
+    + left. exact Hin.
+    + right. eapply IH. exact Hin.
+  - right. eapply IH. exact Hin.
+Qed.
+
+Lemma exact_listzzs_cols_select_by_mask :
+  forall cols mask rows,
+    exact_listzzs_cols cols rows ->
+    exact_listzzs_cols cols (select_by_mask mask rows).
+Proof.
+  intros cols mask rows Hcols coeffs c row Hin Heq.
+  eapply Hcols.
+  - eapply select_by_mask_in.
+    exact Hin.
+  - exact Heq.
+Qed.
+
+Lemma exact_listzzs_cols_repeat_zero_schedule_row :
+  forall cols n,
+    exact_listzzs_cols cols
+      (repeat (zero_schedule_row cols) n).
+Proof.
+  intros cols n coeffs c row Hin Heq.
+  apply repeat_spec in Hin.
+  subst row.
+  inversion Heq; subst coeffs c.
+  unfold zero_schedule_row.
+  simpl.
+  apply repeat_length.
+Qed.
+
+Lemma exact_listzzs_cols_pad_schedule_to_len :
+  forall cols len rows,
+    exact_listzzs_cols cols rows ->
+    exact_listzzs_cols cols
+      (Tiling.PL.pad_schedule_to_len cols len rows).
+Proof.
+  intros cols len rows Hcols.
+  unfold Tiling.PL.pad_schedule_to_len.
+  eapply exact_listzzs_cols_app_local_component.
+  - exact Hcols.
+  - eapply exact_listzzs_cols_repeat_zero_schedule_row.
+Qed.
+
+Lemma compact_semantic_schedule_exact_cols :
+  forall cols mask raw,
+    exact_listzzs_cols cols raw ->
+    exact_listzzs_cols cols
+      (compact_semantic_schedule cols mask raw).
+Proof.
+  intros cols mask raw Hcols.
+  unfold compact_semantic_schedule.
+  eapply exact_listzzs_cols_select_by_mask.
+  eapply exact_listzzs_cols_pad_schedule_to_len.
+  exact Hcols.
+Qed.
+
+Lemma schedule_rows_of_links_aux_exact_cols :
+  forall prefix_len point_dim param_dim links rows,
+    schedule_rows_of_links_aux prefix_len links = Some rows ->
+    well_formed_tile_links prefix_len point_dim links ->
+    Forall
+      (fun link =>
+         List.length (ae_param_coeffs (tl_expr link)) = param_dim)
+      links ->
+    exact_listzzs_cols (param_dim + point_dim)%nat rows.
+Proof.
+  intros prefix_len point_dim param_dim links.
+  revert prefix_len.
+  induction links as [|link links IH];
+    intros prefix_len rows Hrows Hwf Hparams.
+  - simpl in Hrows.
+    inversion Hrows; subst rows.
+    unfold exact_listzzs_cols.
+    intros coeffs c row Hin.
+    contradiction.
+  - simpl in Hrows.
+    destruct
+      (listz_strict_eqb
+         (firstn prefix_len (ae_var_coeffs (tl_expr link)))
+         (repeat 0%Z prefix_len))
+      eqn:Hzero; try discriminate.
+    destruct
+      (schedule_rows_of_links_aux (S prefix_len) links)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hrows; subst rows; clear Hrows.
+    destruct Hwf as [Hvars Hwf].
+    inversion Hparams as [|link0 links0 Hparam Hparams'];
+      subst link0 links0.
+    assert
+      (Hrest_cols :
+         exact_listzzs_cols (param_dim + point_dim)%nat rest).
+    {
+      eapply IH; eauto.
+    }
+    unfold exact_listzzs_cols.
+    intros coeffs c row Hin Heq.
+    destruct Hin as [Hin | Hin].
+    + subst row.
+      inversion Heq; subst coeffs c.
+      unfold schedule_row_of_tile_link_base.
+      simpl.
+      rewrite app_length, Hparam, skipn_length, Hvars.
+      lia.
+    + eapply Hrest_cols; eauto.
+Qed.
+
+Lemma schedule_rows_of_links_exact_cols :
+  forall param_dim w rows,
+    schedule_rows_of_links w = Some rows ->
+    Tiling.wf_statement_tiling_witness_with_param_dim param_dim w ->
+    exact_listzzs_cols
+      (param_dim + stw_point_dim w)%nat rows.
+Proof.
+  intros param_dim w rows Hrows Hwf.
+  destruct Hwf as [Hlinks Hparams].
+  unfold schedule_rows_of_links in Hrows.
+  unfold well_formed_statement_tiling_witness in Hlinks.
+  eapply schedule_rows_of_links_aux_exact_cols; eauto.
+Qed.
+
+Lemma affine_function_is_zero_sound_local :
+  forall coeffs c,
+    Tiling.PL.affine_function_is_zero (coeffs, c) = true ->
+    coeffs = repeat 0%Z (List.length coeffs) /\ c = 0%Z.
+Proof.
+  intros coeffs c Hzero.
+  unfold Tiling.PL.affine_function_is_zero in Hzero.
+  apply andb_true_iff in Hzero.
+  destruct Hzero as [Hcoeffs Hc].
+  apply Z.eqb_eq in Hc.
+  split; [|exact Hc].
+  induction coeffs as [|x coeffs IH].
+  - reflexivity.
+  - change
+      (Z.eqb 0%Z x && forallb (Z.eqb 0%Z) coeffs = true)
+      in Hcoeffs.
+    apply andb_true_iff in Hcoeffs.
+    destruct Hcoeffs as [Hx Hcoeffs].
+    apply Z.eqb_eq in Hx.
+    subst x.
+    change
+      (0%Z :: coeffs =
+       0%Z :: repeat 0%Z (List.length coeffs)).
+    f_equal.
+    apply IH.
+    exact Hcoeffs.
+Qed.
+
+Lemma affine_function_is_zero_eval_local :
+  forall row idx,
+    Tiling.PL.affine_function_is_zero row = true ->
+    (dot_product (fst row) idx + snd row)%Z = 0%Z.
+Proof.
+  intros [coeffs c] idx Hzero.
+  simpl.
+  destruct
+    (affine_function_is_zero_sound_local coeffs c Hzero)
+    as [Hcoeffs Hc].
+  rewrite Hcoeffs, Hc.
+  rewrite Tiling.tiling_dot_product_eq_linalg_dot_product.
+  rewrite dot_product_repeat_zero_left.
+  lia.
+Qed.
+
+Lemma lift_semantic_schedules_for_tiling_length :
+  forall env_size ws rows lifted_rows,
+    lift_semantic_schedules_for_tiling env_size ws rows =
+      Some lifted_rows ->
+    List.length lifted_rows = List.length ws /\
+    List.length rows = List.length ws.
+Proof.
+  intros env_size ws.
+  induction ws as [|w ws IH]; intros rows lifted_rows Hlift;
+    destruct rows as [|row rows]; simpl in Hlift; try discriminate.
+  - inversion Hlift.
+    split; reflexivity.
+  - destruct
+      (lift_semantic_schedules_for_tiling env_size ws rows)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hlift; subst lifted_rows.
+    destruct (IH rows rest Hrest) as [Hrest_len Hrows_len].
+    simpl.
+    split; lia.
+Qed.
+
+Lemma lift_semantic_schedules_for_tiling_exact_cols :
+  forall env_size ws rows lifted_rows,
+    lift_semantic_schedules_for_tiling env_size ws rows =
+      Some lifted_rows ->
+    Forall2
+      (fun w semantic_rows =>
+         exact_listzzs_cols
+           (env_size + stw_point_dim w)%nat semantic_rows)
+      ws rows ->
+    Forall2
+      (fun w lifted =>
+         exact_listzzs_cols
+           (env_size + List.length (stw_links w) + stw_point_dim w)%nat
+           lifted)
+      ws lifted_rows.
+Proof.
+  intros env_size ws.
+  induction ws as [|w ws IH]; intros rows lifted_rows Hlift Hcols;
+    destruct rows as [|row rows]; simpl in Hlift; try discriminate.
+  - inversion Hlift; subst lifted_rows.
+    constructor.
+  - inversion Hcols as [|w0 ws0 row0 rows0 Hrow_cols Hrows_cols];
+      subst w0 ws0 row0 rows0.
+    destruct
+      (lift_semantic_schedules_for_tiling env_size ws rows)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hlift; subst lifted_rows.
+    constructor.
+    + replace
+        (env_size + List.length (stw_links w) + stw_point_dim w)%nat
+        with
+        (List.length (stw_links w) +
+         (env_size + stw_point_dim w))%nat
+        by lia.
+      eapply lift_schedule_after_env_exact_cols.
+      * exact Hrow_cols.
+      * lia.
+    + eapply IH; eauto.
+Qed.
+
+Inductive ordinary_semantic_schedules_match
+    (env_size global_width: nat)
+    : list Tiling.PL.PolyInstr ->
+      list Tiling.PL.PolyInstr ->
+      list statement_tiling_witness ->
+      list Schedule -> Prop :=
+| ordinary_semantic_schedules_match_nil :
+    ordinary_semantic_schedules_match env_size global_width [] [] [] []
+| ordinary_semantic_schedules_match_cons :
+    forall before_pi before_pis after_pi after_pis w ws rows semantic_rows,
+      schedule_matches_with_symmetric_trailing_zero_padding
+        rows (Tiling.PL.pi_schedule before_pi) ->
+      schedule_matches_with_symmetric_trailing_zero_padding
+        (semantic_ordinary_target_schedule
+           env_size global_width rows w)
+        (Tiling.PL.pi_schedule after_pi) ->
+      ordinary_semantic_schedules_match
+        env_size global_width before_pis after_pis ws semantic_rows ->
+      ordinary_semantic_schedules_match
+        env_size global_width
+        (before_pi :: before_pis) (after_pi :: after_pis)
+        (w :: ws) (rows :: semantic_rows).
+
+Lemma check_ordinary_semantic_schedulesb_sound :
+  forall env_size global_width before_pis after_pis ws semantic_rows,
+    check_ordinary_semantic_schedulesb
+      env_size global_width before_pis after_pis ws semantic_rows = true ->
+    ordinary_semantic_schedules_match
+      env_size global_width before_pis after_pis ws semantic_rows.
+Proof.
+  intros env_size global_width before_pis.
+  induction before_pis as [|before_pi before_pis IH];
+    intros after_pis ws semantic_rows Hcheck;
+    destruct after_pis as [|after_pi after_pis];
+    destruct ws as [|w ws];
+    destruct semantic_rows as [|rows semantic_rows];
+    simpl in Hcheck; try discriminate.
+  - constructor.
+  - repeat rewrite andb_true_iff in Hcheck.
+    destruct Hcheck as [[Hbefore Hafter] Hrest].
+    constructor.
+    + eapply check_schedule_with_symmetric_trailing_zero_paddingb_sound.
+      exact Hbefore.
+    + eapply check_schedule_with_symmetric_trailing_zero_paddingb_sound.
+      exact Hafter.
+    + eapply IH.
+      exact Hrest.
+Qed.
+
+Inductive second_level_semantic_schedules_match
+    (layout: second_level_schedule_layout)
+    (env_size global_width: nat)
+    : list Tiling.PL.PolyInstr ->
+      list Tiling.PL.PolyInstr ->
+      list statement_tiling_witness ->
+      list second_level_band_recipe ->
+      list Schedule -> Prop :=
+| second_level_semantic_schedules_match_nil :
+    second_level_semantic_schedules_match
+      layout env_size global_width [] [] [] [] []
+| second_level_semantic_schedules_match_cons :
+    forall before_pi before_pis after_pi after_pis
+           w ws recipe recipes rows semantic_rows,
+      schedule_matches_with_symmetric_trailing_zero_padding
+        rows (Tiling.PL.pi_schedule before_pi) ->
+      schedule_matches_with_symmetric_trailing_zero_padding
+        (semantic_second_level_target_schedule
+           layout env_size global_width rows w recipe)
+        (Tiling.PL.pi_schedule after_pi) ->
+      second_level_semantic_schedules_match
+        layout env_size global_width
+        before_pis after_pis ws recipes semantic_rows ->
+      second_level_semantic_schedules_match
+        layout env_size global_width
+        (before_pi :: before_pis) (after_pi :: after_pis)
+        (w :: ws) (recipe :: recipes) (rows :: semantic_rows).
+
+Lemma check_second_level_semantic_schedulesb_sound :
+  forall layout env_size global_width
+         before_pis after_pis ws recipes semantic_rows,
+    check_second_level_semantic_schedulesb
+      layout env_size global_width
+      before_pis after_pis ws recipes semantic_rows = true ->
+    second_level_semantic_schedules_match
+      layout env_size global_width
+      before_pis after_pis ws recipes semantic_rows.
+Proof.
+  intros layout env_size global_width before_pis.
+  induction before_pis as [|before_pi before_pis IH];
+    intros after_pis ws recipes semantic_rows Hcheck;
+    destruct after_pis as [|after_pi after_pis];
+    destruct ws as [|w ws];
+    destruct recipes as [|recipe recipes];
+    destruct semantic_rows as [|rows semantic_rows];
+    simpl in Hcheck; try discriminate.
+  - constructor.
+  - repeat rewrite andb_true_iff in Hcheck.
+    destruct Hcheck as [[Hbefore Hafter] Hrest].
+    constructor.
+    + eapply check_schedule_with_symmetric_trailing_zero_paddingb_sound.
+      exact Hbefore.
+    + eapply check_schedule_with_symmetric_trailing_zero_paddingb_sound.
+      exact Hafter.
+    + eapply IH.
+      exact Hrest.
+Qed.
+
+Lemma option_if_some_inv_local :
+  forall (A: Type) (b: bool) (x y: A),
+    (if b then Some x else None) = Some y ->
+    b = true /\ x = y.
+Proof.
+  intros A b x y H.
+  destruct b; simpl in H; try discriminate.
+  inversion H.
+  split; reflexivity.
+Qed.
+
+Lemma option_if_then_some_inv_local :
+  forall (A: Type) (b: bool) (then_branch: option A) (y: A),
+    (if b then then_branch else None) = Some y ->
+    b = true /\ then_branch = Some y.
+Proof.
+  intros A b then_branch y H.
+  destruct b; simpl in H; try discriminate.
+  split; [reflexivity|exact H].
+Qed.
+
+Lemma option_if_some_else_inv_local :
+  forall (A: Type) (b: bool) (x y: A) (else_branch: option A),
+    (if b then Some x else else_branch) = Some y ->
+    (b = true /\ x = y) \/
+    (b = false /\ else_branch = Some y).
+Proof.
+  intros A b x y else_branch H.
+  destruct b; simpl in H.
+  - left. inversion H. split; reflexivity.
+  - right. split; [reflexivity|exact H].
+Qed.
+
+Definition ordinary_semantic_band_shape_property_with_witness
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    (shape: ordinary_semantic_band_shape) : Prop :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  before_ctxt = after_ctxt /\
+  before_vars = after_vars /\
+  exists data,
+    parse_ordinary_semantic_data ws = Some data /\
+    infer_global_prefix_sizes (List.map snd data) =
+      Some (osbs_global_sizes shape) /\
+    osbs_mask shape =
+      global_semantic_schedule_mask (List.map fst data) /\
+    compact_semantic_schedules
+      (List.length before_ctxt) before_pis
+      (List.map fst data) (osbs_mask shape) =
+      Some (osbs_rows shape) /\
+    (O < List.length (osbs_mask shape))%nat /\
+    List.length (osbs_global_sizes shape) =
+      List.length (osbs_mask shape) /\
+    ordinary_semantic_schedules_match
+      (List.length before_ctxt)
+      (List.length (osbs_mask shape))
+      before_pis after_pis ws (osbs_rows shape).
+
+Lemma infer_pprog_ordinary_semantic_band_shape_sound :
+  forall before after ws shape,
+    infer_pprog_ordinary_semantic_band_shape before after ws = Some shape ->
+    ordinary_semantic_band_shape_property_with_witness
+      before after ws shape.
+Proof.
+  intros [[before_pis before_ctxt] before_vars]
+         [[after_pis after_ctxt] after_vars] ws shape Hinfer.
+  cbn in Hinfer.
+  destruct
+    (TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars)
+    eqn:Hctxt; try discriminate.
+  apply andb_true_iff in Hctxt.
+  destruct Hctxt as [Hctxt Hvars].
+  destruct (parse_ordinary_semantic_data ws) as [data|] eqn:Hdata;
+    try discriminate.
+  destruct
+    (infer_global_prefix_sizes (List.map snd data))
+    as [global_sizes|] eqn:Hsizes; try discriminate.
+  destruct
+    (compact_semantic_schedules
+       (List.length before_ctxt) before_pis
+       (List.map fst data)
+       (global_semantic_schedule_mask (List.map fst data)))
+    as [semantic_rows|] eqn:Hrows; try discriminate.
+  pose proof
+    (option_if_some_inv_local
+       ordinary_semantic_band_shape
+       (Nat.ltb O
+          (List.length
+             (global_semantic_schedule_mask (List.map fst data))) &&
+        Nat.eqb (List.length global_sizes)
+          (List.length
+             (global_semantic_schedule_mask (List.map fst data))) &&
+        check_ordinary_semantic_schedulesb
+          (List.length before_ctxt)
+          (List.length
+             (global_semantic_schedule_mask (List.map fst data)))
+          before_pis after_pis ws semantic_rows)
+       {| osbs_rows := semantic_rows;
+          osbs_global_sizes := global_sizes;
+          osbs_mask :=
+            global_semantic_schedule_mask (List.map fst data) |}
+       shape
+       Hinfer)
+    as [Hchecks Hshape].
+  subst shape.
+  repeat rewrite andb_true_iff in Hchecks.
+  destruct Hchecks as [[Hpositive Hwidth] Hschedules].
+  unfold ordinary_semantic_band_shape_property_with_witness.
+  cbn.
+  split.
+  - apply TilingCheck.ctxt_eqb_eq. exact Hctxt.
+  - split.
+    + apply TilingCheck.ctxt_ty_eqb_eq. exact Hvars.
+    + exists data.
+      repeat split.
+      * exact Hdata.
+      * exact Hsizes.
+      * exact Hrows.
+      * apply Nat.ltb_lt. exact Hpositive.
+      * apply Nat.eqb_eq. exact Hwidth.
+      * eapply check_ordinary_semantic_schedulesb_sound.
+        exact Hschedules.
+Qed.
+
+Definition second_level_semantic_band_shape_property_with_witness
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    (shape: second_level_semantic_band_shape) : Prop :=
+  let '(before_pis, before_ctxt, before_vars) := before in
+  let '(after_pis, after_ctxt, after_vars) := after in
+  before_ctxt = after_ctxt /\
+  before_vars = after_vars /\
+  parse_second_level_semantic_recipes ws =
+    Some (slsbs_recipes shape) /\
+  infer_global_prefix_sizes
+    (List.map slbr_root_sizes (slsbs_recipes shape)) =
+    Some (slsbs_global_root_sizes shape) /\
+  infer_global_prefix_sizes
+    (List.map slbr_child_sizes (slsbs_recipes shape)) =
+    Some (slsbs_global_child_sizes shape) /\
+  slsbs_mask shape =
+    global_semantic_schedule_mask
+      (List.map slbr_root_rows (slsbs_recipes shape)) /\
+  compact_semantic_schedules
+    (List.length before_ctxt) before_pis
+    (List.map slbr_root_rows (slsbs_recipes shape))
+    (slsbs_mask shape) =
+    Some (slsbs_rows shape) /\
+  (O < List.length (slsbs_mask shape))%nat /\
+  List.length (slsbs_global_root_sizes shape) =
+    List.length (slsbs_mask shape) /\
+  List.length (slsbs_global_child_sizes shape) =
+    List.length (slsbs_mask shape) /\
+  second_level_semantic_schedules_match
+    (slsbs_layout shape)
+    (List.length before_ctxt)
+    (List.length (slsbs_mask shape))
+    before_pis after_pis ws
+    (slsbs_recipes shape) (slsbs_rows shape).
+
+Lemma infer_pprog_second_level_semantic_band_shape_sound :
+  forall before after ws shape,
+    infer_pprog_second_level_semantic_band_shape before after ws = Some shape ->
+    second_level_semantic_band_shape_property_with_witness
+      before after ws shape.
+Proof.
+  intros [[before_pis before_ctxt] before_vars]
+         [[after_pis after_ctxt] after_vars] ws shape Hinfer.
+  cbn in Hinfer.
+  destruct
+    (TilingCheck.ctxt_eqb before_ctxt after_ctxt &&
+     TilingCheck.ctxt_ty_eqb before_vars after_vars)
+    eqn:Hctxt; try discriminate.
+  apply andb_true_iff in Hctxt.
+  destruct Hctxt as [Hctxt Hvars].
+  destruct (parse_second_level_semantic_recipes ws)
+    as [recipes|] eqn:Hrecipes; try discriminate.
+  destruct
+    (infer_global_prefix_sizes (List.map slbr_root_sizes recipes))
+    as [global_root_sizes|] eqn:Hroot_sizes; try discriminate.
+  destruct
+    (infer_global_prefix_sizes (List.map slbr_child_sizes recipes))
+    as [global_child_sizes|] eqn:Hchild_sizes; try discriminate.
+  destruct
+    (compact_semantic_schedules
+       (List.length before_ctxt) before_pis
+       (List.map slbr_root_rows recipes)
+       (global_semantic_schedule_mask
+          (List.map slbr_root_rows recipes)))
+    as [semantic_rows|] eqn:Hrows; try discriminate.
+  set
+    (mask :=
+       global_semantic_schedule_mask
+         (List.map slbr_root_rows recipes)).
+  set
+    (widths_ok :=
+       Nat.ltb O (List.length mask) &&
+       Nat.eqb (List.length global_root_sizes) (List.length mask) &&
+       Nat.eqb (List.length global_child_sizes) (List.length mask)).
+  set
+    (grouped_ok :=
+       check_second_level_semantic_schedulesb
+         SecondLevelGrouped
+         (List.length before_ctxt) (List.length mask)
+         before_pis after_pis ws recipes semantic_rows).
+  set
+    (interleaved_ok :=
+       check_second_level_semantic_schedulesb
+         SecondLevelInterleaved
+         (List.length before_ctxt) (List.length mask)
+         before_pis after_pis ws recipes semantic_rows).
+  assert
+    (Hinfer' :
+       (if widths_ok
+        then
+          if grouped_ok
+          then
+            Some
+              {| slsbs_rows := semantic_rows;
+                 slsbs_recipes := recipes;
+                 slsbs_global_root_sizes := global_root_sizes;
+                 slsbs_global_child_sizes := global_child_sizes;
+                 slsbs_mask := mask;
+                 slsbs_layout := SecondLevelGrouped |}
+          else
+            if interleaved_ok
+            then
+              Some
+                {| slsbs_rows := semantic_rows;
+                   slsbs_recipes := recipes;
+                   slsbs_global_root_sizes := global_root_sizes;
+                   slsbs_global_child_sizes := global_child_sizes;
+                   slsbs_mask := mask;
+                   slsbs_layout := SecondLevelInterleaved |}
+            else None
+        else None) = Some shape).
+  {
+    unfold widths_ok, grouped_ok, interleaved_ok, mask.
+    exact Hinfer.
+  }
+  destruct
+    (option_if_then_some_inv_local
+       second_level_semantic_band_shape widths_ok
+       (if grouped_ok
+        then
+          Some
+            {| slsbs_rows := semantic_rows;
+               slsbs_recipes := recipes;
+               slsbs_global_root_sizes := global_root_sizes;
+               slsbs_global_child_sizes := global_child_sizes;
+               slsbs_mask := mask;
+               slsbs_layout := SecondLevelGrouped |}
+        else
+          if interleaved_ok
+          then
+            Some
+              {| slsbs_rows := semantic_rows;
+                 slsbs_recipes := recipes;
+                 slsbs_global_root_sizes := global_root_sizes;
+                 slsbs_global_child_sizes := global_child_sizes;
+                 slsbs_mask := mask;
+                 slsbs_layout := SecondLevelInterleaved |}
+          else None)
+       shape Hinfer')
+    as [Hwidths Hlayout].
+  unfold widths_ok in Hwidths.
+  repeat rewrite andb_true_iff in Hwidths.
+  destruct Hwidths as [[Hpositive Hroot_width] Hchild_width].
+  destruct
+    (option_if_some_else_inv_local
+       second_level_semantic_band_shape grouped_ok
+       {| slsbs_rows := semantic_rows;
+          slsbs_recipes := recipes;
+          slsbs_global_root_sizes := global_root_sizes;
+          slsbs_global_child_sizes := global_child_sizes;
+          slsbs_mask := mask;
+          slsbs_layout := SecondLevelGrouped |}
+       shape
+       (if interleaved_ok
+        then
+          Some
+            {| slsbs_rows := semantic_rows;
+               slsbs_recipes := recipes;
+               slsbs_global_root_sizes := global_root_sizes;
+               slsbs_global_child_sizes := global_child_sizes;
+               slsbs_mask := mask;
+               slsbs_layout := SecondLevelInterleaved |}
+        else None)
+       Hlayout)
+    as [[Hgrouped Hshape] | [Hnot_grouped Hinterleaved]].
+  - subst shape.
+    unfold second_level_semantic_band_shape_property_with_witness.
+    cbn.
+    repeat split.
+    + apply TilingCheck.ctxt_eqb_eq. exact Hctxt.
+    + apply TilingCheck.ctxt_ty_eqb_eq. exact Hvars.
+    + exact Hrecipes.
+    + exact Hroot_sizes.
+    + exact Hchild_sizes.
+    + exact Hrows.
+    + apply Nat.ltb_lt. exact Hpositive.
+    + apply Nat.eqb_eq. exact Hroot_width.
+    + apply Nat.eqb_eq. exact Hchild_width.
+    + eapply check_second_level_semantic_schedulesb_sound.
+      unfold grouped_ok in Hgrouped.
+      exact Hgrouped.
+  - destruct
+      (option_if_some_inv_local
+         second_level_semantic_band_shape interleaved_ok
+         {| slsbs_rows := semantic_rows;
+            slsbs_recipes := recipes;
+            slsbs_global_root_sizes := global_root_sizes;
+            slsbs_global_child_sizes := global_child_sizes;
+            slsbs_mask := mask;
+            slsbs_layout := SecondLevelInterleaved |}
+         shape Hinterleaved)
+      as [Hinterleaved_ok Hshape].
+    subst shape.
+    unfold second_level_semantic_band_shape_property_with_witness.
+    cbn.
+    repeat split.
+    + apply TilingCheck.ctxt_eqb_eq. exact Hctxt.
+    + apply TilingCheck.ctxt_ty_eqb_eq. exact Hvars.
+    + exact Hrecipes.
+    + exact Hroot_sizes.
+    + exact Hchild_sizes.
+    + exact Hrows.
+    + apply Nat.ltb_lt. exact Hpositive.
+    + apply Nat.eqb_eq. exact Hroot_width.
+    + apply Nat.eqb_eq. exact Hchild_width.
+    + eapply check_second_level_semantic_schedulesb_sound.
+      unfold interleaved_ok in Hinterleaved_ok.
+      exact Hinterleaved_ok.
+Qed.
+
+Inductive semantic_band_direct_shape
+    (before after: Tiling.PL.t)
+    (ws: list statement_tiling_witness)
+    : list Schedule -> Prop :=
+| semantic_band_direct_shape_ordinary :
+    forall shape lifted_rows,
+      TilingCheck.check_pprog_tiling_sourceb before after ws = true ->
+      infer_pprog_ordinary_semantic_band_shape before after ws =
+        Some shape ->
+      lift_semantic_schedules_for_tiling
+        (let '(_, before_ctxt, _) := before in List.length before_ctxt)
+        ws (osbs_rows shape) = Some lifted_rows ->
+      ordinary_semantic_band_shape_property_with_witness
+        before after ws shape ->
+      semantic_band_direct_shape before after ws lifted_rows
+| semantic_band_direct_shape_second_level :
+    forall shape lifted_rows,
+      TilingCheck.check_pprog_tiling_sourceb before after ws = true ->
+      infer_pprog_ordinary_semantic_band_shape before after ws = None ->
+      infer_pprog_second_level_semantic_band_shape before after ws =
+        Some shape ->
+      lift_semantic_schedules_for_tiling
+        (let '(_, before_ctxt, _) := before in List.length before_ctxt)
+        ws (slsbs_rows shape) = Some lifted_rows ->
+      second_level_semantic_band_shape_property_with_witness
+        before after ws shape ->
+      semantic_band_direct_shape before after ws lifted_rows.
+
+Lemma checked_tiling_sourceb_semantic_band_direct_true_inv :
+  forall before after ws,
+    mayReturn
+      (checked_tiling_sourceb_semantic_band_direct before after ws)
+      true ->
+    exists lifted_rows,
+      semantic_band_direct_shape before after ws lifted_rows /\
+      let '(before_pis, before_ctxt, _) := before in
+      let '(after_pis, _, _) := after in
+      mayReturn
+        (check_semantic_band_components_direct
+           (Tiling.compose_tiling_pinstrs_ext_from_after
+              (List.length before_ctxt) before_pis after_pis ws)
+           lifted_rows (List.length before_ctxt))
+        true.
+Proof.
+  intros [[before_pis before_ctxt] before_vars]
+         [[after_pis after_ctxt] after_vars] ws Hcheck.
+  unfold checked_tiling_sourceb_semantic_band_direct in Hcheck.
+  cbn beta iota zeta in Hcheck.
+  destruct
+    (TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws)
+    eqn:Hsource.
+  2:{
+    apply mayReturn_pure in Hcheck.
+    discriminate.
+  }
+  destruct
+    (infer_pprog_ordinary_semantic_band_shape
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws)
+    as [ordinary_shape|] eqn:Hordinary.
+  - destruct
+      (lift_semantic_schedules_for_tiling
+         (List.length before_ctxt) ws (osbs_rows ordinary_shape))
+      as [lifted_rows|] eqn:Hlift.
+    2:{
+      apply mayReturn_pure in Hcheck.
+      discriminate.
+    }
+    exists lifted_rows.
+    split; [|exact Hcheck].
+    eapply semantic_band_direct_shape_ordinary.
+    + exact Hsource.
+    + exact Hordinary.
+    + exact Hlift.
+    + eapply infer_pprog_ordinary_semantic_band_shape_sound.
+      exact Hordinary.
+  - destruct
+      (infer_pprog_second_level_semantic_band_shape
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, after_ctxt, after_vars) ws)
+      as [second_shape|] eqn:Hsecond.
+    2:{
+      apply mayReturn_pure in Hcheck.
+      discriminate.
+    }
+    destruct
+      (lift_semantic_schedules_for_tiling
+         (List.length before_ctxt) ws (slsbs_rows second_shape))
+      as [lifted_rows|] eqn:Hlift.
+    2:{
+      apply mayReturn_pure in Hcheck.
+      discriminate.
+    }
+    exists lifted_rows.
+    split; [|exact Hcheck].
+    eapply semantic_band_direct_shape_second_level.
+    + exact Hsource.
+    + exact Hordinary.
+    + exact Hsecond.
+    + exact Hlift.
+    + eapply infer_pprog_second_level_semantic_band_shape_sound.
+      exact Hsecond.
+Qed.
+
+Lemma checked_tiling_sourceb_semantic_band_direct_componentwise_sound :
+  forall before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws envv,
+    List.length before_ctxt = List.length envv ->
+    mayReturn
+      (checked_tiling_sourceb_semantic_band_direct
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, after_ctxt, after_vars) ws)
+      true ->
+    exists lifted_rows,
+      semantic_band_direct_shape
+        (before_pis, before_ctxt, before_vars)
+        (after_pis, after_ctxt, after_vars) ws lifted_rows /\
+      (Forall
+         (Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws) ->
+       Forall2
+         (fun pi schedule =>
+            exact_listzzs_cols
+              (List.length before_ctxt + Tiling.PL.pi_depth_ext pi)%nat
+              schedule)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows ->
+       pinstr_list_semantic_componentwise_permutable
+         envv
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows).
+Proof.
+  intros before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws envv Henv Hcheck.
+  destruct
+    (checked_tiling_sourceb_semantic_band_direct_true_inv
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws Hcheck)
+    as [lifted_rows [Hshape Hcomponents]].
+  exists lifted_rows.
+  split; [exact Hshape|].
+  intros Hwf Hcols.
+  eapply
+    (check_semantic_band_components_direct_sound
+       before_ctxt envv
+       (Tiling.compose_tiling_pinstrs_ext_from_after
+          (List.length before_ctxt) before_pis after_pis ws)
+       lifted_rows);
+    eauto.
+Qed.
+
+Lemma semantic_stripmined_reversal_implies_decreasing_component :
+  forall old1 old2 new1 new2 semantic1 semantic2 tiles1 tiles2,
+    is_eq old1 semantic1 = true ->
+    is_eq old2 semantic2 = true ->
+    is_eq new1 (tiles1 ++ semantic1) = true ->
+    is_eq new2 (tiles2 ++ semantic2) = true ->
+    List.length semantic1 = List.length semantic2 ->
+    (semantic1 = semantic2 -> tiles1 = tiles2) ->
+    (listz_pointwise_le semantic1 semantic2 ->
+     listz_pointwise_le tiles1 tiles2) ->
+    lex_compare old1 old2 = Lt ->
+    lex_compare new1 new2 <> Lt ->
+    exists dim x y,
+      nth_error semantic1 dim = Some x /\
+      nth_error semantic2 dim = Some y /\
+      (x > y)%Z.
+Proof.
+  intros old1 old2 new1 new2 semantic1 semantic2 tiles1 tiles2
+         Hold_eq1 Hold_eq2 Hnew_eq1 Hnew_eq2 Hsemantic_len
+         Htiles_eq Htiles_mono Hold Hnew.
+  assert (Hold_semantic : lex_compare semantic1 semantic2 = Lt).
+  {
+    transitivity (lex_compare old1 semantic2).
+    - symmetry. apply lex_compare_left_eq. exact Hold_eq1.
+    - rewrite <- (lex_compare_right_eq old1 old2 semantic2 Hold_eq2).
+      exact Hold.
+  }
+  assert
+    (Hnew_expected :
+       lex_compare
+         (tiles1 ++ semantic1)
+         (tiles2 ++ semantic2) <> Lt).
+  {
+    intro Hlt.
+    apply Hnew.
+    transitivity (lex_compare (tiles1 ++ semantic1) new2).
+    - apply lex_compare_left_eq. exact Hnew_eq1.
+    - rewrite (lex_compare_right_eq
+                 (tiles1 ++ semantic1)
+                 new2 (tiles2 ++ semantic2) Hnew_eq2).
+      exact Hlt.
+  }
+  assert
+    (Hold_expanded :
+       lex_compare
+         ([] ++ semantic1 ++ [])
+         ([] ++ semantic2 ++ []) = Lt).
+  {
+    simpl.
+    rewrite !app_nil_r.
+    exact Hold_semantic.
+  }
+  assert
+    (Hnew_expanded :
+       lex_compare
+         ([] ++ tiles1 ++ semantic1 ++ [])
+         ([] ++ tiles2 ++ semantic2 ++ []) <> Lt).
+  {
+    simpl.
+    rewrite !app_nil_r.
+    exact Hnew_expected.
+  }
+  destruct
+    (stripmined_reversal_implies_decreasing_band_component
+       [] [] tiles1 tiles2 semantic1 semantic2 [] []
+       eq_refl Hsemantic_len Htiles_eq Htiles_mono
+       Hold_expanded Hnew_expanded)
+    as [_ Hdecrease].
+  exact Hdecrease.
+Qed.
+
+Lemma listz_prefixb_sound :
+  forall xs ys,
+    listz_prefixb xs ys = true ->
+    (List.length xs <= List.length ys)%nat /\
+    firstn (List.length xs) ys = xs.
+Proof.
+  intros xs ys Hprefix.
+  unfold listz_prefixb in Hprefix.
+  apply andb_true_iff in Hprefix.
+  destruct Hprefix as [Hlen Heq].
+  split.
+  - apply Nat.leb_le. exact Hlen.
+  - apply listz_strict_eqb_eq in Heq.
+    symmetry.
+    exact Heq.
+Qed.
+
+Definition prefix_sizes (xs ys: list Z) : Prop :=
+  (List.length xs <= List.length ys)%nat /\
+  firstn (List.length xs) ys = xs.
+
+Lemma prefix_sizes_refl :
+  forall xs, prefix_sizes xs xs.
+Proof.
+  intros xs.
+  split; [lia|].
+  apply firstn_all.
+Qed.
+
+Lemma prefix_sizes_trans :
+  forall xs ys zs,
+    prefix_sizes xs ys ->
+    prefix_sizes ys zs ->
+    prefix_sizes xs zs.
+Proof.
+  intros xs ys zs [Hxy_len Hxy] [Hyz_len Hyz].
+  split; [lia|].
+  rewrite <- Hxy at 2.
+  rewrite <- Hyz.
+  rewrite firstn_firstn.
+  replace (Nat.min (List.length xs) (List.length ys))
+    with (List.length xs) by lia.
+  reflexivity.
+Qed.
+
+Lemma merge_prefix_sizes_sound :
+  forall xs ys merged,
+    merge_prefix_sizes xs ys = Some merged ->
+    prefix_sizes xs merged /\ prefix_sizes ys merged.
+Proof.
+  intros xs ys merged Hmerge.
+  unfold merge_prefix_sizes in Hmerge.
+  destruct (listz_prefixb xs ys) eqn:Hxy.
+  - inversion Hmerge; subst merged.
+    split.
+    + apply listz_prefixb_sound. exact Hxy.
+    + apply prefix_sizes_refl.
+  - destruct (listz_prefixb ys xs) eqn:Hyx; try discriminate.
+    inversion Hmerge; subst merged.
+    split.
+    + apply prefix_sizes_refl.
+    + apply listz_prefixb_sound. exact Hyx.
+Qed.
+
+Lemma infer_global_prefix_sizes_sound :
+  forall sizes global,
+    infer_global_prefix_sizes sizes = Some global ->
+    Forall (fun local => prefix_sizes local global) sizes.
+Proof.
+  intros sizes.
+  induction sizes as [|local sizes IH]; intros global Hinfer.
+  - simpl in Hinfer.
+    inversion Hinfer.
+    constructor.
+  - simpl in Hinfer.
+    destruct (infer_global_prefix_sizes sizes)
+      as [rest_global|] eqn:Hrest; try discriminate.
+    pose proof
+      (merge_prefix_sizes_sound local rest_global global Hinfer)
+      as [Hlocal Hrest_prefix].
+    constructor.
+    + exact Hlocal.
+    + eapply Forall_forall.
+      intros sizes0 Hin.
+      pose proof (IH rest_global eq_refl) as Hall.
+      eapply Forall_forall in Hall; [|exact Hin].
+      eapply prefix_sizes_trans; eauto.
+Qed.
+
+Fixpoint zero_on_false
+    (mask: list bool) (values: list Z) : Prop :=
+  match mask, values with
+  | [], [] => True
+  | keep :: mask', value :: values' =>
+      (keep = false -> value = 0%Z) /\
+      zero_on_false mask' values'
+  | _, _ => False
+  end.
+
+Lemma zero_on_false_length :
+  forall mask values,
+    zero_on_false mask values ->
+    List.length mask = List.length values.
+Proof.
+  intros mask.
+  induction mask as [|keep mask IH]; intros values Hzero;
+    destruct values as [|value values]; simpl in *; try contradiction.
+  - reflexivity.
+  - destruct Hzero as [_ Hzero].
+    simpl.
+    f_equal.
+    eapply IH.
+    exact Hzero.
+Qed.
+
+Lemma zero_on_false_from_nth_error :
+  forall mask values,
+    List.length mask = List.length values ->
+    (forall n,
+       nth_error mask n = Some false ->
+       nth_error values n = Some 0%Z) ->
+    zero_on_false mask values.
+Proof.
+  induction mask as [|keep mask IH]; intros values Hlen Hzero;
+    destruct values as [|value values]; simpl in *; try discriminate.
+  - exact I.
+  - split.
+    + intro Hkeep.
+      specialize (Hzero O).
+      simpl in Hzero.
+      pose proof (Hzero (f_equal (@Some bool) Hkeep)) as Hvalue.
+      inversion Hvalue.
+      reflexivity.
+    + eapply IH.
+      * lia.
+      * intros n Hmask.
+        specialize (Hzero (S n)).
+        simpl in Hzero.
+        eapply Hzero.
+        exact Hmask.
+Qed.
+
+Lemma nth_error_seq_local :
+  forall start len n,
+    (n < len)%nat ->
+    nth_error (List.seq start len) n = Some (start + n)%nat.
+Proof.
+  intros start len.
+  revert start.
+  induction len as [|len IH]; intros start n Hlt.
+  - lia.
+  - destruct n as [|n].
+    + simpl. f_equal. lia.
+    + simpl.
+      rewrite IH by lia.
+      f_equal.
+      lia.
+Qed.
+
+Lemma nth_error_pad_schedule_to_len_local :
+  forall cols len rows n,
+    (List.length rows <= len)%nat ->
+    (n < len)%nat ->
+    nth_error (Tiling.PL.pad_schedule_to_len cols len rows) n =
+    match nth_error rows n with
+    | Some row => Some row
+    | None => Some (zero_schedule_row cols)
+    end.
+Proof.
+  intros cols len rows n Hrows Hn.
+  unfold Tiling.PL.pad_schedule_to_len.
+  destruct (lt_dec n (List.length rows)) as [Hin|Hout].
+  - rewrite nth_error_app1 by exact Hin.
+    assert (Hsome : nth_error rows n <> None).
+    {
+      apply nth_error_Some.
+      exact Hin.
+    }
+    destruct (nth_error rows n); [reflexivity|contradiction].
+  - rewrite nth_error_app2 by lia.
+    assert (Hnone : nth_error rows n = None).
+    {
+      apply nth_error_None.
+      lia.
+    }
+    rewrite Hnone.
+    rewrite nth_error_repeat by lia.
+    unfold zero_schedule_row, Tiling.PL.zero_affine_function.
+    reflexivity.
+Qed.
+
+Lemma global_semantic_schedule_mask_zero_on_false :
+  forall raw_schedules raw dom_dim idx,
+    In raw raw_schedules ->
+    zero_on_false
+      (global_semantic_schedule_mask raw_schedules)
+      (affine_product
+         (Tiling.PL.pad_schedule_to_len
+            dom_dim (max_schedule_length raw_schedules) raw)
+         idx).
+Proof.
+  intros raw_schedules raw dom_dim idx Hin.
+  set (width := max_schedule_length raw_schedules).
+  apply zero_on_false_from_nth_error.
+  - unfold global_semantic_schedule_mask.
+    rewrite List.map_length, seq_length.
+    unfold affine_product.
+    rewrite List.map_length.
+    unfold Tiling.PL.pad_schedule_to_len.
+    rewrite app_length, repeat_length.
+    assert (Hraw : (List.length raw <= width)%nat).
+    {
+      subst width.
+      apply In_nth_error in Hin.
+      destruct Hin as [n Hnth].
+      eapply max_schedule_length_ge_nth_error.
+      exact Hnth.
+    }
+    lia.
+  - intros n Hmask.
+    unfold global_semantic_schedule_mask in Hmask.
+    assert (Hn : (n < width)%nat).
+    {
+      assert
+        (Hnmask :
+           (n <
+            List.length
+              (List.map
+                 (fun slot =>
+                    negb
+                      (semantic_schedule_slot_zerob
+                         slot raw_schedules))
+                 (List.seq O
+                    (max_schedule_length raw_schedules))))%nat).
+      {
+        apply nth_error_Some.
+        rewrite Hmask.
+        discriminate.
+      }
+      rewrite List.map_length, seq_length in Hnmask.
+      exact Hnmask.
+    }
+    pose proof (nth_error_seq_local O width n Hn) as Hseq.
+    pose proof
+      (Tiling.nth_error_map_some
+         _ _
+         (fun slot =>
+            negb (semantic_schedule_slot_zerob slot raw_schedules))
+         (List.seq O width) n n Hseq)
+      as Hmask_expected.
+    simpl in Hmask_expected.
+    unfold width in Hmask_expected.
+    rewrite Hmask in Hmask_expected.
+    injection Hmask_expected as Hmask_slot.
+    clear Hseq.
+    clear Hmask.
+    simpl in Hmask_slot.
+    rename Hmask_slot into Hmask.
+    symmetry in Hmask.
+    apply Bool.negb_false_iff in Hmask.
+    unfold semantic_schedule_slot_zerob in Hmask.
+    apply forallb_forall with (x := raw) in Hmask; [|exact Hin].
+    unfold affine_product.
+    assert (Hraw_width : (List.length raw <= width)%nat).
+    {
+      subst width.
+      apply In_nth_error in Hin.
+      destruct Hin as [slot Hslot].
+      eapply max_schedule_length_ge_nth_error.
+      exact Hslot.
+    }
+    pose proof
+      (nth_error_pad_schedule_to_len_local
+         dom_dim width raw n Hraw_width Hn)
+      as Hpad.
+    destruct (nth_error raw n) as [row|] eqn:Hrow.
+    + simpl in Hmask.
+      assert
+        (Heval :
+           (dot_product (fst row) idx + snd row)%Z = 0%Z).
+      {
+        eapply affine_function_is_zero_eval_local.
+        exact Hmask.
+      }
+      assert
+        (Heval_linalg :
+           (Linalg.dot_product (fst row) idx + snd row)%Z = 0%Z).
+      {
+        rewrite <-
+          (Tiling.tiling_dot_product_eq_linalg_dot_product
+             (fst row) idx).
+        exact Heval.
+      }
+      pose proof
+        (Tiling.nth_error_map_some
+           _ _
+           (fun row0 =>
+              (Linalg.dot_product (fst row0) idx + snd row0)%Z)
+           (Tiling.PL.pad_schedule_to_len dom_dim width raw)
+           n row Hpad)
+        as Hvalue.
+      cbn beta iota zeta in Hvalue.
+      rewrite Heval_linalg in Hvalue.
+      exact Hvalue.
+    + pose proof
+        (Tiling.nth_error_map_some
+           _ _
+           (fun row0 =>
+              (Linalg.dot_product (fst row0) idx + snd row0)%Z)
+           (Tiling.PL.pad_schedule_to_len dom_dim width raw)
+           n (zero_schedule_row dom_dim) Hpad)
+        as Hvalue.
+      assert
+        (Hzero :
+           Tiling.PL.affine_function_is_zero
+             (zero_schedule_row dom_dim) = true).
+      {
+        unfold zero_schedule_row,
+               Tiling.PL.affine_function_is_zero.
+        simpl.
+        rewrite repeat_zero_is_null.
+        reflexivity.
+      }
+      pose proof
+        (affine_function_is_zero_eval_local
+           (zero_schedule_row dom_dim) idx Hzero)
+        as Heval.
+      assert
+        (Heval_linalg :
+           (Linalg.dot_product
+              (fst (zero_schedule_row dom_dim)) idx +
+            snd (zero_schedule_row dom_dim))%Z = 0%Z).
+      {
+        rewrite <-
+          (Tiling.tiling_dot_product_eq_linalg_dot_product
+             (fst (zero_schedule_row dom_dim)) idx).
+        exact Heval.
+      }
+      cbn beta iota zeta in Hvalue.
+      rewrite Heval_linalg in Hvalue.
+      exact Hvalue.
+Qed.
+
+Lemma affine_product_pad_schedule_to_len :
+  forall cols len rows idx,
+    (List.length rows <= len)%nat ->
+    affine_product
+      (Tiling.PL.pad_schedule_to_len cols len rows) idx =
+    affine_product rows idx ++
+    repeat 0%Z (len - List.length rows).
+Proof.
+  intros cols len rows idx Hlen.
+  unfold Tiling.PL.pad_schedule_to_len.
+  rewrite affine_product_app.
+  replace
+    (repeat (Tiling.PL.zero_affine_function cols)
+       (len - List.length rows))
+    with
+    (repeat (zero_schedule_row cols)
+       (len - List.length rows)).
+  2:{
+    unfold Tiling.PL.zero_affine_function, zero_schedule_row.
+    reflexivity.
+  }
+  rewrite affine_product_zero_schedule_rows.
+  reflexivity.
+Qed.
+
+Lemma combine_app_exact_local :
+  forall (A B: Type)
+         (xs1 xs2: list A) (ys1 ys2: list B),
+    List.length xs1 = List.length ys1 ->
+    combine (xs1 ++ xs2) (ys1 ++ ys2) =
+    combine xs1 ys1 ++ combine xs2 ys2.
+Proof.
+  intros A B xs1.
+  induction xs1 as [|x xs1 IH]; intros xs2 ys1 ys2 Hlen.
+  - destruct ys1; simpl in *; [reflexivity|discriminate].
+  - destruct ys1 as [|y ys1]; simpl in *; [discriminate|].
+    f_equal.
+    eapply IH.
+    lia.
+Qed.
+
+Lemma map_div_combine_repeat_zero :
+  forall sizes,
+    List.map
+      (fun '(v, sz) => Z.div v sz)
+      (combine (repeat 0%Z (List.length sizes)) sizes) =
+    repeat 0%Z (List.length sizes).
+Proof.
+  induction sizes as [|size sizes IH]; simpl.
+  - reflexivity.
+  - destruct (Z.eq_dec size 0%Z) as [Heq|Hneq].
+    + subst size. simpl. f_equal. exact IH.
+    + rewrite Z.div_0_l by exact Hneq.
+      f_equal.
+      exact IH.
+Qed.
+
+Lemma prefix_sizes_decompose :
+  forall local global,
+    prefix_sizes local global ->
+    exists extra,
+      global = local ++ extra /\
+      List.length extra =
+        (List.length global - List.length local)%nat.
+Proof.
+  intros local global [Hlen Hprefix].
+  exists (skipn (List.length local) global).
+  split.
+  - rewrite <- Hprefix at 1.
+    symmetry.
+    apply firstn_skipn.
+  - rewrite skipn_length.
+    reflexivity.
+Qed.
+
+Lemma tile_values_pad_prefix :
+  forall values local_sizes global_sizes,
+    List.length values = List.length local_sizes ->
+    prefix_sizes local_sizes global_sizes ->
+    List.map
+      (fun '(v, sz) => Z.div v sz)
+      (combine
+         (values ++
+          repeat 0%Z
+            (List.length global_sizes - List.length values))
+         global_sizes) =
+    List.map
+      (fun '(v, sz) => Z.div v sz)
+      (combine values local_sizes) ++
+    repeat 0%Z
+      (List.length global_sizes - List.length local_sizes).
+Proof.
+  intros values local_sizes global_sizes Hvalues Hprefix.
+  destruct (prefix_sizes_decompose _ _ Hprefix)
+    as [extra [Hglobal Hextra]].
+  subst global_sizes.
+  rewrite !app_length.
+  replace
+    (List.length local_sizes + List.length extra -
+     List.length values)%nat
+    with (List.length extra) by lia.
+  replace
+    (List.length local_sizes + List.length extra -
+     List.length local_sizes)%nat
+    with (List.length extra) by lia.
+  rewrite combine_app_exact_local by exact Hvalues.
+  rewrite List.map_app.
+  rewrite map_div_combine_repeat_zero.
+  reflexivity.
+Qed.
+
+Lemma infer_global_prefix_sizes_positive :
+  forall sizes global,
+    infer_global_prefix_sizes sizes = Some global ->
+    Forall (fun local => Forall (fun size => (0 < size)%Z) local)
+      sizes ->
+    Forall (fun size => (0 < size)%Z) global.
+Proof.
+  intros sizes.
+  induction sizes as [|local sizes IH]; intros global Hinfer Hpositive.
+  - simpl in Hinfer.
+    inversion Hinfer; constructor.
+  - inversion Hpositive as
+      [|local0 sizes0 Hlocal Hrest]; subst local0 sizes0.
+    simpl in Hinfer.
+    destruct (infer_global_prefix_sizes sizes)
+      as [rest_global|] eqn:Hrest_global; try discriminate.
+    unfold merge_prefix_sizes in Hinfer.
+    destruct (listz_prefixb local rest_global) eqn:Hlocal_prefix.
+    + inversion Hinfer; subst global.
+      eapply IH; eauto.
+    + destruct (listz_prefixb rest_global local);
+        try discriminate.
+      inversion Hinfer; subst global.
+      exact Hlocal.
+Qed.
+
+Lemma parse_ordinary_semantic_data_positive :
+  forall ws data,
+    parse_ordinary_semantic_data ws = Some data ->
+    Forall
+      (fun w =>
+         Forall (fun link => (0 < tl_tile_size link)%Z)
+           (stw_links w))
+      ws ->
+    Forall
+      (fun entry =>
+         Forall (fun size => (0 < size)%Z) (snd entry))
+      data.
+Proof.
+  intros ws.
+  induction ws as [|w ws IH]; intros data Hparse Hpositive.
+  - simpl in Hparse.
+    inversion Hparse.
+    constructor.
+  - inversion Hpositive as [|w0 ws0 Hw Hws]; subst w0 ws0.
+    simpl in Hparse.
+    destruct (schedule_rows_of_links w) as [rows|] eqn:Hrows;
+      try discriminate.
+    destruct (parse_ordinary_semantic_data ws)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hparse; subst data.
+    constructor.
+    + unfold tile_sizes_of_witness.
+      eapply positive_tile_sizes_map.
+      exact Hw.
+    + eapply IH; eauto.
+Qed.
+
+Lemma semantic_ordinary_target_schedule_eval :
+  forall env_size global_width semantic_rows w envv added point,
+    List.length envv = env_size ->
+    List.length added = List.length (stw_links w) ->
+    List.length point = stw_point_dim w ->
+    (List.length (stw_links w) <= global_width)%nat ->
+    affine_product
+      (semantic_ordinary_target_schedule
+         env_size global_width semantic_rows w)
+      (envv ++ added ++ point) =
+    added ++
+    repeat 0%Z
+      (global_width - List.length (stw_links w)) ++
+    affine_product semantic_rows (envv ++ point).
+Proof.
+  intros env_size global_width semantic_rows w envv added point
+         Henv Hadded Hpoint Hwidth.
+  unfold semantic_ordinary_target_schedule.
+  rewrite affine_product_app, affine_product_app.
+  rewrite affine_product_identity_affine_rows_from.
+  2:{ lia. }
+  2:{ rewrite !app_length. lia. }
+  rewrite affine_product_zero_schedule_rows.
+  rewrite Tiling.lift_affine_function_after_env_eval.
+  2:{ exact Henv. }
+  2:{ exact Hadded. }
+  rewrite <- Henv.
+  replace
+    (skipn (List.length envv) (envv ++ added ++ point))
+    with (added ++ point).
+  2:{
+    rewrite skipn_app_le by lia.
+    replace (List.length envv - List.length envv)%nat with O by lia.
+    reflexivity.
+  }
+  rewrite firstn_app.
+  replace
+    (List.length (stw_links w) - List.length added)%nat
+    with O by lia.
+  rewrite <- Hadded.
+  rewrite firstn_all.
+  rewrite app_nil_r.
+  reflexivity.
+Qed.
+
+Lemma semantic_band_value_of_nth_error :
+  forall dom_dim dim rows idx value,
+    nth_error (affine_product rows idx) dim = Some value ->
+    semantic_band_value dom_dim dim rows idx = value.
+Proof.
+  intros dom_dim dim rows idx value Hvalue.
+  unfold affine_product in Hvalue.
+  apply Base.nth_error_map_inv in Hvalue.
+  destruct Hvalue as [row [Hrow Hvalue]].
+  unfold semantic_band_value, semantic_band_row.
+  rewrite Hrow.
+  symmetry.
+  exact Hvalue.
+Qed.
+
+Lemma select_by_mask_eq_reflect :
+  forall mask xs ys,
+    zero_on_false mask xs ->
+    zero_on_false mask ys ->
+    select_by_mask mask xs = select_by_mask mask ys ->
+    xs = ys.
+Proof.
+  intros mask.
+  induction mask as [|keep mask IH]; intros xs ys Hzx Hzy Hselect;
+    destruct xs as [|x xs]; destruct ys as [|y ys];
+    simpl in *; try contradiction; try reflexivity.
+  destruct Hzx as [Hzx_head Hzx].
+  destruct Hzy as [Hzy_head Hzy].
+  destruct keep.
+  - simpl in Hselect.
+    inversion Hselect.
+    f_equal.
+    eapply IH; eauto.
+  - assert (Hx : x = 0%Z) by (apply Hzx_head; reflexivity).
+    assert (Hy : y = 0%Z) by (apply Hzy_head; reflexivity).
+    subst x y.
+    f_equal.
+    eapply IH; eauto.
+Qed.
+
+Lemma select_by_mask_le_reflect :
+  forall mask xs ys,
+    zero_on_false mask xs ->
+    zero_on_false mask ys ->
+    listz_pointwise_le
+      (select_by_mask mask xs)
+      (select_by_mask mask ys) ->
+    listz_pointwise_le xs ys.
+Proof.
+  intros mask.
+  induction mask as [|keep mask IH]; intros xs ys Hzx Hzy Hselect;
+    destruct xs as [|x xs]; destruct ys as [|y ys];
+    simpl in *; try contradiction.
+  - constructor.
+  - destruct Hzx as [Hzx_head Hzx].
+    destruct Hzy as [Hzy_head Hzy].
+    destruct keep.
+    + inversion Hselect; subst.
+      constructor.
+      * assumption.
+      * eapply IH; eauto.
+    + assert (Hx : x = 0%Z) by (apply Hzx_head; reflexivity).
+      assert (Hy : y = 0%Z) by (apply Hzy_head; reflexivity).
+      subst x y.
+      constructor; [lia|].
+      eapply IH; eauto.
+Qed.
+
+Definition semantic_rows_reversal_bridge
+    (envv: list Z)
+    (before_pis after_pis: list Tiling.PL.PolyInstr)
+    (ws: list statement_tiling_witness)
+    (rows: list Schedule) : Prop :=
+  let pis :=
+    Tiling.compose_tiling_pinstrs_ext_from_after
+      (List.length envv) before_pis after_pis ws in
+  forall flat ip1 ip2,
+    Tiling.PL.flatten_instrs_ext envv pis flat ->
+    In ip1 flat ->
+    In ip2 flat ->
+    Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
+    Tiling.PL.instr_point_ext_new_sched_ge ip1 ip2 ->
+    exists pi1 pi2 rows1 rows2 dim,
+      nth_error pis (Tiling.PL.ip_nth_ext ip1) = Some pi1 /\
+      nth_error pis (Tiling.PL.ip_nth_ext ip2) = Some pi2 /\
+      nth_error rows (Tiling.PL.ip_nth_ext ip1) = Some rows1 /\
+      nth_error rows (Tiling.PL.ip_nth_ext ip2) = Some rows2 /\
+      (dim < max_schedule_length rows)%nat /\
+      (semantic_band_value
+         (List.length envv + Tiling.PL.pi_depth_ext pi1)
+         dim rows1 (Tiling.PL.ip_index_ext ip1) >
+       semantic_band_value
+         (List.length envv + Tiling.PL.pi_depth_ext pi2)
+         dim rows2 (Tiling.PL.ip_index_ext ip2))%Z.
+
+Lemma semantic_componentwise_permutable_implies_reordering_safe :
+  forall envv before_pis after_pis ws rows,
+    pinstr_list_semantic_componentwise_permutable
+      envv
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+         (List.length envv) before_pis after_pis ws)
+      rows ->
+    semantic_rows_reversal_bridge
+      envv before_pis after_pis ws rows ->
+    pprog_tiling_reordering_safe
+      envv before_pis after_pis ws [].
+Proof.
+  intros envv before_pis after_pis ws rows Hcomponents Hbridge.
+  unfold pprog_tiling_reordering_safe,
+         pprog_permutable_tiling_bands.
+  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
+  destruct
+    (Hbridge flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew)
+    as [pi1 [pi2 [rows1 [rows2 [dim
+         [Hpi1 [Hpi2 [Hrows1 [Hrows2 [Hdim Hdecrease]]]]]]]]]].
+  eapply
+    (Hcomponents flat ip1 ip2 pi1 pi2 rows1 rows2 dim);
+    eauto.
+Qed.
+
+Lemma parse_ordinary_semantic_data_nth_error :
+  forall ws data n w rows sizes,
+    parse_ordinary_semantic_data ws = Some data ->
+    nth_error ws n = Some w ->
+    nth_error data n = Some (rows, sizes) ->
+    schedule_rows_of_links w = Some rows /\
+    tile_sizes_of_witness w = sizes.
+Proof.
+  intros ws.
+  induction ws as [|w0 ws IH];
+    intros data n w rows sizes Hparse Hw Hdata.
+  - destruct n; discriminate.
+  - simpl in Hparse.
+    destruct (schedule_rows_of_links w0) as [rows0|] eqn:Hrows0;
+      try discriminate.
+    destruct (parse_ordinary_semantic_data ws) as [rest|] eqn:Hrest;
+      try discriminate.
+    inversion Hparse; subst data; clear Hparse.
+    destruct n as [|n].
+    + simpl in Hw, Hdata.
+      inversion Hw; inversion Hdata; subst.
+      split; [exact Hrows0|reflexivity].
+    + simpl in Hw, Hdata.
+      eapply IH; eauto using eq_refl.
+Qed.
+
+Lemma parse_ordinary_semantic_data_length :
+  forall ws data,
+    parse_ordinary_semantic_data ws = Some data ->
+    List.length data = List.length ws.
+Proof.
+  intros ws.
+  induction ws as [|w ws IH]; intros data Hparse.
+  - simpl in Hparse.
+    inversion Hparse.
+    reflexivity.
+  - simpl in Hparse.
+    destruct (schedule_rows_of_links w) as [rows|] eqn:Hrows;
+      try discriminate.
+    destruct (parse_ordinary_semantic_data ws)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hparse; subst data.
+    simpl.
+    f_equal.
+    eapply IH.
+    reflexivity.
+Qed.
+
+Lemma compact_semantic_schedules_nth_error :
+  forall env_size before_pis raw_schedules mask semantic_rows
+         n before_pi raw rows,
+    compact_semantic_schedules
+      env_size before_pis raw_schedules mask = Some semantic_rows ->
+    nth_error before_pis n = Some before_pi ->
+    nth_error raw_schedules n = Some raw ->
+    nth_error semantic_rows n = Some rows ->
+    rows =
+      compact_semantic_schedule
+        (env_size + Tiling.PL.pi_depth before_pi)%nat mask raw.
+Proof.
+  intros env_size before_pis.
+  induction before_pis as [|before0 before_pis IH];
+    intros raw_schedules mask semantic_rows n before_pi raw rows
+           Hcompact Hbefore Hraw Hrows.
+  - destruct n; discriminate.
+  - destruct raw_schedules as [|raw0 raw_schedules]; simpl in Hcompact;
+      try discriminate.
+    destruct
+      (compact_semantic_schedules
+         env_size before_pis raw_schedules mask)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hcompact; subst semantic_rows; clear Hcompact.
+    destruct n as [|n].
+    + simpl in Hbefore, Hraw, Hrows.
+      inversion Hbefore; inversion Hraw; inversion Hrows; subst.
+      reflexivity.
+    + simpl in Hbefore, Hraw, Hrows.
+      eapply IH; eauto.
+Qed.
+
+Lemma compact_semantic_schedules_length :
+  forall env_size before_pis raw_schedules mask semantic_rows,
+    compact_semantic_schedules
+      env_size before_pis raw_schedules mask = Some semantic_rows ->
+    List.length semantic_rows = List.length before_pis /\
+    List.length raw_schedules = List.length before_pis.
+Proof.
+  intros env_size before_pis.
+  induction before_pis as [|before_pi before_pis IH];
+    intros raw_schedules mask semantic_rows Hcompact;
+    destruct raw_schedules as [|raw raw_schedules];
+    simpl in Hcompact; try discriminate.
+  - inversion Hcompact.
+    split; reflexivity.
+  - destruct
+      (compact_semantic_schedules
+         env_size before_pis raw_schedules mask)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hcompact; subst semantic_rows.
+    destruct (IH raw_schedules mask rest Hrest)
+      as [Hsemantic Hraw].
+    simpl.
+    split; lia.
+Qed.
+
+Lemma lift_semantic_schedules_for_tiling_nth_error :
+  forall env_size ws semantic_rows lifted_rows n w rows lifted,
+    lift_semantic_schedules_for_tiling env_size ws semantic_rows =
+      Some lifted_rows ->
+    nth_error ws n = Some w ->
+    nth_error semantic_rows n = Some rows ->
+    nth_error lifted_rows n = Some lifted ->
+    lifted =
+      Tiling.lift_schedule_after_env
+        (List.length (stw_links w)) env_size rows.
+Proof.
+  intros env_size ws.
+  induction ws as [|w0 ws IH];
+    intros semantic_rows lifted_rows n w rows lifted
+           Hlift Hw Hrows Hlifted.
+  - destruct n; discriminate.
+  - destruct semantic_rows as [|rows0 semantic_rows]; simpl in Hlift;
+      try discriminate.
+    destruct
+      (lift_semantic_schedules_for_tiling env_size ws semantic_rows)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hlift; subst lifted_rows; clear Hlift.
+    destruct n as [|n].
+    + simpl in Hw, Hrows, Hlifted.
+      inversion Hw; inversion Hrows; inversion Hlifted; subst.
+      reflexivity.
+    + simpl in Hw, Hrows, Hlifted.
+      eapply IH; eauto.
+Qed.
+
+Lemma ordinary_semantic_schedules_match_nth_error :
+  forall env_size global_width before_pis after_pis ws semantic_rows
+         n before_pi after_pi w rows,
+    ordinary_semantic_schedules_match
+      env_size global_width before_pis after_pis ws semantic_rows ->
+    nth_error before_pis n = Some before_pi ->
+    nth_error after_pis n = Some after_pi ->
+    nth_error ws n = Some w ->
+    nth_error semantic_rows n = Some rows ->
+    schedule_matches_with_symmetric_trailing_zero_padding
+      rows (Tiling.PL.pi_schedule before_pi) /\
+    schedule_matches_with_symmetric_trailing_zero_padding
+      (semantic_ordinary_target_schedule
+         env_size global_width rows w)
+      (Tiling.PL.pi_schedule after_pi).
+Proof.
+  intros env_size global_width before_pis after_pis ws semantic_rows
+         n.
+  revert before_pis after_pis ws semantic_rows.
+  induction n as [|n IH];
+    intros before_pis after_pis ws semantic_rows
+           before_pi after_pi w rows Hmatch Hbefore Hafter Hw Hrows;
+    inversion Hmatch; subst; simpl in *; try discriminate.
+  - inversion Hbefore; inversion Hafter; inversion Hw; inversion Hrows;
+      subst.
+    split; assumption.
+  - eapply IH; eauto.
+Qed.
+
+Lemma ordinary_semantic_band_shape_reversal_bridge :
+  forall before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv,
+    List.length before_ctxt = List.length envv ->
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = true ->
+    ordinary_semantic_band_shape_property_with_witness
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws shape ->
+    lift_semantic_schedules_for_tiling
+      (List.length before_ctxt) ws (osbs_rows shape) =
+      Some lifted_rows ->
+    semantic_rows_reversal_bridge
+      envv before_pis after_pis ws lifted_rows.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv Hlen_env Hsource Hshape Hlift.
+  unfold ordinary_semantic_band_shape_property_with_witness in Hshape.
+  cbn in Hshape.
+  destruct Hshape as
+    [_ [_ [data
+      [Hdata [Hglobal_sizes [Hmask
+      [Hcompact [_ [Hglobal_width Hschedules]]]]]]]]].
+  pose proof
+    (TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hsource)
+    as [Hprog [_ [Hwf_ws [Hpositive_ws Hdepths]]]].
+  assert
+    (Hwf_ws_env :
+       Forall
+         (Tiling.wf_statement_tiling_witness_with_param_dim
+            (List.length envv))
+         ws).
+  {
+    rewrite <- Hlen_env.
+    exact Hwf_ws.
+  }
+  assert
+    (Hglobal_prefix :
+       Forall
+         (fun local => prefix_sizes local (osbs_global_sizes shape))
+         (List.map snd data)).
+  {
+    eapply infer_global_prefix_sizes_sound.
+    exact Hglobal_sizes.
+  }
+  assert
+    (Hglobal_positive :
+       Forall (fun size => (0 < size)%Z)
+         (osbs_global_sizes shape)).
+  {
+    eapply infer_global_prefix_sizes_positive.
+    - exact Hglobal_sizes.
+    - pose proof
+        (parse_ordinary_semantic_data_positive
+           ws data Hdata Hpositive_ws)
+        as Hdata_positive.
+      apply Forall_forall.
+      intros local Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [entry [Heq Hin]].
+      subst local.
+      eapply Forall_forall in Hdata_positive; eauto.
+  }
+  destruct
+    (lift_semantic_schedules_for_tiling_length
+       (List.length before_ctxt) ws (osbs_rows shape)
+       lifted_rows Hlift)
+    as [Hlifted_len Hsemantic_rows_len].
+  assert (Hdata_len : List.length data = List.length ws).
+  {
+    eapply parse_ordinary_semantic_data_length.
+    exact Hdata.
+  }
+  unfold semantic_rows_reversal_bridge.
+  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
+  destruct
+    (flatten_instrs_ext_from_after_member_nth_data_source
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       ws envv flat ip1
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
+    as [before_pi1 [after_pi1 [w1
+         [Hbefore1 [Hafter1 [Hw1
+         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct
+    (flatten_instrs_ext_from_after_member_nth_data_source
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       ws envv flat ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
+    as [before_pi2 [after_pi2 [w2
+         [Hbefore2 [Hafter2 [Hw2
+         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+  assert
+    (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
+  {
+    apply nth_error_Some.
+    rewrite Hw1.
+    discriminate.
+  }
+  assert
+    (Hn2 : (Tiling.PL.ip_nth_ext ip2 < List.length ws)%nat).
+  {
+    apply nth_error_Some.
+    rewrite Hw2.
+    discriminate.
+  }
+  destruct
+    (nth_error data (Tiling.PL.ip_nth_ext ip1))
+    as [[raw1 local_sizes1]|] eqn:Hdata1.
+  2:{
+    exfalso.
+    apply nth_error_None in Hdata1.
+    lia.
+  }
+  destruct
+    (nth_error data (Tiling.PL.ip_nth_ext ip2))
+    as [[raw2 local_sizes2]|] eqn:Hdata2.
+  2:{
+    exfalso.
+    apply nth_error_None in Hdata2.
+    lia.
+  }
+  destruct
+    (parse_ordinary_semantic_data_nth_error
+       ws data (Tiling.PL.ip_nth_ext ip1)
+       w1 raw1 local_sizes1 Hdata Hw1 Hdata1)
+    as [Hraw1 Hlocal_sizes1].
+  destruct
+    (parse_ordinary_semantic_data_nth_error
+       ws data (Tiling.PL.ip_nth_ext ip2)
+       w2 raw2 local_sizes2 Hdata Hw2 Hdata2)
+    as [Hraw2 Hlocal_sizes2].
+  assert
+    (Hraw_map1 :
+       nth_error (List.map fst data) (Tiling.PL.ip_nth_ext ip1) =
+       Some raw1).
+  {
+    pose proof
+      (Tiling.nth_error_map_some
+         _ _ (@fst Schedule (list Z)) data
+         (Tiling.PL.ip_nth_ext ip1)
+         (raw1, local_sizes1) Hdata1)
+      as Hnth.
+    cbn in Hnth.
+    exact Hnth.
+  }
+  assert
+    (Hraw_map2 :
+       nth_error (List.map fst data) (Tiling.PL.ip_nth_ext ip2) =
+       Some raw2).
+  {
+    pose proof
+      (Tiling.nth_error_map_some
+         _ _ (@fst Schedule (list Z)) data
+         (Tiling.PL.ip_nth_ext ip2)
+         (raw2, local_sizes2) Hdata2)
+      as Hnth.
+    cbn in Hnth.
+    exact Hnth.
+  }
+  assert
+    (Hsizes_map1 :
+       nth_error (List.map snd data) (Tiling.PL.ip_nth_ext ip1) =
+       Some local_sizes1).
+  {
+    pose proof
+      (Tiling.nth_error_map_some
+         _ _ (@snd Schedule (list Z)) data
+         (Tiling.PL.ip_nth_ext ip1)
+         (raw1, local_sizes1) Hdata1)
+      as Hnth.
+    cbn in Hnth.
+    exact Hnth.
+  }
+  assert
+    (Hsizes_map2 :
+       nth_error (List.map snd data) (Tiling.PL.ip_nth_ext ip2) =
+       Some local_sizes2).
+  {
+    pose proof
+      (Tiling.nth_error_map_some
+         _ _ (@snd Schedule (list Z)) data
+         (Tiling.PL.ip_nth_ext ip2)
+         (raw2, local_sizes2) Hdata2)
+      as Hnth.
+    cbn in Hnth.
+    exact Hnth.
+  }
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map snd data) (Tiling.PL.ip_nth_ext ip1)
+       local_sizes1 Hglobal_prefix Hsizes_map1)
+    as Hlocal_prefix1.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map snd data) (Tiling.PL.ip_nth_ext ip2)
+       local_sizes2 Hglobal_prefix Hsizes_map2)
+    as Hlocal_prefix2.
+  destruct
+    (nth_error (osbs_rows shape) (Tiling.PL.ip_nth_ext ip1))
+    as [semantic_rows1|] eqn:Hsemantic_rows1.
+  2:{
+    exfalso.
+    apply nth_error_None in Hsemantic_rows1.
+    lia.
+  }
+  destruct
+    (nth_error (osbs_rows shape) (Tiling.PL.ip_nth_ext ip2))
+    as [semantic_rows2|] eqn:Hsemantic_rows2.
+  2:{
+    exfalso.
+    apply nth_error_None in Hsemantic_rows2.
+    lia.
+  }
+  destruct
+    (nth_error lifted_rows (Tiling.PL.ip_nth_ext ip1))
+    as [lifted1|] eqn:Hlifted1.
+  2:{
+    exfalso.
+    apply nth_error_None in Hlifted1.
+    lia.
+  }
+  destruct
+    (nth_error lifted_rows (Tiling.PL.ip_nth_ext ip2))
+    as [lifted2|] eqn:Hlifted2.
+  2:{
+    exfalso.
+    apply nth_error_None in Hlifted2.
+    lia.
+  }
+  pose proof
+    (compact_semantic_schedules_nth_error
+       (List.length before_ctxt) before_pis (List.map fst data)
+       (osbs_mask shape) (osbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip1) before_pi1 raw1 semantic_rows1
+       Hcompact Hbefore1 Hraw_map1 Hsemantic_rows1)
+    as Hsemantic_rows_def1.
+  pose proof
+    (compact_semantic_schedules_nth_error
+       (List.length before_ctxt) before_pis (List.map fst data)
+       (osbs_mask shape) (osbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip2) before_pi2 raw2 semantic_rows2
+       Hcompact Hbefore2 Hraw_map2 Hsemantic_rows2)
+    as Hsemantic_rows_def2.
+  pose proof
+    (lift_semantic_schedules_for_tiling_nth_error
+       (List.length before_ctxt) ws (osbs_rows shape) lifted_rows
+       (Tiling.PL.ip_nth_ext ip1) w1 semantic_rows1 lifted1
+       Hlift Hw1 Hsemantic_rows1 Hlifted1)
+    as Hlifted_def1.
+  pose proof
+    (lift_semantic_schedules_for_tiling_nth_error
+       (List.length before_ctxt) ws (osbs_rows shape) lifted_rows
+       (Tiling.PL.ip_nth_ext ip2) w2 semantic_rows2 lifted2
+       Hlift Hw2 Hsemantic_rows2 Hlifted2)
+    as Hlifted_def2.
+  destruct
+    (ordinary_semantic_schedules_match_nth_error
+       (List.length before_ctxt)
+       (List.length (osbs_mask shape))
+       before_pis after_pis ws (osbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1 w1 semantic_rows1
+       Hschedules Hbefore1 Hafter1 Hw1 Hsemantic_rows1)
+    as [Hbefore_match1 Hafter_match1].
+  destruct
+    (ordinary_semantic_schedules_match_nth_error
+       (List.length before_ctxt)
+       (List.length (osbs_mask shape))
+       before_pis after_pis ws (osbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2 w2 semantic_rows2
+       Hschedules Hbefore2 Hafter2 Hw2 Hsemantic_rows2)
+    as [Hbefore_match2 Hafter_match2].
+  pose proof
+    (Tiling.nth_error_compose_tiling_pinstrs_ext_from_after
+       (List.length envv) before_pis after_pis ws
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1 w1 Hbefore1 Hafter1 Hw1)
+    as Hcomposed1.
+  pose proof
+    (Tiling.nth_error_compose_tiling_pinstrs_ext_from_after
+       (List.length envv) before_pis after_pis ws
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2 w2 Hbefore2 Hafter2 Hw2)
+    as Hcomposed2.
+  pose proof
+    (Tiling.tiling_rel_pprog_structure_source_nth
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       (List.map Tiling.compiled_pinstr_tiling_witness ws)
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1
+       (Tiling.compiled_pinstr_tiling_witness w1)
+       Hprog Hbefore1 Hafter1
+       (Tiling.nth_error_map_some
+          _ _ Tiling.compiled_pinstr_tiling_witness
+          ws (Tiling.PL.ip_nth_ext ip1) w1 Hw1))
+    as Hstmt1.
+  pose proof
+    (Tiling.tiling_rel_pprog_structure_source_nth
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       (List.map Tiling.compiled_pinstr_tiling_witness ws)
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2
+       (Tiling.compiled_pinstr_tiling_witness w2)
+       Hprog Hbefore2 Hafter2
+       (Tiling.nth_error_map_some
+          _ _ Tiling.compiled_pinstr_tiling_witness
+          ws (Tiling.PL.ip_nth_ext ip2) w2 Hw2))
+    as Hstmt2.
+  pose proof
+    (tiling_rel_pinstr_structure_source_after_matches
+       (List.length before_ctxt) before_pi1 after_pi1 w1
+       Hstmt1 Hpoint_depth1)
+    as Hafter_wit1.
+  pose proof
+    (tiling_rel_pinstr_structure_source_after_matches
+       (List.length before_ctxt) before_pi2 after_pi2 w2
+       Hstmt2 Hpoint_depth2)
+    as Hafter_wit2.
+  destruct Hafter_wit1 as [Hafter_pw1 Hafter_wit_depth1].
+  destruct Hafter_wit2 as [Hafter_pw2 Hafter_wit_depth2].
+  assert
+    (Hafter_depth1 :
+       Tiling.PL.pi_depth after_pi1 =
+       (Tiling.PL.pi_depth before_pi1 +
+        List.length (stw_links w1))%nat).
+  {
+    unfold Tiling.tiling_rel_pinstr_structure_source in Hstmt1.
+    destruct Hstmt1 as [_ [Hdepth _]].
+    exact Hdepth.
+  }
+  assert
+    (Hafter_depth2 :
+       Tiling.PL.pi_depth after_pi2 =
+       (Tiling.PL.pi_depth before_pi2 +
+        List.length (stw_links w2))%nat).
+  {
+    unfold Tiling.tiling_rel_pinstr_structure_source in Hstmt2.
+    destruct Hstmt2 as [_ [Hdepth _]].
+    exact Hdepth.
+  }
+  set
+    (added1 :=
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+  set
+    (point1 :=
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+  set
+    (added2 :=
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+  set
+    (point2 :=
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+  assert (Hadded_len1 : List.length added1 = List.length (stw_links w1)).
+  {
+    subst added1.
+    eapply Tiling.tiled_added_part_length
+      with (point_dim := stw_point_dim w1).
+    rewrite Hidx_len1, Hafter_depth1, <- Hpoint_depth1.
+    lia.
+  }
+  assert (Hadded_len2 : List.length added2 = List.length (stw_links w2)).
+  {
+    subst added2.
+    eapply Tiling.tiled_added_part_length
+      with (point_dim := stw_point_dim w2).
+    rewrite Hidx_len2, Hafter_depth2, <- Hpoint_depth2.
+    lia.
+  }
+  assert (Hpoint_len1 : List.length point1 = stw_point_dim w1).
+  {
+    subst point1.
+    eapply Tiling.tiled_point_part_length
+      with (added_dims := List.length (stw_links w1)).
+    rewrite Hidx_len1, Hafter_depth1, <- Hpoint_depth1.
+    lia.
+  }
+  assert (Hpoint_len2 : List.length point2 = stw_point_dim w2).
+  {
+    subst point2.
+    eapply Tiling.tiled_point_part_length
+      with (added_dims := List.length (stw_links w2)).
+    rewrite Hidx_len2, Hafter_depth2, <- Hpoint_depth2.
+    lia.
+  }
+  assert
+    (Hidx_split1 :
+       Tiling.PL.ip_index_ext ip1 = envv ++ added1 ++ point1).
+  {
+    subst added1 point1.
+    transitivity
+      (firstn (List.length envv) (Tiling.PL.ip_index_ext ip1) ++
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1) ++
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+    - apply Tiling.tiled_index_split.
+    - rewrite Hpref1.
+      reflexivity.
+  }
+  assert
+    (Hidx_split2 :
+       Tiling.PL.ip_index_ext ip2 = envv ++ added2 ++ point2).
+  {
+    subst added2 point2.
+    transitivity
+      (firstn (List.length envv) (Tiling.PL.ip_index_ext ip2) ++
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2) ++
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+    - apply Tiling.tiled_index_split.
+    - rewrite Hpref2.
+      reflexivity.
+  }
+  unfold Tiling.compose_tiling_pinstr_ext in Hbel1, Hbel2.
+  destruct Hbel1 as
+    [Hafter_dom1 [_ [_ [Hts11 [Hts21 [_ _]]]]]].
+  destruct Hbel2 as
+    [Hafter_dom2 [_ [_ [Hts12 [Hts22 [_ _]]]]]].
+  assert
+    (Hts11_old :
+       Tiling.PL.ip_time_stamp1_ext ip1 =
+       affine_product (Tiling.PL.pi_schedule before_pi1)
+         (envv ++ point1)).
+  {
+    rewrite Hts11.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    rewrite Hidx_split1.
+    unfold Tiling.lift_schedule_after_env.
+    eapply Tiling.lift_affine_function_after_env_eval.
+    - reflexivity.
+    - exact Hadded_len1.
+  }
+  assert
+    (Hts12_old :
+       Tiling.PL.ip_time_stamp1_ext ip2 =
+       affine_product (Tiling.PL.pi_schedule before_pi2)
+         (envv ++ point2)).
+  {
+    rewrite Hts12.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    rewrite Hidx_split2.
+    unfold Tiling.lift_schedule_after_env.
+    eapply Tiling.lift_affine_function_after_env_eval.
+    - reflexivity.
+    - exact Hadded_len2.
+  }
+  assert
+    (Hts21_after :
+       Tiling.PL.ip_time_stamp2_ext ip1 =
+       affine_product (Tiling.PL.pi_schedule after_pi1)
+         (Tiling.PL.ip_index_ext ip1)).
+  {
+    rewrite Hts21.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    reflexivity.
+  }
+  assert
+    (Hts22_after :
+       Tiling.PL.ip_time_stamp2_ext ip2 =
+       affine_product (Tiling.PL.pi_schedule after_pi2)
+         (Tiling.PL.ip_index_ext ip2)).
+  {
+    rewrite Hts22.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    reflexivity.
+  }
+  assert
+    (Hstmt1_env :
+       Tiling.tiling_rel_pinstr_structure_source
+         (List.length envv) before_pi1 after_pi1
+         (Tiling.compiled_pinstr_tiling_witness w1)).
+  {
+    rewrite <- Hlen_env.
+    exact Hstmt1.
+  }
+  assert
+    (Hstmt2_env :
+       Tiling.tiling_rel_pinstr_structure_source
+         (List.length envv) before_pi2 after_pi2
+         (Tiling.compiled_pinstr_tiling_witness w2)).
+  {
+    rewrite <- Hlen_env.
+    exact Hstmt2.
+  }
+  destruct Hwf_stmt1 as [Hwf_stmt1 Hparams1].
+  destruct Hwf_stmt2 as [Hwf_stmt2 Hparams2].
+  assert
+    (Hadded_eq1 :
+       added1 = eval_tile_links [] point1 envv (stw_links w1)).
+  {
+    pose proof
+      (Tiling.tiling_rel_pinstr_structure_source_domain_complete
+         envv before_pi1 after_pi1
+         (Tiling.compiled_pinstr_tiling_witness w1)
+         added1 point1 Hstmt1_env
+         (Tiling.wf_compiled_pinstr_tiling_witness w1)
+         (Tiling.compiled_pinstr_tiling_witness_matches w1)
+         Hadded_len1 Hpoint_len1
+         (conj Hwf_stmt1 Hparams1) Hpositive1)
+      as Hcomplete.
+    rewrite Hidx_split1 in Hafter_dom1.
+    specialize (Hcomplete Hafter_dom1).
+    tauto.
+  }
+  assert
+    (Hadded_eq2 :
+       added2 = eval_tile_links [] point2 envv (stw_links w2)).
+  {
+    pose proof
+      (Tiling.tiling_rel_pinstr_structure_source_domain_complete
+         envv before_pi2 after_pi2
+         (Tiling.compiled_pinstr_tiling_witness w2)
+         added2 point2 Hstmt2_env
+         (Tiling.wf_compiled_pinstr_tiling_witness w2)
+         (Tiling.compiled_pinstr_tiling_witness_matches w2)
+         Hadded_len2 Hpoint_len2
+         (conj Hwf_stmt2 Hparams2) Hpositive2)
+      as Hcomplete.
+    rewrite Hidx_split2 in Hafter_dom2.
+    specialize (Hcomplete Hafter_dom2).
+    tauto.
+  }
+  set
+    (raw_values1 :=
+       affine_product
+         (Tiling.PL.pad_schedule_to_len
+            (List.length envv + stw_point_dim w1)
+            (List.length (osbs_mask shape)) raw1)
+         (envv ++ point1)).
+  set
+    (raw_values2 :=
+       affine_product
+         (Tiling.PL.pad_schedule_to_len
+            (List.length envv + stw_point_dim w2)
+            (List.length (osbs_mask shape)) raw2)
+         (envv ++ point2)).
+  set
+    (semantic_values1 :=
+       affine_product semantic_rows1 (envv ++ point1)).
+  set
+    (semantic_values2 :=
+       affine_product semantic_rows2 (envv ++ point2)).
+  set
+    (global_tiles1 :=
+       List.map
+         (fun '(v, sz) => Z.div v sz)
+         (combine raw_values1 (osbs_global_sizes shape))).
+  set
+    (global_tiles2 :=
+       List.map
+         (fun '(v, sz) => Z.div v sz)
+         (combine raw_values2 (osbs_global_sizes shape))).
+  assert
+    (Hraw_bound1 :
+       (List.length raw1 <= List.length (osbs_mask shape))%nat).
+  {
+    rewrite Hmask.
+    unfold global_semantic_schedule_mask.
+    rewrite List.map_length, seq_length.
+    eapply max_schedule_length_ge_nth_error.
+    exact Hraw_map1.
+  }
+  assert
+    (Hraw_bound2 :
+       (List.length raw2 <= List.length (osbs_mask shape))%nat).
+  {
+    rewrite Hmask.
+    unfold global_semantic_schedule_mask.
+    rewrite List.map_length, seq_length.
+    eapply max_schedule_length_ge_nth_error.
+    exact Hraw_map2.
+  }
+  assert
+    (Hsemantic_eval1 :
+       semantic_values1 =
+       select_by_mask (osbs_mask shape) raw_values1).
+  {
+    subst semantic_values1 raw_values1.
+    rewrite Hsemantic_rows_def1.
+    unfold compact_semantic_schedule.
+    rewrite affine_product_select_by_mask.
+    rewrite Hlen_env.
+    rewrite <- Hpoint_depth1.
+    reflexivity.
+  }
+  assert
+    (Hsemantic_eval2 :
+       semantic_values2 =
+       select_by_mask (osbs_mask shape) raw_values2).
+  {
+    subst semantic_values2 raw_values2.
+    rewrite Hsemantic_rows_def2.
+    unfold compact_semantic_schedule.
+    rewrite affine_product_select_by_mask.
+    rewrite Hlen_env.
+    rewrite <- Hpoint_depth2.
+    reflexivity.
+  }
+  assert
+    (Hzero1 :
+       zero_on_false (osbs_mask shape) raw_values1).
+  {
+    subst raw_values1.
+    rewrite Hmask.
+    assert
+      (Hmask_len :
+         List.length
+           (global_semantic_schedule_mask (List.map fst data)) =
+         max_schedule_length (List.map fst data)).
+    {
+      unfold global_semantic_schedule_mask.
+      rewrite List.map_length, seq_length.
+      reflexivity.
+    }
+    rewrite Hmask_len.
+    eapply global_semantic_schedule_mask_zero_on_false.
+    eapply nth_error_In.
+    exact Hraw_map1.
+  }
+  assert
+    (Hzero2 :
+       zero_on_false (osbs_mask shape) raw_values2).
+  {
+    subst raw_values2.
+    rewrite Hmask.
+    assert
+      (Hmask_len :
+         List.length
+           (global_semantic_schedule_mask (List.map fst data)) =
+         max_schedule_length (List.map fst data)).
+    {
+      unfold global_semantic_schedule_mask.
+      rewrite List.map_length, seq_length.
+      reflexivity.
+    }
+    rewrite Hmask_len.
+    eapply global_semantic_schedule_mask_zero_on_false.
+    eapply nth_error_In.
+    exact Hraw_map2.
+  }
+  assert
+    (Hraw_len1 :
+       List.length raw1 = List.length local_sizes1).
+  {
+    rewrite (schedule_rows_of_links_length _ _ Hraw1).
+    rewrite <- Hlocal_sizes1.
+    unfold tile_sizes_of_witness.
+    rewrite List.map_length.
+    reflexivity.
+  }
+  assert
+    (Hraw_len2 :
+       List.length raw2 = List.length local_sizes2).
+  {
+    rewrite (schedule_rows_of_links_length _ _ Hraw2).
+    rewrite <- Hlocal_sizes2.
+    unfold tile_sizes_of_witness.
+    rewrite List.map_length.
+    reflexivity.
+  }
+  assert
+    (Hraw_values_eval1 :
+       raw_values1 =
+       affine_product raw1 (envv ++ point1) ++
+       repeat 0%Z
+         (List.length (osbs_mask shape) - List.length raw1)).
+  {
+    subst raw_values1.
+    eapply affine_product_pad_schedule_to_len.
+    exact Hraw_bound1.
+  }
+  assert
+    (Hraw_values_eval2 :
+       raw_values2 =
+       affine_product raw2 (envv ++ point2) ++
+       repeat 0%Z
+         (List.length (osbs_mask shape) - List.length raw2)).
+  {
+    subst raw_values2.
+    eapply affine_product_pad_schedule_to_len.
+    exact Hraw_bound2.
+  }
+  assert
+    (Hglobal_tiles_local1 :
+       added1 ++
+       repeat 0%Z
+         (List.length (osbs_mask shape) -
+          List.length (stw_links w1)) =
+       global_tiles1).
+  {
+    subst global_tiles1.
+    rewrite Hraw_values_eval1.
+    pose proof
+      (tile_values_pad_prefix
+         (affine_product raw1 (envv ++ point1))
+         local_sizes1 (osbs_global_sizes shape))
+      as Hpad.
+    assert
+      (Haffine_len :
+         List.length (affine_product raw1 (envv ++ point1)) =
+         List.length raw1).
+    {
+      unfold affine_product.
+      rewrite List.map_length.
+      reflexivity.
+    }
+    rewrite Haffine_len in Hpad.
+    specialize (Hpad Hraw_len1 Hlocal_prefix1).
+    rewrite <- Hraw_len1 in Hpad.
+    rewrite Hglobal_width in Hpad.
+    rewrite Hpad.
+    rewrite Hadded_eq1.
+    rewrite
+      (eval_tile_links_from_schedule_rows
+         w1 point1 envv raw1 local_sizes1
+         Hpoint_len1 Hraw1 Hlocal_sizes1
+         Hwf_stmt1 Hparams1).
+    rewrite (schedule_rows_of_links_length _ _ Hraw1).
+    reflexivity.
+  }
+  assert
+    (Hglobal_tiles_local2 :
+       added2 ++
+       repeat 0%Z
+         (List.length (osbs_mask shape) -
+          List.length (stw_links w2)) =
+       global_tiles2).
+  {
+    subst global_tiles2.
+    rewrite Hraw_values_eval2.
+    pose proof
+      (tile_values_pad_prefix
+         (affine_product raw2 (envv ++ point2))
+         local_sizes2 (osbs_global_sizes shape))
+      as Hpad.
+    assert
+      (Haffine_len :
+         List.length (affine_product raw2 (envv ++ point2)) =
+         List.length raw2).
+    {
+      unfold affine_product.
+      rewrite List.map_length.
+      reflexivity.
+    }
+    rewrite Haffine_len in Hpad.
+    specialize (Hpad Hraw_len2 Hlocal_prefix2).
+    rewrite <- Hraw_len2 in Hpad.
+    rewrite Hglobal_width in Hpad.
+    rewrite Hpad.
+    rewrite Hadded_eq2.
+    rewrite
+      (eval_tile_links_from_schedule_rows
+         w2 point2 envv raw2 local_sizes2
+         Hpoint_len2 Hraw2 Hlocal_sizes2
+         Hwf_stmt2 Hparams2).
+    rewrite (schedule_rows_of_links_length _ _ Hraw2).
+    reflexivity.
+  }
+  assert
+    (Hsemantic_len :
+       List.length semantic_values1 = List.length semantic_values2).
+  {
+    subst semantic_values1 semantic_values2.
+    unfold affine_product.
+    rewrite !List.map_length.
+    rewrite Hsemantic_rows_def1, Hsemantic_rows_def2.
+    unfold compact_semantic_schedule.
+    eapply select_by_mask_length_same.
+    - unfold Tiling.PL.pad_schedule_to_len.
+      rewrite app_length, repeat_length.
+      lia.
+    - unfold Tiling.PL.pad_schedule_to_len.
+      rewrite app_length, repeat_length.
+      lia.
+  }
+  assert
+    (Htiles_eq :
+       semantic_values1 = semantic_values2 ->
+       global_tiles1 = global_tiles2).
+  {
+    intro Hsemantic_eq.
+    assert
+      (Hselect :
+         select_by_mask (osbs_mask shape) raw_values1 =
+         select_by_mask (osbs_mask shape) raw_values2).
+    {
+      rewrite <- Hsemantic_eval1, <- Hsemantic_eval2.
+      exact Hsemantic_eq.
+    }
+    pose proof
+      (select_by_mask_eq_reflect
+         (osbs_mask shape) raw_values1 raw_values2
+         Hzero1 Hzero2 Hselect)
+      as Hraw_eq.
+    subst global_tiles1 global_tiles2.
+    now rewrite Hraw_eq.
+  }
+  assert
+    (Htiles_mono :
+       listz_pointwise_le semantic_values1 semantic_values2 ->
+       listz_pointwise_le global_tiles1 global_tiles2).
+  {
+    intro Hsemantic_le.
+    assert
+      (Hraw_le : listz_pointwise_le raw_values1 raw_values2).
+    {
+      eapply select_by_mask_le_reflect; [exact Hzero1|exact Hzero2|].
+      rewrite <- Hsemantic_eval1, <- Hsemantic_eval2.
+      exact Hsemantic_le.
+    }
+    subst global_tiles1 global_tiles2.
+    eapply map_div_combine_preserves_pointwise_le.
+    - exact Hraw_le.
+    - exact Hglobal_positive.
+    - pose proof (zero_on_false_length _ _ Hzero1) as Hraw_values_len.
+      rewrite Hglobal_width.
+      symmetry.
+      exact Hraw_values_len.
+  }
+  assert
+    (Hold_eq1 :
+       is_eq
+         (Tiling.PL.ip_time_stamp1_ext ip1)
+         semantic_values1 = true).
+  {
+    rewrite Hts11_old.
+    subst semantic_values1.
+    eapply
+      schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq.
+    exact Hbefore_match1.
+  }
+  assert
+    (Hold_eq2 :
+       is_eq
+         (Tiling.PL.ip_time_stamp1_ext ip2)
+         semantic_values2 = true).
+  {
+    rewrite Hts12_old.
+    subst semantic_values2.
+    eapply
+      schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq.
+    exact Hbefore_match2.
+  }
+  assert
+    (Hnew_eq1 :
+       is_eq
+         (Tiling.PL.ip_time_stamp2_ext ip1)
+         (global_tiles1 ++ semantic_values1) = true).
+  {
+    rewrite Hts21_after, Hidx_split1.
+    pose proof
+      (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+         (semantic_ordinary_target_schedule
+            (List.length before_ctxt)
+            (List.length (osbs_mask shape))
+            semantic_rows1 w1)
+         (Tiling.PL.pi_schedule after_pi1)
+         (envv ++ added1 ++ point1) Hafter_match1)
+      as Hmatch.
+    rewrite
+      (semantic_ordinary_target_schedule_eval
+         (List.length before_ctxt)
+         (List.length (osbs_mask shape))
+         semantic_rows1 w1 envv added1 point1)
+      in Hmatch.
+    2:{ symmetry. exact Hlen_env. }
+    2:{ exact Hadded_len1. }
+    2:{ exact Hpoint_len1. }
+    2:{
+      rewrite <-
+        (schedule_rows_of_links_length _ _ Hraw1).
+      exact Hraw_bound1.
+    }
+    subst semantic_values1.
+    rewrite <- Hglobal_tiles_local1.
+    rewrite <- !app_assoc.
+    exact Hmatch.
+  }
+  assert
+    (Hnew_eq2 :
+       is_eq
+         (Tiling.PL.ip_time_stamp2_ext ip2)
+         (global_tiles2 ++ semantic_values2) = true).
+  {
+    rewrite Hts22_after, Hidx_split2.
+    pose proof
+      (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+         (semantic_ordinary_target_schedule
+            (List.length before_ctxt)
+            (List.length (osbs_mask shape))
+            semantic_rows2 w2)
+         (Tiling.PL.pi_schedule after_pi2)
+         (envv ++ added2 ++ point2) Hafter_match2)
+      as Hmatch.
+    rewrite
+      (semantic_ordinary_target_schedule_eval
+         (List.length before_ctxt)
+         (List.length (osbs_mask shape))
+         semantic_rows2 w2 envv added2 point2)
+      in Hmatch.
+    2:{ symmetry. exact Hlen_env. }
+    2:{ exact Hadded_len2. }
+    2:{ exact Hpoint_len2. }
+    2:{
+      rewrite <-
+        (schedule_rows_of_links_length _ _ Hraw2).
+      exact Hraw_bound2.
+    }
+    subst semantic_values2.
+    rewrite <- Hglobal_tiles_local2.
+    rewrite <- !app_assoc.
+    exact Hmatch.
+  }
+  unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
+  assert
+    (Hnew_not_lt :
+       lex_compare
+         (Tiling.PL.ip_time_stamp2_ext ip1)
+         (Tiling.PL.ip_time_stamp2_ext ip2) <> Lt).
+  {
+    unfold Tiling.PL.instr_point_ext_new_sched_ge in Hnew.
+    destruct Hnew; congruence.
+  }
+  destruct
+    (semantic_stripmined_reversal_implies_decreasing_component
+       (Tiling.PL.ip_time_stamp1_ext ip1)
+       (Tiling.PL.ip_time_stamp1_ext ip2)
+       (Tiling.PL.ip_time_stamp2_ext ip1)
+       (Tiling.PL.ip_time_stamp2_ext ip2)
+       semantic_values1 semantic_values2
+       global_tiles1 global_tiles2
+       Hold_eq1 Hold_eq2 Hnew_eq1 Hnew_eq2
+       Hsemantic_len Htiles_eq Htiles_mono Hold Hnew_not_lt)
+    as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  exists
+    (Tiling.compose_tiling_pinstr_ext
+       (List.length envv) before_pi1 after_pi1 w1),
+    (Tiling.compose_tiling_pinstr_ext
+       (List.length envv) before_pi2 after_pi2 w2),
+    lifted1, lifted2, dim.
+  repeat split; try assumption.
+  - eapply Nat.lt_le_trans.
+    + apply nth_error_Some.
+      rewrite Hvalue1.
+      discriminate.
+    + eapply Nat.le_trans with (m := List.length lifted1).
+      * subst semantic_values1.
+        unfold affine_product.
+        rewrite List.map_length.
+        rewrite Hlifted_def1.
+        unfold Tiling.lift_schedule_after_env,
+               Tiling.lift_affine_function_after_env.
+        rewrite List.map_length.
+        reflexivity.
+      *
+      eapply max_schedule_length_ge_nth_error.
+      exact Hlifted1.
+  - assert
+      (Hlift_eval1 :
+         affine_product lifted1 (Tiling.PL.ip_index_ext ip1) =
+         semantic_values1).
+    {
+      rewrite Hlifted_def1, Hidx_split1.
+      eapply Tiling.lift_affine_function_after_env_eval.
+      - symmetry. exact Hlen_env.
+      - exact Hadded_len1.
+    }
+    assert
+      (Hlift_eval2 :
+         affine_product lifted2 (Tiling.PL.ip_index_ext ip2) =
+         semantic_values2).
+    {
+      rewrite Hlifted_def2, Hidx_split2.
+      eapply Tiling.lift_affine_function_after_env_eval.
+      - symmetry. exact Hlen_env.
+      - exact Hadded_len2.
+    }
+    assert
+      (Hsemantic_value1 :
+         semantic_band_value
+           (List.length envv +
+            Tiling.PL.pi_depth_ext
+              (Tiling.compose_tiling_pinstr_ext
+                 (List.length envv) before_pi1 after_pi1 w1))
+           dim lifted1 (Tiling.PL.ip_index_ext ip1) = x).
+    {
+      eapply semantic_band_value_of_nth_error.
+      rewrite Hlift_eval1.
+      exact Hvalue1.
+    }
+    assert
+      (Hsemantic_value2 :
+         semantic_band_value
+           (List.length envv +
+            Tiling.PL.pi_depth_ext
+              (Tiling.compose_tiling_pinstr_ext
+                 (List.length envv) before_pi2 after_pi2 w2))
+           dim lifted2 (Tiling.PL.ip_index_ext ip2) = y).
+    {
+      eapply semantic_band_value_of_nth_error.
+      rewrite Hlift_eval2.
+      exact Hvalue2.
+    }
+    rewrite Hsemantic_value1, Hsemantic_value2.
+    exact Hdecrease.
+Qed.
+
+Definition semantic_quotient_tiles
+    (values sizes: list Z) : list Z :=
+  List.map
+    (fun '(value, size) => Z.div value size)
+    (combine values sizes).
+
+Definition semantic_second_level_global_tile_block
+    (layout: second_level_schedule_layout)
+    (root_values root_sizes child_sizes: list Z) : list Z :=
+  let roots := semantic_quotient_tiles root_values root_sizes in
+  let children := semantic_quotient_tiles roots child_sizes in
+  match layout with
+  | SecondLevelGrouped => children ++ roots
+  | SecondLevelInterleaved =>
+      interleave_root_child_tiles roots children
+  end.
+
+Lemma interleave_root_child_tiles_app :
+  forall roots1 roots2 children1 children2,
+    List.length roots1 = List.length children1 ->
+    interleave_root_child_tiles
+      (roots1 ++ roots2) (children1 ++ children2) =
+    interleave_root_child_tiles roots1 children1 ++
+    interleave_root_child_tiles roots2 children2.
+Proof.
+  induction roots1 as [|root roots IH];
+    intros roots2 children1 children2 Hlen.
+  - destruct children1; [reflexivity|discriminate].
+  - destruct children1 as [|child children]; [discriminate|].
+    simpl in Hlen.
+    simpl.
+    f_equal.
+    f_equal.
+    eapply IH.
+    lia.
+Qed.
+
+Lemma interleave_root_child_tiles_repeat_zero :
+  forall n,
+    interleave_root_child_tiles
+      (repeat 0%Z n) (repeat 0%Z n) =
+    repeat 0%Z (2 * n).
+Proof.
+  induction n as [|n IH].
+  - reflexivity.
+  - replace (2 * S n)%nat with (S (S (2 * n))) by lia.
+    simpl.
+    f_equal.
+    f_equal.
+    exact IH.
+Qed.
+
+Lemma semantic_quotient_tiles_pad_prefix :
+  forall values local_sizes global_sizes,
+    List.length values = List.length local_sizes ->
+    prefix_sizes local_sizes global_sizes ->
+    semantic_quotient_tiles
+      (values ++
+       repeat 0%Z
+         (List.length global_sizes - List.length values))
+      global_sizes =
+    semantic_quotient_tiles values local_sizes ++
+    repeat 0%Z
+      (List.length global_sizes - List.length local_sizes).
+Proof.
+  intros values local_sizes global_sizes Hlen Hprefix.
+  unfold semantic_quotient_tiles.
+  eapply tile_values_pad_prefix; eauto.
+Qed.
+
+Lemma semantic_second_level_global_tile_block_local :
+  forall layout root_values local_root_sizes local_child_sizes
+         global_root_sizes global_child_sizes,
+    List.length root_values = List.length local_root_sizes ->
+    List.length root_values = List.length local_child_sizes ->
+    prefix_sizes local_root_sizes global_root_sizes ->
+    prefix_sizes local_child_sizes global_child_sizes ->
+    List.length global_root_sizes = List.length global_child_sizes ->
+    semantic_second_level_global_tile_block
+      layout
+      (root_values ++
+       repeat 0%Z
+         (List.length global_root_sizes - List.length root_values))
+      global_root_sizes global_child_sizes =
+    match layout with
+    | SecondLevelGrouped =>
+        semantic_quotient_tiles
+          (semantic_quotient_tiles root_values local_root_sizes)
+          local_child_sizes ++
+        repeat 0%Z
+          (List.length global_child_sizes -
+           List.length local_child_sizes) ++
+        semantic_quotient_tiles root_values local_root_sizes ++
+        repeat 0%Z
+          (List.length global_root_sizes -
+           List.length local_root_sizes)
+    | SecondLevelInterleaved =>
+        interleave_root_child_tiles
+          (semantic_quotient_tiles root_values local_root_sizes)
+          (semantic_quotient_tiles
+             (semantic_quotient_tiles root_values local_root_sizes)
+             local_child_sizes) ++
+        repeat 0%Z
+          (2 *
+           (List.length global_root_sizes -
+            List.length local_root_sizes))
+    end.
+Proof.
+  intros layout root_values local_root_sizes local_child_sizes
+         global_root_sizes global_child_sizes
+         Hroot_len Hchild_len Hroot_prefix Hchild_prefix Hglobal_len.
+  unfold semantic_second_level_global_tile_block.
+  rewrite
+    (semantic_quotient_tiles_pad_prefix
+       root_values local_root_sizes global_root_sizes
+       Hroot_len Hroot_prefix).
+  assert
+    (Hlocal_sizes :
+       List.length local_root_sizes =
+       List.length local_child_sizes) by lia.
+  assert
+    (Hlocal_roots_len :
+       List.length
+         (semantic_quotient_tiles root_values local_root_sizes) =
+       List.length local_child_sizes).
+  {
+    unfold semantic_quotient_tiles.
+    rewrite List.map_length, combine_length, Hroot_len.
+    rewrite Nat.min_id.
+    lia.
+  }
+  assert
+    (Hextra :
+       (List.length global_root_sizes -
+        List.length local_root_sizes =
+        List.length global_child_sizes -
+        List.length local_child_sizes)%nat) by lia.
+  rewrite Hextra.
+  replace
+    (List.length global_child_sizes -
+     List.length local_child_sizes)%nat
+    with
+    (List.length global_child_sizes -
+     List.length
+       (semantic_quotient_tiles root_values local_root_sizes))%nat
+    by lia.
+  rewrite
+    (semantic_quotient_tiles_pad_prefix
+       (semantic_quotient_tiles root_values local_root_sizes)
+       local_child_sizes global_child_sizes
+       Hlocal_roots_len Hchild_prefix).
+  assert
+    (Hlocal_children_len :
+       List.length
+         (semantic_quotient_tiles
+            (semantic_quotient_tiles root_values local_root_sizes)
+            local_child_sizes) =
+       List.length local_child_sizes).
+  {
+    unfold semantic_quotient_tiles at 1.
+    rewrite List.map_length, combine_length, Hlocal_roots_len.
+    rewrite Nat.min_id.
+    reflexivity.
+  }
+  assert
+    (Hroot_child_tiles_len :
+       List.length
+         (semantic_quotient_tiles root_values local_root_sizes) =
+       List.length
+         (semantic_quotient_tiles
+            (semantic_quotient_tiles root_values local_root_sizes)
+            local_child_sizes)) by lia.
+  rewrite Hlocal_roots_len.
+  destruct layout.
+  - repeat rewrite app_assoc.
+    reflexivity.
+  - rewrite interleave_root_child_tiles_app
+      by exact Hroot_child_tiles_len.
+    rewrite interleave_root_child_tiles_repeat_zero.
+    rewrite <- Hextra.
+    reflexivity.
+Qed.
+
+Lemma semantic_second_level_global_tile_block_eq :
+  forall layout root_values1 root_values2 root_sizes child_sizes,
+    root_values1 = root_values2 ->
+    semantic_second_level_global_tile_block
+      layout root_values1 root_sizes child_sizes =
+    semantic_second_level_global_tile_block
+      layout root_values2 root_sizes child_sizes.
+Proof.
+  intros. subst root_values2. reflexivity.
+Qed.
+
+Lemma semantic_second_level_global_tile_block_pointwise_le :
+  forall layout root_values1 root_values2 root_sizes child_sizes,
+    listz_pointwise_le root_values1 root_values2 ->
+    Forall (fun size => (0 < size)%Z) root_sizes ->
+    Forall (fun size => (0 < size)%Z) child_sizes ->
+    List.length root_values1 = List.length root_sizes ->
+    List.length root_sizes = List.length child_sizes ->
+    listz_pointwise_le
+      (semantic_second_level_global_tile_block
+         layout root_values1 root_sizes child_sizes)
+      (semantic_second_level_global_tile_block
+         layout root_values2 root_sizes child_sizes).
+Proof.
+  intros layout root_values1 root_values2 root_sizes child_sizes
+         Hvalues Hroot_positive Hchild_positive
+         Hvalues_len Hsizes_len.
+  assert
+    (Hroots :
+       listz_pointwise_le
+         (semantic_quotient_tiles root_values1 root_sizes)
+         (semantic_quotient_tiles root_values2 root_sizes)).
+  {
+    unfold semantic_quotient_tiles.
+    eapply map_div_combine_preserves_pointwise_le; eauto.
+  }
+  assert
+    (Hroots_len :
+       List.length
+         (semantic_quotient_tiles root_values1 root_sizes) =
+       List.length child_sizes).
+  {
+    unfold semantic_quotient_tiles.
+    rewrite List.map_length, combine_length, Hvalues_len.
+    rewrite Nat.min_id.
+    lia.
+  }
+  assert
+    (Hchildren :
+       listz_pointwise_le
+         (semantic_quotient_tiles
+            (semantic_quotient_tiles root_values1 root_sizes)
+            child_sizes)
+         (semantic_quotient_tiles
+            (semantic_quotient_tiles root_values2 root_sizes)
+            child_sizes)).
+  {
+    unfold semantic_quotient_tiles.
+    eapply map_div_combine_preserves_pointwise_le; eauto.
+  }
+  unfold semantic_second_level_global_tile_block.
+  destruct layout.
+  - eapply listz_pointwise_le_app; eauto.
+  - eapply interleave_root_child_tiles_pointwise_le; eauto.
+Qed.
+
+Lemma semantic_second_level_target_schedule_eval :
+  forall layout env_size global_width semantic_rows w recipe
+         envv added point,
+    List.length envv = env_size ->
+    List.length added = (2 * List.length (slbr_root_rows recipe))%nat ->
+    List.length point = stw_point_dim w ->
+    (List.length (slbr_root_rows recipe) <= global_width)%nat ->
+    affine_product
+      (semantic_second_level_target_schedule
+         layout env_size global_width semantic_rows w recipe)
+      (envv ++ added ++ point) =
+    match layout with
+    | SecondLevelGrouped =>
+        List.map
+          (fun pos => nth pos added 0%Z)
+          (second_level_child_positions
+             (List.length (slbr_root_rows recipe))) ++
+        repeat 0%Z
+          (global_width - List.length (slbr_root_rows recipe)) ++
+        List.map
+          (fun pos => nth pos added 0%Z)
+          (second_level_root_positions
+             (List.length (slbr_root_rows recipe))) ++
+        repeat 0%Z
+          (global_width - List.length (slbr_root_rows recipe)) ++
+        affine_product semantic_rows (envv ++ point)
+    | SecondLevelInterleaved =>
+        added ++
+        repeat 0%Z
+          (2 * (global_width - List.length (slbr_root_rows recipe))) ++
+        affine_product semantic_rows (envv ++ point)
+    end.
+Proof.
+  intros layout env_size global_width semantic_rows w recipe
+         envv added point Henv Hadded Hpoint Hwidth.
+  unfold semantic_second_level_target_schedule.
+  destruct layout.
+  - unfold semantic_second_level_grouped_target_schedule.
+    rewrite !affine_product_app.
+    rewrite affine_product_identity_affine_rows_at.
+    2:{
+      apply Forall_forall.
+      intros pos Hin.
+      pose proof (second_level_child_positions_bound _ _ Hin).
+      lia.
+    }
+    assert
+      (Hchild_projection :
+         List.map
+           (fun pos =>
+              nth (env_size + pos)%nat
+                (envv ++ added ++ point) 0%Z)
+           (second_level_child_positions
+              (List.length (slbr_root_rows recipe))) =
+         List.map
+           (fun pos => nth pos added 0%Z)
+           (second_level_child_positions
+              (List.length (slbr_root_rows recipe)))).
+    {
+      apply List.map_ext_in.
+      intros pos Hin.
+      eapply nth_env_added_app.
+      - exact Henv.
+      - pose proof (second_level_child_positions_bound _ _ Hin).
+        rewrite Hadded.
+        exact H.
+    }
+    rewrite Hchild_projection.
+    rewrite affine_product_zero_schedule_rows.
+    rewrite affine_product_identity_affine_rows_at.
+    2:{
+      apply Forall_forall.
+      intros pos Hin.
+      pose proof (second_level_root_positions_bound _ _ Hin).
+      lia.
+    }
+    assert
+      (Hroot_projection :
+         List.map
+           (fun pos =>
+              nth (env_size + pos)%nat
+                (envv ++ added ++ point) 0%Z)
+           (second_level_root_positions
+              (List.length (slbr_root_rows recipe))) =
+         List.map
+           (fun pos => nth pos added 0%Z)
+           (second_level_root_positions
+              (List.length (slbr_root_rows recipe)))).
+    {
+      apply List.map_ext_in.
+      intros pos Hin.
+      eapply nth_env_added_app.
+      - exact Henv.
+      - pose proof (second_level_root_positions_bound _ _ Hin).
+        rewrite Hadded.
+        lia.
+    }
+    rewrite Hroot_projection.
+    rewrite Tiling.lift_affine_function_after_env_eval.
+    2:{ exact Henv. }
+    2:{ exact Hadded. }
+    reflexivity.
+  - unfold semantic_second_level_interleaved_target_schedule.
+    rewrite !affine_product_app.
+    rewrite affine_product_identity_affine_rows_from.
+    2:{ lia. }
+    2:{ rewrite !app_length. lia. }
+    rewrite affine_product_zero_schedule_rows.
+    rewrite Tiling.lift_affine_function_after_env_eval.
+    2:{ exact Henv. }
+    2:{ exact Hadded. }
+    rewrite <- Henv.
+    replace
+      (skipn (List.length envv) (envv ++ added ++ point))
+      with (added ++ point).
+    2:{
+      rewrite skipn_app_le by lia.
+      replace (List.length envv - List.length envv)%nat with O by lia.
+      reflexivity.
+    }
+    rewrite firstn_app.
+    replace
+      (2 * List.length (slbr_root_rows recipe) -
+       List.length added)%nat
+      with O by lia.
+    rewrite <- Hadded.
+    rewrite firstn_all.
+    rewrite app_nil_r.
+    reflexivity.
+Qed.
+
+Lemma parse_second_level_semantic_recipes_nth_error :
+  forall ws recipes n w recipe,
+    parse_second_level_semantic_recipes ws = Some recipes ->
+    nth_error ws n = Some w ->
+    nth_error recipes n = Some recipe ->
+    second_level_band_recipe_of_witness w = Some recipe.
+Proof.
+  intros ws.
+  induction ws as [|w0 ws IH];
+    intros recipes n w recipe Hparse Hw Hrecipe.
+  - destruct n; discriminate.
+  - simpl in Hparse.
+    destruct (second_level_band_recipe_of_witness w0)
+      as [recipe0|] eqn:Hrecipe0; try discriminate.
+    destruct (parse_second_level_semantic_recipes ws)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hparse; subst recipes; clear Hparse.
+    destruct n as [|n].
+    + simpl in Hw, Hrecipe.
+      inversion Hw; inversion Hrecipe; subst.
+      exact Hrecipe0.
+    + simpl in Hw, Hrecipe.
+      eapply IH; eauto.
+Qed.
+
+Lemma parse_second_level_semantic_recipes_length :
+  forall ws recipes,
+    parse_second_level_semantic_recipes ws = Some recipes ->
+    List.length recipes = List.length ws.
+Proof.
+  intros ws.
+  induction ws as [|w ws IH]; intros recipes Hparse.
+  - simpl in Hparse. inversion Hparse. reflexivity.
+  - simpl in Hparse.
+    destruct (second_level_band_recipe_of_witness w)
+      as [recipe|] eqn:Hrecipe; try discriminate.
+    destruct (parse_second_level_semantic_recipes ws)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hparse; subst recipes.
+    simpl.
+    f_equal.
+    eapply IH.
+    reflexivity.
+Qed.
+
+Lemma second_level_band_recipe_spec_links_length :
+  forall point_dim prefix_len links recipe,
+    second_level_band_recipe_spec
+      point_dim prefix_len links recipe ->
+    List.length links =
+      (2 * List.length (slbr_root_rows recipe))%nat.
+Proof.
+  intros point_dim prefix_len links recipe Hspec.
+  induction Hspec; simpl; lia.
+Qed.
+
+Lemma parse_second_level_semantic_recipes_positive :
+  forall ws recipes,
+    parse_second_level_semantic_recipes ws = Some recipes ->
+    Forall
+      (fun w =>
+         Forall (fun link => (0 < tl_tile_size link)%Z)
+           (stw_links w))
+      ws ->
+    Forall
+      (fun recipe =>
+         Forall (fun size => (0 < size)%Z)
+           (slbr_root_sizes recipe) /\
+         Forall (fun size => (0 < size)%Z)
+           (slbr_child_sizes recipe))
+      recipes.
+Proof.
+  intros ws.
+  induction ws as [|w ws IH]; intros recipes Hparse Hpositive.
+  - simpl in Hparse. inversion Hparse. constructor.
+  - inversion Hpositive as [|w0 ws0 Hw Hws]; subst w0 ws0.
+    simpl in Hparse.
+    destruct (second_level_band_recipe_of_witness w)
+      as [recipe|] eqn:Hrecipe; try discriminate.
+    destruct (parse_second_level_semantic_recipes ws)
+      as [rest|] eqn:Hrest; try discriminate.
+    inversion Hparse; subst recipes.
+    constructor.
+    + destruct
+        (second_level_band_recipe_of_witness_sound _ _ Hrecipe)
+        as [_ Hspec].
+      eapply second_level_band_recipe_spec_positive_sizes; eauto.
+    + eapply IH; eauto.
+Qed.
+
+Lemma second_level_semantic_schedules_match_nth_error :
+  forall layout env_size global_width
+         before_pis after_pis ws recipes semantic_rows
+         n before_pi after_pi w recipe rows,
+    second_level_semantic_schedules_match
+      layout env_size global_width
+      before_pis after_pis ws recipes semantic_rows ->
+    nth_error before_pis n = Some before_pi ->
+    nth_error after_pis n = Some after_pi ->
+    nth_error ws n = Some w ->
+    nth_error recipes n = Some recipe ->
+    nth_error semantic_rows n = Some rows ->
+    schedule_matches_with_symmetric_trailing_zero_padding
+      rows (Tiling.PL.pi_schedule before_pi) /\
+    schedule_matches_with_symmetric_trailing_zero_padding
+      (semantic_second_level_target_schedule
+         layout env_size global_width rows w recipe)
+      (Tiling.PL.pi_schedule after_pi).
+Proof.
+  intros layout env_size global_width
+         before_pis after_pis ws recipes semantic_rows n.
+  revert before_pis after_pis ws recipes semantic_rows.
+  induction n as [|n IH];
+    intros before_pis after_pis ws recipes semantic_rows
+           before_pi after_pi w recipe rows
+           Hmatch Hbefore Hafter Hw Hrecipe Hrows;
+    inversion Hmatch; subst; simpl in *; try discriminate.
+  - inversion Hbefore; inversion Hafter; inversion Hw;
+      inversion Hrecipe; inversion Hrows; subst.
+    split; assumption.
+  - eapply IH; eauto.
+Qed.
+
+Lemma second_level_band_recipe_root_rows_exact_cols :
+  forall point_dim prefix_len param_dim links recipe,
+    second_level_band_recipe_spec
+      point_dim prefix_len links recipe ->
+    well_formed_tile_links prefix_len point_dim links ->
+    Forall
+      (fun link =>
+         List.length (ae_param_coeffs (tl_expr link)) = param_dim)
+      links ->
+    exact_listzzs_cols
+      (param_dim + point_dim)%nat
+      (slbr_root_rows recipe).
+Proof.
+  intros point_dim prefix_len param_dim links recipe Hspec.
+  induction Hspec;
+    intros Hwf Hparams.
+  - unfold exact_listzzs_cols.
+    intros coeffs c row Hin.
+    contradiction.
+  - simpl in Hwf.
+    destruct Hwf as [Hroot_vars [Hchild_vars Hwf_rest]].
+    inversion Hparams as
+      [|root0 links0 Hroot_param Hparams_tail];
+      subst root0 links0.
+    inversion Hparams_tail as
+      [|child0 links0 Hchild_param Hparams_rest];
+      subst child0 links0.
+    unfold exact_listzzs_cols.
+    intros coeffs c row Hin Heq.
+    simpl in Hin.
+    destruct Hin as [Hin | Hin].
+    + subst row.
+      inversion Heq; subst coeffs c.
+      unfold schedule_row_of_tile_link_base.
+      simpl.
+      rewrite app_length, Hroot_param, skipn_length, Hroot_vars.
+      lia.
+    + eapply IHHspec.
+      * replace (prefix_len + 2)%nat
+          with (S (S prefix_len)) by lia.
+        exact Hwf_rest.
+      * exact Hparams_rest.
+      * exact Hin.
+      * exact Heq.
+Qed.
+
+Lemma second_level_semantic_rows_exact_cols :
+  forall env_size before_pis ws recipes mask semantic_rows,
+    parse_second_level_semantic_recipes ws = Some recipes ->
+    compact_semantic_schedules
+      env_size before_pis (List.map slbr_root_rows recipes) mask =
+      Some semantic_rows ->
+    Forall
+      (Tiling.wf_statement_tiling_witness_with_param_dim env_size)
+      ws ->
+    Forall2
+      (fun before_pi w =>
+         stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Forall2
+      (fun w rows =>
+         exact_listzzs_cols
+           (env_size + stw_point_dim w)%nat rows)
+      ws semantic_rows.
+Proof.
+  intros env_size before_pis ws.
+  revert before_pis.
+  induction ws as [|w ws IH];
+    intros before_pis recipes mask semantic_rows
+           Hrecipes Hcompact Hwf Hdepths.
+  - simpl in Hrecipes.
+    inversion Hrecipes; subst recipes.
+    inversion Hdepths; subst before_pis.
+    simpl in Hcompact.
+    inversion Hcompact; constructor.
+  - destruct before_pis as [|before_pi before_pis].
+    { inversion Hdepths. }
+    inversion Hwf as [|w0 ws0 Hwf_w Hwf_ws]; subst w0 ws0.
+    inversion Hdepths as
+      [|before_pi0 w0 before_pis0 ws0 Hdepth Hdepths_rest];
+      subst before_pi0 w0 before_pis0 ws0.
+    simpl in Hrecipes.
+    destruct (second_level_band_recipe_of_witness w)
+      as [recipe|] eqn:Hrecipe; try discriminate.
+    destruct (parse_second_level_semantic_recipes ws)
+      as [rest_recipes|] eqn:Hrest_recipes; try discriminate.
+    inversion Hrecipes; subst recipes.
+    simpl in Hcompact.
+    destruct
+      (compact_semantic_schedules
+         env_size before_pis
+         (List.map slbr_root_rows rest_recipes) mask)
+      as [rest_rows|] eqn:Hrest_rows; try discriminate.
+    inversion Hcompact; subst semantic_rows.
+    constructor.
+    + destruct Hwf_w as [Hwf_links Hparams].
+      destruct
+        (second_level_band_recipe_of_witness_sound _ _ Hrecipe)
+        as [_ Hspec].
+      rewrite Hdepth.
+      eapply compact_semantic_schedule_exact_cols.
+      rewrite <- Hdepth.
+      eapply second_level_band_recipe_root_rows_exact_cols
+        with (prefix_len := O)
+             (links := stw_links w).
+      * exact Hspec.
+      * exact Hwf_links.
+      * exact Hparams.
+    + eapply IH; eauto using eq_refl.
+Qed.
+
+Lemma ordinary_semantic_rows_exact_cols :
+  forall env_size before_pis ws data mask semantic_rows,
+    parse_ordinary_semantic_data ws = Some data ->
+    compact_semantic_schedules
+      env_size before_pis (List.map fst data) mask =
+      Some semantic_rows ->
+    Forall
+      (Tiling.wf_statement_tiling_witness_with_param_dim env_size)
+      ws ->
+    Forall2
+      (fun before_pi w =>
+         stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Forall2
+      (fun w rows =>
+         exact_listzzs_cols
+           (env_size + stw_point_dim w)%nat rows)
+      ws semantic_rows.
+Proof.
+  intros env_size before_pis ws.
+  revert before_pis.
+  induction ws as [|w ws IH];
+    intros before_pis data mask semantic_rows
+           Hdata Hcompact Hwf Hdepths.
+  - simpl in Hdata.
+    inversion Hdata; subst data.
+    inversion Hdepths; subst before_pis.
+    simpl in Hcompact.
+    inversion Hcompact; constructor.
+  - destruct before_pis as [|before_pi before_pis].
+    { inversion Hdepths. }
+    inversion Hwf as [|w0 ws0 Hwf_w Hwf_ws]; subst w0 ws0.
+    inversion Hdepths as
+      [|before_pi0 w0 before_pis0 ws0 Hdepth Hdepths_rest];
+      subst before_pi0 w0 before_pis0 ws0.
+    simpl in Hdata.
+    destruct (schedule_rows_of_links w) as [raw|] eqn:Hraw;
+      try discriminate.
+    destruct (parse_ordinary_semantic_data ws)
+      as [rest_data|] eqn:Hrest_data; try discriminate.
+    inversion Hdata; subst data.
+    simpl in Hcompact.
+    destruct
+      (compact_semantic_schedules
+         env_size before_pis (List.map fst rest_data) mask)
+      as [rest_rows|] eqn:Hrest_rows; try discriminate.
+    inversion Hcompact; subst semantic_rows.
+    constructor.
+    + pose proof
+        (schedule_rows_of_links_exact_cols
+           env_size w raw Hraw Hwf_w)
+        as Hraw_cols.
+      rewrite Hdepth in Hraw_cols.
+      rewrite Hdepth.
+      eapply compact_semantic_schedule_exact_cols.
+      exact Hraw_cols.
+    + eapply IH; eauto using eq_refl.
+Qed.
+
+Lemma composed_semantic_rows_exact_cols :
+  forall env_size before_pis after_pis ws lifted_rows,
+    Forall2 Tiling.after_matches_tiling_witness after_pis ws ->
+    Forall2
+      (fun before_pi w =>
+         stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Forall2
+      (fun w lifted =>
+         exact_listzzs_cols
+           (env_size + List.length (stw_links w) +
+            stw_point_dim w)%nat
+           lifted)
+      ws lifted_rows ->
+    Forall2
+      (fun pi lifted =>
+         exact_listzzs_cols
+           (env_size + Tiling.PL.pi_depth_ext pi)%nat
+           lifted)
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+         env_size before_pis after_pis ws)
+      lifted_rows.
+Proof.
+  intros env_size before_pis.
+  induction before_pis as [|before_pi before_pis IH];
+    intros after_pis ws lifted_rows Hwits Hdepths Hcols.
+  - inversion Hdepths; subst ws.
+    inversion Hwits; subst after_pis.
+    inversion Hcols; subst lifted_rows.
+    constructor.
+  - destruct after_pis as [|after_pi after_pis];
+      destruct ws as [|w ws];
+      inversion Hdepths; inversion Hwits; subst.
+    inversion Hcols; subst.
+    simpl.
+    constructor.
+    + match goal with
+      | Hwit : Tiling.after_matches_tiling_witness after_pi w |- _ =>
+          unfold Tiling.after_matches_tiling_witness in Hwit;
+          destruct Hwit as [Hpw Hafter_depth]
+      end.
+      simpl.
+      rewrite <- Hafter_depth, Hpw.
+      unfold witness_current_point_dim,
+             witness_base_point_dim, witness_added_dims.
+      simpl.
+      replace
+        (env_size +
+         (stw_point_dim w + List.length (stw_links w)))%nat
+        with
+        (env_size + List.length (stw_links w) +
+         stw_point_dim w)%nat by lia.
+      exact H1.
+    + eapply IH; eauto.
+Qed.
+
+Lemma second_level_semantic_band_shape_reversal_bridge :
+  forall before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv,
+    List.length before_ctxt = List.length envv ->
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = true ->
+    second_level_semantic_band_shape_property_with_witness
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws shape ->
+    lift_semantic_schedules_for_tiling
+      (List.length before_ctxt) ws (slsbs_rows shape) =
+      Some lifted_rows ->
+    semantic_rows_reversal_bridge
+      envv before_pis after_pis ws lifted_rows.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv Hlen_env Hsource Hshape Hlift.
+  unfold second_level_semantic_band_shape_property_with_witness in Hshape.
+  cbn in Hshape.
+  destruct Hshape as
+    [_ [_ [Hrecipes [Hglobal_root_sizes
+      [Hglobal_child_sizes [Hmask [Hcompact
+      [_ [Hglobal_root_width
+      [Hglobal_child_width Hschedules]]]]]]]]]].
+  pose proof
+    (TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hsource)
+    as [Hprog [_ [Hwf_ws [Hpositive_ws Hdepths]]]].
+  assert
+    (Hwf_ws_env :
+       Forall
+         (Tiling.wf_statement_tiling_witness_with_param_dim
+            (List.length envv))
+         ws).
+  {
+    rewrite <- Hlen_env.
+    exact Hwf_ws.
+  }
+  assert
+    (Hroot_prefixes :
+       Forall
+         (fun local =>
+            prefix_sizes local (slsbs_global_root_sizes shape))
+         (List.map slbr_root_sizes (slsbs_recipes shape))).
+  {
+    eapply infer_global_prefix_sizes_sound.
+    exact Hglobal_root_sizes.
+  }
+  assert
+    (Hchild_prefixes :
+       Forall
+         (fun local =>
+            prefix_sizes local (slsbs_global_child_sizes shape))
+         (List.map slbr_child_sizes (slsbs_recipes shape))).
+  {
+    eapply infer_global_prefix_sizes_sound.
+    exact Hglobal_child_sizes.
+  }
+  pose proof
+    (parse_second_level_semantic_recipes_positive
+       ws (slsbs_recipes shape) Hrecipes Hpositive_ws)
+    as Hrecipes_positive.
+  assert
+    (Hglobal_root_positive :
+       Forall (fun size => (0 < size)%Z)
+         (slsbs_global_root_sizes shape)).
+  {
+    eapply infer_global_prefix_sizes_positive.
+    - exact Hglobal_root_sizes.
+    - apply Forall_forall.
+      intros local Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [recipe [Heq Hin]].
+      subst local.
+      eapply Forall_forall in Hrecipes_positive; eauto.
+      tauto.
+  }
+  assert
+    (Hglobal_child_positive :
+       Forall (fun size => (0 < size)%Z)
+         (slsbs_global_child_sizes shape)).
+  {
+    eapply infer_global_prefix_sizes_positive.
+    - exact Hglobal_child_sizes.
+    - apply Forall_forall.
+      intros local Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [recipe [Heq Hin]].
+      subst local.
+      eapply Forall_forall in Hrecipes_positive; eauto.
+      tauto.
+  }
+  destruct
+    (lift_semantic_schedules_for_tiling_length
+       (List.length before_ctxt) ws (slsbs_rows shape)
+       lifted_rows Hlift)
+    as [Hlifted_len Hsemantic_rows_len].
+  assert
+    (Hrecipes_len :
+       List.length (slsbs_recipes shape) = List.length ws).
+  {
+    eapply parse_second_level_semantic_recipes_length.
+    exact Hrecipes.
+  }
+  unfold semantic_rows_reversal_bridge.
+  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
+  destruct
+    (flatten_instrs_ext_from_after_member_nth_data_source
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       ws envv flat ip1
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
+    as [before_pi1 [after_pi1 [w1
+         [Hbefore1 [Hafter1 [Hw1
+         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct
+    (flatten_instrs_ext_from_after_member_nth_data_source
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       ws envv flat ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
+    as [before_pi2 [after_pi2 [w2
+         [Hbefore2 [Hafter2 [Hw2
+         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+  assert
+    (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
+  {
+    apply nth_error_Some. rewrite Hw1. discriminate.
+  }
+  assert
+    (Hn2 : (Tiling.PL.ip_nth_ext ip2 < List.length ws)%nat).
+  {
+    apply nth_error_Some. rewrite Hw2. discriminate.
+  }
+  destruct
+    (nth_error (slsbs_recipes shape) (Tiling.PL.ip_nth_ext ip1))
+    as [recipe1|] eqn:Hrecipe1.
+  2:{ exfalso. apply nth_error_None in Hrecipe1. lia. }
+  destruct
+    (nth_error (slsbs_recipes shape) (Tiling.PL.ip_nth_ext ip2))
+    as [recipe2|] eqn:Hrecipe2.
+  2:{ exfalso. apply nth_error_None in Hrecipe2. lia. }
+  pose proof
+    (parse_second_level_semantic_recipes_nth_error
+       ws (slsbs_recipes shape) (Tiling.PL.ip_nth_ext ip1)
+       w1 recipe1 Hrecipes Hw1 Hrecipe1)
+    as Hrecipe_parse1.
+  pose proof
+    (parse_second_level_semantic_recipes_nth_error
+       ws (slsbs_recipes shape) (Tiling.PL.ip_nth_ext ip2)
+       w2 recipe2 Hrecipes Hw2 Hrecipe2)
+    as Hrecipe_parse2.
+  destruct
+    (second_level_band_recipe_of_witness_sound
+       w1 recipe1 Hrecipe_parse1)
+    as [Hlinks_nonempty1 Hspec1].
+  destruct
+    (second_level_band_recipe_of_witness_sound
+       w2 recipe2 Hrecipe_parse2)
+    as [Hlinks_nonempty2 Hspec2].
+  destruct (second_level_band_recipe_spec_lengths _ _ _ _ Hspec1)
+    as [Hroot_len1 Hchild_len1].
+  destruct (second_level_band_recipe_spec_lengths _ _ _ _ Hspec2)
+    as [Hroot_len2 Hchild_len2].
+  destruct
+    (second_level_band_recipe_spec_positive_sizes
+       _ _ _ _ Hspec1 Hpositive1)
+    as [Hroot_positive1 Hchild_positive1].
+  destruct
+    (second_level_band_recipe_spec_positive_sizes
+       _ _ _ _ Hspec2 Hpositive2)
+    as [Hroot_positive2 Hchild_positive2].
+  assert
+    (Hraw_map1 :
+       nth_error
+         (List.map slbr_root_rows (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip1) =
+       Some (slbr_root_rows recipe1)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe1.
+  }
+  assert
+    (Hraw_map2 :
+       nth_error
+         (List.map slbr_root_rows (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip2) =
+       Some (slbr_root_rows recipe2)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe2.
+  }
+  assert
+    (Hroot_sizes_map1 :
+       nth_error
+         (List.map slbr_root_sizes (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip1) =
+       Some (slbr_root_sizes recipe1)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe1.
+  }
+  assert
+    (Hroot_sizes_map2 :
+       nth_error
+         (List.map slbr_root_sizes (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip2) =
+       Some (slbr_root_sizes recipe2)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe2.
+  }
+  assert
+    (Hchild_sizes_map1 :
+       nth_error
+         (List.map slbr_child_sizes (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip1) =
+       Some (slbr_child_sizes recipe1)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe1.
+  }
+  assert
+    (Hchild_sizes_map2 :
+       nth_error
+         (List.map slbr_child_sizes (slsbs_recipes shape))
+         (Tiling.PL.ip_nth_ext ip2) =
+       Some (slbr_child_sizes recipe2)).
+  {
+    eapply Tiling.nth_error_map_some.
+    exact Hrecipe2.
+  }
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map slbr_root_sizes (slsbs_recipes shape))
+       (Tiling.PL.ip_nth_ext ip1)
+       (slbr_root_sizes recipe1)
+       Hroot_prefixes Hroot_sizes_map1)
+    as Hroot_prefix1.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map slbr_root_sizes (slsbs_recipes shape))
+       (Tiling.PL.ip_nth_ext ip2)
+       (slbr_root_sizes recipe2)
+       Hroot_prefixes Hroot_sizes_map2)
+    as Hroot_prefix2.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map slbr_child_sizes (slsbs_recipes shape))
+       (Tiling.PL.ip_nth_ext ip1)
+       (slbr_child_sizes recipe1)
+       Hchild_prefixes Hchild_sizes_map1)
+    as Hchild_prefix1.
+  pose proof
+    (Tiling.Forall_nth_error
+       _ _
+       (List.map slbr_child_sizes (slsbs_recipes shape))
+       (Tiling.PL.ip_nth_ext ip2)
+       (slbr_child_sizes recipe2)
+       Hchild_prefixes Hchild_sizes_map2)
+    as Hchild_prefix2.
+  destruct
+    (nth_error (slsbs_rows shape) (Tiling.PL.ip_nth_ext ip1))
+    as [semantic_rows1|] eqn:Hsemantic_rows1.
+  2:{ exfalso. apply nth_error_None in Hsemantic_rows1. lia. }
+  destruct
+    (nth_error (slsbs_rows shape) (Tiling.PL.ip_nth_ext ip2))
+    as [semantic_rows2|] eqn:Hsemantic_rows2.
+  2:{ exfalso. apply nth_error_None in Hsemantic_rows2. lia. }
+  destruct
+    (nth_error lifted_rows (Tiling.PL.ip_nth_ext ip1))
+    as [lifted1|] eqn:Hlifted1.
+  2:{ exfalso. apply nth_error_None in Hlifted1. lia. }
+  destruct
+    (nth_error lifted_rows (Tiling.PL.ip_nth_ext ip2))
+    as [lifted2|] eqn:Hlifted2.
+  2:{ exfalso. apply nth_error_None in Hlifted2. lia. }
+  pose proof
+    (compact_semantic_schedules_nth_error
+       (List.length before_ctxt) before_pis
+       (List.map slbr_root_rows (slsbs_recipes shape))
+       (slsbs_mask shape) (slsbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 (slbr_root_rows recipe1) semantic_rows1
+       Hcompact Hbefore1 Hraw_map1 Hsemantic_rows1)
+    as Hsemantic_rows_def1.
+  pose proof
+    (compact_semantic_schedules_nth_error
+       (List.length before_ctxt) before_pis
+       (List.map slbr_root_rows (slsbs_recipes shape))
+       (slsbs_mask shape) (slsbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 (slbr_root_rows recipe2) semantic_rows2
+       Hcompact Hbefore2 Hraw_map2 Hsemantic_rows2)
+    as Hsemantic_rows_def2.
+  pose proof
+    (lift_semantic_schedules_for_tiling_nth_error
+       (List.length before_ctxt) ws (slsbs_rows shape) lifted_rows
+       (Tiling.PL.ip_nth_ext ip1) w1 semantic_rows1 lifted1
+       Hlift Hw1 Hsemantic_rows1 Hlifted1)
+    as Hlifted_def1.
+  pose proof
+    (lift_semantic_schedules_for_tiling_nth_error
+       (List.length before_ctxt) ws (slsbs_rows shape) lifted_rows
+       (Tiling.PL.ip_nth_ext ip2) w2 semantic_rows2 lifted2
+       Hlift Hw2 Hsemantic_rows2 Hlifted2)
+    as Hlifted_def2.
+  destruct
+    (second_level_semantic_schedules_match_nth_error
+       (slsbs_layout shape)
+       (List.length before_ctxt)
+       (List.length (slsbs_mask shape))
+       before_pis after_pis ws (slsbs_recipes shape)
+       (slsbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1 w1 recipe1 semantic_rows1
+       Hschedules Hbefore1 Hafter1 Hw1 Hrecipe1 Hsemantic_rows1)
+    as [Hbefore_match1 Hafter_match1].
+  destruct
+    (second_level_semantic_schedules_match_nth_error
+       (slsbs_layout shape)
+       (List.length before_ctxt)
+       (List.length (slsbs_mask shape))
+       before_pis after_pis ws (slsbs_recipes shape)
+       (slsbs_rows shape)
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2 w2 recipe2 semantic_rows2
+       Hschedules Hbefore2 Hafter2 Hw2 Hrecipe2 Hsemantic_rows2)
+    as [Hbefore_match2 Hafter_match2].
+  pose proof
+    (Tiling.nth_error_compose_tiling_pinstrs_ext_from_after
+       (List.length envv) before_pis after_pis ws
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1 w1 Hbefore1 Hafter1 Hw1)
+    as Hcomposed1.
+  pose proof
+    (Tiling.nth_error_compose_tiling_pinstrs_ext_from_after
+       (List.length envv) before_pis after_pis ws
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2 w2 Hbefore2 Hafter2 Hw2)
+    as Hcomposed2.
+  pose proof
+    (Tiling.tiling_rel_pprog_structure_source_nth
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       (List.map Tiling.compiled_pinstr_tiling_witness ws)
+       (Tiling.PL.ip_nth_ext ip1)
+       before_pi1 after_pi1
+       (Tiling.compiled_pinstr_tiling_witness w1)
+       Hprog Hbefore1 Hafter1
+       (Tiling.nth_error_map_some
+          _ _ Tiling.compiled_pinstr_tiling_witness
+          ws (Tiling.PL.ip_nth_ext ip1) w1 Hw1))
+    as Hstmt1.
+  pose proof
+    (Tiling.tiling_rel_pprog_structure_source_nth
+       before_pis before_ctxt before_vars
+       after_pis before_ctxt before_vars
+       (List.map Tiling.compiled_pinstr_tiling_witness ws)
+       (Tiling.PL.ip_nth_ext ip2)
+       before_pi2 after_pi2
+       (Tiling.compiled_pinstr_tiling_witness w2)
+       Hprog Hbefore2 Hafter2
+       (Tiling.nth_error_map_some
+          _ _ Tiling.compiled_pinstr_tiling_witness
+          ws (Tiling.PL.ip_nth_ext ip2) w2 Hw2))
+    as Hstmt2.
+  pose proof
+    (tiling_rel_pinstr_structure_source_after_matches
+       (List.length before_ctxt) before_pi1 after_pi1 w1
+       Hstmt1 Hpoint_depth1)
+    as Hafter_wit1.
+  pose proof
+    (tiling_rel_pinstr_structure_source_after_matches
+       (List.length before_ctxt) before_pi2 after_pi2 w2
+       Hstmt2 Hpoint_depth2)
+    as Hafter_wit2.
+  destruct Hafter_wit1 as [Hafter_pw1 Hafter_wit_depth1].
+  destruct Hafter_wit2 as [Hafter_pw2 Hafter_wit_depth2].
+  assert
+    (Hafter_depth1 :
+       Tiling.PL.pi_depth after_pi1 =
+       (Tiling.PL.pi_depth before_pi1 +
+        List.length (stw_links w1))%nat).
+  {
+    unfold Tiling.tiling_rel_pinstr_structure_source in Hstmt1.
+    tauto.
+  }
+  assert
+    (Hafter_depth2 :
+       Tiling.PL.pi_depth after_pi2 =
+       (Tiling.PL.pi_depth before_pi2 +
+        List.length (stw_links w2))%nat).
+  {
+    unfold Tiling.tiling_rel_pinstr_structure_source in Hstmt2.
+    tauto.
+  }
+  set
+    (added1 :=
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+  set
+    (point1 :=
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+  set
+    (added2 :=
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+  set
+    (point2 :=
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+  assert (Hadded_len1 : List.length added1 = List.length (stw_links w1)).
+  {
+    subst added1.
+    eapply Tiling.tiled_added_part_length
+      with (point_dim := stw_point_dim w1).
+    rewrite Hidx_len1, Hafter_depth1, <- Hpoint_depth1.
+    lia.
+  }
+  assert (Hadded_len2 : List.length added2 = List.length (stw_links w2)).
+  {
+    subst added2.
+    eapply Tiling.tiled_added_part_length
+      with (point_dim := stw_point_dim w2).
+    rewrite Hidx_len2, Hafter_depth2, <- Hpoint_depth2.
+    lia.
+  }
+  assert (Hpoint_len1 : List.length point1 = stw_point_dim w1).
+  {
+    subst point1.
+    eapply Tiling.tiled_point_part_length
+      with (added_dims := List.length (stw_links w1)).
+    rewrite Hidx_len1, Hafter_depth1, <- Hpoint_depth1.
+    lia.
+  }
+  assert (Hpoint_len2 : List.length point2 = stw_point_dim w2).
+  {
+    subst point2.
+    eapply Tiling.tiled_point_part_length
+      with (added_dims := List.length (stw_links w2)).
+    rewrite Hidx_len2, Hafter_depth2, <- Hpoint_depth2.
+    lia.
+  }
+  assert
+    (Hidx_split1 :
+       Tiling.PL.ip_index_ext ip1 = envv ++ added1 ++ point1).
+  {
+    subst added1 point1.
+    transitivity
+      (firstn (List.length envv) (Tiling.PL.ip_index_ext ip1) ++
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1) ++
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w1))
+         (Tiling.PL.ip_index_ext ip1)).
+    - apply Tiling.tiled_index_split.
+    - rewrite Hpref1. reflexivity.
+  }
+  assert
+    (Hidx_split2 :
+       Tiling.PL.ip_index_ext ip2 = envv ++ added2 ++ point2).
+  {
+    subst added2 point2.
+    transitivity
+      (firstn (List.length envv) (Tiling.PL.ip_index_ext ip2) ++
+       Tiling.tiled_added_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2) ++
+       Tiling.tiled_point_part
+         (List.length envv) (List.length (stw_links w2))
+         (Tiling.PL.ip_index_ext ip2)).
+    - apply Tiling.tiled_index_split.
+    - rewrite Hpref2. reflexivity.
+  }
+  unfold Tiling.compose_tiling_pinstr_ext in Hbel1, Hbel2.
+  destruct Hbel1 as
+    [Hafter_dom1 [_ [_ [Hts11 [Hts21 [_ _]]]]]].
+  destruct Hbel2 as
+    [Hafter_dom2 [_ [_ [Hts12 [Hts22 [_ _]]]]]].
+  assert
+    (Hts11_old :
+       Tiling.PL.ip_time_stamp1_ext ip1 =
+       affine_product (Tiling.PL.pi_schedule before_pi1)
+         (envv ++ point1)).
+  {
+    rewrite Hts11.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    rewrite Hidx_split1.
+    unfold Tiling.lift_schedule_after_env.
+    eapply Tiling.lift_affine_function_after_env_eval.
+    - reflexivity.
+    - exact Hadded_len1.
+  }
+  assert
+    (Hts12_old :
+       Tiling.PL.ip_time_stamp1_ext ip2 =
+       affine_product (Tiling.PL.pi_schedule before_pi2)
+         (envv ++ point2)).
+  {
+    rewrite Hts12.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    rewrite Hidx_split2.
+    unfold Tiling.lift_schedule_after_env.
+    eapply Tiling.lift_affine_function_after_env_eval.
+    - reflexivity.
+    - exact Hadded_len2.
+  }
+  assert
+    (Hts21_after :
+       Tiling.PL.ip_time_stamp2_ext ip1 =
+       affine_product (Tiling.PL.pi_schedule after_pi1)
+         (Tiling.PL.ip_index_ext ip1)).
+  {
+    rewrite Hts21.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    reflexivity.
+  }
+  assert
+    (Hts22_after :
+       Tiling.PL.ip_time_stamp2_ext ip2 =
+       affine_product (Tiling.PL.pi_schedule after_pi2)
+         (Tiling.PL.ip_index_ext ip2)).
+  {
+    rewrite Hts22.
+    cbn [Tiling.compose_tiling_pinstr_ext].
+    reflexivity.
+  }
+  assert
+    (Hstmt1_env :
+       Tiling.tiling_rel_pinstr_structure_source
+         (List.length envv) before_pi1 after_pi1
+         (Tiling.compiled_pinstr_tiling_witness w1)).
+  {
+    rewrite <- Hlen_env. exact Hstmt1.
+  }
+  assert
+    (Hstmt2_env :
+       Tiling.tiling_rel_pinstr_structure_source
+         (List.length envv) before_pi2 after_pi2
+         (Tiling.compiled_pinstr_tiling_witness w2)).
+  {
+    rewrite <- Hlen_env. exact Hstmt2.
+  }
+  destruct Hwf_stmt1 as [Hwf_stmt1 Hparams1].
+  destruct Hwf_stmt2 as [Hwf_stmt2 Hparams2].
+  assert
+    (Hadded_eq1 :
+       added1 = eval_tile_links [] point1 envv (stw_links w1)).
+  {
+    pose proof
+      (Tiling.tiling_rel_pinstr_structure_source_domain_complete
+         envv before_pi1 after_pi1
+         (Tiling.compiled_pinstr_tiling_witness w1)
+         added1 point1 Hstmt1_env
+         (Tiling.wf_compiled_pinstr_tiling_witness w1)
+         (Tiling.compiled_pinstr_tiling_witness_matches w1)
+         Hadded_len1 Hpoint_len1
+         (conj Hwf_stmt1 Hparams1) Hpositive1)
+      as Hcomplete.
+    rewrite Hidx_split1 in Hafter_dom1.
+    specialize (Hcomplete Hafter_dom1).
+    tauto.
+  }
+  assert
+    (Hadded_eq2 :
+       added2 = eval_tile_links [] point2 envv (stw_links w2)).
+  {
+    pose proof
+      (Tiling.tiling_rel_pinstr_structure_source_domain_complete
+         envv before_pi2 after_pi2
+         (Tiling.compiled_pinstr_tiling_witness w2)
+         added2 point2 Hstmt2_env
+         (Tiling.wf_compiled_pinstr_tiling_witness w2)
+         (Tiling.compiled_pinstr_tiling_witness_matches w2)
+         Hadded_len2 Hpoint_len2
+         (conj Hwf_stmt2 Hparams2) Hpositive2)
+      as Hcomplete.
+    rewrite Hidx_split2 in Hafter_dom2.
+    specialize (Hcomplete Hafter_dom2).
+    tauto.
+  }
+  set (roots1 := second_level_root_tiles recipe1 envv point1).
+  set (children1 := second_level_child_tiles recipe1 envv point1).
+  set (roots2 := second_level_root_tiles recipe2 envv point2).
+  set (children2 := second_level_child_tiles recipe2 envv point2).
+  assert
+    (Hadded_tiles1 :
+       added1 = interleave_root_child_tiles roots1 children1).
+  {
+    rewrite Hadded_eq1.
+    subst roots1 children1.
+    change
+      (eval_tile_links [] point1 envv (stw_links w1) =
+       [] ++
+       interleave_root_child_tiles
+         (second_level_root_tiles recipe1 envv point1)
+         (second_level_child_tiles recipe1 envv point1)).
+    exact
+      (eval_tile_links_from_second_level_recipe_spec
+         _ _ _ _ Hspec1 [] point1 envv eq_refl Hpoint_len1
+         Hwf_stmt1 Hparams1).
+  }
+  assert
+    (Hadded_tiles2 :
+       added2 = interleave_root_child_tiles roots2 children2).
+  {
+    rewrite Hadded_eq2.
+    subst roots2 children2.
+    change
+      (eval_tile_links [] point2 envv (stw_links w2) =
+       [] ++
+       interleave_root_child_tiles
+         (second_level_root_tiles recipe2 envv point2)
+         (second_level_child_tiles recipe2 envv point2)).
+    exact
+      (eval_tile_links_from_second_level_recipe_spec
+         _ _ _ _ Hspec2 [] point2 envv eq_refl Hpoint_len2
+         Hwf_stmt2 Hparams2).
+  }
+  assert
+    (Hlinks_len1 :
+       List.length (stw_links w1) =
+       (2 * List.length (slbr_root_rows recipe1))%nat).
+  {
+    eapply second_level_band_recipe_spec_links_length.
+    exact Hspec1.
+  }
+  assert
+    (Hlinks_len2 :
+       List.length (stw_links w2) =
+       (2 * List.length (slbr_root_rows recipe2))%nat).
+  {
+    eapply second_level_band_recipe_spec_links_length.
+    exact Hspec2.
+  }
+  assert
+    (Hroots_children1 :
+       List.length roots1 = List.length children1).
+  {
+    subst roots1 children1.
+    unfold second_level_child_tiles.
+    rewrite List.map_length, combine_length.
+    rewrite second_level_root_tiles_length by exact Hroot_len1.
+    lia.
+  }
+  assert
+    (Hroots_children2 :
+       List.length roots2 = List.length children2).
+  {
+    subst roots2 children2.
+    unfold second_level_child_tiles.
+    rewrite List.map_length, combine_length.
+    rewrite second_level_root_tiles_length by exact Hroot_len2.
+    lia.
+  }
+  assert
+    (Hroots_len_rows1 :
+       List.length roots1 =
+       List.length (slbr_root_rows recipe1)).
+  {
+    subst roots1.
+    rewrite second_level_root_tiles_length by exact Hroot_len1.
+    lia.
+  }
+  assert
+    (Hroots_len_rows2 :
+       List.length roots2 =
+       List.length (slbr_root_rows recipe2)).
+  {
+    subst roots2.
+    rewrite second_level_root_tiles_length by exact Hroot_len2.
+    lia.
+  }
+  set
+    (raw_values1 :=
+       affine_product
+         (Tiling.PL.pad_schedule_to_len
+            (List.length envv + stw_point_dim w1)
+            (List.length (slsbs_mask shape))
+            (slbr_root_rows recipe1))
+         (envv ++ point1)).
+  set
+    (raw_values2 :=
+       affine_product
+         (Tiling.PL.pad_schedule_to_len
+            (List.length envv + stw_point_dim w2)
+            (List.length (slsbs_mask shape))
+            (slbr_root_rows recipe2))
+         (envv ++ point2)).
+  set
+    (semantic_values1 :=
+       affine_product semantic_rows1 (envv ++ point1)).
+  set
+    (semantic_values2 :=
+       affine_product semantic_rows2 (envv ++ point2)).
+  set
+    (global_tiles1 :=
+       semantic_second_level_global_tile_block
+         (slsbs_layout shape) raw_values1
+         (slsbs_global_root_sizes shape)
+         (slsbs_global_child_sizes shape)).
+  set
+    (global_tiles2 :=
+       semantic_second_level_global_tile_block
+         (slsbs_layout shape) raw_values2
+         (slsbs_global_root_sizes shape)
+         (slsbs_global_child_sizes shape)).
+  assert
+    (Hraw_bound1 :
+       (List.length (slbr_root_rows recipe1) <=
+        List.length (slsbs_mask shape))%nat).
+  {
+    rewrite Hmask.
+    unfold global_semantic_schedule_mask.
+    rewrite List.map_length, seq_length.
+    eapply max_schedule_length_ge_nth_error.
+    exact Hraw_map1.
+  }
+  assert
+    (Hraw_bound2 :
+       (List.length (slbr_root_rows recipe2) <=
+        List.length (slsbs_mask shape))%nat).
+  {
+    rewrite Hmask.
+    unfold global_semantic_schedule_mask.
+    rewrite List.map_length, seq_length.
+    eapply max_schedule_length_ge_nth_error.
+    exact Hraw_map2.
+  }
+  assert
+    (Hsemantic_eval1 :
+       semantic_values1 =
+       select_by_mask (slsbs_mask shape) raw_values1).
+  {
+    subst semantic_values1 raw_values1.
+    rewrite Hsemantic_rows_def1.
+    unfold compact_semantic_schedule.
+    rewrite affine_product_select_by_mask.
+    rewrite Hlen_env.
+    rewrite <- Hpoint_depth1.
+    reflexivity.
+  }
+  assert
+    (Hsemantic_eval2 :
+       semantic_values2 =
+       select_by_mask (slsbs_mask shape) raw_values2).
+  {
+    subst semantic_values2 raw_values2.
+    rewrite Hsemantic_rows_def2.
+    unfold compact_semantic_schedule.
+    rewrite affine_product_select_by_mask.
+    rewrite Hlen_env.
+    rewrite <- Hpoint_depth2.
+    reflexivity.
+  }
+  assert
+    (Hzero1 :
+       zero_on_false (slsbs_mask shape) raw_values1).
+  {
+    subst raw_values1.
+    rewrite Hmask.
+    assert
+      (Hmask_len :
+         List.length
+           (global_semantic_schedule_mask
+              (List.map slbr_root_rows (slsbs_recipes shape))) =
+         max_schedule_length
+           (List.map slbr_root_rows (slsbs_recipes shape))).
+    {
+      unfold global_semantic_schedule_mask.
+      rewrite List.map_length, seq_length.
+      reflexivity.
+    }
+    rewrite Hmask_len.
+    eapply global_semantic_schedule_mask_zero_on_false.
+    eapply nth_error_In.
+    exact Hraw_map1.
+  }
+  assert
+    (Hzero2 :
+       zero_on_false (slsbs_mask shape) raw_values2).
+  {
+    subst raw_values2.
+    rewrite Hmask.
+    assert
+      (Hmask_len :
+         List.length
+           (global_semantic_schedule_mask
+              (List.map slbr_root_rows (slsbs_recipes shape))) =
+         max_schedule_length
+           (List.map slbr_root_rows (slsbs_recipes shape))).
+    {
+      unfold global_semantic_schedule_mask.
+      rewrite List.map_length, seq_length.
+      reflexivity.
+    }
+    rewrite Hmask_len.
+    eapply global_semantic_schedule_mask_zero_on_false.
+    eapply nth_error_In.
+    exact Hraw_map2.
+  }
+  assert
+    (Hraw_values_eval1 :
+       raw_values1 =
+       affine_product (slbr_root_rows recipe1) (envv ++ point1) ++
+       repeat 0%Z
+         (List.length (slsbs_mask shape) -
+          List.length (slbr_root_rows recipe1))).
+  {
+    subst raw_values1.
+    eapply affine_product_pad_schedule_to_len.
+    exact Hraw_bound1.
+  }
+  assert
+    (Hraw_values_eval2 :
+       raw_values2 =
+       affine_product (slbr_root_rows recipe2) (envv ++ point2) ++
+       repeat 0%Z
+         (List.length (slsbs_mask shape) -
+          List.length (slbr_root_rows recipe2))).
+  {
+    subst raw_values2.
+    eapply affine_product_pad_schedule_to_len.
+    exact Hraw_bound2.
+  }
+  assert
+    (Hglobal_tiles_local1 :
+       global_tiles1 =
+       match slsbs_layout shape with
+       | SecondLevelGrouped =>
+           children1 ++
+           repeat 0%Z
+             (List.length (slsbs_global_child_sizes shape) -
+              List.length (slbr_child_sizes recipe1)) ++
+           roots1 ++
+           repeat 0%Z
+             (List.length (slsbs_global_root_sizes shape) -
+              List.length (slbr_root_sizes recipe1))
+       | SecondLevelInterleaved =>
+           added1 ++
+           repeat 0%Z
+             (2 *
+              (List.length (slsbs_global_root_sizes shape) -
+               List.length (slbr_root_sizes recipe1)))
+       end).
+  {
+    subst global_tiles1.
+    rewrite Hraw_values_eval1.
+    assert
+      (Haffine_len :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe1) (envv ++ point1)) =
+         List.length (slbr_root_rows recipe1)).
+    {
+      unfold affine_product.
+      rewrite List.map_length.
+      reflexivity.
+    }
+    assert
+      (Haffine_root_size_len1 :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe1) (envv ++ point1)) =
+         List.length (slbr_root_sizes recipe1)) by lia.
+    assert
+      (Haffine_child_size_len1 :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe1) (envv ++ point1)) =
+         List.length (slbr_child_sizes recipe1)) by lia.
+    assert
+      (Hglobal_sizes_len1 :
+         List.length (slsbs_global_root_sizes shape) =
+         List.length (slsbs_global_child_sizes shape)) by lia.
+    replace
+      (List.length (slsbs_mask shape) -
+       List.length (slbr_root_rows recipe1))%nat
+      with
+      (List.length (slsbs_global_root_sizes shape) -
+       List.length
+         (affine_product
+            (slbr_root_rows recipe1) (envv ++ point1)))%nat
+      by lia.
+    pose proof
+      (semantic_second_level_global_tile_block_local
+         (slsbs_layout shape)
+         (affine_product
+            (slbr_root_rows recipe1) (envv ++ point1))
+         (slbr_root_sizes recipe1)
+         (slbr_child_sizes recipe1)
+         (slsbs_global_root_sizes shape)
+         (slsbs_global_child_sizes shape)
+         Haffine_root_size_len1 Haffine_child_size_len1
+         Hroot_prefix1 Hchild_prefix1 Hglobal_sizes_len1)
+      as Hlocal.
+    destruct (slsbs_layout shape); simpl in *.
+    - subst roots1 children1.
+      unfold second_level_root_tiles,
+             second_level_child_tiles,
+             semantic_quotient_tiles in *.
+      exact Hlocal.
+    - rewrite Hadded_tiles1.
+      subst roots1 children1.
+      unfold second_level_root_tiles,
+             second_level_child_tiles,
+             semantic_quotient_tiles in *.
+      exact Hlocal.
+  }
+  assert
+    (Hglobal_tiles_local2 :
+       global_tiles2 =
+       match slsbs_layout shape with
+       | SecondLevelGrouped =>
+           children2 ++
+           repeat 0%Z
+             (List.length (slsbs_global_child_sizes shape) -
+              List.length (slbr_child_sizes recipe2)) ++
+           roots2 ++
+           repeat 0%Z
+             (List.length (slsbs_global_root_sizes shape) -
+              List.length (slbr_root_sizes recipe2))
+       | SecondLevelInterleaved =>
+           added2 ++
+           repeat 0%Z
+             (2 *
+              (List.length (slsbs_global_root_sizes shape) -
+               List.length (slbr_root_sizes recipe2)))
+       end).
+  {
+    subst global_tiles2.
+    rewrite Hraw_values_eval2.
+    assert
+      (Haffine_len :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe2) (envv ++ point2)) =
+         List.length (slbr_root_rows recipe2)).
+    {
+      unfold affine_product.
+      rewrite List.map_length.
+      reflexivity.
+    }
+    assert
+      (Haffine_root_size_len :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe2) (envv ++ point2)) =
+         List.length (slbr_root_sizes recipe2)) by lia.
+    assert
+      (Haffine_child_size_len :
+         List.length
+           (affine_product
+              (slbr_root_rows recipe2) (envv ++ point2)) =
+         List.length (slbr_child_sizes recipe2)) by lia.
+    assert
+      (Hglobal_sizes_len2 :
+         List.length (slsbs_global_root_sizes shape) =
+         List.length (slsbs_global_child_sizes shape)) by lia.
+    replace
+      (List.length (slsbs_mask shape) -
+       List.length (slbr_root_rows recipe2))%nat
+      with
+      (List.length (slsbs_global_root_sizes shape) -
+       List.length
+         (affine_product
+            (slbr_root_rows recipe2) (envv ++ point2)))%nat
+      by lia.
+    pose proof
+      (semantic_second_level_global_tile_block_local
+         (slsbs_layout shape)
+         (affine_product
+            (slbr_root_rows recipe2) (envv ++ point2))
+         (slbr_root_sizes recipe2)
+         (slbr_child_sizes recipe2)
+         (slsbs_global_root_sizes shape)
+         (slsbs_global_child_sizes shape)
+         Haffine_root_size_len Haffine_child_size_len
+         Hroot_prefix2 Hchild_prefix2 Hglobal_sizes_len2)
+      as Hlocal.
+    destruct (slsbs_layout shape); simpl in *.
+    - subst roots2 children2.
+      unfold second_level_root_tiles,
+             second_level_child_tiles,
+             semantic_quotient_tiles in *.
+      exact Hlocal.
+    - rewrite Hadded_tiles2.
+      subst roots2 children2.
+      unfold second_level_root_tiles,
+             second_level_child_tiles,
+             semantic_quotient_tiles in *.
+      exact Hlocal.
+  }
+  assert
+    (Hsemantic_len :
+       List.length semantic_values1 =
+       List.length semantic_values2).
+  {
+    subst semantic_values1 semantic_values2.
+    unfold affine_product.
+    rewrite !List.map_length.
+    rewrite Hsemantic_rows_def1, Hsemantic_rows_def2.
+    unfold compact_semantic_schedule.
+    eapply select_by_mask_length_same.
+    - unfold Tiling.PL.pad_schedule_to_len.
+      rewrite app_length, repeat_length.
+      lia.
+    - unfold Tiling.PL.pad_schedule_to_len.
+      rewrite app_length, repeat_length.
+      lia.
+  }
+  assert
+    (Htiles_eq :
+       semantic_values1 = semantic_values2 ->
+       global_tiles1 = global_tiles2).
+  {
+    intro Hsemantic_eq.
+    assert
+      (Hselect :
+         select_by_mask (slsbs_mask shape) raw_values1 =
+         select_by_mask (slsbs_mask shape) raw_values2).
+    {
+      rewrite <- Hsemantic_eval1, <- Hsemantic_eval2.
+      exact Hsemantic_eq.
+    }
+    pose proof
+      (select_by_mask_eq_reflect
+         (slsbs_mask shape) raw_values1 raw_values2
+         Hzero1 Hzero2 Hselect)
+      as Hraw_eq.
+    subst global_tiles1 global_tiles2.
+    now rewrite Hraw_eq.
+  }
+  assert
+    (Htiles_mono :
+       listz_pointwise_le semantic_values1 semantic_values2 ->
+       listz_pointwise_le global_tiles1 global_tiles2).
+  {
+    intro Hsemantic_le.
+    assert
+      (Hraw_le : listz_pointwise_le raw_values1 raw_values2).
+    {
+      eapply select_by_mask_le_reflect; [exact Hzero1|exact Hzero2|].
+      rewrite <- Hsemantic_eval1, <- Hsemantic_eval2.
+      exact Hsemantic_le.
+    }
+    subst global_tiles1 global_tiles2.
+    eapply semantic_second_level_global_tile_block_pointwise_le.
+    - exact Hraw_le.
+    - exact Hglobal_root_positive.
+    - exact Hglobal_child_positive.
+    - pose proof (zero_on_false_length _ _ Hzero1) as Hraw_values_len.
+      rewrite Hglobal_root_width.
+      symmetry.
+      exact Hraw_values_len.
+    - lia.
+  }
+  assert
+    (Hold_eq1 :
+       is_eq
+         (Tiling.PL.ip_time_stamp1_ext ip1)
+         semantic_values1 = true).
+  {
+    rewrite Hts11_old.
+    subst semantic_values1.
+    eapply
+      schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq.
+    exact Hbefore_match1.
+  }
+  assert
+    (Hold_eq2 :
+       is_eq
+         (Tiling.PL.ip_time_stamp1_ext ip2)
+         semantic_values2 = true).
+  {
+    rewrite Hts12_old.
+    subst semantic_values2.
+    eapply
+      schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq.
+    exact Hbefore_match2.
+  }
+  assert
+    (Htarget_eval1 :
+       affine_product
+         (semantic_second_level_target_schedule
+            (slsbs_layout shape)
+            (List.length before_ctxt)
+            (List.length (slsbs_mask shape))
+            semantic_rows1 w1 recipe1)
+         (envv ++ added1 ++ point1) =
+       match slsbs_layout shape with
+       | SecondLevelGrouped =>
+           children1 ++
+           repeat 0%Z
+             (List.length (slsbs_global_child_sizes shape) -
+              List.length (slbr_child_sizes recipe1)) ++
+           roots1 ++
+           repeat 0%Z
+             (List.length (slsbs_global_root_sizes shape) -
+              List.length (slbr_root_sizes recipe1)) ++
+           semantic_values1
+       | SecondLevelInterleaved =>
+           added1 ++
+           repeat 0%Z
+             (2 *
+              (List.length (slsbs_global_root_sizes shape) -
+               List.length (slbr_root_sizes recipe1))) ++
+           semantic_values1
+       end).
+  {
+    rewrite
+      (semantic_second_level_target_schedule_eval
+         (slsbs_layout shape)
+         (List.length before_ctxt)
+         (List.length (slsbs_mask shape))
+         semantic_rows1 w1 recipe1 envv added1 point1).
+    2:{ symmetry. exact Hlen_env. }
+    2:{ rewrite Hadded_len1, Hlinks_len1. reflexivity. }
+    2:{ exact Hpoint_len1. }
+    2:{ exact Hraw_bound1. }
+    subst semantic_values1.
+    destruct (slsbs_layout shape); simpl.
+    - rewrite Hadded_tiles1.
+      rewrite <- Hroots_len_rows1.
+      rewrite map_nth_child_positions_interleave
+        by exact Hroots_children1.
+      rewrite map_nth_root_positions_interleave
+        by exact Hroots_children1.
+      rewrite Hglobal_child_width, Hglobal_root_width.
+      rewrite <- Hchild_len1, <- Hroot_len1.
+      rewrite <- Hroots_len_rows1.
+      reflexivity.
+    - rewrite Hglobal_root_width, <- Hroot_len1.
+      reflexivity.
+  }
+  assert
+    (Htarget_eval2 :
+       affine_product
+         (semantic_second_level_target_schedule
+            (slsbs_layout shape)
+            (List.length before_ctxt)
+            (List.length (slsbs_mask shape))
+            semantic_rows2 w2 recipe2)
+         (envv ++ added2 ++ point2) =
+       match slsbs_layout shape with
+       | SecondLevelGrouped =>
+           children2 ++
+           repeat 0%Z
+             (List.length (slsbs_global_child_sizes shape) -
+              List.length (slbr_child_sizes recipe2)) ++
+           roots2 ++
+           repeat 0%Z
+             (List.length (slsbs_global_root_sizes shape) -
+              List.length (slbr_root_sizes recipe2)) ++
+           semantic_values2
+       | SecondLevelInterleaved =>
+           added2 ++
+           repeat 0%Z
+             (2 *
+              (List.length (slsbs_global_root_sizes shape) -
+               List.length (slbr_root_sizes recipe2))) ++
+           semantic_values2
+       end).
+  {
+    rewrite
+      (semantic_second_level_target_schedule_eval
+         (slsbs_layout shape)
+         (List.length before_ctxt)
+         (List.length (slsbs_mask shape))
+         semantic_rows2 w2 recipe2 envv added2 point2).
+    2:{ symmetry. exact Hlen_env. }
+    2:{ rewrite Hadded_len2, Hlinks_len2. reflexivity. }
+    2:{ exact Hpoint_len2. }
+    2:{ exact Hraw_bound2. }
+    subst semantic_values2.
+    destruct (slsbs_layout shape); simpl.
+    - rewrite Hadded_tiles2.
+      rewrite <- Hroots_len_rows2.
+      rewrite map_nth_child_positions_interleave
+        by exact Hroots_children2.
+      rewrite map_nth_root_positions_interleave
+        by exact Hroots_children2.
+      rewrite Hglobal_child_width, Hglobal_root_width.
+      rewrite <- Hchild_len2, <- Hroot_len2.
+      rewrite <- Hroots_len_rows2.
+      reflexivity.
+    - rewrite Hglobal_root_width, <- Hroot_len2.
+      reflexivity.
+  }
+  assert
+    (Hnew_eq1 :
+       is_eq
+         (Tiling.PL.ip_time_stamp2_ext ip1)
+         (global_tiles1 ++ semantic_values1) = true).
+  {
+    rewrite Hts21_after, Hidx_split1.
+    pose proof
+      (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+         (semantic_second_level_target_schedule
+            (slsbs_layout shape)
+            (List.length before_ctxt)
+            (List.length (slsbs_mask shape))
+            semantic_rows1 w1 recipe1)
+         (Tiling.PL.pi_schedule after_pi1)
+         (envv ++ added1 ++ point1) Hafter_match1)
+      as Hmatch.
+    rewrite Htarget_eval1 in Hmatch.
+    rewrite Hglobal_tiles_local1.
+    destruct (slsbs_layout shape); simpl in *;
+      repeat rewrite app_assoc in *;
+      exact Hmatch.
+  }
+  assert
+    (Hnew_eq2 :
+       is_eq
+         (Tiling.PL.ip_time_stamp2_ext ip2)
+         (global_tiles2 ++ semantic_values2) = true).
+  {
+    rewrite Hts22_after, Hidx_split2.
+    pose proof
+      (schedule_matches_with_symmetric_trailing_zero_padding_affine_product_is_eq
+         (semantic_second_level_target_schedule
+            (slsbs_layout shape)
+            (List.length before_ctxt)
+            (List.length (slsbs_mask shape))
+            semantic_rows2 w2 recipe2)
+         (Tiling.PL.pi_schedule after_pi2)
+         (envv ++ added2 ++ point2) Hafter_match2)
+      as Hmatch.
+    rewrite Htarget_eval2 in Hmatch.
+    rewrite Hglobal_tiles_local2.
+    destruct (slsbs_layout shape); simpl in *;
+      repeat rewrite app_assoc in *;
+      exact Hmatch.
+  }
+  unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
+  assert
+    (Hnew_not_lt :
+       lex_compare
+         (Tiling.PL.ip_time_stamp2_ext ip1)
+         (Tiling.PL.ip_time_stamp2_ext ip2) <> Lt).
+  {
+    unfold Tiling.PL.instr_point_ext_new_sched_ge in Hnew.
+    destruct Hnew; congruence.
+  }
+  destruct
+    (semantic_stripmined_reversal_implies_decreasing_component
+       (Tiling.PL.ip_time_stamp1_ext ip1)
+       (Tiling.PL.ip_time_stamp1_ext ip2)
+       (Tiling.PL.ip_time_stamp2_ext ip1)
+       (Tiling.PL.ip_time_stamp2_ext ip2)
+       semantic_values1 semantic_values2
+       global_tiles1 global_tiles2
+       Hold_eq1 Hold_eq2 Hnew_eq1 Hnew_eq2
+       Hsemantic_len Htiles_eq Htiles_mono Hold Hnew_not_lt)
+    as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  exists
+    (Tiling.compose_tiling_pinstr_ext
+       (List.length envv) before_pi1 after_pi1 w1),
+    (Tiling.compose_tiling_pinstr_ext
+       (List.length envv) before_pi2 after_pi2 w2),
+    lifted1, lifted2, dim.
+  repeat split; try assumption.
+  - eapply Nat.lt_le_trans.
+    + apply nth_error_Some.
+      rewrite Hvalue1.
+      discriminate.
+    + eapply Nat.le_trans with (m := List.length lifted1).
+      * subst semantic_values1.
+        unfold affine_product.
+        rewrite List.map_length.
+        rewrite Hlifted_def1.
+        unfold Tiling.lift_schedule_after_env,
+               Tiling.lift_affine_function_after_env.
+        rewrite List.map_length.
+        reflexivity.
+      * eapply max_schedule_length_ge_nth_error.
+        exact Hlifted1.
+  - assert
+      (Hlift_eval1 :
+         affine_product lifted1 (Tiling.PL.ip_index_ext ip1) =
+         semantic_values1).
+    {
+      rewrite Hlifted_def1, Hidx_split1.
+      eapply Tiling.lift_affine_function_after_env_eval.
+      - symmetry. exact Hlen_env.
+      - exact Hadded_len1.
+    }
+    assert
+      (Hlift_eval2 :
+         affine_product lifted2 (Tiling.PL.ip_index_ext ip2) =
+         semantic_values2).
+    {
+      rewrite Hlifted_def2, Hidx_split2.
+      eapply Tiling.lift_affine_function_after_env_eval.
+      - symmetry. exact Hlen_env.
+      - exact Hadded_len2.
+    }
+    assert
+      (Hsemantic_value1 :
+         semantic_band_value
+           (List.length envv +
+            Tiling.PL.pi_depth_ext
+              (Tiling.compose_tiling_pinstr_ext
+                 (List.length envv) before_pi1 after_pi1 w1))
+           dim lifted1 (Tiling.PL.ip_index_ext ip1) = x).
+    {
+      eapply semantic_band_value_of_nth_error.
+      rewrite Hlift_eval1.
+      exact Hvalue1.
+    }
+    assert
+      (Hsemantic_value2 :
+         semantic_band_value
+           (List.length envv +
+            Tiling.PL.pi_depth_ext
+              (Tiling.compose_tiling_pinstr_ext
+                 (List.length envv) before_pi2 after_pi2 w2))
+           dim lifted2 (Tiling.PL.ip_index_ext ip2) = y).
+    {
+      eapply semantic_band_value_of_nth_error.
+      rewrite Hlift_eval2.
+      exact Hvalue2.
+    }
+    rewrite Hsemantic_value1, Hsemantic_value2.
+    exact Hdecrease.
+Qed.
+
+Lemma ordinary_semantic_band_direct_reordering_safe :
+  forall before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv,
+    List.length before_ctxt = List.length envv ->
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = true ->
+    ordinary_semantic_band_shape_property_with_witness
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws shape ->
+    lift_semantic_schedules_for_tiling
+      (List.length before_ctxt) ws (osbs_rows shape) =
+      Some lifted_rows ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (check_semantic_band_components_direct
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows (List.length before_ctxt))
+      true ->
+    pprog_tiling_reordering_safe
+      envv before_pis after_pis ws [].
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv Hlen_env Hsource Hshape Hlift
+         Hwf_before Hwf_after Hcomponents.
+  pose proof
+    (TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hsource)
+    as [Hprog [_ [Hwf_ws [_ Hdepths]]]].
+  assert
+    (Hwits :
+       Forall2 Tiling.after_matches_tiling_witness after_pis ws).
+  {
+    eapply
+      (tiling_rel_pprog_structure_source_after_matches
+         before_pis before_ctxt before_vars
+         after_pis before_ctxt before_vars ws); eauto.
+  }
+  assert
+    (Hcomposed_wf :
+       Forall
+         (Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)).
+  {
+    eapply compose_tiling_pinstrs_ext_from_after_wf_tiling; eauto.
+  }
+  pose proof Hshape as Hshape_bridge.
+  unfold ordinary_semantic_band_shape_property_with_witness in Hshape.
+  cbn in Hshape.
+  destruct Hshape as
+    [_ [_ [data
+      [Hdata [_ [_
+      [Hcompact [_ [_ Hschedules]]]]]]]]].
+  assert
+    (Hsemantic_cols :
+       Forall2
+         (fun w rows =>
+            exact_listzzs_cols
+              (List.length before_ctxt + stw_point_dim w)%nat
+              rows)
+         ws (osbs_rows shape)).
+  {
+    eapply ordinary_semantic_rows_exact_cols; eauto.
+  }
+  pose proof
+    (lift_semantic_schedules_for_tiling_exact_cols
+       (List.length before_ctxt) ws (osbs_rows shape)
+       lifted_rows Hlift Hsemantic_cols)
+    as Hlifted_cols.
+  assert
+    (Hcomposed_cols :
+       Forall2
+         (fun pi rows =>
+            exact_listzzs_cols
+              (List.length before_ctxt +
+               Tiling.PL.pi_depth_ext pi)%nat rows)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows).
+  {
+    eapply composed_semantic_rows_exact_cols; eauto.
+  }
+  assert
+    (Hcomponentwise :
+       pinstr_list_semantic_componentwise_permutable
+         envv
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows).
+  {
+    eapply
+      (check_semantic_band_components_direct_sound
+         before_ctxt envv
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows); eauto.
+  }
+  eapply semantic_componentwise_permutable_implies_reordering_safe.
+  - rewrite Hlen_env in Hcomponentwise.
+    exact Hcomponentwise.
+  - eapply ordinary_semantic_band_shape_reversal_bridge; eauto.
+Qed.
+
+Lemma checked_tiling_sourceb_semantic_band_direct_ordinary_correct_same_ctxt :
+  forall before_pis before_ctxt before_vars after_pis ws shape st1 st2,
+    infer_pprog_ordinary_semantic_band_shape
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = Some shape ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (checked_tiling_sourceb_semantic_band_direct
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws)
+      true ->
+    Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      TilingPolIRs.State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws shape st1 st2
+         Hinfer Hwf_before Hwf_after Hcheck Hsem.
+  pose proof
+    (infer_pprog_ordinary_semantic_band_shape_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws shape Hinfer)
+    as Hshape.
+  unfold checked_tiling_sourceb_semantic_band_direct in Hcheck.
+  cbn beta iota zeta in Hcheck.
+  destruct
+    (TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws)
+    eqn:Hsource.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  rewrite Hinfer in Hcheck.
+  destruct
+    (lift_semantic_schedules_for_tiling
+       (List.length before_ctxt) ws (osbs_rows shape))
+    as [lifted_rows|] eqn:Hlift.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  eapply
+    (tiling_sourceb_validate_correct_with_reordering
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars)
+       ws [] st1 st2); [exact Hsource| |exact Hsem].
+  simpl.
+  intros envv Hlen_env.
+  eapply
+    (ordinary_semantic_band_direct_reordering_safe
+       before_pis before_ctxt before_vars after_pis ws
+       shape lifted_rows envv); eauto.
+Qed.
+
+Lemma second_level_semantic_band_direct_reordering_safe :
+  forall before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv,
+    List.length before_ctxt = List.length envv ->
+    TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = true ->
+    second_level_semantic_band_shape_property_with_witness
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws shape ->
+    lift_semantic_schedules_for_tiling
+      (List.length before_ctxt) ws (slsbs_rows shape) =
+      Some lifted_rows ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (check_semantic_band_components_direct
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows (List.length before_ctxt))
+      true ->
+    pprog_tiling_reordering_safe
+      envv before_pis after_pis ws [].
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows envv Hlen_env Hsource Hshape Hlift
+         Hwf_before Hwf_after Hcomponents.
+  pose proof
+    (TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hsource)
+    as [Hprog [_ [Hwf_ws [_ Hdepths]]]].
+  assert
+    (Hwits :
+       Forall2 Tiling.after_matches_tiling_witness after_pis ws).
+  {
+    eapply
+      (tiling_rel_pprog_structure_source_after_matches
+         before_pis before_ctxt before_vars
+         after_pis before_ctxt before_vars ws); eauto.
+  }
+  assert
+    (Hcomposed_wf :
+       Forall
+         (Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)).
+  {
+    eapply compose_tiling_pinstrs_ext_from_after_wf_tiling; eauto.
+  }
+  pose proof Hshape as Hshape_bridge.
+  unfold second_level_semantic_band_shape_property_with_witness
+    in Hshape.
+  cbn in Hshape.
+  destruct Hshape as
+    [_ [_ [Hrecipes [_ [_ [_
+      [Hcompact [_ [_ [_ Hschedules]]]]]]]]]].
+  assert
+    (Hsemantic_cols :
+       Forall2
+         (fun w rows =>
+            exact_listzzs_cols
+              (List.length before_ctxt + stw_point_dim w)%nat
+              rows)
+         ws (slsbs_rows shape)).
+  {
+    eapply second_level_semantic_rows_exact_cols; eauto.
+  }
+  pose proof
+    (lift_semantic_schedules_for_tiling_exact_cols
+       (List.length before_ctxt) ws (slsbs_rows shape)
+       lifted_rows Hlift Hsemantic_cols)
+    as Hlifted_cols.
+  assert
+    (Hcomposed_cols :
+       Forall2
+         (fun pi lifted =>
+            exact_listzzs_cols
+              (List.length before_ctxt +
+               Tiling.PL.pi_depth_ext pi)%nat
+              lifted)
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows).
+  {
+    eapply composed_semantic_rows_exact_cols; eauto.
+  }
+  assert
+    (Hcomponentwise :
+       pinstr_list_semantic_componentwise_permutable
+         envv
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows).
+  {
+    eapply
+      (check_semantic_band_components_direct_sound
+         before_ctxt envv
+         (Tiling.compose_tiling_pinstrs_ext_from_after
+            (List.length before_ctxt) before_pis after_pis ws)
+         lifted_rows); eauto.
+  }
+  eapply semantic_componentwise_permutable_implies_reordering_safe.
+  - rewrite Hlen_env in Hcomponentwise.
+    exact Hcomponentwise.
+  - eapply second_level_semantic_band_shape_reversal_bridge; eauto.
+Qed.
+
+Lemma checked_tiling_sourceb_semantic_band_direct_second_correct_same_ctxt :
+  forall before_pis before_ctxt before_vars after_pis ws shape st1 st2,
+    infer_pprog_ordinary_semantic_band_shape
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = None ->
+    infer_pprog_second_level_semantic_band_shape
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = Some shape ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (checked_tiling_sourceb_semantic_band_direct
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws)
+      true ->
+    Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      TilingPolIRs.State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws shape st1 st2
+         Hordinary Hsecond Hwf_before Hwf_after Hcheck Hsem.
+  pose proof
+    (infer_pprog_second_level_semantic_band_shape_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws shape Hsecond)
+    as Hshape.
+  unfold checked_tiling_sourceb_semantic_band_direct in Hcheck.
+  cbn beta iota zeta in Hcheck.
+  destruct
+    (TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws)
+    eqn:Hsource.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  rewrite Hordinary, Hsecond in Hcheck.
+  destruct
+    (lift_semantic_schedules_for_tiling
+       (List.length before_ctxt) ws (slsbs_rows shape))
+    as [lifted_rows|] eqn:Hlift.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  eapply
+    (tiling_sourceb_validate_correct_with_reordering
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars)
+       ws [] st1 st2); [exact Hsource| |exact Hsem].
+  simpl.
+  intros envv Hlen_env.
+  eapply
+    (second_level_semantic_band_direct_reordering_safe
+       before_pis before_ctxt before_vars after_pis ws
+       shape lifted_rows envv); eauto.
+Qed.
+
+Lemma checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (checked_tiling_sourceb_semantic_band_direct
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws)
+      true ->
+    Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      TilingPolIRs.State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hwf_before Hwf_after Hcheck Hsem.
+  destruct
+    (checked_tiling_sourceb_semantic_band_direct_true_inv
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hcheck)
+    as [lifted_rows [Hshape Hcomponents]].
+  destruct Hshape as
+    [shape lifted_rows0 Hsource Hinfer Hlift Hproperty
+    |shape lifted_rows0 Hsource Hordinary Hsecond Hlift Hproperty].
+  - eapply
+      (tiling_sourceb_validate_correct_with_reordering
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws [] st1 st2); [exact Hsource| |exact Hsem].
+    simpl.
+    intros envv Hlen_env.
+    eapply
+      (ordinary_semantic_band_direct_reordering_safe
+         before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows0 envv); eauto.
+  - eapply
+      (tiling_sourceb_validate_correct_with_reordering
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws [] st1 st2); [exact Hsource| |exact Hsem].
+    simpl.
+    intros envv Hlen_env.
+    eapply
+      (second_level_semantic_band_direct_reordering_safe
+         before_pis before_ctxt before_vars after_pis ws
+         shape lifted_rows0 envv); eauto.
 Qed.
 
 End TilingBandScheduleValidator.

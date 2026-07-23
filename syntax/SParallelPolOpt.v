@@ -121,7 +121,6 @@ Definition tiling_validation_route_label
     (route: TilingSched.tiling_band_validation_route) : string :=
   match route with
   | TilingSched.DirectBandAccepted => "permutable-band"%string
-  | TilingSched.GeneralFallbackAccepted => "general-fallback"%string
   | TilingSched.Rejected => "rejected"%string
   end.
 
@@ -142,8 +141,7 @@ Definition reject_tiling_then {A: Type}
     (fallback: unit -> imp A) (_: unit) : imp A :=
   match observe_tiling_validation_route TilingSched.Rejected with
   | TilingSched.Rejected => fallback tt
-  | TilingSched.DirectBandAccepted
-  | TilingSched.GeneralFallbackAccepted =>
+  | TilingSched.DirectBandAccepted =>
       BIND result <- fallback tt -; pure result
   end.
 
@@ -151,12 +149,23 @@ Definition select_after_tiling_route
     (pol_mid pol_after: PolyLang.t)
     (route: TilingSched.tiling_band_validation_route)
   : imp PolyLang.t :=
-  match observe_tiling_validation_route route with
-  | TilingSched.DirectBandAccepted
-  | TilingSched.GeneralFallbackAccepted =>
+  match route with
+  | TilingSched.DirectBandAccepted =>
       pure (PolyLang.current_view_pprog pol_after)
   | TilingSched.Rejected =>
       pure pol_mid
+  end.
+
+Definition reject_post_tiling_affine
+    (pol_mid: PolyLang.t)
+    (route: TilingSched.tiling_band_validation_route) : imp PolyLang.t :=
+  match observe_tiling_validation_route route with
+  | TilingSched.DirectBandAccepted =>
+      res_to_alarm pol_mid
+        (Err "Post-tiling affine validation failed.")
+  | TilingSched.Rejected =>
+      res_to_alarm pol_mid
+        (Err "Post-tiling affine validation failed.")
   end.
 
 Definition try_verified_tiling_after_phase_mid_poly
@@ -176,12 +185,13 @@ Definition try_verified_tiling_after_phase_mid_poly
             TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
               pol_mid pol_after ws -;
           match route with
-          | TilingSched.DirectBandAccepted
-          | TilingSched.GeneralFallbackAccepted =>
+          | TilingSched.DirectBandAccepted =>
               BIND wf_after <-
                 ValidatorCore.check_wf_polyprog_general pol_after -;
               if wf_after then
-                select_after_tiling_route pol_mid pol_after route
+                select_after_tiling_route
+                  pol_mid pol_after
+                  (observe_tiling_validation_route route)
               else rejected tt
           | TilingSched.Rejected =>
               rejected tt
@@ -230,14 +240,14 @@ Definition try_verified_diamond_after_phase_mid_poly
             TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
               pol_mid pol_posttile ws -;
           match route with
-          | TilingSched.DirectBandAccepted
-          | TilingSched.GeneralFallbackAccepted =>
+          | TilingSched.DirectBandAccepted =>
               BIND wf_posttile <-
                 ValidatorCore.check_wf_polyprog_general pol_posttile -;
               if wf_posttile then
+                let route := observe_tiling_validation_route route in
                 match PolyLang.from_openscop_schedule_only
                         pol_posttile after_scop with
-                | Err _ => rejected tt
+                | Err _ => reject_post_tiling_affine pol_mid route
                 | Okk pol_after =>
                     BIND final_ok <-
                       ValidatorCore.validate_general pol_posttile pol_after -;
@@ -246,8 +256,8 @@ Definition try_verified_diamond_after_phase_mid_poly
                         ValidatorCore.check_wf_polyprog_general pol_after -;
                       if wf_after then
                         select_after_tiling_route pol_mid pol_after route
-                      else rejected tt
-                    else rejected tt
+                      else reject_post_tiling_affine pol_mid route
+                    else reject_post_tiling_affine pol_mid route
                 end
               else rejected tt
           | TilingSched.Rejected =>

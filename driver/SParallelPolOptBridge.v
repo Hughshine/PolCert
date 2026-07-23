@@ -59,16 +59,15 @@ Proof.
        pol_mid after_scop ws) as [pol_after|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros route.
+  rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
   destruct route.
   - apply bind_eq_compat; [reflexivity|].
     intros wf_after. destruct wf_after.
     + apply select_after_tiling_route_impeq.
     + reflexivity.
-  - apply bind_eq_compat; [reflexivity|].
-    intros wf_after. destruct wf_after.
-    + apply select_after_tiling_route_impeq.
-    + reflexivity.
-  - reflexivity.
+  - unfold SParallelPolOpt.reject_tiling_then.
+    rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
+    reflexivity.
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_poly_impeq :
@@ -90,7 +89,9 @@ Proof.
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
   - apply try_verified_tiling_after_phase_mid_poly_impeq.
-  - reflexivity.
+  - unfold SParallelPolOpt.reject_tiling_then.
+    rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
+    reflexivity.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_poly_impeq :
@@ -112,6 +113,7 @@ Proof.
        pol_mid posttile_scop ws) as [pol_posttile|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros route.
+  rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
   destruct route.
   - apply bind_eq_compat; [reflexivity|].
     intros wf_posttile. destruct wf_posttile; [|reflexivity].
@@ -124,18 +126,9 @@ Proof.
     intros wf_after. destruct wf_after.
     + apply select_after_tiling_route_impeq.
     + reflexivity.
-  - apply bind_eq_compat; [reflexivity|].
-    intros wf_posttile. destruct wf_posttile; [|reflexivity].
-    destruct
-      (SPolIRs.PolyLang.from_openscop_schedule_only
-         pol_posttile after_scop) as [pol_after|]; [|reflexivity].
-    apply bind_eq_compat; [reflexivity|].
-    intros final_ok. destruct final_ok; [|reflexivity].
-    apply bind_eq_compat; [reflexivity|].
-    intros wf_after. destruct wf_after.
-    + apply select_after_tiling_route_impeq.
-    + reflexivity.
-  - reflexivity.
+  - unfold SParallelPolOpt.reject_tiling_then.
+    rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
+    reflexivity.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_poly_impeq :

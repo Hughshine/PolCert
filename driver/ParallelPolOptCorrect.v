@@ -301,12 +301,15 @@ Proof.
                        as [st_mid [Hmid_sem Heq_mid]].
                      exists st_mid. split; auto.
                      eapply State.eq_trans; eauto.
-                 --- apply mayReturn_pure in Hopt. subst pol_out.
-                     exists st'. split; auto. apply State.eq_refl.
-              ** apply mayReturn_pure in Hopt. subst pol_out.
-                 exists st'. split; auto. apply State.eq_refl.
-           ++ apply mayReturn_pure in Hopt. subst pol_out.
-              exists st'. split; auto. apply State.eq_refl.
+                 --- unfold res_to_alarm in Hopt.
+                     eapply mayReturn_alarm in Hopt.
+                     contradiction.
+              ** unfold res_to_alarm in Hopt.
+                 eapply mayReturn_alarm in Hopt.
+                 contradiction.
+           ++ unfold res_to_alarm in Hopt.
+              eapply mayReturn_alarm in Hopt.
+              contradiction.
         -- apply mayReturn_pure in Hopt. subst pol_out.
            exists st'. split; auto. apply State.eq_refl.
       * apply mayReturn_pure in Hopt. subst pol_out.
@@ -357,13 +360,15 @@ Proof.
                        as Hwf_cur_aff.
                      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general;
                        eauto.
-                 --- apply mayReturn_pure in Hopt. subst pol_out.
-                     eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general;
-                       eauto.
-              ** apply mayReturn_pure in Hopt. subst pol_out.
-                 eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-           ++ apply mayReturn_pure in Hopt. subst pol_out.
-              eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+                 --- unfold res_to_alarm in Hopt.
+                     eapply mayReturn_alarm in Hopt.
+                     contradiction.
+              ** unfold res_to_alarm in Hopt.
+                 eapply mayReturn_alarm in Hopt.
+                 contradiction.
+           ++ unfold res_to_alarm in Hopt.
+              eapply mayReturn_alarm in Hopt.
+              contradiction.
         -- apply mayReturn_pure in Hopt. subst pol_out.
            eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
       * apply mayReturn_pure in Hopt. subst pol_out.

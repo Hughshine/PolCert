@@ -41,16 +41,14 @@ A normal schedule, tiling, or parallel optimizer run has this shape:
 Pluto is an oracle: it proposes schedules, phase outputs, and loop annotation
 hints. PolOpt accepts those artifacts only through checked routes.
 
-For a tiling boundary, the extracted dispatcher first tries a direct semantic
+For a tiling boundary, the extracted dispatcher runs a complete direct semantic
 permutable-band check. It checks source-ordered WW, WR, and RW conflicts with
 the same prefix before the band for decreases in the selected band components,
 using certified polyhedral emptiness queries. A successful direct check reports
 `permutable-band`. If the direct checker returns `false` because the layout is
-outside its recognizer or the property is not established,
-the dispatcher tries proved legacy, canonical, and general tiling validators;
-successful acceptance reports `general-fallback`. No accepted fallback is
-relabeled as a band result. An impure solver alarm propagates instead of
-triggering fallback.
+outside its recognizers or the property is not established, the candidate is
+reported as `rejected`; the dispatcher does not invoke another tiling
+validator. An impure solver alarm propagates instead of becoming rejection.
 
 This check is a semantic analogue of Pluto's fully permutable-band condition
 for recognized layouts. It is not a verification of Pluto's band detector,
@@ -59,7 +57,9 @@ reuses the affine validator's certified conflict and emptiness kernels, but it
 does not call the whole affine-schedule validator. Ordinary rectangular,
 diamond, full-diamond, and recognized grouped/interleaved second-level layouts
 can use the direct route. Source-like identity layouts and structurally
-unmatched mixed-depth layouts may use the proved fallback. Diamond pipelines
+matched mixed-depth layouts use program-wide semantic schedule reconstruction;
+the recognized mixed second-level shape uses a phase-aware direct bridge.
+Layouts outside these proved classes are rejected. Diamond pipelines
 validate their final affine leg
 separately, and that leg is checked by `validate_general`.
 

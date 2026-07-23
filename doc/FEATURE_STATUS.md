@@ -26,9 +26,8 @@ Status:
 
 - theorem-aligned verified optimizer route
 - affine scheduling + checked tiling
-- tiling reports `permutable-band` when the direct semantic checker accepts the
-  recognized layout, otherwise `general-fallback` when a proved fallback
-  validator accepts it
+- tiling reports `permutable-band` when the complete direct semantic checker
+  accepts the recognized layout, otherwise `rejected`
 - no ISS by default
 
 Proof object:
@@ -157,7 +156,8 @@ Status:
   - valid on supported full tiled optimization routes and tiling
     witness/validation actions
   - grouped and interleaved layouts that satisfy the direct structural gate can
-    report `permutable-band`; other valid layouts may report `general-fallback`
+    report `permutable-band`; the supported identity/mixed layouts use
+    program-wide semantic reconstruction or the phase-aware direct bridge
 - `--diamond-tile` / `--full-diamond-tile`
   - theorem-backed opt-in diamond phase route family
   - supported by the current route map for sequential, ISS-aware, and checked
@@ -175,8 +175,9 @@ condition, not Pluto's detector or band-search algorithm. It reuses the proved
 access-conflict and polyhedral-emptiness kernels without calling the whole
 affine-schedule validator. Ordinary rectangular, diamond, full-diamond, and
 recognized second-level layouts can take the direct route. Source-like identity
-layouts and structurally unmatched mixed-depth layouts may take the proved
-fallback.
+layouts and structurally matched mixed-depth layouts use proved direct
+program-wide schedule reconstruction or the direct strict-zero-row
+normalization. Layouts outside the proved recognizers are rejected.
 
 ### Standalone validation / inspection actions exposed by `polopt`
 

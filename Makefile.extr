@@ -97,6 +97,7 @@ ifeq ($(wildcard .depend.extr),.depend.extr)
 
 CCOMP_OBJS:=$(shell $(MODORDER) \
   extraction/TilingBandScheduleValidator.cmx \
+  extraction/TilingBandMixedSecondValidator.cmx \
   extraction/TilingBandDirectRuntime.cmx \
   extraction/TPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
@@ -107,7 +108,6 @@ POLOPT_OBJS:=$(shell $(MODORDER) \
   extraction/TPolOpt.cmx \
   extraction/ParallelLoop.cmx \
   extraction/ParallelCodegen.cmx \
-  extraction/STilingOpt.cmx \
   extraction/STilingBandSched.cmx \
   extraction/SBandTilingOpt.cmx \
   extraction/SParallelPolOpt.cmx \
@@ -188,7 +188,6 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     extraction/Validator.cmi \
     extraction/TPolValidator.cmi \
     extraction/TPolOpt.cmi \
-    extraction/STilingOpt.cmi \
     extraction/SBandTilingOpt.cmi \
     extraction/TilingWitness.cmi \
     driver/Scheduler.cmi \
@@ -217,6 +216,8 @@ extraction/ParallelPolOpt.cmi: extraction/ParallelPolOpt.cmx
 extraction/PolOptBandTiling.cmi: extraction/PolOptBandTiling.cmx
 	@true
 extraction/TilingBandScheduleValidator.cmi: extraction/TilingBandScheduleValidator.cmx
+	@true
+extraction/TilingBandMixedSecondValidator.cmi: extraction/TilingBandMixedSecondValidator.cmx
 	@true
 extraction/TilingBandDirectRuntime.cmi: extraction/TilingBandDirectRuntime.cmx
 	@true

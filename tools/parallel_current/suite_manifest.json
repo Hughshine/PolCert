@@ -140,9 +140,9 @@
         "32 *",
         "/ 32"
       ],
-      "stderr_needles": ["[tiling-validation] route=general-fallback"],
-      "stderr_counts": {"[tiling-validation] route=general-fallback": 1},
-      "stderr_absent_needles": ["route=permutable-band", "[alarm]"],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--identity-tiled"
       ]

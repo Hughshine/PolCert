@@ -6,12 +6,14 @@ Import ListNotations.
 Require Import PolIRs.
 Require Import TilingWitness.
 Require Import TilingBandScheduleValidator.
+Require Import TilingBandMixedSecondValidator.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
 Module TilingBandDirectRuntime (PolIRs: POLIRS).
 
-Module Legacy := TilingBandScheduleValidator PolIRs.
+Module Mixed := TilingBandMixedSecondValidator PolIRs.
+Module Legacy := Mixed.Core.
 Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
 
@@ -19,22 +21,19 @@ Open Scope impure_scope.
 
 Inductive tiling_band_validation_route : Type :=
 | DirectBandAccepted
-| GeneralFallbackAccepted
 | Rejected.
 
 Definition tiling_band_validation_route_acceptsb
     (route: tiling_band_validation_route) : bool :=
   match route with
-  | DirectBandAccepted
-  | GeneralFallbackAccepted => true
+  | DirectBandAccepted => true
   | Rejected => false
   end.
 
 (** The direct source-first layer recognizes ordinary common-band strip mining
     with target-side trailing-zero padding, and uniform grouped or interleaved
-    second-level schedules with symmetric trailing-zero equivalence.  Other
-    proved cases remain available through the legacy fallback in the route
-    dispatcher below. *)
+    second-level schedules with either symmetric trailing-zero equivalence or
+    program-wide strict-zero-row erasure. *)
 Definition checked_tiling_sourceb_first_direct_band_check
     (before after: Legacy.Tiling.PL.t)
     (ws: list statement_tiling_witness) : imp bool :=
@@ -53,13 +52,93 @@ Definition checked_tiling_sourceb_first_direct_band_check
     BIND ordinary_ok <- ordinary_check -;
     if ordinary_ok then pure true
     else
-      match Legacy.check_pprog_second_level_schedule_symmetricb before after ws with
+      match Legacy.check_pprog_second_level_schedule_directb before after ws with
       | Some (bands, _, _) =>
           Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct
             (List.length before_ctxt) before_pis after_pis ws bands
       | None => pure false
       end
   else pure false.
+
+(** The complete direct-only candidate checker.  Each branch independently
+    validates the source/witness boundary and proves a permutable-band
+    condition for the layout it recognizes. *)
+Definition checked_tiling_sourceb_complete_direct_band_check
+    (before after: Legacy.Tiling.PL.t)
+    (ws: list statement_tiling_witness) : imp bool :=
+  BIND common_ok <-
+    checked_tiling_sourceb_first_direct_band_check before after ws -;
+  if common_ok then pure true
+  else
+    BIND phase_ordinary_ok <-
+      Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
+    if phase_ordinary_ok then pure true
+    else
+      BIND semantic_ok <-
+        Legacy.checked_tiling_sourceb_semantic_band_direct before after ws -;
+      if semantic_ok then pure true
+      else Mixed.check_pprog_mixed_second_level_direct before after ws.
+
+Lemma checked_tiling_sourceb_first_direct_band_check_sourceb_true :
+  forall before after ws,
+    mayReturn
+      (checked_tiling_sourceb_first_direct_band_check before after ws)
+      true ->
+    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
+Proof.
+  intros [[before_pis before_ctxt] before_vars]
+         [[after_pis after_ctxt] after_vars] ws Hcheck.
+  unfold checked_tiling_sourceb_first_direct_band_check in Hcheck.
+  cbn beta iota zeta in Hcheck.
+  destruct
+    (Legacy.TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws)
+    eqn:Hsource.
+  - reflexivity.
+  - apply mayReturn_pure in Hcheck.
+    discriminate.
+Qed.
+
+Lemma checked_tiling_sourceb_complete_direct_band_check_sourceb_true :
+  forall before after ws,
+    mayReturn
+      (checked_tiling_sourceb_complete_direct_band_check before after ws)
+      true ->
+    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
+Proof.
+  intros before after ws Hcheck.
+  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
+  bind_imp_destruct Hcheck common_ok Hcommon.
+  destruct common_ok.
+  - eapply checked_tiling_sourceb_first_direct_band_check_sourceb_true.
+    exact Hcommon.
+  - bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+    destruct phase_ordinary_ok.
+    + destruct before as [[before_pis before_ctxt] before_vars].
+      destruct after as [[after_pis after_ctxt] after_vars].
+      destruct
+        (Mixed.check_pprog_phase_separated_ordinary_direct_true_inv
+           before_pis before_ctxt before_vars
+           after_pis after_ctxt after_vars ws Hphase_ordinary)
+        as [bands [Hsource _]].
+      exact Hsource.
+    + bind_imp_destruct Hcheck semantic_ok Hsemantic.
+      destruct semantic_ok.
+      * destruct
+          (Legacy.checked_tiling_sourceb_semantic_band_direct_true_inv
+             before after ws Hsemantic)
+          as [lifted_rows [Hshape _]].
+        inversion Hshape; assumption.
+      * destruct before as [[before_pis before_ctxt] before_vars].
+        destruct after as [[after_pis after_ctxt] after_vars].
+        destruct
+          (Mixed.check_pprog_mixed_second_level_direct_true_inv
+             before_pis before_ctxt before_vars
+             after_pis after_ctxt after_vars ws Hcheck)
+          as [bands [recipes [Hsource _]]].
+        exact Hsource.
+Qed.
 
 Lemma checked_second_level_direct_band_check_correct :
   forall layout before_pis before_ctxt before_vars after_pis ws
@@ -75,7 +154,7 @@ Lemma checked_second_level_direct_band_check_correct :
       (after_pis, before_ctxt, before_vars) ws = true ->
     Legacy.infer_pinstr_list_second_level_bands before_pis ws =
       Some (bands, recipes) ->
-    Legacy.check_pinstr_list_second_level_schedule_symmetricb
+    Legacy.check_pinstr_list_second_level_schedule_directb
       layout (List.length before_ctxt) before_pis after_pis bands = true ->
     Legacy.common_second_level_recipe_sizes recipes ->
     Legacy.common_band_start bands ->
@@ -128,6 +207,13 @@ Proof.
     eapply
       (Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct_sound
          before_ctxt envv before_pis after_pis ws bands); eauto.
+  }
+  assert (Hsched_lex :
+    Legacy.second_level_schedule_layout_lex_equivalent
+      layout (List.length before_ctxt) before_pis after_pis bands).
+  {
+    eapply Legacy.check_pinstr_list_second_level_schedule_directb_sound.
+    exact Hsched.
   }
   eapply
     (Legacy.pprog_pluto_componentwise_permutable_bands_implies_reordering_safe_if_local_bridge
@@ -223,7 +309,7 @@ Proof.
       (Legacy.pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len
          before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
   - destruct
-      (Legacy.check_pprog_second_level_schedule_symmetricb
+      (Legacy.check_pprog_second_level_schedule_directb
          (before_pis, before_ctxt, before_vars)
          (after_pis, before_ctxt, before_vars) ws)
       as [shape|] eqn:Hshape.
@@ -231,7 +317,7 @@ Proof.
     destruct shape as [[bands recipes] layout].
     simpl in Hcheck.
     destruct
-      (Legacy.check_pprog_second_level_schedule_symmetricb_sound
+      (Legacy.check_pprog_second_level_schedule_directb_sound
          before_pis before_ctxt before_vars
          after_pis before_ctxt before_vars ws bands recipes layout Hshape)
       as [Hinfer [Hsched [Hrecipe_sizes Hcommon_start]]].
@@ -241,12 +327,53 @@ Proof.
          after_pis ws bands recipes st1 st2); eauto.
 Qed.
 
-Lemma checked_tiling_sourceb_first_direct_band_check_outer_correct :
+Lemma checked_tiling_sourceb_complete_direct_band_check_correct :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis ->
+    mayReturn
+      (checked_tiling_sourceb_complete_direct_band_check
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws)
+      true ->
+    Legacy.Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 ->
+    exists st2',
+      Legacy.Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2' /\
+      State.eq st2 st2'.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hwf_before Hwf_after Hcheck Hsem.
+  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
+  bind_imp_destruct Hcheck common_ok Hcommon.
+  destruct common_ok.
+  - eapply checked_tiling_sourceb_first_direct_band_check_correct; eauto.
+  - bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+    destruct phase_ordinary_ok.
+    + eapply
+        Mixed.check_pprog_phase_separated_ordinary_direct_correct_same_ctxt;
+        eauto.
+    + bind_imp_destruct Hcheck semantic_ok Hsemantic.
+      destruct semantic_ok.
+      * eapply
+          Legacy.checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt;
+          eauto.
+      * eapply Mixed.check_pprog_mixed_second_level_direct_correct_same_ctxt;
+          eauto.
+Qed.
+
+Lemma checked_tiling_sourceb_complete_direct_band_check_outer_correct :
   forall before after ws st1 st2,
     PolyLang.wf_pprog_affine before ->
     PolyLang.wf_pprog_general after ->
     mayReturn
-      (checked_tiling_sourceb_first_direct_band_check
+      (checked_tiling_sourceb_complete_direct_band_check
          (Legacy.Base.outer_to_tiling_pprog before)
          (Legacy.Base.outer_to_tiling_pprog after)
          ws)
@@ -270,15 +397,8 @@ Proof.
       (after_pis, after_ctxt, after_vars)
       ws = true).
   {
-    pose proof Hcheck as Hcheck_source.
-    unfold checked_tiling_sourceb_first_direct_band_check in Hcheck_source.
-    destruct
-      (Legacy.TilingCheck.check_pprog_tiling_sourceb
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, after_ctxt, after_vars) ws)
-      eqn:Hsource_check; [reflexivity|].
-    apply mayReturn_pure in Hcheck_source.
-    discriminate.
+    eapply checked_tiling_sourceb_complete_direct_band_check_sourceb_true.
+    exact Hcheck.
   }
   pose proof
     (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
@@ -319,7 +439,7 @@ Proof.
     eapply Hwf_after_tiling; eauto.
   }
   pose proof
-    (checked_tiling_sourceb_first_direct_band_check_correct
+    (checked_tiling_sourceb_complete_direct_band_check_correct
        before_pis before_ctxt before_vars after_pis ws st1 st2
        Hwfbefore_pis Hwfafter_pis Hcheck) as Hcorr.
   apply Legacy.Base.outer_to_tiling_instance_list_semantics_iff in Hsem_after.
@@ -335,26 +455,11 @@ Definition checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
     (before after: PolyLang.t)
     (ws: list statement_tiling_witness) : imp tiling_band_validation_route :=
   BIND direct_ok <-
-    checked_tiling_sourceb_first_direct_band_check
+    checked_tiling_sourceb_complete_direct_band_check
       (Legacy.Base.outer_to_tiling_pprog before)
       (Legacy.Base.outer_to_tiling_pprog after)
       ws -;
-  if direct_ok then pure DirectBandAccepted
-  else
-    BIND legacy_ok <-
-      Legacy.checked_tiling_sourceb_first_band_check
-        (Legacy.Base.outer_to_tiling_pprog before)
-        (Legacy.Base.outer_to_tiling_pprog after)
-        ws -;
-    if legacy_ok then pure GeneralFallbackAccepted
-    else
-      BIND canonical_ok <-
-        Legacy.Canonical.checked_tiling_schedule_canonical_validate_poly
-          before after ws -;
-      if canonical_ok then pure GeneralFallbackAccepted
-      else
-        BIND fallback_ok <- Legacy.Base.checked_tiling_validate_poly before after ws -;
-        pure (if fallback_ok then GeneralFallbackAccepted else Rejected).
+  pure (if direct_ok then DirectBandAccepted else Rejected).
 
 Lemma checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct :
   forall before after ws st1 st2 route,
@@ -378,24 +483,12 @@ Proof.
   destruct direct_ok.
   - apply mayReturn_pure in Hroute.
     subst route.
-    eapply checked_tiling_sourceb_first_direct_band_check_outer_correct; eauto.
-  - bind_imp_destruct Hroute legacy_ok Hlegacy.
-    destruct legacy_ok.
-    + apply mayReturn_pure in Hroute.
-      subst route.
-      eapply Legacy.checked_tiling_sourceb_first_band_check_outer_correct; eauto.
-    + bind_imp_destruct Hroute canonical_ok Hcanonical.
-      destruct canonical_ok.
-      * apply mayReturn_pure in Hroute.
-        subst route.
-        eapply Legacy.Canonical.checked_tiling_schedule_canonical_validate_poly_correct;
-          eauto.
-      * bind_imp_destruct Hroute fallback_ok Hfallback.
-        apply mayReturn_pure in Hroute.
-        destruct fallback_ok.
-        -- subst route.
-           eapply Legacy.Base.checked_tiling_validate_poly_correct; eauto.
-        -- subst route. simpl in Haccept. discriminate.
+    eapply checked_tiling_sourceb_complete_direct_band_check_outer_correct;
+      eauto.
+  - apply mayReturn_pure in Hroute.
+    subst route.
+    simpl in Haccept.
+    discriminate.
 Qed.
 
 Definition checked_tiling_schedule_sourceb_first_runtime_validate_route :=

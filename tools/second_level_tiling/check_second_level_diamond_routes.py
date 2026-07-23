@@ -153,8 +153,10 @@ def check_second_level_diamond_route_matrix(
             raise AssertionError(f"{label} mislabeled vector rejection as a tiling route")
         if proc.stderr.count(vector_rejection) != 1:
             raise AssertionError(f"{label} omitted unique vector rejection telemetry")
-        if "== Optimized Loop ==" in proc.stdout or "[alarm]" in proc.stderr:
+        if "== Optimized Loop ==" in proc.stdout:
             raise AssertionError(f"{label} emitted a fallback after explicit rejection")
+        if proc.stderr.count("[alarm] requested checked optimization was rejected") != 1:
+            raise AssertionError(f"{label} omitted unique fail-closed alarm")
 
     print(
         "second-level diamond route matrix: PASS "

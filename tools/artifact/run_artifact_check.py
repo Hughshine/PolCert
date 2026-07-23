@@ -46,12 +46,12 @@ def build_tiling_route_summary(results: list[CheckResult]) -> dict[str, object]:
             return ""
 
     direct_match = re.search(
-        r"\[direct-band-diff\] OK \((\d+) cases, no alarms\)",
-        stdout("direct-band-differential"),
+        r"\[direct-route\] OK \((\d+) cases, zero fallbacks\)",
+        stdout("direct-only-tiling-route-smoke"),
     )
     one_level_match = re.search(
         r"\[non-second-level-routes\] OK \((\d+) permutable-band "
-        r"compositions, (\d+) explicit general fallbacks, (\d+) explicit "
+        r"compositions, (\d+) validation fallbacks, (\d+) explicit "
         r"vector rejections\)",
         stdout("non-second-level-tiling-routes"),
     )
@@ -66,45 +66,57 @@ def build_tiling_route_summary(results: list[CheckResult]) -> dict[str, object]:
         and "--second-level-tile" in check.get("args", [])
     ]
     band_marker = "[tiling-validation] route=permutable-band"
-    fallback_marker = "[tiling-validation] route=general-fallback"
+    forbidden_fallback_marker = "[tiling-validation] route=general-fallback"
     second_level_counts = {
         "manifest_checks": len(checks),
         "successful": len(successful),
         "permutable_band": sum(
             band_marker in check.get("stderr_needles", []) for check in successful
         ),
-        "general_fallback": sum(
-            fallback_marker in check.get("stderr_needles", []) for check in successful
+        "validation_fallback": sum(
+            forbidden_fallback_marker in check.get("stderr_needles", [])
+            for check in successful
         ),
         "negative": sum(check.get("expect") == "failure" for check in checks),
     }
 
     required = (
-        "direct-band-differential",
+        "direct-only-tiling-route-smoke",
         "non-second-level-tiling-routes",
         "second-level-suite",
         "pluto-compat-suite",
     )
+    zero_fallback_coverage = (
+        direct_match is not None
+        and int(direct_match.group(1)) == 7
+        and one_level_match is not None
+        and tuple(map(int, one_level_match.groups())) == (84, 0, 6)
+        and second_level_counts["successful"] == 53
+        and second_level_counts["permutable_band"] == 53
+        and second_level_counts["validation_fallback"] == 0
+        and second_level_counts["negative"] == 5
+    )
     return {
         "schema_version": 1,
-        "verified": all(passed(name) for name in required),
+        "verified": all(passed(name) for name in required) and zero_fallback_coverage,
+        "zero_tiling_validation_fallbacks": zero_fallback_coverage,
         "required_runtime_checks": {
             name: "pass" if passed(name) else "missing-or-failed" for name in required
         },
-        "direct_differential": {
+        "direct_route_smoke": {
             "cases": int(direct_match.group(1)) if direct_match else None,
-            "no_alarms": bool(direct_match),
+            "zero_fallbacks": bool(direct_match),
         },
         "non_second_level": {
             "cases": sum(map(int, one_level_match.groups())) if one_level_match else None,
             "permutable_band": int(one_level_match.group(1)) if one_level_match else None,
-            "general_fallback": int(one_level_match.group(2)) if one_level_match else None,
+            "validation_fallback": int(one_level_match.group(2)) if one_level_match else None,
             "explicit_vector_rejection": int(one_level_match.group(3)) if one_level_match else None,
         },
         "second_level_manifest": second_level_counts,
         "second_level_additional_runtime_matrix": {
             "standalone_phase_aligned": "permutable-band",
-            "standalone_source_like": "general-fallback",
+            "standalone_source_like": "permutable-band",
             "standalone_trailing_zero_normalized": "permutable-band",
             "diamond_permutable_band": 16,
             "diamond_explicit_vector_rejection": 4,
@@ -188,7 +200,7 @@ def base_checks(
                 "tools/diamond_tiling/run_pluto_diamond_suite.py",
                 "tools/parallel_current/run_parallel_current_suite.py",
                 "tools/vector_current/run_vector_current_suite.py",
-                "tools/tiling_routes/check_direct_band_differential.py",
+                "tools/tiling_routes/check_complete_direct_routes.py",
                 "tools/tiling_routes/check_non_second_level_routes.py",
                 "tools/polopt_flag_suites/manifest_runner.py",
                 "tools/polopt_flag_suites/pluto_compat_driver.py",
@@ -251,10 +263,10 @@ def base_checks(
             900,
         ),
         (
-            "direct-band-differential",
+            "direct-only-tiling-route-smoke",
             [
                 sys.executable,
-                "tools/tiling_routes/check_direct_band_differential.py",
+                "tools/tiling_routes/check_complete_direct_routes.py",
                 "--polopt",
                 "./polopt",
                 "--polcert",

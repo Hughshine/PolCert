@@ -198,7 +198,8 @@ Definition try_verified_diamond_after_phase_mid_poly
             if wf_posttile then
               match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
               | Err _ =>
-                  pure pol_mid
+                  res_to_alarm pol_mid
+                    (Err "Post-tiling affine schedule import failed.")
               | Okk pol_after =>
                   BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
                   if final_ok then
@@ -206,9 +207,11 @@ Definition try_verified_diamond_after_phase_mid_poly
                     if wf_after then
                       pure (PolyLang.current_view_pprog pol_after)
                     else
-                      pure pol_mid
+                      res_to_alarm pol_mid
+                        (Err "Post-tiling affine target is not well formed.")
                   else
-                    pure pol_mid
+                    res_to_alarm pol_mid
+                      (Err "Post-tiling affine validation failed.")
               end
             else
               pure pol_mid

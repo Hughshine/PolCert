@@ -1,8 +1,9 @@
 Require Import TPolIRs.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
-Require Import PolOpt.
+Require Import AffineValidator.
 
-Module TValidatorOpt := PolOpt TPolIRs.
+Module AffineCore := AffineValidator TPolIRs.
 
-Definition validate := TValidatorOpt.ValidatorCore.validate.
+Definition validate := AffineCore.validate.
+Definition check_wf_polyprog_general := AffineCore.check_wf_polyprog_general.

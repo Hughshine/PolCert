@@ -202,7 +202,7 @@ let tiling_artifact_from_files_or_fail ~second_level before_path after_path =
 
 let check_tiling_after_wf after_pol =
   let (wf_after, wf_after_ok) =
-    TPolOpt.CoreOpt.check_wf_polyprog_general after_pol
+    TPolValidator.check_wf_polyprog_general after_pol
   in
   if not wf_after_ok then
     (false, false)
@@ -229,8 +229,6 @@ let classify_tiling_band_route after_pol route route_ok =
         (false, true, "rejected")
     | TBandSched.DirectBandAccepted ->
         accept_if_wf "permutable-band"
-    | TBandSched.GeneralFallbackAccepted ->
-        accept_if_wf "general-fallback"
 
 let checked_tiling_validate_with_bands before_pol after_pol ws =
   let (route, route_ok) =
@@ -254,37 +252,6 @@ let run_tiling_pair ~second_level before_path after_path =
   let (before_pol, after_pol) =
     normalize_tiling_validator_inputs before_pol after_pol
   in
-  let debug_band_tiling =
-    match Sys.getenv_opt "POLCERT_DEBUG_BAND_TILING" with
-    | Some value ->
-        let value = String.lowercase_ascii (String.trim value) in
-        value = "1" || value = "true" || value = "yes"
-    | None -> false
-  in
-  if debug_band_tiling then begin
-    let before_t = TBandSched.Legacy.Base.outer_to_tiling_pprog before_pol in
-    let after_t = TBandSched.Legacy.Base.outer_to_tiling_pprog after_pol in
-    match TBandSched.Legacy.infer_pprog_tiling_bands before_t ws with
-    | Some bands ->
-        let (strong_res, strong_ok) =
-          TBandSched.Legacy.check_pprog_pluto_permutable_tiling_bands_strong_via_validate_tiling
-            before_t after_t ws bands
-        in
-        let (direct_res, direct_ok) =
-          TBandSched.Legacy.check_pprog_pluto_permutable_tiling_bands_direct
-            before_t after_t ws bands
-        in
-        let (whole_res, whole_ok) =
-          TBandSched.Legacy.check_pprog_permutable_tiling_bands_via_validate_tiling
-            before_t after_t ws bands
-        in
-        Printf.eprintf
-          "[debug-band-tiling] old-strong=%b(ok=%b) direct-band=%b(ok=%b) whole=%b(ok=%b)\n"
-          strong_res strong_ok direct_res direct_ok whole_res whole_ok
-    | None ->
-        Printf.eprintf
-          "[debug-band-tiling] band-inference=failed\n"
-  end;
   let (res, ok, route) =
     checked_tiling_validate_with_bands before_pol after_pol ws
   in
@@ -292,28 +259,36 @@ let run_tiling_pair ~second_level before_path after_path =
 
 let print_affine_relation before_path after_path =
   let (ok1, res1, ok2, res2) = affine_relation before_path after_path in
-  if ok1 && res1 && ok2 && res2 then
+  if ok1 && res1 && ok2 && res2 then begin
     Printf.printf "[EQ] The two polyhedral models (%s, %s) are equivalent.\n"
-      before_path after_path
-  else if ok1 && res1 then
-    Printf.printf "[GT] Polyhedral model %s refines %s.\n" after_path before_path
-  else if ok2 && res2 then
-    Printf.printf "[LT] Polyhedral model %s refines %s.\n" before_path after_path
-  else
+      before_path after_path;
+    true
+  end else if ok1 && res1 then begin
+    Printf.printf "[GT] Polyhedral model %s refines %s.\n" after_path before_path;
+    true
+  end else if ok2 && res2 then begin
+    Printf.printf "[LT] Polyhedral model %s refines %s.\n" before_path after_path;
+    true
+  end else begin
     Printf.printf
       "[NE] Cannot determine refinement relations between the two polyhedral models (%s, %s).\n"
-      before_path after_path
+      before_path after_path;
+    false
+  end
 
 let print_tiling_result ~second_level before_path after_path =
   let (ok, res, route) = run_tiling_pair ~second_level before_path after_path in
-  if ok && res then
+  if ok && res then begin
     Printf.printf
       "[TILING-OK] %s validates %s as a tiling-derived refinement (route=%s).\n"
-      after_path before_path route
-  else
+      after_path before_path route;
+    true
+  end else begin
     Printf.printf
       "[TILING-FAIL] %s does not validate %s as a tiling-derived refinement (route=%s).\n"
-      after_path before_path route
+      after_path before_path route;
+    false
+  end
 
 let run_iss_bridge bridge =
   run_polopt_passthrough ["--validate-iss-bridge"; bridge]
@@ -414,12 +389,15 @@ let run_phase kind second_level before_path mid_path after_path =
   match kind with
   | Kind_affine ->
       let (ok, res) = affine_forward before_path mid_path in
-      if ok && res then
+      if ok && res then begin
         Printf.printf "[AFFINE-OK] %s validates %s as an affine refinement.\n"
-          mid_path before_path
-      else
+          mid_path before_path;
+        true
+      end else begin
         Printf.printf "[AFFINE-FAIL] %s does not validate %s as an affine refinement.\n"
-          mid_path before_path
+          mid_path before_path;
+        false
+      end
   | Kind_tiling ->
       print_tiling_result ~second_level mid_path after_path
   | Kind_auto ->
@@ -431,14 +409,17 @@ let run_phase kind second_level before_path mid_path after_path =
         (if ok_affine && res_affine then "OK" else "FAIL");
       Printf.printf "[PHASE] tiling(mid, after): %s route=%s\n"
         (if ok_tiling && res_tiling then "OK" else "FAIL") tiling_route;
-      if ok_affine && res_affine && ok_tiling && res_tiling then
+      if ok_affine && res_affine && ok_tiling && res_tiling then begin
         Printf.printf
           "[OK] Phase-aligned validation succeeded for (%s -> %s -> %s).\n"
-          before_path mid_path after_path
-      else
+          before_path mid_path after_path;
+        true
+      end else begin
         Printf.printf
           "[FAIL] Phase-aligned validation failed for (%s -> %s -> %s).\n"
-          before_path mid_path after_path
+          before_path mid_path after_path;
+        false
+      end
 
 let run_diamond_phase kind second_level before_path mid_path posttile_path after_path =
   match kind with
@@ -449,28 +430,34 @@ let run_diamond_phase kind second_level before_path mid_path posttile_path after
         (if ok_affine1 && res_affine1 then "OK" else "FAIL");
       Printf.printf "[PHASE] affine(posttile, after): %s\n"
         (if ok_affine2 && res_affine2 then "OK" else "FAIL");
-      if ok_affine1 && res_affine1 && ok_affine2 && res_affine2 then
+      if ok_affine1 && res_affine1 && ok_affine2 && res_affine2 then begin
         Printf.printf
           "[OK] Diamond affine validation succeeded for (%s -> %s -> %s -> %s).\n"
-          before_path mid_path posttile_path after_path
-      else
+          before_path mid_path posttile_path after_path;
+        true
+      end else begin
         Printf.printf
           "[FAIL] Diamond affine validation failed for (%s -> %s -> %s -> %s).\n"
-          before_path mid_path posttile_path after_path
+          before_path mid_path posttile_path after_path;
+        false
+      end
   | Kind_tiling ->
       let (ok_tiling, res_tiling, tiling_route) =
         run_tiling_pair ~second_level mid_path posttile_path
       in
       Printf.printf "[PHASE] tiling(mid, posttile): %s route=%s\n"
         (if ok_tiling && res_tiling then "OK" else "FAIL") tiling_route;
-      if ok_tiling && res_tiling then
+      if ok_tiling && res_tiling then begin
         Printf.printf
           "[OK] Diamond tiling validation succeeded for (%s -> %s).\n"
-          mid_path posttile_path
-      else
+          mid_path posttile_path;
+        true
+      end else begin
         Printf.printf
           "[FAIL] Diamond tiling validation failed for (%s -> %s).\n"
-          mid_path posttile_path
+          mid_path posttile_path;
+        false
+      end
   | Kind_auto ->
       let (ok_affine1, res_affine1) = affine_forward before_path mid_path in
       let (ok_tiling, res_tiling, tiling_route) =
@@ -483,14 +470,17 @@ let run_diamond_phase kind second_level before_path mid_path posttile_path after
         (if ok_tiling && res_tiling then "OK" else "FAIL") tiling_route;
       Printf.printf "[PHASE] affine(posttile, after): %s\n"
         (if ok_affine2 && res_affine2 then "OK" else "FAIL");
-      if ok_affine1 && res_affine1 && ok_tiling && res_tiling && ok_affine2 && res_affine2 then
+      if ok_affine1 && res_affine1 && ok_tiling && res_tiling && ok_affine2 && res_affine2 then begin
         Printf.printf
           "[OK] Diamond phase-aligned validation succeeded for (%s -> %s -> %s -> %s).\n"
-          before_path mid_path posttile_path after_path
-      else
+          before_path mid_path posttile_path after_path;
+        true
+      end else begin
         Printf.printf
           "[FAIL] Diamond phase-aligned validation failed for (%s -> %s -> %s -> %s).\n"
-          before_path mid_path posttile_path after_path
+          before_path mid_path posttile_path after_path;
+        false
+      end
 
 let _ =
   try
@@ -514,7 +504,7 @@ let _ =
       prerr_endline (usage Sys.argv.(0));
       exit 2
     end;
-    begin
+    let success =
       match mode with
       | Iss_bridge_mode bridge ->
           exit (run_iss_bridge bridge)
@@ -526,7 +516,8 @@ let _ =
           run_phase kind second_level before_path mid_path after_path
       | Diamond_phase_mode (before_path, mid_path, posttile_path, after_path) ->
           run_diamond_phase kind second_level before_path mid_path posttile_path after_path
-    end
+    in
+    if not success then exit 1
   with
   | Invalid_argument msg ->
       error no_loc "%s" msg;

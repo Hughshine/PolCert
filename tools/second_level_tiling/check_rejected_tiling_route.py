@@ -1,16 +1,42 @@
 #!/usr/bin/env python3
-"""Check that a rejected tiling candidate is observable and not adopted."""
+"""Check malformed tilings and distinguish failures in later consumers."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import subprocess
 
 
 REJECTED_ROUTE = "[tiling-validation] route=rejected"
-FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
+BAND_ROUTE = "[tiling-validation] route=permutable-band"
 NO_VECTOR_HINT = "[vector-validation] status=skipped reason=no-hint"
+PARALLEL_REJECTION = (
+    "[parallel-validation] status=rejected source=explicit-current "
+    "reason=not-certifiable-or-out-of-range"
+)
+VECTOR_REJECTION = (
+    "[vector-validation] status=rejected source=explicit-current "
+    "reason=not-certifiable-or-non-innermost"
+)
+TILE_LINK_MUTATION = "[rejecting-pluto] corrupted one tiling tile-link"
+FINAL_AFFINE_MUTATION = "[rejecting-pluto] reversed "
+
+
+@dataclass(frozen=True)
+class MalformedTilingCase:
+    name: str
+    fixture: Path
+    args: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ConsumerFailureCase:
+    name: str
+    fixture: Path
+    args: tuple[str, ...]
+    rejection: str
 
 
 def route_lines(stderr: str) -> list[str]:
@@ -21,48 +47,325 @@ def route_lines(stderr: str) -> list[str]:
     ]
 
 
+def run_polopt(
+    *,
+    polopt: Path,
+    fixture: Path,
+    args: tuple[str, ...],
+    timeout: int,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(polopt), *args, str(fixture)],
+        text=True,
+        capture_output=True,
+        timeout=timeout,
+        check=False,
+        env=os.environ.copy() if env is None else env,
+    )
+
+
+def malformed_tiling_cases(root: Path) -> list[MalformedTilingCase]:
+    symbolic = root / "tools" / "second_level_tiling" / "fixtures" / "symbolic-independent-2d.loop"
+    mixed_depth = root / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
+    diamond = (
+        root
+        / "tools"
+        / "parallel_current"
+        / "fixtures"
+        / "diamond-example-inner-batch.loop"
+    )
+    cases: list[MalformedTilingCase] = []
+    for name, fixture, args in (
+        ("ordinary", symbolic, ()),
+        ("identity-mixed-depth", mixed_depth, ("--identity-tiled",)),
+        ("second-level", symbolic, ("--second-level-tile",)),
+        (
+            "second-level-identity-mixed-depth",
+            mixed_depth,
+            ("--second-level-tile", "--identity-tiled"),
+        ),
+        ("diamond", diamond, ("--diamond-tile",)),
+        ("full-diamond", diamond, ("--full-diamond-tile",)),
+        (
+            "second-level-diamond",
+            diamond,
+            ("--second-level-tile", "--diamond-tile"),
+        ),
+        (
+            "second-level-full-diamond",
+            diamond,
+            ("--second-level-tile", "--full-diamond-tile"),
+        ),
+    ):
+        cases.append(MalformedTilingCase(name, fixture, args))
+        cases.append(MalformedTilingCase(f"{name}-iss", fixture, (*args, "--iss")))
+    return cases
+
+
+def consumer_failure_cases(root: Path) -> list[ConsumerFailureCase]:
+    symbolic = root / "tools" / "second_level_tiling" / "fixtures" / "symbolic-independent-2d.loop"
+    mixed_depth = root / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
+    diamond = (
+        root
+        / "tools"
+        / "parallel_current"
+        / "fixtures"
+        / "diamond-example-inner-batch.loop"
+    )
+    producers = (
+        ("ordinary", symbolic, ()),
+        ("second-level-iss", symbolic, ("--second-level-tile", "--iss")),
+        ("identity-mixed-depth", mixed_depth, ("--identity-tiled",)),
+        (
+            "second-level-identity-mixed-depth-iss",
+            mixed_depth,
+            ("--second-level-tile", "--identity-tiled", "--iss"),
+        ),
+        ("diamond", diamond, ("--diamond-tile",)),
+        ("full-diamond-iss", diamond, ("--full-diamond-tile", "--iss")),
+    )
+    cases: list[ConsumerFailureCase] = []
+    for name, fixture, producer_args in producers:
+        cases.append(
+            ConsumerFailureCase(
+                f"{name}-parallel-current",
+                fixture,
+                (*producer_args, "--parallel-current", "999"),
+                PARALLEL_REJECTION,
+            )
+        )
+        cases.append(
+            ConsumerFailureCase(
+                f"{name}-vector-current",
+                fixture,
+                (*producer_args, "--vector-current", "999"),
+                VECTOR_REJECTION,
+            )
+        )
+    return cases
+
+
+def assert_no_alternate_route(label: str, stderr: str) -> None:
+    if BAND_ROUTE in stderr:
+        raise AssertionError(f"{label} malformed candidate reported permutable-band")
+    if "fallback" in stderr.lower():
+        raise AssertionError(f"{label} reported a forbidden fallback route")
+
+
+def check_malformed_tiling_cases(
+    *,
+    polopt: Path,
+    wrapper: Path,
+    real_pluto: Path,
+    root: Path,
+    timeout: int,
+) -> int:
+    env = os.environ.copy()
+    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
+    env["POLCERT_PLUTO"] = str(wrapper)
+    env["POLCERT_REJECTING_PLUTO_MODE"] = "tiling"
+    cases = malformed_tiling_cases(root)
+    for case in cases:
+        proc = run_polopt(
+            polopt=polopt,
+            fixture=case.fixture,
+            args=case.args,
+            timeout=timeout,
+            env=env,
+        )
+        label = f"malformed {case.name}"
+        if proc.returncode == 0:
+            raise AssertionError(
+                f"{label} did not fail closed\n"
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
+        if route_lines(proc.stderr) != [REJECTED_ROUTE]:
+            raise AssertionError(
+                f"{label} did not report exactly one rejected tiling route\n"
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
+        assert_no_alternate_route(label, proc.stderr)
+        if proc.stderr.count(TILE_LINK_MUTATION) != 1:
+            raise AssertionError(f"{label} did not perform exactly one tile-link mutation")
+        if proc.stderr.count("[alarm]") != 1:
+            raise AssertionError(f"{label} did not report exactly one rejection alarm")
+        if "== Optimized Loop ==" in proc.stdout:
+            raise AssertionError(f"{label} emitted output after rejecting tiling")
+    return len(cases)
+
+
+def check_integrated_direct_checker_rejection(
+    *,
+    polopt: Path,
+    real_pluto: Path,
+    root: Path,
+    timeout: int,
+) -> None:
+    env = os.environ.copy()
+    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
+    env["POLCERT_PLUTO"] = str(
+        root / "tools" / "tiling_routes" / "frozen_nonpermutable_pluto.py"
+    )
+    proc = run_polopt(
+        polopt=polopt,
+        fixture=(
+            root
+            / "tools"
+            / "tiling_routes"
+            / "fixtures"
+            / "nonpermutable-band.loop"
+        ),
+        args=(),
+        timeout=timeout,
+        env=env,
+    )
+    label = "integrated direct-checker nonpermutable band"
+    if proc.returncode == 0:
+        raise AssertionError(f"{label} unexpectedly succeeded")
+    if route_lines(proc.stderr) != [REJECTED_ROUTE]:
+        raise AssertionError(
+            f"{label} did not report exactly one rejected route\n"
+            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+    if proc.stderr.count("[frozen-nonpermutable-pluto]") != 2:
+        raise AssertionError(f"{label} did not replace both Pluto phase outputs")
+    assert_no_alternate_route(label, proc.stderr)
+    if proc.stderr.count("[alarm]") != 1:
+        raise AssertionError(f"{label} did not report exactly one alarm")
+    if "== Optimized Loop ==" in proc.stdout:
+        raise AssertionError(f"{label} emitted output after rejection")
+
+
+def check_consumer_failure_cases(
+    *,
+    polopt: Path,
+    root: Path,
+    timeout: int,
+) -> int:
+    cases = consumer_failure_cases(root)
+    for case in cases:
+        proc = run_polopt(
+            polopt=polopt,
+            fixture=case.fixture,
+            args=case.args,
+            timeout=timeout,
+        )
+        label = f"consumer failure {case.name}"
+        if proc.returncode == 0:
+            raise AssertionError(f"{label} unexpectedly succeeded")
+        if route_lines(proc.stderr):
+            raise AssertionError(
+                f"{label} was mislabeled as a tiling outcome: "
+                f"{route_lines(proc.stderr)!r}"
+            )
+        if proc.stderr.count(case.rejection) != 1:
+            raise AssertionError(f"{label} omitted its unique consumer rejection")
+        if "fallback" in proc.stderr.lower() or BAND_ROUTE in proc.stderr:
+            raise AssertionError(f"{label} leaked an accepted tiling route")
+        if proc.stderr.count("[alarm]") != 1:
+            raise AssertionError(
+                f"{label} reported {proc.stderr.count('[alarm]')} alarms, "
+                "expected 1"
+            )
+        if "== Optimized Loop ==" in proc.stdout:
+            raise AssertionError(f"{label} emitted output after rejection")
+        if "validation failed" not in proc.stderr.lower():
+            raise AssertionError(f"{label} omitted its validation failure")
+    return len(cases)
+
+
+def check_final_affine_failure_cases(
+    *,
+    polopt: Path,
+    wrapper: Path,
+    real_pluto: Path,
+    root: Path,
+    timeout: int,
+) -> int:
+    diamond = (
+        root
+        / "tools"
+        / "parallel_current"
+        / "fixtures"
+        / "diamond-example-inner-batch.loop"
+    )
+    cases = (
+        ("diamond", ("--diamond-tile",)),
+        ("diamond-iss", ("--diamond-tile", "--iss")),
+        (
+            "second-level-full-diamond",
+            ("--second-level-tile", "--full-diamond-tile"),
+        ),
+        (
+            "second-level-full-diamond-iss",
+            ("--second-level-tile", "--full-diamond-tile", "--iss"),
+        ),
+    )
+    env = os.environ.copy()
+    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
+    env["POLCERT_PLUTO"] = str(wrapper)
+    env["POLCERT_REJECTING_PLUTO_MODE"] = "final-affine"
+    for name, args in cases:
+        proc = run_polopt(
+            polopt=polopt,
+            fixture=diamond,
+            args=args,
+            timeout=timeout,
+            env=env,
+        )
+        label = f"final affine failure {name}"
+        if proc.returncode == 0:
+            raise AssertionError(
+                f"{label} unexpectedly accepted the malformed final schedule"
+            )
+        if route_lines(proc.stderr) != [BAND_ROUTE]:
+            raise AssertionError(
+                f"{label} did not preserve the successful tiling-leg route\n"
+                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
+        if REJECTED_ROUTE in proc.stderr or "fallback" in proc.stderr.lower():
+            raise AssertionError(f"{label} mislabeled the final affine rejection")
+        if proc.stderr.count(FINAL_AFFINE_MUTATION) != 1:
+            raise AssertionError(f"{label} did not mutate exactly one final schedule")
+        if proc.stderr.count("[alarm]") != 1:
+            raise AssertionError(f"{label} did not report exactly one validation alarm")
+        if "== Optimized Loop ==" in proc.stdout:
+            raise AssertionError(f"{label} emitted output after a validation alarm")
+    return len(cases)
+
+
 def check_rejected_tiling_route(
     *,
     polopt: Path,
     fixture: Path,
     timeout: int,
 ) -> None:
-    wrapper = Path(__file__).resolve().with_name("rejecting_pluto.py")
-    real_pluto = Path(os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto")).resolve()
-    env = os.environ.copy()
-    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
-    env["POLCERT_PLUTO"] = str(wrapper)
-    proc = subprocess.run(
-        [str(polopt), "--second-level-tile", str(fixture)],
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        check=False,
-        env=env,
-    )
-    if proc.returncode != 0:
-        raise AssertionError(
-            f"rejected-route probe failed with exit {proc.returncode}\n"
-            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-        )
-    if route_lines(proc.stderr) != [REJECTED_ROUTE]:
-        raise AssertionError(
-            "rejected tiling did not report exactly one rejected route\n"
-            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-        )
-    if "[rejecting-pluto] corrupted one second-level tile-link" not in proc.stderr:
-        raise AssertionError("the rejection probe did not mutate the tiling output")
-    if "[alarm]" in proc.stderr:
-        raise AssertionError("retaining the validated affine midpoint raised an alarm")
-    if "== Optimized Loop ==" not in proc.stdout:
-        raise AssertionError("rejected tiling did not return the affine midpoint output")
-    for marker in ("/ 256", "8 *", "32 *"):
-        if marker in proc.stdout:
-            raise AssertionError(
-                f"rejected second-level tiling leaked nested tile marker {marker!r}"
-            )
-
     root = Path(__file__).resolve().parents[2]
+    wrapper = Path(__file__).resolve().with_name("rejecting_pluto.py")
+    real_pluto = Path(
+        os.environ.get(
+            "POLCERT_REAL_PLUTO",
+            os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto"),
+        )
+    ).resolve()
+    if not fixture.is_file():
+        raise AssertionError(f"missing legacy rejection fixture: {fixture}")
+
+    malformed_count = check_malformed_tiling_cases(
+        polopt=polopt,
+        wrapper=wrapper,
+        real_pluto=real_pluto,
+        root=root,
+        timeout=timeout,
+    )
+    check_integrated_direct_checker_rejection(
+        polopt=polopt,
+        real_pluto=real_pluto,
+        root=root,
+        timeout=timeout,
+    )
+
     scalar_only = subprocess.run(
         [
             str(polopt),
@@ -75,14 +378,16 @@ def check_rejected_tiling_route(
         check=False,
         env=os.environ.copy(),
     )
-    if scalar_only.returncode != 0:
-        raise AssertionError("scalar-only rejected-route probe failed")
+    if scalar_only.returncode == 0:
+        raise AssertionError("scalar-only tiling request did not fail closed")
     if route_lines(scalar_only.stderr) != [REJECTED_ROUTE]:
         raise AssertionError(
             "a tiling request with no non-scalar statement was not explicitly rejected"
         )
-    if "[alarm]" in scalar_only.stderr or "s = 0;" not in scalar_only.stdout:
-        raise AssertionError("scalar-only rejection did not preserve the original program")
+    if scalar_only.stderr.count("[alarm]") != 1:
+        raise AssertionError("scalar-only rejection omitted its unique alarm")
+    if "== Optimized Loop ==" in scalar_only.stdout:
+        raise AssertionError("scalar-only rejection emitted optimized output")
 
     strict_fixture = root / "tools" / "second_level_tiling" / "fixtures" / "matmul-init.loop"
     for second_level in (False, True):
@@ -116,10 +421,10 @@ def check_rejected_tiling_route(
                 f"identity vector-strict{' ISS' if use_iss else ''}"
             )
             if strict.returncode != 0:
-                raise AssertionError(f"{label} conservative fallback failed")
-            if route_lines(strict.stderr) != [FALLBACK_ROUTE]:
+                raise AssertionError(f"{label} conservative vector skip failed")
+            if route_lines(strict.stderr) != [BAND_ROUTE]:
                 raise AssertionError(
-                    f"{label} did not preserve its verified fallback route"
+                    f"{label} did not preserve its verified band route"
                 )
             if "[alarm]" in strict.stderr:
                 raise AssertionError(f"{label} raised an alarm for an optional annotation")
@@ -134,50 +439,27 @@ def check_rejected_tiling_route(
                         f"{label} lost verified tiling marker {marker!r}"
                     )
 
-    for second_level in (False, True):
-        for use_iss in (False, True):
-            for current_flag in ("--parallel-current", "--vector-current"):
-                args = []
-                if second_level:
-                    args.append("--second-level-tile")
-                if use_iss:
-                    args.append("--iss")
-                args.extend((current_flag, "999", str(strict_fixture)))
-                current = subprocess.run(
-                    [str(polopt), *args],
-                    text=True,
-                    capture_output=True,
-                    timeout=timeout,
-                    check=False,
-                    env=os.environ.copy(),
-                )
-                label = (
-                    f"{'second-level ' if second_level else 'ordinary '}"
-                    f"{current_flag[2:]}{' ISS' if use_iss else ''}"
-                )
-                if current.returncode == 0:
-                    raise AssertionError(f"{label} invalid dimension unexpectedly succeeded")
-                expected_routes = [] if current_flag == "--vector-current" else [REJECTED_ROUTE]
-                if route_lines(current.stderr) != expected_routes:
-                    raise AssertionError(
-                        f"{label} hard failure reported unexpected tiling routes"
-                    )
-                if current_flag == "--vector-current":
-                    rejection = (
-                        "[vector-validation] status=rejected source=explicit-current "
-                        "reason=not-certifiable-or-non-innermost"
-                    )
-                    if current.stderr.count(rejection) != 1:
-                        raise AssertionError(
-                            f"{label} omitted its unique vector rejection telemetry"
-                        )
-                if "validation failed" not in current.stderr.lower():
-                    raise AssertionError(f"{label} omitted its validation failure")
+    consumer_failure_count = check_consumer_failure_cases(
+        polopt=polopt,
+        root=root,
+        timeout=timeout,
+    )
+    final_affine_count = check_final_affine_failure_cases(
+        polopt=polopt,
+        wrapper=wrapper,
+        real_pluto=real_pluto,
+        root=root,
+        timeout=timeout,
+    )
 
     print(
         "rejected tiling route: PASS "
-        "(invalid witness, scalar-only early exit, four vector skips preserve "
-        "their verified fallbacks, and eight explicit-current failures are explicit)"
+        f"({malformed_count} malformed tilings fail closed, scalar-only fails "
+        "closed, one integrated nonpermutable candidate reaches the direct "
+        "checker and is rejected once, four vector skips preserve verified tilings, "
+        f"{consumer_failure_count} consumer failures do not alter the tiling "
+        f"outcome, and {final_affine_count} final-affine failures preserve "
+        "the successful tiling-leg route and fail closed)"
     )
 
 

@@ -273,6 +273,26 @@ checks, and `209s` (`3:29`) for the 90-case one-level route matrix. These are
 observed serial runtimes on a prepared container, not universal performance
 claims; a clean artifact run still needs the larger budget above.
 
+On 2026-07-23, an isolated pre-final snapshot containing the mixed
+second-level direct checker completed `make -j8 extraction/STAMP` in
+`36:11` wall time.  The parallel portion had drained before the last large
+proof and extraction steps: `driver/ExtractedPipelineCorrect.v` ran alone for
+more than eight minutes, and the final `extraction/extraction.v` pass also ran
+single-threaded.  `make -f Makefile.extr depend` then completed in `1.43s`.
+This is a proof/extraction measurement in an already prepared container, not a
+Docker image build or a final artifact runtime.  The final zero-fallback
+snapshot must be measured again after its two-state dispatcher is extracted.
+
+The prepared `polcert-zero-fallback-final` container then checked the final
+source-like second-level zero-row normalization through the complete extracted
+pipeline.  The full second-level suite completed in about `16:50`, including
+53 manifest acceptances, 5 negative cases, 16 diamond consumer acceptances,
+4 explicit vector rejections, and the standalone source-like OpenScop pair.
+The independent one-level matrix completed in `198.11s`, with 84 direct
+acceptances, 0 tiling-validation fallbacks, and 6 explicit vector rejections.
+These are warm-container regression times; the final clean build and artifact
+run remain the publication-facing reproduction measurements.
+
 The pre-fast-path comparison against the identity route was:
 
 - identity route:
@@ -462,11 +482,10 @@ polish, not route closure.
 The implemented route follows the architecture from the design notes:
 
 - import and validate the diamond-aware affine midpoint
-- validate the `mid_diamond -> posttile` boundary with the unified dispatcher:
-  ordinary common-band, whole-program ordinary-tiling permutability,
-  hierarchical second-level permutability, structural second-level
-  whole-program permutability, source-like second-level whole-program
-  permutability, canonical fallback, then general fallback
+- validate the `mid_diamond -> posttile` boundary with the direct-only
+  dispatcher: ordinary/common bands, program-wide semantic bands,
+  uniform grouped/interleaved second-level bands, and the phase-aware mixed
+  second-level bridge
 - validate the final post-tile affine cleanup boundary
 - regenerate code through the PolOpt code generator
 

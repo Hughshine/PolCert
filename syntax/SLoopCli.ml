@@ -94,7 +94,7 @@ let usage prog =
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
       "  --legacy-generic-tiling : deprecated compatibility alias; tiled routes still use\n";
-      "                            permutable-band checking before general fallback\n";
+      "                            the direct permutable-band checker and otherwise reject\n";
       "  --const-unroll    : checked post pass that fully unrolls statically constant\n";
       "                       loop bounds in the final sequential Loop IR\n";
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
@@ -103,7 +103,7 @@ let usage prog =
       "                       In Pluto-compatible mode, --multipar enables checked\n";
       "                       parallel dimensions when the validator accepts them\n";
       "  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n";
-      "                       Pluto-hinted dimension; otherwise keep the sequential optimized loop\n";
+      "                       Pluto-hinted dimension; reject if that dimension is not certifiable\n";
       "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
       "                         dimension d; supported on identity, affine-only, and full\n";
       "                         tiled paths, including their `--iss` variants and the\n";
@@ -515,9 +515,9 @@ let validate_pluto_compat prog cfg =
     if cfg.force_identity && cfg.pluto_tile_seen then
       add_pluto_note cfg
         (if cfg.force_iss && cfg.force_second_level_tile then
-           "--identity --tile --iss --second-level-tile uses the checked ISS plus permutable-band-first identity-tiling route"
+           "--identity --tile --iss --second-level-tile uses the checked ISS plus direct permutable-band identity-tiling route"
          else if cfg.force_second_level_tile then
-           "--identity --tile --second-level-tile uses the checked permutable-band-first identity-tiling route"
+           "--identity --tile --second-level-tile uses the checked direct permutable-band identity-tiling route"
          else if cfg.force_iss then
            "--identity --tile --iss uses the checked ISS plus identity-tiling route"
          else

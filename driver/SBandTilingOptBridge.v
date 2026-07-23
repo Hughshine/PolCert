@@ -28,10 +28,6 @@ Proof.
   intros pol_mid pol_after route Haccept.
   destruct route; simpl in Haccept.
   - unfold SBandTilingOpt.prepared_codegen_after_tiling_route.
-    rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
-    simpl. apply impeq_refl.
-  - unfold SBandTilingOpt.prepared_codegen_after_tiling_route.
-    rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
     simpl. apply impeq_refl.
   - discriminate.
 Qed.
@@ -62,18 +58,16 @@ Proof.
     + apply bind_eq_compat.
       * apply impeq_refl.
       * intro route.
+        rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
         destruct route; simpl.
         -- apply bind_eq_compat.
            ++ apply impeq_refl.
            ++ intro wf_after. destruct wf_after.
               ** apply impeq_refl.
               ** apply impeq_refl.
-        -- apply bind_eq_compat.
-           ++ apply impeq_refl.
-           ++ intro wf_after. destruct wf_after.
-              ** apply impeq_refl.
-              ** apply impeq_refl.
-        -- apply impeq_refl.
+        -- unfold SBandTilingOpt.reject_tiling_then.
+           rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
+           apply impeq_refl.
     + apply impeq_refl.
   - apply impeq_refl.
 Qed.
@@ -99,6 +93,7 @@ Proof.
     + apply bind_eq_compat.
       * apply impeq_refl.
       * intro route.
+        rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
         destruct route; simpl.
         -- apply bind_eq_compat.
            ++ apply impeq_refl.
@@ -118,25 +113,9 @@ Proof.
                          *** apply impeq_refl.
                  --- apply impeq_refl.
               ** apply impeq_refl.
-        -- apply bind_eq_compat.
-           ++ apply impeq_refl.
-           ++ intro wf_posttile. destruct wf_posttile.
-              ** destruct
-                   (BandGeneric.PolyLang.from_openscop_schedule_only
-                      pol_posttile after_scop)
-                   as [pol_after|msg_after].
-                 --- apply bind_eq_compat.
-                     +++ apply impeq_refl.
-                     +++ intro final_ok. destruct final_ok.
-                         *** apply bind_eq_compat.
-                             ---- apply impeq_refl.
-                             ---- intro wf_after. destruct wf_after.
-                                  ++++ apply impeq_refl.
-                                  ++++ apply impeq_refl.
-                         *** apply impeq_refl.
-                 --- apply impeq_refl.
-              ** apply impeq_refl.
-        -- apply impeq_refl.
+        -- unfold SBandTilingOpt.reject_tiling_then.
+           rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
+           apply impeq_refl.
     + apply impeq_refl.
   - apply impeq_refl.
 Qed.

@@ -9,8 +9,7 @@ from pathlib import Path
 
 NESTED_TILE_MARKERS = {"/ 256", "8 *", "32 *"}
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
-FALLBACK_ROUTE = "[tiling-validation] route=general-fallback"
-MIXED_DEPTH_CHECK = "second-level-mixed-depth-general-fallback"
+MIXED_DEPTH_CHECK = "second-level-mixed-depth-band"
 
 BAND_STEMS = {
     "default",
@@ -24,7 +23,7 @@ BAND_STEMS = {
     "vector-strict",
     "fusion",
 }
-IDENTITY_FALLBACK_STEMS = {
+IDENTITY_BAND_STEMS = {
     "identity-tiled",
     "identity-parallel-current",
     "identity-vector-current",
@@ -46,13 +45,7 @@ DIAMOND_BAND_STEMS = {
 }
 REQUIRED_BAND_ROUTES = {
     f"second-level-{stem}{'-iss' if iss else ''}-band"
-    for stem in BAND_STEMS | DIAMOND_BAND_STEMS
-    for iss in (False, True)
-}
-
-REQUIRED_FALLBACK_ROUTES = {
-    f"second-level-{stem}{'-iss' if iss else ''}-general-fallback"
-    for stem in IDENTITY_FALLBACK_STEMS
+    for stem in BAND_STEMS | IDENTITY_BAND_STEMS | DIAMOND_BAND_STEMS
     for iss in (False, True)
 } | {MIXED_DEPTH_CHECK}
 
@@ -126,7 +119,6 @@ def check_manifest(path: Path) -> None:
         and "--second-level-tile" in string_list(check, "args")
     ]
     band_checks: list[dict[str, object]] = []
-    fallback_checks: list[dict[str, object]] = []
     for check in tiling_checks:
         name = str(check["name"])
         args = string_list(check, "args")
@@ -135,31 +127,24 @@ def check_manifest(path: Path) -> None:
         stderr_absent = set(string_list(check, "stderr_absent_needles"))
         stderr_counts = string_counts(check, "stderr_counts")
 
-        route_needles = stderr_needles & {BAND_ROUTE, FALLBACK_ROUTE}
-        if len(route_needles) != 1:
-            raise AssertionError(f"{name}: must require exactly one accepted validation route")
-        route = next(iter(route_needles))
-        if stderr_counts.get(route) != 1:
+        route_needles = {
+            needle
+            for needle in stderr_needles
+            if needle.startswith("[tiling-validation] route=")
+        }
+        if route_needles != {BAND_ROUTE}:
+            raise AssertionError(
+                f"{name}: successful tiling must require only the permutable-band route"
+            )
+        if stderr_counts.get(BAND_ROUTE) != 1:
             raise AssertionError(f"{name}: must require exactly one final route report")
         if "[alarm]" not in stderr_absent:
             raise AssertionError(f"{name}: must reject alarms")
-        if route == BAND_ROUTE:
-            band_checks.append(check)
-            if not name.endswith("-band"):
-                raise AssertionError(f"{name}: band-route case name must end in -band")
-            if "fallback" not in stderr_absent:
-                raise AssertionError(f"{name}: must reject every fallback report")
-        else:
-            fallback_checks.append(check)
-            if not name.endswith("-general-fallback"):
-                raise AssertionError(f"{name}: fallback case name must state general-fallback")
-            if "route=permutable-band" not in stderr_absent:
-                raise AssertionError(f"{name}: must reject the band route")
-            if "differs_from_args" not in check:
-                raise AssertionError(
-                    f"{name}: fallback must demonstrate a nontrivial result against a baseline"
-                )
-            string_list(check, "differs_from_args")
+        band_checks.append(check)
+        if not name.endswith("-band"):
+            raise AssertionError(f"{name}: band-route case name must end in -band")
+        if "fallback" not in stderr_absent:
+            raise AssertionError(f"{name}: must reject every fallback report")
 
         is_diamond = "--diamond-tile" in args or "--full-diamond-tile" in args
         if is_diamond:
@@ -210,16 +195,8 @@ def check_manifest(path: Path) -> None:
         if signature not in by_non_iss_signature:
             raise AssertionError(f"{check['name']}: missing matching ISS variant")
 
-    route_by_name = {
-        str(check["name"]): (
-            BAND_ROUTE if check in band_checks else FALLBACK_ROUTE
-        )
-        for check in band_checks + fallback_checks
-    }
-    expected_routes = {
-        **{name: BAND_ROUTE for name in REQUIRED_BAND_ROUTES},
-        **{name: FALLBACK_ROUTE for name in REQUIRED_FALLBACK_ROUTES},
-    }
+    route_by_name = {str(check["name"]): BAND_ROUTE for check in band_checks}
+    expected_routes = {name: BAND_ROUTE for name in REQUIRED_BAND_ROUTES}
     for name, route in expected_routes.items():
         if route_by_name.get(name) != route:
             raise AssertionError(f"{name}: missing required route {route!r}")
@@ -243,19 +220,32 @@ def check_manifest(path: Path) -> None:
         None,
     )
     if mixed_depth is None or mixed_depth.get("expect") != "success":
-        raise AssertionError("missing successful mixed-depth fallback check")
+        raise AssertionError("missing successful mixed-depth band check")
     if "--second-level-tile" not in string_list(mixed_depth, "args"):
         raise AssertionError("mixed-depth check must exercise second-level tiling")
     if not NESTED_TILE_MARKERS.issubset(set(string_list(mixed_depth, "needles"))):
         raise AssertionError("mixed-depth check does not assert nested second-level tiling")
-    if FALLBACK_ROUTE not in string_list(mixed_depth, "stderr_needles"):
-        raise AssertionError("mixed-depth check does not require the general fallback route")
-    if string_counts(mixed_depth, "stderr_counts").get(FALLBACK_ROUTE) != 1:
+    if BAND_ROUTE not in string_list(mixed_depth, "stderr_needles"):
+        raise AssertionError("mixed-depth check does not require the band route")
+    if string_counts(mixed_depth, "stderr_counts").get(BAND_ROUTE) != 1:
         raise AssertionError("mixed-depth check must require exactly one route report")
-    if "route=permutable-band" not in string_list(
+    if "fallback" not in string_list(
         mixed_depth, "stderr_absent_needles"
     ):
-        raise AssertionError("mixed-depth check does not reject direct-band telemetry")
+        raise AssertionError("mixed-depth check does not reject fallback telemetry")
+
+    if len(checks) != 58 or len(tiling_checks) != 53:
+        raise AssertionError(
+            f"expected 58 total checks/53 successful tilings, got "
+            f"{len(checks)}/{len(tiling_checks)}"
+        )
+    if len(band_checks) != 53:
+        raise AssertionError(
+            f"expected all 53 successful tilings on the band route, got "
+            f"{len(band_checks)}"
+        )
+    if sum(check.get("expect") == "failure" for check in checks) != 5:
+        raise AssertionError("expected exactly five true negative checks")
 
 
 def main() -> None:
@@ -267,10 +257,10 @@ def main() -> None:
         if check.get("expect") == "success" and "--second-level-tile" in check.get("args", [])
     ]
     band_count = sum(BAND_ROUTE in check.get("stderr_needles", []) for check in successful)
-    fallback_count = sum(FALLBACK_ROUTE in check.get("stderr_needles", []) for check in successful)
     print(
         "second-level suite manifest: PASS "
-        f"({band_count} band accepted, {fallback_count} explicit fallbacks)"
+        f"({band_count} band accepted, 0 validation fallbacks, "
+        f"{len(data['checks']) - len(successful)} negatives)"
     )
 
 

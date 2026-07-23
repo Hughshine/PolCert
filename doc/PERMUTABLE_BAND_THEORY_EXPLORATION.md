@@ -34,7 +34,7 @@ satisfied at a scalar scattering dimension that remains fixed inside the tiled
 schedule.  The direct validator does not trust that detection or reproduce its
 dependence metadata.  It accepts only when its semantic band check and the
 checked target-shape bridge establish the reordering; structurally unmatched
-targets remain on the explicitly reported general fallback.
+targets are explicitly rejected.
 
 The validator checks the legality of the schedule block selected by the
 tiling witness. It does not rerun Pluto's ILP search for independent
@@ -175,18 +175,16 @@ Do not claim:
 
 ## 5. Runtime design and proved coverage
 
-The runtime has three observable outcomes:
+The runtime has two observable outcomes:
 
 ```text
 permutable-band   a direct band checker and a tiling-specific reversal bridge
                   establish reordering safety
-general-fallback  a proved legacy, canonical, or general tiling validator
-                  succeeds after the direct checker returns false
-rejected          no validator accepts the candidate
+rejected          the direct checker does not establish the property
 ```
 
-Only the first outcome is a permutable-band result. In particular, the legacy
-whole-schedule checker is never relabeled as a band result. An attempted
+Only the first outcome accepts a tiling candidate. The dispatcher does not call
+the legacy whole-schedule, canonical, or general tiling validator. An attempted
 "actual-target residual" wrapper was removed after proving it definitionally
 equal to the existing complete affine pair traversal.
 
@@ -249,14 +247,14 @@ global tile slots to zero-extended source components, common positive tile
 sizes, and a proof that pointwise order of the padded source timestamps implies
 pointwise order of the padded tile timestamps.
 
-That normalization theorem is not part of the current runtime. Source-like
-identity layouts and mixed-depth layouts without the recognized global slot
-mapping therefore report `general-fallback`; the identity flag alone does not
-determine the route. Such layouts remain verified by the proved fallback
-dispatcher, but they are not counted as direct permutable-band cases.
-Recognized grouped or interleaved second-level instances that satisfy the
-existing common-start and common-recipe shape gate continue to use the proved
-componentwise direct route.
+The current runtime now includes this program-wide normalization theorem.
+Source-like identity and mixed-depth layouts reconstruct a global raw-slot
+mapping, prove globally omitted slots evaluate to zero, and reflect compact
+semantic equality/order to padded raw timestamps before quotienting by positive
+tile sizes. Recognized grouped or interleaved second-level instances use the
+componentwise direct route; the recognized phase-separated mixed second-level
+shape uses its own direct bridge. Layouts outside these proved recognizers are
+rejected.
 
 ## 6. Reproduction Notes
 
@@ -268,12 +266,14 @@ checkout. They are planning estimates rather than performance claims.
 - Regenerating extraction after invalidating its Coq dependency closure took
   about 9 minutes. Incremental OCaml relinking was much shorter.
 - The five-case direct differential gate took 8.38 seconds with warm binaries.
-- The 90-case one-level route matrix took 176.49 seconds: 50 direct-band
-  successes, 34 explicit fallbacks, and 6 explicit vector rejections.
-- The complete second-level tiling suite took 947.89 seconds, about 16 minutes.
-  Its route contract contained 36 direct-band successes and 17 explicit
-  fallbacks, plus the standalone trailing-zero and rejection regressions and
-  the 16-success/4-rejection diamond matrix.
+- The final 90-case one-level route matrix took 198.11 seconds: 84
+  permutable-band acceptances, no tiling-validation fallback, and 6 explicit
+  vector rejections.
+- The final complete second-level tiling suite took about 16 minutes. Its route
+  contract contained 53 permutable-band acceptances and 5 malformed-request
+  rejections, with no tiling-validation fallback, plus the standalone
+  zero-normalization regressions and the 16-success/4-vector-rejection diamond
+  stress matrix.
 
 The Coq and OCaml builds used `hughshine/polcert:latest`. Diamond execution
 tests used Pluto commit `6f43860` from `gifted_curie`; that is also the commit

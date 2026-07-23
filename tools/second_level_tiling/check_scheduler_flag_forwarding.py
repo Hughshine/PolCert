@@ -127,52 +127,45 @@ def main() -> None:
     runtime_source = (ROOT / "src" / "TilingBandDirectRuntime.v").read_text(
         encoding="utf-8"
     )
-    legacy_source_route = coq_definition_body(band_source, unified_route)
-    require(
-        legacy_source_route,
-        "if band_ok then pure TilingBandGeneralFallbackAccepted",
-        "legacy aggregate route must not claim direct-band acceptance",
-    )
-    legacy_explicit_bands_route = coq_definition_body(
-        band_source,
-        "check_pprog_permutable_tiling_bands_runtime_route",
-    )
-    require(
-        legacy_explicit_bands_route,
-        "then TilingBandGeneralFallbackAccepted",
-        "legacy whole-affine route must report fallback",
-    )
-    band_dispatcher = coq_definition_body(
-        band_source, "checked_tiling_sourceb_first_band_check"
-    )
-    band_checks = (
-        "check_pprog_pluto_permutable_tiling_bands_primary",
-        "check_pprog_ordinary_tiling_permutability_via_validate_tiling",
-        "check_pprog_second_level_permutable_bands_via_validate_tiling",
-        "check_pprog_structural_second_level_permutability_via_validate_tiling",
-        "check_pprog_source_like_second_level_permutability_via_validate_tiling",
-    )
-    positions = [band_dispatcher.find(needle) for needle in band_checks]
-    if any(position < 0 for position in positions) or positions != sorted(positions):
-        raise AssertionError(
-            "tiling dispatcher must try ordinary common-band, ordinary "
-            "whole-program permutability, then componentwise and whole-program "
-            "second-level checks"
-        )
-    ordinary_direct = coq_definition_body(
-        band_source,
-        "check_pprog_ordinary_tiling_permutability_via_validate_tiling",
-    )
-    ordinary_checks = (
-        "check_ordinary_tiling_witnessesb",
-        "check_pprog_permutable_tiling_bands_via_validate_tiling",
-    )
-    positions = [ordinary_direct.find(needle) for needle in ordinary_checks]
-    if any(position < 0 for position in positions) or positions != sorted(positions):
-        raise AssertionError(
-            "whole-program ordinary tiling mode must be guarded by the "
-            "ordinary-witness classifier"
-        )
+    mixed_source = (
+        ROOT / "src" / "TilingBandMixedSecondValidator.v"
+    ).read_text(encoding="utf-8")
+    for path in (
+        ROOT / "src" / "TilingBandScheduleValidator.v",
+        ROOT / "src" / "TilingBandDirectRuntime.v",
+        ROOT / "syntax" / "STilingBandSched.v",
+        ROOT / "syntax" / "SBandTilingOpt.v",
+        ROOT / "syntax" / "SParallelPolOpt.v",
+        ROOT / "syntax" / "SLoopMain.ml",
+        ROOT / "driver" / "Entry.ml",
+    ):
+        source = path.read_text(encoding="utf-8")
+        for forbidden in (
+            "TilingBandGeneralFallbackAccepted",
+            "GeneralFallbackAccepted",
+            '"general-fallback"',
+        ):
+            if forbidden in source:
+                raise AssertionError(
+                    f"tiling validation fallback remains in "
+                    f"{path.relative_to(ROOT)}: {forbidden}"
+                )
+    for path in (
+        ROOT / "syntax" / "STilingBandSched.v",
+        ROOT / "syntax" / "SLoopMain.ml",
+        ROOT / "driver" / "Entry.ml",
+    ):
+        source = path.read_text(encoding="utf-8")
+        for forbidden in (
+            "via_validate_tiling",
+            "checked_tiling_schedule_canonical_validate",
+            "checked_tiling_validate_general_fallback",
+        ):
+            if forbidden in source:
+                raise AssertionError(
+                    f"hidden legacy tiling validator remains in "
+                    f"{path.relative_to(ROOT)}: {forbidden}"
+                )
     source_like_recipe = coq_definition_body(
         band_source,
         "check_pinstr_source_like_second_level_recipeb",
@@ -288,67 +281,213 @@ def main() -> None:
         "direct_second_level_guard_accepts_interleaved_reverse_padding",
         "direct_second_level_guard_rejects_internal_zero_removal",
         "direct_second_level_guard_rejects_mixed_statement_layouts",
+        "direct_second_level_guard_accepts_grouped_internal_zero_erasure",
+        "direct_second_level_guard_accepts_interleaved_internal_zero_erasure",
+        "direct_second_level_guard_rejects_nonzero_row_deletion",
+        "direct_second_level_guard_rejects_nonzero_row_reordering",
+        "direct_second_level_guard_rejects_nonuniform_expected_zero_masks",
+        "direct_second_level_guard_rejects_nonuniform_actual_zero_masks",
     ):
         require(
             band_source,
             f"Example {regression}",
             "direct symmetric second-level classifier regression",
         )
-    direct_check = coq_definition_body(
+    common_direct_check = coq_definition_body(
         runtime_source,
         "checked_tiling_sourceb_first_direct_band_check",
     )
     for needle in (
         "check_pprog_pluto_permutable_tiling_bands_direct",
-        "check_pprog_second_level_schedule_symmetricb",
+        "check_pprog_second_level_schedule_directb",
         "check_pinstr_list_pluto_componentwise_permutable_bands_direct",
     ):
-        require(direct_check, needle, "direct ordinary and second-level dispatch")
-    symmetric_shape = coq_definition_body(
+        require(
+            common_direct_check,
+            needle,
+            "direct ordinary and second-level dispatch",
+        )
+    direct_shape = coq_definition_body(
         band_source,
-        "check_pprog_second_level_schedule_symmetricb",
+        "check_pprog_second_level_schedule_directb",
     )
     for needle in (
         "check_common_second_level_recipe_sizesb",
         "check_common_band_startb",
         "SecondLevelGrouped",
         "SecondLevelInterleaved",
-        "check_pinstr_list_second_level_schedule_symmetricb",
+        "check_pinstr_list_second_level_schedule_directb",
     ):
         require(
-            symmetric_shape,
+            direct_shape,
             needle,
-            "uniform-layout symmetric trailing-zero second-level classifier",
+            "uniform-layout direct second-level classifier",
+        )
+    zero_erasure = coq_definition_body(
+        band_source,
+        "check_pinstr_list_second_level_schedule_zero_erasureb",
+    )
+    for needle in (
+        "second_level_expected_schedules",
+        "check_schedule_masks_eqb",
+        "check_schedule_lists_after_zero_erasureb",
+    ):
+        require(
+            zero_erasure,
+            needle,
+            "program-wide strict-zero schedule normalization",
         )
     for forbidden in (
         "check_pprog_permutable_tiling_bands_via_validate_tiling",
         "checked_tiling_sourceb_first_band_check",
     ):
-        if forbidden in direct_check:
+        if forbidden in common_direct_check:
             raise AssertionError(
                 f"DirectBandAccepted path contains affine fallback {forbidden}"
             )
 
-    direct_route = "checked_tiling_schedule_sourceb_first_direct_runtime_validate_route"
-    fallback_dispatcher = coq_definition_body(runtime_source, direct_route)
-    fallback_checks = (
+    semantic_direct_check = coq_definition_body(
+        band_source,
+        "checked_tiling_sourceb_semantic_band_direct",
+    )
+    for needle in (
+        "check_pprog_tiling_sourceb",
+        "infer_pprog_ordinary_semantic_band_shape",
+        "infer_pprog_second_level_semantic_band_shape",
+        "check_semantic_band_components_direct",
+    ):
+        require(
+            semantic_direct_check,
+            needle,
+            "semantic-band direct dispatch",
+        )
+
+    semantic_component_check = coq_definition_body(
+        band_source,
+        "check_semantic_band_components_direct_aligned",
+    )
+    for needle in (
+        "validate_semantic_band_entry_list_components_direct_from",
+        "BandAffine.check_valid_access",
+    ):
+        require(
+            semantic_component_check,
+            needle,
+            "semantic-band component checker",
+        )
+
+    componentwise_direct_check = coq_definition_body(
+        band_source,
+        "check_pinstr_list_pluto_componentwise_permutable_bands_direct",
+    )
+    for needle in (
+        "validate_instr_band_entry_list_components_direct_from",
+        "BandAffine.check_valid_access",
+    ):
+        require(
+            componentwise_direct_check,
+            needle,
+            "componentwise permutable-band checker",
+        )
+
+    mixed_direct_check = coq_definition_body(
+        mixed_source,
+        "check_pprog_mixed_second_level_direct",
+    )
+    phase_ordinary_direct_check = coq_definition_body(
+        mixed_source,
+        "check_pprog_phase_separated_ordinary_direct",
+    )
+    for needle in (
+        "Core.TilingCheck.check_pprog_tiling_sourceb",
+        "Core.check_pprog_tiling_schedule_stripminedb",
+        "Core.infer_pinstr_list_tiling_bands",
+        "check_unique_phase_constantsb",
+        "Core.check_pinstr_list_pluto_componentwise_permutable_bands_direct",
+    ):
+        require(
+            phase_ordinary_direct_check,
+            needle,
+            "phase-separated ordinary direct checker",
+        )
+    for needle in (
+        "Core.TilingCheck.check_pprog_tiling_sourceb",
+        "infer_pprog_mixed_second_level_shape",
+        "Core.check_pinstr_list_pluto_componentwise_permutable_bands_direct",
+    ):
+        require(
+            mixed_direct_check,
+            needle,
+            "mixed second-level direct checker",
+        )
+
+    for name, body in (
+        ("common direct checker", common_direct_check),
+        ("semantic direct checker", semantic_direct_check),
+        ("semantic component checker", semantic_component_check),
+        ("componentwise direct checker", componentwise_direct_check),
+        ("phase-separated ordinary direct checker", phase_ordinary_direct_check),
+        ("mixed second-level direct checker", mixed_direct_check),
+    ):
+        for forbidden in (
+            "checked_tiling_validate",
+            "validate_general",
+            "via_validate_tiling",
+            "Canonical",
+            "general_fallback",
+            "FallbackAccepted",
+        ):
+            if forbidden in body:
+                raise AssertionError(
+                    f"{name} transitively exposes forbidden alternate "
+                    f"tiling validation call {forbidden}"
+                )
+
+    complete_direct_check = coq_definition_body(
+        runtime_source,
+        "checked_tiling_sourceb_complete_direct_band_check",
+    )
+    for needle in (
         "checked_tiling_sourceb_first_direct_band_check",
+        "check_pprog_phase_separated_ordinary_direct",
+        "checked_tiling_sourceb_semantic_band_direct",
+        "check_pprog_mixed_second_level_direct",
+    ):
+        require(
+            complete_direct_check,
+            needle,
+            "complete direct-only tiling dispatcher",
+        )
+    for forbidden in (
+        "checked_tiling_sourceb_first_band_check",
+        "checked_tiling_schedule_canonical_validate",
+        "checked_tiling_validate",
+        "FallbackAccepted",
+    ):
+        if forbidden in complete_direct_check:
+            raise AssertionError(
+                "complete direct-only tiling dispatcher contains forbidden "
+                f"fallback {forbidden}"
+            )
+
+    direct_route = "checked_tiling_schedule_sourceb_first_direct_runtime_validate_route"
+    direct_dispatcher = coq_definition_body(runtime_source, direct_route)
+    require(
+        direct_dispatcher,
+        "checked_tiling_sourceb_complete_direct_band_check",
+        "direct band-only runtime dispatcher",
+    )
+    for forbidden in (
         "Legacy.checked_tiling_sourceb_first_band_check",
         "Legacy.Canonical.checked_tiling_schedule_canonical_validate",
         "Legacy.Base.checked_tiling_validate",
-    )
-    positions = [fallback_dispatcher.find(needle) for needle in fallback_checks]
-    if any(position < 0 for position in positions) or positions != sorted(positions):
-        raise AssertionError(
-            "runtime tiling dispatcher must try direct band checks, legacy affine "
-            "fallback, canonical fallback, then general fallback"
-        )
-    require_count(
-        fallback_dispatcher,
         "GeneralFallbackAccepted",
-        3,
-        "legacy, canonical, and general fallback result constructors",
-    )
+        '"general-fallback"',
+    ):
+        if forbidden in direct_dispatcher:
+            raise AssertionError(
+                f"runtime tiling dispatcher retains forbidden fallback {forbidden}"
+            )
 
     for path in (
         ROOT / "syntax" / "STilingBandSched.v",
@@ -360,7 +499,10 @@ def main() -> None:
             "tiling_validation_route_label",
         )
         for needle in ("GeneralFallbackAccepted", '"general-fallback"'):
-            require(labeler, needle, f"fallback Coq label mapping in {path.name}")
+            if needle in labeler:
+                raise AssertionError(
+                    f"fallback Coq label mapping remains in {path.name}: {needle}"
+                )
 
     for path in (ROOT / "syntax" / "SLoopMain.ml", ROOT / "driver" / "Entry.ml"):
         classifier = definition_body(
@@ -371,7 +513,10 @@ def main() -> None:
             "GeneralFallbackAccepted",
             'accept_if_wf "general-fallback"',
         ):
-            require(classifier, needle, f"fallback route mapping in {path.name}")
+            if needle in classifier:
+                raise AssertionError(
+                    f"fallback route mapping remains in {path.name}: {needle}"
+                )
 
     require(
         (ROOT / "extraction" / "extraction.v").read_text(encoding="utf-8"),
@@ -535,6 +680,21 @@ def main() -> None:
             f"single final-candidate report {route}",
         )
 
+    hinted_multipar_body = definition_body(
+        main_source, "run_verified_hinted_multipar_parallel_optimization"
+    )
+    for needle in (
+        "| Some (pl, routes, _accepted_hint) ->",
+        "(pl, true)",
+        "verified_sequential_after_parallel_skip cfg loop",
+    ):
+        require(
+            hinted_multipar_body,
+            needle,
+            "non-strict hinted multipar accepts a certified searched dimension "
+            "or skips to the verified sequential route",
+        )
+
     standalone_body = definition_body(main_source, "run_tiling_validator")
     for needle in (
         "TilingValidationRoute.capture",
@@ -567,7 +727,6 @@ def main() -> None:
         "AFFINE_PLUTO_FLAGS",
         "TILING_PLUTO_FLAGS",
         "expected_route=BAND_ROUTE",
-        "expected_route=FALLBACK_ROUTE",
         "if route_lines != [expected_route]",
         '"--validate-tiling-openscop"',
     ):

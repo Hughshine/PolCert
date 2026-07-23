@@ -122,17 +122,17 @@ For the affine route, `polcert` checks schedule-preserving
 refinement/equivalence between two polyhedral models that share the same
 instruction/access structure and differ only by scheduling.
 
-For every tiling route, including second-level tiling, the dispatcher first
-tries five specialized modes: an ordinary common-band check, a whole-program
-ordinary-tiling permutability check over the composed tiling semantics, a
-hierarchical second-level check, a statementwise structural second-level check
-followed by whole-program permutability validation, and a guarded source-like
-second-level whole-program check. If none accepts, the same extracted
-dispatcher tries the proved canonical and general schedule validators. The CLI
-reports exactly one route: `permutable-band`, `general-fallback`, or `rejected`.
-The `permutable-band` label covers all five specialized modes. The fallback
-label aggregates the canonical and general proved validators; rejection and
-alarms are distinct outcomes.
+For every tiling route, including second-level tiling, the dispatcher runs a
+single direct-only validator. It first checks the source/witness relation, then
+tries proved structural bridges for common-band layouts, program-wide semantic
+schedule reconstruction, and the recognized phase-separated mixed
+second-level layout. Every accepting branch directly checks a semantic
+permutable-band property and proves that property sufficient for the
+corresponding tiling reordering. If no branch establishes the property, the
+candidate is rejected; the dispatcher does not call the legacy, canonical, or
+general tiling validators. The CLI therefore reports exactly one route:
+`permutable-band` or `rejected`. Rejection and solver alarms remain distinct
+outcomes.
 
 For the ISS route, it checks a structural split relation centered on Pluto ISS
 bridge / dump inputs rather than OpenScop.
@@ -156,7 +156,8 @@ For ISS CLI modes, success/failure is reported directly as bridge/dump
 validation output rather than `EQ/LT/GT/NE`.
 
 Successful tiling modes also report the adopted validation route. This output
-is part of the artifact tests and makes fallback observable.
+is part of the artifact tests; successful cases must report
+`permutable-band`, never an alternate acceptance route.
 
 ## Proof boundary
 

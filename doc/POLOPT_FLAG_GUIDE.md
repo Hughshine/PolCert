@@ -53,8 +53,8 @@ inserting the checked ISS structural stage before later scheduling.
 These flags only matter on full tiled routes.
 
 - no tiling-family flag
-  - default ordinary tiling route; the dispatcher first tries the direct
-    semantic permutable-band checker, then proved fallback validators
+  - default ordinary tiling route through the complete direct semantic
+    permutable-band checker
 - `--legacy-generic-tiling`
   - deprecated compatibility alias for the same default direct-first ordinary
     tiling route; it does not bypass the permutable-band checker
@@ -314,24 +314,21 @@ The frontend makes the route choice in roughly this order:
 This explains why some flags feel "stronger" than others: some choose the whole
 route family, while others only refine a family that is already selected.
 
-Within every tiling-bearing family, a second dispatcher classifies the tiling
-boundary. It first tries the direct semantic permutable-band checker for an
-ordinary common band or a recognized grouped/interleaved second-level layout.
-If that check does not apply or returns false, it tries the proved legacy,
-canonical, and general tiling validators. A successful run prints exactly one
-of these labels:
+Within every tiling-bearing family, a direct-only dispatcher classifies the
+tiling boundary. It checks the source/witness relation and then tries the proved
+common-band, program-wide semantic reconstruction, and phase-aware mixed
+second-level bridges. A run prints exactly one of these labels:
 
 - `permutable-band`: the direct band property and its tiling-specific structural
   bridge established the boundary;
-- `general-fallback`: a proved fallback validator established the boundary;
-- `rejected`: no tiling validator accepted the candidate.
+- `rejected`: the direct checker did not establish the property.
 
 The direct checker reuses access-conflict construction and certified
 polyhedral-emptiness queries. It does not invoke the complete affine-schedule
 validator and does not reproduce Pluto's detector or schedule search. Ordinary,
-diamond, full-diamond, and recognized second-level candidates can take the
-direct route. Source-like identity layouts and structurally unmatched
-mixed-depth layouts may take the proved fallback. In a diamond route, the
+diamond, full-diamond, identity, mixed-depth, and recognized second-level
+candidates can take the direct route. A candidate outside the proved
+recognizers is rejected rather than passed to another tiling validator. In a diamond route, the
 post-tiling affine leg is checked separately by `validate_general`.
 
 ## 5. Current support boundary in one page

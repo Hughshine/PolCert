@@ -61,14 +61,14 @@
         "/ 32"
       ],
       "stderr_needles": [
-        "[tiling-validation] route=general-fallback",
+        "[tiling-validation] route=permutable-band",
         "[vector-validation] status=applied source=explicit-current scope=innermost"
       ],
       "stderr_counts": {
-        "[tiling-validation] route=general-fallback": 1,
+        "[tiling-validation] route=permutable-band": 1,
         "[vector-validation] status=applied source=explicit-current scope=innermost": 1
       },
-      "stderr_absent_needles": ["route=permutable-band", "[alarm]"],
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": [
         "--identity-tiled"
       ]
@@ -80,14 +80,14 @@
       "expect": "success",
       "needles": ["vector for i3", "32 *", "/ 32"],
       "stderr_needles": [
-        "[tiling-validation] route=general-fallback",
+        "[tiling-validation] route=permutable-band",
         "[vector-validation] status=applied source=explicit-current scope=innermost"
       ],
       "stderr_counts": {
-        "[tiling-validation] route=general-fallback": 1,
+        "[tiling-validation] route=permutable-band": 1,
         "[vector-validation] status=applied source=explicit-current scope=innermost": 1
       },
-      "stderr_absent_needles": ["route=permutable-band", "[alarm]"],
+      "stderr_absent_needles": ["fallback", "[alarm]"],
       "differs_from_args": ["--identity-tiled", "--iss"]
     },
     {
@@ -99,7 +99,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "vector-current-rejects-non-innermost-diamond-iss",
@@ -110,7 +111,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "vector-current-rejects-non-innermost-positive",
@@ -121,7 +123,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "vector-current-rejects-no-vector-output",
@@ -132,7 +135,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "identity-vector-current-rejects-non-innermost-matmul",
@@ -143,7 +147,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "identity-vector-current-rejects-non-innermost-matmul-iss",
@@ -154,7 +159,8 @@
         "non-innermost vector loop, or no vector loop",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "vector-current-out-of-bounds",
@@ -168,7 +174,8 @@
         "Parallel validation failed",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     },
     {
       "name": "vector-current-dependent",
@@ -182,7 +189,8 @@
         "Parallel validation failed",
         "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
       ],
-      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop ==", "[alarm]"]
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
     }
   ]
 }

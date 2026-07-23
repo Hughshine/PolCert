@@ -58,15 +58,13 @@ At a high level, the default pipeline is:
 -> StrengthenDomain.strengthen_pprog
 -> affine Pluto route with verified affine validation
 -> import the phase-aligned tiling candidate and witness
--> try the direct semantic permutable-band checker
-   -> report permutable-band if its layout and band checks succeed
--> if the direct checker returns false, try the proved legacy, canonical, and
-   general tiling validators
-   -> report general-fallback if one succeeds
--> if either tiling validation route succeeds:
+-> run the complete direct semantic permutable-band checker
+   -> report permutable-band if a proved layout bridge and band check succeed
+   -> otherwise report rejected
+-> if tiling validation succeeds:
    -> current_view_pprog
 -> otherwise:
-   -> verified affine-only fallback
+   -> retain the verified affine midpoint
 -> PrepareCodegen.prepare_codegen
 -> CodeGen.codegen
 -> verified cleanup passes
@@ -79,7 +77,7 @@ For a concise summary of the current verified pipeline shape and the role of
 - [doc/VERIFIED_PIPELINE.md](./doc/VERIFIED_PIPELINE.md)
 - [doc/FEATURE_STATUS.md](./doc/FEATURE_STATUS.md)
 - [doc/POLOPT_FLAG_GUIDE.md](./doc/POLOPT_FLAG_GUIDE.md)
-- [doc/TILING_VALIDATION_FALLBACK_STATUS.md](./doc/TILING_VALIDATION_FALLBACK_STATUS.md)
+- [doc/TILING_VALIDATION_DIRECT_STATUS.md](./doc/TILING_VALIDATION_DIRECT_STATUS.md)
 - [doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md](./doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md)
 
 The direct checker validates a semantic counterpart of Pluto's fully
@@ -94,9 +92,11 @@ route; it is not converted into a fallback attempt.
 
 Ordinary rectangular tiling and the tiling leg of diamond/full-diamond routes
 can use the common-band direct check. Recognized grouped or interleaved
-second-level schedules use a componentwise direct check. Source-like identity
-layouts and structurally unmatched mixed-depth layouts may use the proved
-general fallback instead. The
+second-level schedules use a componentwise direct check. Program-wide semantic
+schedule reconstruction covers recognized identity and mixed-depth layouts; a
+phase-aware bridge covers the recognized mixed second-level shape. Layouts
+outside these proved recognizers are rejected rather than sent to another
+tiling validator. The
 diamond route has a separate final affine leg after tiling; that leg is checked
 by `validate_general` even when the tiling leg reported `permutable-band`.
 
@@ -438,10 +438,10 @@ The proved passes used by `Opt` are:
    - `checked_affine_schedule`
    - `phase_pipeline_opt_prepared_from_poly`
    - the final verified optimizer route, including checked affine scheduling,
-     checked tiling validation, and verified fallback
-   - tiling validation first tries the direct semantic band checker in
-     [src/TilingBandDirectRuntime.v](./src/TilingBandDirectRuntime.v), then the
-     proved legacy, canonical, and general validators
+     direct-only tiling validation, and conservative recovery after rejection
+   - tiling validation uses the complete semantic band checker in
+     [src/TilingBandDirectRuntime.v](./src/TilingBandDirectRuntime.v); it does
+     not call the legacy, canonical, or general tiling validators
 4. [src/PrepareCodegen.v](./src/PrepareCodegen.v)
    - `prepare_codegen`
    - regularizes the validated program into the codegen-ready representation

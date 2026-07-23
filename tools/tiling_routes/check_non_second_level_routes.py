@@ -14,7 +14,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ROUTE_PREFIX = "[tiling-validation] route="
 PERMUTABLE_ROUTE = f"{ROUTE_PREFIX}permutable-band"
-GENERAL_FALLBACK_ROUTE = f"{ROUTE_PREFIX}general-fallback"
 VECTOR_PREFIX = "[vector-validation] "
 
 
@@ -117,8 +116,6 @@ def route_cases() -> list[Case]:
                         expected_route=(
                             "rejected"
                             if vector_current_rejected
-                            else "general-fallback"
-                            if producer_name == "identity"
                             else "permutable-band"
                         ),
                         expect_success=not vector_current_rejected,
@@ -179,7 +176,7 @@ def route_cases() -> list[Case]:
                     expected_route=(
                         "rejected"
                         if vector_current_rejected
-                        else "general-fallback"
+                        else "permutable-band"
                     ),
                     expect_success=not vector_current_rejected,
                     expected_vector_status=vector_status,
@@ -229,10 +226,12 @@ def run_case(polopt: Path, case: Case, timeout: int) -> str | None:
             return f"{case.name}: vector rejection leaked tiling route {route_lines!r}\n{output}"
         if proc.stderr.count(expected_vector) != 1:
             return f"{case.name}: missing unique vector rejection telemetry\n{output}"
-        if GENERAL_FALLBACK_ROUTE in proc.stderr or "status=applied" in proc.stderr:
+        if f"{ROUTE_PREFIX}general-fallback" in proc.stderr or "status=applied" in proc.stderr:
             return f"{case.name}: explicit rejection leaked an accepted route\n{output}"
-        if "== Optimized Loop ==" in proc.stdout or "[alarm]" in proc.stderr:
+        if "== Optimized Loop ==" in proc.stdout:
             return f"{case.name}: explicit rejection produced fallback output\n{output}"
+        if proc.stderr.count("[alarm] requested checked optimization was rejected") != 1:
+            return f"{case.name}: explicit rejection omitted unique fail-closed alarm\n{output}"
         return None
     if proc.returncode != 0:
         return (
@@ -296,7 +295,7 @@ def main() -> int:
         case.expected_route
         for case in cases
         if case.expected_route
-        not in ("permutable-band", "general-fallback", "rejected")
+        not in ("permutable-band", "rejected")
     }
     if len(cases) != 90:
         failures.append(f"matrix contains {len(cases)} cases, expected 90")
@@ -325,19 +324,23 @@ def main() -> int:
             print(failure)
         return 1
     accepted = sum(case.expected_route == "permutable-band" for case in cases)
-    fallback = sum(case.expected_route == "general-fallback" for case in cases)
+    validation_fallback = sum(
+        case.expect_success and case.expected_route != "permutable-band"
+        for case in cases
+    )
     rejected = sum(case.expected_route == "rejected" for case in cases)
-    if accepted != 50 or fallback != 34 or rejected != 6:
+    if accepted != 84 or validation_fallback != 0 or rejected != 6:
         print(
             "[non-second-level-routes] FAIL: "
-            "expected 50 direct-band compositions/34 explicit general "
-            f"fallbacks/6 vector rejections, got {accepted}/{fallback}/{rejected}"
+            "expected 84 permutable-band compositions/0 validation "
+            f"fallbacks/6 vector rejections, got "
+            f"{accepted}/{validation_fallback}/{rejected}"
         )
         return 1
     print(
         f"[non-second-level-routes] OK "
-        f"({accepted} permutable-band compositions, {fallback} explicit general "
-        f"fallbacks, {rejected} explicit vector rejections)"
+        f"({accepted} permutable-band compositions, {validation_fallback} "
+        f"validation fallbacks, {rejected} explicit vector rejections)"
     )
     return 0
 

@@ -3,6 +3,7 @@ Require Import TilingWitness.
 Require Import PolIRs.
 Require Import OpenScop.
 Require Import Result.
+Require Import String.
 Require Import PolOpt.
 Require Import ISSValidatorCorrect.
 Require Import ImpureAlarmConfig.
@@ -21,6 +22,7 @@ Module State := PolIRs.State.
 
 Open Scope impure_scope.
 Open Scope opt_scop.
+Local Open Scope string_scope.
 
 Definition try_verified_tiling_after_phase_mid_band
     (pol_mid: PolyLang.t)
@@ -86,7 +88,8 @@ Definition try_verified_diamond_after_phase_mid_band
             if wf_posttile then
               match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
               | Err _ =>
-                  PrepareCore.prepared_codegen pol_mid
+                  res_to_alarm LoopIR.dummy
+                    (Err "Post-tiling affine schedule import failed.")
               | Okk pol_after =>
                   BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
                   if final_ok then
@@ -95,9 +98,11 @@ Definition try_verified_diamond_after_phase_mid_band
                       PrepareCore.prepared_codegen
                         (PolyLang.current_view_pprog pol_after)
                     else
-                      PrepareCore.prepared_codegen pol_mid
+                      res_to_alarm LoopIR.dummy
+                        (Err "Post-tiling affine target is not well formed.")
                   else
-                    PrepareCore.prepared_codegen pol_mid
+                    res_to_alarm LoopIR.dummy
+                      (Err "Post-tiling affine validation failed.")
               end
             else
               PrepareCore.prepared_codegen pol_mid
@@ -863,21 +868,12 @@ Proof.
                        as [st_mid [Hmid_sem Heq_mid]].
                      exists st_mid. split; auto.
                      eapply State.eq_trans; eauto.
-                 --- pose proof
-                       (PrepareCore.prepared_codegen_correct
-                          pol_mid st st' loop' Hopt Hwf_mid Hloop)
-                       as Hmid_sem.
-                     exists st'. split; auto. apply State.eq_refl.
-              ** pose proof
-                   (PrepareCore.prepared_codegen_correct
-                      pol_mid st st' loop' Hopt Hwf_mid Hloop)
-                 as Hmid_sem.
-                 exists st'. split; auto. apply State.eq_refl.
-           ++ pose proof
-                (PrepareCore.prepared_codegen_correct
-                   pol_mid st st' loop' Hopt Hwf_mid Hloop)
-              as Hmid_sem.
-              exists st'. split; auto. apply State.eq_refl.
+                 --- eapply mayReturn_alarm in Hopt.
+                     contradiction.
+              ** eapply mayReturn_alarm in Hopt.
+                 contradiction.
+           ++ eapply mayReturn_alarm in Hopt.
+              contradiction.
         -- pose proof
              (PrepareCore.prepared_codegen_correct
                 pol_mid st st' loop' Hopt Hwf_mid Hloop)

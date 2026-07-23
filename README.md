@@ -81,9 +81,8 @@ It checks whether the schedule change preserves the polyhedral dependence semant
 Use [`polopt`](./POLOPT.md).
 By default it runs the checked affine+tiling route through the unified
 `Loop -> ParallelLoop` compiler wrapper. A successful tiling boundary reports
-exactly one of two routes: `permutable-band` when the direct semantic band
-checker accepts it, or `general-fallback` when a proved fallback tiling
-validator accepts it. It also exposes:
+`permutable-band`; a candidate for which the direct semantic band checker
+cannot establish its property is reported as `rejected`. It also exposes:
 
 - an optional checked ISS path via `--iss`
 - checked explicit-dimension parallel paths via `--parallel-current`
@@ -107,9 +106,11 @@ band component, using the certified polyhedral emptiness kernel. It does not
 call the whole affine-schedule validator or certify Pluto's band-search
 algorithm.
 Ordinary rectangular, diamond, full-diamond, and recognized grouped or
-interleaved second-level layouts can take this route. Source-like identity
-layouts and structurally unmatched mixed-depth layouts may instead use the
-explicitly reported proved fallback.
+interleaved second-level layouts can take this route. Program-wide semantic
+schedule reconstruction covers identity and mixed-depth layouts, while a
+phase-aware direct bridge covers the recognized mixed second-level shape.
+Every accepting branch proves the corresponding reordering property; there is
+no tiling-validation fallback.
 
 Vector annotations are restricted to certifiable innermost loops. `--multipar`
 passes every dimension in the finite candidate list constructed for that route
@@ -137,7 +138,7 @@ to the checked multi-current validator; no two-element truncation remains.
 - `polcert` now supports:
   - direct affine validation
   - phase-aligned tiling validation with explicit `permutable-band` and
-    `general-fallback` outcomes
+    `rejected` outcomes
   - ISS bridge / debug-dump validation modes
 - The strict proved-path `polopt` regression suite is manifest-gated in CI and
   currently succeeds on all generated benchmark inputs:
@@ -180,12 +181,12 @@ the default `ci` workflow today.
 - [`ENVIRONMENT.md`](./ENVIRONMENT.md): Docker setup, environment notes, and how to mirror the Dockerfile manually.
 - [`POLCERT.md`](./POLCERT.md): validator-only executable, user workflow, and examples.
 - [`POLOPT.md`](./POLOPT.md): optimizer pipeline, examples, proof boundary, benchmark behavior, and testing workflow.
-- [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the default and optional verified pipelines, fallback behavior, and the main normalization stages.
+- [`doc/VERIFIED_PIPELINE.md`](./doc/VERIFIED_PIPELINE.md): concise explanation of the default and optional verified pipelines, rejection behavior, and the main normalization stages.
 - [`doc/FEATURE_STATUS.md`](./doc/FEATURE_STATUS.md): current user-facing mode matrix, including ISS and parallel status.
 - [`doc/POLOPT_FLAG_GUIDE.md`](./doc/POLOPT_FLAG_GUIDE.md): route-family flag model, legal combinations, and why rejected combinations are rejected.
-- [`doc/TILING_VALIDATION_FALLBACK_STATUS.md`](./doc/TILING_VALIDATION_FALLBACK_STATUS.md):
-  direct-band and proved-fallback route meanings, recognition boundary, and
-  regression accounting.
+- [`doc/TILING_VALIDATION_DIRECT_STATUS.md`](./doc/TILING_VALIDATION_DIRECT_STATUS.md):
+  direct-band and rejection meanings, recognition boundary, and regression
+  accounting.
 - [`doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md`](./doc/PERMUTABLE_BAND_THEORY_EXPLORATION.md):
   relation to Pluto's fully permutable-band definition and the direct checker's
   soundness boundary.
