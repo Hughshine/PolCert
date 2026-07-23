@@ -209,6 +209,7 @@ VPL/test/coq_extracted/*
 **/*.pluto.*
 **/*.cpol
 **/*.scop
+!tools/tiling_routes/fixtures/*.scop
 **/.beforescheduling
 **/.afterscheduling
 !tests/readscop/scops/.afterscheduling
