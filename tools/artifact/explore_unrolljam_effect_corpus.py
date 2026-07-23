@@ -43,7 +43,7 @@ PLUTO_BASE_FLAGS = [
 POLOPT_BASE_FLAGS = [
     "--pluto-compat",
     "--explain",
-    "--tile",
+    "--notile",
     "--smartfuse",
     "--nointratileopt",
     "--noprevector",
@@ -80,6 +80,7 @@ class CaseResult:
     polopt_offset_marker_present: bool
     polopt_remainder_marker_present: bool
     polopt_checked_effect: bool
+    polopt_tiling_route_absent: bool
     covered: bool
     note: str
 
@@ -128,6 +129,14 @@ def run(
         stderr_tail=stderr[-1200:],
         timed_out=timed_out,
     )
+
+
+def tiling_validation_route_absent(stderr_path: str) -> bool:
+    try:
+        stderr = Path(stderr_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return "[tiling-validation]" not in stderr
 
 
 def safe_name(path: Path) -> str:
@@ -320,11 +329,16 @@ def evaluate_case(fixture: Path, out_root: Path, *, factor: int, timeout: int) -
     polopt_factor = polopt_factor_marker(polopt_loop, factor)
     polopt_offset = polopt_offset_marker(polopt_loop, factor)
     polopt_remainder = polopt_remainder_marker(polopt_loop, factor)
+    polopt_tiling_route_absent = (
+        polopt_proc is not None
+        and tiling_validation_route_absent(polopt_proc.stderr_path)
+    )
     polopt_effect = (
         polopt_proc is not None
         and polopt_proc.exit == 0
         and polopt_factor
         and polopt_offset
+        and polopt_tiling_route_absent
     )
     partial = CaseResult(
         fixture=display_path(fixture),
@@ -342,6 +356,7 @@ def evaluate_case(fixture: Path, out_root: Path, *, factor: int, timeout: int) -
         polopt_offset_marker_present=polopt_offset,
         polopt_remainder_marker_present=polopt_remainder,
         polopt_checked_effect=polopt_effect,
+        polopt_tiling_route_absent=polopt_tiling_route_absent,
         covered=(not native_effect) or polopt_effect,
         note="",
     )
@@ -352,9 +367,9 @@ def write_markdown(payload: dict[str, object]) -> str:
     lines = [
         "# Direct Pluto Unroll-Jam Effect Corpus",
         "",
-        "This report compares native Pluto `--unrolljam` against native Pluto `--nounrolljam` on extracted OpenScop, then checks whether `polopt --pluto-compat --unrolljam` produces a corresponding checked Loop-IR structure.",
+        "This report compares native Pluto `--unrolljam` against native Pluto `--nounrolljam` on extracted OpenScop, then checks whether the affine-validated `polopt --pluto-compat --notile --unrolljam` route produces a corresponding checked Loop-IR structure.",
         "",
-        "A case counts as a direct Pluto codegen effect only when the two native Pluto after-scheduling OpenScop files are identical, the generated C differs, and the unrolled native C contains the requested factor step. PolOpt coverage is structural: checked output must contain the same block factor and the final intra-block offset.",
+        "A case counts as a direct Pluto codegen effect only when the two native Pluto after-scheduling OpenScop files are identical, the generated C differs, and the unrolled native C contains the requested factor step. PolOpt coverage is structural: checked output must contain the same block factor and the final intra-block offset. The PolOpt side deliberately disables tiling, and any tiling-validation route report fails this check, so the result isolates the verified unroll-jam postpass from tiling acceptance.",
         "",
         "## Summary",
         "",
@@ -367,6 +382,7 @@ def write_markdown(payload: dict[str, object]) -> str:
         "native_codegen_effects",
         "native_effects_covered",
         "native_effects_uncovered",
+        "polopt_tiling_route_reports",
         "polopt_extra_checked_effects_without_native",
         "native_no_effect",
     ]:
@@ -400,7 +416,6 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=60)
     ap.add_argument("--case", action="append", dest="cases", help="Fixture path or basename. May be repeated.")
     ap.add_argument("--limit", type=int, help="Limit the selected case list after resolution.")
-    ap.add_argument("--allow-uncovered", action="store_true", help="Report uncovered native effects without failing.")
     args = ap.parse_args()
 
     if args.factor <= 1:
@@ -431,6 +446,9 @@ def main() -> int:
     extra_polopt_effects = [
         item for item in results if not item.pluto_codegen_unrolljam_effect and item.polopt_checked_effect
     ]
+    tiling_route_reports = [
+        item for item in results if not item.polopt_tiling_route_absent
+    ]
     summary = {
         "cases": len(results),
         "factor": args.factor,
@@ -439,10 +457,12 @@ def main() -> int:
         "native_codegen_effects": len(native_effects),
         "native_effects_covered": len(native_effects) - len(uncovered),
         "native_effects_uncovered": len(uncovered),
+        "polopt_tiling_route_reports": len(tiling_route_reports),
         "polopt_extra_checked_effects_without_native": len(extra_polopt_effects),
         "native_no_effect": len([item for item in results if item.extract.exit == 0 and not item.pluto_codegen_unrolljam_effect]),
         "uncovered_fixtures": [item.fixture for item in uncovered],
         "polopt_extra_effect_fixtures": [item.fixture for item in extra_polopt_effects],
+        "polopt_tiling_route_fixtures": [item.fixture for item in tiling_route_reports],
         "output_root": str(out_root),
     }
     payload = {
@@ -454,7 +474,7 @@ def main() -> int:
     (out_root / "summary.md").write_text(write_markdown(payload))
     print(json.dumps(summary, indent=2, sort_keys=True))
 
-    ok = len(native_effects) > 0 and (args.allow_uncovered or not uncovered)
+    ok = len(native_effects) > 0 and not uncovered and not tiling_route_reports
     return 0 if ok else 1
 
 

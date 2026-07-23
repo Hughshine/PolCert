@@ -19,6 +19,28 @@ def definition_body(source: str, name: str) -> str:
     return source[match.end() : end]
 
 
+def extracted_definition_body(source: str, name: str) -> str:
+    match = re.search(
+        rf"^(?P<indent>[ \t]*)let {re.escape(name)}\b[^=]*=",
+        source,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise AssertionError(f"missing extracted definition: {name}")
+    indent = re.escape(match.group("indent"))
+    next_definition = re.search(
+        rf"^{indent}let \w",
+        source[match.end() :],
+        re.MULTILINE,
+    )
+    end = (
+        len(source)
+        if next_definition is None
+        else match.end() + next_definition.start()
+    )
+    return source[match.end() : end]
+
+
 def coq_definition_body(source: str, name: str) -> str:
     match = re.search(
         rf"^(?:Definition|Fixpoint) {re.escape(name)}\b[\s\S]*?:=",
@@ -121,6 +143,17 @@ def main() -> None:
     )
     unified_correct = f"{unified_route}_correct"
     main_source = (ROOT / "syntax" / "SLoopMain.ml").read_text(encoding="utf-8")
+    for forbidden in (
+        "hinted_parallel_handlers",
+        "current_parallel_handlers",
+        "capture_silent_exception",
+        "SLoopDispatch.run_selected_parallel_optimization",
+        "SLoopDispatch.run_selected_parallel_current_optimization",
+    ):
+        if forbidden in main_source:
+            raise AssertionError(
+                f"product main retains a reconnectable legacy handler: {forbidden}"
+            )
     band_source = (ROOT / "src" / "TilingBandScheduleValidator.v").read_text(
         encoding="utf-8"
     )
@@ -595,6 +628,28 @@ def main() -> None:
             f"RawDefault band-first dispatch in {path.relative_to(ROOT)}",
         )
     for path in (
+        ROOT / "syntax" / "SLoopMain.ml",
+        ROOT / "driver" / "Entry.ml",
+        ROOT / "syntax" / "SVerifiedCompilerConfig.v",
+        ROOT / "syntax" / "SVerifiedParallelCompilerConfig.v",
+        ROOT / "driver" / "VerifiedCompilerConfig.v",
+        ROOT / "driver" / "VerifiedParallelCompilerConfig.v",
+    ):
+        source = path.read_text(encoding="utf-8")
+        for pattern, label in (
+            (r"\bSPolOpt\.opt\b", "legacy syntax tiling optimizer"),
+            (r"\bSPolOpt\.opt_with_iss\b", "legacy syntax ISS tiling optimizer"),
+            (r"\bSPolOpt\.opt_poly\b", "legacy syntax PolyLang tiling optimizer"),
+            (r"\bSPolOpt\.opt_scop\b", "legacy syntax OpenScop tiling optimizer"),
+            (r"\bPolOpt\.Opt\b", "legacy generic tiling optimizer"),
+            (r"\bCPolOpt\.opt\b", "legacy C tiling optimizer"),
+            (r"\bPolOptCanonicalTiling\b", "legacy canonical tiling optimizer"),
+        ):
+            if re.search(pattern, source):
+                raise AssertionError(
+                    f"product entrypoint {path.relative_to(ROOT)} reaches {label}"
+                )
+    for path in (
         ROOT / "src" / "TilingBandDirectRuntime.v",
         ROOT / "driver" / "PolOptBandTiling.v",
         ROOT / "driver" / "ParallelPolOpt.v",
@@ -610,17 +665,174 @@ def main() -> None:
             f"unified sourceb-first route in {path.relative_to(ROOT)}",
         )
 
-    for path in (
-        ROOT / "syntax" / "SBandTilingOpt.v",
-        ROOT / "syntax" / "SParallelPolOpt.v",
+    for path, dummy, selector, requires_observation in (
+        (
+            ROOT / "syntax" / "SBandTilingOpt.v",
+            "SPolIRs.Loop.dummy",
+            "prepared_codegen_after_tiling_route",
+            True,
+        ),
+        (
+            ROOT / "syntax" / "SParallelPolOpt.v",
+            "PolyLang.dummy",
+            "select_after_tiling_route",
+            True,
+        ),
+        (
+            ROOT / "driver" / "PolOptBandTiling.v",
+            "LoopIR.dummy",
+            "prepared_codegen_after_tiling_route",
+            False,
+        ),
+        (
+            ROOT / "driver" / "ParallelPolOpt.v",
+            "PolyLang.dummy",
+            "select_after_tiling_route",
+            True,
+        ),
     ):
         source = path.read_text(encoding="utf-8")
-        require(source, "Definition reject_tiling_then", "observable rejected route helper")
+        if "reject_tiling_then" in source:
+            raise AssertionError(
+                f"{path.name} retains the old rejection continuation"
+            )
+        if "affine_only_opt_prepared_from_poly" in source:
+            raise AssertionError(
+                f"{path.name} can still return an affine-only result after "
+                "a tiling failure"
+            )
+        for pattern, label in (
+            (r"\bpure\s+pol_(?:mid|source)\b", "source or midpoint result"),
+            (
+                r"prepared_codegen\s*"
+                r"\(\s*PolyLang\.current_view_pprog\s+pol_(?:mid|source)\s*\)",
+                "prepared source or midpoint result",
+            ),
+        ):
+            if re.search(pattern, source, re.MULTILINE):
+                raise AssertionError(
+                    f"{path.name} retains a tiling rejection path returning {label}"
+                )
+        rejected = coq_definition_body(source, "reject_tiling")
+        if requires_observation:
+            require(
+                rejected,
+                "observe_tiling_validation_route TilingSched.Rejected",
+                "rejected tiling telemetry",
+            )
+        require(rejected, "res_to_alarm", "fail-closed tiling rejection")
+        require(rejected, dummy, "fixed tiling rejection dummy")
+        for forbidden in ("pol_mid", "pol_source", "fallback"):
+            if forbidden in rejected:
+                raise AssertionError(
+                    f"{path.name} rejection still carries {forbidden}"
+                )
+
+        selected = coq_definition_body(source, selector)
+        require(selected, "TilingSched.Rejected", f"{selector} rejected branch")
+        require(selected, "res_to_alarm", f"{selector} fail-closed branch")
+        require(selected, dummy, f"{selector} fixed rejection dummy")
+        for forbidden in ("pol_mid", "pol_source", "fallback"):
+            if forbidden in selected:
+                raise AssertionError(
+                    f"{path.name} {selector} still carries {forbidden}"
+                )
+
+        post_affine = coq_definition_body(source, "reject_post_tiling_affine")
+        require(post_affine, "res_to_alarm", "post-tiling affine rejection")
+        require(post_affine, dummy, "post-tiling affine fixed dummy")
+        for forbidden in (
+            "pol_mid",
+            "pol_source",
+            "fallback",
+            "observe_tiling_validation_route",
+        ):
+            if forbidden in post_affine:
+                raise AssertionError(
+                    f"{path.name} post-tiling affine rejection still carries "
+                    f"{forbidden}"
+                )
+
+    for path, dummy, selector, requires_observation in (
+        (
+            ROOT / "extraction" / "SBandTilingOpt.ml",
+            "SPolIRs.SPolIRs.Loop.dummy",
+            "prepared_codegen_after_tiling_route",
+            True,
+        ),
+        (
+            ROOT / "extraction" / "SParallelPolOpt.ml",
+            "PolyLang.dummy",
+            "select_after_tiling_route",
+            True,
+        ),
+        (
+            ROOT / "extraction" / "PolOptBandTiling.ml",
+            "LoopIR.dummy",
+            "prepared_codegen_after_tiling_route",
+            False,
+        ),
+        (
+            ROOT / "extraction" / "ParallelPolOpt.ml",
+            "PolyLang.dummy",
+            "select_after_tiling_route",
+            False,
+        ),
+    ):
+        source = path.read_text(encoding="utf-8")
+        for forbidden in (
+            "reject_tiling_then",
+            "affine_only_opt_prepared_from_poly",
+            "CoreAlarmed.Base.pure pol_mid",
+            "CoreAlarmed.Base.pure pol_source",
+            "PrepareCore.prepared_codegen pol_mid",
+            "PrepareCore.prepared_codegen pol_source",
+            "checked_affine_schedule pol_source",
+            "res_to_alarm pol_mid",
+            "res_to_alarm pol_source",
+            "tiling_band_validation_route_acceptsb",
+        ):
+            if forbidden in source:
+                raise AssertionError(
+                    f"stale extracted tiling fallback remains in "
+                    f"{path.relative_to(ROOT)}: {forbidden}"
+                )
+        rejected = extracted_definition_body(source, "reject_tiling")
+        require(rejected, "res_to_alarm", f"{path.name} extracted rejection alarm")
+        require(rejected, dummy, f"{path.name} extracted rejection dummy")
+        if requires_observation:
+            require(
+                rejected,
+                "observe_tiling_validation_route TilingSched.Rejected",
+                f"{path.name} extracted rejected-route observation",
+            )
+        selected = extracted_definition_body(source, selector)
         require(
-            source,
-            "observe_tiling_validation_route TilingSched.Rejected",
-            "rejected tiling telemetry",
+            selected,
+            "TilingSched.Rejected",
+            f"{path.name} extracted selector rejection",
         )
+        require(selected, "res_to_alarm", f"{path.name} extracted selector alarm")
+        require(selected, dummy, f"{path.name} extracted selector dummy")
+        post_affine = extracted_definition_body(
+            source,
+            "reject_post_tiling_affine",
+        )
+        require(
+            post_affine,
+            "res_to_alarm",
+            f"{path.name} extracted post-affine rejection",
+        )
+        require(
+            post_affine,
+            dummy,
+            f"{path.name} extracted post-affine dummy",
+        )
+        if "observe_tiling_validation_route" in post_affine:
+            raise AssertionError(
+                f"{path.name} extracted post-affine rejection reports the "
+                "already-recorded tiling route twice"
+            )
 
     for path in (
         ROOT / "src" / "TilingBandDirectRuntime.v",
@@ -657,13 +869,24 @@ def main() -> None:
     for route in (
         "try_verified_parallel_current_compile",
         "try_verified_parallel_current_many_compile",
+        "try_verified_vector_current_compile",
     ):
+        route_body = definition_body(main_source, route)
         require_count(
-            definition_body(main_source, route),
+            route_body,
             "TilingValidationRoute.report",
             0,
             f"unreported candidate probe {route}",
         )
+        for needle in (
+            "TilingValidationRoute.capture_result",
+            "verified_candidate_or_raise",
+        ):
+            require(
+                route_body,
+                needle,
+                f"fail-closed producer handling in candidate probe {route}",
+            )
     for route in (
         "run_selected_optimization",
         "run_selected_sequential_loop_optimization",
@@ -678,6 +901,59 @@ def main() -> None:
             "TilingValidationRoute.report",
             1,
             f"single final-candidate report {route}",
+        )
+
+    consumer_failure_classifier = definition_body(
+        main_source, "is_consumer_candidate_failure"
+    )
+    for needle in (
+        "CertcheckerConfig.CertCheckerFailure",
+        '"Parallel validation failed"',
+        '"Annotated parallel codegen produced non-affine instruction trace loop"',
+        '"Annotated vector codegen produced a non-affine trace, a non-innermost vector loop, or no vector loop"',
+    ):
+        require(
+            consumer_failure_classifier,
+            needle,
+            "explicit allowlist for consumer candidate failures",
+        )
+
+    candidate_result_handler = definition_body(
+        main_source, "verified_candidate_or_raise"
+    )
+    for needle in (
+        "is_consumer_candidate_failure exn",
+        "TilingValidationRoute.report routes",
+        "raise exn",
+        "None",
+    ):
+        require(
+            candidate_result_handler,
+            needle,
+            "candidate probes preserve producer failures",
+        )
+
+    explicit_failure_reporter = definition_body(
+        main_source, "report_explicit_current_failure"
+    )
+    for needle in (
+        "is_consumer_candidate_failure exn",
+        "TilingValidationRoute.report routes",
+        "report_consumer ()",
+    ):
+        require(
+            explicit_failure_reporter,
+            needle,
+            "producer rejection takes precedence over explicit consumer rejection",
+        )
+    for route in (
+        "run_selected_parallel_current_optimization",
+        "run_selected_vector_current_optimization",
+    ):
+        require(
+            definition_body(main_source, route),
+            "report_explicit_current_failure exn routes",
+            f"producer rejection attribution in {route}",
         )
 
     hinted_multipar_body = definition_body(
@@ -773,12 +1049,6 @@ def main() -> None:
     require(automatic_vector, "let candidates = hinted_dims", "hint-only automatic vector execution")
     if "int_range" in automatic_vector:
         raise AssertionError("automatic vector execution must not scan unhinted dimensions")
-    for route in (
-        "try_pluto_hint_preferred_vector_codegen",
-        "try_diamond_vector_codegen",
-    ):
-        if "int_range" in definition_body(main_source, route):
-            raise AssertionError(f"{route} must not scan unhinted dimensions")
     require(
         definition_body(main_source, "run_selected_vector_current_optimization"),
         "VerifiedParallelCompiler.compile",

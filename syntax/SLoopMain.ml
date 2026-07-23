@@ -7,7 +7,6 @@ open SLoopProfile
 
 let tool_name = "Syntax-Frontend Polyhedral Optimizer"
 
-module ParallelValidatorCore = Validator.Validator(SPolIRs.SPolIRs)
 module ParallelCodegenCore = ParallelCodegen.ParallelCodegen(SPolIRs.SPolIRs)
 module ParallelLoopIR = ParallelCodegenCore.ParallelLoop
 module ParallelBaseLoop = ParallelLoopIR.BaseLoop
@@ -814,227 +813,11 @@ let extract_strengthened_poly loop =
   let pol0 = extract_poly loop in
   SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0
 
-let checked_parallel_current_codegen_or_fail label pol dim =
-  let plan = nat_of_int dim in
-  let pol = normalize_spol_codegen_input pol in
-  let (cert_res, cert_ok) =
-    ParallelValidatorCore.checked_parallelize_current
-      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol)
-      plan
-  in
-  if not cert_ok then
-    frontend_failf "%s: extracted parallel validator raised an alarm" label;
-  match cert_res with
-  | Err msg ->
-      frontend_failf
-        "%s: checked parallelization failed: %s"
-        label
-        (string_of_coq_err msg)
-  | Okk cert ->
-      let (codegen_res, codegen_ok) =
-        ParallelCodegenCore.checked_annotated_codegen
-          (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol)
-          cert
-      in
-      if not codegen_ok then
-        frontend_failf "%s: extracted parallel codegen raised an alarm" label;
-      match codegen_res with
-      | Okk pl -> pl
-      | Err msg ->
-          frontend_failf
-            "%s: checked parallel codegen failed: %s"
-            label
-            (string_of_coq_err msg)
-
-let checked_vector_current_codegen_or_fail label pol dim =
-  let plan = nat_of_int dim in
-  let pol = normalize_spol_codegen_input pol in
-  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
-  let (cert_res, cert_ok) =
-    ParallelValidatorCore.checked_parallelize_current current plan
-  in
-  if not cert_ok then
-    frontend_failf "%s: extracted vector validator raised an alarm" label;
-  match cert_res with
-  | Err msg ->
-      frontend_failf
-        "%s: checked vectorization failed: %s"
-        label
-        (string_of_coq_err msg)
-  | Okk cert ->
-      let (codegen_res, codegen_ok) =
-        ParallelCodegenCore.checked_vector_annotated_codegen current cert
-      in
-      if not codegen_ok then
-        frontend_failf "%s: extracted vector codegen raised an alarm" label;
-      match codegen_res with
-      | Okk pl -> pl
-      | Err msg ->
-          frontend_failf
-            "%s: checked vector codegen failed: %s"
-            label
-            (string_of_coq_err msg)
-
-let try_checked_parallel_current_codegen pol dim =
-  let plan = nat_of_int dim in
-  let pol = normalize_spol_codegen_input pol in
-  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
-  let (cert_res, cert_ok) =
-    ParallelValidatorCore.checked_parallelize_current current plan
-  in
-  if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-    begin match cert_res with
-    | Okk _ ->
-        Printf.eprintf
-          "[debug-parallel] checked_parallelize_current dim=%d => accepted(ok=%b)\n"
-          dim cert_ok
-    | Err msg ->
-        Printf.eprintf
-          "[debug-parallel] checked_parallelize_current dim=%d => rejected(ok=%b,msg=%s)\n"
-          dim cert_ok (string_of_coq_err msg)
-    end;
-  if not cert_ok then
-    None
-  else
-    match cert_res with
-    | Err _ -> None
-    | Okk cert ->
-        let (codegen_res, codegen_ok) =
-          ParallelCodegenCore.checked_annotated_codegen current cert
-        in
-        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-          begin match codegen_res with
-          | Okk _ ->
-              Printf.eprintf
-                "[debug-parallel] checked_annotated_codegen dim=%d => accepted(ok=%b)\n"
-                dim codegen_ok
-          | Err msg ->
-              Printf.eprintf
-                "[debug-parallel] checked_annotated_codegen dim=%d => rejected(ok=%b,msg=%s)\n"
-                dim codegen_ok (string_of_coq_err msg)
-          end;
-        if not codegen_ok then
-          None
-        else
-          match codegen_res with
-          | Okk pl -> Some pl
-          | Err _ -> None
-
-let try_checked_vector_current_codegen pol dim =
-  let plan = nat_of_int dim in
-  let pol = normalize_spol_codegen_input pol in
-  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
-  let (cert_res, cert_ok) =
-    ParallelValidatorCore.checked_parallelize_current current plan
-  in
-  if debug_env_enabled "POLCERT_DEBUG_VECTOR_HINT" then
-    begin match cert_res with
-    | Okk _ ->
-        Printf.eprintf
-          "[debug-vector] checked_parallelize_current dim=%d => accepted(ok=%b)\n"
-          dim cert_ok
-    | Err msg ->
-        Printf.eprintf
-          "[debug-vector] checked_parallelize_current dim=%d => rejected(ok=%b,msg=%s)\n"
-          dim cert_ok (string_of_coq_err msg)
-    end;
-  if not cert_ok then
-    None
-  else
-    match cert_res with
-    | Err _ -> None
-    | Okk cert ->
-        let (codegen_res, codegen_ok) =
-          ParallelCodegenCore.checked_vector_annotated_codegen current cert
-        in
-        if debug_env_enabled "POLCERT_DEBUG_VECTOR_HINT" then
-          begin match codegen_res with
-          | Okk _ ->
-              Printf.eprintf
-                "[debug-vector] checked_vector_annotated_codegen dim=%d => accepted(ok=%b)\n"
-                dim codegen_ok
-          | Err msg ->
-              Printf.eprintf
-                "[debug-vector] checked_vector_annotated_codegen dim=%d => rejected(ok=%b,msg=%s)\n"
-                dim codegen_ok (string_of_coq_err msg)
-          end;
-        if not codegen_ok then
-          None
-        else
-          match codegen_res with
-          | Okk pl -> Some pl
-          | Err _ -> None
-
 let tag_loop_for_parallel_pretty loop =
   ParallelCodegenCore.tag_loop loop
 
-let tagged_prepared_codegen pol =
-  let (loop, ok) =
-    SPolOpt.CoreOpt.Prepare.prepared_codegen (normalize_spol_codegen_input pol)
-  in
-  (tag_loop_for_parallel_pretty loop, ok)
-
-let debug_parallel_hint_if name hints =
-  if debug_env_enabled name then
-    match hints with
-    | [] ->
-        Printf.eprintf "[debug-parallel] no Pluto loop hint found\n"
-    | _ ->
-        List.iter
-          (fun hint ->
-             Printf.eprintf
-               "[debug-parallel] Pluto hint iterator=%s raw_dim=%d current_dim=%d\n"
-               hint.Scheduler.hint_iterator
-               hint.Scheduler.hint_raw_dim
-               hint.Scheduler.hint_current_dim)
-          hints
-
-let debug_vector_hint_if name hints =
-  if debug_env_enabled name then
-    match hints with
-    | [] ->
-        Printf.eprintf "[debug-vector] no Pluto vector loop hint found\n"
-    | _ ->
-        List.iter
-          (fun hint ->
-             Printf.eprintf
-               "[debug-vector] Pluto vector hint iterator=%s raw_dim=%d current_dim=%d directive=%d\n"
-               hint.Scheduler.hint_iterator
-               hint.Scheduler.hint_raw_dim
-               hint.Scheduler.hint_current_dim
-               hint.Scheduler.hint_directive)
-          hints
-
 let hint_dims hints =
   List.map (fun hint -> hint.Scheduler.hint_current_dim) hints
-
-let first_hint_dim hints =
-  match hint_dims hints with
-  | [] -> None
-  | dim :: _ -> Some dim
-
-let debug_parallel_dim_scan_if name pol =
-  if debug_env_enabled name then
-    let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
-    let rec scan dim failures_left =
-      if failures_left <= 0 then ()
-      else
-        let (res, ok) =
-          ParallelValidatorCore.checked_parallelize_current current (nat_of_int dim)
-        in
-        begin match res with
-        | Okk _ ->
-            Printf.eprintf
-              "[debug-parallel] current-dim %d: accepted(ok=%b)\n"
-              dim ok
-        | Err msg ->
-            Printf.eprintf
-              "[debug-parallel] current-dim %d: rejected(ok=%b,msg=%s)\n"
-              dim ok (string_of_coq_err msg)
-        end;
-        scan (dim + 1) (failures_left - 1)
-    in
-    scan 0 8
 
 let max_current_depth_spol_pprog pp =
   let ((pis, _ctxt), _vars) = pp in
@@ -1054,216 +837,6 @@ let unique_ints xs =
         else go (x :: seen) (x :: acc) rest
   in
   go [] [] xs
-
-let parallel_candidate_dims pol hint_dim =
-  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
-  let depth = max_current_depth_spol_pprog current in
-  let all = int_range 0 depth in
-  match hint_dim with
-  | None -> all
-  | Some d -> d :: List.filter (fun x -> x <> d) all
-
-let try_pluto_hint_preferred_parallel_codegen pol hint_dim =
-  let dims = parallel_candidate_dims pol hint_dim in
-  let rec go = function
-    | [] -> None
-    | dim :: rest ->
-        begin match try_checked_parallel_current_codegen pol dim with
-        | Some pl -> Some (pl, true)
-        | None -> go rest
-        end
-  in
-  go dims
-
-let try_pluto_parallel_codegen pol hint_dim strict =
-  match hint_dim with
-  | Some dim when strict ->
-      begin match try_checked_parallel_current_codegen pol dim with
-      | Some pl -> Some (pl, true)
-      | None -> None
-      end
-  | None when strict ->
-      None
-  | _ ->
-      try_pluto_hint_preferred_parallel_codegen pol hint_dim
-
-let try_pluto_hint_preferred_vector_codegen pol hint_dim =
-  match hint_dim with
-  | None -> None
-  | Some dim ->
-      begin match try_checked_vector_current_codegen pol dim with
-      | Some pl -> Some (pl, true)
-      | None -> None
-      end
-
-let try_pluto_vector_codegen pol hint_dim _strict =
-  try_pluto_hint_preferred_vector_codegen pol hint_dim
-
-let parallel_multipar_candidate_dims pol hinted_dims strict =
-  let hinted_dims = unique_ints hinted_dims in
-  if strict then
-    hinted_dims
-  else
-    let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog (normalize_spol_codegen_input pol) in
-    let depth = max_current_depth_spol_pprog current in
-    unique_ints (hinted_dims @ int_range 0 depth)
-
-let try_checked_parallel_current_codegen_many pol dims =
-  let dims = unique_ints dims in
-  let pol = normalize_spol_codegen_input pol in
-  let current = SPolIRs.SPolIRs.PolyLang.current_view_pprog pol in
-  let rec collect accepted_dims accepted_certs = function
-    | [] -> (List.rev accepted_dims, List.rev accepted_certs)
-    | dim :: rest ->
-        let (cert_res, cert_ok) =
-          ParallelValidatorCore.checked_parallelize_current current (nat_of_int dim)
-        in
-        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-          begin match cert_res with
-          | Okk _ ->
-              Printf.eprintf
-                "[debug-parallel] multipar candidate dim=%d => accepted(ok=%b)\n"
-                dim cert_ok
-          | Err msg ->
-              Printf.eprintf
-                "[debug-parallel] multipar candidate dim=%d => rejected(ok=%b,msg=%s)\n"
-                dim cert_ok (string_of_coq_err msg)
-          end;
-        if not cert_ok then
-          collect accepted_dims accepted_certs rest
-        else
-          match cert_res with
-          | Okk cert -> collect (dim :: accepted_dims) (cert :: accepted_certs) rest
-          | Err _ -> collect accepted_dims accepted_certs rest
-  in
-  let (accepted_dims, certs) = collect [] [] dims in
-  match certs with
-  | [] -> None
-  | _ ->
-      let (codegen_res, codegen_ok) =
-        ParallelCodegenCore.checked_annotated_codegen_many current certs
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        begin match codegen_res with
-        | Okk _ ->
-            Printf.eprintf
-              "[debug-parallel] checked_annotated_codegen_many dims=[%s] => accepted(ok=%b)\n"
-              (String.concat "," (List.map string_of_int accepted_dims))
-              codegen_ok
-        | Err msg ->
-            Printf.eprintf
-              "[debug-parallel] checked_annotated_codegen_many dims=[%s] => rejected(ok=%b,msg=%s)\n"
-              (String.concat "," (List.map string_of_int accepted_dims))
-              codegen_ok
-              (string_of_coq_err msg)
-        end;
-      if not codegen_ok then
-        None
-      else
-        match codegen_res with
-        | Okk pl -> Some (pl, accepted_dims)
-        | Err _ -> None
-
-let try_pluto_multipar_codegen pol hinted_dims strict =
-  let candidates = parallel_multipar_candidate_dims pol hinted_dims strict in
-  match try_checked_parallel_current_codegen_many pol candidates with
-  | None -> None
-  | Some (pl, _accepted_dims) -> Some (pl, true)
-
-let try_extracted_diamond_parallel_current use_iss loop dim =
-  try
-    let (pl, ok) =
-      (if use_iss then
-         SParallelPolOpt.opt_parallel_current_diamond_with_iss
-       else
-         SParallelPolOpt.opt_parallel_current_diamond)
-        loop
-        (nat_of_int dim)
-    in
-    if ok then Some pl else None
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -> None
-
-let try_extracted_diamond_vector_current use_iss loop dim =
-  try
-    let (pl, ok) =
-      (if use_iss then
-         SParallelPolOpt.opt_vector_current_diamond_with_iss
-       else
-         SParallelPolOpt.opt_vector_current_diamond)
-        loop
-        (nat_of_int dim)
-    in
-    if ok then Some pl else None
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -> None
-
-let try_extracted_diamond_parallel_many use_iss loop dims =
-  try
-    let dims = List.map nat_of_int dims in
-    let (pl, ok) =
-      (if use_iss then
-         SParallelPolOpt.opt_parallel_current_many_diamond_with_iss
-       else
-         SParallelPolOpt.opt_parallel_current_many_diamond)
-        loop
-        dims
-    in
-    if ok then Some pl else None
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -> None
-
-let diamond_parallel_candidate_dims hint_dim =
-  let fallback_dims = int_range 0 8 in
-  match hint_dim with
-  | Some d -> d :: List.filter (fun x -> x <> d) fallback_dims
-  | None -> fallback_dims
-
-let diamond_multipar_candidate_dims hinted_dims strict =
-  let hinted_dims = unique_ints hinted_dims in
-  if strict then
-    hinted_dims
-  else
-    unique_ints (hinted_dims @ int_range 0 8)
-
-let try_diamond_parallel_codegen use_iss loop hint_dim strict =
-  let dims =
-    match hint_dim, strict with
-    | Some d, true -> [d]
-    | None, true -> []
-    | _ -> diamond_parallel_candidate_dims hint_dim
-  in
-  let rec go = function
-    | [] -> None
-    | dim :: rest ->
-        begin match try_extracted_diamond_parallel_current use_iss loop dim with
-        | Some pl -> Some (pl, true)
-        | None -> go rest
-        end
-  in
-  go dims
-
-let try_diamond_vector_codegen use_iss loop hint_dim _strict =
-  let dims = match hint_dim with Some d -> [d] | None -> [] in
-  let rec go = function
-    | [] -> None
-    | dim :: rest ->
-        begin match try_extracted_diamond_vector_current use_iss loop dim with
-        | Some pl -> Some (pl, true)
-        | None -> go rest
-        end
-  in
-  go dims
-
-let try_diamond_multipar_codegen use_iss loop hinted_dims strict =
-  let dims = diamond_multipar_candidate_dims hinted_dims strict in
-  match dims with
-  | [] -> None
-  | _ ->
-      begin match try_extracted_diamond_parallel_many use_iss loop dims with
-      | Some pl -> Some (pl, true)
-      | None -> None
-      end
 
 let checked_affine_schedule_or_fail pol =
   let (pol', ok) = SPolOpt.CoreOpt.checked_affine_schedule pol in
@@ -1324,23 +897,12 @@ let phase_pipeline_artifacts_or_fail before_scop =
           phase_has_final_affine = false;
         }
 
-let phase_pipeline_scops_or_fail before_scop =
-  let artifacts = phase_pipeline_artifacts_or_fail before_scop in
-  (artifacts.phase_mid_scop, artifacts.phase_after_scop)
-
 let pluto_phase_scops loop =
   let pol0 = extract_poly loop in
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   let before_scop = poly_to_openscop pol in
   let artifacts = phase_pipeline_artifacts_or_fail before_scop in
   (before_scop, artifacts.phase_mid_scop, artifacts.phase_after_scop)
-
-let pluto_phase_scops_with_iss loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.run_pluto_phase_pipeline_with_iss before_scop with
-  | Err _ -> None
-  | Okk (mid_scop, after_scop) -> Some (pol, before_scop, mid_scop, after_scop)
 
 let pluto_phase_scops_with_iss_and_parallel_hint loop =
   let pol = extract_strengthened_poly loop in
@@ -1576,98 +1138,6 @@ let dump_scheduled_openscop_with_vector cfg loop =
         OpenScopPrinter.openscop_printer' stdout after_scop;
         print_newline ()
 
-let optimize_with_phase_aligned_pluto loop =
-  let pol0 = extract_poly loop in
-  let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
-  let before_scop = poly_to_openscop pol in
-  let midpoint_label = current_midpoint_label () in
-  let tiling_label = current_tiling_label () in
-  let final_after_label = current_final_after_label () in
-  let artifacts = phase_pipeline_artifacts_or_fail before_scop in
-  let mid_scop = artifacts.phase_mid_scop in
-  let tiling_scop = artifacts.phase_tiling_scop in
-  let after_scop = artifacts.phase_after_scop in
-  let (affine_res, affine_ok) =
-    affine_forward_scops "before" midpoint_label before_scop mid_scop
-  in
-  if not (affine_ok && affine_res) then
-    (loop, false)
-  else
-    let (tiling_res, tiling_ok) =
-      tiling_forward_scops
-        ~second_level:(Scheduler.second_level_tiling_enabled ())
-        ~before_label:midpoint_label
-        ~after_label:tiling_label
-        mid_scop
-        tiling_scop
-    in
-    if not (tiling_ok && tiling_res) then
-      (loop, false)
-    else
-      let (final_affine_res, final_affine_ok) =
-        if artifacts.phase_has_final_affine then
-          affine_forward_scops tiling_label final_after_label tiling_scop after_scop
-        else
-          (true, true)
-      in
-      if not (final_affine_ok && final_affine_res) then
-        (loop, false)
-      else
-      let pol_mid = import_faithful_spol_or_fail midpoint_label pol mid_scop in
-      dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "mid-affine(schedule-only)" pol_mid;
-      let artifact =
-        tiling_artifact_from_scops_or_fail
-          ~second_level:(Scheduler.second_level_tiling_enabled ())
-          ~before_label:midpoint_label
-          ~after_label:tiling_label
-          mid_scop
-          tiling_scop
-      in
-      let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-      let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-      dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "canonical-after" canonical_after;
-      let pol_tiling_sched =
-        import_schedule_only_spol_or_fail
-          tiling_label
-          canonical_after
-          artifact.artifact_after_scop
-      in
-      dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "after-tiled(schedule-only)" pol_tiling_sched;
-      let pol_after_sched =
-        if artifacts.phase_has_final_affine then
-          import_schedule_only_spol_or_fail
-            final_after_label
-            pol_tiling_sched
-            after_scop
-        else
-          pol_tiling_sched
-      in
-      dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "after-final(schedule-only)" pol_after_sched;
-      if debug_env_enabled "POLCERT_DEBUG_TILING_CODEGEN" then begin
-        let raw_after =
-          import_complete_spol_or_fail "after_tiled(raw)" artifact.artifact_after_scop
-        in
-        dump_poly_payload "after-tiled(raw)" raw_after
-      end;
-      let (pol_mid_val, pol_tiling_val) =
-        normalize_stiling_validator_inputs pol_mid pol_tiling_sched
-      in
-      let pol_after = normalize_spol_codegen_input pol_after_sched in
-      dump_poly_payload_if "POLCERT_DEBUG_TILING_CODEGEN" "after-tiled(used-for-codegen)" pol_after;
-      let (res, ok, route) =
-        checked_tiling_validate_with_band_route pol_mid_val pol_tiling_val ws
-      in
-      TilingValidationRoute.record route;
-      if debug_env_enabled "POLCERT_DEBUG_TILING_CODEGEN" then
-        Printf.eprintf
-          "[debug-tiling-codegen] band-checked=%b(ok=%b)\n"
-          res ok;
-      if ok && res then
-        SPolOpt.CoreOpt.Prepare.prepared_codegen
-          (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-      else
-        (loop, false)
-
 let run_tiling_validator ~second_level before_file after_file =
   let report =
     PlutoTilingValidator.validate_files
@@ -1709,15 +1179,6 @@ let nth_or_fail ctx xs n =
   try List.nth xs n
   with Failure _ ->
     frontend_failf "%s index %d is out of bounds" ctx n
-
-let import_like_source_spol_or_fail label base scop =
-  match SPolIRs.SPolIRs.PolyLang.from_openscop base scop with
-  | Okk pol -> pol
-  | Err msg ->
-      frontend_failf
-        "cannot import %s faithfully into syntax IR: %s"
-        label
-        (string_of_coq_err msg)
 
 let apply_iss_bridge_to_spol_or_fail
     label
@@ -1771,14 +1232,6 @@ let run_iss_bridge_validator = SLoopIss.run_iss_bridge_validator
 let run_iss_dump_validator = SLoopIss.run_iss_dump_validator
 let run_iss_pluto_suite = SLoopIss.run_iss_pluto_suite
 let run_iss_pluto_live_suite = SLoopIss.run_iss_pluto_live_suite
-
-let optimize_identity_only loop =
-  let pol = extract_strengthened_poly loop in
-  SPolOpt.CoreOpt.Prepare.prepared_codegen (normalize_spol_codegen_input pol)
-
-let optimize_affine_only loop =
-  let pol = extract_strengthened_poly loop in
-  SPolOpt.CoreOpt.affine_only_opt_prepared_from_poly pol
 
 let profile_codegen_pipeline timings metrics pol =
   let ((pis, varctxt), vars) = pol in
@@ -2020,888 +1473,6 @@ let profile_selected_optimization cfg loop =
   else
     profile_default_tiled loop
 
-let optimize_parallel_identity_only loop dim =
-  let pol = extract_strengthened_poly loop in
-  checked_parallel_current_codegen_or_fail "identity-parallel" pol dim
-
-let optimize_parallel_affine_only loop dim =
-  let pol = extract_strengthened_poly loop in
-  let pol_mid = checked_affine_schedule_or_fail pol in
-  checked_parallel_current_codegen_or_fail "affine-parallel" pol_mid dim
-
-let optimize_parallel_iss_identity_only loop dim =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-identity-parallel" pol bridge
-  in
-  checked_parallel_current_codegen_or_fail "iss-identity-parallel" pol_iss dim
-
-let optimize_parallel_iss_affine_only loop dim =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-affine-parallel" pol bridge
-  in
-  match Scheduler.affine_only_scop_scheduler_with_iss before_scop with
-  | Err msg ->
-      frontend_failf
-        "iss-affine-parallel: Pluto affine scheduling failed: %s"
-        (string_of_coq_err msg)
-  | Okk mid_scop ->
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_iss_parallel" pol_iss mid_scop
-      in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol_iss pol_mid
-      in
-      if not (affine_ok && affine_res) then
-        frontend_failf
-          "iss-affine-parallel: affine validation failed before manual parallel codegen";
-      checked_parallel_current_codegen_or_fail "iss-affine-parallel" pol_mid dim
-
-let optimize_parallel_phase_aligned loop dim =
-  let pol = extract_strengthened_poly loop in
-  let (before_scop, mid_scop, after_scop) = pluto_phase_scops loop in
-  let (affine_res, affine_ok) =
-    affine_forward_scops "before" "mid_affine" before_scop mid_scop
-  in
-  if not (affine_ok && affine_res) then
-    frontend_failf
-      "phase-parallel: affine validation failed before manual parallel codegen";
-      let (tiling_res, tiling_ok) =
-        tiling_forward_scops
-          ~second_level:(Scheduler.second_level_tiling_enabled ())
-          ~before_label:"mid_affine"
-          ~after_label:"after_tiled"
-          mid_scop
-          after_scop
-  in
-  if not (tiling_ok && tiling_res) then
-    frontend_failf
-      "phase-parallel: tiling validation failed before manual parallel codegen";
-  let pol_mid = import_faithful_spol_or_fail "mid_affine" pol mid_scop in
-  let witness : PlutoTilingValidator.witness =
-    PlutoTilingValidator.extract_witness_from_scops
-      ~before_path:"mid_affine"
-      ~after_path:"after_tiled"
-      mid_scop
-      after_scop
-  in
-  let ws = PhaseTiling.convert_witness witness in
-  let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-  let pol_after_sched =
-    import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
-  in
-  let (pol_mid_val, pol_after_val) =
-    normalize_stiling_validator_inputs pol_mid pol_after_sched
-  in
-  let pol_after = normalize_spol_codegen_input pol_after_val in
-  let (res, ok) =
-    checked_tiling_validate_direct pol_mid_val pol_after_val ws
-  in
-  if not (ok && res) then
-    frontend_failf
-      "phase-parallel: checked tiling validation failed before manual parallel codegen";
-  checked_parallel_current_codegen_or_fail "phase-parallel" pol_after dim
-
-let optimize_parallel_iss_phase_aligned loop dim =
-  match pluto_phase_scops_with_iss loop with
-  | None ->
-      frontend_failf "iss-phase-parallel: phase-aligned ISS Pluto pipeline failed"
-  | Some (pol, before_scop, mid_scop, after_scop) ->
-      let pol_iss =
-        match iss_bridge_from_scop_opt before_scop with
-        | None -> pol
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail "iss-phase-parallel" pol bridge
-      in
-      let (affine_res, affine_ok) =
-        affine_forward_scops "before" "mid_affine_iss" before_scop mid_scop
-      in
-      if not (affine_ok && affine_res) then
-        frontend_failf
-          "iss-phase-parallel: affine validation failed before manual parallel codegen";
-	      let (tiling_res, tiling_ok) =
-	        tiling_forward_scops
-	          ~second_level:(Scheduler.second_level_tiling_enabled ())
-	          ~before_label:"mid_affine_iss"
-	          ~after_label:"after_tiled"
-	          mid_scop
-	          after_scop
-      in
-      if not (tiling_ok && tiling_res) then
-        frontend_failf
-          "iss-phase-parallel: tiling validation failed before manual parallel codegen";
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
-      in
-      let witness : PlutoTilingValidator.witness =
-        PlutoTilingValidator.extract_witness_from_scops
-          ~before_path:"mid_affine_iss"
-          ~after_path:"after_tiled"
-          mid_scop
-          after_scop
-      in
-      let ws = PhaseTiling.convert_witness witness in
-      let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-      let pol_after_sched =
-        import_schedule_only_spol_or_fail "after_tiled" canonical_after after_scop
-      in
-      let (pol_mid_val, pol_after_val) =
-        normalize_stiling_validator_inputs pol_mid pol_after_sched
-      in
-      let pol_after = normalize_spol_codegen_input pol_after_val in
-      let (res, ok) =
-        checked_tiling_validate_direct pol_mid_val pol_after_val ws
-      in
-      if not (ok && res) then
-        frontend_failf
-          "iss-phase-parallel: checked tiling validation failed before manual parallel codegen";
-      checked_parallel_current_codegen_or_fail "iss-phase-parallel" pol_after dim
-
-let optimize_affine_only_with_pluto_parallel_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (mid_scop, hint) ->
-      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_parallel" pol mid_scop
-      in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol pol_mid
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        Printf.eprintf
-          "[debug-parallel] affine-only validate=%b(ok=%b)\n"
-          affine_res affine_ok;
-      debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_mid;
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let hinted_dims = hint_dims hint in
-        let try_codegen =
-          if cfg.force_multipar then
-            try_pluto_multipar_codegen pol_mid hinted_dims cfg.force_parallel_strict
-          else
-            try_pluto_parallel_codegen
-              pol_mid
-              (first_hint_dim hint)
-              cfg.force_parallel_strict
-        in
-        begin match try_codegen with
-        | Some (pl, _used_hint) -> (pl, true)
-        | None ->
-            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
-            (fallback, false)
-        end
-
-let optimize_identity_tiled_with_pluto_parallel_hint cfg loop =
-  let pol_source = extract_strengthened_poly loop in
-  let source_scop = poly_to_openscop pol_source in
-  let pol =
-    if cfg.force_iss then
-      match iss_bridge_from_scop_opt source_scop with
-      | None -> pol_source
-      | Some bridge ->
-          apply_iss_bridge_to_spol_or_fail
-            "iss-identity-tiled-parallel"
-            pol_source
-            bridge
-    else
-      pol_source
-  in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (after_scop, hint) ->
-      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-      let (tiling_res, tiling_ok) =
-        tiling_forward_scops
-          ~second_level:cfg.force_second_level_tile
-          ~before_label:"identity_before"
-          ~after_label:"identity_tiled"
-          before_scop
-          after_scop
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        Printf.eprintf
-          "[debug-parallel] identity tiled validate=%b(ok=%b)\n"
-          tiling_res tiling_ok;
-      if not (tiling_ok && tiling_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let artifact =
-          tiling_artifact_from_scops_or_fail
-            ~second_level:cfg.force_second_level_tile
-            ~before_label:"identity_before"
-            ~after_label:"identity_tiled"
-            before_scop
-            after_scop
-        in
-        let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-        let canonical_after = build_canonical_tiled_after_spol pol ws in
-        let pol_after_sched =
-          import_schedule_only_spol_or_fail
-            "identity_tiled"
-            canonical_after
-            artifact.artifact_after_scop
-        in
-        let (pol_before_val, pol_after_val) =
-          normalize_stiling_validator_inputs pol pol_after_sched
-        in
-        let pol_after = normalize_spol_codegen_input pol_after_val in
-        let (res, ok) =
-          checked_tiling_validate_direct
-            pol_before_val
-            pol_after_val
-            ws
-        in
-        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-          Printf.eprintf
-            "[debug-parallel] identity checked_tiling_validate=%b(ok=%b)\n"
-            res ok;
-        debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
-        if not (ok && res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          let hinted_dims = hint_dims hint in
-          let try_codegen =
-            if cfg.force_multipar then
-              try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
-            else
-              try_pluto_parallel_codegen
-                pol_after
-                (first_hint_dim hint)
-                cfg.force_parallel_strict
-          in
-          begin match try_codegen with
-          | Some (pl, _used_hint) -> (pl, true)
-          | None ->
-              let (fallback, _ok) =
-                tagged_prepared_codegen
-                  (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-              in
-              (fallback, false)
-          end
-
-let optimize_with_iss_affine_parallel_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-affine-parallel" pol bridge
-  in
-  match Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (mid_scop, hint) ->
-      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_iss_parallel" pol_iss mid_scop
-      in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol_iss pol_mid
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        Printf.eprintf
-          "[debug-parallel] iss affine-only validate=%b(ok=%b)\n"
-          affine_res affine_ok;
-      debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_mid;
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let hinted_dims = hint_dims hint in
-        let try_codegen =
-          if cfg.force_multipar then
-            try_pluto_multipar_codegen pol_mid hinted_dims cfg.force_parallel_strict
-          else
-            try_pluto_parallel_codegen
-              pol_mid
-              (first_hint_dim hint)
-              cfg.force_parallel_strict
-        in
-        begin match try_codegen with
-        | Some (pl, _used_hint) -> (pl, true)
-        | None ->
-            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
-            (fallback, false)
-        end
-
-let optimize_with_diamond_parallel_hint cfg loop =
-  let hint = pluto_diamond_parallel_hint cfg loop in
-  debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-  let try_codegen =
-    if cfg.force_multipar then
-      try_diamond_multipar_codegen
-        cfg.force_iss
-        loop
-        (hint_dims hint)
-        cfg.force_parallel_strict
-    else
-      try_diamond_parallel_codegen
-        cfg.force_iss
-        loop
-        (first_hint_dim hint)
-        cfg.force_parallel_strict
-  in
-  match try_codegen
-  with
-  | Some (pl, _used_hint) -> (pl, true)
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-
-let optimize_with_iss_identity loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-identity" pol bridge
-  in
-  SPolOpt.CoreOpt.Prepare.prepared_codegen
-    (normalize_spol_codegen_input pol_iss)
-
-let optimize_with_iss_affine loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-affine" pol bridge
-  in
-  match Scheduler.affine_only_scop_scheduler_with_iss before_scop with
-  | Err _ -> (loop, false)
-  | Okk mid_scop ->
-      let pol_mid = import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol_iss pol_mid
-      in
-      if affine_ok && affine_res then
-        SPolOpt.CoreOpt.Prepare.prepared_codegen
-          (normalize_spol_codegen_input pol_mid)
-      else
-        (loop, false)
-
-let optimize_with_iss_phase_aligned_pluto loop =
-  match pluto_phase_scops_with_iss loop with
-  | None -> (loop, false)
-  | Some (pol, before_scop, mid_scop, after_scop) ->
-      let pol_iss =
-        match iss_bridge_from_scop_opt before_scop with
-        | None -> pol
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail "iss-phase" pol bridge
-      in
-      let pol_mid = import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol_iss pol_mid
-      in
-      if not (affine_ok && affine_res) then
-        (loop, false)
-      else
-	        let (tiling_res, tiling_ok) =
-	          tiling_forward_scops
-	            ~second_level:(Scheduler.second_level_tiling_enabled ())
-	            ~before_label:"mid_affine_iss"
-	            ~after_label:"after_tiled"
-	            mid_scop
-	            after_scop
-        in
-        if not (tiling_ok && tiling_res) then
-          (loop, false)
-	        else
-	          let artifact =
-	            tiling_artifact_from_scops_or_fail
-	              ~second_level:(Scheduler.second_level_tiling_enabled ())
-	              ~before_label:"mid_affine_iss"
-	              ~after_label:"after_tiled"
-	              mid_scop
-	              after_scop
-	          in
-	          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-	          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-	          let pol_after_sched =
-	            import_schedule_only_spol_or_fail
-	              "after_tiled"
-	              canonical_after
-	              artifact.artifact_after_scop
-	          in
-          let pol_after = normalize_spol_codegen_input pol_after_sched in
-          let (res, ok) =
-            checked_tiling_validate_direct pol_mid pol_after ws
-          in
-          if ok && res then
-            SPolOpt.CoreOpt.Prepare.prepared_codegen
-              (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-          else
-            (loop, false)
-
-let optimize_with_phase_aligned_pluto_parallel_hint cfg loop =
-  match pluto_phase_scops_with_parallel_hint loop with
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
-      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-      let (affine_res, affine_ok) =
-        affine_forward_scops "before" "mid_affine" before_scop mid_scop
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        Printf.eprintf
-          "[debug-parallel] phase affine validate=%b(ok=%b)\n"
-          affine_res affine_ok;
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-      let (tiling_res, tiling_ok) =
-        tiling_forward_scops
-          ~second_level:cfg.force_second_level_tile
-          ~before_label:"mid_affine"
-          ~after_label:"after_tiled"
-          mid_scop
-          after_scop
-        in
-        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-          Printf.eprintf
-            "[debug-parallel] phase tiling validate=%b(ok=%b)\n"
-            tiling_res tiling_ok;
-        if not (tiling_ok && tiling_res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          let pol_mid = import_faithful_spol_or_fail "mid_affine" pol mid_scop in
-          let artifact =
-            tiling_artifact_from_scops_or_fail
-              ~second_level:cfg.force_second_level_tile
-              ~before_label:"mid_affine"
-              ~after_label:"after_tiled"
-              mid_scop
-              after_scop
-          in
-          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-          let pol_after_sched =
-            import_schedule_only_spol_or_fail
-              "after_tiled"
-              canonical_after
-              artifact.artifact_after_scop
-          in
-          let (pol_mid_val, pol_after_val) =
-            normalize_stiling_validator_inputs pol_mid pol_after_sched
-          in
-          let pol_after = normalize_spol_codegen_input pol_after_val in
-          let (res, ok) =
-            checked_tiling_validate_direct pol_mid_val pol_after_val ws
-          in
-          if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-            Printf.eprintf
-              "[debug-parallel] checked_tiling_validate=%b(ok=%b)\n"
-              res ok;
-          debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
-          if not (ok && res) then
-            (tag_loop_for_parallel_pretty loop, false)
-          else
-            let hinted_dims = hint_dims hint in
-            let try_codegen =
-              if cfg.force_multipar then
-                try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
-              else
-                try_pluto_parallel_codegen
-                  pol_after
-                  (first_hint_dim hint)
-                  cfg.force_parallel_strict
-            in
-            begin
-              match try_codegen with
-              | Some (pl, _used_hint) -> (pl, true)
-              | None ->
-                  let (fallback, _ok) =
-                    tagged_prepared_codegen
-                      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-                  in
-                  (fallback, false)
-            end
-
-let optimize_with_iss_phase_aligned_pluto_parallel_hint cfg loop =
-  match pluto_phase_scops_with_iss_and_parallel_hint loop with
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
-      debug_parallel_hint_if "POLCERT_DEBUG_PARALLEL_HINT" hint;
-      let pol_iss =
-        match iss_bridge_from_scop_opt before_scop with
-        | None -> pol
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail "iss-phase-parallel" pol bridge
-      in
-      let (affine_res, affine_ok) =
-        affine_forward_scops "before" "mid_affine_iss" before_scop mid_scop
-      in
-      if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-        Printf.eprintf
-          "[debug-parallel] iss phase affine validate=%b(ok=%b)\n"
-          affine_res affine_ok;
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-      let (tiling_res, tiling_ok) =
-        tiling_forward_scops
-          ~second_level:cfg.force_second_level_tile
-          ~before_label:"mid_affine_iss"
-          ~after_label:"after_tiled"
-          mid_scop
-          after_scop
-        in
-        if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-          Printf.eprintf
-            "[debug-parallel] iss phase tiling validate=%b(ok=%b)\n"
-            tiling_res tiling_ok;
-        if not (tiling_ok && tiling_res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          let pol_mid =
-            import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
-          in
-          let artifact =
-            tiling_artifact_from_scops_or_fail
-              ~second_level:cfg.force_second_level_tile
-              ~before_label:"mid_affine_iss"
-              ~after_label:"after_tiled"
-              mid_scop
-              after_scop
-          in
-          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-          let pol_after_sched =
-            import_schedule_only_spol_or_fail
-              "after_tiled"
-              canonical_after
-              artifact.artifact_after_scop
-          in
-          let (pol_mid_val, pol_after_val) =
-            normalize_stiling_validator_inputs pol_mid pol_after_sched
-          in
-          let pol_after = normalize_spol_codegen_input pol_after_val in
-          let (res, ok) =
-            checked_tiling_validate_direct pol_mid_val pol_after_val ws
-          in
-          if debug_env_enabled "POLCERT_DEBUG_PARALLEL_HINT" then
-            Printf.eprintf
-              "[debug-parallel] iss checked_tiling_validate=%b(ok=%b)\n"
-              res ok;
-          debug_parallel_dim_scan_if "POLCERT_DEBUG_PARALLEL_HINT" pol_after;
-          if not (ok && res) then
-            (tag_loop_for_parallel_pretty loop, false)
-          else
-            let hinted_dims = hint_dims hint in
-            let try_codegen =
-              if cfg.force_multipar then
-                try_pluto_multipar_codegen pol_after hinted_dims cfg.force_parallel_strict
-              else
-                try_pluto_parallel_codegen
-                  pol_after
-                  (first_hint_dim hint)
-                  cfg.force_parallel_strict
-            in
-            begin
-              match try_codegen with
-              | Some (pl, _used_hint) -> (pl, true)
-              | None ->
-                  let (fallback, _ok) =
-                    tagged_prepared_codegen
-                      (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-                  in
-                  (fallback, false)
-            end
-
-let optimize_affine_only_with_pluto_vector_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.affine_only_scop_scheduler_with_vector_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (mid_scop, hint) ->
-      debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_vector" pol mid_scop
-      in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol pol_mid
-      in
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        begin match try_pluto_vector_codegen
-                      pol_mid
-                      (first_hint_dim hint)
-                      cfg.force_vector_strict with
-        | Some (pl, _used_hint) -> (pl, true)
-        | None ->
-            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
-            (fallback, false)
-        end
-
-let optimize_identity_tiled_with_pluto_vector_hint cfg loop =
-  let pol_source = extract_strengthened_poly loop in
-  let source_scop = poly_to_openscop pol_source in
-  let pol =
-    if cfg.force_iss then
-      match iss_bridge_from_scop_opt source_scop with
-      | None -> pol_source
-      | Some bridge ->
-          apply_iss_bridge_to_spol_or_fail
-            "iss-identity-tiled-vector"
-            pol_source
-            bridge
-    else
-      pol_source
-  in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.tile_only_scop_scheduler_with_vector_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (after_scop, hint) ->
-      debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-      let (tiling_res, tiling_ok) =
-        tiling_forward_scops
-          ~second_level:cfg.force_second_level_tile
-          ~before_label:"identity_before"
-          ~after_label:"identity_tiled"
-          before_scop
-          after_scop
-      in
-      if not (tiling_ok && tiling_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let artifact =
-          tiling_artifact_from_scops_or_fail
-            ~second_level:cfg.force_second_level_tile
-            ~before_label:"identity_before"
-            ~after_label:"identity_tiled"
-            before_scop
-            after_scop
-        in
-        let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-        let canonical_after = build_canonical_tiled_after_spol pol ws in
-        let pol_after_sched =
-          import_schedule_only_spol_or_fail
-            "identity_tiled"
-            canonical_after
-            artifact.artifact_after_scop
-        in
-        let (pol_before_val, pol_after_val) =
-          normalize_stiling_validator_inputs pol pol_after_sched
-        in
-        let pol_after = normalize_spol_codegen_input pol_after_val in
-        let (res, ok) =
-          checked_tiling_validate_direct
-            pol_before_val
-            pol_after_val
-            ws
-        in
-        if not (ok && res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          begin match try_pluto_vector_codegen
-                        pol_after
-                        (first_hint_dim hint)
-                        cfg.force_vector_strict with
-          | Some (pl, _used_hint) -> (pl, true)
-          | None ->
-              let (fallback, _ok) =
-                tagged_prepared_codegen
-                  (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-              in
-              (fallback, false)
-          end
-
-let optimize_with_iss_affine_vector_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let pol_iss =
-    match iss_bridge_from_scop_opt before_scop with
-    | None -> pol
-    | Some bridge ->
-        apply_iss_bridge_to_spol_or_fail "iss-affine-vector" pol bridge
-  in
-  match Scheduler.affine_only_scop_scheduler_with_iss_with_vector_hint before_scop with
-  | Err _ ->
-      (tag_loop_for_parallel_pretty loop, false)
-  | Okk (mid_scop, hint) ->
-      debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-      let pol_mid =
-        import_like_source_spol_or_fail "mid_affine_iss_vector" pol_iss mid_scop
-      in
-      let (affine_res, affine_ok) =
-        SPolOpt.CoreOpt.validate pol_iss pol_mid
-      in
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        begin match try_pluto_vector_codegen
-                      pol_mid
-                      (first_hint_dim hint)
-                      cfg.force_vector_strict with
-        | Some (pl, _used_hint) -> (pl, true)
-        | None ->
-            let (fallback, _ok) = tagged_prepared_codegen pol_mid in
-            (fallback, false)
-        end
-
-let optimize_with_diamond_vector_hint cfg loop =
-  let hint = pluto_diamond_vector_hint cfg loop in
-  debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-  match try_diamond_vector_codegen
-          cfg.force_iss
-          loop
-          (first_hint_dim hint)
-          cfg.force_vector_strict
-  with
-  | Some (pl, _used_hint) -> (pl, true)
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-
-let optimize_with_phase_aligned_pluto_vector_hint cfg loop =
-  match pluto_phase_scops_with_vector_hint loop with
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
-      debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-      let (affine_res, affine_ok) =
-        affine_forward_scops "before" "mid_affine" before_scop mid_scop
-      in
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let (tiling_res, tiling_ok) =
-          tiling_forward_scops
-            ~second_level:cfg.force_second_level_tile
-            ~before_label:"mid_affine"
-            ~after_label:"after_tiled"
-            mid_scop
-            after_scop
-        in
-        if not (tiling_ok && tiling_res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          let pol_mid = import_faithful_spol_or_fail "mid_affine" pol mid_scop in
-          let artifact =
-            tiling_artifact_from_scops_or_fail
-              ~second_level:cfg.force_second_level_tile
-              ~before_label:"mid_affine"
-              ~after_label:"after_tiled"
-              mid_scop
-              after_scop
-          in
-          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-          let pol_after_sched =
-            import_schedule_only_spol_or_fail
-              "after_tiled"
-              canonical_after
-              artifact.artifact_after_scop
-          in
-          let (pol_mid_val, pol_after_val) =
-            normalize_stiling_validator_inputs pol_mid pol_after_sched
-          in
-          let pol_after = normalize_spol_codegen_input pol_after_val in
-          let (res, ok) =
-            checked_tiling_validate_direct pol_mid_val pol_after_val ws
-          in
-          if not (ok && res) then
-            (tag_loop_for_parallel_pretty loop, false)
-          else
-            begin match try_pluto_vector_codegen
-                          pol_after
-                          (first_hint_dim hint)
-                          cfg.force_vector_strict with
-            | Some (pl, _used_hint) -> (pl, true)
-            | None ->
-                let (fallback, _ok) =
-                  tagged_prepared_codegen
-                    (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-                in
-                (fallback, false)
-            end
-
-let optimize_with_iss_phase_aligned_pluto_vector_hint cfg loop =
-  match pluto_phase_scops_with_iss_and_vector_hint loop with
-  | None -> (tag_loop_for_parallel_pretty loop, false)
-  | Some (pol, before_scop, mid_scop, after_scop, hint) ->
-      debug_vector_hint_if "POLCERT_DEBUG_VECTOR_HINT" hint;
-      let pol_iss =
-        match iss_bridge_from_scop_opt before_scop with
-        | None -> pol
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail "iss-phase-vector" pol bridge
-      in
-      let (affine_res, affine_ok) =
-        affine_forward_scops "before" "mid_affine_iss" before_scop mid_scop
-      in
-      if not (affine_ok && affine_res) then
-        (tag_loop_for_parallel_pretty loop, false)
-      else
-        let (tiling_res, tiling_ok) =
-          tiling_forward_scops
-            ~second_level:cfg.force_second_level_tile
-            ~before_label:"mid_affine_iss"
-            ~after_label:"after_tiled"
-            mid_scop
-            after_scop
-        in
-        if not (tiling_ok && tiling_res) then
-          (tag_loop_for_parallel_pretty loop, false)
-        else
-          let pol_mid =
-            import_like_source_spol_or_fail "mid_affine_iss" pol_iss mid_scop
-          in
-          let artifact =
-            tiling_artifact_from_scops_or_fail
-              ~second_level:cfg.force_second_level_tile
-              ~before_label:"mid_affine_iss"
-              ~after_label:"after_tiled"
-              mid_scop
-              after_scop
-          in
-          let ws = PhaseTiling.convert_witness artifact.artifact_witness in
-          let canonical_after = build_canonical_tiled_after_spol pol_mid ws in
-          let pol_after_sched =
-            import_schedule_only_spol_or_fail
-              "after_tiled"
-              canonical_after
-              artifact.artifact_after_scop
-          in
-          let (pol_mid_val, pol_after_val) =
-            normalize_stiling_validator_inputs pol_mid pol_after_sched
-          in
-          let pol_after = normalize_spol_codegen_input pol_after_val in
-          let (res, ok) =
-            checked_tiling_validate_direct pol_mid_val pol_after_val ws
-          in
-          if not (ok && res) then
-            (tag_loop_for_parallel_pretty loop, false)
-          else
-            begin match try_pluto_vector_codegen
-                          pol_after
-                          (first_hint_dim hint)
-                          cfg.force_vector_strict with
-            | Some (pl, _used_hint) -> (pl, true)
-            | None ->
-                let (fallback, _ok) =
-                  tagged_prepared_codegen
-                    (SPolIRs.SPolIRs.PolyLang.current_view_pprog pol_after)
-                in
-                (fallback, false)
-            end
-
 let standalone_handlers = {
   sa_run_affine_validator = run_affine_validator;
   sa_run_tiling_witness_extractor = run_tiling_witness_extractor;
@@ -2910,29 +1481,6 @@ let standalone_handlers = {
   sa_run_iss_bridge_validator = run_iss_bridge_validator;
   sa_run_iss_pluto_suite = run_iss_pluto_suite;
   sa_run_iss_pluto_live_suite = run_iss_pluto_live_suite;
-}
-
-let hinted_parallel_handlers = {
-  hint_optimize_diamond = optimize_with_diamond_parallel_hint;
-  hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint;
-  hint_optimize_iss_affine = optimize_with_iss_affine_parallel_hint;
-  hint_optimize_iss_default = optimize_with_iss_phase_aligned_pluto_parallel_hint;
-  hint_optimize_affine = optimize_affine_only_with_pluto_parallel_hint;
-  hint_optimize_default = optimize_with_phase_aligned_pluto_parallel_hint;
-}
-
-let current_parallel_handlers = {
-  cur_optimize_diamond = SParallelPolOpt.opt_parallel_current_diamond;
-  cur_optimize_diamond_iss = SParallelPolOpt.opt_parallel_current_diamond_with_iss;
-  cur_optimize_identity_tiled = SParallelPolOpt.opt_parallel_current_identity_tiled;
-  cur_optimize_identity_tiled_iss =
-    SParallelPolOpt.opt_parallel_current_identity_tiled_with_iss;
-  cur_optimize_iss_identity = SParallelPolOpt.opt_parallel_current_identity_with_iss;
-  cur_optimize_iss_affine = SParallelPolOpt.opt_parallel_current_affine_with_iss;
-  cur_optimize_iss_default = SParallelPolOpt.opt_parallel_current_with_iss;
-  cur_optimize_identity = SParallelPolOpt.opt_parallel_current_identity;
-  cur_optimize_affine = SParallelPolOpt.opt_parallel_current_affine;
-  cur_optimize_default = SParallelPolOpt.opt_parallel_current;
 }
 
 let verified_sequential_config_of_cli cfg =
@@ -3251,54 +1799,56 @@ let verified_sequential_after_parallel_skip cfg loop =
   let (optimized, ok) = run_selected_sequential_loop_optimization cfg loop in
   (tag_loop_for_parallel_pretty optimized, ok)
 
+let is_consumer_candidate_failure = function
+  | CertcheckerConfig.CertCheckerFailure (_, msg) ->
+      String.equal msg "Parallel validation failed"
+      || String.equal
+           msg
+           "Annotated parallel codegen produced non-affine instruction trace loop"
+      || String.equal
+           msg
+           "Annotated vector codegen produced a non-affine trace, a non-innermost vector loop, or no vector loop"
+  | _ -> false
+
+let verified_candidate_or_raise = function
+  | Ok ((pl, ok), routes) ->
+      let tiling_ok =
+        not (List.exists (String.equal "rejected") routes)
+      in
+      if ok && tiling_ok then Some (pl, routes) else None
+  | Error ((CertcheckerConfig.CertCheckerFailure _ as exn), routes) ->
+      if is_consumer_candidate_failure exn then
+        None
+      else begin
+        TilingValidationRoute.report routes;
+        raise exn
+      end
+  | Error (exn, _) -> raise exn
+
 let try_verified_parallel_current_compile cfg loop dim =
-  try
-    let ((pl, ok), route) =
-      TilingValidationRoute.capture_silent_exception (fun () ->
+  verified_candidate_or_raise
+    (TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
           (verified_parallel_current_config_of_cli cfg dim)
-          loop)
-    in
-    let tiling_ok =
-      not (List.exists (String.equal "rejected") route)
-    in
-    if ok && tiling_ok then Some (pl, route) else None
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -> None
+          loop))
 
 let try_verified_parallel_current_many_compile cfg loop dims =
   let dims = unique_ints dims in
   if dims = [] then
     None
   else
-    try
-      let ((pl, ok), route) =
-        TilingValidationRoute.capture_silent_exception (fun () ->
+    verified_candidate_or_raise
+      (TilingValidationRoute.capture_result (fun () ->
           VerifiedParallelCompiler.compile
             (verified_parallel_current_many_config_of_cli cfg dims)
-            loop)
-      in
-      let tiling_ok =
-        not (List.exists (String.equal "rejected") route)
-      in
-      if ok && tiling_ok then Some (pl, route) else None
-    with
-    | CertcheckerConfig.CertCheckerFailure _ -> None
+            loop))
 
 let try_verified_vector_current_compile cfg loop dim =
-  try
-    let ((pl, ok), routes) =
-      TilingValidationRoute.capture_silent_exception (fun () ->
+  verified_candidate_or_raise
+    (TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
           (verified_vector_current_config_of_cli cfg dim)
-          loop)
-    in
-    let tiling_ok =
-      not (List.exists (String.equal "rejected") routes)
-    in
-    if ok && tiling_ok then Some (pl, routes) else None
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -> None
+          loop))
 
 let run_verified_hinted_parallel_optimization cfg loop =
   let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
@@ -3403,14 +1953,20 @@ let run_selected_vector_optimization cfg loop =
   in
   go candidates
 
+let report_explicit_current_failure exn routes report_consumer =
+  if is_consumer_candidate_failure exn then
+    report_consumer ()
+  else
+    TilingValidationRoute.report routes
+
 let run_selected_parallel_current_optimization cfg loop dim =
-  try
-    let ((optimized, ok), route) =
-      TilingValidationRoute.capture_silent_exception (fun () ->
+  match
+    TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
           (verified_parallel_current_config_of_cli cfg dim)
           loop)
-    in
+  with
+  | Ok ((optimized, ok), route) ->
     let ok =
       ok && not (List.exists (String.equal "rejected") route)
     in
@@ -3420,20 +1976,21 @@ let run_selected_parallel_current_optimization cfg loop dim =
       report_parallel_validation
         "status=rejected source=explicit-current reason=not-certifiable-or-out-of-range";
     (optimized, ok)
-  with
-  | CertcheckerConfig.CertCheckerFailure _ as exn ->
-      report_parallel_validation
-        "status=rejected source=explicit-current reason=not-certifiable-or-out-of-range";
+  | Error ((CertcheckerConfig.CertCheckerFailure _ as exn), routes) ->
+      report_explicit_current_failure exn routes (fun () ->
+        report_parallel_validation
+          "status=rejected source=explicit-current reason=not-certifiable-or-out-of-range");
       raise exn
+  | Error (exn, _) -> raise exn
 
 let run_selected_vector_current_optimization cfg loop dim =
-  try
-    let ((optimized, ok), routes) =
-      TilingValidationRoute.capture_silent_exception (fun () ->
+  match
+    TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
           (verified_vector_current_config_of_cli cfg dim)
           loop)
-    in
+  with
+  | Ok ((optimized, ok), routes) ->
     let ok =
       ok && not (List.exists (String.equal "rejected") routes)
     in
@@ -3447,11 +2004,12 @@ let run_selected_vector_current_optimization cfg loop dim =
         "status=rejected source=explicit-current reason=not-certifiable-or-non-innermost";
       frontend_failf "explicit vector-current validation failed"
     end
-  with
-  | CertcheckerConfig.CertCheckerFailure _ as exn ->
-      report_vector_validation
-        "status=rejected source=explicit-current reason=not-certifiable-or-non-innermost";
+  | Error ((CertcheckerConfig.CertCheckerFailure _ as exn), routes) ->
+      report_explicit_current_failure exn routes (fun () ->
+        report_vector_validation
+          "status=rejected source=explicit-current reason=not-certifiable-or-non-innermost");
       raise exn
+  | Error (exn, _) -> raise exn
 
 let pluto_unroll_factor cfg =
   match pluto_extra_value "--ufactor=" cfg with

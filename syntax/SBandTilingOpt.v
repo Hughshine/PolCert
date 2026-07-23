@@ -37,16 +37,18 @@ Proof.
   reflexivity.
 Qed.
 
-Definition reject_tiling_then {A: Type}
-    (fallback: unit -> imp A) (_: unit) : imp A :=
+Definition reject_tiling (_: unit) : imp SPolIRs.Loop.t :=
   match observe_tiling_validation_route TilingSched.Rejected with
-  | TilingSched.Rejected => fallback tt
+  | TilingSched.Rejected =>
+      res_to_alarm SPolIRs.Loop.dummy
+        (Err "Tiling validation rejected or unavailable.")
   | TilingSched.DirectBandAccepted =>
-      BIND result <- fallback tt -; pure result
+      res_to_alarm SPolIRs.Loop.dummy
+        (Err "Impossible accepted result while recording tiling rejection.")
   end.
 
 Definition prepared_codegen_after_tiling_route
-    (pol_mid pol_after: PolyLang.t)
+    (pol_after: PolyLang.t)
     (route: TilingSched.tiling_band_validation_route)
   : imp SPolIRs.Loop.t :=
   match route with
@@ -54,13 +56,14 @@ Definition prepared_codegen_after_tiling_route
       CoreOpt.PrepareCore.prepared_codegen
         (PolyLang.current_view_pprog pol_after)
   | TilingSched.Rejected =>
-      CoreOpt.PrepareCore.prepared_codegen pol_mid
+      res_to_alarm SPolIRs.Loop.dummy
+        (Err "Tiling validation rejected.")
   end.
 
 Definition reject_post_tiling_affine
     (route: TilingSched.tiling_band_validation_route)
     (_: unit) : imp SPolIRs.Loop.t :=
-  match observe_tiling_validation_route route with
+  match route with
   | TilingSched.DirectBandAccepted =>
       res_to_alarm SPolIRs.Loop.dummy
         (Err "Post-tiling affine validation failed.")
@@ -73,8 +76,7 @@ Definition try_verified_tiling_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop after_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol_mid) in
+    reject_tiling in
   match CoreOpt.infer_tiling_witness_scops mid_scop after_scop with
   | Err _ =>
       rejected tt
@@ -94,7 +96,7 @@ Definition try_verified_tiling_after_phase_mid_band
                   pol_after -;
               if wf_after then
                 prepared_codegen_after_tiling_route
-                  pol_mid pol_after
+                  pol_after
                   (observe_tiling_validation_route route)
               else
                 rejected tt
@@ -108,8 +110,7 @@ Definition try_phase_pipeline_from_source_pol_band
     (phase_runner: OpenScop -> result (OpenScop * OpenScop))
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol_source) in
+    reject_tiling in
   match phase_runner before_scop with
   | Err _ =>
       rejected tt
@@ -130,8 +131,7 @@ Definition try_verified_diamond_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop posttile_scop after_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol_mid) in
+    reject_tiling in
   match CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop with
   | Err _ =>
       rejected tt
@@ -165,7 +165,7 @@ Definition try_verified_diamond_after_phase_mid_band
                           pol_after -;
                       if wf_after then
                         prepared_codegen_after_tiling_route
-                          pol_mid pol_after route
+                          pol_after route
                       else
                         reject_post_tiling_affine route tt
                     else
@@ -183,8 +183,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
     (pol_source: PolyLang.t)
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol_source) in
+    reject_tiling in
   match CoreOpt.run_pluto_diamond_phase_pipeline before_scop with
   | Err _ =>
       rejected tt
@@ -206,8 +205,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
     (pol_source: PolyLang.t)
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol_source) in
+    reject_tiling in
   match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
   | Err _ =>
       rejected tt
@@ -283,12 +281,10 @@ Definition opt (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
           CoreOpt.run_pluto_phase_pipeline
           before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
@@ -298,12 +294,10 @@ Definition opt_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
     | Some before_scop =>
         try_checked_iss_phase_pipeline_from_poly_band pol before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_identity_tiled_from_poly
     (pol: PolyLang.t) : imp SPolIRs.Loop.t :=
@@ -315,12 +309,10 @@ Definition opt_identity_tiled_from_poly
           CoreOpt.run_pluto_identity_tiling_pipeline
           before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_identity_tiled (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
@@ -342,8 +334,7 @@ Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
                 CoreOpt.run_pluto_identity_tiling_pipeline
                 iss_scop
           | None =>
-              reject_tiling_then
-                (fun _ => CoreOpt.PrepareCore.prepared_codegen pol_iss) tt
+              reject_tiling tt
           end
         else
           opt_identity_tiled_from_poly pol
@@ -362,12 +353,10 @@ Definition opt_identity_tiled_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loo
         try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
           pol before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_diamond (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
@@ -377,12 +366,10 @@ Definition opt_diamond (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
     | Some before_scop =>
         try_diamond_phase_pipeline_from_source_pol_band pol before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_diamond_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
@@ -392,12 +379,10 @@ Definition opt_diamond_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
     | Some before_scop =>
         try_checked_iss_diamond_phase_pipeline_from_poly_band pol before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol) tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol) tt.
+    reject_tiling tt.
 
 Definition opt_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   opt loop.
@@ -418,12 +403,10 @@ Definition opt_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
           CoreOpt.run_pluto_phase_pipeline
           before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol') tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol') tt.
+    reject_tiling tt.
 
 Definition opt_diamond_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
   let pol' := CoreOpt.Strengthen.strengthen_pprog pol in
@@ -432,12 +415,10 @@ Definition opt_diamond_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
     | Some before_scop =>
         try_diamond_phase_pipeline_from_source_pol_band pol' before_scop
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.affine_only_opt_prepared_from_poly pol') tt
+        reject_tiling tt
     end
   else
-    reject_tiling_then
-      (fun _ => CoreOpt.PrepareCore.prepared_codegen pol') tt.
+    reject_tiling tt.
 
 Definition opt_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
   match PolyLang.from_openscop_complete scop with

@@ -1452,8 +1452,8 @@ ROUTE_BINDINGS = {
         "ISS second-level identity tiling must use the unified band-first entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop"):
         "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
-    "hint_optimize_identity_tiled = optimize_identity_tiled_with_pluto_parallel_hint":
-        "identity tiling plus Pluto-hinted parallel route must dispatch to the checked identity-tiled parallel wrapper",
+    ("syntax/SLoopMain.ml", "try_verified_parallel_current_compile cfg loop dim"):
+        "Pluto-hinted parallel routes must execute through the unified verified compiler config",
     ("syntax/SLoopMain.ml", "RawParallelCurrentIdentityTiled d"):
         "explicit-current identity tiling route must use the unified theorem-facing compiler config",
 }
@@ -1463,6 +1463,10 @@ FORBIDDEN_ROUTE_BINDINGS = {
         "normal sequential optimization must not bypass SVerifiedCompilerConfig",
     ("syntax/SLoopMain.ml", "let sequential_handlers ="):
         "the old sequential handler table should not remain as the normal dispatch path",
+    ("syntax/SLoopMain.ml", "let hinted_parallel_handlers ="):
+        "the old hinted-parallel handler table must not be reconnectable",
+    ("syntax/SLoopMain.ml", "let current_parallel_handlers ="):
+        "the old explicit-current handler table must not be reconnectable",
     ("syntax/SVerifiedCompilerConfig.v", "SPolOpt.opt_identity_tiled_generic"):
         "second-level identity tiling must not bypass the unified band-first route",
     ("syntax/SVerifiedCompilerConfig.v", "| VDefault => SPolOpt.opt loop"):

@@ -192,6 +192,7 @@ def base_checks(
                 "tools/artifact/explore_flag_effects.py",
                 "tools/artifact/explore_identity_compositions.py",
                 "tools/artifact/explore_unrolljam_effect_corpus.py",
+                "tools/artifact/test_unrolljam_route_guard.py",
                 "tools/artifact/generate_capability_matrix.py",
                 "tools/artifact/proof_report.py",
                 "tools/end_to_end_c/loop_to_c.py",
@@ -203,6 +204,7 @@ def base_checks(
                 "tools/tiling_routes/check_complete_direct_routes.py",
                 "tools/tiling_routes/check_non_second_level_routes.py",
                 "tools/polopt_flag_suites/manifest_runner.py",
+                "tools/polopt_flag_suites/test_manifest_runner.py",
                 "tools/polopt_flag_suites/pluto_compat_driver.py",
                 "tools/polopt_flag_suites/run_pluto_compat_suite.py",
                 "tools/second_level_tiling/check_second_level_diamond_routes.py",
@@ -212,6 +214,33 @@ def base_checks(
                 "tools/second_level_tiling/run_second_level_tile_suite.py",
             ],
             60,
+        ),
+        (
+            "manifest-runner-fail-closed-unit",
+            [
+                sys.executable,
+                "tools/polopt_flag_suites/test_manifest_runner.py",
+            ],
+            60,
+        ),
+        (
+            "unrolljam-route-guard-unit",
+            [
+                sys.executable,
+                "tools/artifact/test_unrolljam_route_guard.py",
+            ],
+            60,
+        ),
+        (
+            "extracted-zero-fallback-gate",
+            [
+                "opam",
+                "exec",
+                "--",
+                "make",
+                "test-extracted-zero-fallback",
+            ],
+            180,
         ),
         (
             "proof-report",

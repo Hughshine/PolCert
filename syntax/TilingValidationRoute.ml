@@ -27,10 +27,8 @@ let capture f =
       report (take ());
       raise exn
 
-let capture_silent_exception f =
+let capture_result f =
   clear ();
   match f () with
-  | value -> (value, take ())
-  | exception exn ->
-      clear ();
-      raise exn
+  | value -> Ok (value, take ())
+  | exception exn -> Error (exn, take ())

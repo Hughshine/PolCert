@@ -91,6 +91,8 @@ LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 EXECUTABLES=polcert polcert.byte polopt polopt.byte cchecklink cchecklink.byte clightgen clightgen.byte
 GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 
+.PHONY: test-extracted-zero-fallback
+
 # Beginning of part that assumes .depend.extr already exists
 
 ifeq ($(wildcard .depend.extr),.depend.extr)
@@ -114,6 +116,11 @@ POLOPT_OBJS:=$(shell $(MODORDER) \
   extraction/SVerifiedParallelCompilerConfig.cmx \
   syntax/PlutoTilingValidator.cmx \
   syntax/SLoopMain.cmx)
+EXTRACTED_ZERO_FALLBACK_OBJS:=$(shell $(MODORDER) \
+  extraction/SBandTilingOpt.cmx \
+  extraction/SParallelPolOpt.cmx \
+  syntax/TilingValidationRoute.cmx)
+EXTRACTED_ZERO_FALLBACK_TEST=tests/extracted-zero-fallback/test.cmx
 
 ifeq ($(OCAML_NATIVE_COMP),true)
 polcert: $(CCOMP_OBJS)
@@ -142,6 +149,20 @@ endif
 polopt.byte: $(POLOPT_OBJS:.cmx=.cmo)
 	@echo "Linking $@"
 	@$(OCAMLC) -o $@ $(LIBS_BYTE) $+
+
+$(EXTRACTED_ZERO_FALLBACK_TEST): \
+    extraction/SBandTilingOpt.cmi \
+    extraction/SParallelPolOpt.cmi \
+    syntax/TilingValidationRoute.cmi \
+    VPL/ocaml/src/coq_ml/CertcheckerConfig.cmi
+
+test-extracted-zero-fallback: \
+    $(EXTRACTED_ZERO_FALLBACK_OBJS) \
+    $(EXTRACTED_ZERO_FALLBACK_TEST)
+	@echo "Linking /tmp/polcert-extracted-zero-fallback-gate"
+	@$(OCAMLOPT) -o /tmp/polcert-extracted-zero-fallback-gate \
+	  $(LIBS) $(LINK_OPT) $+
+	@/tmp/polcert-extracted-zero-fallback-gate -conf polcert.ini
 
 CLIGHTGEN_OBJS:=$(shell $(MODORDER) export/ExportDriver.cmx)
 
@@ -199,54 +220,42 @@ syntax/SLoopMain.cmo syntax/SLoopMain.cmx: \
     syntax/TilingValidationRoute.cmi \
     lib/Camlcoq.cmi
 
-# These modules have no .mli file.  Their .cmi files are produced as a
-# side effect of compiling the implementation, so spell that out for
-# parallel builds that see the hand-written .cmi dependencies above.
-lib/Camlcoq.cmi: lib/Camlcoq.cmx
+# These modules have no .mli file.  Compile each implementation with ocamlc
+# first so there is one stable owner of its inferred interface.  Native
+# compilation then consumes that .cmi instead of racing with or replacing it.
+NO_MLI_MODULES := \
+	lib/Camlcoq \
+	syntax/TilingValidationRoute \
+	extraction/ImpureConfig \
+	extraction/SParallelPolOpt \
+	extraction/ParallelPolOpt \
+	extraction/PolOptBandTiling \
+	extraction/TilingBandScheduleValidator \
+	extraction/TilingBandMixedSecondValidator \
+	extraction/TilingBandDirectRuntime \
+	extraction/STilingBandSched \
+	extraction/SBandTilingOptShared \
+	extraction/SParallelPolOptShared \
+	extraction/SBandTilingOpt \
+	driver/Scheduler \
+	syntax/PlutoTilingValidator \
+	syntax/SLoopCli \
+	syntax/SLoopCommon \
+	syntax/SLoopConfig \
+	syntax/SLoopDispatch \
+	syntax/SLoopIss \
+	syntax/SLoopProfile \
+	syntax/SLoopRoute
+
+NO_MLI_CMIS := $(addsuffix .cmi,$(NO_MLI_MODULES))
+NO_MLI_CMXS := $(addsuffix .cmx,$(NO_MLI_MODULES))
+
+$(NO_MLI_CMIS): %.cmi: %.cmo
 	@true
 
-syntax/TilingValidationRoute.cmi: syntax/TilingValidationRoute.cmx
-	@true
-extraction/ImpureConfig.cmi: extraction/ImpureConfig.cmx
-	@true
-extraction/SParallelPolOpt.cmi: extraction/SParallelPolOpt.cmx
-	@true
-extraction/ParallelPolOpt.cmi: extraction/ParallelPolOpt.cmx
-	@true
-extraction/PolOptBandTiling.cmi: extraction/PolOptBandTiling.cmx
-	@true
-extraction/TilingBandScheduleValidator.cmi: extraction/TilingBandScheduleValidator.cmx
-	@true
-extraction/TilingBandMixedSecondValidator.cmi: extraction/TilingBandMixedSecondValidator.cmx
-	@true
-extraction/TilingBandDirectRuntime.cmi: extraction/TilingBandDirectRuntime.cmx
-	@true
-extraction/STilingBandSched.cmi: extraction/STilingBandSched.cmx
-	@true
-extraction/SBandTilingOptShared.cmi: extraction/SBandTilingOptShared.cmx
-	@true
-extraction/SParallelPolOptShared.cmi: extraction/SParallelPolOptShared.cmx
-	@true
-extraction/SBandTilingOpt.cmi: extraction/SBandTilingOpt.cmx
-	@true
-driver/Scheduler.cmi: driver/Scheduler.cmx
-	@true
-syntax/PlutoTilingValidator.cmi: syntax/PlutoTilingValidator.cmx
-	@true
-syntax/SLoopCli.cmi: syntax/SLoopCli.cmx
-	@true
-syntax/SLoopCommon.cmi: syntax/SLoopCommon.cmx
-	@true
-syntax/SLoopConfig.cmi: syntax/SLoopConfig.cmx
-	@true
-syntax/SLoopDispatch.cmi: syntax/SLoopDispatch.cmx
-	@true
-syntax/SLoopIss.cmi: syntax/SLoopIss.cmx
-	@true
-syntax/SLoopProfile.cmi: syntax/SLoopProfile.cmx
-	@true
-syntax/SLoopRoute.cmi: syntax/SLoopRoute.cmx
-	@true
+$(NO_MLI_CMXS): %.cmx: %.cmo %.ml
+	@echo "OCAMLOPT $*.ml"
+	@$(OCAMLOPT) -c $*.ml
 
 endif
 
@@ -269,6 +278,9 @@ clean:
 	rm -f $(EXECUTABLES)
 	rm -f $(GENERATED)
 	for d in $(DIRS); do rm -f $$d/*.cm[iotx] $$d/*cmti $$d/*.o; done
+	rm -f tests/extracted-zero-fallback/*.cm[iotx] \
+	      tests/extracted-zero-fallback/*cmti \
+	      tests/extracted-zero-fallback/*.o
 # $(MAKE) -C cparser clean
 
 # Generation of .depend.extr

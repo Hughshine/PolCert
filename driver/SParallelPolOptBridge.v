@@ -30,14 +30,12 @@ Proof.
 Qed.
 
 Lemma select_after_tiling_route_impeq :
-  forall pol_mid pol_after route,
+  forall pol_after route,
     impeq
-      (SParallelPolOpt.select_after_tiling_route pol_mid pol_after route)
-      (if FunctorCore.TilingSched.tiling_band_validation_route_acceptsb route
-       then pure (SPolIRs.PolyLang.current_view_pprog pol_after)
-       else pure pol_mid).
+      (SParallelPolOpt.select_after_tiling_route pol_after route)
+      (FunctorCore.select_after_tiling_route pol_after route).
 Proof.
-  intros pol_mid pol_after route.
+  intros pol_after route.
   destruct route; reflexivity.
 Qed.
 
@@ -65,7 +63,7 @@ Proof.
     intros wf_after. destruct wf_after.
     + apply select_after_tiling_route_impeq.
     + reflexivity.
-  - unfold SParallelPolOpt.reject_tiling_then.
+  - unfold SParallelPolOpt.reject_tiling, FunctorCore.reject_tiling.
     rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
     reflexivity.
 Qed.
@@ -89,7 +87,7 @@ Proof.
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
   - apply try_verified_tiling_after_phase_mid_poly_impeq.
-  - unfold SParallelPolOpt.reject_tiling_then.
+  - unfold SParallelPolOpt.reject_tiling, FunctorCore.reject_tiling.
     rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
     reflexivity.
 Qed.
@@ -126,7 +124,7 @@ Proof.
     intros wf_after. destruct wf_after.
     + apply select_after_tiling_route_impeq.
     + reflexivity.
-  - unfold SParallelPolOpt.reject_tiling_then.
+  - unfold SParallelPolOpt.reject_tiling, FunctorCore.reject_tiling.
     rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
     reflexivity.
 Qed.

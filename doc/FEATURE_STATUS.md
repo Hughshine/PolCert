@@ -292,6 +292,6 @@ correctness gates.
     - ISS
     - parallel (`4` threads)
     - ISS+parallel (`4` threads)
-    - identity fallback
+    - identity pipeline
   - the `parallel` candidates are only eligible when they emit a real verified
-    `parallel for`; sequential fallbacks are not allowed to win those slots
+    `parallel for`; sequential candidates are not allowed to win those slots

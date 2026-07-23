@@ -24,28 +24,60 @@ Open Scope impure_scope.
 Open Scope opt_scop.
 Local Open Scope string_scope.
 
+Definition reject_tiling (_: unit): imp LoopIR.t :=
+  res_to_alarm LoopIR.dummy
+    (Err "Tiling validation rejected or unavailable.").
+
+Definition prepared_codegen_after_tiling_route
+    (pol_after: PolyLang.t)
+    (route: TilingSched.tiling_band_validation_route): imp LoopIR.t :=
+  match route with
+  | TilingSched.DirectBandAccepted =>
+      PrepareCore.prepared_codegen
+        (PolyLang.current_view_pprog pol_after)
+  | TilingSched.Rejected =>
+      res_to_alarm LoopIR.dummy
+        (Err "Tiling validation rejected.")
+  end.
+
+Definition reject_post_tiling_affine
+    (route: TilingSched.tiling_band_validation_route)
+    (_: unit): imp LoopIR.t :=
+  match route with
+  | TilingSched.DirectBandAccepted =>
+      res_to_alarm LoopIR.dummy
+        (Err "Post-tiling affine validation failed.")
+  | TilingSched.Rejected =>
+      res_to_alarm LoopIR.dummy
+        (Err "Post-tiling affine validation failed.")
+  end.
+
 Definition try_verified_tiling_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop after_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
   match BaseOpt.infer_tiling_witness_scops mid_scop after_scop with
   | Err _ =>
-      PrepareCore.prepared_codegen pol_mid
+      rejected tt
   | Okk ws =>
       match ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws with
       | Err _ =>
-          PrepareCore.prepared_codegen pol_mid
+          rejected tt
       | Okk pol_after =>
           BIND route <-
             TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
               pol_mid pol_after ws -;
-          if TilingSched.tiling_band_validation_route_acceptsb route then
-            BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
-            if wf_after then
-              PrepareCore.prepared_codegen (PolyLang.current_view_pprog pol_after)
-            else
-              PrepareCore.prepared_codegen pol_mid
-          else
-            PrepareCore.prepared_codegen pol_mid
+          match route with
+          | TilingSched.DirectBandAccepted =>
+              BIND wf_after <-
+                ValidatorCore.check_wf_polyprog_general pol_after -;
+              if wf_after then
+                prepared_codegen_after_tiling_route pol_after route
+              else
+                rejected tt
+          | TilingSched.Rejected =>
+              rejected tt
+          end
       end
   end.
 
@@ -53,101 +85,106 @@ Definition try_phase_pipeline_from_source_pol_band
     (pol_source: PolyLang.t)
     (phase_runner: OpenScop -> result (OpenScop * OpenScop))
     (before_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
   match phase_runner before_scop with
   | Err _ =>
-      BaseOpt.affine_only_opt_prepared_from_poly pol_source
+      rejected tt
   | Okk (mid_scop, after_scop) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          BaseOpt.affine_only_opt_prepared_from_poly pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_tiling_after_phase_mid_band pol_mid mid_scop after_scop
           else
-            BaseOpt.affine_only_opt_prepared_from_poly pol_source
+            rejected tt
       end
   end.
 
 Definition try_verified_diamond_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop posttile_scop after_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
   match BaseOpt.infer_tiling_witness_scops mid_scop posttile_scop with
   | Err _ =>
-      PrepareCore.prepared_codegen pol_mid
+      rejected tt
   | Okk ws =>
       match ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws with
       | Err _ =>
-          PrepareCore.prepared_codegen pol_mid
+          rejected tt
       | Okk pol_posttile =>
           BIND route <-
             TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
               pol_mid pol_posttile ws -;
-          if TilingSched.tiling_band_validation_route_acceptsb route then
-            BIND wf_posttile <- ValidatorCore.check_wf_polyprog_general pol_posttile -;
-            if wf_posttile then
-              match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
-              | Err _ =>
-                  res_to_alarm LoopIR.dummy
-                    (Err "Post-tiling affine schedule import failed.")
-              | Okk pol_after =>
-                  BIND final_ok <- ValidatorCore.validate_general pol_posttile pol_after -;
-                  if final_ok then
-                    BIND wf_after <- ValidatorCore.check_wf_polyprog_general pol_after -;
-                    if wf_after then
-                      PrepareCore.prepared_codegen
-                        (PolyLang.current_view_pprog pol_after)
+          match route with
+          | TilingSched.DirectBandAccepted =>
+              BIND wf_posttile <-
+                ValidatorCore.check_wf_polyprog_general pol_posttile -;
+              if wf_posttile then
+                match PolyLang.from_openscop_schedule_only pol_posttile after_scop with
+                | Err _ =>
+                    reject_post_tiling_affine route tt
+                | Okk pol_after =>
+                    BIND final_ok <-
+                      ValidatorCore.validate_general pol_posttile pol_after -;
+                    if final_ok then
+                      BIND wf_after <-
+                        ValidatorCore.check_wf_polyprog_general pol_after -;
+                      if wf_after then
+                        prepared_codegen_after_tiling_route pol_after route
+                      else
+                        reject_post_tiling_affine route tt
                     else
-                      res_to_alarm LoopIR.dummy
-                        (Err "Post-tiling affine target is not well formed.")
-                  else
-                    res_to_alarm LoopIR.dummy
-                      (Err "Post-tiling affine validation failed.")
-              end
-            else
-              PrepareCore.prepared_codegen pol_mid
-          else
-            PrepareCore.prepared_codegen pol_mid
+                      reject_post_tiling_affine route tt
+                end
+              else
+                rejected tt
+          | TilingSched.Rejected =>
+              rejected tt
+          end
       end
   end.
 
 Definition try_diamond_phase_pipeline_from_source_pol_band
     (pol_source: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
   match BaseOpt.run_pluto_diamond_phase_pipeline before_scop with
   | Err _ =>
-      BaseOpt.affine_only_opt_prepared_from_poly pol_source
+      rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          BaseOpt.affine_only_opt_prepared_from_poly pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_diamond_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
-            BaseOpt.affine_only_opt_prepared_from_poly pol_source
+            rejected tt
       end
   end.
 
 Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
     (pol_source: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
   match BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
   | Err _ =>
-      BaseOpt.affine_only_opt_prepared_from_poly pol_source
+      rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
-          BaseOpt.affine_only_opt_prepared_from_poly pol_source
+          rejected tt
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
             try_verified_diamond_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
-            BaseOpt.affine_only_opt_prepared_from_poly pol_source
+            rejected tt
       end
   end.
 
@@ -208,10 +245,10 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_band
           BaseOpt.run_pluto_phase_pipeline
           before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition phase_pipeline_opt_prepared_from_poly_with_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
@@ -220,10 +257,10 @@ Definition phase_pipeline_opt_prepared_from_poly_with_iss_band
     | Some before_scop =>
         try_checked_iss_phase_pipeline_from_poly_band pol before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition identity_tiling_opt_prepared_from_poly_band
     (pol: PolyLang.t): imp LoopIR.t :=
@@ -235,10 +272,10 @@ Definition identity_tiling_opt_prepared_from_poly_band
           BaseOpt.run_pluto_identity_tiling_pipeline
           before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
     (pol: PolyLang.t)
@@ -255,7 +292,7 @@ Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
                 BaseOpt.run_pluto_identity_tiling_pipeline
                 iss_scop
           | None =>
-              PrepareCore.prepared_codegen pol_iss
+              reject_tiling tt
           end
         else
           identity_tiling_opt_prepared_from_poly_band pol
@@ -273,10 +310,10 @@ Definition identity_tiling_opt_prepared_from_poly_with_iss_band
         try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
           pol before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition phase_diamond_opt_prepared_from_poly_no_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
@@ -285,10 +322,10 @@ Definition phase_diamond_opt_prepared_from_poly_no_iss_band
     | Some before_scop =>
         try_diamond_phase_pipeline_from_source_pol_band pol before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition phase_diamond_opt_prepared_from_poly_with_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
@@ -297,10 +334,10 @@ Definition phase_diamond_opt_prepared_from_poly_with_iss_band
     | Some before_scop =>
         try_checked_iss_diamond_phase_pipeline_from_poly_band pol before_scop
     | None =>
-        BaseOpt.affine_only_opt_prepared_from_poly pol
+        reject_tiling tt
     end
   else
-    PrepareCore.prepared_codegen pol.
+    reject_tiling tt.
 
 Definition phase_pipeline_opt_prepared_band
     (loop: LoopIR.t): imp LoopIR.t :=
@@ -354,9 +391,9 @@ Proof.
       (ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws)
       as [pol_after|msg_after] eqn:Hafter.
     + bind_imp_destruct Hopt route Hroute.
-      destruct (TilingSched.tiling_band_validation_route_acceptsb route)
-        eqn:Haccept.
-      * bind_imp_destruct Hopt wf_after_ok Hwf_check.
+      destruct route.
+      * simpl in Hopt.
+        bind_imp_destruct Hopt wf_after_ok Hwf_check.
         destruct wf_after_ok.
         -- pose proof
              (ValidatorCore.check_wf_polyprog_general_correct
@@ -368,27 +405,17 @@ Proof.
              as Hsem_after.
            eapply
              (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
-                pol_mid pol_after ws st st' route); eauto.
-        -- pose proof
-             (PrepareCore.prepared_codegen_correct
-                pol_mid st st' loop' Hopt Hwf_mid Hloop)
-             as Hmid_sem.
-           exists st'. split; auto. apply State.eq_refl.
-      * pose proof
-           (PrepareCore.prepared_codegen_correct
-              pol_mid st st' loop' Hopt Hwf_mid Hloop)
-          as Hmid_sem.
-        exists st'. split; auto. apply State.eq_refl.
-    + pose proof
-         (PrepareCore.prepared_codegen_correct
-            pol_mid st st' loop' Hopt Hwf_mid Hloop)
-        as Hmid_sem.
-      exists st'. split; auto. apply State.eq_refl.
-  - pose proof
-       (PrepareCore.prepared_codegen_correct
-          pol_mid st st' loop' Hopt Hwf_mid Hloop)
-      as Hmid_sem.
-    exists st'. split; auto. apply State.eq_refl.
+                pol_mid pol_after ws st st'
+                TilingSched.DirectBandAccepted); eauto.
+        -- unfold reject_tiling, res_to_alarm in Hopt.
+           eapply mayReturn_alarm in Hopt. contradiction.
+      * simpl in Hopt.
+        unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_band_correct:
@@ -425,9 +452,12 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
+      * unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_checked_iss_phase_pipeline_from_poly_band_correct:
@@ -489,12 +519,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_phase_pipeline_from_source_pol_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_with_iss_band_correct:
@@ -511,12 +539,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_phase_pipeline_from_poly_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma identity_tiling_opt_prepared_from_poly_band_correct:
@@ -533,12 +559,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_phase_pipeline_from_source_pol_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct:
@@ -583,18 +607,8 @@ Proof.
               exists st_src.
               split; auto.
               eapply State.eq_trans; eauto.
-           ++ pose proof
-                (PrepareCore.prepared_codegen_correct
-                   pol_iss st st' loop' Hopt Hwf_iss Hloop)
-                as Hiss_sem.
-              pose proof
-                (ISSValidatorCorrectCore
-                   .checked_iss_complete_cut_shape_validate_semantics_correct
-                   pol pol_iss w st st' Hiss_check Hiss_sem)
-                as Hback.
-              destruct Hback as [st_src [Hsrc_sem Heq_src]].
-              exists st_src.
-              split; auto.
+           ++ unfold reject_tiling, res_to_alarm in Hopt.
+              eapply mayReturn_alarm in Hopt. contradiction.
         -- eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
       * eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
     + eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
@@ -615,12 +629,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Definition Opt_prepared_band := phase_pipeline_opt_prepared_band.
@@ -832,9 +844,9 @@ Proof.
       (ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws)
       as [pol_posttile|msg_after] eqn:Hposttile.
     + bind_imp_destruct Hopt route Hroute.
-      destruct (TilingSched.tiling_band_validation_route_acceptsb route)
-        eqn:Haccept.
-      * bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
+      destruct route.
+      * simpl in Hopt.
+        bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
         destruct wf_posttile_ok.
         -- pose proof
              (ValidatorCore.check_wf_polyprog_general_correct
@@ -863,37 +875,30 @@ Proof.
                      destruct Hfinal_corr as [st_post [Hpost_sem Heq_post]].
                      destruct
                        (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
-                          pol_mid pol_posttile ws st st_post route
-                          Hwf_mid Hwf_posttile Hroute Haccept Hpost_sem)
+                          pol_mid pol_posttile ws st st_post
+                          TilingSched.DirectBandAccepted
+                          Hwf_mid Hwf_posttile Hroute eq_refl Hpost_sem)
                        as [st_mid [Hmid_sem Heq_mid]].
                      exists st_mid. split; auto.
                      eapply State.eq_trans; eauto.
-                 --- eapply mayReturn_alarm in Hopt.
+                 --- unfold reject_post_tiling_affine, res_to_alarm in Hopt.
+                     eapply mayReturn_alarm in Hopt.
                      contradiction.
-              ** eapply mayReturn_alarm in Hopt.
+              ** unfold reject_post_tiling_affine, res_to_alarm in Hopt.
+                 eapply mayReturn_alarm in Hopt.
                  contradiction.
-           ++ eapply mayReturn_alarm in Hopt.
+           ++ unfold reject_post_tiling_affine, res_to_alarm in Hopt.
+              eapply mayReturn_alarm in Hopt.
               contradiction.
-        -- pose proof
-             (PrepareCore.prepared_codegen_correct
-                pol_mid st st' loop' Hopt Hwf_mid Hloop)
-           as Hmid_sem.
-           exists st'. split; auto. apply State.eq_refl.
-      * pose proof
-           (PrepareCore.prepared_codegen_correct
-              pol_mid st st' loop' Hopt Hwf_mid Hloop)
-         as Hmid_sem.
-        exists st'. split; auto. apply State.eq_refl.
-    + pose proof
-         (PrepareCore.prepared_codegen_correct
-            pol_mid st st' loop' Hopt Hwf_mid Hloop)
-        as Hmid_sem.
-      exists st'. split; auto. apply State.eq_refl.
-  - pose proof
-       (PrepareCore.prepared_codegen_correct
-          pol_mid st st' loop' Hopt Hwf_mid Hloop)
-      as Hmid_sem.
-    exists st'. split; auto. apply State.eq_refl.
+        -- unfold reject_tiling, res_to_alarm in Hopt.
+           eapply mayReturn_alarm in Hopt. contradiction.
+      * simpl in Hopt.
+        unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_correct:
@@ -933,9 +938,12 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
+      * unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_correct:
@@ -975,9 +983,12 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
+      * unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_correct:
@@ -1038,12 +1049,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_correct:
@@ -1060,12 +1069,10 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_diamond_phase_pipeline_from_poly_band_correct; eauto.
-    + eapply BaseOpt.affine_opt_prepared_from_poly_correct; eauto.
-  - pose proof
-      (PrepareCore.prepared_codegen_correct
-         pol st st' loop' Hopt Hwf Hloop)
-      as Hsem.
-    exists st'. split; auto. apply State.eq_refl.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
 Definition Opt_prepared_diamond_band := phase_diamond_opt_prepared_band.

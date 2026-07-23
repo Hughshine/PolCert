@@ -16,4 +16,4 @@ The `diamond-current-jacobi-batch-positive` case covers the wider two-statement 
 ./polopt --diamond-tile --parallel-current 0 tools/parallel_current/fixtures/jacobi-batch.loop
 ```
 
-must emit `parallel for`, coupled diamond expressions such as `64 *` and `(-2 * i11)`, and both `a` and `b` updates. This case is accepted through the checked raw-codegen fallback: the cleaned codegen output can produce non-affine instruction traces, so the verified parallel codegen first tries the cleaned output and then falls back to the raw singleton-loop form when the raw trace passes the same safety check. The remaining polish item is output cleanup quality, not validator coverage for this shape.
+must emit `parallel for`, coupled diamond expressions such as `64 *` and `(-2 * i11)`, and both `a` and `b` updates. This case retains the checked raw singleton-loop codegen form because cleaning that form can produce non-affine instruction traces. The raw form passes the same trace-safety check and remains on the same verified codegen route. The remaining polish item is output cleanup quality, not validator coverage for this shape.

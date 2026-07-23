@@ -10,10 +10,10 @@ Every integrated tiling boundary now has two observable outcomes:
 The dispatcher has no legacy, canonical, or general tiling-validation
 fallback, and its route type has only `DirectBandAccepted` and `Rejected`.
 
-The proof-side optimizer may retain the already verified affine midpoint after
-a rejected external candidate.  The extracted CLI reports that route as
-`rejected`, returns a nonzero status, and emits no optimized program; it never
-counts midpoint recovery as a successful requested tiling.
+A rejected external tiling candidate triggers the proof-side alarm path with a
+dummy result value. The extracted CLI reports `rejected`, returns a nonzero
+status, and emits no optimized program; neither the source program nor an
+affine midpoint is returned as the result of the requested tiling.
 
 ## Checked Property
 

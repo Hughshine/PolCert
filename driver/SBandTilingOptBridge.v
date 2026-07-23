@@ -16,20 +16,38 @@ Proof.
   exact (@Equivalence_Reflexive _ _ (impeq_equiv A) x).
 Qed.
 
+Lemma reject_tiling_impeq_generic :
+  impeq
+    (SBandTilingOpt.reject_tiling tt)
+    (BandGeneric.reject_tiling tt).
+Proof.
+  unfold SBandTilingOpt.reject_tiling, BandGeneric.reject_tiling.
+  rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
+  apply impeq_refl.
+Qed.
+
 Lemma prepared_codegen_after_tiling_route_impeq :
-  forall pol_mid pol_after route,
-    BandGeneric.TilingSched.tiling_band_validation_route_acceptsb route = true ->
+  forall pol_after route,
     impeq
       (SBandTilingOpt.prepared_codegen_after_tiling_route
-         pol_mid pol_after route)
-      (BandGeneric.BaseOpt.PrepareCore.prepared_codegen
-         (BandGeneric.PolyLang.current_view_pprog pol_after)).
+         pol_after route)
+      (BandGeneric.prepared_codegen_after_tiling_route
+         pol_after route).
 Proof.
-  intros pol_mid pol_after route Haccept.
-  destruct route; simpl in Haccept.
-  - unfold SBandTilingOpt.prepared_codegen_after_tiling_route.
-    simpl. apply impeq_refl.
-  - discriminate.
+  intros pol_after route.
+  destruct route; apply impeq_refl.
+Qed.
+
+Lemma reject_post_tiling_affine_impeq_generic :
+  forall route,
+    impeq
+      (SBandTilingOpt.reject_post_tiling_affine route tt)
+      (BandGeneric.reject_post_tiling_affine route tt).
+Proof.
+  intro route.
+  unfold SBandTilingOpt.reject_post_tiling_affine,
+    BandGeneric.reject_post_tiling_affine.
+  destruct route; apply impeq_refl.
 Qed.
 
 Lemma try_verified_tiling_after_phase_mid_band_impeq_generic :
@@ -64,12 +82,10 @@ Proof.
            ++ apply impeq_refl.
            ++ intro wf_after. destruct wf_after.
               ** apply impeq_refl.
-              ** apply impeq_refl.
-        -- unfold SBandTilingOpt.reject_tiling_then.
-           rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
-           apply impeq_refl.
-    + apply impeq_refl.
-  - apply impeq_refl.
+              ** apply reject_tiling_impeq_generic.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_band_impeq_generic :
@@ -112,12 +128,10 @@ Proof.
                                   ++++ apply impeq_refl.
                          *** apply impeq_refl.
                  --- apply impeq_refl.
-              ** apply impeq_refl.
-        -- unfold SBandTilingOpt.reject_tiling_then.
-           rewrite SBandTilingOpt.observe_tiling_validation_route_eq.
-           apply impeq_refl.
-    + apply impeq_refl.
-  - apply impeq_refl.
+              ** apply reject_tiling_impeq_generic.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_band_impeq_generic :
@@ -139,9 +153,9 @@ Proof.
       * apply impeq_refl.
       * intro affine_ok. destruct affine_ok.
         -- apply try_verified_tiling_after_phase_mid_band_impeq_generic.
-        -- apply impeq_refl.
-    + apply impeq_refl.
-  - apply impeq_refl.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_impeq_generic :
@@ -163,9 +177,9 @@ Proof.
       * apply impeq_refl.
       * intro affine_ok. destruct affine_ok.
         -- apply try_verified_diamond_after_phase_mid_band_impeq_generic.
-        -- apply impeq_refl.
-    + apply impeq_refl.
-  - apply impeq_refl.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_impeq_generic :
@@ -190,9 +204,9 @@ Proof.
       * apply impeq_refl.
       * intro affine_ok. destruct affine_ok.
         -- apply try_verified_diamond_after_phase_mid_band_impeq_generic.
-        -- apply impeq_refl.
-    + apply impeq_refl.
-  - apply impeq_refl.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_checked_iss_phase_pipeline_from_poly_band_impeq_generic :
@@ -230,9 +244,9 @@ Lemma phase_pipeline_opt_prepared_from_poly_no_iss_band_impeq_generic :
          | Some before_scop =>
              SBandTilingOpt.try_phase_pipeline_from_source_pol_band
                pol BandGeneric.BaseOpt.run_pluto_phase_pipeline before_scop
-         | None => BandGeneric.BaseOpt.affine_only_opt_prepared_from_poly pol
+         | None => SBandTilingOpt.reject_tiling tt
          end
-       else BandGeneric.BaseOpt.PrepareCore.prepared_codegen pol)
+       else SBandTilingOpt.reject_tiling tt)
       (BandGeneric.phase_pipeline_opt_prepared_from_poly_no_iss_band pol).
 Proof.
   intro pol.
@@ -240,8 +254,8 @@ Proof.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply try_phase_pipeline_from_source_pol_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_with_iss_band_impeq_generic :
@@ -252,9 +266,9 @@ Lemma phase_pipeline_opt_prepared_from_poly_with_iss_band_impeq_generic :
          | Some before_scop =>
              SBandTilingOpt.try_checked_iss_phase_pipeline_from_poly_band
                pol before_scop
-         | None => BandGeneric.BaseOpt.affine_only_opt_prepared_from_poly pol
+         | None => SBandTilingOpt.reject_tiling tt
          end
-       else BandGeneric.BaseOpt.PrepareCore.prepared_codegen pol)
+       else SBandTilingOpt.reject_tiling tt)
       (BandGeneric.phase_pipeline_opt_prepared_from_poly_with_iss_band pol).
 Proof.
   intro pol.
@@ -262,8 +276,8 @@ Proof.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply try_checked_iss_phase_pipeline_from_poly_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma opt_identity_tiled_from_poly_impeq_generic :
@@ -278,8 +292,8 @@ Proof.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply try_phase_pipeline_from_source_pol_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_impeq_generic :
@@ -307,7 +321,7 @@ Proof.
         -- intro iss_wf. destruct iss_wf.
            ++ destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol_iss).
               ** apply try_phase_pipeline_from_source_pol_band_impeq_generic.
-              ** apply impeq_refl.
+              ** apply reject_tiling_impeq_generic.
            ++ apply opt_identity_tiled_from_poly_impeq_generic.
       * apply opt_identity_tiled_from_poly_impeq_generic.
     + apply opt_identity_tiled_from_poly_impeq_generic.
@@ -323,9 +337,9 @@ Lemma identity_tiling_opt_prepared_from_poly_with_iss_band_impeq_generic :
              SBandTilingOpt
                .try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
                pol before_scop
-         | None => BandGeneric.BaseOpt.affine_only_opt_prepared_from_poly pol
+         | None => SBandTilingOpt.reject_tiling tt
          end
-       else BandGeneric.BaseOpt.PrepareCore.prepared_codegen pol)
+       else SBandTilingOpt.reject_tiling tt)
       (BandGeneric.identity_tiling_opt_prepared_from_poly_with_iss_band pol).
 Proof.
   intro pol.
@@ -334,8 +348,8 @@ Proof.
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply
         try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_impeq_generic :
@@ -374,9 +388,9 @@ Lemma phase_diamond_opt_prepared_from_poly_no_iss_band_impeq_generic :
          | Some before_scop =>
              SBandTilingOpt.try_diamond_phase_pipeline_from_source_pol_band
                pol before_scop
-         | None => BandGeneric.BaseOpt.affine_only_opt_prepared_from_poly pol
+         | None => SBandTilingOpt.reject_tiling tt
          end
-       else BandGeneric.BaseOpt.PrepareCore.prepared_codegen pol)
+       else SBandTilingOpt.reject_tiling tt)
       (BandGeneric.phase_diamond_opt_prepared_from_poly_no_iss_band pol).
 Proof.
   intro pol.
@@ -384,8 +398,8 @@ Proof.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_impeq_generic :
@@ -397,9 +411,9 @@ Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_impeq_generic :
              SBandTilingOpt
                .try_checked_iss_diamond_phase_pipeline_from_poly_band
                pol before_scop
-         | None => BandGeneric.BaseOpt.affine_only_opt_prepared_from_poly pol
+         | None => SBandTilingOpt.reject_tiling tt
          end
-       else BandGeneric.BaseOpt.PrepareCore.prepared_codegen pol)
+       else SBandTilingOpt.reject_tiling tt)
       (BandGeneric.phase_diamond_opt_prepared_from_poly_with_iss_band pol).
 Proof.
   intro pol.
@@ -408,8 +422,8 @@ Proof.
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply
         try_checked_iss_diamond_phase_pipeline_from_poly_band_impeq_generic.
-    + apply impeq_refl.
-  - apply impeq_refl.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
 Qed.
 
 Theorem opt_impeq_generic :

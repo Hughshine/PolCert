@@ -137,34 +137,36 @@ Lemma observe_tiling_validation_route_eq :
   forall route, observe_tiling_validation_route route = route.
 Proof. reflexivity. Qed.
 
-Definition reject_tiling_then {A: Type}
-    (fallback: unit -> imp A) (_: unit) : imp A :=
+Definition reject_tiling (_: unit) : imp PolyLang.t :=
   match observe_tiling_validation_route TilingSched.Rejected with
-  | TilingSched.Rejected => fallback tt
+  | TilingSched.Rejected =>
+      res_to_alarm PolyLang.dummy
+        (Err "Tiling validation rejected or unavailable."%string)
   | TilingSched.DirectBandAccepted =>
-      BIND result <- fallback tt -; pure result
+      res_to_alarm PolyLang.dummy
+        (Err "Impossible accepted result while recording tiling rejection."%string)
   end.
 
 Definition select_after_tiling_route
-    (pol_mid pol_after: PolyLang.t)
+    (pol_after: PolyLang.t)
     (route: TilingSched.tiling_band_validation_route)
   : imp PolyLang.t :=
   match route with
   | TilingSched.DirectBandAccepted =>
       pure (PolyLang.current_view_pprog pol_after)
   | TilingSched.Rejected =>
-      pure pol_mid
+      res_to_alarm PolyLang.dummy
+        (Err "Tiling validation rejected."%string)
   end.
 
 Definition reject_post_tiling_affine
-    (pol_mid: PolyLang.t)
     (route: TilingSched.tiling_band_validation_route) : imp PolyLang.t :=
-  match observe_tiling_validation_route route with
+  match route with
   | TilingSched.DirectBandAccepted =>
-      res_to_alarm pol_mid
+      res_to_alarm PolyLang.dummy
         (Err "Post-tiling affine validation failed.")
   | TilingSched.Rejected =>
-      res_to_alarm pol_mid
+      res_to_alarm PolyLang.dummy
         (Err "Post-tiling affine validation failed.")
   end.
 
@@ -172,7 +174,7 @@ Definition try_verified_tiling_after_phase_mid_poly
     (pol_mid : PolyLang.t)
     (mid_scop after_scop : OpenScop)
   : imp PolyLang.t :=
-  let rejected := reject_tiling_then (fun _ => pure pol_mid) in
+  let rejected := reject_tiling in
   match CoreOpt.infer_tiling_witness_scops mid_scop after_scop with
   | Err _ =>
       rejected tt
@@ -190,7 +192,7 @@ Definition try_verified_tiling_after_phase_mid_poly
                 ValidatorCore.check_wf_polyprog_general pol_after -;
               if wf_after then
                 select_after_tiling_route
-                  pol_mid pol_after
+                  pol_after
                   (observe_tiling_validation_route route)
               else rejected tt
           | TilingSched.Rejected =>
@@ -205,8 +207,7 @@ Definition try_phase_pipeline_from_source_pol_poly
     (before_scop : OpenScop)
   : imp PolyLang.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
+    reject_tiling in
   match phase_runner before_scop with
   | Err _ =>
       rejected tt
@@ -227,7 +228,7 @@ Definition try_verified_diamond_after_phase_mid_poly
     (pol_mid : PolyLang.t)
     (mid_scop posttile_scop after_scop : OpenScop)
   : imp PolyLang.t :=
-  let rejected := reject_tiling_then (fun _ => pure pol_mid) in
+  let rejected := reject_tiling in
   match CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop with
   | Err _ =>
       rejected tt
@@ -247,7 +248,7 @@ Definition try_verified_diamond_after_phase_mid_poly
                 let route := observe_tiling_validation_route route in
                 match PolyLang.from_openscop_schedule_only
                         pol_posttile after_scop with
-                | Err _ => reject_post_tiling_affine pol_mid route
+                | Err _ => reject_post_tiling_affine route
                 | Okk pol_after =>
                     BIND final_ok <-
                       ValidatorCore.validate_general pol_posttile pol_after -;
@@ -255,9 +256,9 @@ Definition try_verified_diamond_after_phase_mid_poly
                       BIND wf_after <-
                         ValidatorCore.check_wf_polyprog_general pol_after -;
                       if wf_after then
-                        select_after_tiling_route pol_mid pol_after route
-                      else reject_post_tiling_affine pol_mid route
-                    else reject_post_tiling_affine pol_mid route
+                        select_after_tiling_route pol_after route
+                      else reject_post_tiling_affine route
+                    else reject_post_tiling_affine route
                 end
               else rejected tt
           | TilingSched.Rejected =>
@@ -271,8 +272,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly
     (before_scop : OpenScop)
   : imp PolyLang.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
+    reject_tiling in
   match CoreOpt.run_pluto_diamond_phase_pipeline before_scop with
   | Err _ =>
       rejected tt
@@ -295,8 +295,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
     (before_scop : OpenScop)
   : imp PolyLang.t :=
   let rejected :=
-    reject_tiling_then
-      (fun _ => CoreOpt.checked_affine_schedule pol_source) in
+    reject_tiling in
   match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
   | Err _ =>
       rejected tt
@@ -401,8 +400,7 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.checked_affine_schedule pol) tt
+        reject_tiling tt
     | Some before_scop =>
         try_phase_pipeline_from_source_pol_poly
           pol
@@ -410,7 +408,7 @@ Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
           before_scop
     end
   else
-    reject_tiling_then (fun _ => pure pol) tt.
+    reject_tiling tt.
 
 Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
@@ -418,13 +416,12 @@ Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.checked_affine_schedule pol) tt
+        reject_tiling tt
     | Some before_scop =>
         try_checked_iss_phase_pipeline_from_poly_poly pol before_scop
     end
   else
-    reject_tiling_then (fun _ => pure pol) tt.
+    reject_tiling tt.
 
 Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
     (pol : PolyLang.t)
@@ -432,8 +429,7 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.checked_affine_schedule pol) tt
+        reject_tiling tt
     | Some before_scop =>
         try_phase_pipeline_from_source_pol_poly
           pol
@@ -441,7 +437,7 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
           before_scop
     end
   else
-    reject_tiling_then (fun _ => pure pol) tt.
+    reject_tiling tt.
 
 Definition identity_tiling_opt_prepared_from_poly_with_iss_poly
     (pol : SPolIRs.PolyLang.t)
@@ -455,13 +451,12 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.checked_affine_schedule pol) tt
+        reject_tiling tt
     | Some before_scop =>
         try_diamond_phase_pipeline_from_source_pol_poly pol before_scop
     end
   else
-    reject_tiling_then (fun _ => pure pol) tt.
+    reject_tiling tt.
 
 Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
@@ -469,13 +464,12 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | None =>
-        reject_tiling_then
-          (fun _ => CoreOpt.checked_affine_schedule pol) tt
+        reject_tiling tt
     | Some before_scop =>
         try_checked_iss_diamond_phase_pipeline_from_poly_poly pol before_scop
     end
   else
-    reject_tiling_then (fun _ => pure pol) tt.
+    reject_tiling tt.
 
 Definition parallel_current_prepared_from_poly
     (pol : PolyLang.t)

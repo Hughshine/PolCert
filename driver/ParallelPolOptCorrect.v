@@ -26,6 +26,36 @@ Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
 Module ParallelLoop := Core.ParallelCodegenCore.ParallelLoop.
 
+Lemma reject_tiling_no_return :
+  forall pol_out, ~ mayReturn (Core.reject_tiling tt) pol_out.
+Proof.
+  intros pol_out Hret.
+  unfold Core.reject_tiling, Core.observe_tiling_validation_route in Hret.
+  cbn in Hret.
+  unfold res_to_alarm in Hret.
+  eapply mayReturn_alarm in Hret.
+  contradiction.
+Qed.
+
+Lemma reject_post_tiling_affine_no_return :
+  forall route pol_out,
+    ~ mayReturn (Core.reject_post_tiling_affine route) pol_out.
+Proof.
+  intros route pol_out Hret.
+  destruct route;
+    unfold Core.reject_post_tiling_affine in Hret;
+    cbn in Hret;
+    unfold res_to_alarm in Hret;
+    eapply mayReturn_alarm in Hret;
+    contradiction.
+Qed.
+
+Ltac reject_tiling_contradiction H :=
+  exfalso; eapply reject_tiling_no_return; exact H.
+
+Ltac reject_post_tiling_affine_contradiction H :=
+  exfalso; eapply reject_post_tiling_affine_no_return; exact H.
+
 Lemma checked_parallel_current_annotated_codegen_at_correct :
   forall pol d pl st st',
     mayReturn (Core.checked_parallel_current_annotated_codegen_at pol d) (Okk pl) ->
@@ -90,8 +120,7 @@ Proof.
     destruct after_res as [pol_after|msg_after].
     { cbn beta iota zeta in Hopt.
       bind_imp_destruct Hopt route Hroute.
-      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route)
-        eqn:Haccept.
+      destruct route.
       { bind_imp_destruct Hopt wf_after_ok Hwf_check.
         destruct wf_after_ok.
         { apply mayReturn_pure in Hopt. subst pol_out.
@@ -105,20 +134,15 @@ Proof.
             as Hsem_after.
           destruct
             (Core.TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
-               pol_mid pol_after ws st st' route
-               Hwf_mid Hwf_after Hroute Haccept Hsem_after)
+               pol_mid pol_after ws st st'
+               Core.TilingSched.DirectBandAccepted
+               Hwf_mid Hwf_after Hroute eq_refl Hsem_after)
             as [st_mid [Hmid_sem Heq_mid]].
           exists st_mid. split; assumption. }
-        { apply mayReturn_pure in Hopt. subst pol_out.
-          exists st'. split; auto. apply State.eq_refl. } }
-      { apply mayReturn_pure in Hopt. subst pol_out.
-        exists st'. split; auto. apply State.eq_refl. } }
-    { simpl in Hopt.
-      apply mayReturn_pure in Hopt. subst pol_out.
-      exists st'. split; auto. apply State.eq_refl. } }
-  { simpl in Hopt.
-    apply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. apply State.eq_refl. }
+        { reject_tiling_contradiction Hopt. } }
+      { reject_tiling_contradiction Hopt. } }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma try_verified_tiling_after_phase_mid_poly_wf :
@@ -139,7 +163,7 @@ Proof.
     destruct after_res as [pol_after|msg_after].
     { cbn beta iota zeta in Hopt.
       bind_imp_destruct Hopt route Hroute.
-      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route).
+      destruct route.
       { bind_imp_destruct Hopt wf_after_ok Hwf_check.
         destruct wf_after_ok.
         { apply mayReturn_pure in Hopt. subst pol_out.
@@ -151,16 +175,10 @@ Proof.
             (PolyLang.wf_pprog_general_current_view_affine pol_after Hwf_after)
             as Hwf_cur_aff.
           eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
-        { apply mayReturn_pure in Hopt. subst pol_out.
-          eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-      { apply mayReturn_pure in Hopt. subst pol_out.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-    { simpl in Hopt.
-      apply mayReturn_pure in Hopt. subst pol_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    apply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+        { reject_tiling_contradiction Hopt. } }
+      { reject_tiling_contradiction Hopt. } }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_poly_correct :
@@ -200,9 +218,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply CoreOpt.scheduler'_correct; eauto.
-    + eapply CoreOpt.scheduler'_correct; eauto.
-  - eapply CoreOpt.scheduler'_correct; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_poly_wf :
@@ -226,21 +244,9 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         eapply try_verified_tiling_after_phase_mid_poly_wf; eauto.
-      * pose proof
-          (CoreOpt.scheduler'_preserve_wf
-             pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-          as Hwf_out.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-    + pose proof
-        (CoreOpt.scheduler'_preserve_wf
-           pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-  - pose proof
-      (CoreOpt.scheduler'_preserve_wf
-         pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-      as Hwf_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_poly_correct :
@@ -264,8 +270,7 @@ Proof.
       as [pol_posttile|msg_after] eqn:Hposttile.
     + cbn beta iota zeta in Hopt.
       bind_imp_destruct Hopt route Hroute.
-      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route)
-        eqn:Haccept.
+      destruct route.
       * bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
         destruct wf_posttile_ok.
         -- pose proof
@@ -296,30 +301,19 @@ Proof.
                        as [st_post [Hpost_sem Heq_post]].
                      destruct
                        (Core.TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
-                          pol_mid pol_posttile ws st st_post route
-                          Hwf_mid Hwf_posttile Hroute Haccept Hpost_sem)
+                          pol_mid pol_posttile ws st st_post
+                          Core.TilingSched.DirectBandAccepted
+                          Hwf_mid Hwf_posttile Hroute eq_refl Hpost_sem)
                        as [st_mid [Hmid_sem Heq_mid]].
                      exists st_mid. split; auto.
                      eapply State.eq_trans; eauto.
-                 --- unfold res_to_alarm in Hopt.
-                     eapply mayReturn_alarm in Hopt.
-                     contradiction.
-              ** unfold res_to_alarm in Hopt.
-                 eapply mayReturn_alarm in Hopt.
-                 contradiction.
-           ++ unfold res_to_alarm in Hopt.
-              eapply mayReturn_alarm in Hopt.
-              contradiction.
-        -- apply mayReturn_pure in Hopt. subst pol_out.
-           exists st'. split; auto. apply State.eq_refl.
-      * apply mayReturn_pure in Hopt. subst pol_out.
-        exists st'. split; auto. apply State.eq_refl.
-    + apply mayReturn_pure in Hopt.
-      subst pol_out.
-      exists st'. split; auto. apply State.eq_refl.
-  - apply mayReturn_pure in Hopt.
-    subst pol_out.
-    exists st'. split; auto. apply State.eq_refl.
+                 --- reject_post_tiling_affine_contradiction Hopt.
+              ** reject_post_tiling_affine_contradiction Hopt.
+           ++ reject_post_tiling_affine_contradiction Hopt.
+        -- reject_tiling_contradiction Hopt.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_poly_wf :
@@ -340,7 +334,7 @@ Proof.
       as [pol_posttile|msg_after] eqn:Hposttile.
     + cbn beta iota zeta in Hopt.
       bind_imp_destruct Hopt route Hroute.
-      destruct (Core.TilingSched.tiling_band_validation_route_acceptsb route).
+      destruct route.
       * bind_imp_destruct Hopt wf_posttile_ok Hwf_posttile_check.
         destruct wf_posttile_ok.
         -- destruct (PolyLang.from_openscop_schedule_only pol_posttile after_scop)
@@ -360,25 +354,13 @@ Proof.
                        as Hwf_cur_aff.
                      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general;
                        eauto.
-                 --- unfold res_to_alarm in Hopt.
-                     eapply mayReturn_alarm in Hopt.
-                     contradiction.
-              ** unfold res_to_alarm in Hopt.
-                 eapply mayReturn_alarm in Hopt.
-                 contradiction.
-           ++ unfold res_to_alarm in Hopt.
-              eapply mayReturn_alarm in Hopt.
-              contradiction.
-        -- apply mayReturn_pure in Hopt. subst pol_out.
-           eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-      * apply mayReturn_pure in Hopt. subst pol_out.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-    + apply mayReturn_pure in Hopt.
-      subst pol_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-  - apply mayReturn_pure in Hopt.
-    subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+                 --- reject_post_tiling_affine_contradiction Hopt.
+              ** reject_post_tiling_affine_contradiction Hopt.
+           ++ reject_post_tiling_affine_contradiction Hopt.
+        -- reject_tiling_contradiction Hopt.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_poly_correct :
@@ -419,9 +401,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply CoreOpt.scheduler'_correct; eauto.
-    + eapply CoreOpt.scheduler'_correct; eauto.
-  - eapply CoreOpt.scheduler'_correct; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_poly_wf :
@@ -446,21 +428,9 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         eapply try_verified_diamond_after_phase_mid_poly_wf; eauto.
-      * pose proof
-          (CoreOpt.scheduler'_preserve_wf
-             pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-          as Hwf_out.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-    + pose proof
-        (CoreOpt.scheduler'_preserve_wf
-           pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-  - pose proof
-      (CoreOpt.scheduler'_preserve_wf
-         pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-      as Hwf_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct :
@@ -480,13 +450,8 @@ Proof.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
-    { simpl in Hopt.
-      eapply CoreOpt.scheduler'_correct.
-      - exact Hopt.
-      - exact Hsem_out. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf :
@@ -503,14 +468,8 @@ Proof.
       eapply try_diamond_phase_pipeline_from_source_pol_poly_wf.
       - exact Hwf.
       - exact Hopt. }
-    { simpl in Hopt.
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf pol pol_out Hwf pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_correct :
@@ -551,9 +510,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * eapply CoreOpt.scheduler'_correct; eauto.
-    + eapply CoreOpt.scheduler'_correct; eauto.
-  - eapply CoreOpt.scheduler'_correct; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_wf :
@@ -578,21 +537,9 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         eapply try_verified_diamond_after_phase_mid_poly_wf; eauto.
-      * pose proof
-          (CoreOpt.scheduler'_preserve_wf
-             pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-          as Hwf_out.
-        eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-    + pose proof
-        (CoreOpt.scheduler'_preserve_wf
-           pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
-  - pose proof
-      (CoreOpt.scheduler'_preserve_wf
-         pol_source pol_out Hwf_source pol_out Hopt eq_refl)
-      as Hwf_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
 Qed.
 
 Lemma try_checked_iss_diamond_phase_pipeline_from_poly_poly_correct :
@@ -683,13 +630,8 @@ Proof.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
-    { simpl in Hopt.
-      eapply CoreOpt.scheduler'_correct.
-      - exact Hopt.
-      - exact Hsem_out. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf :
@@ -706,14 +648,8 @@ Proof.
       eapply try_checked_iss_diamond_phase_pipeline_from_poly_poly_wf.
       - exact Hwf.
       - exact Hopt. }
-    { simpl in Hopt.
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf pol pol_out Hwf pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct :
@@ -733,13 +669,8 @@ Proof.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
-    { simpl in Hopt.
-      eapply CoreOpt.scheduler'_correct.
-      - exact Hopt.
-      - exact Hsem_out. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf :
@@ -756,14 +687,8 @@ Proof.
       eapply try_phase_pipeline_from_source_pol_poly_wf.
       - exact Hwf.
       - exact Hopt. }
-    { simpl in Hopt.
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf pol pol_out Hwf pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma identity_tiling_opt_prepared_from_poly_no_iss_poly_correct :
@@ -783,13 +708,8 @@ Proof.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
-    { simpl in Hopt.
-      eapply CoreOpt.scheduler'_correct.
-      - exact Hopt.
-      - exact Hsem_out. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma identity_tiling_opt_prepared_from_poly_no_iss_poly_wf :
@@ -806,14 +726,8 @@ Proof.
       eapply try_phase_pipeline_from_source_pol_poly_wf.
       - exact Hwf.
       - exact Hopt. }
-    { simpl in Hopt.
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf pol pol_out Hwf pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma try_checked_iss_phase_pipeline_from_poly_poly_correct :
@@ -905,13 +819,8 @@ Proof.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
-    { simpl in Hopt.
-      eapply CoreOpt.scheduler'_correct.
-      - exact Hopt.
-      - exact Hsem_out. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    exists st'. split; auto. eapply State.eq_refl. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf :
@@ -928,14 +837,8 @@ Proof.
       eapply try_checked_iss_phase_pipeline_from_poly_poly_wf.
       - exact Hwf.
       - exact Hopt. }
-    { simpl in Hopt.
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf pol pol_out Hwf pol_out Hopt eq_refl)
-        as Hwf_out.
-      eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. } }
-  { simpl in Hopt.
-    eapply mayReturn_pure in Hopt. subst pol_out.
-    eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto. }
+    { reject_tiling_contradiction Hopt. } }
+  { reject_tiling_contradiction Hopt. }
 Qed.
 
 Lemma iss_only_prepared_from_poly_correct :

@@ -275,6 +275,206 @@ def check_consumer_failure_cases(
     return len(cases)
 
 
+def check_malformed_tiling_with_explicit_consumers(
+    *,
+    polopt: Path,
+    wrapper: Path,
+    real_pluto: Path,
+    root: Path,
+    timeout: int,
+) -> int:
+    all_cases = {case.name: case for case in malformed_tiling_cases(root)}
+    producer_names = (
+        "ordinary",
+        "identity-mixed-depth-iss",
+        "second-level",
+        "second-level-identity-mixed-depth-iss",
+        "diamond",
+        "full-diamond-iss",
+        "second-level-diamond",
+        "second-level-full-diamond-iss",
+    )
+    consumers = (
+        ("parallel-current", ("--parallel-current", "999"), PARALLEL_REJECTION),
+        ("vector-current", ("--vector-current", "999"), VECTOR_REJECTION),
+    )
+    env = os.environ.copy()
+    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
+    env["POLCERT_PLUTO"] = str(wrapper)
+    env["POLCERT_REJECTING_PLUTO_MODE"] = "tiling"
+    count = 0
+    for producer_name in producer_names:
+        producer = all_cases[producer_name]
+        for consumer_name, consumer_args, consumer_rejection in consumers:
+            proc = run_polopt(
+                polopt=polopt,
+                fixture=producer.fixture,
+                args=(*producer.args, *consumer_args),
+                timeout=timeout,
+                env=env,
+            )
+            label = f"malformed {producer_name} with {consumer_name}"
+            if proc.returncode == 0:
+                raise AssertionError(f"{label} did not fail closed")
+            if route_lines(proc.stderr) != [REJECTED_ROUTE]:
+                raise AssertionError(
+                    f"{label} did not preserve its unique producer rejection\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+            if consumer_rejection in proc.stderr:
+                raise AssertionError(f"{label} was mislabeled as a consumer rejection")
+            assert_no_alternate_route(label, proc.stderr)
+            if proc.stderr.count(TILE_LINK_MUTATION) != 1:
+                raise AssertionError(f"{label} did not mutate exactly one tile link")
+            if proc.stderr.count("[alarm]") != 1:
+                raise AssertionError(f"{label} did not report exactly one alarm")
+            if "== Optimized Loop ==" in proc.stdout:
+                raise AssertionError(f"{label} emitted output after rejection")
+            count += 1
+    return count
+
+
+def check_malformed_tiling_with_hinted_consumers(
+    *,
+    polopt: Path,
+    wrapper: Path,
+    real_pluto: Path,
+    root: Path,
+    timeout: int,
+) -> int:
+    all_cases = {case.name: case for case in malformed_tiling_cases(root)}
+    producer_names = (
+        "ordinary",
+        "diamond",
+        "second-level-full-diamond-iss",
+    )
+    consumers = (
+        (
+            "parallel",
+            (
+                "--parallel",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+        ),
+        (
+            "parallel-strict",
+            (
+                "--parallel",
+                "--parallel-strict",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+        ),
+        (
+            "multipar",
+            (
+                "--parallel",
+                "--multipar",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+        ),
+        (
+            "multipar-strict",
+            (
+                "--parallel",
+                "--multipar",
+                "--parallel-strict",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+        ),
+        (
+            "vector",
+            (
+                "--vector",
+                "--smartfuse",
+                "--nointratileopt",
+                "--nounrolljam",
+                "--rar",
+                "--noparallel",
+            ),
+        ),
+        (
+            "vector-strict",
+            (
+                "--vector",
+                "--vector-strict",
+                "--smartfuse",
+                "--nointratileopt",
+                "--nounrolljam",
+                "--rar",
+                "--noparallel",
+            ),
+        ),
+    )
+    env = os.environ.copy()
+    env["POLCERT_REAL_PLUTO"] = str(real_pluto)
+    env["POLCERT_PLUTO"] = str(wrapper)
+    env["POLCERT_REJECTING_PLUTO_MODE"] = "tiling"
+    count = 0
+    for producer_name in producer_names:
+        producer = all_cases[producer_name]
+        explicit_phase_args = (
+            ()
+            if any(
+                flag in producer.args
+                for flag in ("--diamond-tile", "--full-diamond-tile")
+            )
+            else ("--nodiamond-tile",)
+        )
+        for consumer_name, consumer_args in consumers:
+            proc = run_polopt(
+                polopt=polopt,
+                fixture=producer.fixture,
+                args=(*producer.args, *consumer_args, *explicit_phase_args),
+                timeout=timeout,
+                env=env,
+            )
+            label = f"malformed {producer_name} with hinted {consumer_name}"
+            if proc.returncode == 0:
+                raise AssertionError(f"{label} did not fail closed")
+            if route_lines(proc.stderr) != [REJECTED_ROUTE]:
+                raise AssertionError(
+                    f"{label} did not preserve its unique producer rejection\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+            if (
+                "[parallel-validation] status=rejected" in proc.stderr
+                or "[vector-validation] status=rejected" in proc.stderr
+            ):
+                raise AssertionError(
+                    f"{label} was mislabeled as a consumer rejection\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+            assert_no_alternate_route(label, proc.stderr)
+            if proc.stderr.count(TILE_LINK_MUTATION) < 1:
+                raise AssertionError(f"{label} did not mutate a tile link")
+            if proc.stderr.count("[alarm]") != 1:
+                raise AssertionError(f"{label} did not report exactly one alarm")
+            if "== Optimized Loop ==" in proc.stdout:
+                raise AssertionError(f"{label} emitted output after rejection")
+            count += 1
+    return count
+
+
 def check_final_affine_failure_cases(
     *,
     polopt: Path,
@@ -290,9 +490,19 @@ def check_final_affine_failure_cases(
         / "fixtures"
         / "diamond-example-inner-batch.loop"
     )
-    cases = (
+    producer_cases = (
         ("diamond", ("--diamond-tile",)),
         ("diamond-iss", ("--diamond-tile", "--iss")),
+        ("full-diamond", ("--full-diamond-tile",)),
+        ("full-diamond-iss", ("--full-diamond-tile", "--iss")),
+        (
+            "second-level-diamond",
+            ("--second-level-tile", "--diamond-tile"),
+        ),
+        (
+            "second-level-diamond-iss",
+            ("--second-level-tile", "--diamond-tile", "--iss"),
+        ),
         (
             "second-level-full-diamond",
             ("--second-level-tile", "--full-diamond-tile"),
@@ -302,37 +512,117 @@ def check_final_affine_failure_cases(
             ("--second-level-tile", "--full-diamond-tile", "--iss"),
         ),
     )
+    consumers = (
+        ("sequential", (), None, 1),
+        (
+            "parallel-current",
+            ("--parallel-current", "0"),
+            "[parallel-validation] status=rejected",
+            1,
+        ),
+        (
+            "vector-current",
+            ("--vector-current", "0"),
+            "[vector-validation] status=rejected",
+            1,
+        ),
+        (
+            "parallel-hint-strict",
+            (
+                "--parallel",
+                "--parallel-strict",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+            "[parallel-validation] status=rejected",
+            2,
+        ),
+        (
+            "multipar-hint-strict",
+            (
+                "--parallel",
+                "--multipar",
+                "--parallel-strict",
+                "--innerpar",
+                "--smartfuse",
+                "--nointratileopt",
+                "--noprevector",
+                "--nounrolljam",
+                "--rar",
+            ),
+            "[parallel-validation] status=rejected",
+            2,
+        ),
+        (
+            "vector-hint-strict",
+            (
+                "--vector",
+                "--vector-strict",
+                "--smartfuse",
+                "--nointratileopt",
+                "--nounrolljam",
+                "--rar",
+                "--noparallel",
+            ),
+            "[vector-validation] status=rejected",
+            2,
+        ),
+    )
     env = os.environ.copy()
     env["POLCERT_REAL_PLUTO"] = str(real_pluto)
     env["POLCERT_PLUTO"] = str(wrapper)
     env["POLCERT_REJECTING_PLUTO_MODE"] = "final-affine"
-    for name, args in cases:
-        proc = run_polopt(
-            polopt=polopt,
-            fixture=diamond,
-            args=args,
-            timeout=timeout,
-            env=env,
-        )
-        label = f"final affine failure {name}"
-        if proc.returncode == 0:
-            raise AssertionError(
-                f"{label} unexpectedly accepted the malformed final schedule"
+    count = 0
+    for name, producer_args in producer_cases:
+        for (
+            consumer_name,
+            consumer_args,
+            consumer_rejection,
+            expected_mutations,
+        ) in consumers:
+            proc = run_polopt(
+                polopt=polopt,
+                fixture=diamond,
+                args=(*producer_args, *consumer_args),
+                timeout=timeout,
+                env=env,
             )
-        if route_lines(proc.stderr) != [BAND_ROUTE]:
-            raise AssertionError(
-                f"{label} did not preserve the successful tiling-leg route\n"
-                f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
-            )
-        if REJECTED_ROUTE in proc.stderr or "fallback" in proc.stderr.lower():
-            raise AssertionError(f"{label} mislabeled the final affine rejection")
-        if proc.stderr.count(FINAL_AFFINE_MUTATION) != 1:
-            raise AssertionError(f"{label} did not mutate exactly one final schedule")
-        if proc.stderr.count("[alarm]") != 1:
-            raise AssertionError(f"{label} did not report exactly one validation alarm")
-        if "== Optimized Loop ==" in proc.stdout:
-            raise AssertionError(f"{label} emitted output after a validation alarm")
-    return len(cases)
+            label = f"final affine failure {name} with {consumer_name}"
+            if proc.returncode == 0:
+                raise AssertionError(
+                    f"{label} unexpectedly accepted the malformed final schedule"
+                )
+            if route_lines(proc.stderr) != [BAND_ROUTE]:
+                raise AssertionError(
+                    f"{label} did not preserve the successful tiling-leg route\n"
+                    f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+                )
+            if consumer_rejection is not None and consumer_rejection in proc.stderr:
+                raise AssertionError(
+                    f"{label} was mislabeled as a consumer rejection"
+                )
+            if REJECTED_ROUTE in proc.stderr or "fallback" in proc.stderr.lower():
+                raise AssertionError(f"{label} mislabeled the final affine rejection")
+            if proc.stderr.count(FINAL_AFFINE_MUTATION) != expected_mutations:
+                raise AssertionError(
+                    f"{label} performed "
+                    f"{proc.stderr.count(FINAL_AFFINE_MUTATION)} final-schedule "
+                    f"mutations, expected {expected_mutations}"
+                )
+            if proc.stderr.count("[alarm]") != 1:
+                raise AssertionError(
+                    f"{label} did not report exactly one validation alarm"
+                )
+            if "== Optimized Loop ==" in proc.stdout:
+                raise AssertionError(
+                    f"{label} emitted output after a validation alarm"
+                )
+            count += 1
+    return count
 
 
 def check_rejected_tiling_route(
@@ -444,6 +734,22 @@ def check_rejected_tiling_route(
         root=root,
         timeout=timeout,
     )
+    malformed_consumer_count = check_malformed_tiling_with_explicit_consumers(
+        polopt=polopt,
+        wrapper=wrapper,
+        real_pluto=real_pluto,
+        root=root,
+        timeout=timeout,
+    )
+    malformed_hinted_consumer_count = (
+        check_malformed_tiling_with_hinted_consumers(
+            polopt=polopt,
+            wrapper=wrapper,
+            real_pluto=real_pluto,
+            root=root,
+            timeout=timeout,
+        )
+    )
     final_affine_count = check_final_affine_failure_cases(
         polopt=polopt,
         wrapper=wrapper,
@@ -458,7 +764,11 @@ def check_rejected_tiling_route(
         "closed, one integrated nonpermutable candidate reaches the direct "
         "checker and is rejected once, four vector skips preserve verified tilings, "
         f"{consumer_failure_count} consumer failures do not alter the tiling "
-        f"outcome, and {final_affine_count} final-affine failures preserve "
+        f"outcome, {malformed_consumer_count} malformed producer/consumer "
+        "combinations preserve the producer rejection, "
+        f"{malformed_hinted_consumer_count} malformed producer/hinted-consumer "
+        f"combinations preserve the producer rejection, and {final_affine_count} "
+        "final-affine failures preserve "
         "the successful tiling-leg route and fail closed)"
     )
 

@@ -514,7 +514,7 @@ The default `artifact-check` also runs the diamond suite.
    - `--diamond-tile --iss`
    - `--diamond-tile --second-level-tile`
    - `--diamond-tile --parallel --multipar`
-2. Polish raw-codegen fallback output for singleton-loop cleanup cases where
+2. Polish the checked raw-codegen output for singleton-loop cleanup cases where
    the checked raw route is correct but less readable.
 3. Keep identity-diamond rejected unless a distinct Pluto output effect is
    found. The current bounded search over the regression corpus found

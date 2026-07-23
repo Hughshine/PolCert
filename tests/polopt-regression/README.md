@@ -2,7 +2,8 @@
 
 This directory contains the benchmark-derived `.loop` inputs used to regression-test the
 final proved `polopt` pipeline, including the verified affine stage and the
-verified tiling stage with fallback to affine when tiling is unavailable.
+verified tiling stage. A requested tiling that the direct permutable-band
+checker cannot certify is rejected without emitting an optimized program.
 
 For the source-tree entry point and documentation map, see:
 

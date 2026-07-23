@@ -232,6 +232,11 @@ def evaluate_check(
     if expected == "failure":
         if proc.returncode == 0:
             return f"{spec['name']}: expected failure, but command succeeded\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        if optimized_loop(proc.stdout) is not None:
+            return (
+                f"{spec['name']}: failed command emitted an optimized-loop section"
+                f"\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+            )
         haystack = proc.stderr + proc.stdout
         for needle in needles:
             if needle not in haystack:
