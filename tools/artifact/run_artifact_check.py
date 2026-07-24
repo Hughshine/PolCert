@@ -273,8 +273,9 @@ def run_check(name: str, command: list[str], out_dir: Path, timeout: int | None)
         stderr = proc.stderr
         returncode = proc.returncode
     except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = (exc.stderr or "") + f"\n[artifact-check] timeout after {timeout} seconds\n"
+        stdout = decode_timeout_stream(exc.stdout)
+        stderr = decode_timeout_stream(exc.stderr)
+        stderr += f"\n[artifact-check] timeout after {timeout} seconds\n"
         returncode = 124
     elapsed = time.monotonic() - start
     stdout_path.write_text(stdout)
@@ -287,6 +288,12 @@ def run_check(name: str, command: list[str], out_dir: Path, timeout: int | None)
         stdout_path=str(stdout_path),
         stderr_path=str(stderr_path),
     )
+
+
+def decode_timeout_stream(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
 
 
 def base_checks(
@@ -322,6 +329,7 @@ def base_checks(
                 "tools/artifact/explore_flag_effects.py",
                 "tools/artifact/explore_identity_compositions.py",
                 "tools/artifact/explore_unrolljam_effect_corpus.py",
+                "tools/artifact/test_artifact_runner_timeout.py",
                 "tools/artifact/test_release_provenance.py",
                 "tools/artifact/test_unrolljam_route_guard.py",
                 "tools/artifact/generate_capability_matrix.py",
@@ -345,6 +353,14 @@ def base_checks(
                 "tools/second_level_tiling/check_standalone_formal_route.py",
                 "tools/second_level_tiling/check_suite_manifest.py",
                 "tools/second_level_tiling/run_second_level_tile_suite.py",
+            ],
+            60,
+        ),
+        (
+            "artifact-runner-timeout-unit",
+            [
+                sys.executable,
+                "tools/artifact/test_artifact_runner_timeout.py",
             ],
             60,
         ),
@@ -387,6 +403,8 @@ def base_checks(
                 "exec",
                 "--",
                 "make",
+                "-f",
+                "Makefile.extr",
                 "test-extracted-zero-fallback",
             ],
             180,
