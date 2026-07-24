@@ -383,6 +383,39 @@ additionally compiles the binaries in-image and requires an exact source
 commit, release tag, source-archive hash, and observed image digest before its
 claim suite will run.
 
+The final accepted release image is
+`polcert-artifact:state-eq-v8`, built from annotated tag
+`state-eq-polyhedral-verification-complete-2026-07-24-v8` at commit
+`0661fe0aa121deaa6ca714f258b96906a1dc0ca8`.  Its source archive SHA-256 is
+`c11a91e671e0f0bfcc22695826243d6b684ef2e8a3292a641b53f7c4c6fb48f3`;
+the local image identity used by the gate is
+`sha256:d40676b71a588be5ee3901d118bbb000f80414da1e182d52cd150f5ebcc4ec21`.
+The clean serial proof, extraction, and binary build took `26:11.60` and peaked
+at `9,598,316 KiB` RSS.
+
+The no-bind-mount full gate then passed all 29 checks in `34:32.30` wall time
+with `865,648 KiB` peak RSS.  Per-check monotonic times totaled `2170.00s`;
+the main stages were second-level tiling (`1120.6s`), Pluto compatibility
+(`271.5s`), the strict loop corpus (`261.1s`), non-second-level route coverage
+(`167.3s`), identity compositions (`142.6s`), diamond tiling (`108.1s`),
+parallel-current (`32.3s`), the extracted API gate (`29.3s`), direct-route
+smoke (`16.3s`), and vector-current (`10.6s`).  The machine-readable result
+reports verified build provenance and zero tiling-validation fallbacks:
+20 direct smoke cases; 84 accepted non-second-level compositions plus 6
+explicit vector rejections; 53 accepted and 5 rejected second-level cases;
+16 accepted second-level diamond cases plus 4 explicit vector rejections; and
+61 strict-corpus permutable-band routes plus one no-loop case.
+
+Two rejected release candidates improved the final gate.  The first exposed
+that Docker export can disturb dependency timestamp order: the extracted API
+check now invokes `Makefile.extr` directly, so it validates the freshly built
+extracted modules without spuriously rebuilding Coq, and its Python 3.8
+timeout path preserves partial byte output.  The second exposed stale hashes
+for two scalar-interleaved fixtures whose committed form differed from the
+original generator output only by normalized trailing whitespace.  The final
+tag contains the corrected hashes, and the scalar check passes one direct
+acceptance, three exact rejections, and one importer rejection.
+
 The pre-fast-path comparison against the identity route was:
 
 - identity route:
