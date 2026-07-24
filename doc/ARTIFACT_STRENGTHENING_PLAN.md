@@ -293,6 +293,96 @@ acceptances, 0 tiling-validation fallbacks, and 6 explicit vector rejections.
 These are warm-container regression times; the final clean build and artifact
 run remain the publication-facing reproduction measurements.
 
+On 2026-07-24, profiling identified module-interface expansion, rather than a
+slow proof tactic, as the dominant cost of rebuilding the zero-fallback
+snapshot.  In particular, profiling
+`driver/SParallelPolOptBridge.v` before narrowing the runtime interface took
+`6:04.81` wall time and `13,942,976 KiB` peak RSS, while all Ltac execution in
+that file totaled only `0.384s`.  Profiling
+`src/TilingBandScheduleValidator.v` reported `23.37s` wall time,
+`1,540 MiB` peak RSS, and `7.171s` total Ltac time; no individual tactic took
+more than about `0.3s`.
+
+The repair seals the tiling runtime behind the four fields used by the
+drivers--the route type, its Boolean observation, the runtime validator, and
+its correctness theorem--and removes an unused correctness-functor instance
+from `SParallelPolOptBridge`.  This reduced:
+
+- `ParallelPolOptCorrect.vo` from about `501 MiB` to about `157 MiB`;
+- `SParallelPolOptBridge.vo` from about `159 MiB` to about `29 MiB`;
+- `VerifiedParallelCompilerConfig.vo` from about `274 MiB` to about `142 MiB`;
+- `ExtractedPipelineCorrect.vo` from about `183 MiB` to about `97 MiB`.
+
+After the change, the same bridge profile completed in `1:00.75` with about
+`3.77 GiB` peak RSS.  A serial rebuild of the affected proof chain through
+`ExtractedPipelineCorrect.vo` took `6:04.44` and peaked at about `9.60 GiB`.
+Fresh extraction then took `1:37.23` and `7,338,560 KiB` peak RSS; rebuilding
+and linking both `polopt` and `polcert` took `2:09.32` and `877,776 KiB` peak
+RSS.  These three measurements describe a prepared-container core-change
+rebuild, not a clean repository or Docker-image build.  Before the interface
+repair, the corresponding serial extraction-plus-`polopt` rebuild took
+`1:02:00` and peaked at `21,646,436 KiB`.
+
+The final warm-container `artifact-check-full` run completed successfully on
+the same date.  The outer timer reported `34:08.70` wall time, `2022.61s` user
+CPU, `21.02s` system CPU, and `126,488 KiB` peak RSS.  Per-stage monotonic
+measurements totaled `35:04.95`; the latter is the conservative dynamic-suite
+estimate.  Major stages were:
+
+- identity-composition exploration: `140.0s`;
+- one-level route discipline: `163.8s`;
+- Pluto compatibility: `269.2s`;
+- second-level tiling: `1110.0s`;
+- diamond tiling: `106.0s`;
+- strict 62-case loop corpus: `247.4s`;
+- parallel-current: `31.7s`;
+- vector-current: `10.6s`.
+
+Its machine-readable route summary reports 20 direct-route cases with zero
+fallbacks, 84 accepted one-level compositions with zero fallbacks and 6
+explicit vector rejections, 53 accepted and 5 rejected second-level manifest
+cases, and 61 strict-corpus permutable-band routes plus one no-loop case.  The
+final release budget must still use a clean image build followed by this
+dynamic suite; the measurements above establish the prepared-container
+baseline only.
+
+A subsequent no-bind-mount release-candidate build started from `make clean`
+inside the pinned Docker environment.  The conservative command explicitly
+built `extraction/STAMP` before requesting both binaries; because the build
+graph revisited part of the proof and extraction chain, it took `47:31.99`
+wall time and `9,598,656 KiB` peak RSS.  The release Docker target now requests
+`polopt`, `polcert.ini`, and `polcert` in one `make -j1` invocation so the
+shared proof and extraction prerequisites are built once.
+
+The complete dynamic suite then ran without a source mount against those
+fresh binaries.  All 27 checks passed in `34:38.50` wall time with
+`864,376 KiB` peak RSS; the sum of per-check monotonic times was `2151.04s`.
+The dominant checks were the second-level suite (`1118.1s`), Pluto
+compatibility (`270.7s`), the strict loop corpus (`256.9s`), one-level route
+coverage (`165.6s`), identity compositions (`140.9s`), and diamond tiling
+(`106.8s`).  This run used Pluto commit
+`488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02`.
+
+Additional tactic profiles rule out a hidden slow tactic in the newly added
+tiling proof modules:
+
+- `TilingBandScheduleValidator.v`: `22.21s` wall, `6.349s` total Ltac, and
+  `0.265s` maximum for one tactic call;
+- `TilingBandMixedSecondValidator.v`: `9.26s` wall, `0.939s` total Ltac, and
+  `0.027s` maximum;
+- `TilingBandPhaseScalarValidator.v`: `15.12s` wall, `0.220s` total Ltac, and
+  `0.015s` maximum;
+- `TilingBandDirectRuntime.v`: `31.51s` wall, `0.083s` total Ltac, and
+  `0.009s` maximum.
+
+The remaining compile cost is therefore dominated by kernel checking and
+module/functor elaboration, not proof-search tactics.  A rebuild of the default
+multi-stage Docker `development` target also passed; the first build after
+pinning the base-image digest took `5:57.59`.  The dedicated `artifact` target
+additionally compiles the binaries in-image and requires an exact source
+commit, release tag, source-archive hash, and observed image digest before its
+claim suite will run.
+
 The pre-fast-path comparison against the identity route was:
 
 - identity route:

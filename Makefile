@@ -162,7 +162,7 @@ POLCERT_SRC = Base.v Convert.v \
   ISSBoolChecker.v ISSValidator.v ISSSemantics.v \
   ISSCutSemantics.v ISSValidatorCorrect.v \
   TilingWitness.v TilingList.v TilingRelation.v \
-  TilingBoolChecker.v TilingValidator.v TilingBandScheduleValidator.v TilingBandMixedSecondValidator.v TilingBandDirectRuntime.v \
+  TilingBoolChecker.v TilingValidator.v TilingBandScheduleValidator.v TilingBandMixedSecondValidator.v TilingBandPhaseScalarValidator.v TilingBandDirectRuntime.v \
   TilingCanonicalScheduleValidator.v Validator.v \
   CInstr.v TInstr.v CTy.v
 
@@ -229,6 +229,7 @@ extraction/STAMP: $(FILES:.v=.vo) extraction/extraction.v $(ARCH)/extractionMach
 	      extraction/ParallelPolOpt.mli extraction/PolOptBandTiling.mli \
 	      extraction/TilingBandScheduleValidator.mli \
 	      extraction/TilingBandMixedSecondValidator.mli \
+	      extraction/TilingBandPhaseScalarValidator.mli \
 	      extraction/TilingBandDirectRuntime.mli \
 	      extraction/STilingBandSched.mli \
 	      extraction/SBandTilingOptShared.mli \

@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -31,21 +32,9 @@ COMMON_PLUTO_FLAGS = [
 SUPPORTED_CASES: dict[str, dict[str, object]] = {
     "diamond-tile-example.c": {"kind": "diamond", "phase_ok": True},
     "fdtd-2d.c": {"kind": "diamond", "phase_ok": True},
-    "heat-3d-imperfect.c": {
-        "kind": "diamond",
-        "phase_ok": False,
-        "route": "rejected",
-    },
-    "jacobi-1d-imper.c": {
-        "kind": "diamond",
-        "phase_ok": False,
-        "route": "rejected",
-    },
-    "jacobi-2d-imper.c": {
-        "kind": "diamond",
-        "phase_ok": False,
-        "route": "rejected",
-    },
+    "heat-3d-imperfect.c": {"kind": "diamond", "phase_ok": True},
+    "jacobi-1d-imper.c": {"kind": "diamond", "phase_ok": True},
+    "jacobi-2d-imper.c": {"kind": "diamond", "phase_ok": True},
     "jacobi-2d.c": {"kind": "diamond", "phase_ok": True},
     "multi-stmt-stencil-seq.c": {"kind": "no_effect", "phase_ok": True},
     "seidel.c": {"kind": "no_effect", "phase_ok": True},
@@ -64,6 +53,11 @@ UNSUPPORTED_CASES = [
     "jacobi-3d-25pt.c",
     "jacobi-3d-periodic.c",
 ]
+
+PHASE_TILING_ROUTE_RE = re.compile(
+    r"^\[PHASE\] tiling\(mid, posttile\): (OK|FAIL) route=([^\s]+)$",
+    re.MULTILINE,
+)
 
 
 def run(
@@ -102,22 +96,27 @@ def witness_has_mixed_affine(text: str) -> bool:
     return False
 
 
+def contains_fallback_marker(*texts: str) -> bool:
+    return any("fallback" in text.lower() for text in texts)
+
+
 def phase_validation_succeeds(text: str, expected_route: str) -> bool:
-    tiling_marker = f"[PHASE] tiling(mid, posttile): OK route={expected_route}"
     return (
         "[PHASE] affine(before, mid): OK" in text
-        and text.count(tiling_marker) == 1
+        and PHASE_TILING_ROUTE_RE.findall(text) == [("OK", expected_route)]
         and "[PHASE] affine(posttile, after): OK" in text
         and "[OK] Diamond phase-aligned validation succeeded" in text
+        and not contains_fallback_marker(text)
     )
 
 
 def phase_validation_rejects_tiling(text: str) -> bool:
     return (
         "[PHASE] affine(before, mid): OK" in text
-        and text.count("[PHASE] tiling(mid, posttile): FAIL route=rejected") == 1
+        and PHASE_TILING_ROUTE_RE.findall(text) == [("FAIL", "rejected")]
         and "[PHASE] affine(posttile, after): OK" in text
         and "[FAIL] Diamond phase-aligned validation failed" in text
+        and not contains_fallback_marker(text)
     )
 
 
@@ -307,6 +306,10 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
             f"{case_name}: OpenScop tiling validator did not report exactly "
             f"one {expected_route} route"
         )
+    elif contains_fallback_marker(tiling.stdout, tiling.stderr):
+        failures.append(
+            f"{case_name}: OpenScop tiling validator reported a fallback marker"
+        )
     elif "[alarm]" in tiling.stderr:
         failures.append(f"{case_name}: OpenScop tiling validator reported an alarm")
 
@@ -336,8 +339,9 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
         case_root,
         timeout,
     )
-    phase_ok = phase_validation_succeeds(phase.stdout, expected_route)
-    phase_rejected = phase_validation_rejects_tiling(phase.stdout)
+    phase_output = phase.stdout + "\n" + phase.stderr
+    phase_ok = phase_validation_succeeds(phase_output, expected_route)
+    phase_rejected = phase_validation_rejects_tiling(phase_output)
     if phase.returncode == 124:
         failures.append(f"{case_name}: phase validator timed out")
     elif bool(expectation["phase_ok"]) and not phase_ok:

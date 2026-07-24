@@ -11,7 +11,10 @@ import subprocess
 
 REJECTED_ROUTE = "[tiling-validation] route=rejected"
 BAND_ROUTE = "[tiling-validation] route=permutable-band"
-NO_VECTOR_HINT = "[vector-validation] status=skipped reason=no-hint"
+VECTOR_HINT_SKIPPED = (
+    "[vector-validation] status=skipped "
+    "reason=hint-not-certifiable-or-non-innermost"
+)
 PARALLEL_REJECTION = (
     "[parallel-validation] status=rejected source=explicit-current "
     "reason=not-certifiable-or-out-of-range"
@@ -718,8 +721,10 @@ def check_rejected_tiling_route(
                 )
             if "[alarm]" in strict.stderr:
                 raise AssertionError(f"{label} raised an alarm for an optional annotation")
-            if NO_VECTOR_HINT not in strict.stderr:
-                raise AssertionError(f"{label} omitted its no-hint vector telemetry")
+            if VECTOR_HINT_SKIPPED not in strict.stderr:
+                raise AssertionError(
+                    f"{label} omitted its explicit vector-skip telemetry"
+                )
             if "vector for" in strict.stdout:
                 raise AssertionError(f"{label} adopted a rejected vector consumer")
             expected_markers = ("/ 256", "8 *", "32 *") if second_level else ("/ 32", "32 *")

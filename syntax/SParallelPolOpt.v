@@ -212,6 +212,28 @@ Definition try_phase_pipeline_from_source_pol_poly
   | Err _ =>
       rejected tt
   | Okk (mid_scop, after_scop) =>
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =>
+          rejected tt
+      | Okk pol_mid =>
+          BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_tiling_after_phase_mid_poly pol_mid mid_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_identity_tiling_phase_pipeline_from_source_pol_poly
+    (pol_source : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected :=
+    reject_tiling in
+  match CoreOpt.run_pluto_identity_tiling_pipeline before_scop with
+  | Err _ =>
+      rejected tt
+  | Okk (mid_scop, after_scop) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
           rejected tt
@@ -277,7 +299,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -300,7 +322,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -431,10 +453,8 @@ Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
     | None =>
         reject_tiling tt
     | Some before_scop =>
-        try_phase_pipeline_from_source_pol_poly
-          pol
-          CoreOpt.run_pluto_identity_tiling_pipeline
-          before_scop
+        try_identity_tiling_phase_pipeline_from_source_pol_poly
+          pol before_scop
     end
   else
     reject_tiling tt.

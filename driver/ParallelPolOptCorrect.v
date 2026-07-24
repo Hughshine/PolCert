@@ -196,7 +196,7 @@ Proof.
          Hwf_source Hopt Hsem_out.
   unfold Core.try_phase_pipeline_from_source_pol_poly in Hopt.
   destruct (phase_runner before_scop) as [[mid_scop after_scop]|msg] eqn:Hphase.
-  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -235,6 +235,76 @@ Proof.
   intros pol_source phase_runner before_scop pol_out Hwf_source Hopt.
   unfold Core.try_phase_pipeline_from_source_pol_poly in Hopt.
   destruct (phase_runner before_scop) as [[mid_scop after_scop]|msg] eqn:Hphase.
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
+      as [pol_mid|msg_mid] eqn:Hmid.
+    + bind_imp_destruct Hopt affine_ok Haff.
+      destruct affine_ok.
+      * pose proof
+          (Core.ValidatorCore.validate_preserve_wf_pprog
+             pol_source pol_mid _ Haff eq_refl)
+          as [_ Hwf_mid].
+        eapply try_verified_tiling_after_phase_mid_poly_wf; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
+Qed.
+
+Lemma try_identity_tiling_phase_pipeline_from_source_pol_poly_correct :
+  forall pol_source before_scop pol_out st st',
+    PolyLang.wf_pprog_affine pol_source ->
+    mayReturn
+      (Core.try_identity_tiling_phase_pipeline_from_source_pol_poly
+         pol_source before_scop)
+      pol_out ->
+    PolyLang.instance_list_semantics pol_out st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol_source st st'' /\ State.eq st' st''.
+Proof.
+  intros pol_source before_scop pol_out st st'
+         Hwf_source Hopt Hsem_out.
+  unfold Core.try_identity_tiling_phase_pipeline_from_source_pol_poly in Hopt.
+  destruct (Core.CoreOpt.run_pluto_identity_tiling_pipeline before_scop)
+    as [[mid_scop after_scop]|msg] eqn:Hphase.
+  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+      as [pol_mid|msg_mid] eqn:Hmid.
+    + bind_imp_destruct Hopt affine_ok Haff.
+      destruct affine_ok.
+      * pose proof
+          (Core.ValidatorCore.validate_preserve_wf_pprog
+             pol_source pol_mid _ Haff eq_refl)
+          as [_ Hwf_mid].
+        pose proof
+          (try_verified_tiling_after_phase_mid_poly_correct
+             pol_mid mid_scop after_scop pol_out st st'
+             Hwf_mid Hopt Hsem_out)
+          as Hmid_corr.
+        destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
+        pose proof
+          (Core.ValidatorCore.validate_correct
+             pol_source pol_mid st st_mid true Haff eq_refl Hmid_sem)
+          as Haff_corr.
+        destruct Haff_corr as [st_src [Hsrc_sem Heq_src]].
+        exists st_src.
+        split; auto.
+        eapply State.eq_trans; eauto.
+      * reject_tiling_contradiction Hopt.
+    + reject_tiling_contradiction Hopt.
+  - reject_tiling_contradiction Hopt.
+Qed.
+
+Lemma try_identity_tiling_phase_pipeline_from_source_pol_poly_wf :
+  forall pol_source before_scop pol_out,
+    PolyLang.wf_pprog_affine pol_source ->
+    mayReturn
+      (Core.try_identity_tiling_phase_pipeline_from_source_pol_poly
+         pol_source before_scop)
+      pol_out ->
+    PolyLang.wf_pprog_general pol_out.
+Proof.
+  intros pol_source before_scop pol_out Hwf_source Hopt.
+  unfold Core.try_identity_tiling_phase_pipeline_from_source_pol_poly in Hopt.
+  destruct (Core.CoreOpt.run_pluto_identity_tiling_pipeline before_scop)
+    as [[mid_scop after_scop]|msg] eqn:Hphase.
   - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
@@ -379,7 +449,7 @@ Proof.
   unfold Core.try_diamond_phase_pipeline_from_source_pol_poly in Hopt.
   destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -419,7 +489,7 @@ Proof.
   unfold Core.try_diamond_phase_pipeline_from_source_pol_poly in Hopt.
   destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -488,7 +558,7 @@ Proof.
   unfold Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
   destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -528,7 +598,7 @@ Proof.
   unfold Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
   destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (Core.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -704,7 +774,7 @@ Proof.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_phase_pipeline_from_source_pol_poly_correct.
+      eapply try_identity_tiling_phase_pipeline_from_source_pol_poly_correct.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
@@ -723,7 +793,7 @@ Proof.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_phase_pipeline_from_source_pol_poly_wf.
+      eapply try_identity_tiling_phase_pipeline_from_source_pol_poly_wf.
       - exact Hwf.
       - exact Hopt. }
     { reject_tiling_contradiction Hopt. } }

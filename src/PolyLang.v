@@ -533,8 +533,40 @@ Definition to_openscop_global_padded (pol: t): option OpenScop :=
   end
   .
 
-(** No check currently, but possible in future (for tiling, for example) *)
-Definition check_pol_openscop_consistency (pol: t) (scop: OpenScop) := true.
+Definition canonical_scattering_output_rowb
+    (slot out_dim: nat) (row: bool * openscop_constraint) : bool :=
+  let '(is_inequality, coeffs) := row in
+  negb is_inequality &&
+  Nat.ltb slot out_dim &&
+  list_beq Z.t Z.eqb
+    (firstn out_dim coeffs)
+    (repeat 0%Z slot ++
+     [-1%Z] ++
+     repeat 0%Z (out_dim - S slot)).
+
+Fixpoint canonical_scattering_output_rowsb
+    (slot out_dim: nat)
+    (rows: list (bool * openscop_constraint)) : bool :=
+  match rows with
+  | [] => Nat.eqb slot out_dim
+  | row :: rows' =>
+      canonical_scattering_output_rowb slot out_dim row &&
+      canonical_scattering_output_rowsb (S slot) out_dim rows'
+  end.
+
+Definition canonical_function_scatteringb (sctt: Relation) : bool :=
+  canonical_scattering_output_rowsb
+    O
+    (OpenScop.out_dim_nb (OpenScop.meta sctt))
+    (OpenScop.constrs sctt).
+
+Definition check_pol_openscop_consistency (pol: t) (scop: OpenScop) : bool :=
+  let '(pis, _, _) := pol in
+  Nat.eqb (List.length pis) (List.length (OpenScop.statements scop)) &&
+  forallb
+    (fun stmt =>
+       canonical_function_scatteringb (OpenScop.scattering stmt))
+    (OpenScop.statements scop).
 
 Fixpoint odd_positions {A: Type} (l: list A) : list A :=
   match l with
@@ -1060,30 +1092,35 @@ Definition create_id_transformation (dim: nat): Transformation :=
 (* Instruction will be omitted (viewed as a dummy one) *)
 (* And therefore no instruction-level semantics guarantee anymore. *)
 Definition from_openscop_complete (scop: OpenScop): result t := 
-  let vars := from_openscop_vars (OpenScop.glb_exts scop) in
-  let varctxt := from_openscop_ctxt (OpenScop.context scop) in
-  let varctxt_dim := length varctxt in
-  let pis' := map (fun (stmt_scop: OpenScop.Statement) =>
-    let domain_dim := 
-      list_max (map (fun (constr: (bool * list Z)) => let (z, zs) := constr in length zs -1) (OpenScop.constrs (OpenScop.domain stmt_scop))) in
-    let iters_dim := domain_dim - varctxt_dim in
-    {|
-      pi_depth := length (from_openscop_iterlist (OpenScop.stmt_exts_opt stmt_scop));
-      pi_instr := Instr.dummy_instr;
-      pi_poly := from_openscop_domain (OpenScop.domain stmt_scop) iters_dim varctxt_dim;
-      pi_schedule := 
-        let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
-        from_openscop_sctt_to_pol_schedule 
-          (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim; 
-      pi_point_witness := PSWIdentity iters_dim;
-      pi_transformation := create_id_transformation (varctxt_dim + iters_dim);
-      pi_access_transformation := create_id_transformation (varctxt_dim + iters_dim);
-      pi_waccess := from_openscop_waccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
-      pi_raccess := from_openscop_raccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
-    |}
-  ) (OpenScop.statements scop) in
-  Okk (pis', varctxt, map (fun var => (var, Ty.dummy)) vars)
-.
+  if forallb
+       (fun stmt =>
+          canonical_function_scatteringb (OpenScop.scattering stmt))
+       (OpenScop.statements scop)
+  then
+    let vars := from_openscop_vars (OpenScop.glb_exts scop) in
+    let varctxt := from_openscop_ctxt (OpenScop.context scop) in
+    let varctxt_dim := length varctxt in
+    let pis' := map (fun (stmt_scop: OpenScop.Statement) =>
+      let domain_dim :=
+        list_max (map (fun (constr: (bool * list Z)) => let (z, zs) := constr in length zs -1) (OpenScop.constrs (OpenScop.domain stmt_scop))) in
+      let iters_dim := domain_dim - varctxt_dim in
+      {|
+        pi_depth := length (from_openscop_iterlist (OpenScop.stmt_exts_opt stmt_scop));
+        pi_instr := Instr.dummy_instr;
+        pi_poly := from_openscop_domain (OpenScop.domain stmt_scop) iters_dim varctxt_dim;
+        pi_schedule :=
+          let sctt_dim := length (stmt_scop.(OpenScop.scattering).(OpenScop.constrs)) in
+          from_openscop_sctt_to_pol_schedule
+            (OpenScop.scattering stmt_scop) domain_dim iters_dim sctt_dim;
+        pi_point_witness := PSWIdentity iters_dim;
+        pi_transformation := create_id_transformation (varctxt_dim + iters_dim);
+        pi_access_transformation := create_id_transformation (varctxt_dim + iters_dim);
+        pi_waccess := from_openscop_waccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
+        pi_raccess := from_openscop_raccesslist (OpenScop.access stmt_scop) iters_dim varctxt_dim;
+      |}
+    ) (OpenScop.statements scop) in
+    Okk (pis', varctxt, map (fun var => (var, Ty.dummy)) vars)
+  else Err "from_openscop_complete: non-canonical scattering".
 
 Definition wf_pinstr (env: list ident) (vars: list (ident*Ty.t)) (pi: PolyInstr) := 
   (* forall env_dim iters_dim domain_size cols,  *)

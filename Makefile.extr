@@ -100,6 +100,7 @@ ifeq ($(wildcard .depend.extr),.depend.extr)
 CCOMP_OBJS:=$(shell $(MODORDER) \
   extraction/TilingBandScheduleValidator.cmx \
   extraction/TilingBandMixedSecondValidator.cmx \
+  extraction/TilingBandPhaseScalarValidator.cmx \
   extraction/TilingBandDirectRuntime.cmx \
   extraction/TPolOpt.cmx \
   syntax/PlutoTilingValidator.cmx \
@@ -232,6 +233,7 @@ NO_MLI_MODULES := \
 	extraction/PolOptBandTiling \
 	extraction/TilingBandScheduleValidator \
 	extraction/TilingBandMixedSecondValidator \
+	extraction/TilingBandPhaseScalarValidator \
 	extraction/TilingBandDirectRuntime \
 	extraction/STilingBandSched \
 	extraction/SBandTilingOptShared \

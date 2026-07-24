@@ -19,12 +19,38 @@ RUNTIME_ROUTE_RE = re.compile(
 )
 PAIR_ROUTE_RE = re.compile(r"\(route=(permutable-band|rejected)\)")
 
+REQUIRED_CASE_NAMES = {
+    "ordinary-common-band",
+    "second-level-zero-row-band",
+    "second-level-zero-row-band-iss",
+    "ordinary-phase-separated-mixed-depth",
+    "ordinary-phase-separated-mixed-depth-iss",
+    "mixed-depth-semantic-band",
+    "mixed-depth-semantic-band-iss",
+    "second-level-mixed-depth-semantic-band",
+    "second-level-mixed-depth-semantic-band-iss",
+    "dependent-one-dimensional-band",
+    "frozen-diamond-phase-pair",
+    "frozen-nonpermutable-band",
+    "explicit-ordinary-noloop",
+    "explicit-ordinary-noloop-iss",
+    "explicit-identity-noloop",
+    "explicit-identity-noloop-iss",
+    "explicit-diamond-noloop",
+    "explicit-diamond-noloop-iss",
+    "explicit-second-level-noloop",
+    "explicit-second-level-noloop-iss",
+}
+
 
 def run_case(
     executable: pathlib.Path,
     args: list[str],
     expected_route: str,
     timeout: int,
+    *,
+    expect_optimized_output: bool,
+    expect_rejection_alarm: bool,
 ) -> str | None:
     env = os.environ.copy()
     env.setdefault("COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini"))
@@ -58,8 +84,33 @@ def run_case(
             f"expected route={expected_route}, got route={matches[0]}: "
             f"{' '.join(args)}"
         )
-    if "fallback" in output:
+    if "fallback" in output.lower():
         return f"fallback marker in direct-only route output: {' '.join(args)}"
+    alarm = "[alarm] requested checked optimization was rejected"
+    if expected_route == "rejected":
+        if "== Optimized Loop ==" in proc.stdout:
+            return f"rejected route emitted optimized output: {' '.join(args)}"
+        expected_alarm_count = 1 if expect_rejection_alarm else 0
+        if proc.stderr.count(alarm) != expected_alarm_count:
+            return (
+                f"rejected route must emit {expected_alarm_count} rejection "
+                f"alarm(s): "
+                f"{' '.join(args)}\n{output}"
+            )
+    else:
+        has_optimized_output = "== Optimized Loop ==" in proc.stdout
+        if has_optimized_output != expect_optimized_output:
+            expectation = (
+                "an optimized result"
+                if expect_optimized_output
+                else "validator-only output"
+            )
+            return (
+                f"accepted route did not emit {expectation}: "
+                f"{' '.join(args)}\n{output}"
+            )
+        if "[alarm]" in proc.stderr:
+            return f"accepted route emitted an alarm: {' '.join(args)}\n{output}"
     return None
 
 
@@ -76,12 +127,60 @@ def main() -> int:
     if not polcert.is_file():
         raise SystemExit(f"missing polcert: {polcert}")
 
+    noloop = ROOT / "tests" / "polopt-regression" / "inputs" / "noloop.loop"
+    explicit_tile_flags = (
+        "--tile",
+        "--smartfuse",
+        "--nointratileopt",
+        "--noprevector",
+        "--nounrolljam",
+        "--rar",
+        "--nodiamond-tile",
+        "--noparallel",
+    )
     cases = [
         (
             "ordinary-common-band",
             polopt,
             [str(ROOT / "tools" / "second_level_tiling" / "fixtures" / "symbolic-independent-2d.loop")],
             "permutable-band",
+            True,
+            False,
+        ),
+        (
+            "second-level-zero-row-band",
+            polopt,
+            [
+                "--second-level-tile",
+                str(
+                    ROOT
+                    / "tools"
+                    / "second_level_tiling"
+                    / "fixtures"
+                    / "symbolic-independent-2d.loop"
+                ),
+            ],
+            "permutable-band",
+            True,
+            False,
+        ),
+        (
+            "second-level-zero-row-band-iss",
+            polopt,
+            [
+                "--second-level-tile",
+                "--iss",
+                str(
+                    ROOT
+                    / "tools"
+                    / "second_level_tiling"
+                    / "fixtures"
+                    / "symbolic-independent-2d.loop"
+                ),
+            ],
+            "permutable-band",
+            True,
+            False,
         ),
         (
             "ordinary-phase-separated-mixed-depth",
@@ -96,6 +195,8 @@ def main() -> int:
                 ),
             ],
             "permutable-band",
+            True,
+            False,
         ),
         (
             "ordinary-phase-separated-mixed-depth-iss",
@@ -111,6 +212,8 @@ def main() -> int:
                 ),
             ],
             "permutable-band",
+            True,
+            False,
         ),
         (
             "mixed-depth-semantic-band",
@@ -126,12 +229,71 @@ def main() -> int:
                 ),
             ],
             "permutable-band",
+            True,
+            False,
+        ),
+        (
+            "mixed-depth-semantic-band-iss",
+            polopt,
+            [
+                "--identity-tiled",
+                "--iss",
+                str(
+                    ROOT
+                    / "tools"
+                    / "second_level_tiling"
+                    / "fixtures"
+                    / "matmul-init.loop"
+                ),
+            ],
+            "permutable-band",
+            True,
+            False,
+        ),
+        (
+            "second-level-mixed-depth-semantic-band",
+            polopt,
+            [
+                "--second-level-tile",
+                "--identity-tiled",
+                str(
+                    ROOT
+                    / "tools"
+                    / "second_level_tiling"
+                    / "fixtures"
+                    / "matmul-init.loop"
+                ),
+            ],
+            "permutable-band",
+            True,
+            False,
+        ),
+        (
+            "second-level-mixed-depth-semantic-band-iss",
+            polopt,
+            [
+                "--second-level-tile",
+                "--identity-tiled",
+                "--iss",
+                str(
+                    ROOT
+                    / "tools"
+                    / "second_level_tiling"
+                    / "fixtures"
+                    / "matmul-init.loop"
+                ),
+            ],
+            "permutable-band",
+            True,
+            False,
         ),
         (
             "dependent-one-dimensional-band",
             polopt,
             [str(ROOT / "tools" / "parallel_current" / "fixtures" / "dependent.loop")],
             "permutable-band",
+            True,
+            False,
         ),
         (
             "frozen-diamond-phase-pair",
@@ -142,6 +304,8 @@ def main() -> int:
                 str(ROOT / "tools" / "tiling_routes" / "fixtures" / "diamond-tile-example.posttile.scop"),
             ],
             "permutable-band",
+            False,
+            False,
         ),
         (
             "frozen-nonpermutable-band",
@@ -152,12 +316,63 @@ def main() -> int:
                 str(ROOT / "tools" / "tiling_routes" / "fixtures" / "nonpermutable-band.posttile.scop"),
             ],
             "rejected",
+            False,
+            False,
         ),
     ]
+    for name, route_args in (
+        ("explicit-ordinary-noloop", explicit_tile_flags),
+        ("explicit-identity-noloop", (*explicit_tile_flags, "--identity")),
+        ("explicit-diamond-noloop", ("--diamond-tile",)),
+        ("explicit-second-level-noloop", ("--second-level-tile",)),
+    ):
+        for iss_suffix, iss_args in (("", ()), ("-iss", ("--iss",))):
+            cases.append(
+                (
+                    f"{name}{iss_suffix}",
+                    polopt,
+                    [*route_args, *iss_args, str(noloop)],
+                    "rejected",
+                    False,
+                    True,
+                )
+            )
+
+    case_names = [case[0] for case in cases]
+    duplicate_names = sorted(
+        name for name in set(case_names) if case_names.count(name) > 1
+    )
+    missing_names = sorted(REQUIRED_CASE_NAMES.difference(case_names))
+    if duplicate_names or missing_names:
+        if duplicate_names:
+            print(
+                "[direct-route] duplicate required cases: "
+                + ", ".join(duplicate_names)
+            )
+        if missing_names:
+            print(
+                "[direct-route] missing required cases: "
+                + ", ".join(missing_names)
+            )
+        return 1
 
     failures: list[str] = []
-    for name, executable, command_args, expected_route in cases:
-        failure = run_case(executable, command_args, expected_route, args.timeout)
+    for (
+        name,
+        executable,
+        command_args,
+        expected_route,
+        expect_optimized_output,
+        expect_rejection_alarm,
+    ) in cases:
+        failure = run_case(
+            executable,
+            command_args,
+            expected_route,
+            args.timeout,
+            expect_optimized_output=expect_optimized_output,
+            expect_rejection_alarm=expect_rejection_alarm,
+        )
         print(f"[direct-route] {name}: {'PASS' if failure is None else 'FAIL'}")
         if failure is not None:
             failures.append(f"{name}: {failure}")

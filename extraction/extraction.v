@@ -224,6 +224,7 @@ Require Import SLoopUnroll.
 Require Import SLoopStride.
 Require Import SLoopSymbolicSimpl.
 Require Import TilingBandMixedSecondValidator.
+Require Import TilingBandPhaseScalarValidator.
 Require Import STilingBandSched.
 Require Import SBandTilingOpt.
 Require Import SVerifiedCompilerConfig.
@@ -236,4 +237,4 @@ Extract Constant STilingBandSched.print_tiling_validation_route_label =>
 Set Warnings "-extraction-ambiguous-name". (* This warning does not matter *)
 Set Warnings "-extraction-opaque-accessed". (* To be fixed in VPL *)
 
-Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn ParallelLoop ParallelCodegen LoopUnroll LoopStride CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt SParallelPolOpt SJamValidator SLoopJamValidator SLoopJamLower SLoopUnroll SLoopStride SLoopSymbolicSimpl TilingBandMixedSecondValidator STilingBandSched SBandTilingOpt SVerifiedCompilerConfig SVerifiedParallelCompilerConfig TPolValidator.
+Separate Extraction Archi Result AST Csyntax BinNums BinPos BinNat Floats Coq.ZArith.BinInt.Z ZArith_dec Ring_polynom_AddOnQ CstrLCF ProgVar LinTerm sample_scop OpenScop OpenScopAST PolyLang CPolIRs CSample1.sample_cpol CSample2.sample_cpol CSample3.sample_cpol Integers Memdata Ctypes Ctyping Initializers Debugging Qcanon NumC CoqAddOn ParallelLoop ParallelCodegen LoopUnroll LoopStride CPolOpt TPolIRs TPolOpt SPolIRs SPolOpt SParallelPolOpt SJamValidator SLoopJamValidator SLoopJamLower SLoopUnroll SLoopStride SLoopSymbolicSimpl TilingBandMixedSecondValidator TilingBandPhaseScalarValidator STilingBandSched SBandTilingOpt SVerifiedCompilerConfig SVerifiedParallelCompilerConfig TPolValidator.

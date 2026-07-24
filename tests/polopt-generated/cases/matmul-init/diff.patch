@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,10 +1,28 @@
  context(N);
- 
+
 -for i0 in range(0, N) {
 -  for i1 in range(0, N) {
 -    C[i0][i1] = 0;

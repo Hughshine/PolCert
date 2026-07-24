@@ -14,7 +14,8 @@ Module PolOptBandTiling (PolIRs: POLIRS).
 Module BaseOpt := PolOpt PolIRs.
 Module ValidatorCore := BaseOpt.ValidatorCore.
 Module PrepareCore := BaseOpt.PrepareCore.
-Module TilingSched := TilingBandDirectRuntime PolIRs.
+Module TilingSched : TILING_BAND_DIRECT_RUNTIME_API PolIRs :=
+  TilingBandDirectRuntime PolIRs.
 Module ISSValidatorCorrectCore := ISSValidatorCorrect PolIRs.
 Module PolyLang := PolIRs.PolyLang.
 Module LoopIR := PolIRs.Loop.
@@ -90,6 +91,27 @@ Definition try_phase_pipeline_from_source_pol_band
   | Err _ =>
       rejected tt
   | Okk (mid_scop, after_scop) =>
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =>
+          rejected tt
+      | Okk pol_mid =>
+          BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_tiling_after_phase_mid_band pol_mid mid_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_identity_phase_pipeline_from_source_pol_band
+    (pol_source: PolyLang.t)
+    (phase_runner: OpenScop -> result (OpenScop * OpenScop))
+    (before_scop: OpenScop): imp LoopIR.t :=
+  let rejected := reject_tiling in
+  match phase_runner before_scop with
+  | Err _ =>
+      rejected tt
+  | Okk (mid_scop, after_scop) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
           rejected tt
@@ -154,7 +176,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -175,7 +197,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -267,7 +289,7 @@ Definition identity_tiling_opt_prepared_from_poly_band
   if BaseOpt.has_nonscalar_stmt pol then
     match BaseOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_phase_pipeline_from_source_pol_band
+        try_identity_phase_pipeline_from_source_pol_band
           pol
           BaseOpt.run_pluto_identity_tiling_pipeline
           before_scop
@@ -287,7 +309,7 @@ Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
         if iss_wf then
           match BaseOpt.export_for_phase_scheduler pol_iss with
           | Some iss_scop =>
-              try_phase_pipeline_from_source_pol_band
+              try_identity_phase_pipeline_from_source_pol_band
                 pol_iss
                 BaseOpt.run_pluto_identity_tiling_pipeline
                 iss_scop
@@ -431,6 +453,49 @@ Proof.
   intros pol_source phase_runner before_scop st st' Hwf_source loop' Hopt Hloop.
   unfold try_phase_pipeline_from_source_pol_band in Hopt.
   destruct (phase_runner before_scop) as [[mid_scop after_scop]|msg] eqn:Hphase.
+  - destruct (PolyLang.from_openscop_schedule_only pol_source mid_scop)
+      as [pol_mid|msg_mid] eqn:Hmid.
+    + bind_imp_destruct Hopt affine_ok Haff.
+      destruct affine_ok.
+      * pose proof
+          (ValidatorCore.validate_preserve_wf_pprog
+             pol_source pol_mid _ Haff eq_refl)
+          as [_ Hwf_mid].
+        pose proof
+          (try_verified_tiling_after_phase_mid_band_correct
+             pol_mid mid_scop after_scop st st' Hwf_mid loop' Hopt Hloop)
+          as Hmid_corr.
+        destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
+        pose proof
+          (ValidatorCore.validate_correct
+             pol_source pol_mid st st_mid true Haff eq_refl Hmid_sem)
+          as Haff_corr.
+        destruct Haff_corr as [st_src [Hsrc_sem Heq_src]].
+        exists st_src.
+        split; auto.
+        eapply State.eq_trans; eauto.
+      * unfold reject_tiling, res_to_alarm in Hopt.
+        eapply mayReturn_alarm in Hopt. contradiction.
+    + unfold reject_tiling, res_to_alarm in Hopt.
+      eapply mayReturn_alarm in Hopt. contradiction.
+  - unfold reject_tiling, res_to_alarm in Hopt.
+    eapply mayReturn_alarm in Hopt. contradiction.
+Qed.
+
+Lemma try_identity_phase_pipeline_from_source_pol_band_correct:
+  forall pol_source phase_runner before_scop st st',
+    PolyLang.wf_pprog_affine pol_source ->
+    WHEN loop' <-
+      try_identity_phase_pipeline_from_source_pol_band
+        pol_source phase_runner before_scop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      PolyLang.instance_list_semantics pol_source st st'' /\
+      State.eq st' st''.
+Proof.
+  intros pol_source phase_runner before_scop st st' Hwf_source loop' Hopt Hloop.
+  unfold try_identity_phase_pipeline_from_source_pol_band in Hopt.
+  destruct (phase_runner before_scop) as [[mid_scop after_scop]|msg] eqn:Hphase.
   - destruct (PolyLang.from_openscop_like_source pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
@@ -558,7 +623,7 @@ Proof.
   unfold identity_tiling_opt_prepared_from_poly_band in Hopt.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
-    + eapply try_phase_pipeline_from_source_pol_band_correct; eauto.
+    + eapply try_identity_phase_pipeline_from_source_pol_band_correct; eauto.
     + unfold reject_tiling, res_to_alarm in Hopt.
       eapply mayReturn_alarm in Hopt. contradiction.
   - unfold reject_tiling, res_to_alarm in Hopt.
@@ -592,7 +657,7 @@ Proof.
            destruct (BaseOpt.export_for_phase_scheduler pol_iss)
              as [iss_scop|] eqn:Hiss_scop.
            ++ pose proof
-                (try_phase_pipeline_from_source_pol_band_correct
+                (try_identity_phase_pipeline_from_source_pol_band_correct
                    pol_iss
                    BaseOpt.run_pluto_identity_tiling_pipeline
                    iss_scop st st' Hwf_iss loop' Hopt Hloop)
@@ -916,7 +981,7 @@ Proof.
   unfold try_diamond_phase_pipeline_from_source_pol_band in Hopt.
   destruct (BaseOpt.run_pluto_diamond_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.
@@ -961,7 +1026,7 @@ Proof.
   unfold try_diamond_phase_pipeline_from_source_pol_band_with_iss in Hopt.
   destruct (BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
-  - destruct (PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
     + bind_imp_destruct Hopt affine_ok Haff.
       destruct affine_ok.

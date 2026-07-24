@@ -8,6 +8,13 @@ import re
 import sys
 
 
+TILING_ROUTE_RE = re.compile(r"^\[tiling-validation\] route=([^\s]+)$", re.MULTILINE)
+TILING_STATUS_RE = re.compile(
+    r"^\[tiling-validation\] status=([^\s]+) reason=([^\s]+)$",
+    re.MULTILINE,
+)
+
+
 def load_manifest(path: pathlib.Path) -> dict[str, object]:
     data = json.loads(path.read_text())
     if not isinstance(data, dict):
@@ -35,6 +42,39 @@ def check_case_dir(case_dir: pathlib.Path) -> tuple[bool, bool]:
         return False, False
     changed = status.get("changed") == "true"
     return True, changed
+
+
+def check_tiling_validation(case_dir: pathlib.Path, expected: str) -> None:
+    stderr_path = case_dir / "stderr.txt"
+    if not stderr_path.exists():
+        raise SystemExit(f"missing stderr.txt for case {case_dir.name}")
+    stderr = stderr_path.read_text()
+    if "[alarm]" in stderr:
+        raise SystemExit(
+            f"case {case_dir.name} emitted an alarm despite successful materialization"
+        )
+    if "fallback" in stderr.lower():
+        raise SystemExit(
+            f"case {case_dir.name} emitted forbidden fallback telemetry"
+        )
+    routes = TILING_ROUTE_RE.findall(stderr)
+    statuses = TILING_STATUS_RE.findall(stderr)
+    if expected == "permutable-band":
+        if routes != ["permutable-band"] or statuses:
+            raise SystemExit(
+                f"case {case_dir.name} has tiling evidence "
+                f"routes={routes!r} statuses={statuses!r}, expected one direct permutable-band route"
+            )
+    elif expected == "not-applicable:no-loop":
+        if routes or statuses != [("not-applicable", "no-loop")]:
+            raise SystemExit(
+                f"case {case_dir.name} has tiling evidence "
+                f"routes={routes!r} statuses={statuses!r}, expected one no-loop not-applicable status"
+            )
+    else:
+        raise SystemExit(
+            f"unsupported tiling validation expectation {expected!r} for case {case_dir.name}"
+        )
 
 
 def loop_count(text: str) -> int:
@@ -181,6 +221,22 @@ def main() -> None:
         raise SystemExit("require_tiled must be a list of case names")
     if expect_total is not None:
         expect_total = int(expect_total)
+    tiling_validation = manifest.get("tiling_validation", None)
+    default_tiling_validation: str | None = None
+    tiling_validation_overrides: dict[str, str] = {}
+    if tiling_validation is not None:
+        if not isinstance(tiling_validation, dict):
+            raise SystemExit("tiling_validation must be an object")
+        default_tiling_validation = tiling_validation.get("default")
+        raw_overrides = tiling_validation.get("overrides", {})
+        if not isinstance(default_tiling_validation, str):
+            raise SystemExit("tiling_validation.default must be a string")
+        if not isinstance(raw_overrides, dict) or not all(
+            isinstance(name, str) and isinstance(expected, str)
+            for name, expected in raw_overrides.items()
+        ):
+            raise SystemExit("tiling_validation.overrides must map case names to strings")
+        tiling_validation_overrides = raw_overrides
 
     cases_root = cases_dir
     if not cases_root.is_dir():
@@ -195,11 +251,27 @@ def main() -> None:
     nontrivial_changed = 0
     failed: list[str] = []
     detected_tiled: list[str] = []
+    tiling_validation_counts = {
+        "permutable-band": 0,
+        "not-applicable:no-loop": 0,
+    }
 
     for case_dir in case_dirs:
         case_ok, case_changed = check_case_dir(case_dir)
         if case_ok:
             ok += 1
+            if default_tiling_validation is not None:
+                expected_tiling_validation = tiling_validation_overrides.get(
+                    case_dir.name,
+                    default_tiling_validation,
+                )
+                check_tiling_validation(
+                    case_dir,
+                    expected_tiling_validation,
+                )
+                tiling_validation_counts[expected_tiling_validation] = (
+                    tiling_validation_counts.get(expected_tiling_validation, 0) + 1
+                )
             if case_changed:
                 changed += 1
                 if is_nontrivially_changed(case_dir):
@@ -235,6 +307,17 @@ def main() -> None:
         print(f"detected_tiled_cases={','.join(detected_tiled)}")
     if require_tiled_cases:
         print(f"required_tiled_cases={','.join(require_tiled_cases)}")
+    if default_tiling_validation is not None:
+        print("tiling_validation=direct-only")
+        print(
+            "tiling_validation_permutable_band="
+            f"{tiling_validation_counts['permutable-band']}"
+        )
+        print(
+            "tiling_validation_not_applicable_no_loop="
+            f"{tiling_validation_counts['not-applicable:no-loop']}"
+        )
+        print("tiling_validation_fallback=0")
 
 
 if __name__ == "__main__":

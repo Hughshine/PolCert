@@ -3,6 +3,12 @@
   "expect_total": 62,
   "min_changed": 50,
   "min_nontrivial_changed": 50,
+  "tiling_validation": {
+    "default": "permutable-band",
+    "overrides": {
+      "noloop": "not-applicable:no-loop"
+    }
+  },
   "require_tiled": [
     "matmul",
     "matmul-init",

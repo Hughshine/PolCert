@@ -1123,7 +1123,10 @@ CHECKS = [
         "polopt args: --identity --tile --vector --vector-strict",
         effect_needles=("32 *", "/ 32"),
         effect_absent=("vector for",),
-        stderr_needles=("[vector-validation] status=skipped reason=no-hint",),
+        stderr_needles=(
+            "[vector-validation] status=skipped "
+            "reason=hint-not-certifiable-or-non-innermost",
+        ),
         stderr_absent=("[alarm]",),
         tiling_route="permutable-band",
     ),
@@ -1619,6 +1622,8 @@ def run_check(check: Check, timeout: int) -> str | None:
         if has_tiling_phase(check):
             route_name = check.tiling_route or "permutable-band"
             route_marker = f"[tiling-validation] route={route_name}"
+            if "fallback" in output.lower():
+                return f"{check.name}: tiling output contains a fallback marker\n{output}"
             route_lines = [
                 line.strip()
                 for line in proc.stderr.splitlines()

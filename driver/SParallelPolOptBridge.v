@@ -3,13 +3,11 @@ Require Import Result.
 Require Import SPolIRs.
 Require Import SParallelPolOpt.
 Require Import SParallelPolOptShared.
-Require Import ParallelPolOptCorrect.
 Require Import Vpl.Impure.
 
 Local Open Scope impure_scope.
 
 Module FunctorCore := SParallelPolOptShared.Core.
-Module ProofCore := ParallelPolOptCorrect SPolIRs FunctorCore.
 
 Lemma entry_bind_assoc_compat {A B C : Type}
     (extract : imp A)
@@ -82,6 +80,31 @@ Proof.
   destruct (phase_runner before_scop) as [[mid_scop after_scop]|];
     [|reflexivity].
   destruct
+    (SPolIRs.PolyLang.from_openscop_schedule_only pol_source mid_scop)
+    as [pol_mid|]; [|reflexivity].
+  apply bind_eq_compat; [reflexivity|].
+  intros affine_ok. destruct affine_ok.
+  - apply try_verified_tiling_after_phase_mid_poly_impeq.
+  - unfold SParallelPolOpt.reject_tiling, FunctorCore.reject_tiling.
+    rewrite SParallelPolOpt.observe_tiling_validation_route_eq.
+    reflexivity.
+Qed.
+
+Lemma try_identity_tiling_phase_pipeline_from_source_pol_poly_impeq :
+  forall pol_source before_scop,
+    impeq
+      (SParallelPolOpt.try_identity_tiling_phase_pipeline_from_source_pol_poly
+         pol_source before_scop)
+      (FunctorCore.try_identity_tiling_phase_pipeline_from_source_pol_poly
+         pol_source before_scop).
+Proof.
+  intros pol_source before_scop.
+  unfold
+    SParallelPolOpt.try_identity_tiling_phase_pipeline_from_source_pol_poly,
+    FunctorCore.try_identity_tiling_phase_pipeline_from_source_pol_poly.
+  destruct (FunctorCore.CoreOpt.run_pluto_identity_tiling_pipeline before_scop)
+    as [[mid_scop after_scop]|]; [|reflexivity].
+  destruct
     (SPolIRs.PolyLang.from_openscop_like_source pol_source mid_scop)
     as [pol_mid|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
@@ -143,7 +166,7 @@ Proof.
   destruct (FunctorCore.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|]; [|reflexivity].
   destruct
-    (SPolIRs.PolyLang.from_openscop_like_source pol_source mid_scop)
+    (SPolIRs.PolyLang.from_openscop_schedule_only pol_source mid_scop)
     as [pol_mid|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
@@ -167,7 +190,7 @@ Proof.
     (FunctorCore.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|]; [|reflexivity].
   destruct
-    (SPolIRs.PolyLang.from_openscop_like_source pol_source mid_scop)
+    (SPolIRs.PolyLang.from_openscop_schedule_only pol_source mid_scop)
     as [pol_mid|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
@@ -266,7 +289,8 @@ Proof.
     FunctorCore.identity_tiling_opt_prepared_from_poly_no_iss_poly.
   destruct (FunctorCore.CoreOpt.has_nonscalar_stmt pol); [|reflexivity].
   destruct (FunctorCore.CoreOpt.export_for_phase_scheduler pol);
-    [apply try_phase_pipeline_from_source_pol_poly_impeq|reflexivity].
+    [apply try_identity_tiling_phase_pipeline_from_source_pol_poly_impeq
+    |reflexivity].
 Qed.
 
 Lemma iss_only_prepared_from_poly_impeq :

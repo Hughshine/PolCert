@@ -160,7 +160,10 @@ def route_cases() -> list[Case]:
                 consumer_args = (*consumer_args, "--nodiamond-tile")
             vector_current_rejected = consumer_name == "vector-current"
             if consumer_name in ("vector-hint", "vector-strict"):
-                vector_status = "status=skipped reason=no-hint"
+                vector_status = (
+                    "status=skipped "
+                    "reason=hint-not-certifiable-or-non-innermost"
+                )
             elif vector_current_rejected:
                 vector_status = (
                     "status=rejected source=explicit-current "

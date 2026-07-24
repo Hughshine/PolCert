@@ -1,10 +1,20 @@
 context(N);
 
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    y[i0] = (y[i0] + (a[i0][i1] * x[i1]));
-  }
-  for i1 in range(0, N) {
-    z[i1] = (z[i1] + (b[i1][i0] * y[i0]));
+if (1 <= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          y[i2] = (y[i2] + (a[i2][i3] * x[i3]));
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          z[i3] = (z[i3] + (b[i3][i2] * y[i2]));
+        }
+      }
+    }
   }
 }

@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,8 +1,28 @@
  context(N, M);
- 
+
 -for i0 in range(0, N) {
 -  a[i0] = b[i0];
 +if ((1 <= M && 1 <= N)) {

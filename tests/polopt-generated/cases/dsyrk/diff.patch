@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,9 +1,17 @@
  context(NMAX);
- 
+
 -for i0 in range(0, NMAX) {
 -  for i1 in range(0, NMAX) {
 -    for i2 in range(i1, NMAX) {

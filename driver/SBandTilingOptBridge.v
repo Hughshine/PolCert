@@ -147,6 +147,30 @@ Proof.
     BandGeneric.try_phase_pipeline_from_source_pol_band.
   destruct (phase_runner before_scop)
     as [[mid_scop after_scop]|msg].
+  - destruct (BandGeneric.PolyLang.from_openscop_schedule_only pol_source mid_scop)
+      as [pol_mid|msg_mid].
+    + apply bind_eq_compat.
+      * apply impeq_refl.
+      * intro affine_ok. destruct affine_ok.
+        -- apply try_verified_tiling_after_phase_mid_band_impeq_generic.
+        -- apply reject_tiling_impeq_generic.
+    + apply reject_tiling_impeq_generic.
+  - apply reject_tiling_impeq_generic.
+Qed.
+
+Lemma try_identity_phase_pipeline_from_source_pol_band_impeq_generic :
+  forall pol_source phase_runner before_scop,
+    impeq
+      (SBandTilingOpt.try_identity_phase_pipeline_from_source_pol_band
+         pol_source phase_runner before_scop)
+      (BandGeneric.try_identity_phase_pipeline_from_source_pol_band
+         pol_source phase_runner before_scop).
+Proof.
+  intros pol_source phase_runner before_scop.
+  unfold SBandTilingOpt.try_identity_phase_pipeline_from_source_pol_band,
+    BandGeneric.try_identity_phase_pipeline_from_source_pol_band.
+  destruct (phase_runner before_scop)
+    as [[mid_scop after_scop]|msg].
   - destruct (BandGeneric.PolyLang.from_openscop_like_source pol_source mid_scop)
       as [pol_mid|msg_mid].
     + apply bind_eq_compat.
@@ -171,7 +195,7 @@ Proof.
     BandGeneric.try_diamond_phase_pipeline_from_source_pol_band.
   destruct (BandGeneric.BaseOpt.run_pluto_diamond_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg].
-  - destruct (BandGeneric.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (BandGeneric.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid].
     + apply bind_eq_compat.
       * apply impeq_refl.
@@ -198,7 +222,7 @@ Proof.
   destruct
     (BandGeneric.BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg].
-  - destruct (BandGeneric.PolyLang.from_openscop_like_source pol_source mid_scop)
+  - destruct (BandGeneric.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid].
     + apply bind_eq_compat.
       * apply impeq_refl.
@@ -291,7 +315,7 @@ Proof.
     BandGeneric.identity_tiling_opt_prepared_from_poly_band.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
-    + apply try_phase_pipeline_from_source_pol_band_impeq_generic.
+    + apply try_identity_phase_pipeline_from_source_pol_band_impeq_generic.
     + apply reject_tiling_impeq_generic.
   - apply reject_tiling_impeq_generic.
 Qed.
@@ -320,7 +344,7 @@ Proof.
         -- apply impeq_refl.
         -- intro iss_wf. destruct iss_wf.
            ++ destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol_iss).
-              ** apply try_phase_pipeline_from_source_pol_band_impeq_generic.
+              ** apply try_identity_phase_pipeline_from_source_pol_band_impeq_generic.
               ** apply reject_tiling_impeq_generic.
            ++ apply opt_identity_tiled_from_poly_impeq_generic.
       * apply opt_identity_tiled_from_poly_impeq_generic.

@@ -199,7 +199,7 @@ let relation_param_count relation = nat_to_int relation.meta.param_nb
 
 let ensure_stmt_iterators statement_index stmt =
   let iters = stmt_iterators stmt in
-  if iters = [] then
+  if iters = [] && relation_input_count stmt.domain <> 0 then
     failf "statement %d: missing iterator names in statement extensions" statement_index;
   iters
 

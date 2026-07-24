@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,12 +1,47 @@
  context(pointc, clusterc, dims);
- 
+
 -for i0 in range(0, pointc) {
 -  dist_min = 0;
 -  for i1 in range(0, clusterc) {

@@ -28,6 +28,9 @@ That target:
    - at least `50` cases change structurally
    - at least `50` cases change nontrivially after ignoring alpha-renaming
      of loop variables and whole-program outer guard wrappers
+   - every loop-bearing case reports exactly one
+     `[tiling-validation] route=permutable-band`; `noloop` reports exactly one
+     explicit `status=not-applicable reason=no-loop`
    - the checker reports the automatically detected tiled cases
    - representative cases such as `matmul`, `matmul-init`, and `wavefront`
      are required to satisfy the tiling heuristic
@@ -58,6 +61,7 @@ How to inspect one case:
 2. compare with `optimized.loop`
 3. inspect `diff.patch`
 4. read `status.txt`
+5. read `stderr.txt` for the checked tiling-route evidence
 
 Important proof boundary:
 - The suite runs the final proved optimizer path from `driver/PolOpt.v`.

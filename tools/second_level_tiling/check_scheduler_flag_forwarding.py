@@ -58,6 +58,17 @@ def coq_definition_body(source: str, name: str) -> str:
     return source[match.end() : end]
 
 
+def coq_inductive_constructors(source: str, name: str) -> list[str]:
+    match = re.search(
+        rf"^Inductive {re.escape(name)}\b[\s\S]*?:=(?P<body>[\s\S]*?)\.\s*$",
+        source,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise AssertionError(f"missing Coq inductive: {name}")
+    return re.findall(r"^\|\s*([A-Za-z0-9_']+)", match.group("body"), re.MULTILINE)
+
+
 def require(body: str, needle: str, route: str) -> None:
     if needle not in body:
         raise AssertionError(f"{route} does not forward {needle}")
@@ -160,11 +171,74 @@ def main() -> None:
     runtime_source = (ROOT / "src" / "TilingBandDirectRuntime.v").read_text(
         encoding="utf-8"
     )
+    route_constructors = coq_inductive_constructors(
+        runtime_source,
+        "tiling_band_validation_route",
+    )
+    if route_constructors != ["DirectBandAccepted", "Rejected"]:
+        raise AssertionError(
+            "tiling validation route must contain exactly "
+            "DirectBandAccepted and Rejected, saw "
+            f"{route_constructors}"
+        )
     mixed_source = (
         ROOT / "src" / "TilingBandMixedSecondValidator.v"
     ).read_text(encoding="utf-8")
+    phase_scalar_source = (
+        ROOT / "src" / "TilingBandPhaseScalarValidator.v"
+    ).read_text(encoding="utf-8")
+    for path, source in (
+        (ROOT / "src" / "TilingBandScheduleValidator.v", band_source),
+        (ROOT / "src" / "TilingBandMixedSecondValidator.v", mixed_source),
+        (ROOT / "src" / "TilingBandPhaseScalarValidator.v", phase_scalar_source),
+        (ROOT / "src" / "TilingBandDirectRuntime.v", runtime_source),
+    ):
+        for forbidden in ("Admitted.", "Abort.", "Axiom "):
+            if forbidden in source:
+                raise AssertionError(
+                    f"{path.relative_to(ROOT)} contains unfinished proof "
+                    f"marker {forbidden!r}"
+                )
+    scalar_wrapper = coq_definition_body(
+        band_source,
+        "checked_tiling_sourceb_scalar_aware_direct",
+    )
+    for required in (
+        "TilingCheck.check_pprog_tiling_sourceb",
+        "infer_pprog_scalar_aware_common_shape",
+        "check_pprog_scalar_aware_permutable_band_direct",
+    ):
+        require(
+            scalar_wrapper,
+            required,
+            "safe scalar-aware source/shape/component gate",
+        )
+    complete_direct = coq_definition_body(
+        runtime_source,
+        "checked_tiling_sourceb_complete_direct_band_check",
+    )
+    require(
+        complete_direct,
+        "Legacy.checked_tiling_sourceb_scalar_aware_direct",
+        "complete direct scalar-aware route",
+    )
+    require(
+        complete_direct,
+        "PhaseScalar.checked_tiling_sourceb_phase_scalar_direct",
+        "complete direct phase-class scalar-aware route",
+    )
+    for forbidden in (
+        "Legacy.check_pprog_scalar_aware_permutable_band_direct",
+        "Legacy.infer_pprog_scalar_aware_common_shape",
+    ):
+        if forbidden in complete_direct:
+            raise AssertionError(
+                "runtime bypasses the safe scalar-aware wrapper via "
+                f"{forbidden}"
+            )
     for path in (
         ROOT / "src" / "TilingBandScheduleValidator.v",
+        ROOT / "src" / "TilingBandPhaseScalarValidator.v",
         ROOT / "src" / "TilingBandDirectRuntime.v",
         ROOT / "syntax" / "STilingBandSched.v",
         ROOT / "syntax" / "SBandTilingOpt.v",
@@ -183,6 +257,126 @@ def main() -> None:
                     f"tiling validation fallback remains in "
                     f"{path.relative_to(ROOT)}: {forbidden}"
                 )
+    midpoint_import_paths = (
+        ROOT / "driver" / "PolOptBandTiling.v",
+        ROOT / "driver" / "SBandTilingOptBridge.v",
+        ROOT / "syntax" / "SBandTilingOpt.v",
+        ROOT / "driver" / "ParallelPolOpt.v",
+        ROOT / "driver" / "ParallelPolOptCorrect.v",
+        ROOT / "driver" / "SParallelPolOptBridge.v",
+        ROOT / "syntax" / "SParallelPolOpt.v",
+    )
+    identity_like_source_counts = {
+        ROOT / "driver" / "PolOptBandTiling.v": 2,
+        ROOT / "driver" / "SBandTilingOptBridge.v": 1,
+        ROOT / "syntax" / "SBandTilingOpt.v": 1,
+        ROOT / "driver" / "ParallelPolOpt.v": 1,
+        ROOT / "driver" / "ParallelPolOptCorrect.v": 2,
+        ROOT / "driver" / "SParallelPolOptBridge.v": 1,
+        ROOT / "syntax" / "SParallelPolOpt.v": 1,
+    }
+    for path in midpoint_import_paths:
+        source = path.read_text(encoding="utf-8")
+        like_source_count = source.count(
+            "from_openscop_like_source pol_source mid_scop"
+        )
+        expected_like_source_count = identity_like_source_counts.get(path, 0)
+        if like_source_count != expected_like_source_count:
+            raise AssertionError(
+                "source-template midpoint import must be confined to "
+                "identity-tiled helpers and their proofs/bridges: "
+                f"{path.relative_to(ROOT)} has {like_source_count}, expected "
+                f"{expected_like_source_count}"
+            )
+        require(
+            source,
+            "from_openscop_schedule_only pol_source mid_scop",
+            f"globally aligned tiling midpoint import in {path.relative_to(ROOT)}",
+        )
+    for path in (
+        ROOT / "driver" / "PolOptBandTiling.v",
+        ROOT / "driver" / "SBandTilingOptBridge.v",
+        ROOT / "syntax" / "SBandTilingOpt.v",
+    ):
+        source = path.read_text(encoding="utf-8")
+        require(
+            source,
+            "try_identity_phase_pipeline_from_source_pol_band",
+            f"dedicated identity-tiled midpoint import in {path.relative_to(ROOT)}",
+        )
+    identity_helper_specs = (
+        (
+            ROOT / "driver" / "PolOptBandTiling.v",
+            "try_identity_phase_pipeline_from_source_pol_band",
+        ),
+        (
+            ROOT / "syntax" / "SBandTilingOpt.v",
+            "try_identity_phase_pipeline_from_source_pol_band",
+        ),
+        (
+            ROOT / "driver" / "ParallelPolOpt.v",
+            "try_identity_tiling_phase_pipeline_from_source_pol_poly",
+        ),
+        (
+            ROOT / "syntax" / "SParallelPolOpt.v",
+            "try_identity_tiling_phase_pipeline_from_source_pol_poly",
+        ),
+    )
+    for path, helper in identity_helper_specs:
+        body = coq_definition_body(path.read_text(encoding="utf-8"), helper)
+        require(
+            body,
+            "from_openscop_like_source pol_source mid_scop",
+            f"{path.relative_to(ROOT)} identity midpoint helper",
+        )
+        if "from_openscop_schedule_only" in body:
+            raise AssertionError(
+                f"{path.relative_to(ROOT)} identity midpoint helper mixes "
+                "source-template and schedule-only importers"
+            )
+    ordinary_helper_specs = (
+        (
+            ROOT / "driver" / "PolOptBandTiling.v",
+            "try_phase_pipeline_from_source_pol_band",
+        ),
+        (
+            ROOT / "syntax" / "SBandTilingOpt.v",
+            "try_phase_pipeline_from_source_pol_band",
+        ),
+        (
+            ROOT / "driver" / "ParallelPolOpt.v",
+            "try_phase_pipeline_from_source_pol_poly",
+        ),
+        (
+            ROOT / "syntax" / "SParallelPolOpt.v",
+            "try_phase_pipeline_from_source_pol_poly",
+        ),
+    )
+    for path, helper in ordinary_helper_specs:
+        body = coq_definition_body(path.read_text(encoding="utf-8"), helper)
+        require(
+            body,
+            "from_openscop_schedule_only pol_source mid_scop",
+            f"{path.relative_to(ROOT)} ordinary midpoint helper",
+        )
+        if "from_openscop_like_source" in body:
+            raise AssertionError(
+                f"{path.relative_to(ROOT)} ordinary midpoint helper uses "
+                "the identity-only source-template importer"
+            )
+    sloop_main = (ROOT / "syntax" / "SLoopMain.ml").read_text(encoding="utf-8")
+    debug_tiling = definition_body(sloop_main, "debug_band_tiling_runtime")
+    for required in (
+        "if identity_tiled then",
+        "PolyLang.from_openscop_like_source",
+        "PolyLang.from_openscop_schedule_only",
+        'if identity_tiled then "source-like" else "schedule-only"',
+    ):
+        require(
+            debug_tiling,
+            required,
+            "identity-aware band-tiling debug importer",
+        )
     for path in (
         ROOT / "syntax" / "STilingBandSched.v",
         ROOT / "syntax" / "SLoopMain.ml",
@@ -435,7 +629,8 @@ def main() -> None:
         "Core.TilingCheck.check_pprog_tiling_sourceb",
         "Core.check_pprog_tiling_schedule_stripminedb",
         "Core.infer_pinstr_list_tiling_bands",
-        "check_unique_phase_constantsb",
+        "Core.check_uniform_schedule_arityb",
+        "check_phase_class_consistencyb",
         "Core.check_pinstr_list_pluto_componentwise_permutable_bands_direct",
     ):
         require(

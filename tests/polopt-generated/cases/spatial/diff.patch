@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,7 +1,13 @@
  context(N, M);
- 
+
 -for i0 in range(0, N) {
 -  for i1 in range(0, M) {
 -    a[i1][i0] = (a[i1][i0] + 1);

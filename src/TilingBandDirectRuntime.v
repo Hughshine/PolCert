@@ -7,12 +7,49 @@ Require Import PolIRs.
 Require Import TilingWitness.
 Require Import TilingBandScheduleValidator.
 Require Import TilingBandMixedSecondValidator.
+Require Import TilingBandPhaseScalarValidator.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
 
+Module Type TILING_BAND_DIRECT_RUNTIME_API (P: POLIRS).
+
+Inductive tiling_band_validation_route : Type :=
+| DirectBandAccepted
+| Rejected.
+
+Definition tiling_band_validation_route_acceptsb
+    (route: tiling_band_validation_route) : bool :=
+  match route with
+  | DirectBandAccepted => true
+  | Rejected => false
+  end.
+
+Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route :
+  P.PolyLang.t ->
+  P.PolyLang.t ->
+  list statement_tiling_witness ->
+  imp tiling_band_validation_route.
+
+Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :
+  forall before after ws st1 st2 route,
+    P.PolyLang.wf_pprog_affine before ->
+    P.PolyLang.wf_pprog_general after ->
+    mayReturn
+      (checked_tiling_schedule_sourceb_first_runtime_validate_route
+         before after ws)
+      route ->
+    tiling_band_validation_route_acceptsb route = true ->
+    P.PolyLang.instance_list_semantics after st1 st2 ->
+    exists st2',
+      P.PolyLang.instance_list_semantics before st1 st2' /\
+      P.State.eq st2 st2'.
+
+End TILING_BAND_DIRECT_RUNTIME_API.
+
 Module TilingBandDirectRuntime (PolIRs: POLIRS).
 
-Module Mixed := TilingBandMixedSecondValidator PolIRs.
+Module PhaseScalar := TilingBandPhaseScalarValidator PolIRs.
+Module Mixed := PhaseScalar.Mixed.
 Module Legacy := Mixed.Core.
 Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
@@ -70,14 +107,29 @@ Definition checked_tiling_sourceb_complete_direct_band_check
     checked_tiling_sourceb_first_direct_band_check before after ws -;
   if common_ok then pure true
   else
-    BIND phase_ordinary_ok <-
-      Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
-    if phase_ordinary_ok then pure true
+    BIND phase_semantic_ok <-
+      Legacy.checked_tiling_sourceb_phase_semantic_band_direct
+        before after ws -;
+    if phase_semantic_ok then pure true
     else
-      BIND semantic_ok <-
-        Legacy.checked_tiling_sourceb_semantic_band_direct before after ws -;
-      if semantic_ok then pure true
-      else Mixed.check_pprog_mixed_second_level_direct before after ws.
+      BIND scalar_aware_ok <-
+        Legacy.checked_tiling_sourceb_scalar_aware_direct before after ws -;
+      if scalar_aware_ok then pure true
+      else
+        BIND phase_ordinary_ok <-
+          Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
+        if phase_ordinary_ok then pure true
+        else
+          BIND phase_scalar_ok <-
+            PhaseScalar.checked_tiling_sourceb_phase_scalar_direct
+              before after ws -;
+          if phase_scalar_ok then pure true
+          else
+            BIND semantic_ok <-
+              Legacy.checked_tiling_sourceb_semantic_band_direct
+                before after ws -;
+            if semantic_ok then pure true
+            else Mixed.check_pprog_mixed_second_level_direct before after ws.
 
 Lemma checked_tiling_sourceb_first_direct_band_check_sourceb_true :
   forall before after ws,
@@ -113,31 +165,53 @@ Proof.
   destruct common_ok.
   - eapply checked_tiling_sourceb_first_direct_band_check_sourceb_true.
     exact Hcommon.
-  - bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
-    destruct phase_ordinary_ok.
-    + destruct before as [[before_pis before_ctxt] before_vars].
-      destruct after as [[after_pis after_ctxt] after_vars].
-      destruct
-        (Mixed.check_pprog_phase_separated_ordinary_direct_true_inv
-           before_pis before_ctxt before_vars
-           after_pis after_ctxt after_vars ws Hphase_ordinary)
-        as [bands [Hsource _]].
-      exact Hsource.
-    + bind_imp_destruct Hcheck semantic_ok Hsemantic.
-      destruct semantic_ok.
+  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+    destruct phase_semantic_ok.
+    + eapply
+        Legacy.checked_tiling_sourceb_phase_semantic_band_direct_sourceb_true.
+      exact Hphase_semantic.
+    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+      destruct scalar_aware_ok.
       * destruct
-          (Legacy.checked_tiling_sourceb_semantic_band_direct_true_inv
-             before after ws Hsemantic)
-          as [lifted_rows [Hshape _]].
-        inversion Hshape; assumption.
-      * destruct before as [[before_pis before_ctxt] before_vars].
-        destruct after as [[after_pis after_ctxt] after_vars].
-        destruct
-          (Mixed.check_pprog_mixed_second_level_direct_true_inv
-             before_pis before_ctxt before_vars
-             after_pis after_ctxt after_vars ws Hcheck)
-          as [bands [recipes [Hsource _]]].
+          (Legacy.checked_tiling_sourceb_scalar_aware_direct_true_inv
+             before after ws Hscalar_aware)
+          as [layout [Hsource _]].
         exact Hsource.
+      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+        destruct phase_ordinary_ok.
+        -- destruct before as [[before_pis before_ctxt] before_vars].
+           destruct after as [[after_pis after_ctxt] after_vars].
+           destruct
+             (Mixed.check_pprog_phase_separated_ordinary_direct_true_inv
+                before_pis before_ctxt before_vars
+                after_pis after_ctxt after_vars ws Hphase_ordinary)
+             as [bands [Hsource _]].
+           exact Hsource.
+        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
+           destruct phase_scalar_ok.
+           ++ destruct before as [[before_pis before_ctxt] before_vars].
+              destruct after as [[after_pis after_ctxt] after_vars].
+              destruct
+                (PhaseScalar.checked_tiling_sourceb_phase_scalar_direct_true_inv
+                   before_pis before_ctxt before_vars
+                   after_pis after_ctxt after_vars ws Hphase_scalar)
+                as [entries [Hsource _]].
+              exact Hsource.
+           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
+              destruct semantic_ok.
+              ** destruct
+                   (Legacy.checked_tiling_sourceb_semantic_band_direct_true_inv
+                      before after ws Hsemantic)
+                   as [lifted_rows [Hshape _]].
+                 inversion Hshape; assumption.
+              ** destruct before as [[before_pis before_ctxt] before_vars].
+                 destruct after as [[after_pis after_ctxt] after_vars].
+                 destruct
+                   (Mixed.check_pprog_mixed_second_level_direct_true_inv
+                      before_pis before_ctxt before_vars
+                      after_pis after_ctxt after_vars ws Hcheck)
+                   as [bands [recipes [Hsource _]]].
+                 exact Hsource.
 Qed.
 
 Lemma checked_second_level_direct_band_check_correct :
@@ -354,18 +428,37 @@ Proof.
   bind_imp_destruct Hcheck common_ok Hcommon.
   destruct common_ok.
   - eapply checked_tiling_sourceb_first_direct_band_check_correct; eauto.
-  - bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
-    destruct phase_ordinary_ok.
+  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+    destruct phase_semantic_ok.
     + eapply
-        Mixed.check_pprog_phase_separated_ordinary_direct_correct_same_ctxt;
+        Legacy
+          .checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt;
         eauto.
-    + bind_imp_destruct Hcheck semantic_ok Hsemantic.
-      destruct semantic_ok.
+    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+      destruct scalar_aware_ok.
       * eapply
-          Legacy.checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt;
+          Legacy.checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt;
           eauto.
-      * eapply Mixed.check_pprog_mixed_second_level_direct_correct_same_ctxt;
-          eauto.
+      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+        destruct phase_ordinary_ok.
+        -- eapply
+             Mixed.check_pprog_phase_separated_ordinary_direct_correct_same_ctxt;
+             eauto.
+        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
+           destruct phase_scalar_ok.
+           ++ eapply
+                PhaseScalar
+                  .checked_tiling_sourceb_phase_scalar_direct_correct_same_ctxt;
+                eauto.
+           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
+              destruct semantic_ok.
+              ** eapply
+                   Legacy
+                     .checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt;
+                   eauto.
+              ** eapply
+                   Mixed.check_pprog_mixed_second_level_direct_correct_same_ctxt;
+                   eauto.
 Qed.
 
 Lemma checked_tiling_sourceb_complete_direct_band_check_outer_correct :

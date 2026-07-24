@@ -62,8 +62,7 @@ def run_case(
     except subprocess.TimeoutExpired as exc:
         stderr = text_or_empty(exc.stderr)
         stdout = text_or_empty(exc.stdout)
-        if stderr:
-            (out_dir / "stderr.txt").write_text(stderr)
+        (out_dir / "stderr.txt").write_text(stderr)
         if stdout:
             (out_dir / "stdout.txt").write_text(stdout)
         (out_dir / "status.txt").write_text(
@@ -76,10 +75,9 @@ def run_case(
         }
 
     status_lines = [f"exit_code={proc.returncode}"]
+    (out_dir / "stderr.txt").write_text(proc.stderr)
     if proc.returncode != 0:
         status_lines.append("result=fail")
-        if proc.stderr:
-            (out_dir / "stderr.txt").write_text(proc.stderr)
         (out_dir / "status.txt").write_text("\n".join(status_lines) + "\n")
         return {
             "result": "fail",
@@ -94,13 +92,15 @@ def run_case(
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "input.pretty.loop").write_text(input_pretty)
     (out_dir / "optimized.loop").write_text(optimized)
+    diff_lines = difflib.unified_diff(
+        input_pretty.splitlines(keepends=True),
+        optimized.splitlines(keepends=True),
+        fromfile="input.pretty.loop",
+        tofile="optimized.loop",
+    )
     diff = "".join(
-        difflib.unified_diff(
-            input_pretty.splitlines(keepends=True),
-            optimized.splitlines(keepends=True),
-            fromfile="input.pretty.loop",
-            tofile="optimized.loop",
-        )
+        f"{line.rstrip()}\n" if line.endswith("\n") else line.rstrip()
+        for line in diff_lines
     )
     (out_dir / "diff.patch").write_text(diff)
 

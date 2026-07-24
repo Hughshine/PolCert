@@ -2,7 +2,7 @@ context(n);
 
 for i0 in range((4 + (-1 * n)), ((n + 2) + 1)) {
   for i1 in range((4 + (-1 * n)), ((n + 2) + 1)) {
-    a[i0][i1] = (a[(i0 - 1)][i1] + 2);
+    a[i0][i1] = (a[(i0 + -1)][i1] + 2);
   }
 }
 for i0 in range((4 + (-1 * n)), ((n + 2) + 1)) {

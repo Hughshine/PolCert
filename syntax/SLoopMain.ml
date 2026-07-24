@@ -996,8 +996,17 @@ let debug_band_tiling_runtime cfg loop =
   in
   let mid_scop = artifacts.phase_mid_scop in
   let tiling_scop = artifacts.phase_tiling_scop in
+  let midpoint_importer =
+    if identity_tiled then
+      SPolIRs.SPolIRs.PolyLang.from_openscop_like_source
+    else
+      SPolIRs.SPolIRs.PolyLang.from_openscop_schedule_only
+  in
+  let midpoint_importer_label =
+    if identity_tiled then "source-like" else "schedule-only"
+  in
   let pol_mid =
-    match SPolIRs.SPolIRs.PolyLang.from_openscop_like_source pol mid_scop with
+    match midpoint_importer pol mid_scop with
     | Okk pol' -> pol'
     | Err msg ->
         frontend_failf
@@ -1036,7 +1045,9 @@ let debug_band_tiling_runtime cfg loop =
   Printf.eprintf
     "[debug-band-tiling] accepted=%b(ok=%b) route=%s\n"
     accepted route_ok route_name;
-  dump_poly_payload "band-mid(like-source)" pol_mid;
+  dump_poly_payload
+    (Printf.sprintf "band-mid(%s)" midpoint_importer_label)
+    pol_mid;
   dump_poly_payload "band-after(canonical-schedule-only)" pol_after
 
 let dump_scheduled_openscop loop =
@@ -1457,6 +1468,10 @@ let profile_default_tiled loop =
       print_profile_metrics !metrics;
       (loop_clean, ok_codegen)
 
+let source_loop_count loop =
+  let ((stmt, _), _) = loop in
+  (loop_stmt_stats stmt).loop_loops
+
 let profile_selected_optimization cfg loop =
   if cfg.force_parallel || cfg.force_parallel_strict || Option.is_some cfg.parallel_current_dim then
     frontend_failf "--profile-stages does not support parallel routes yet";
@@ -1470,6 +1485,11 @@ let profile_selected_optimization cfg loop =
     profile_identity_only loop
   else if cfg.force_notile then
     profile_affine_only loop
+  else if
+    source_loop_count loop = 0
+    && not cfg.pluto_tile_seen
+  then
+    profile_identity_only loop
   else
     profile_default_tiled loop
 
@@ -1529,17 +1549,26 @@ let run_selected_optimization cfg loop =
   (optimized, ok && tiling_ok)
 
 let run_selected_sequential_loop_optimization cfg loop =
-  let ((optimized, ok), route) =
-    TilingValidationRoute.capture (fun () ->
-      VerifiedSequentialCompiler.compile
-        (verified_sequential_config_of_cli cfg)
-        loop)
-  in
-  TilingValidationRoute.report route;
-  let tiling_ok =
-    not (List.exists (String.equal "rejected") route)
-  in
-  (optimized, ok && tiling_ok)
+  let selected = verified_sequential_config_of_cli cfg in
+  if
+    source_loop_count loop = 0
+    && selected = VerifiedSequentialCompiler.RawDefaultBand
+    && not cfg.pluto_tile_seen
+  then begin
+    prerr_endline
+      "[tiling-validation] status=not-applicable reason=no-loop";
+    VerifiedSequentialCompiler.compile VerifiedSequentialCompiler.RawIdentity loop
+  end
+  else
+    let ((optimized, ok), route) =
+      TilingValidationRoute.capture (fun () ->
+        VerifiedSequentialCompiler.compile selected loop)
+    in
+    TilingValidationRoute.report route;
+    let tiling_ok =
+      not (List.exists (String.equal "rejected") route)
+    in
+    (optimized, ok && tiling_ok)
 
 let verified_parallel_current_config_of_cli cfg dim =
   let d = nat_of_int dim in

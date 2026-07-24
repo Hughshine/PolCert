@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,9 +1,17 @@
  context(M, N, K);
- 
+
 -for i0 in range(0, M) {
 -  for i1 in range(0, N) {
 -    for i2 in range(0, K) {

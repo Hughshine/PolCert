@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,12 +1,40 @@
  context(N);
- 
+
 -for i0 in range(0, N) {
 -  for i1 in range((i0 + 1), N) {
 -    a[i0][i1] = (a[i0][i1] / a[i0][i0]);

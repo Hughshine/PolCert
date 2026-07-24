@@ -2,7 +2,7 @@
 +++ optimized.loop
 @@ -1,8 +1,12 @@
  context(N, M);
- 
+
 -for i0 in range(0, N) {
 +for i0 in range(0, min(M, N)) {
 +  autocorr = (autocorr + 1);

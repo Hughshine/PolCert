@@ -1,24 +1,66 @@
 context(N);
 
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, N) {
-      for i3 in range(0, N) {
-        for i4 in range(0, N) {
-          T1[i0][i2][i3][i1] = (T1[i0][i2][i3][i1] + (A[i4][i2][i3][i1] * C4[i4][i0]));
-        }
-        for i4 in range(0, N) {
-          T2[i0][i4][i3][i1] = (T2[i0][i4][i3][i1] + (T1[i0][i2][i3][i1] * C3[i2][i4]));
+if (1 <= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(0, ((N + 31) / 32)) {
+          for i4 in range(0, ((N + 31) / 32)) {
+            for i5 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+              for i6 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+                for i7 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+                  for i8 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+                    for i9 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                      T1[i5][i7][i8][i6] = (T1[i5][i7][i8][i6] + (A[i9][i7][i8][i6] * C4[i9][i5]));
+                    }
+                  }
+                }
+              }
+            }
+          }
+          for i4 in range(0, ((N + 31) / 32)) {
+            for i5 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+              for i6 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+                for i7 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+                  for i8 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+                    for i9 in range(max(0, (32 * i4)), min(N, ((32 * i4) + 32))) {
+                      T2[i5][i9][i8][i6] = (T2[i5][i9][i8][i6] + (T1[i5][i7][i8][i6] * C3[i7][i9]));
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
-    }
-    for i2 in range(0, N) {
-      for i3 in range(0, N) {
-        for i4 in range(0, N) {
-          T3[i0][i2][i3][i1] = (T3[i0][i2][i3][i1] + (T2[i0][i2][i4][i1] * C2[i4][i3]));
-        }
-        for i4 in range(0, N) {
-          B[i0][i2][i3][i4] = (B[i0][i2][i3][i4] + (T3[i0][i2][i3][i1] * C1[i1][i4]));
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(0, ((N + 31) / 32)) {
+          for i4 in range(0, ((N + 31) / 32)) {
+            for i5 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+              for i6 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+                for i7 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+                  for i8 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+                    for i9 in range(max(0, (32 * i4)), min(N, ((32 * i4) + 32))) {
+                      T3[i5][i7][i8][i6] = (T3[i5][i7][i8][i6] + (T2[i5][i7][i9][i6] * C2[i9][i8]));
+                    }
+                  }
+                }
+              }
+            }
+          }
+          for i4 in range(0, ((N + 31) / 32)) {
+            for i5 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+              for i6 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+                for i7 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+                  for i8 in range(max((32 * i3), 0), min(((32 * i3) + 32), N)) {
+                    for i9 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                      B[i5][i7][i8][i9] = (B[i5][i7][i8][i9] + (T3[i5][i7][i8][i6] * C1[i6][i9]));
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

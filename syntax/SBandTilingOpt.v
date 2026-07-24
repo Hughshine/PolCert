@@ -115,6 +115,28 @@ Definition try_phase_pipeline_from_source_pol_band
   | Err _ =>
       rejected tt
   | Okk (mid_scop, after_scop) =>
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =>
+          rejected tt
+      | Okk pol_mid =>
+          BIND affine_ok <- CoreOpt.ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_tiling_after_phase_mid_band pol_mid mid_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_identity_phase_pipeline_from_source_pol_band
+    (pol_source: PolyLang.t)
+    (phase_runner: OpenScop -> result (OpenScop * OpenScop))
+    (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
+  let rejected :=
+    reject_tiling in
+  match phase_runner before_scop with
+  | Err _ =>
+      rejected tt
+  | Okk (mid_scop, after_scop) =>
       match PolyLang.from_openscop_like_source pol_source mid_scop with
       | Err _ =>
           rejected tt
@@ -188,7 +210,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -210,7 +232,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
-      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
       | Err _ =>
           rejected tt
       | Okk pol_mid =>
@@ -304,7 +326,7 @@ Definition opt_identity_tiled_from_poly
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_phase_pipeline_from_source_pol_band
+        try_identity_phase_pipeline_from_source_pol_band
           pol
           CoreOpt.run_pluto_identity_tiling_pipeline
           before_scop
@@ -329,7 +351,7 @@ Definition try_checked_iss_identity_tiling_phase_pipeline_from_poly_band
         if iss_wf then
           match CoreOpt.export_for_phase_scheduler pol_iss with
           | Some iss_scop =>
-              try_phase_pipeline_from_source_pol_band
+              try_identity_phase_pipeline_from_source_pol_band
                 pol_iss
                 CoreOpt.run_pluto_identity_tiling_pipeline
                 iss_scop

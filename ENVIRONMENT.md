@@ -45,6 +45,51 @@ In practice, that means:
 
 If a manual environment behaves differently from Docker, Docker should be treated as the reference.
 
+## Reproducible release artifact
+
+The `artifact` Docker target compiles PolCert inside the image and requires
+source provenance at build time. Build it from a clean, tagged checkout:
+
+```sh
+COMMIT=$(git rev-parse HEAD)
+RELEASE_TAG=$(git describe --tags --exact-match "$COMMIT")
+SOURCE_ARCHIVE=/tmp/polcert-"$COMMIT".tar
+git archive --format=tar --output="$SOURCE_ARCHIVE" "$COMMIT"
+SOURCE_SHA256=$(sha256sum "$SOURCE_ARCHIVE" | cut -d ' ' -f 1)
+IMAGE=polcert-artifact:"$RELEASE_TAG"
+
+docker build --target artifact \
+  --build-arg POLCERT_GIT_COMMIT="$COMMIT" \
+  --build-arg POLCERT_RELEASE_TAG="$RELEASE_TAG" \
+  --build-arg POLCERT_SOURCE_ARCHIVE_SHA256="$SOURCE_SHA256" \
+  -t "$IMAGE" - < "$SOURCE_ARCHIVE"
+```
+
+Run the full claim suite without mounting the source tree:
+
+```sh
+IMAGE_DIGEST=$(docker image inspect "$IMAGE" --format '{{.Id}}')
+test -n "$IMAGE_DIGEST"
+
+docker run --name polcert-artifact-check \
+  -e POLCERT_IMAGE_DIGEST="$IMAGE_DIGEST" \
+  --entrypoint bash "$IMAGE" -lc \
+  'eval "$(opam env --switch=polcert)" &&
+   python3 tools/artifact/run_artifact_check.py --mode full \
+     --output-root /tmp/polcert-artifact-check'
+
+docker cp \
+  polcert-artifact-check:/tmp/polcert-artifact-check/artifact-results.json \
+  ./artifact-results.json
+```
+
+The same tagged archive supplies both the recorded source hash and the Docker
+build context, so dirty or untracked worktree files cannot enter the release
+image. The runner checks the image's `BUILD_PROVENANCE.json` against the
+runtime PolCert and Pluto revisions. Release-mode checks also require the
+externally observed image ID (or, after publication, its registry digest),
+which is recorded in `artifact-results.json`.
+
 ## CI relationship
 
 GitHub Actions builds from [Dockerfile](./Dockerfile) and runs [tools/ci/run_ci.sh](./tools/ci/run_ci.sh).

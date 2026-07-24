@@ -1,29 +1,49 @@
 context(M);
 
 if (1 <= M) {
-  for i0 in range(0, M) {
-    for i1 in range(0, M) {
-      sum2[i0][i1] = 0.0;
-      temp2d[i0][i1] = 0.0;
-    }
-  }
-}
-if (1 <= M) {
-  for i0 in range(0, M) {
-    for i1 in range(0, M) {
-      for i2 in range(0, M) {
-        temp2d[i0][i1] = (temp2d[i0][i1] + (block[i0][i2] * cos1[i1][i2]));
-      }
-      for i2 in range(0, M) {
-        sum2[i2][i1] = (sum2[i2][i1] + (cos1[i2][i0] * temp2d[i0][i1]));
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          sum2[i2][i3] = 0.0;
+          temp2d[i2][i3] = 0.0;
+        }
       }
     }
   }
 }
 if (1 <= M) {
-  for i0 in range(0, M) {
-    for i1 in range(0, M) {
-      block[i0][i1] = sum2[i0][i1];
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(0, ((M + 31) / 32)) {
+        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {
+          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {
+              temp2d[i3][i4] = (temp2d[i3][i4] + (block[i3][i5] * cos1[i4][i5]));
+            }
+          }
+        }
+      }
+      for i2 in range(0, ((M + 31) / 32)) {
+        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {
+          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {
+              sum2[i5][i4] = (sum2[i5][i4] + (cos1[i5][i3] * temp2d[i3][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+if (1 <= M) {
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          block[i2][i3] = sum2[i2][i3];
+        }
+      }
     }
   }
 }
