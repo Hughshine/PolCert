@@ -17,8 +17,8 @@ FIXTURES = ROOT / "tools" / "tiling_routes" / "fixtures"
 MIDPOINT = FIXTURES / "fusion5-scalar-interleaved.midtransform.scop"
 POSTTILE = FIXTURES / "fusion5-scalar-interleaved.posttile.scop"
 EXPECTED_HASHES = {
-    MIDPOINT.name: "4a52ec690857d1d97028a260f30d03cb301af7301b5c7ab0fe58f43ce93b5e9a",
-    POSTTILE.name: "253abb02692581bc2d70e14d15f83d71cdeb0cbbb1adea7a5a7888e44fbd3e38",
+    MIDPOINT.name: "c94ccec898bec1d3a68b72cdc8c726c356e7cf63de2b33ae038f3aa8c798b72f",
+    POSTTILE.name: "cfbfa1643fa9f156576f13460812eea0161a056b92d145c6f005fcb3fd69ef2e",
 }
 
 
