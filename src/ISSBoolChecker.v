@@ -18,6 +18,13 @@ Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
 Module Refine := ISSRefinement PolIRs.
 
+(** * Proof map
+
+    Each boolean below checks one clause of [Refine]'s declarative ISS
+    partition.  The file culminates in
+    [check_domain_partition_complete_cut_shapeb_sound], which supplies the
+    complete partition premise used by the semantic proof. *)
+
 Fixpoint ctxt_eqb (l1 l2: list Instr.ident): bool :=
   match l1, l2 with
   | id1 :: l1', id2 :: l2' =>

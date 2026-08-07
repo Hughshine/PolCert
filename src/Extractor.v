@@ -33,6 +33,19 @@ Module Loop := PolIRs.Loop.
 Module Val := AffineValidator PolIRs.
 Definition ident := Instr.ident.
 
+(** * Proof map
+
+    The executable half of this file translates affine expressions, tests,
+    and structured statements into polyhedral instructions.  The proof half
+    reconstructs the syntax-directed loop execution from the flattened list
+    of extracted instances.  Its main technical steps split that sorted list
+    at sequence boundaries and at successive loop-iterator values.
+
+    [extract_stmt_to_loop_semantics_core_sched] is the structural induction.
+    [extractor_correct] packages it for complete loop and polyhedral programs. *)
+
+(** * Affine frontend checks *)
+
 (* Note: empty domain contains exactly one instance: [] (empty list) *)
 
 (** generate aff from the deepest *)
@@ -187,7 +200,7 @@ Proof.
         rewrite H1.
         rewrite dot_product_mult_right. lia.
     - inv H. inv H2.
-        (* TODO: extract new lib lemma*)
+        (* Reduce the one-hot vector case to the corresponding [nth_error]. *)
         remember (nth_error env n) as nth.
         destruct nth; try discriminate.
         + symmetry in Heqnth.
@@ -1455,6 +1468,8 @@ Qed.
 
 (** `env_dim` is fixed symbolic context dimension. *)
 (** `iter_depth` is the number of surrounding loop iterators. *)
+(** * Syntax-directed statement extraction *)
+
 Fixpoint extract_stmt
     (stmt: PolIRs.Loop.stmt)
     (constrs: Domain)
@@ -1957,6 +1972,8 @@ Qed.
 (* Extraction examples are kept in instance-level test files (e.g. CPolIRs/TPolIRs)
    because generic functor-level examples become brittle after strengthening
    access-function resolution with checker-dependent branches. *)
+
+(** * Checked extractor entry point *)
 
 Definition check_extracted_wf
     (pis: list PolyLang.PolyInstr)
@@ -7031,6 +7048,8 @@ Proof.
       reflexivity.
 Qed.
 
+(** * Reconstruction of structured loop semantics *)
+
 Lemma instr_branch_core:
     forall i es varctxt envv ipl sorted_ipl st1 st2 tf w r,
     exprlist_to_aff es (Datatypes.length varctxt) = Okk tf ->
@@ -8575,6 +8594,9 @@ Proof.
       with (st:=st) (sts:=sts) (env:=rev (envv ++ prefix))
            (st1:=st1) (st2:=sth) (st3:=stt) (st3':=st2); eauto.
 Qed.
+
+(** The historical [_todo] suffixes below predate the completed proofs.  The
+    names remain for compatibility; every declaration is closed with [Qed]. *)
 
 Lemma loop_slice_to_body_semantics_todo:
     forall lb ub body constrs sched_prefix

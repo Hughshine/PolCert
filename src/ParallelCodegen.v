@@ -17,6 +17,15 @@ Module PrepareCore := PrepareCodegen PolIRs.
 Module ParallelLoop := ParallelLoop Instr.
 Module ParallelValidator := ParallelValidator PolIRs.
 
+(** * Proof map
+
+    Parallel code generation first produces the already verified structured
+    loop and then attaches execution-mode annotations.  Erasure removes those
+    annotations.  Trace-safety relates an annotated execution to the erased
+    loop execution, after which [PrepareCodegen] supplies the polyhedral
+    semantics.  Parallel, vector, and multi-dimension endpoints share this
+    argument. *)
+
 Fixpoint tag_expr (e : Loop.expr) : ParallelLoop.expr :=
   match e with
   | Loop.Constant z => ParallelLoop.BaseLoop.Constant z

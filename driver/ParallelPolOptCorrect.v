@@ -26,6 +26,15 @@ Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
 Module ParallelLoop := Core.ParallelCodegenCore.ParallelLoop.
 
+(** * Proof map
+
+    The first half proves the polyhedral preprocessing routes: optional ISS,
+    affine scheduling, tiling, and diamond compositions.  The prepared-route
+    lemmas then append checked parallel or vector annotation and codegen.  The
+    final [Opt_*_correct] families add strengthening and extraction to recover
+    source loop semantics.  Route variants instantiate this same composition;
+    they do not introduce new semantic arguments. *)
+
 Lemma reject_tiling_no_return :
   forall pol_out, ~ mayReturn (Core.reject_tiling tt) pol_out.
 Proof.
@@ -99,6 +108,8 @@ Proof.
   - eapply Core.ParallelCodegenCore.checked_annotated_codegen_many_correct_general;
       eauto.
 Qed.
+
+(** * Polyhedral preprocessing routes *)
 
 Lemma try_verified_tiling_after_phase_mid_poly_correct :
   forall pol_mid mid_scop after_scop pol_out st st',
@@ -1057,6 +1068,126 @@ Proof.
   eapply CoreOpt.scheduler'_preserve_wf; eauto.
 Qed.
 
+(** Every prepared parallel or vector route has the same semantic shape.
+    First, a checked polyhedral transformation produces [pol_after].  Second,
+    an annotation checker and code generator produces [pl].  The first proof
+    relates [pol_after] back to [pol]; the second relates [pl] back to
+    [pol_after].  Transitivity of [State.eq] is the only composition step.
+
+    This is a local proof macro, rather than a lemma, so the refactoring does
+    not add a constant to the public module signature. *)
+Local Ltac finish_checked_annotation_after_preparation
+    prepare_wf prepare_correct annotate_correct :=
+  lazymatch goal with
+  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
+      Hopt : mayReturn _ (Okk ?pl),
+      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
+      let pol_after := fresh "pol_after" in
+      let Hprepare := fresh "Hprepare" in
+      let Hwf_after := fresh "Hwf_after" in
+      let Hannotation := fresh "Hannotation" in
+      let st_after := fresh "st_after" in
+      let Hsem_after := fresh "Hsem_after" in
+      let Heq_after := fresh "Heq_after" in
+      let Hpreparation := fresh "Hpreparation" in
+      let st_src := fresh "st_src" in
+      let Hsem_src := fresh "Hsem_src" in
+      let Heq_src := fresh "Heq_src" in
+      bind_imp_destruct Hopt pol_after Hprepare;
+      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
+        (eapply prepare_wf; eauto);
+      assert (Hannotation : exists st_after,
+          PolyLang.instance_list_semantics pol_after st st_after /\
+          State.eq st' st_after) by
+        (eapply annotate_correct; eauto);
+      destruct Hannotation as [st_after [Hsem_after Heq_after]];
+      assert (Hpreparation : exists st_src,
+          PolyLang.instance_list_semantics pol st st_src /\
+          State.eq st_after st_src) by
+        (eapply prepare_correct; eauto);
+      destruct Hpreparation as [st_src [Hsem_src Heq_src]];
+      exists st_src;
+      split; [exact Hsem_src|];
+      eapply State.eq_trans; eauto
+  end.
+
+Local Ltac finish_checked_affine_annotation annotate_correct :=
+  lazymatch goal with
+  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
+      Hopt : mayReturn _ (Okk ?pl),
+      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
+      let pol_after := fresh "pol_after" in
+      let Hschedule := fresh "Hschedule" in
+      let Hwf_after_affine := fresh "Hwf_after_affine" in
+      let Hwf_after := fresh "Hwf_after" in
+      let Hannotation := fresh "Hannotation" in
+      let st_after := fresh "st_after" in
+      let Hsem_after := fresh "Hsem_after" in
+      let Heq_after := fresh "Heq_after" in
+      let st_src := fresh "st_src" in
+      let Hsem_src := fresh "Hsem_src" in
+      let Heq_src := fresh "Heq_src" in
+      bind_imp_destruct Hopt pol_after Hschedule;
+      pose proof
+        (CoreOpt.scheduler'_preserve_wf
+           pol pol_after Hwf pol_after Hschedule eq_refl)
+        as Hwf_after_affine;
+      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
+        (eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto);
+      assert (Hannotation : exists st_after,
+          PolyLang.instance_list_semantics pol_after st st_after /\
+          State.eq st' st_after) by
+        (eapply annotate_correct; eauto);
+      destruct Hannotation as [st_after [Hsem_after Heq_after]];
+      destruct
+        (CoreOpt.scheduler'_correct
+           pol st st_after pol_after Hschedule Hsem_after)
+        as [st_src [Hsem_src Heq_src]];
+      exists st_src;
+      split; [exact Hsem_src|];
+      eapply State.eq_trans; eauto
+  end.
+
+Local Ltac finish_checked_iss_annotation
+    prepare_wf_affine prepare_correct annotate_correct :=
+  lazymatch goal with
+  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
+      Hopt : mayReturn _ (Okk ?pl),
+      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
+      let pol_after := fresh "pol_after" in
+      let Hprepare := fresh "Hprepare" in
+      let Hwf_after_affine := fresh "Hwf_after_affine" in
+      let Hwf_after := fresh "Hwf_after" in
+      let Hannotation := fresh "Hannotation" in
+      let st_after := fresh "st_after" in
+      let Hsem_after := fresh "Hsem_after" in
+      let Heq_after := fresh "Heq_after" in
+      let Hpreparation := fresh "Hpreparation" in
+      let st_src := fresh "st_src" in
+      let Hsem_src := fresh "Hsem_src" in
+      let Heq_src := fresh "Heq_src" in
+      bind_imp_destruct Hopt pol_after Hprepare;
+      assert (Hwf_after_affine : PolyLang.wf_pprog_affine pol_after) by
+        (eapply prepare_wf_affine; eauto);
+      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
+        (eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto);
+      assert (Hannotation : exists st_after,
+          PolyLang.instance_list_semantics pol_after st st_after /\
+          State.eq st' st_after) by
+        (eapply annotate_correct; eauto);
+      destruct Hannotation as [st_after [Hsem_after Heq_after]];
+      assert (Hpreparation : exists st_src,
+          PolyLang.instance_list_semantics pol st st_src /\
+          State.eq st_after st_src) by
+        (eapply prepare_correct; eauto);
+      destruct Hpreparation as [st_src [Hsem_src Heq_src]];
+      exists st_src;
+      split; [exact Hsem_src|];
+      eapply State.eq_trans; eauto
+  end.
+
+(** * Prepared parallel routes *)
+
 Lemma parallel_current_identity_prepared_from_poly_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
@@ -1081,24 +1212,8 @@ Lemma parallel_current_affine_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_affine_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_mid Hsched.
-  pose proof
-    (CoreOpt.scheduler'_preserve_wf pol pol_mid Hwf pol_mid Hsched eq_refl)
-    as Hwf_mid.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_mid d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (CoreOpt.scheduler'_correct pol st st_mid pol_mid Hsched Hmid_sem)
-    as Hsched_corr.
-  destruct Hsched_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_affine_annotation
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_prepared_from_poly_correct :
@@ -1111,24 +1226,10 @@ Lemma parallel_current_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_identity_tiled_prepared_from_poly_correct :
@@ -1141,24 +1242,10 @@ Lemma parallel_current_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_tiled_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -1173,24 +1260,10 @@ Lemma parallel_current_identity_tiled_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_diamond_prepared_from_poly_correct :
@@ -1203,24 +1276,10 @@ Lemma parallel_current_diamond_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_diamond_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_diamond_prepared_from_poly_with_iss_correct :
@@ -1235,24 +1294,10 @@ Lemma parallel_current_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_diamond_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_identity_prepared_from_poly_with_iss_correct :
@@ -1265,24 +1310,10 @@ Lemma parallel_current_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_iss Hiss.
-  pose proof
-    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
-    as Hwf_iss.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_iss d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_iss)
-       Hsem)
-    as Hiss_corr.
-  destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
-  pose proof
-    (iss_only_prepared_from_poly_correct pol pol_iss st st_iss Hwf Hiss Hiss_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_only_prepared_from_poly_wf_affine
+    iss_only_prepared_from_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_affine_prepared_from_poly_with_iss_correct :
@@ -1295,24 +1326,10 @@ Lemma parallel_current_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_affine_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_mid Hiss_affine.
-  pose proof
-    (iss_affine_prepared_from_poly_wf_affine pol pol_mid Hwf Hiss_affine)
-    as Hwf_mid.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_mid d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (iss_affine_prepared_from_poly_correct pol pol_mid st st_mid Hwf Hiss_affine Hmid_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_affine_prepared_from_poly_wf_affine
+    iss_affine_prepared_from_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_prepared_from_poly_with_iss_correct :
@@ -1325,24 +1342,10 @@ Lemma parallel_current_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_identity_prepared_from_poly_correct :
@@ -1369,24 +1372,8 @@ Lemma parallel_current_many_affine_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_affine_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_mid Hsched.
-  pose proof
-    (CoreOpt.scheduler'_preserve_wf pol pol_mid Hwf pol_mid Hsched eq_refl)
-    as Hwf_mid.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_mid dims pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (CoreOpt.scheduler'_correct pol st st_mid pol_mid Hsched Hmid_sem)
-    as Hsched_corr.
-  destruct Hsched_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_affine_annotation
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_prepared_from_poly_correct :
@@ -1399,24 +1386,10 @@ Lemma parallel_current_many_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_identity_tiled_prepared_from_poly_correct :
@@ -1429,24 +1402,10 @@ Lemma parallel_current_many_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_tiled_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -1463,24 +1422,10 @@ Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_tiled_prepared_from_poly_with_iss
     in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_diamond_prepared_from_poly_correct :
@@ -1493,24 +1438,10 @@ Lemma parallel_current_many_diamond_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_diamond_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_correct :
@@ -1525,24 +1456,10 @@ Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_diamond_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_identity_prepared_from_poly_with_iss_correct :
@@ -1555,24 +1472,10 @@ Lemma parallel_current_many_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_iss Hiss.
-  pose proof
-    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
-    as Hwf_iss.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_iss dims pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_iss)
-       Hsem)
-    as Hiss_corr.
-  destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
-  pose proof
-    (iss_only_prepared_from_poly_correct pol pol_iss st st_iss Hwf Hiss Hiss_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_only_prepared_from_poly_wf_affine
+    iss_only_prepared_from_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_affine_prepared_from_poly_with_iss_correct :
@@ -1585,24 +1488,10 @@ Lemma parallel_current_many_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_affine_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_mid Hiss_affine.
-  pose proof
-    (iss_affine_prepared_from_poly_wf_affine pol pol_mid Hwf Hiss_affine)
-    as Hwf_mid.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_mid dims pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (iss_affine_prepared_from_poly_correct pol pol_mid st st_mid Hwf Hiss_affine Hmid_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_affine_prepared_from_poly_wf_affine
+    iss_affine_prepared_from_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
 
 Lemma parallel_current_many_prepared_from_poly_with_iss_correct :
@@ -1615,25 +1504,62 @@ Lemma parallel_current_many_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_parallel_current_many_annotated_codegen_at_correct
-       pol_after dims pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_parallel_current_many_annotated_codegen_at_correct.
 Qed.
+
+(** Result-level routes all cross the same frontend boundary.  Extraction
+    produces [pol0], strengthening produces the affine program consumed by a
+    prepared route, and the two semantic results are composed after
+    unstrengthening.  Keep the route-specific prepared theorem explicit at
+    each call site while sharing this proof-only bookkeeping. *)
+Local Ltac finish_extracted_result prepared_correct :=
+  lazymatch goal with
+  | [ Hopt : mayReturn _ (Okk ?pl),
+      Hsem : ParallelLoop.semantics ?pl ?st ?st'
+      |- exists st_src,
+           LoopIR.semantics ?loop ?st st_src /\ State.eq ?st' st_src ] =>
+      let pol0 := fresh "pol0" in
+      let Hextimp := fresh "Hextimp" in
+      let pol := fresh "pol" in
+      let Hextok := fresh "Hextok" in
+      let Hwf_pol := fresh "Hwf_pol" in
+      let Hroute := fresh "Hroute" in
+      let st_str := fresh "st_str" in
+      let Hstr_sem := fresh "Hstr_sem" in
+      let Heq_str := fresh "Heq_str" in
+      let Hext_corr := fresh "Hext_corr" in
+      let st_src := fresh "st_src" in
+      let Hloop_src := fresh "Hloop_src" in
+      let Heq_src := fresh "Heq_src" in
+      bind_imp_destruct Hopt pol0 Hextimp;
+      set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *;
+      pose proof Hextimp as Hextok;
+      apply res_to_alarm_correct in Hextok;
+      pose proof
+        (CoreOpt.Strengthen.strengthen_pprog_wf_affine
+           pol0
+           (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
+        as Hwf_pol;
+      assert (Hroute : exists st_str,
+          PolyLang.instance_list_semantics pol st st_str /\
+          State.eq st' st_str) by
+        (eapply prepared_correct; eauto);
+      destruct Hroute as [st_str [Hstr_sem Heq_str]];
+      eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem;
+      pose proof
+        (CoreOpt.Extractor.extractor_correct
+           loop pol0 st st_str Hextok Hstr_sem)
+        as Hext_corr;
+      destruct Hext_corr as [st_src [Hloop_src Heq_src]];
+      exists st_src;
+      split; [exact Hloop_src|];
+      eapply State.eq_trans; [exact Heq_str|exact Heq_src]
+  end.
+
+(** * Extraction and strengthening for parallel results *)
 
 Theorem Opt_parallel_current_identity_result_correct :
   forall loop d pl st st',
@@ -1644,29 +1570,7 @@ Theorem Opt_parallel_current_identity_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_identity_prepared_from_poly_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_identity_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_result_correct :
@@ -1678,29 +1582,7 @@ Theorem Opt_parallel_current_identity_tiled_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_identity_tiled_prepared_from_poly_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_identity_tiled_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_with_iss_result_correct :
@@ -1714,29 +1596,7 @@ Theorem Opt_parallel_current_identity_tiled_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_identity_tiled_prepared_from_poly_with_iss_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_identity_tiled_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_affine_result_correct :
@@ -1748,29 +1608,7 @@ Theorem Opt_parallel_current_affine_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_affine_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_affine_prepared_from_poly_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_affine_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_result_correct :
@@ -1782,29 +1620,7 @@ Theorem Opt_parallel_current_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_prepared_from_poly_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_diamond_result_correct :
@@ -1816,29 +1632,7 @@ Theorem Opt_parallel_current_diamond_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_diamond_prepared_from_poly_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_diamond_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_diamond_with_iss_result_correct :
@@ -1852,29 +1646,7 @@ Theorem Opt_parallel_current_diamond_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_diamond_prepared_from_poly_with_iss_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_diamond_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_with_iss_result_correct :
@@ -1886,29 +1658,7 @@ Theorem Opt_parallel_current_identity_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_identity_prepared_from_poly_with_iss_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_identity_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_affine_with_iss_result_correct :
@@ -1920,29 +1670,7 @@ Theorem Opt_parallel_current_affine_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_affine_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_affine_prepared_from_poly_with_iss_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_affine_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_with_iss_result_correct :
@@ -1954,29 +1682,7 @@ Theorem Opt_parallel_current_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_prepared_from_poly_with_iss_correct
-       pol d pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_result_correct :
@@ -1988,29 +1694,7 @@ Theorem Opt_parallel_current_many_identity_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_identity_prepared_from_poly_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_identity_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_result_correct :
@@ -2022,29 +1706,7 @@ Theorem Opt_parallel_current_many_identity_tiled_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_identity_tiled_prepared_from_poly_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_identity_tiled_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_with_iss_result_correct :
@@ -2058,29 +1720,7 @@ Theorem Opt_parallel_current_many_identity_tiled_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_result_correct :
@@ -2092,29 +1732,7 @@ Theorem Opt_parallel_current_many_affine_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_affine_prepared_from_poly_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_affine_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_result_correct :
@@ -2126,29 +1744,7 @@ Theorem Opt_parallel_current_many_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_prepared_from_poly_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_result_correct :
@@ -2160,29 +1756,7 @@ Theorem Opt_parallel_current_many_diamond_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_diamond_prepared_from_poly_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_diamond_prepared_from_poly_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_with_iss_result_correct :
@@ -2194,29 +1768,7 @@ Theorem Opt_parallel_current_many_diamond_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_diamond_prepared_from_poly_with_iss_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_diamond_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_with_iss_result_correct :
@@ -2228,29 +1780,7 @@ Theorem Opt_parallel_current_many_identity_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_identity_prepared_from_poly_with_iss_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_identity_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_with_iss_result_correct :
@@ -2262,29 +1792,7 @@ Theorem Opt_parallel_current_many_affine_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_affine_prepared_from_poly_with_iss_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_affine_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_with_iss_result_correct :
@@ -2296,30 +1804,10 @@ Theorem Opt_parallel_current_many_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_with_iss_result in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (parallel_current_many_prepared_from_poly_with_iss_correct
-       pol dims pl st st' Hwf_pol Hopt Hsem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (CoreOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  finish_extracted_result parallel_current_many_prepared_from_poly_with_iss_correct.
 Qed.
+
+(** * Alarm-free parallel entry points *)
 
 Theorem Opt_parallel_current_identity_correct :
   forall loop d pl st st',
@@ -2643,6 +2131,8 @@ Proof.
   eapply Opt_parallel_current_many_with_iss_result_correct; eauto.
 Qed.
 
+(** * Vector routes *)
+
 Lemma vector_current_identity_prepared_from_poly_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
@@ -2667,24 +2157,8 @@ Lemma vector_current_affine_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_affine_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_mid Hsched.
-  pose proof
-    (CoreOpt.scheduler'_preserve_wf pol pol_mid Hwf pol_mid Hsched eq_refl)
-    as Hwf_mid.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_mid d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (CoreOpt.scheduler'_correct pol st st_mid pol_mid Hsched Hmid_sem)
-    as Hsched_corr.
-  destruct Hsched_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_affine_annotation
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_prepared_from_poly_correct :
@@ -2697,24 +2171,10 @@ Lemma vector_current_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_identity_tiled_prepared_from_poly_correct :
@@ -2729,24 +2189,10 @@ Lemma vector_current_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_tiled_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -2761,24 +2207,10 @@ Lemma vector_current_identity_tiled_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hidentity_tiled.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hidentity_tiled)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hidentity_tiled Hafter_sem)
-    as Hidentity_corr.
-  destruct Hidentity_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_diamond_prepared_from_poly_correct :
@@ -2791,24 +2223,10 @@ Lemma vector_current_diamond_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_diamond_prepared_from_poly in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
@@ -2823,24 +2241,10 @@ Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_diamond_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hdiamond.
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hdiamond)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hdiamond Hafter_sem)
-    as Hdiamond_corr.
-  destruct Hdiamond_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_identity_prepared_from_poly_with_iss_correct :
@@ -2855,24 +2259,10 @@ Lemma vector_current_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_iss Hiss.
-  pose proof
-    (iss_only_prepared_from_poly_wf_affine pol pol_iss Hwf Hiss)
-    as Hwf_iss.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_iss d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_iss)
-       Hsem)
-    as Hiss_corr.
-  destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
-  pose proof
-    (iss_only_prepared_from_poly_correct pol pol_iss st st_iss Hwf Hiss Hiss_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_only_prepared_from_poly_wf_affine
+    iss_only_prepared_from_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_affine_prepared_from_poly_with_iss_correct :
@@ -2887,25 +2277,10 @@ Lemma vector_current_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_affine_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_mid Hiss_affine.
-  pose proof
-    (iss_affine_prepared_from_poly_wf_affine pol pol_mid Hwf Hiss_affine)
-    as Hwf_mid.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_mid d pl st st' Hopt
-       (PolyLang.wf_pprog_affine_implies_wf_pprog_general _ Hwf_mid)
-       Hsem)
-    as Hmid_corr.
-  destruct Hmid_corr as [st_mid [Hmid_sem Heq_mid]].
-  pose proof
-    (iss_affine_prepared_from_poly_correct
-       pol pol_mid st st_mid Hwf Hiss_affine Hmid_sem)
-    as Hsrc_corr.
-  destruct Hsrc_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_iss_annotation
+    iss_affine_prepared_from_poly_wf_affine
+    iss_affine_prepared_from_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma vector_current_prepared_from_poly_with_iss_correct :
@@ -2918,24 +2293,10 @@ Lemma vector_current_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_prepared_from_poly_with_iss in Hopt.
-  bind_imp_destruct Hopt pol_after Hphase.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-       pol pol_after Hwf Hphase)
-    as Hwf_after.
-  pose proof
-    (checked_vector_current_annotated_codegen_at_correct
-       pol_after d pl st st' Hopt Hwf_after Hsem)
-    as Hafter_corr.
-  destruct Hafter_corr as [st_after [Hafter_sem Heq_after]].
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-       pol pol_after st st_after Hwf Hphase Hafter_sem)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_src [Hsrc_sem Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  finish_checked_annotation_after_preparation
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+    checked_vector_current_annotated_codegen_at_correct.
 Qed.
 
 Lemma opt_vector_current_result_from_prepared_correct :

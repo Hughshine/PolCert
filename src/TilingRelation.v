@@ -23,6 +23,15 @@ Module TilingRelation (Instr: INSTR).
 
 Module PL := PolyLang Instr.
 
+(** * Proof map
+
+    Tiling changes the point space by adding tile coordinates.  The proof uses
+    an intermediate [retiled_old] program: first reorder target instances by
+    the lifted source schedule, then erase the tile representation and recover
+    the source instances.  The first step needs a permutability premise; the
+    second proves the witness correspondence.  The final
+    [tiling_after_to_before_instance_correct_via_retiled_old] composes them. *)
+
 Definition lift_constraint_after_env
     (added_dims env_size: nat) (c: list Z * Z) : list Z * Z :=
   PL.insert_zeros_constraint added_dims env_size c.
@@ -235,6 +244,8 @@ Definition lifted_accesses_after_env
     (env_size: nat) (w: pinstr_tiling_witness) (accs: list AccessFunction)
     : list AccessFunction :=
   List.map (lift_access_after_env (ptw_added_dims w) env_size) accs.
+
+(** * Declarative source-target structure *)
 
 Definition tiling_rel_pinstr_structure
     (env_size: nat)
@@ -2203,6 +2214,8 @@ Proof.
   rewrite <- Henv_len in Hstmt.
   eapply tiling_rel_pinstr_structure_compiled_domain_lifted; eauto.
 Qed.
+
+(** * Erasing tile coordinates from the intermediate program *)
 
 Definition tiled_added_part
     (env_size added_dims: nat) (idx: list Z) : list Z :=
@@ -5599,6 +5612,8 @@ Proof.
       split; reflexivity.
 Qed.
 
+(** * Constructing the intermediate view from target instances *)
+
 Definition retiled_old_of_after_point
     (env_size: nat)
     (before after: PL.PolyInstr)
@@ -6907,6 +6922,8 @@ Proof.
         rewrite <- Hold_eq.
         reflexivity.
 Qed.
+
+(** * Semantic reordering and final composition *)
 
 Theorem tiling_after_to_retiled_old_poly_correct :
   forall envv before_pis after_pis ws varctxt vars st1 st2,

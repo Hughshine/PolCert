@@ -23,6 +23,14 @@ Import Core.
 
 Open Scope impure_scope.
 
+(** * Proof map
+
+    This validator extends phase separation to classes containing either an
+    identity schedule or a scalar-aware tiled schedule.  It checks consistency
+    within each phase class, applies the corresponding class-local semantic
+    bridge, and exposes the same reordering-safety premise used by the common
+    tiling theorem. *)
+
 Definition schedule_head_constant
     (sched: Schedule) : option Z :=
   match sched with

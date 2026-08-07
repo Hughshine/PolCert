@@ -21,6 +21,13 @@ Import Core.
 
 Open Scope impure_scope.
 
+(** * Proof map
+
+    This file handles layouts in which a constant scalar phase identifies a
+    statement class and each class has its own ordinary or second-level band.
+    Unique phase constants reduce a cross-program reversal to one class; the
+    class-local band checker and reversal bridge then establish permutability. *)
+
 Definition schedule_head_constant
     (sched: Schedule) : option Z :=
   match sched with

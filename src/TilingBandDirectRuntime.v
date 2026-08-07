@@ -56,6 +56,13 @@ Module State := PolIRs.State.
 
 Open Scope impure_scope.
 
+(** * Proof map
+
+    This module is the fail-closed dispatcher for the proved direct tiling
+    layouts.  Each successful branch provides both a semantic band certificate
+    and its layout-specific reversal bridge.  The dispatcher accepts only
+    [DirectBandAccepted]; an unmatched or unproved case returns [Rejected]. *)
+
 Inductive tiling_band_validation_route : Type :=
 | DirectBandAccepted
 | Rejected.

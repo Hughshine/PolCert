@@ -26,6 +26,14 @@ Module Refine := ISSRefinement PolIRs.
 Module Sem := ISSSemantics PolIRs.
 Module TileRel := TilingRelation Instr.
 
+(** * Proof map
+
+    The ISS refinement predicates are semantic here.  Child instances are
+    mapped to their parent instances; coverage supplies every source point,
+    disjointness prevents duplicate children, and payload equality preserves
+    timestamps and instruction execution.  The final two theorems lift that
+    instance correspondence to polyhedral and whole-program semantics. *)
+
 Lemma NoDup_map_on_local :
   forall (A B: Type) (f: A -> B) (l: list A),
     NoDup l ->

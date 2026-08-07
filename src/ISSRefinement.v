@@ -20,6 +20,15 @@ Module PolyLang := PolIRs.PolyLang.
 
 Definition ident := Instr.ident.
 
+(** * Proof map
+
+    This file gives the declarative meaning of an ISS certificate.  A target
+    statement names a source parent, keeps its non-domain payload, and adds one
+    signed side of every affine cut to the parent's domain.  Completeness and
+    uniqueness of the sign vectors turn the children into a disjoint cover of
+    the parent domain.  [ISSBoolChecker] proves that the executable checks
+    establish these predicates; [ISSCutSemantics] uses them semantically. *)
+
 Definition payload_eq_except_domain
     (pi1 pi2: PolyLang.PolyInstr) : Prop :=
   pi1.(PolyLang.pi_depth) = pi2.(PolyLang.pi_depth) /\
@@ -86,6 +95,8 @@ Proof.
   unfold payload_eq_except_domain.
   repeat split; reflexivity.
 Qed.
+
+(** * Parent-child correspondence *)
 
 Definition iss_pairs
     (after_pis: list PolyLang.PolyInstr)
@@ -232,6 +243,8 @@ Proof.
         exact Htail_ok.
 Qed.
 
+(** * Domain-partition specification *)
+
 Definition domains_all_subset
     (source: PolyLang.PolyInstr)
     (pieces: list PolyLang.PolyInstr) : Prop :=
@@ -357,6 +370,8 @@ Definition domain_partition_refinement_with_witness
     (before after: PolyLang.t)
     (w: iss_witness) : Prop :=
   domain_partition_refinement before after w.(iw_stmt_witnesses).
+
+(** * Complete and unique cut-sign partitions *)
 
 Fixpoint all_iss_sign_vectors
     (n: nat) : list (list iss_halfspace_sign) :=

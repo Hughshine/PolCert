@@ -23,6 +23,14 @@ Module State := PolIRs.State.
 Module ParallelLoop := ParallelCorrect.ParallelLoop.
 Module ParallelCodegenCore := ParallelCore.ParallelCodegenCore.
 
+(** * Proof map
+
+    This is the final theorem-facing dispatcher.  Sequential routes are lifted
+    into the common annotated-loop target language; parallel and vector routes
+    call their corresponding [ParallelPolOptCorrect] theorems.
+    [compile_verified_correct] handles the verified constructors and
+    [compile_correct] discharges raw configuration checking. *)
+
 Inductive raw_config : Type :=
 | RawSeq (cfg: SeqCompiler.raw_config)
 | RawParallelCurrentIdentity (d: nat)

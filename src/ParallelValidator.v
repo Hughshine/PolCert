@@ -26,6 +26,15 @@ Module ILSema := PolyLang.ILSema.
 Module Instr := PolIRs.Instr.
 Module AffineCore := AffineValidator PolIRs.
 
+(** * Proof map
+
+    A certificate for dimension [d] states that instances with the same
+    environment and current-loop prefix, but different coordinates at [d],
+    commute.  The checker expresses a violation as an affine schedule reversal
+    between two synthetic schedule views.  Affine-validator soundness then
+    yields [parallel_safe_dim] and, finally,
+    [checked_parallelize_current_sound]. *)
+
 Record parallel_plan := {
   target_dim : nat
 }.
@@ -213,6 +222,8 @@ Proof.
     + apply (proj1 (instr_point_sema_eq_except_sched_iff ip1 ip1' st1 st2'' Heq1)); exact Ht1.
     + apply (proj1 (instr_point_sema_eq_except_sched_iff ip2 ip2' st2'' st3' Heq2)); exact Ht2.
 Qed.
+
+(** * Declarative doall property *)
 
 Definition parallel_safe_dim (pp : PolyLang.t) (d : nat) : Prop :=
   forall envv ipl tau1 tau2,
@@ -800,6 +811,8 @@ Proof.
   - reflexivity.
   - apply Z.compare_gt_iff in Hcmp. lia.
 Qed.
+
+(** * Executable certificate and soundness *)
 
 Definition check_pprog_parallel_currentb
   (pp : PolyLang.t) (plan : parallel_plan) : imp bool :=

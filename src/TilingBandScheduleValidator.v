@@ -33,6 +33,21 @@ Module TilingPolIRs := Base.TilingPolIRs.
 Module ParallelCore := ParallelValidator PolIRs.
 Module BandAffine := Base.TilingVal.
 
+(** This file proves one implication in several increasingly general layout
+    classes:
+
+      accepted component checks + recognized target layout
+        -> every target reversal decreases a checked band component
+        -> the reversed pair is permutable
+        -> tiling preserves the source semantics.
+
+    The sections below follow that proof from the affine rows named by a
+    witness, through executable bad-pair checks, to layout-specific reversal
+    bridges.  The final correctness lemmas merely compose those two halves
+    with [TilingValidator]. *)
+
+Section CommonBandInfrastructure.
+
 Definition tiling_to_band_pinstr
     (pi: Tiling.PL.PolyInstr) : BandAffine.PolyLang.PolyInstr := pi.
 
@@ -2838,6 +2853,10 @@ Fixpoint check_pprog_source_like_second_level_recipesb
       check_pprog_source_like_second_level_recipesb before_pis' ws'
   | _, _ => false
   end.
+
+End CommonBandInfrastructure.
+
+Section SecondLevelShapeRecognition.
 
 (** Executable near-miss checks for the source-like classifier. *)
 Definition source_like_guard_test_pinstr
@@ -6654,6 +6673,10 @@ Proof.
   intros. exact I.
 Qed.
 
+End SecondLevelShapeRecognition.
+
+Section ProjectedScheduleBridge.
+
 Lemma project_band_ip_ext_preserves_old_sched_lt :
   forall band ip1 ip2,
     Tiling.PL.instr_point_ext_old_sched_lt ip1 ip2 ->
@@ -8941,6 +8964,10 @@ Proof.
     + apply Nat.leb_le. exact Hhd.
     + eapply IH. exact Htl.
 Qed.
+
+End ProjectedScheduleBridge.
+
+Section CommonBandDirectChecker.
 
 (** Direct executable checker for PolCert's semantic analogue of the Pluto band
     condition.  Unlike the reduction-based checker below, this constructs the
@@ -13949,6 +13976,10 @@ Proof.
     exact Huniform.
 Qed.
 
+End CommonBandDirectChecker.
+
+Section PerStatementBandChecker.
+
 (** Direct componentwise checking for statement-specific bands.  The
     componentwise semantic property only relates instruction points whose
     statements have the same inferred band.  Pairs with distinct bands, and
@@ -14334,6 +14365,10 @@ Proof.
   exists x, y.
   repeat split; assumption.
 Qed.
+
+End PerStatementBandChecker.
+
+Section SemanticBandKernel.
 
 (** A semantic band is represented by explicit affine rows reconstructed from
     the tiling witness.  Different statements may omit trailing global slots;
@@ -15060,6 +15095,10 @@ Proof.
        pi1 pi2 slice1 slice2 rows1 rows2 dim ip1 ip2);
     eauto.
 Qed.
+
+End SemanticBandKernel.
+
+Section ProgramWideSemanticReconstruction.
 
 (** Program-wide reconstruction for source-like and mixed-depth tiling.
     Slots are removed only when every statement has a strict zero row there.
@@ -17446,6 +17485,20 @@ Proof.
   - eapply IH; eauto.
 Qed.
 
+(** Proof roadmap for the ordinary semantic bridge:
+
+    1. recover the source instruction, target instruction, and tiling witness
+       for each endpoint of the reversed pair;
+    2. reconstruct the compact semantic rows and their lifted rows;
+    3. rewrite the old and target timestamps into a common prefix, tile
+       prefix, point band, and suffix;
+    4. use positivity of tile sizes to show that componentwise
+       nondecreasing source bands could not reverse the target order;
+    5. return the decreasing semantic row required by
+       [semantic_rows_reversal_bridge].
+
+    The endpoint setup is intentionally symmetric.  The argument after the
+    timestamp rewrites is the mathematical core of the proof. *)
 Lemma ordinary_semantic_band_shape_reversal_bridge :
   forall before_pis before_ctxt before_vars after_pis ws
          shape lifted_rows envv,
@@ -19207,6 +19260,10 @@ Proof.
     + eapply IH; eauto.
 Qed.
 
+(** The second-level bridge follows the same five-step argument as
+    [ordinary_semantic_band_shape_reversal_bridge].  Its extra work is to
+    evaluate the second tile prefix and prove monotonicity first from point
+    coordinates to level-one tiles, then from level-one to level-two tiles. *)
 Lemma second_level_semantic_band_shape_reversal_bridge :
   forall before_pis before_ctxt before_vars after_pis ws
          shape lifted_rows envv,
@@ -20942,6 +20999,10 @@ Proof.
          before_pis before_ctxt before_vars after_pis ws
          shape lifted_rows0 envv); eauto.
 Qed.
+
+End ProgramWideSemanticReconstruction.
+
+Section ScalarAwareBands.
 
 (** Scalar-aware ordinary Pluto bands.
 
@@ -22975,6 +23036,19 @@ Proof.
       exact Hxy.
 Qed.
 
+(** Proof roadmap for one scalar-aware pair:
+
+    - recover and type the two composed instruction points;
+    - split each old schedule around the recognized band;
+    - evaluate loop rows as tile coordinates while copying scalar rows;
+    - show that a target reversal cannot come from the unchanged outer
+      prefix or suffix;
+    - locate the first decreasing active loop row and return its direct-check
+      certificate.
+
+    Scalar rows are not asserted permutable.  They stay fixed in the rendered
+    prefix; only positions marked by [sabl_loop_mask] can discharge the final
+    component obligation. *)
 Lemma scalar_aware_pair_local_reversal_bridge_wf_with_env_len :
   forall before_pis before_ctxt before_vars after_pis ws layouts envv
          flat ip1 ip2,
@@ -24101,6 +24175,10 @@ Proof.
       eauto.
   - exact Hsem.
 Qed.
+
+End ScalarAwareBands.
+
+Section PhaseAwareSemanticBands.
 
 (** Program-wide phase-preserving semantic bands.
 
@@ -26314,6 +26392,10 @@ Proof.
     lia.
 Qed.
 
+(** The phase-aware ordinary bridge first proves that the common scalar phase
+    prefix selects one statement class.  Within that class, the remaining
+    timestamp argument is the ordinary semantic bridge: reconstruct the band,
+    rule out a monotone reversal, and expose a checked decrease. *)
 Lemma phase_semantic_ordinary_band_shape_reversal_bridge :
   forall before_pis before_ctxt before_vars after_pis ws shape envv,
     List.length before_ctxt = List.length envv ->
@@ -27224,6 +27306,10 @@ Proof.
     exact Hdecrease.
 Qed.
 
+(** The phase-aware second-level bridge combines phase-class separation with
+    the two-level monotonicity argument.  The proof keeps these obligations
+    separate: phase equality identifies the local layout; quotient
+    monotonicity then reduces any reversal to a decreasing checked row. *)
 Lemma phase_semantic_second_level_band_shape_reversal_bridge :
   forall before_pis before_ctxt before_vars after_pis ws shape envv,
     List.length before_ctxt = List.length envv ->
@@ -28527,6 +28613,10 @@ Proof.
     discriminate.
 Qed.
 
+End PhaseAwareSemanticBands.
+
+Section ExecutableExamples.
+
 Definition scalar_aware_test_link
     (coeffs: list Z) : tile_link :=
   {| tl_expr :=
@@ -28567,5 +28657,7 @@ Example scalar_aware_render_preserves_scalar_position :
      ([0%Z; 0%Z; 0%Z; 0%Z], 7%Z);
      ([0%Z; 1%Z; 0%Z; 0%Z], 0%Z)].
 Proof. reflexivity. Qed.
+
+End ExecutableExamples.
 
 End TilingBandScheduleValidator.

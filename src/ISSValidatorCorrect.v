@@ -11,6 +11,10 @@ Module ISSSem := ISSCutSemantics PolIRs.
 Module State := PolIRs.Instr.State.
 Module PolyLang := PolIRs.PolyLang.
 
+(** The public ISS theorem is deliberately a composition point: the boolean
+    checker establishes a complete cut partition, and [ISSCutSemantics]
+    converts that partition into semantic refinement. *)
+
 Lemma checked_iss_complete_cut_shape_validate_semantics_correct :
   forall before after w st1 st2,
     ISSVal.checked_iss_complete_cut_shape_validate before after w = true ->

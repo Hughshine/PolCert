@@ -35,6 +35,17 @@ Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
 Definition ident := Instr.ident.
 
+(** * Proof map
+
+    The affine validator handles a fixed set of statement instances with new
+    schedules.  It pairs old and new views of each instance, rules out a
+    conflicting pair whose order is reversed, derives pairwise permutability,
+    and finally applies stable sorting to preserve list semantics.
+
+    The existing section headings follow this chain: executable checks;
+    paired-instance construction; collision exclusion; lifting to flattened
+    lists; and [validate_correct] at the program boundary. *)
+
 Fixpoint list_Z_eqb (xs ys: list Z) : bool :=
   match xs, ys with
   | [], [] => true
