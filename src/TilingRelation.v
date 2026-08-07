@@ -1274,20 +1274,14 @@ Proof.
       {
         apply lower_upper_rows_imply_eval_tile_parent.
         - exact Hsize.
-        - eapply lower_link_constraint_after_env_complete
-            with (env := params) (prefix := prefix) (suffix := suffix)
-                 (point := point) (link := link) (parent := parent).
-          + exact Hvars.
-          + exact Hparam.
-          + rewrite Hsuffix_len.
-            exact Hlower.
-        - eapply upper_link_constraint_after_env_complete
-            with (env := params) (prefix := prefix) (suffix := suffix)
-                 (point := point) (link := link) (parent := parent).
-          + exact Hvars.
-          + exact Hparam.
-          + rewrite Hsuffix_len.
-            exact Hupper.
+        - rewrite <- Hsuffix_len in Hlower.
+          exact
+            (lower_link_constraint_after_env_complete
+               params prefix suffix point link parent Hvars Hparam Hlower).
+        - rewrite <- Hsuffix_len in Hupper.
+          exact
+            (upper_link_constraint_after_env_complete
+               params prefix suffix point link parent Hvars Hparam Hupper).
       }
       assert (Hrest':
         in_poly

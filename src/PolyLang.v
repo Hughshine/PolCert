@@ -1673,9 +1673,12 @@ Proof.
     + rewrite (Hdone n0 p0). reflexivity.
     + rewrite (Hdone n0 p0). reflexivity.
   - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3.
-    eapply PolyProgress with
-        (poly_instr := pi) (n := n) (p := p)
-        (wcs := wcs) (rcs := rcs) (st2 := mem5).
+    refine
+      (@PolyProgress
+         env_dim
+         (fun n0 p0 => to_scan3 n0 p0 || to_scan2 n0 p0)
+         prog1 mem4 mem5 mem3 wcs rcs pi n p
+         _ _ _ _ _).
     + simpl.
       rewrite Hscanp.
       reflexivity.
@@ -7549,10 +7552,11 @@ Proof.
     pose proof Hscanp as Hscanp_lex.
     rewrite Hcompat with (pi := pi1) in Hscanp; auto.
     reflect; destruct Hscanp as [Heqp Hscan].
-    eapply PolyProgress with
-        (poly_instr := pi1) (n := n)
-        (p := resize es p ++ skipn (d + es)%nat p)
-        (wcs := wcs) (rcs := rcs) (st2 := mem4).
+    refine
+      (@PolyProgress
+         (scan_dim - d) to_scan prog mem3 mem4 mem5 wcs rcs pi1 n
+         (resize es p ++ skipn (d + es)%nat p)
+         _ _ _ _ _).
     + exact Hscan.
     + exact Hpi1.
     + intros n2 p2 pi2 Heqpi2 Hcmp.

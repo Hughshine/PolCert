@@ -821,20 +821,41 @@ Proof.
   }
   assert (Hnth_eq : n1 = n2).
   {
-    eapply (@NoDup_filter_nth_error_unique
-              (PolyLang.PolyInstr * iss_stmt_witness)
-              (fun pair =>
-                 Nat.eqb (isw_parent_stmt (snd pair))
-                         (isw_parent_stmt w1))
-              (Refine.iss_pairs after_pis w.(iw_stmt_witnesses))
-              n1 n2 (after_pi1, w1)).
-    - unfold Refine.child_pairs_for_parent in *.
-      eapply parent_sign_partition_complete_nodup_child_pairs; eauto.
-    - exact Hpair_nth1.
-    - exact Hpair_nth2.
-    - simpl.
+    assert (Hpairs_nodup :
+      NoDup
+        (filter
+           (fun pair =>
+              Nat.eqb (isw_parent_stmt (snd pair))
+                      (isw_parent_stmt w1))
+           (Refine.iss_pairs after_pis w.(iw_stmt_witnesses)))).
+    {
+      pose proof
+        (parent_sign_partition_complete_nodup_child_pairs
+           w.(iw_cuts) (isw_parent_stmt w1)
+           after_pis w.(iw_stmt_witnesses) Hpart)
+        as Hchildren_nodup.
+      unfold Refine.child_pairs_for_parent in Hchildren_nodup.
+      exact Hchildren_nodup.
+    }
+    assert (Hparent_test :
+      (fun pair =>
+         Nat.eqb (isw_parent_stmt (snd pair))
+                 (isw_parent_stmt w1))
+        (after_pi1, w1) = true).
+    {
+      simpl.
       apply Nat.eqb_eq.
       reflexivity.
+    }
+    exact
+      (@NoDup_filter_nth_error_unique
+         (PolyLang.PolyInstr * iss_stmt_witness)
+         (fun pair =>
+            Nat.eqb (isw_parent_stmt (snd pair))
+                    (isw_parent_stmt w1))
+         (Refine.iss_pairs after_pis w.(iw_stmt_witnesses))
+         n1 n2 (after_pi1, w1)
+         Hpairs_nodup Hpair_nth1 Hpair_nth2 Hparent_test).
   }
   subst n2.
   subst idx2 tf2 ts2 instr2 depth2.
