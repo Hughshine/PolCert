@@ -7444,139 +7444,22 @@ Proof.
          ws n before_pi after_pi w
          env ipl_old
          Hprog Hbefore_nth Hafter_nth Hw_nth Henv_len
-         Hwf_stmt Hsizes Hpoint_depth
-         Hflat_old.
-  set (raw_before :=
-    before_ipl_from_retiled_old
-      (List.length env) (List.length (stw_links w)) before_pi ipl_old).
-  set (sorted_before :=
-    SelectionSort instr_point_np_ltb instr_point_np_eqb raw_before).
-  exists sorted_before.
+         Hwf_stmt Hsizes Hpoint_depth Hflat_old.
+  destruct
+    (flatten_instr_nth_retiled_old_implies_before_flatten_instr_nth_exists_source
+       before_pis before_ctxt before_vars
+       after_pis after_ctxt after_vars
+       ws n before_pi after_pi w env ipl_old
+       Hprog Hbefore_nth Hafter_nth Hw_nth Henv_len
+       Hwf_stmt Hsizes Hpoint_depth Hflat_old)
+    as [ipl_before [Heq Hflat]].
+  exists ipl_before.
   split.
-  - subst sorted_before raw_before.
-    assert (Hperm_before :
-      Permutation
-        (before_ipl_from_retiled_old
-           (List.length env) (List.length (stw_links w)) before_pi ipl_old)
-        (SelectionSort instr_point_np_ltb instr_point_np_eqb
-           (before_ipl_from_retiled_old
-              (List.length env) (List.length (stw_links w)) before_pi ipl_old))).
-    {
-      eapply selection_sort_perm.
-    }
-    assert (Hnodup_raw :
-      NoDup
-        (before_ipl_from_retiled_old
-           (List.length env) (List.length (stw_links w)) before_pi ipl_old)).
-    {
-      eapply before_ipl_from_retiled_old_nodup_source; eauto.
-    }
-    assert (Hnodup_sorted :
-      NoDup
-        (SelectionSort instr_point_np_ltb instr_point_np_eqb
-           (before_ipl_from_retiled_old
-              (List.length env) (List.length (stw_links w)) before_pi ipl_old))).
-    {
-      eapply Permutation_NoDup; eauto.
-    }
-    assert (Hmem_sorted :
-      forall ip,
-        In ip
-          (SelectionSort instr_point_np_ltb instr_point_np_eqb
-             (before_ipl_from_retiled_old
-                (List.length env) (List.length (stw_links w)) before_pi ipl_old)) <->
-        firstn (List.length env) (PL.ip_index ip) = env /\
-        PL.belongs_to ip before_pi /\
-        PL.ip_nth ip = n /\
-        List.length (PL.ip_index ip) =
-          (List.length env + PL.pi_depth before_pi)%nat).
-    {
-      intros ip.
-      split; intro Hin.
-      - eapply before_ipl_from_retiled_old_forward_source.
-        + exact Hprog.
-        + exact Hbefore_nth.
-        + exact Hafter_nth.
-        + exact Hw_nth.
-        + exact Henv_len.
-        + exact Hwf_stmt.
-        + exact Hsizes.
-        + exact Hpoint_depth.
-        + exact Hflat_old.
-        + eapply Permutation_in.
-          * eapply Permutation_sym. exact Hperm_before.
-          * exact Hin.
-      - eapply Permutation_in.
-        + exact Hperm_before.
-        + {
-            destruct Hin as [Hpref_before [Hbel_before [Hnth_before Hlen_before]]].
-            eapply before_ipl_from_retiled_old_backward_source.
-            - exact Hprog.
-            - exact Hbefore_nth.
-            - exact Hafter_nth.
-            - exact Hw_nth.
-            - exact Henv_len.
-            - exact Hwf_stmt.
-            - exact Hsizes.
-            - exact Hpoint_depth.
-            - exact Hflat_old.
-            - exact Hpref_before.
-            - exact Hbel_before.
-            - exact Hnth_before.
-            - exact Hlen_before.
-          }
-    }
-    assert (HnodupA_sorted :
-      NoDupA PL.np_eq
-        (SelectionSort instr_point_np_ltb instr_point_np_eqb
-           (before_ipl_from_retiled_old
-              (List.length env) (List.length (stw_links w)) before_pi ipl_old))).
-    {
-      eapply PL.belongs_to_implies_NoDupA_np.
-      - intros ip Hin.
-        specialize (Hmem_sorted ip).
-        destruct Hmem_sorted as [Hfwd _].
-        specialize (Hfwd Hin).
-        destruct Hfwd as [_ [Hbel [Hnth Hlen]]].
-        destruct Hbel as [Hpoly [Htrans [Hts [Hinss Hdepth]]]].
-        repeat split.
-        + exact Hpoly.
-        + exact Htrans.
-        + exact Hts.
-        + exact Hinss.
-        + exact Hdepth.
-        + exact Hnth.
-        + exact Hlen.
-      - exact Hnodup_sorted.
-    }
-    assert (Hsortedb :
-      Sorted_b
-        (combine_leb instr_point_np_ltb instr_point_np_eqb)
-        (SelectionSort instr_point_np_ltb instr_point_np_eqb
-           (before_ipl_from_retiled_old
-              (List.length env) (List.length (stw_links w)) before_pi ipl_old))).
-    {
-      eapply selection_sort_sorted.
-      - eapply instr_point_np_ltb_trans.
-      - eapply instr_point_np_eqb_trans.
-      - eapply instr_point_np_eqb_refl.
-      - eapply instr_point_np_eqb_symm.
-      - eapply instr_point_np_cmp_total.
-      - eapply instr_point_np_eqb_ltb_implies_ltb.
-      - eapply instr_point_np_ltb_eqb_implies_ltb.
-    }
-    split.
-    + intros ip Hin.
-      specialize (Hmem_sorted ip).
-      tauto.
-    + split.
-      * exact Hmem_sorted.
-      * split.
-        -- exact Hnodup_sorted.
-        -- eapply sortedb_instr_point_np_implies_sorted_np; eauto.
-  - subst sorted_before raw_before.
+  - exact Hflat.
+  - rewrite Heq.
     eapply Permutation_sym.
     eapply selection_sort_perm.
+
 Qed.
 
 Lemma flatten_instrs_retiled_old_member_nth_data_source :
