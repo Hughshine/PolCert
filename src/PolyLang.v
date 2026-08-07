@@ -1672,11 +1672,19 @@ Proof.
     destruct (to_scan2 n0 p0); simpl.
     + rewrite (Hdone n0 p0). reflexivity.
     + rewrite (Hdone n0 p0). reflexivity.
-  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3. eapply PolyProgress with (n := n) (p := p); eauto.
+  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3.
+    eapply PolyProgress with
+        (poly_instr := pi) (n := n) (p := p)
+        (wcs := wcs) (rcs := rcs) (st2 := mem5).
+    + simpl.
+      rewrite Hscanp.
+      reflexivity.
+    + exact Heqpi.
     + intros n2 p2 pi2 Heqpi2 Hts2.
       reflect; split.
       * apply (Hts n2 p2 pi2); auto.
       * destruct (Hcmp n p pi n2 p2 pi2) as [H | H]; auto; congruence.
+    + exact Hsem1.
     + assert (Hrest :
           poly_semantics env_dim
             (fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0)
@@ -7542,8 +7550,11 @@ Proof.
     rewrite Hcompat with (pi := pi1) in Hscanp; auto.
     reflect; destruct Hscanp as [Heqp Hscan].
     eapply PolyProgress with
-        (n := n)
-        (p := resize es p ++ skipn (d + es)%nat p); eauto.
+        (poly_instr := pi1) (n := n)
+        (p := resize es p ++ skipn (d + es)%nat p)
+        (wcs := wcs) (rcs := rcs) (st2 := mem4).
+    + exact Hscan.
+    + exact Hpi1.
     + intros n2 p2 pi2 Heqpi2 Hcmp.
       specialize
         (Hts n2

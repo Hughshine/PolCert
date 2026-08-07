@@ -827,9 +827,11 @@ Proof.
                  Nat.eqb (isw_parent_stmt (snd pair))
                          (isw_parent_stmt w1))
               (Refine.iss_pairs after_pis w.(iw_stmt_witnesses))
-              n1 n2 (after_pi1, w1)); eauto.
+              n1 n2 (after_pi1, w1)).
     - unfold Refine.child_pairs_for_parent in *.
       eapply parent_sign_partition_complete_nodup_child_pairs; eauto.
+    - exact Hpair_nth1.
+    - exact Hpair_nth2.
     - simpl.
       apply Nat.eqb_eq.
       reflexivity.

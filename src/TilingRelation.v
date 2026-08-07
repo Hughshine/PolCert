@@ -1263,6 +1263,7 @@ Proof.
       pose proof (Forall_inv_tail Hparams) as Hparams'.
       pose proof (Forall_inv Hsizes) as Hsize.
       pose proof (Forall_inv_tail Hsizes) as Hsizes'.
+      assert (Hsuffix_len : List.length suffix = List.length links) by lia.
       unfold in_poly in Hin.
       simpl in Hin.
       apply andb_true_iff in Hin as [Hlower Hin].
@@ -1273,8 +1274,20 @@ Proof.
       {
         apply lower_upper_rows_imply_eval_tile_parent.
         - exact Hsize.
-        - eapply lower_link_constraint_after_env_complete; eauto.
-        - eapply upper_link_constraint_after_env_complete; eauto.
+        - eapply lower_link_constraint_after_env_complete
+            with (env := params) (prefix := prefix) (suffix := suffix)
+                 (point := point) (link := link) (parent := parent).
+          + exact Hvars.
+          + exact Hparam.
+          + rewrite Hsuffix_len.
+            exact Hlower.
+        - eapply upper_link_constraint_after_env_complete
+            with (env := params) (prefix := prefix) (suffix := suffix)
+                 (point := point) (link := link) (parent := parent).
+          + exact Hvars.
+          + exact Hparam.
+          + rewrite Hsuffix_len.
+            exact Hupper.
       }
       assert (Hrest':
         in_poly
