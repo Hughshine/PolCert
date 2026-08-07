@@ -10,6 +10,12 @@ The cleanup branch preserves the exported declarations of the proof modules.
 Comments, sections, and proof-only tactics may change, but callers see the same
 definitions and theorem names.
 
+The declaration-level ownership and long-proof review is indexed in
+[`proof-audits/README.md`](proof-audits/README.md).  Its parallel-semantics
+section records an open certificate-to-execution connection.  Read that scope
+qualification before interpreting the final theorem as a theorem about all
+behaviors of an unrestricted parallel backend.
+
 ## 1. Start from the Contract
 
 The final theorem is
@@ -28,6 +34,10 @@ This is the common shape of the component theorems. A validator may reject a
 proposal or raise an alarm. If a checked route returns a target and that target
 executes, the theorem reconstructs a source execution whose final state is
 related by the abstract `State.eq` supplied by the instruction semantics.
+For a `ParMode` target, the current target semantics admits only traces that
+already carry an `interleave_safe` derivation.  The theorem does not yet derive
+that premise from the parallel validator certificate for arbitrary backend
+interleavings.
 
 Read the final file in this order:
 
@@ -76,6 +86,10 @@ correspondence proof.
 ## 3. Extraction: Loops to Polyhedral Instances
 
 Primary file: `src/Extractor.v`.
+
+For declaration ownership, repository reachability, and the proof-by-proof
+cleanup rationale, see
+[`proof-audits/EXTRACTOR_AUDIT.md`](proof-audits/EXTRACTOR_AUDIT.md).
 
 The extractor accepts the bounded affine fragment of the structured loop
 language. It converts expressions to affine rows, accumulates loop and guard
@@ -330,7 +344,9 @@ packages the resulting certificate.
 
 `ParallelCodegen.v` attaches sequential, parallel, or vector modes to generated
 loops. The semantic proof erases those annotations to the already verified
-sequential loop and uses trace-safety to relate annotated execution to erased
+sequential loop. For `ParMode`, the formal execution derivation already contains
+an `interleave_safe` premise; for `VecMode`, traces remain in sequential order.
+The codegen proof relates executions admitted by those semantics to erased
 execution. The endpoints are:
 
 ```text
@@ -339,15 +355,22 @@ checked_vector_annotated_codegen_correct_general
 checked_annotated_codegen_many_correct_general
 ```
 
-Vectorization reuses the doall certificate. Its separate codegen theorem
-checks the vector annotation and target trace discipline; it does not require
-a separate dependence theory.
+Vectorization runs the same doall checker and has a separate annotation/codegen
+theorem. The certificate soundness theorem is not consumed by either codegen
+endpoint today. In particular, the proof does not model SIMD backend behavior.
 
 `ParallelPolOptCorrect.v` composes preprocessing routes with these annotation
 and codegen theorems. The local `finish_checked_*` tactics only remove repeated
 proof scripts. Their semantic content is: prove the prepared program is well
 formed, obtain correctness of annotation/codegen, obtain correctness of the
 preparation route, and compose `State.eq`.
+
+The missing step is not inside those tactics. It is a trace-level bridge from
+the validator's `parallel_safe_dim` property to every order-preserving
+interleaving of the emitted loop, including a proof that the certified current
+coordinate denotes the loop depth tagged after codegen cleanup. Nested
+`ParMode` annotations are also interpreted sequentially inside an outer
+parallel trace by the current `seq_trace` body premise.
 
 ## 8. What to Read and What to Skim
 

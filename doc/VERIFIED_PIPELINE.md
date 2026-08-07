@@ -18,9 +18,19 @@ every terminating target execution is matched by a source `Loop.t` execution wit
 `State.eq` final states. `compile_verified_correct` is the corresponding theorem
 after `check_config` has accepted a verified config.
 
+For `ParMode`, "target execution" refers to the current formal semantics, whose
+parallel constructor already requires an `interleave_safe` derivation.  The
+repository separately proves the doall property of a validator certificate,
+but does not yet derive this semantic premise for every order-preserving
+backend interleaving from that certificate.  It also lacks a theorem equating
+the checked current-coordinate index with the post-cleanup generated loop
+depth.  Therefore this contract is not yet an unrestricted parallel-backend
+correctness theorem.
+
 Sequential routes are not outside this theorem. They are lifted into
 `ParallelLoop.t` with all-`SeqMode` annotations. Parallel routes return the same
-target language with checked `ParMode` annotations.
+target language after running the parallel checker and adding `ParMode`
+annotations, subject to the semantic qualification above.
 
 ## Executable `polopt` shape
 
@@ -108,10 +118,12 @@ not a substitute for the final image review.
 ## Boundary
 
 The current theorem family is state-preserving. The unified wrapper covers
-schedule, tiling, ISS, diamond, second-level, and checked parallel annotation
-routes that preserve the same observable storage under `State.eq`; adjacent
-checked vector and unroll/jam routes use their own theorem-backed components. It
-deliberately does not cover storage-changing transformations such as scalar
+schedule, tiling, ISS, diamond, and second-level routes that preserve the same
+observable storage under `State.eq`. Parallel and vector routes have checked
+certificate/annotation components, but their endpoint execution theorem has the
+safe-interleaving/sequential-vector scope above; unroll/jam uses its own
+theorem-backed component. The wrapper deliberately does not cover
+storage-changing transformations such as scalar
 privatization, array contraction, layout remapping, or overlapped / reuse-based
 tiling. Those need a separate state relation rather than another flag in the
 current wrapper.

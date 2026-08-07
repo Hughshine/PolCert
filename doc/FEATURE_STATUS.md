@@ -82,7 +82,11 @@ Commands:
 Status:
 
 - CLI-exposed checked routes through the unified compiler wrapper
-- backed by verified parallel certification and code generation components
+- runs a proved doall certificate checker and a separately proved annotated
+  code-generation component
+- current end-to-end correctness is relative to `ParallelLoop.semantics`, which
+  admits only interleavings already carrying an `interleave_safe` derivation;
+  the certificate-to-arbitrary-backend-interleaving bridge remains open
 - `--parallel-strict` requires the certified loop to match Pluto's hint
 - `--multipar` submits every dimension in the finite candidate list constructed
   for that route to checked multi-current configs (`RawParallelCurrentMany*`);
@@ -98,7 +102,8 @@ Command:
 
 Status:
 
-- theorem-aligned verified optimizer route for an explicit current dimension
+- theorem-facing optimizer route for an explicit current dimension, with the
+  same safe-interleaving semantic scope described above
 - supported on identity, affine-only, and full tiled paths
 - also available with `--iss`
 
@@ -114,6 +119,8 @@ Status:
 
 - theorem-aligned checked vector annotation for an explicit current dimension
 - reuses the parallel/doall certificate, matching Pluto's prevector source
+- the formal `VecMode` semantics preserves sequential trace order; no SIMD
+  backend execution semantics is modeled
 - also exposed through Pluto compatibility as `--prevector`
 - accepts only a certified innermost loop; non-innermost explicit selections
   are rejected
@@ -293,5 +300,6 @@ correctness gates.
     - parallel (`4` threads)
     - ISS+parallel (`4` threads)
     - identity pipeline
-  - the `parallel` candidates are only eligible when they emit a real verified
-    `parallel for`; sequential candidates are not allowed to win those slots
+  - the `parallel` candidates are only eligible when they emit a `parallel for`
+    through the checked annotation route; sequential candidates are not allowed
+    to win those slots
