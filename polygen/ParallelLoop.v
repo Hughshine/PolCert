@@ -236,6 +236,143 @@ Definition family_ordered_permutable (trs : list (list InstrPoint)) : Prop :=
     In ip2 tr2 ->
     ILSema.Permutable ip1 ip2.
 
+Lemma family_ordered_permutable_tail :
+  forall tr trs,
+    family_ordered_permutable (tr :: trs) ->
+    family_ordered_permutable trs.
+Proof.
+  intros tr trs Hordered pre1 tr1 pre2 tr2 post ip1 ip2 Hshape Hin1 Hin2.
+  eapply Hordered with
+      (pre1 := tr :: pre1) (tr1 := tr1) (pre2 := pre2)
+      (tr2 := tr2) (post := post); eauto.
+  simpl. now rewrite Hshape.
+Qed.
+
+Fixpoint family_ordered_permutable_rec
+  (trs : list (list InstrPoint)) : Prop :=
+  match trs with
+  | [] => True
+  | tr :: trs' =>
+      (forall ip1 ip2,
+          In ip1 tr ->
+          In ip2 (concat trs') ->
+          ILSema.Permutable ip1 ip2) /\
+      family_ordered_permutable_rec trs'
+  end.
+
+Lemma family_ordered_permutable_rec_of_ordered :
+  forall trs,
+    family_ordered_permutable trs ->
+    family_ordered_permutable_rec trs.
+Proof.
+  induction trs as [|tr trs IH]; intros Hordered; simpl.
+  - exact I.
+  - split.
+    + intros ip1 ip2 Hin1 Hin2.
+      apply in_concat in Hin2.
+      destruct Hin2 as [tr2 [Htr2 Hin2]].
+      apply in_split in Htr2.
+      destruct Htr2 as [pre2 [post Hshape]].
+      eapply Hordered with
+          (pre1 := []) (tr1 := tr) (pre2 := pre2)
+          (tr2 := tr2) (post := post); eauto.
+      simpl. now rewrite Hshape.
+    + apply IH.
+      eapply family_ordered_permutable_tail; eauto.
+Qed.
+
+Lemma family_ordered_permutable_ordered_of_rec :
+  forall trs,
+    family_ordered_permutable_rec trs ->
+    family_ordered_permutable trs.
+Proof.
+  induction trs as [|tr trs IH];
+    intros Hrec pre1 tr1 pre2 tr2 post ip1 ip2 Hshape Hin1 Hin2.
+  - destruct pre1; discriminate.
+  - simpl in Hrec.
+    destruct Hrec as [Hhead Htail].
+    destruct pre1 as [|tr0 pre1].
+    + simpl in Hshape.
+      inversion Hshape; subst tr1.
+      apply Hhead with (ip1 := ip1) (ip2 := ip2); auto.
+      apply in_concat.
+      exists tr2.
+      split; auto.
+      rewrite H1.
+      apply in_or_app.
+      right. simpl. auto.
+    + simpl in Hshape.
+      inversion Hshape; subst tr0.
+      eapply IH; eauto.
+Qed.
+
+Lemma concat_pop_in :
+  forall (pre : list (list InstrPoint)) (x : InstrPoint) xs post ip,
+    In ip (concat (pre ++ xs :: post)) ->
+    In ip (concat (pre ++ (x :: xs) :: post)).
+Proof.
+  induction pre as [|tr pre IH]; intros x xs post ip Hin; simpl in *.
+  - apply in_app_or in Hin.
+    destruct Hin as [Hin | Hin].
+    + right. apply in_or_app. left. exact Hin.
+    + right. apply in_or_app. right. exact Hin.
+  - apply in_app_or in Hin.
+    apply in_or_app.
+    destruct Hin as [Hin | Hin].
+    + left. exact Hin.
+    + right. eapply IH; eauto.
+Qed.
+
+Lemma family_ordered_permutable_rec_pop :
+  forall pre x xs post,
+    family_ordered_permutable_rec (pre ++ (x :: xs) :: post) ->
+    family_ordered_permutable_rec (pre ++ xs :: post).
+Proof.
+  induction pre as [|tr pre IH]; intros x xs post Hordered; simpl in *.
+  - destruct Hordered as [Hhead Htail].
+    split.
+    + intros ip1 ip2 Hin1 Hin2.
+      eapply Hhead.
+      * right. exact Hin1.
+      * exact Hin2.
+    + exact Htail.
+  - destruct Hordered as [Hhead Htail].
+    split.
+    + intros ip1 ip2 Hin1 Hin2.
+      eapply Hhead.
+      * exact Hin1.
+      * eapply concat_pop_in; eauto.
+    + eapply IH; eauto.
+Qed.
+
+Lemma family_ordered_permutable_pop :
+  forall pre x xs post,
+    family_ordered_permutable (pre ++ (x :: xs) :: post) ->
+    family_ordered_permutable (pre ++ xs :: post).
+Proof.
+  intros pre x xs post Hordered.
+  apply family_ordered_permutable_ordered_of_rec.
+  eapply family_ordered_permutable_rec_pop with (x := x).
+  apply family_ordered_permutable_rec_of_ordered.
+  exact Hordered.
+Qed.
+
+Lemma family_ordered_permutable_before :
+  forall pre x xs post,
+    family_ordered_permutable (pre ++ (x :: xs) :: post) ->
+    forall y,
+      In y (concat pre) ->
+      ILSema.Permutable y x.
+Proof.
+  induction pre as [|tr pre IH]; intros x xs post Hordered y Hin; simpl in Hin.
+  - contradiction.
+  - apply in_app_or in Hin.
+    destruct Hin as [Hin | Hin].
+    + eapply (Hordered [] tr pre (x :: xs) post y x); simpl; eauto.
+    + eapply IH; eauto.
+      eapply family_ordered_permutable_tail; eauto.
+Qed.
+
 Inductive interleave_safe : list (list InstrPoint) -> list InstrPoint -> Prop :=
 | IS_nil :
     interleave_safe [] []
@@ -246,6 +383,25 @@ Inductive interleave_safe : list (list InstrPoint) -> list InstrPoint -> Prop :=
     (forall y, In y (concat pre) -> ILSema.Permutable y x) ->
     interleave_safe (pre ++ xs :: post) out ->
     interleave_safe (pre ++ (x :: xs) :: post) (x :: out).
+
+Theorem family_ordered_interleave_safe :
+  forall trs out,
+    family_ordered_permutable trs ->
+    interleave_family trs out ->
+    interleave_safe trs out.
+Proof.
+  intros trs out Hordered Hinter.
+  revert Hordered.
+  induction Hinter; intros Hordered.
+  - constructor.
+  - constructor.
+    apply IHHinter.
+    eapply family_ordered_permutable_tail; eauto.
+  - econstructor.
+    + eapply family_ordered_permutable_before; eauto.
+    + apply IHHinter.
+      eapply family_ordered_permutable_pop; eauto.
+Qed.
 
 Inductive par_trace : stmt -> list Z -> list InstrPoint -> Prop :=
 | PTInstr : forall i es env,
@@ -272,8 +428,8 @@ Inductive par_trace : stmt -> list Z -> list InstrPoint -> Prop :=
     par_trace (Loop VecMode od lb ub body) env tr
 | PTLoopPar : forall d lb ub body env zs trs tr,
     zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) ->
-    Forall2 (fun z tri => seq_trace body (z :: env) tri) zs trs ->
-    interleave_safe trs tr ->
+    Forall2 (fun z tri => par_trace body (z :: env) tri) zs trs ->
+    interleave_family trs tr ->
     par_trace (Loop ParMode (Some d) lb ub body) env tr
 with par_traces : stmt_list -> list Z -> list InstrPoint -> Prop :=
 | PTTracesNil : forall env,
@@ -282,6 +438,30 @@ with par_traces : stmt_list -> list Z -> list InstrPoint -> Prop :=
     par_trace st env tr1 ->
     par_traces sts env tr2 ->
     par_traces (SCons st sts) env (tr1 ++ tr2).
+
+Fixpoint parallel_families_ordered_stmt (s : stmt) : Prop :=
+  match s with
+  | Loop ParMode (Some _) lb ub body =>
+      parallel_families_ordered_stmt body /\
+      (forall env zs trs,
+          zs = Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub) ->
+          Forall2 (fun z tri => par_trace body (z :: env) tri) zs trs ->
+          family_ordered_permutable trs)
+  | Loop _ _ _ _ body => parallel_families_ordered_stmt body
+  | Instr _ _ => True
+  | Seq ss => parallel_families_ordered_stmts ss
+  | Guard _ body => parallel_families_ordered_stmt body
+  end
+with parallel_families_ordered_stmts (ss : stmt_list) : Prop :=
+  match ss with
+  | SNil => True
+  | SCons s ss' =>
+      parallel_families_ordered_stmt s /\
+      parallel_families_ordered_stmts ss'
+  end.
+
+Definition parallel_families_ordered (p : t) : Prop :=
+  let '(s, _, _) := p in parallel_families_ordered_stmt s.
 
 Definition loop_semantics (s : stmt) (env : list Z) (mem1 mem2 : mem) : Prop :=
   exists tr,
@@ -1080,6 +1260,7 @@ Lemma par_trace_forall2_refines_erased :
     (forall env' tr mem1 mem2,
         Instr.NonAlias mem1 ->
         trace_safe_stmt body ->
+        parallel_families_ordered_stmt body ->
         par_trace body env' tr ->
         ILSema.instr_point_list_semantics tr mem1 mem2 ->
         exists mem2',
@@ -1088,6 +1269,7 @@ Lemma par_trace_forall2_refines_erased :
     forall zs trs mem1 mem2,
       Instr.NonAlias mem1 ->
       trace_safe_stmt body ->
+      parallel_families_ordered_stmt body ->
       Forall2 (fun z tri => par_trace body (z :: env) tri) zs trs ->
       ILSema.instr_point_list_semantics (concat trs) mem1 mem2 ->
       exists mem2',
@@ -1096,10 +1278,10 @@ Lemma par_trace_forall2_refines_erased :
           zs mem1 mem2' /\
         Instr.State.eq mem2 mem2'.
 Proof.
-  intros body env Hbody zs trs mem1 mem2 Hna Hsafe_body Hfor.
-  revert mem1 mem2 Hna Hsafe_body.
+  intros body env Hbody zs trs mem1 mem2 Hna Hsafe_body Hordered_body Hfor.
+  revert mem1 mem2 Hna Hsafe_body Hordered_body.
   induction Hfor as [|z tr zs' trs' Htri Hfor' IHfor'];
-    intros mem1 mem2 Hna Hsafe_body Hsem_concat.
+    intros mem1 mem2 Hna Hsafe_body Hordered_body Hsem_concat.
   - simpl in Hsem_concat.
     exists mem1.
     split.
@@ -1110,7 +1292,8 @@ Proof.
     eapply instr_point_list_semantics_app_inv in Hsem_concat.
     destruct Hsem_concat as [mem_mid [Hsem_head Hsem_tail]].
     pose proof
-      (Hbody (z :: env) tr mem1 mem_mid Hna Hsafe_body Htri Hsem_head)
+      (Hbody
+         (z :: env) tr mem1 mem_mid Hna Hsafe_body Hordered_body Htri Hsem_head)
       as [mem_mid' [Hbody_sem Heq_mid]].
     assert (Hna_mid' : Instr.NonAlias mem_mid').
     {
@@ -1121,7 +1304,8 @@ Proof.
          (concat trs') mem_mid mem2 mem_mid' mem2
          Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
       as Hsem_tail'.
-    pose proof (IHfor' mem_mid' mem2 Hna_mid' Hsafe_body Hsem_tail')
+    pose proof
+      (IHfor' mem_mid' mem2 Hna_mid' Hsafe_body Hordered_body Hsem_tail')
       as [mem2' [Hrest_sem Heq_tail]].
     exists mem2'.
     split.
@@ -1135,6 +1319,7 @@ Lemma par_trace_refines_erased_stmt :
   forall s env tr mem1 mem2,
     Instr.NonAlias mem1 ->
     trace_safe_stmt s ->
+    parallel_families_ordered_stmt s ->
     par_trace s env tr ->
     ILSema.instr_point_list_semantics tr mem1 mem2 ->
     exists mem2',
@@ -1144,6 +1329,7 @@ with par_trace_refines_erased_stmts :
   forall ss env tr mem1 mem2,
     Instr.NonAlias mem1 ->
     trace_safe_stmts ss ->
+    parallel_families_ordered_stmts ss ->
     par_traces ss env tr ->
     ILSema.instr_point_list_semantics tr mem1 mem2 ->
     exists mem2',
@@ -1152,52 +1338,58 @@ with par_trace_refines_erased_stmts :
 Proof.
   - intros s.
     induction s as [mode od lb ub body IHbody|i es|ss _|t body IHbody];
-      intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
+      intros env tr mem1 mem2 Hna Hsafe Hordered Htrace Hsem.
     + inversion Htrace as
           [| | | |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat
            |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat
            |d lb' ub' body' env' zs trs tr' Hzs Hfor Hinter];
         subst.
-      * simpl in Hsafe.
+      * simpl in Hsafe, Hordered.
         match goal with
         | Hfor0 :
             Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
             pose proof
               (par_trace_forall2_refines_erased
-                 body env IHbody zs0 trs0 mem1 mem2 Hna Hsafe Hfor0 Hsem)
+                 body env IHbody zs0 trs0 mem1 mem2
+                 Hna Hsafe Hordered Hfor0 Hsem)
               as [mem2' [Hloop_sem Heq]]
         end.
         exists mem2'. split.
         -- econstructor. exact Hloop_sem.
         -- exact Heq.
-      * simpl in Hsafe.
+      * simpl in Hsafe, Hordered.
         match goal with
         | Hfor0 :
             Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
             pose proof
               (par_trace_forall2_refines_erased
-                 body env IHbody zs0 trs0 mem1 mem2 Hna Hsafe Hfor0 Hsem)
+                 body env IHbody zs0 trs0 mem1 mem2
+                 Hna Hsafe Hordered Hfor0 Hsem)
               as [mem2' [Hloop_sem Heq]]
         end.
         exists mem2'. split.
         -- econstructor. exact Hloop_sem.
         -- exact Heq.
-      * simpl in Hsafe.
+      * simpl in Hsafe, Hordered.
+        destruct Hordered as [Hordered_body Hordered_family].
         lazymatch goal with
         | Hfor0 :
-            Forall2 (fun z tri => seq_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
+            Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
             lazymatch goal with
-            | Hinter0 : interleave_safe trs0 ?tr0 |- _ =>
+            | Hinter0 : interleave_family trs0 ?tr0 |- _ =>
+                pose proof
+                  (Hordered_family env zs0 trs0 eq_refl Hfor0) as Hfamily;
+                pose proof
+                  (family_ordered_interleave_safe
+                     trs0 tr0 Hfamily Hinter0) as Hinter_safe;
                 pose proof
                   (interleave_safe_refines_concat
-                     trs0 tr0 mem1 mem2 Hna Hinter0 Hsem)
+                     trs0 tr0 mem1 mem2 Hna Hinter_safe Hsem)
                   as [mem2a [Hconcat_sem Heq_concat]];
                 pose proof
-                  (seq_trace_forall2_refines_erased
-                     body env
-                     (fun env' tr mem1 mem2 =>
-                        seq_trace_refines_erased_stmt body env' tr mem1 mem2)
-                     zs0 trs0 mem1 mem2a Hsafe Hfor0 Hconcat_sem)
+                  (par_trace_forall2_refines_erased
+                     body env IHbody zs0 trs0 mem1 mem2a
+                     Hna Hsafe Hordered_body Hfor0 Hconcat_sem)
                   as [mem2' [Hloop_sem Heq_seq]]
             end
         end.
@@ -1205,7 +1397,7 @@ Proof.
         -- econstructor. exact Hloop_sem.
         -- eapply Instr.State.eq_trans; eauto.
     + inversion Htrace; subst.
-      simpl in Hsafe.
+      simpl in Hsafe, Hordered.
       pose proof (instr_point_list_semantics_singleton_inv _ _ _ Hsem) as Hip.
       inversion Hip as [wcs rcs Hinstr]; subst.
       unfold BaseLoop.mk_instr_point in Hinstr.
@@ -1220,11 +1412,13 @@ Proof.
         exact Hinstr.
       * apply Instr.State.eq_refl.
     + inversion Htrace; subst.
+      simpl in Hordered.
       eapply par_trace_refines_erased_stmts; eauto.
     + inversion Htrace as
           [| | env' tst st tr' Heval Hbodytrace | env' tst st Heval | | |];
-        subst; simpl in Hsafe.
-      * pose proof (IHbody env tr mem1 mem2 Hna Hsafe Hbodytrace Hsem)
+        subst; simpl in Hsafe, Hordered.
+      * pose proof
+          (IHbody env tr mem1 mem2 Hna Hsafe Hordered Hbodytrace Hsem)
           as [mem2' [Hbody_sem Heq]].
         exists mem2'.
         split; [eapply BaseLoop.LGuardTrue; eauto | exact Heq].
@@ -1234,7 +1428,8 @@ Proof.
           | eapply Instr.State.eq_sym;
             eapply instr_point_list_semantics_nil_inv; eauto].
   - intros ss.
-    induction ss as [|s ss IHss']; intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
+    induction ss as [|s ss IHss'];
+      intros env tr mem1 mem2 Hna Hsafe Hordered Htrace Hsem.
     + inversion Htrace; subst.
       exists mem1.
       split;
@@ -1244,11 +1439,13 @@ Proof.
     + inversion Htrace as [|env' st sts tr1 tr2 Hst Hsts]; subst.
       simpl in Hsafe.
       destruct Hsafe as [Hsafe_s Hsafe_ss].
+      simpl in Hordered.
+      destruct Hordered as [Hordered_s Hordered_ss].
       eapply instr_point_list_semantics_app_inv in Hsem.
       destruct Hsem as [mem_mid [Hsem_head Hsem_tail]].
       pose proof
         (par_trace_refines_erased_stmt
-           s env tr1 mem1 mem_mid Hna Hsafe_s Hst Hsem_head)
+           s env tr1 mem1 mem_mid Hna Hsafe_s Hordered_s Hst Hsem_head)
         as [mem_mid' [Hs_sem Heq_mid]].
       assert (Hna_mid' : Instr.NonAlias mem_mid').
       {
@@ -1260,7 +1457,8 @@ Proof.
            Hsem_tail Heq_mid (Instr.State.eq_refl mem2))
         as Hsem_tail'.
       pose proof
-        (IHss' env tr2 mem_mid' mem2 Hna_mid' Hsafe_ss Hsts Hsem_tail')
+        (IHss'
+           env tr2 mem_mid' mem2 Hna_mid' Hsafe_ss Hordered_ss Hsts Hsem_tail')
         as [mem2' [Hss_sem Heq_tail]].
       exists mem2'.
       split.
@@ -1272,6 +1470,7 @@ Lemma par_trace_refines_erased :
   forall s env tr mem1 mem2,
     Instr.NonAlias mem1 ->
     trace_safe_stmt s ->
+    parallel_families_ordered_stmt s ->
     par_trace s env tr ->
     ILSema.instr_point_list_semantics tr mem1 mem2 ->
     exists mem2',
@@ -1285,29 +1484,33 @@ Lemma loop_semantics_refines_erased :
   forall s env mem1 mem2,
     Instr.NonAlias mem1 ->
     trace_safe_stmt s ->
+    parallel_families_ordered_stmt s ->
     loop_semantics s env mem1 mem2 ->
     exists mem2',
       BaseLoop.loop_semantics (erase_stmt s) env mem1 mem2' /\
       Instr.State.eq mem2 mem2'.
 Proof.
-  intros s env mem1 mem2 Hna Hsafe [tr [Htrace Hsem]].
+  intros s env mem1 mem2 Hna Hsafe Hordered [tr [Htrace Hsem]].
   eapply par_trace_refines_erased; eauto.
 Qed.
 
 Lemma semantics_refines_erased :
   forall p mem1 mem2,
     trace_safe p ->
+    parallel_families_ordered p ->
     semantics p mem1 mem2 ->
     exists mem2',
       BaseLoop.semantics (erase_parallel p) mem1 mem2' /\
       Instr.State.eq mem2 mem2'.
 Proof.
-  intros [[s ctxt] vars] mem1 mem2 Hsafe Hsem.
+  intros [[s ctxt] vars] mem1 mem2 Hsafe Hordered Hsem.
   inversion Hsem as [loop_ext loop ctxt' vars' env mem1' mem2' Heq Hcompat Hna Hinit Hloop];
     subst.
   inversion Heq; subst.
-  simpl in Hsafe.
-  destruct (loop_semantics_refines_erased loop env mem1 mem2 Hna Hsafe Hloop)
+  simpl in Hsafe, Hordered.
+  destruct
+    (loop_semantics_refines_erased
+       loop env mem1 mem2 Hna Hsafe Hordered Hloop)
     as [mem2'' [Hloop' Heq_loop]].
   exists mem2''.
   split.
