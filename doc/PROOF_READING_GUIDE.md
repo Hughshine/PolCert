@@ -90,8 +90,10 @@ The proof has four layers:
    statements for instructions, sequences, loops, and guards.
 3. The flattening and splitting lemmas relate a sorted list of polyhedral
    instances to the syntax-directed execution of each source construct.
-4. `extract_stmt_to_loop_semantics_core_sched` performs the structural proof;
-   `extractor_correct` packages it at the program level.
+4. `core_sched_stmt_stmts_constrs_prefix_mutual` performs the structural
+   induction. `extract_stmt_to_loop_semantics_core_sched_constrs` specializes
+   it to the top-level empty iterator prefix, and `extractor_correct` packages
+   it at the program level.
 
 The difficult part is sequencing. Polyhedral semantics flattens all statement
 instances and sorts them by timestamp, while loop semantics executes syntax
@@ -107,12 +109,14 @@ expr_to_aff_correct
 extract_stmt_*_success_inv
 extract_stmts_cons_semantics_split_by_nth
 core_sched_stmt_stmts_constrs_prefix_mutual
-extract_stmt_to_loop_semantics_core_sched
+extract_stmt_to_loop_semantics_core_sched_constrs
 extractor_correct
 ```
 
 Most list-index and prefix lemmas support one of the two partitioning steps.
-Read them on demand from the main structural proof.
+Read them on demand from the main structural proof. The later fuel-bounded and
+constructor-specific lemmas preserve older entry points; they are not a second
+proof obligation on the path to `extractor_correct`.
 
 ## 4. ISS: One Statement to a Domain Partition
 

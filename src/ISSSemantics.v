@@ -208,6 +208,32 @@ Proof.
   - rewrite Hdepth. exact Hdepth_ip.
 Qed.
 
+Local Lemma payload_eq_except_domain_transfer_belongs_to_child :
+  forall source piece ip,
+    Refine.payload_eq_except_domain source piece ->
+    Refine.point_in_pinstr_domain (PolyLang.ip_index ip) piece ->
+    PolyLang.belongs_to ip source ->
+    PolyLang.belongs_to ip piece.
+Proof.
+  intros source piece ip Hpayload Hdom Hbel.
+  unfold Refine.payload_eq_except_domain in Hpayload.
+  unfold PolyLang.belongs_to in *.
+  destruct Hpayload as
+      [Hdepth [Hinstr [Hsched [Hwitness [Htf [Hatf [Hwacc Hracc]]]]]]].
+  destruct Hbel as [_ [Htf_ip [Hts_ip [Hinstr_ip Hdepth_ip]]]].
+  repeat split.
+  - exact Hdom.
+  - unfold PolyLang.current_transformation_of,
+           PolyLang.current_env_dim_of,
+           PolyLang.current_transformation_at,
+           PolyLang.current_transformation_for_witness in *.
+    rewrite <- Hwitness, <- Htf.
+    exact Htf_ip.
+  - rewrite <- Hsched. exact Hts_ip.
+  - rewrite <- Hinstr. exact Hinstr_ip.
+  - rewrite <- Hdepth. exact Hdepth_ip.
+Qed.
+
 Lemma stmt_partition_refinement_payload_of_child :
   forall source pieces piece,
     Refine.stmt_partition_refinement source pieces ->
@@ -565,24 +591,7 @@ Proof.
   assert (Hbel_after : PolyLang.belongs_to ip_after piece).
   {
     apply (proj1 (belongs_to_set_ip_nth_iff n ip_before piece)).
-    unfold PolyLang.belongs_to in *.
-    unfold Refine.payload_eq_except_domain in Hpayload_piece.
-    destruct Hpayload_piece as
-        [Hdepth_eq [Hinstr_eq [Hsched_eq [Hwitness_eq
-          [Htf_eq [Hatf_eq [Hwacc_eq Hracc_eq]]]]]]].
-    destruct Hbel_before as [Hdom_before [Htf_before [Hts_before [Hinstr_before Hdepth_before]]]].
-    repeat split.
-    - exact Hpiece_dom.
-    - unfold PolyLang.current_transformation_of,
-             PolyLang.current_env_dim_of,
-             PolyLang.current_transformation_at,
-             PolyLang.current_transformation_for_witness in *.
-      rewrite <- Hwitness_eq.
-      rewrite <- Htf_eq.
-      exact Htf_before.
-    - rewrite <- Hsched_eq. exact Hts_before.
-    - rewrite <- Hinstr_eq. exact Hinstr_before.
-    - rewrite <- Hdepth_eq. exact Hdepth_before.
+    eapply payload_eq_except_domain_transfer_belongs_to_child; eauto.
   }
   assert (Hlen_after :
             length (PolyLang.ip_index ip_after) =
@@ -590,8 +599,10 @@ Proof.
   {
     unfold ip_after, set_ip_nth.
     simpl.
-    unfold Refine.payload_eq_except_domain in Hpayload_piece.
-    destruct Hpayload_piece as [Hdepth_eq _].
+    pose proof
+      (payload_eq_except_domain_implies_depth
+         source piece Hpayload_piece)
+      as Hdepth_eq.
     rewrite <- Hdepth_eq.
     exact Hlen_before.
   }

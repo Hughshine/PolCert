@@ -25,6 +25,17 @@ Open Scope impure_scope.
 Open Scope opt_scop.
 Local Open Scope string_scope.
 
+(** * Proof map
+
+    The definitions first build verified affine, ISS, tiling, and diamond
+    routes over polyhedral programs.  Their [*_from_poly_*_correct] lemmas
+    compose the corresponding validators with code generation.  The public
+    loop-to-loop theorems finally undo strengthening and invoke the extractor
+    theorem; [finish_strengthened_source_correct] names that common closure.
+
+    Rejection branches are fail-closed: a [mayReturn] premise for an alarm is
+    contradictory.  Only accepted branches carry semantic obligations. *)
+
 Definition reject_tiling (_: unit): imp LoopIR.t :=
   res_to_alarm LoopIR.dummy
     (Err "Tiling validation rejected or unavailable.").
@@ -700,6 +711,30 @@ Proof.
     eapply mayReturn_alarm in Hopt. contradiction.
 Qed.
 
+Local Lemma finish_strengthened_source_correct:
+  forall loop pol0 st st' st_str,
+    BaseOpt.Extractor.extractor loop = Okk pol0 ->
+    PolyLang.instance_list_semantics
+      (BaseOpt.Strengthen.strengthen_pprog pol0) st st_str ->
+    State.eq st' st_str ->
+    exists st_src,
+      LoopIR.semantics loop st st_src /\ State.eq st' st_src.
+Proof.
+  intros loop pol0 st st' st_str Hextract Hstrengthened Heq_strengthened.
+  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen
+    in Hstrengthened.
+  destruct
+    (BaseOpt.Extractor.extractor_correct
+       loop pol0 st st_str Hextract Hstrengthened)
+    as [st_src [Hsource Heq_source]].
+  exists st_src.
+  split.
+  - exact Hsource.
+  - eapply State.eq_trans.
+    + exact Heq_strengthened.
+    + exact Heq_source.
+Qed.
+
 Definition Opt_prepared_band := phase_pipeline_opt_prepared_band.
 Definition Opt_band := Opt_prepared_band.
 Definition Opt_prepared_band_with_iss := phase_pipeline_opt_prepared_with_iss_band.
@@ -734,16 +769,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_prepared_band_with_iss_correct:
@@ -770,16 +796,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_band_with_iss_correct:
@@ -817,16 +834,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hpol.
   destruct Hpol as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_identity_tiled_band_correct:
@@ -865,16 +873,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hpol.
   destruct Hpol as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_identity_tiled_band_with_iss_correct:
@@ -1169,16 +1168,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_diamond_band_correct:
@@ -1217,16 +1207,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof
-    (BaseOpt.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_diamond_band_with_iss_correct:

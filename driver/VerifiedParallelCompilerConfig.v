@@ -284,13 +284,7 @@ Lemma opt_parallel_current_identity_tiled_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
-  unfold ParallelCore.Opt_parallel_current_identity_tiled in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply ParallelCorrect.Opt_parallel_current_identity_tiled_result_correct; eauto.
+  exact ParallelCorrect.Opt_parallel_current_identity_tiled_correct.
 Qed.
 
 Lemma checked_sequential_current_annotated_codegen_correct :

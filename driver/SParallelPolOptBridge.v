@@ -9,6 +9,12 @@ Local Open Scope impure_scope.
 
 Module FunctorCore := SParallelPolOptShared.Core.
 
+(** [SParallelPolOpt] provides stable concrete definitions for extraction,
+    whereas [FunctorCore] is the instance for which generic correctness was
+    proved.  These [impeq] lemmas align their monadic control flow.  They are
+    implementation-correspondence proofs, not additional transformation
+    correctness arguments. *)
+
 Lemma entry_bind_assoc_compat {A B C : Type}
     (extract : imp A)
     (concrete_prepared functor_prepared : A -> imp B)

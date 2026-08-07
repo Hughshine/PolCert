@@ -1085,22 +1085,13 @@ Proof.
     {
       eapply NoDup_np_eq_unique_implies_NoDupA; eauto.
       intros ip1 ip2 Hin1 Hin2 Hnp.
-      destruct (Hmem_sorted ip1) as [Hmem1 _].
-      destruct (Hmem_sorted ip2) as [Hmem2 _].
-      apply Hmem1 in Hin1.
-      apply Hmem2 in Hin2.
-      destruct Hin1 as [source1 [Hsource1 [Hpref1 [Hbel1 Hlen1]]]].
-      destruct Hin2 as [source2 [Hsource2 [Hpref2 [Hbel2 Hlen2]]]].
-      unfold PolyLang.np_eq in Hnp.
-      destruct Hnp as [Hnth Hidx].
-      rewrite <- Hnth in Hsource2.
-      rewrite Hsource1 in Hsource2.
-      inversion Hsource2; subst source2.
-      eapply belongs_to_same_source_same_np_implies_eq; eauto.
-      rewrite Hlen1, Hlen2.
-      reflexivity.
-      unfold PolyLang.np_eq.
-      split; assumption.
+      eapply before_ipl_from_after_member_np_eq_implies_eq; eauto.
+      - eapply Permutation_in.
+        + eapply Permutation_sym. exact Hperm_before.
+        + exact Hin1.
+      - eapply Permutation_in.
+        + eapply Permutation_sym. exact Hperm_before.
+        + exact Hin2.
     }
     assert (Hsortedb :
               Sorted_b

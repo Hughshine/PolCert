@@ -4913,6 +4913,57 @@ Proof.
   split; eapply check_wf_polyprog_affine_correct; eauto.
 Qed.
 
+(** Lift a correctness theorem for a fixed parameter environment to complete
+    program semantics.  Equal domains provide the shared context and variable
+    declarations; [InitEnv] supplies the environment length required by the
+    polyhedral theorem. *)
+Local Lemma lift_poly_instance_correct :
+  forall pis1 env1 vars1 pis2 env2 vars2 st1 st2,
+    PolyLang.eqdom_pprog
+      (pis1, env1, vars1) (pis2, env2, vars2) ->
+    (forall envv,
+       length env1 = length envv ->
+       Instr.NonAlias st1 ->
+       PolyLang.poly_instance_list_semantics
+         envv (pis2, env2, vars2) st1 st2 ->
+       exists st2',
+         PolyLang.poly_instance_list_semantics
+           envv (pis1, env1, vars1) st1 st2' /\
+         State.eq st2 st2') ->
+    PolyLang.instance_list_semantics (pis2, env2, vars2) st1 st2 ->
+    exists st2',
+      PolyLang.instance_list_semantics (pis1, env1, vars1) st1 st2' /\
+      State.eq st2 st2'.
+Proof.
+  intros pis1 env1 vars1 pis2 env2 vars2 st1 st2
+         Heqdom Hpoly_correct Htarget.
+  inversion Htarget as
+    [pprog pis varctxt vars envv st1' st2'
+       Hpprog Hcompat Hnonalias Hinit Hpoly]; subst.
+  inversion Hpprog; subst pis varctxt vars.
+  destruct
+    (Heqdom pis1 pis2 env1 env2 vars1 vars2 eq_refl eq_refl)
+    as [Henv [Hvars [_ _]]].
+  assert (Henvlen : length env1 = length envv).
+  {
+    rewrite Henv.
+    eapply Instr.init_env_samelen.
+    exact Hinit.
+  }
+  destruct (Hpoly_correct envv Henvlen Hnonalias Hpoly)
+    as [st_source [Hsource Heq_source]].
+  exists st_source.
+  split.
+  - eapply PolyLang.PIPSemaIntro
+      with (pis:=pis1) (varctxt:=env1) (vars:=vars1) (envv:=envv).
+    + reflexivity.
+    + rewrite Hvars. exact Hcompat.
+    + exact Hnonalias.
+    + rewrite Henv. exact Hinit.
+    + exact Hsource.
+  - exact Heq_source.
+Qed.
+
 Theorem validate_correct: 
   forall pp1 pp2 st1 st2, 
     WHEN res <- validate pp1 pp2 THEN 
@@ -4921,37 +4972,21 @@ Theorem validate_correct:
     exists st2',
     PolyLang.instance_list_semantics pp1 st1 st2' /\ State.eq st2 st2'.
 Proof.
-  intros. intros res Hval Htrue Hsem.
-  inv Hsem.
-  rename pis into poly_instr2; rename varctxt into env2; rename vars into vars2.
-  destruct pp1 as ((poly_instr1, env1), vars1) eqn:Hpp1.
-
-  assert (PolIRs.Instr.NonAlias st1). {
-    subst; eauto.
-  }
-  assert (env1 = env2). {
-    eapply validate_implies_correspondence in Hval.
-    firstorder.
-    eapply H4 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
-  }
-
-  assert (vars1 = vars2) as VARS. {
-    eapply validate_implies_correspondence in Hval.
-    firstorder.
-    eapply H5 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
-  }
-
-  assert (PolIRs.Instr.InitEnv env1 envv st1). {
-    subst; eauto.
-  }
-
-  assert (length env1 = length envv) as Henvlen. {
-    eapply PolIRs.Instr.init_env_samelen; eauto.
-  }
-  eapply validate_correct' with (env1:=env1) (poly_instrs1:=poly_instr1) in H3; eauto.
-  destruct H3 as (st2' & Hsem' & EQ). exists st2'.
-  split; trivial. econs; eauto. subst; eauto.
-  Unshelve.
+  intros pp1 pp2 st1 st2 res Hval Htrue Htarget.
+  destruct pp1 as [[pis1 env1] vars1].
+  destruct pp2 as [[pis2 env2] vars2].
+  pose proof
+    (validate_implies_correspondence
+       (pis1, env1, vars1) (pis2, env2, vars2)
+       env1 env2 vars1 vars2 pis1 pis2
+       res Hval eq_refl eq_refl Htrue)
+    as Heqdom.
+  eapply lift_poly_instance_correct; [exact Heqdom| |exact Htarget].
+  intros envv Henvlen Hnonalias Hpoly.
+  eapply validate_correct'
+    with (env1:=env1) (env2:=env2)
+         (poly_instrs1:=pis1) (poly_instrs2:=pis2)
+         (vars1:=vars1) (vars2:=vars2); eauto.
 Qed.
 
 Theorem validate_tiling_correct:
@@ -4962,37 +4997,21 @@ Theorem validate_tiling_correct:
     exists st2',
       PolyLang.instance_list_semantics pp1 st1 st2' /\ State.eq st2 st2'.
 Proof.
-  intros. intros res Hval Htrue Hsem.
-  inv Hsem.
-  rename pis into poly_instr2; rename varctxt into env2; rename vars into vars2.
-  destruct pp1 as ((poly_instr1, env1), vars1) eqn:Hpp1.
-
-  assert (PolIRs.Instr.NonAlias st1). {
-    subst; eauto.
-  }
-  assert (env1 = env2). {
-    eapply validate_tiling_implies_correspondence in Hval.
-    firstorder.
-    eapply H4 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
-  }
-
-  assert (vars1 = vars2) as VARS. {
-    eapply validate_tiling_implies_correspondence in Hval.
-    firstorder.
-    eapply H5 with (varctxt1:=env1) (varctxt2:=env2) (vars3:=vars1) (vars4:=vars2); eauto.
-  }
-
-  assert (PolIRs.Instr.InitEnv env1 envv st1). {
-    subst; eauto.
-  }
-
-  assert (length env1 = length envv) as Henvlen. {
-    eapply PolIRs.Instr.init_env_samelen; eauto.
-  }
-  eapply validate_tiling_correct' with (env1:=env1) (poly_instrs1:=poly_instr1) in H3; eauto.
-  destruct H3 as (st2' & Hsem' & EQ). exists st2'.
-  split; trivial. econs; eauto. subst; eauto.
-  Unshelve.
+  intros pp1 pp2 st1 st2 res Hval Htrue Htarget.
+  destruct pp1 as [[pis1 env1] vars1].
+  destruct pp2 as [[pis2 env2] vars2].
+  pose proof
+    (validate_tiling_implies_correspondence
+       (pis1, env1, vars1) (pis2, env2, vars2)
+       env1 env2 vars1 vars2 pis1 pis2
+       res Hval eq_refl eq_refl Htrue)
+    as Heqdom.
+  eapply lift_poly_instance_correct; [exact Heqdom| |exact Htarget].
+  intros envv Henvlen Hnonalias Hpoly.
+  eapply validate_tiling_correct'
+    with (env1:=env1) (env2:=env2)
+         (poly_instrs1:=pis1) (poly_instrs2:=pis2)
+         (vars1:=vars1) (vars2:=vars2); eauto.
 Qed.
 
 (** The direct permutable-band checker reasons about integer iteration

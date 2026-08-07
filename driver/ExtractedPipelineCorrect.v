@@ -22,6 +22,15 @@ Module ParallelCodegenCore :=
   SVerifiedParallelCompilerConfig.ParallelCodegenCore.
 Module ParallelLoop := SVerifiedParallelCompilerConfig.ParallelLoop.
 
+(** * Proof map
+
+    Generic functor instances carry the semantic proofs, while the extracted
+    compiler uses hand-instantiated concrete modules with stable OCaml names.
+    The bridge lemmas rewrite concrete executions to their proved generic
+    counterparts.  The two [*_compile_verified_correct] theorems then perform
+    an explicit constructor-by-constructor coverage audit; the raw [compile]
+    theorems add only configuration checking. *)
+
 Theorem extracted_sequential_compile_verified_correct :
   forall cfg loop st st',
     WHEN loop' <- SVerifiedCompilerConfig.compile_verified cfg loop THEN

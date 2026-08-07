@@ -11,6 +11,13 @@ Local Open Scope impure_scope.
 
 Module BandGeneric := SBandTilingOptShared.BandGeneric.
 
+(** The executable [SBandTilingOpt] module is hand-instantiated so extraction
+    exposes stable concrete names.  Correctness is proved once for the generic
+    [BandGeneric] functor.  This file proves [impeq] correspondence between the
+    two implementations, branch by branch; it does not re-prove tiling
+    semantics.  The final [opt_*_impeq_generic] theorems are the only bridge
+    facts needed by the extracted pipeline proof. *)
+
 Lemma impeq_refl {A : Type} (x : imp A) : impeq x x.
 Proof.
   exact (@Equivalence_Reflexive _ _ (impeq_equiv A) x).

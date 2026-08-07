@@ -1,4 +1,5 @@
 Require Import ImpureAlarmConfig.
+Require Import Result.
 Require Import Vpl.Impure.
 
 Require Import ISSValidatorCorrect.
@@ -20,6 +21,14 @@ Module ISSValidatorCorrectCore := ISSValidatorCorrect PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module PolyLang := PolIRs.PolyLang.
 Module State := PolIRs.State.
+
+(** * Proof map
+
+    The [*_from_poly_correct] lemmas establish correctness after extraction.
+    Each public loop-to-loop theorem then performs the same closure: remove
+    domain strengthening, apply [Extractor.extractor_correct], and compose the
+    two [State.eq] results.  [finish_strengthened_source_correct] names that
+    common semantic step without hiding any route-specific argument. *)
 
 Lemma identity_opt_prepared_from_poly_correct:
   forall pol st st',
@@ -124,6 +133,30 @@ Proof.
     exists st'. split; auto. eapply State.eq_refl.
 Qed.
 
+Local Lemma finish_strengthened_source_correct:
+  forall loop pol0 st st' st_str,
+    Core.Extractor.extractor loop = Okk pol0 ->
+    PolyLang.instance_list_semantics
+      (Core.Strengthen.strengthen_pprog pol0) st st_str ->
+    State.eq st' st_str ->
+    exists st_src,
+      LoopIR.semantics loop st st_src /\ State.eq st' st_src.
+Proof.
+  intros loop pol0 st st' st_str Hextract Hstrengthened Heq_strengthened.
+  eapply Core.Strengthen.instance_list_semantics_unstrengthen
+    in Hstrengthened.
+  destruct
+    (Core.Extractor.extractor_correct
+       loop pol0 st st_str Hextract Hstrengthened)
+    as [st_src [Hsource Heq_source]].
+  exists st_src.
+  split.
+  - exact Hsource.
+  - eapply State.eq_trans.
+    + exact Heq_strengthened.
+    + exact Heq_source.
+Qed.
+
 Theorem Opt_prepared_correct:
   forall loop st st',
     WHEN loop' <- Core.Opt_prepared loop THEN
@@ -146,15 +179,7 @@ Proof.
     (phase_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Identity_opt_prepared_correct:
@@ -179,15 +204,7 @@ Proof.
     (identity_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Identity_tiling_generic_opt_prepared_correct:
@@ -213,15 +230,7 @@ Proof.
        pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Affine_opt_prepared_correct:
@@ -246,15 +255,7 @@ Proof.
     (Core.affine_opt_prepared_from_poly_correct pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_prepared_with_iss_correct:
@@ -279,15 +280,7 @@ Proof.
     (phase_opt_prepared_from_poly_with_iss_correct pol st st' Hwf_pol loop' Hopt Hloop)
     as Hphase_corr.
   destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply Core.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  pose proof (Core.Extractor.extractor_correct loop pol0 st st_str Hextok Hstr_sem)
-    as Hext_corr.
-  destruct Hext_corr as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans.
-  - exact Heq_str.
-  - exact Heq_src.
+  eapply finish_strengthened_source_correct; eauto.
 Qed.
 
 Theorem Opt_correct:

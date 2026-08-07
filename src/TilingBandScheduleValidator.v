@@ -31,6 +31,9 @@ Module TilingCheck := Base.TilingCheck.
 Module Tiling := Base.Tiling.
 Module TilingPolIRs := Base.TilingPolIRs.
 Module ParallelCore := ParallelValidator PolIRs.
+(** [BandAffine] supplies the integer guard and access-conflict kernel used by
+    the direct band checker.  No call to [validate] or [validate_tiling] is
+    part of the runtime direct-band route. *)
 Module BandAffine := Base.TilingVal.
 
 (** This file proves one implication in several increasingly general layout
@@ -8973,7 +8976,8 @@ Section CommonBandDirectChecker.
     condition.  Unlike the reduction-based checker below, this constructs the
     bad-pair region explicitly and does not synthesize a second schedule.  The
     direct runtime dispatcher invokes this checker for structurally recognized
-    tilings. *)
+    tilings.  Its call to [validate_two_instrs_under_guards_integer] reuses only
+    the certified no-conflict kernel, not the affine schedule validator. *)
 Definition make_pluto_band_component_guard_polys
     (pi1 pi2: Tiling.PL.PolyInstr_ext)
     (band: pinstr_tiling_band)
@@ -9321,6 +9325,13 @@ Definition check_pinstr_list_pluto_permutable_band_direct
     validate_instr_list_pluto_band_components_direct_from
       pis band (ptb_len band) O env_size -;
   pure (aligned && res && valid_access).
+
+(** * Compatibility reduction through the affine checker
+
+    The following [*_via_validate_tiling] declarations encode an older proof
+    route by synthesizing schedules for the affine validator.  They remain
+    available for compatibility and comparison.  The runtime dispatcher uses
+    the direct definitions above and the direct soundness chain below. *)
 
 Definition check_pinstr_list_permutable_tiling_band_via_validate_tiling
     (env_size: nat)
@@ -13421,6 +13432,11 @@ Proof.
   eapply checked_tiling_schedule_stripmined_validate_correct_same_ctxt_pluto_wf; eauto.
 Qed.
 
+(** * Direct checker soundness
+
+    This chain turns successful direct bad-pair checks into the semantic
+    componentwise permutable-band property used by the runtime route. *)
+
 Lemma validate_instr_and_list_pluto_band_component_direct_true_pair :
   forall pi pis band dim env_size,
     mayReturn
@@ -17515,6 +17531,7 @@ Lemma ordinary_semantic_band_shape_reversal_bridge :
     semantic_rows_reversal_bridge
       envv before_pis after_pis ws lifted_rows.
 Proof.
+  (* Stage 1: unpack the recognized layout and derive global witness facts. *)
   intros before_pis before_ctxt before_vars after_pis ws
          shape lifted_rows envv Hlen_env Hsource Hshape Hlift.
   unfold ordinary_semantic_band_shape_property_with_witness in Hshape.
@@ -17575,6 +17592,8 @@ Proof.
     eapply parse_ordinary_semantic_data_length.
     exact Hdata.
   }
+  (* Stage 2: choose an arbitrary reversed pair and recover its two source
+     statements, target statements, witnesses, and semantic schedule rows. *)
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
@@ -17851,6 +17870,8 @@ Proof.
     destruct Hstmt2 as [_ [Hdepth _]].
     exact Hdepth.
   }
+  (* Stage 3: split each target point into parameters, added tile coordinates,
+     and the represented source point, then evaluate both schedules. *)
   set
     (added1 :=
        Tiling.tiled_added_part
@@ -18437,6 +18458,8 @@ Proof.
     rewrite <- !app_assoc.
     exact Hmatch.
   }
+  (* Stage 4: a target reversal cannot coexist with componentwise monotone
+     tile and source-band values, so one semantic band component decreases. *)
   unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
   assert
     (Hnew_not_lt :
@@ -18458,6 +18481,8 @@ Proof.
        Hold_eq1 Hold_eq2 Hnew_eq1 Hnew_eq2
        Hsemantic_len Htiles_eq Htiles_mono Hold Hnew_not_lt)
     as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  (* Stage 5: return that component together with the two composed points and
+     connect its abstract values to the lifted executable checker rows. *)
   exists
     (Tiling.compose_tiling_pinstr_ext
        (List.length envv) before_pi1 after_pi1 w1),
@@ -19280,6 +19305,8 @@ Lemma second_level_semantic_band_shape_reversal_bridge :
     semantic_rows_reversal_bridge
       envv before_pis after_pis ws lifted_rows.
 Proof.
+  (* Stage 1: unpack the two-level layout and establish positive, globally
+     aligned root and child tile sizes. *)
   intros before_pis before_ctxt before_vars after_pis ws
          shape lifted_rows envv Hlen_env Hsource Hshape Hlift.
   unfold second_level_semantic_band_shape_property_with_witness in Hshape.
@@ -19370,6 +19397,8 @@ Proof.
     eapply parse_second_level_semantic_recipes_length.
     exact Hrecipes.
   }
+  (* Stage 2: recover both endpoints of an arbitrary target reversal and the
+     statement-local recipes used to interpret their added coordinates. *)
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
@@ -19668,6 +19697,8 @@ Proof.
     unfold Tiling.tiling_rel_pinstr_structure_source in Hstmt2.
     tauto.
   }
+  (* Stage 3: decompose each target point and evaluate root tiles, child tiles,
+     and the represented source band under the selected layout. *)
   set
     (added1 :=
        Tiling.tiled_added_part
@@ -20513,6 +20544,8 @@ Proof.
       repeat rewrite app_assoc in *;
       exact Hmatch.
   }
+  (* Stage 4: quotient monotonicity at both tile levels rules out a reversal
+     unless some checked source-band component decreases. *)
   unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
   assert
     (Hnew_not_lt :
@@ -20534,6 +20567,8 @@ Proof.
        Hold_eq1 Hold_eq2 Hnew_eq1 Hnew_eq2
        Hsemantic_len Htiles_eq Htiles_mono Hold Hnew_not_lt)
     as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  (* Stage 5: expose the decreasing component in the lifted rows consumed by
+     the direct component checker. *)
   exists
     (Tiling.compose_tiling_pinstr_ext
        (List.length envv) before_pi1 after_pi1 w1),
@@ -26408,6 +26443,7 @@ Lemma phase_semantic_ordinary_band_shape_reversal_bridge :
     semantic_rows_reversal_bridge
       envv before_pis after_pis ws (psobs_full_rows shape).
 Proof.
+  (* Stage 1: recover the phase-aware shape, loop mask, and global tile sizes. *)
   intros before_pis before_ctxt before_vars after_pis ws
          shape envv Hlen_env Hsource Hshape.
   unfold phase_semantic_ordinary_band_shape_property in Hshape.
@@ -26478,6 +26514,7 @@ Proof.
        (List.length before_ctxt) (psobs_loop_mask shape)
        before_pis ws (psobs_full_rows shape) Hfull)
     as [Hfull_rows_len _].
+  (* Stage 2: recover both endpoints and their statement-local phase layouts. *)
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
@@ -26782,6 +26819,8 @@ Proof.
     destruct Hstmt2 as [_ [Hdepth _]].
     exact Hdepth.
   }
+  (* Stage 3: split the tiled coordinates and render old and target timestamps
+     as phase prefix, tile values, and semantic band values. *)
   set
     (added1 :=
        Tiling.tiled_added_part
@@ -27194,6 +27233,8 @@ Proof.
     rewrite Htarget_eval2 in Hmatch.
     exact Hmatch.
   }
+  (* Stage 4: equal phase classes and monotone tile values force any target
+     reversal to decrease one checked semantic band component. *)
   unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
   assert
     (Hnew_not_lt :
@@ -27215,6 +27256,7 @@ Proof.
        (eq_trans Hband_len1 (eq_sym Hband_len2))
        Hmixed_eq Hmixed_mono Hold Hnew_not_lt)
     as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  (* Stage 5: relate the decreasing component back to the full lifted rows. *)
   assert
     (Hfull_eval1 :
        affine_product full_rows1 (Tiling.PL.ip_index_ext ip1) =
@@ -27322,6 +27364,7 @@ Lemma phase_semantic_second_level_band_shape_reversal_bridge :
     semantic_rows_reversal_bridge
       envv before_pis after_pis ws (pssbs_full_rows shape).
 Proof.
+  (* Stage 1: recover the phase mask and globally aligned root/child layouts. *)
   intros before_pis before_ctxt before_vars after_pis ws
          shape envv Hlen_env Hsource Hshape.
   unfold phase_semantic_second_level_band_shape_property in Hshape.
@@ -27427,6 +27470,8 @@ Proof.
        (List.length before_ctxt) (pssbs_loop_mask shape)
        before_pis ws (pssbs_full_rows shape) Hfull)
     as [Hfull_rows_len _].
+  (* Stage 2: recover the two reversal endpoints and their second-level
+     statement recipes. *)
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
@@ -27723,6 +27768,8 @@ Proof.
     destruct Hstmt2 as [_ [Hdepth _]].
     exact Hdepth.
   }
+  (* Stage 3: evaluate the phase prefix, child tiles, root tiles, and source
+     band for both endpoints in a common coordinate decomposition. *)
   set
     (added1 :=
        Tiling.tiled_added_part
@@ -28196,6 +28243,8 @@ Proof.
     repeat rewrite app_assoc.
     reflexivity.
   }
+  (* Stage 4: the phase-aware two-level tile prefix is monotone; therefore a
+     target reversal exposes a decreasing source-band component. *)
   unfold Tiling.PL.instr_point_ext_old_sched_lt in Hold.
   assert
     (Hnew_not_lt :
@@ -28219,6 +28268,8 @@ Proof.
        (eq_trans Hband_len1 (eq_sym Hband_len2))
        Htiles_eq Htiles_mono Hold Hnew_not_lt)
     as [dim [x [y [Hvalue1 [Hvalue2 Hdecrease]]]]].
+  (* Stage 5: transfer that component to the full lifted rows checked by the
+     executable direct validator. *)
   assert
     (Hfull_eval1 :
        affine_product full_rows1 (Tiling.PL.ip_index_ext ip1) =
