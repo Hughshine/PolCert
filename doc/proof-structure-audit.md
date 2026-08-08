@@ -252,6 +252,10 @@ The second CI pass is designed for remote behavior, not local timing:
   another;
 - shard enumeration rejects command failure, empty output, unexpected names,
   duplicates, and missing status files, preventing silent all-zero false passes.
+- the second-level source inspection now checks only the live direct checker
+  and dispatcher layers; assertions for the removed source-like/structural
+  compatibility classifiers and their embedded examples were deleted with
+  that dead API rather than left as a stale facade-dependent CI failure.
 
 These settings must be accepted only after a pushed GitHub Actions run.  Local
 container timings validate correctness and resource assumptions, not the final
