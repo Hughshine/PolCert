@@ -55,9 +55,6 @@ Definition current_coord_schedule_row
   (env_dim depth i : nat) : list Z * Z :=
   (resize (env_dim + depth) (V0 (env_dim + i) ++ [1%Z]), 0%Z).
 
-Definition current_coord_old_schedule
-  (env_dim depth d : nat) : list (list Z * Z) :=
-  [current_coord_schedule_row env_dim depth d].
 
 Definition current_coord_prefix_schedule
   (env_dim depth d : nat) : list (list Z * Z) :=
@@ -255,17 +252,6 @@ Definition parallel_cert_pointwise_sound
   (pp : PolyLang.t) (cert : parallel_cert) : Prop :=
   parallel_safe_dim_pointwise pp cert.(certified_dim).
 
-Lemma current_coord_schedule_row_cols :
-  forall env_dim depth i,
-    Datatypes.length (fst (current_coord_schedule_row env_dim depth i)) =
-    (env_dim + depth)%nat.
-Proof.
-  intros env_dim depth i.
-  unfold current_coord_schedule_row.
-  simpl.
-  rewrite resize_length.
-  reflexivity.
-Qed.
 
 
 
@@ -328,68 +314,10 @@ Proof.
   - destruct Hin as [Hin | Hin]; [left; exact Hin | right; eapply IH; eauto].
 Qed.
 
-Lemma exact_listzzs_cols_schedule_coord_old_schedule :
-  forall env_dim width d pi,
-    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
-    (d < width)%nat ->
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat
-      (schedule_coord_old_schedule env_dim width d pi).
-Proof.
-  intros env_dim width d pi Hlen Hd Hcols coeffs c row Hin Heq.
-  simpl in Hin.
-  destruct Hin as [Hin | []].
-  subst row.
-  eapply exact_listzzs_cols_padded_pi_schedule; eauto.
-  - apply nth_In.
-    rewrite padded_pi_schedule_length by exact Hlen.
-    exact Hd.
-Qed.
 
-Lemma exact_listzzs_cols_schedule_coord_prefix_schedule :
-  forall env_dim width d pi,
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat
-      (schedule_coord_prefix_schedule env_dim width d pi).
-Proof.
-  intros env_dim width d pi Hcols coeffs c row Hin Heq.
-  unfold schedule_coord_prefix_schedule in Hin.
-  eapply exact_listzzs_cols_padded_pi_schedule; eauto.
-  eapply in_firstn; eauto.
-Qed.
 
-Lemma eqdom_parallel_old_pi :
-  forall env_dim width d pi,
-    PolyLang.eqdom_pinstr pi (parallel_old_pi env_dim width d pi).
-Proof.
-  intros env_dim width d pi.
-  unfold PolyLang.eqdom_pinstr, parallel_old_pi.
-  repeat split; reflexivity.
-Qed.
 
-Lemma eqdom_parallel_new_pi :
-  forall env_dim width d pi,
-    PolyLang.eqdom_pinstr pi (parallel_new_pi env_dim width d pi).
-Proof.
-  intros env_dim width d pi.
-  unfold PolyLang.eqdom_pinstr, parallel_new_pi.
-  repeat split; reflexivity.
-Qed.
 
-Lemma eqdom_parallel_old_new_pi :
-  forall env_dim width d pi,
-    PolyLang.eqdom_pinstr
-      (parallel_old_pi env_dim width d pi)
-      (parallel_new_pi env_dim width d pi).
-Proof.
-  intros env_dim width d pi.
-  unfold PolyLang.eqdom_pinstr, parallel_old_pi, parallel_new_pi.
-  repeat split; reflexivity.
-Qed.
 
 
 
@@ -464,25 +392,6 @@ Proof.
   - rewrite IH. reflexivity.
 Qed.
 
-Lemma map_nth_seq_firstn :
-  forall d l,
-    (d <= Datatypes.length l)%nat ->
-    List.map (fun i => nth i l 0%Z) (seq 0 d) = firstn d l.
-Proof.
-  induction d as [|d IH]; intros l Hlen.
-  - reflexivity.
-  - destruct l as [|x l]; [inversion Hlen|].
-    simpl.
-    rewrite seq_shift_succ.
-    simpl.
-    f_equal.
-    rewrite List.map_map.
-    change
-      (List.map (fun i : nat => nth i l 0%Z) (seq 0 d) = firstn d l).
-    apply IH.
-    simpl in Hlen.
-    lia.
-Qed.
 
 
 Lemma affine_product_repeat_zero_affine_function :
@@ -667,57 +576,6 @@ Proof.
   - exact Hdepth.
 Qed.
 
-Lemma flatten_parallel_old_member_inv :
-  forall pis varctxt vars d envv ipl ip,
-    PolyLang.flatten_instrs envv
-      (pprog_pis (parallel_old_pprog (pis, varctxt, vars) d)) ipl ->
-    In ip ipl ->
-    exists pi,
-      nth_error pis ip.(PolyLang.ip_nth) = Some pi /\
-      PolyLang.belongs_to ip
-        (parallel_old_pi
-           (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi) /\
-      Datatypes.length ip.(PolyLang.ip_index) =
-        (Datatypes.length envv + pi.(PolyLang.pi_depth))%nat.
-Proof.
-  intros pis varctxt vars d envv ipl ip Hflat Hin.
-  unfold parallel_old_pprog, pprog_pis in Hflat.
-  simpl in Hflat.
-  destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin)
-    as [pi_old [Hnth_old [Hbel Hlen]]].
-  eapply nth_error_map_inv in Hnth_old.
-  destruct Hnth_old as [pi [Hnth Heq]].
-  subst pi_old.
-  exists pi.
-  split; [exact Hnth |].
-  split; [exact Hbel | exact Hlen].
-Qed.
-
-Lemma flatten_parallel_new_member_inv :
-  forall pis varctxt vars d envv ipl ip,
-    PolyLang.flatten_instrs envv
-      (pprog_pis (parallel_new_pprog (pis, varctxt, vars) d)) ipl ->
-    In ip ipl ->
-    exists pi,
-      nth_error pis ip.(PolyLang.ip_nth) = Some pi /\
-      PolyLang.belongs_to ip
-        (parallel_new_pi
-           (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi) /\
-      Datatypes.length ip.(PolyLang.ip_index) =
-        (Datatypes.length envv + pi.(PolyLang.pi_depth))%nat.
-Proof.
-  intros pis varctxt vars d envv ipl ip Hflat Hin.
-  unfold parallel_new_pprog, pprog_pis in Hflat.
-  simpl in Hflat.
-  destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin)
-    as [pi_new [Hnth_new [Hbel Hlen]]].
-  eapply nth_error_map_inv in Hnth_new.
-  destruct Hnth_new as [pi [Hnth Heq]].
-  subst pi_new.
-  exists pi.
-  split; [exact Hnth |].
-  split; [exact Hbel | exact Hlen].
-Qed.
 
 
 
@@ -725,23 +583,7 @@ Qed.
 
 
 
-Lemma env_dim_of_flat_member :
-  forall envv pis ipl ip pi,
-    PolyLang.flatten_instrs envv pis ipl ->
-    In ip ipl ->
-    nth_error pis ip.(PolyLang.ip_nth) = Some pi ->
-    env_dim_of ip = Datatypes.length envv.
-Proof.
-  intros envv pis ipl ip pi Hflat Hin Hnth.
-  destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin)
-    as [pi' [Hnth' [Hbel Hlen]]].
-  rewrite Hnth in Hnth'. inversion Hnth'. subst pi'.
-  unfold PolyLang.belongs_to in Hbel.
-  destruct Hbel as [_ [_ [_ [_ Hdepth]]]].
-  unfold env_dim_of.
-  rewrite Hlen, Hdepth.
-  lia.
-Qed.
+
 
 
 Lemma lex_compare_singleton_lt :
