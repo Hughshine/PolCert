@@ -326,52 +326,62 @@ Theorem singleton_elim_stmt_correct :
       Loop.loop_semantics (Loop.Seq (singleton_elim_stmt_list sts)) env mem1 mem2 <->
       Loop.loop_semantics (Loop.Seq sts) env mem1 mem2).
 Proof.
-  apply stmt_stmt_list_ind; intros; simpl.
-  - lazymatch goal with
-    | |- context[if expr_eqb ?ub (Loop.make_sum ?lb (Loop.Constant 1))
-                 then subst_stmt_at 0 ?lb (singleton_elim_stmt ?body)
-                 else Loop.Loop ?lb ?ub (singleton_elim_stmt ?body)] =>
-        destruct (expr_eqb ub (Loop.make_sum lb (Loop.Constant 1))) eqn:Hsingle
-    end.
+  apply stmt_stmt_list_ind.
+  - intros lb ub body IHbody env mem1 mem2. simpl.
+    destruct (expr_eqb ub (Loop.make_sum lb (Loop.Constant 1))) eqn:Hsingle.
     + split; intros Hsem.
       * apply subst_stmt_at_semantics in Hsem.
-        apply H in Hsem.
-        lazymatch goal with
-        | |- _ =>
-            eapply (proj2 (singleton_loop_semantics _ _ _ env mem1 mem2 Hsingle)); exact Hsem
-        end.
-      * lazymatch goal with
-        | |- _ =>
-            eapply (proj1 (singleton_loop_semantics _ _ _ env mem1 mem2 Hsingle)) in Hsem
-        end.
-        apply <- H in Hsem.
+        apply IHbody in Hsem.
+        eapply (proj2
+          (singleton_loop_semantics lb ub body env mem1 mem2 Hsingle)).
+        exact Hsem.
+      * eapply (proj1
+          (singleton_loop_semantics lb ub body env mem1 mem2 Hsingle)) in Hsem.
+        apply <- IHbody in Hsem.
         apply subst_stmt_at_semantics. exact Hsem.
     + split; intros Hsem.
-      * inversion_clear Hsem.
+      * inversion Hsem as
+          [| | | | |
+           env0 lb0 ub0 body0 mem10 mem20 Hiter]; subst; clear Hsem.
         apply Loop.LLoop.
-        eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+        eapply Instr.IterSem.iter_semantics_map; [|exact Hiter].
         intros x mem3 mem4 Hx Hbody.
-        apply H in Hbody. exact Hbody.
-      * inversion_clear Hsem.
+        apply IHbody in Hbody. exact Hbody.
+      * inversion Hsem as
+          [| | | | |
+           env0 lb0 ub0 body0 mem10 mem20 Hiter]; subst; clear Hsem.
         apply Loop.LLoop.
-        eapply Instr.IterSem.iter_semantics_map; [|exact H0].
+        eapply Instr.IterSem.iter_semantics_map; [|exact Hiter].
         intros x mem3 mem4 Hx Hbody.
-        apply <- H in Hbody. exact Hbody.
-  - split; intros Hsem; exact Hsem.
-  - split; intros Hsem.
-    + apply H. exact Hsem.
-    + apply <- H. exact Hsem.
-  - split; intros Hsem.
+        apply <- IHbody in Hbody. exact Hbody.
+  - intros i es env mem1 mem2. simpl.
+    split; intros Hsem; exact Hsem.
+  - intros ss IHss env mem1 mem2. simpl.
+    split; intros Hsem.
+    + apply IHss. exact Hsem.
+    + apply <- IHss. exact Hsem.
+  - intros test body IHbody env mem1 mem2. simpl.
+    split; intros Hsem.
     + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
-      * apply Loop.LGuardTrue; [apply H; exact Hbody|exact Heq].
+      * apply Loop.LGuardTrue; [apply IHbody; exact Hbody|exact Heq].
       * apply Loop.LGuardFalse. exact Heq.
     + inversion_clear Hsem as [| | | ? ? ? ? ? Hbody Heq | ? ? ? ? Heq |].
-      * apply Loop.LGuardTrue; [apply <- H; exact Hbody|exact Heq].
+      * apply Loop.LGuardTrue; [apply <- IHbody; exact Hbody|exact Heq].
       * apply Loop.LGuardFalse. exact Heq.
-  - split; intros Hsem; inversion_clear Hsem; constructor.
-  - split; intros Hsem; inversion_clear Hsem.
-    + apply H in H1. apply H0 in H2. econstructor; eauto.
-    + apply <- H in H1. apply <- H0 in H2. econstructor; eauto.
+  - intros env mem1 mem2. simpl.
+    split; intros Hsem; inversion_clear Hsem; constructor.
+  - intros s IHs ss IHss env mem1 mem2. simpl.
+    split; intros Hsem.
+    + inversion Hsem as
+        [| |env0 s0 ss0 mem10 mem20 mem30 Hhead Htail| | |];
+        subst; clear Hsem.
+      apply IHs in Hhead. apply IHss in Htail.
+      econstructor; eauto.
+    + inversion Hsem as
+        [| |env0 s0 ss0 mem10 mem20 mem30 Hhead Htail| | |];
+        subst; clear Hsem.
+      apply <- IHs in Hhead. apply <- IHss in Htail.
+      econstructor; eauto.
 Qed.
 
 Lemma singleton_elim_stmt_semantics :
