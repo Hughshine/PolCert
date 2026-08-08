@@ -3,8 +3,9 @@
 This guide is for a reader who knows Rocq and compiler correctness but has not
 recently worked on PolCert. It explains what each proof layer establishes, how
 the layers compose, and which declarations carry the main argument. It follows
-the proof state tagged `state-eq-polyhedral-verification-complete-2026-07-24-v8`
-at commit `0661fe0aa121deaa6ca714f258b96906a1dc0ca8`.
+the checked pipeline after the parallel-certificate repair and the subsequent
+proof-readability pass; older declaration-level baselines remain identified in
+the linked audit reports.
 
 The cleanup branch preserves the exported declarations of the proof modules.
 Comments, sections, and proof-only tactics may change, but callers see the same
@@ -391,10 +392,13 @@ remain in sequential order, so this theorem does not model SIMD lanes or a
 vector backend execution model.
 
 `ParallelPolOptCorrect.v` composes preprocessing routes with these annotation
-and codegen theorems. The local `finish_checked_*` tactics only remove repeated
-proof scripts. Their semantic content is: prove the prepared program is well
-formed, obtain correctness of annotation/codegen, obtain correctness of the
-preparation route, and compose `State.eq`.
+and codegen theorems. The typed local lemmas
+`checked_annotation_after_preparation_correct` and
+`extracted_result_from_prepared_correct` expose the two repeated compositions:
+first relate annotation/codegen to the prepared program and the prepared
+program to its input; then undo strengthening and extraction at the frontend.
+The route-specific public theorems only supply the component theorem and
+compose the two explicitly named `State.eq` facts.
 
 The semantic content of the driver layer is now explicit certificate transport:
 validator success yields pointwise certificate soundness and an in-range

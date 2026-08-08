@@ -31,7 +31,7 @@ Local Open Scope string_scope.
     routes over polyhedral programs.  Their [*_from_poly_*_correct] lemmas
     compose the corresponding validators with code generation.  The public
     loop-to-loop theorems finally undo strengthening and invoke the extractor
-    theorem; [finish_strengthened_source_correct] names that common closure.
+    theorem; [lift_frontend_correct] packages that common typed closure.
 
     Rejection branches are fail-closed: a [mayReturn] premise for an alarm is
     contradictory.  Only accepted branches carry semantic obligations. *)
@@ -63,6 +63,27 @@ Definition reject_post_tiling_affine
       res_to_alarm LoopIR.dummy
         (Err "Post-tiling affine validation failed.")
   end.
+
+Local Lemma reject_tiling_impossible:
+  forall (loop': LoopIR.t),
+    mayReturn (reject_tiling tt) loop' -> False.
+Proof.
+  intros loop' Hret.
+  unfold reject_tiling, res_to_alarm in Hret.
+  eapply mayReturn_alarm in Hret.
+  exact Hret.
+Qed.
+
+Local Lemma reject_post_tiling_affine_impossible:
+  forall route (loop': LoopIR.t),
+    mayReturn (reject_post_tiling_affine route tt) loop' -> False.
+Proof.
+  intros route loop' Hret.
+  destruct route;
+    unfold reject_post_tiling_affine, res_to_alarm in Hret;
+    eapply mayReturn_alarm in Hret;
+    exact Hret.
+Qed.
 
 Definition try_verified_tiling_after_phase_mid_band
     (pol_mid: PolyLang.t)
@@ -440,15 +461,11 @@ Proof.
              (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
                 pol_mid pol_after ws st st'
                 TilingSched.DirectBandAccepted); eauto.
-        -- unfold reject_tiling, res_to_alarm in Hopt.
-           eapply mayReturn_alarm in Hopt. contradiction.
+        -- elim (reject_tiling_impossible loop' Hopt).
       * simpl in Hopt.
-        unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+        elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_phase_pipeline_from_source_pol_band_correct:
@@ -485,12 +502,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+      * elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_identity_phase_pipeline_from_source_pol_band_correct:
@@ -528,12 +542,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+      * elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_checked_iss_phase_pipeline_from_poly_band_correct:
@@ -595,10 +606,8 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_phase_pipeline_from_source_pol_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_with_iss_band_correct:
@@ -615,10 +624,8 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_phase_pipeline_from_poly_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma identity_tiling_opt_prepared_from_poly_band_correct:
@@ -635,10 +642,8 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_identity_phase_pipeline_from_source_pol_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct:
@@ -683,8 +688,7 @@ Proof.
               exists st_src.
               split; auto.
               eapply State.eq_trans; eauto.
-           ++ unfold reject_tiling, res_to_alarm in Hopt.
-              eapply mayReturn_alarm in Hopt. contradiction.
+           ++ elim (reject_tiling_impossible loop' Hopt).
         -- eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
       * eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
     + eapply identity_tiling_opt_prepared_from_poly_band_correct; eauto.
@@ -705,22 +709,40 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_identity_tiling_phase_pipeline_from_poly_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Local Lemma finish_strengthened_source_correct:
-  forall loop pol0 st st' st_str,
-    BaseOpt.Extractor.extractor loop = Okk pol0 ->
-    PolyLang.instance_list_semantics
-      (BaseOpt.Strengthen.strengthen_pprog pol0) st st_str ->
-    State.eq st' st_str ->
+Local Lemma lift_frontend_correct:
+  forall (from_poly: PolyLang.t -> imp LoopIR.t) loop st st',
+    (forall pol st0 st1,
+      PolyLang.wf_pprog_affine pol ->
+      WHEN loop' <- from_poly pol THEN
+      LoopIR.semantics loop' st0 st1 ->
+      exists st2,
+        PolyLang.instance_list_semantics pol st0 st2 /\
+        State.eq st1 st2) ->
+    WHEN loop' <-
+      (BIND pol0 <-
+         res_to_alarm PolyLang.dummy (BaseOpt.Extractor.extractor loop) -;
+       from_poly (BaseOpt.Strengthen.strengthen_pprog pol0)) THEN
+    LoopIR.semantics loop' st st' ->
     exists st_src,
       LoopIR.semantics loop st st_src /\ State.eq st' st_src.
 Proof.
-  intros loop pol0 st st' st_str Hextract Hstrengthened Heq_strengthened.
+  intros from_poly loop st st' Hfrom_poly loop' Hopt Hloop.
+  bind_imp_destruct Hopt pol0 Hextract_imp.
+  pose proof Hextract_imp as Hextract.
+  apply res_to_alarm_correct in Hextract.
+  pose proof
+    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
+       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextract))
+    as Hwf.
+  destruct
+    (Hfrom_poly
+       (BaseOpt.Strengthen.strengthen_pprog pol0)
+       st st' Hwf loop' Hopt Hloop)
+    as [st_str [Hstrengthened Heq_strengthened]].
   eapply BaseOpt.Strengthen.instance_list_semantics_unstrengthen
     in Hstrengthened.
   destruct
@@ -756,20 +778,11 @@ Theorem Opt_prepared_band_correct:
 Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_band, phase_pipeline_opt_prepared_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_no_iss_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       phase_pipeline_opt_prepared_from_poly_no_iss_band loop st st'
+       phase_pipeline_opt_prepared_from_poly_no_iss_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_prepared_band_with_iss_correct:
@@ -783,20 +796,11 @@ Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_band_with_iss,
     phase_pipeline_opt_prepared_with_iss_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (phase_pipeline_opt_prepared_from_poly_with_iss_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       phase_pipeline_opt_prepared_from_poly_with_iss_band loop st st'
+       phase_pipeline_opt_prepared_from_poly_with_iss_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_band_with_iss_correct:
@@ -821,20 +825,11 @@ Theorem Opt_prepared_identity_tiled_band_correct:
 Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_identity_tiled_band, identity_tiling_opt_prepared_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hpol.
-  destruct Hpol as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       identity_tiling_opt_prepared_from_poly_band loop st st'
+       identity_tiling_opt_prepared_from_poly_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_identity_tiled_band_correct:
@@ -860,20 +855,11 @@ Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_identity_tiled_band_with_iss,
     identity_tiling_opt_prepared_with_iss_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (identity_tiling_opt_prepared_from_poly_with_iss_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hpol.
-  destruct Hpol as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       identity_tiling_opt_prepared_from_poly_with_iss_band loop st st'
+       identity_tiling_opt_prepared_from_poly_with_iss_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_identity_tiled_band_with_iss_correct:
@@ -886,6 +872,52 @@ Theorem Opt_identity_tiled_band_with_iss_correct:
 Proof.
   intros.
   eapply Opt_prepared_identity_tiled_band_with_iss_correct; eauto.
+Qed.
+
+Local Lemma diamond_accepted_tail_correct:
+  forall pol_mid pol_posttile pol_after ws st st' loop',
+    PolyLang.wf_pprog_affine pol_mid ->
+    PolyLang.wf_pprog_general pol_posttile ->
+    PolyLang.wf_pprog_general pol_after ->
+    mayReturn
+      (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+         pol_mid pol_posttile ws)
+      TilingSched.DirectBandAccepted ->
+    mayReturn
+      (ValidatorCore.validate_general pol_posttile pol_after)
+      true ->
+    mayReturn
+      (prepared_codegen_after_tiling_route
+         pol_after TilingSched.DirectBandAccepted)
+      loop' ->
+    LoopIR.semantics loop' st st' ->
+    exists st_mid,
+      PolyLang.instance_list_semantics pol_mid st st_mid /\
+      State.eq st' st_mid.
+Proof.
+  intros pol_mid pol_posttile pol_after ws st st' loop'
+         Hwf_mid Hwf_posttile Hwf_after Hroute Hfinal Hcodegen Hloop.
+  pose proof
+    (PrepareCore.prepared_codegen_correct_general
+       pol_after st st' loop' Hcodegen Hwf_after Hloop)
+    as Hsem_after.
+  destruct
+    (ValidatorCore.validate_general_correct
+       pol_posttile pol_after st st'
+       true Hfinal eq_refl Hsem_after)
+    as [st_post [Hpost_sem Heq_post]].
+  destruct
+    (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
+       pol_mid pol_posttile ws st st_post
+       TilingSched.DirectBandAccepted
+       Hwf_mid Hwf_posttile Hroute eq_refl Hpost_sem)
+    as [st_mid [Hmid_sem Heq_mid]].
+  exists st_mid.
+  split.
+  - exact Hmid_sem.
+  - eapply State.eq_trans.
+    + exact Heq_post.
+    + exact Heq_mid.
 Qed.
 
 Lemma try_verified_diamond_after_phase_mid_band_correct:
@@ -927,42 +959,25 @@ Proof.
                        (ValidatorCore.check_wf_polyprog_general_correct
                           pol_after true Hwf_check eq_refl)
                        as Hwf_after.
-                     pose proof
-                       (PrepareCore.prepared_codegen_correct_general
-                          pol_after st st' loop' Hopt Hwf_after Hloop)
-                       as Hsem_after.
-                     pose proof
-                       (ValidatorCore.validate_general_correct
-                          pol_posttile pol_after st st'
-                          true Hfinal eq_refl Hsem_after)
-                       as Hfinal_corr.
-                     destruct Hfinal_corr as [st_post [Hpost_sem Heq_post]].
-                     destruct
-                       (TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route_correct
-                          pol_mid pol_posttile ws st st_post
-                          TilingSched.DirectBandAccepted
-                          Hwf_mid Hwf_posttile Hroute eq_refl Hpost_sem)
-                       as [st_mid [Hmid_sem Heq_mid]].
-                     exists st_mid. split; auto.
-                     eapply State.eq_trans; eauto.
-                 --- unfold reject_post_tiling_affine, res_to_alarm in Hopt.
-                     eapply mayReturn_alarm in Hopt.
-                     contradiction.
-              ** unfold reject_post_tiling_affine, res_to_alarm in Hopt.
-                 eapply mayReturn_alarm in Hopt.
-                 contradiction.
-           ++ unfold reject_post_tiling_affine, res_to_alarm in Hopt.
-              eapply mayReturn_alarm in Hopt.
-              contradiction.
-        -- unfold reject_tiling, res_to_alarm in Hopt.
-           eapply mayReturn_alarm in Hopt. contradiction.
+                     exact
+                       (diamond_accepted_tail_correct
+                          pol_mid pol_posttile pol_after ws st st' loop'
+                          Hwf_mid Hwf_posttile Hwf_after
+                          Hroute Hfinal Hopt Hloop).
+                 --- elim
+                       (reject_post_tiling_affine_impossible
+                          TilingSched.DirectBandAccepted loop' Hopt).
+              ** elim
+                   (reject_post_tiling_affine_impossible
+                      TilingSched.DirectBandAccepted loop' Hopt).
+           ++ elim
+                (reject_post_tiling_affine_impossible
+                   TilingSched.DirectBandAccepted loop' Hopt).
+        -- elim (reject_tiling_impossible loop' Hopt).
       * simpl in Hopt.
-        unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+        elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_correct:
@@ -1002,12 +1017,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+      * elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_correct:
@@ -1047,12 +1059,9 @@ Proof.
         exists st_src.
         split; auto.
         eapply State.eq_trans; eauto.
-      * unfold reject_tiling, res_to_alarm in Hopt.
-        eapply mayReturn_alarm in Hopt. contradiction.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+      * elim (reject_tiling_impossible loop' Hopt).
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_correct:
@@ -1113,10 +1122,8 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_correct:
@@ -1133,10 +1140,8 @@ Proof.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
     + eapply try_checked_iss_diamond_phase_pipeline_from_poly_band_correct; eauto.
-    + unfold reject_tiling, res_to_alarm in Hopt.
-      eapply mayReturn_alarm in Hopt. contradiction.
-  - unfold reject_tiling, res_to_alarm in Hopt.
-    eapply mayReturn_alarm in Hopt. contradiction.
+    + elim (reject_tiling_impossible loop' Hopt).
+  - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
 Definition Opt_prepared_diamond_band := phase_diamond_opt_prepared_band.
@@ -1155,20 +1160,11 @@ Theorem Opt_prepared_diamond_band_correct:
 Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_diamond_band, phase_diamond_opt_prepared_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (phase_diamond_opt_prepared_from_poly_no_iss_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       phase_diamond_opt_prepared_from_poly_no_iss_band loop st st'
+       phase_diamond_opt_prepared_from_poly_no_iss_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_diamond_band_correct:
@@ -1194,20 +1190,11 @@ Proof.
   intros loop st st' loop' Hopt Hloop.
   unfold Opt_prepared_diamond_band_with_iss,
     phase_diamond_opt_prepared_with_iss_band in Hopt.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := BaseOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (BaseOpt.Strengthen.strengthen_pprog_wf_affine pol0
-       (BaseOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  pose proof
-    (phase_diamond_opt_prepared_from_poly_with_iss_band_correct
-       pol st st' Hwf_pol loop' Hopt Hloop)
-    as Hphase_corr.
-  destruct Hphase_corr as [st_str [Hstr_sem Heq_str]].
-  eapply finish_strengthened_source_correct; eauto.
+  exact
+    (lift_frontend_correct
+       phase_diamond_opt_prepared_from_poly_with_iss_band loop st st'
+       phase_diamond_opt_prepared_from_poly_with_iss_band_correct
+       loop' Hopt Hloop).
 Qed.
 
 Theorem Opt_diamond_band_with_iss_correct:

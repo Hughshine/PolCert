@@ -1073,121 +1073,108 @@ Qed.
 
 (** Every prepared parallel or vector route has the same semantic shape.
     First, a checked polyhedral transformation produces [pol_after].  Second,
-    an annotation checker and code generator produces [pl].  The first proof
-    relates [pol_after] back to [pol]; the second relates [pl] back to
-    [pol_after].  Transitivity of [State.eq] is the only composition step.
-
-    This is a local proof macro, rather than a lemma, so the refactoring does
-    not add a constant to the public module signature. *)
-Local Ltac finish_checked_annotation_after_preparation
-    prepare_wf prepare_correct annotate_correct :=
-  lazymatch goal with
-  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
-      Hopt : mayReturn _ (Okk ?pl),
-      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
-      let pol_after := fresh "pol_after" in
-      let Hprepare := fresh "Hprepare" in
-      let Hwf_after := fresh "Hwf_after" in
-      let Hannotation := fresh "Hannotation" in
-      let st_after := fresh "st_after" in
-      let Hsem_after := fresh "Hsem_after" in
-      let Heq_after := fresh "Heq_after" in
-      let Hpreparation := fresh "Hpreparation" in
-      let st_src := fresh "st_src" in
-      let Hsem_src := fresh "Hsem_src" in
-      let Heq_src := fresh "Heq_src" in
-      bind_imp_destruct Hopt pol_after Hprepare;
-      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
-        (eapply prepare_wf; eauto);
-      assert (Hannotation : exists st_after,
-          PolyLang.instance_list_semantics pol_after st st_after /\
-          State.eq st' st_after) by
-        (eapply annotate_correct; eauto);
-      destruct Hannotation as [st_after [Hsem_after Heq_after]];
-      assert (Hpreparation : exists st_src,
+    annotation and code generation relate the target execution to
+    [pol_after].  This typed local lemma exposes the two semantic premises and
+    the single [State.eq] composition instead of recovering them from the goal
+    shape with Ltac. *)
+Local Lemma checked_annotation_after_preparation_correct
+    {A : Type}
+    {prepare : PolyLang.t -> imp PolyLang.t}
+    {annotate : PolyLang.t -> A ->
+      imp (result Core.ParallelCodegenCore.ParallelLoop.t)}
+    (prepare_wf :
+      forall pol pol_after,
+        PolyLang.wf_pprog_affine pol ->
+        mayReturn (prepare pol) pol_after ->
+        PolyLang.wf_pprog_general pol_after)
+    (prepare_correct :
+      forall pol pol_after st st',
+        PolyLang.wf_pprog_affine pol ->
+        mayReturn (prepare pol) pol_after ->
+        PolyLang.instance_list_semantics pol_after st st' ->
+        exists st_src,
           PolyLang.instance_list_semantics pol st st_src /\
-          State.eq st_after st_src) by
-        (eapply prepare_correct; eauto);
-      destruct Hpreparation as [st_src [Hsem_src Heq_src]];
-      exists st_src;
-      split; [exact Hsem_src|];
-      eapply State.eq_trans; eauto
-  end.
+          State.eq st' st_src)
+    (annotate_correct :
+      forall pol_after arg pl st st',
+        mayReturn (annotate pol_after arg) (Okk pl) ->
+        PolyLang.wf_pprog_general pol_after ->
+        ParallelLoop.semantics pl st st' ->
+        exists st_src,
+          PolyLang.instance_list_semantics pol_after st st_src /\
+          State.eq st' st_src) :
+  forall pol arg pl st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn
+      (BIND pol_after <- prepare pol -; annotate pol_after arg)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st_src,
+      PolyLang.instance_list_semantics pol st st_src /\
+      State.eq st' st_src.
+Proof.
+  intros pol arg pl st st' Hwf Hopt Hsem.
+  bind_imp_destruct Hopt pol_after Hprepare.
+  pose proof (prepare_wf pol pol_after Hwf Hprepare) as Hwf_after.
+  destruct
+    (annotate_correct pol_after arg pl st st' Hopt Hwf_after Hsem)
+    as [st_after [Hsem_after Heq_after]].
+  destruct
+    (prepare_correct pol pol_after st st_after Hwf Hprepare Hsem_after)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply State.eq_trans; [exact Heq_after|exact Heq_src].
+Qed.
 
-Local Ltac finish_checked_affine_annotation annotate_correct :=
-  lazymatch goal with
-  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
-      Hopt : mayReturn _ (Okk ?pl),
-      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
-      let pol_after := fresh "pol_after" in
-      let Hschedule := fresh "Hschedule" in
-      let Hwf_after_affine := fresh "Hwf_after_affine" in
-      let Hwf_after := fresh "Hwf_after" in
-      let Hannotation := fresh "Hannotation" in
-      let st_after := fresh "st_after" in
-      let Hsem_after := fresh "Hsem_after" in
-      let Heq_after := fresh "Heq_after" in
-      let st_src := fresh "st_src" in
-      let Hsem_src := fresh "Hsem_src" in
-      let Heq_src := fresh "Heq_src" in
-      bind_imp_destruct Hopt pol_after Hschedule;
-      pose proof
-        (CoreOpt.scheduler'_preserve_wf
-           pol pol_after Hwf pol_after Hschedule eq_refl)
-        as Hwf_after_affine;
-      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
-        (eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto);
-      assert (Hannotation : exists st_after,
-          PolyLang.instance_list_semantics pol_after st st_after /\
-          State.eq st' st_after) by
-        (eapply annotate_correct; eauto);
-      destruct Hannotation as [st_after [Hsem_after Heq_after]];
-      destruct
-        (CoreOpt.scheduler'_correct
-           pol st st_after pol_after Hschedule Hsem_after)
-        as [st_src [Hsem_src Heq_src]];
-      exists st_src;
-      split; [exact Hsem_src|];
-      eapply State.eq_trans; eauto
-  end.
+Local Lemma checked_affine_schedule_wf_general :
+  forall pol pol_after,
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (CoreOpt.checked_affine_schedule pol) pol_after ->
+    PolyLang.wf_pprog_general pol_after.
+Proof.
+  intros pol pol_after Hwf Hschedule.
+  pose proof
+    (CoreOpt.scheduler'_preserve_wf
+       pol pol_after Hwf pol_after Hschedule eq_refl)
+    as Hwf_after.
+  eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto.
+Qed.
 
-Local Ltac finish_checked_iss_annotation
-    prepare_wf_affine prepare_correct annotate_correct :=
-  lazymatch goal with
-  | [ Hwf : PolyLang.wf_pprog_affine ?pol,
-      Hopt : mayReturn _ (Okk ?pl),
-      Hsem : ParallelLoop.semantics ?pl ?st ?st' |- _ ] =>
-      let pol_after := fresh "pol_after" in
-      let Hprepare := fresh "Hprepare" in
-      let Hwf_after_affine := fresh "Hwf_after_affine" in
-      let Hwf_after := fresh "Hwf_after" in
-      let Hannotation := fresh "Hannotation" in
-      let st_after := fresh "st_after" in
-      let Hsem_after := fresh "Hsem_after" in
-      let Heq_after := fresh "Heq_after" in
-      let Hpreparation := fresh "Hpreparation" in
-      let st_src := fresh "st_src" in
-      let Hsem_src := fresh "Hsem_src" in
-      let Heq_src := fresh "Heq_src" in
-      bind_imp_destruct Hopt pol_after Hprepare;
-      assert (Hwf_after_affine : PolyLang.wf_pprog_affine pol_after) by
-        (eapply prepare_wf_affine; eauto);
-      assert (Hwf_after : PolyLang.wf_pprog_general pol_after) by
-        (eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general; eauto);
-      assert (Hannotation : exists st_after,
-          PolyLang.instance_list_semantics pol_after st st_after /\
-          State.eq st' st_after) by
-        (eapply annotate_correct; eauto);
-      destruct Hannotation as [st_after [Hsem_after Heq_after]];
-      assert (Hpreparation : exists st_src,
-          PolyLang.instance_list_semantics pol st st_src /\
-          State.eq st_after st_src) by
-        (eapply prepare_correct; eauto);
-      destruct Hpreparation as [st_src [Hsem_src Heq_src]];
-      exists st_src;
-      split; [exact Hsem_src|];
-      eapply State.eq_trans; eauto
-  end.
+Local Lemma checked_affine_schedule_correct :
+  forall pol pol_after st st',
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (CoreOpt.checked_affine_schedule pol) pol_after ->
+    PolyLang.instance_list_semantics pol_after st st' ->
+    exists st_src,
+      PolyLang.instance_list_semantics pol st st_src /\
+      State.eq st' st_src.
+Proof.
+  intros pol pol_after st st' _ Hschedule Hsem.
+  eapply CoreOpt.scheduler'_correct; eauto.
+Qed.
+
+Local Lemma iss_only_prepared_from_poly_wf_general :
+  forall pol pol_after,
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.iss_only_prepared_from_poly pol) pol_after ->
+    PolyLang.wf_pprog_general pol_after.
+Proof.
+  intros pol pol_after Hwf Hprepare.
+  eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general.
+  eapply iss_only_prepared_from_poly_wf_affine; eauto.
+Qed.
+
+Local Lemma iss_affine_prepared_from_poly_wf_general :
+  forall pol pol_after,
+    PolyLang.wf_pprog_affine pol ->
+    mayReturn (Core.iss_affine_prepared_from_poly pol) pol_after ->
+    PolyLang.wf_pprog_general pol_after.
+Proof.
+  intros pol pol_after Hwf Hprepare.
+  eapply PolyLang.wf_pprog_affine_implies_wf_pprog_general.
+  eapply iss_affine_prepared_from_poly_wf_affine; eauto.
+Qed.
 
 (** * Prepared parallel routes *)
 
@@ -1215,8 +1202,10 @@ Lemma parallel_current_affine_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_affine_prepared_from_poly in Hopt.
-  finish_checked_affine_annotation
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            checked_affine_schedule_wf_general
+            checked_affine_schedule_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_prepared_from_poly_correct :
@@ -1229,10 +1218,10 @@ Lemma parallel_current_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_identity_tiled_prepared_from_poly_correct :
@@ -1245,10 +1234,10 @@ Lemma parallel_current_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_tiled_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -1263,10 +1252,10 @@ Lemma parallel_current_identity_tiled_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_diamond_prepared_from_poly_correct :
@@ -1279,10 +1268,10 @@ Lemma parallel_current_diamond_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_diamond_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_diamond_prepared_from_poly_with_iss_correct :
@@ -1297,10 +1286,10 @@ Lemma parallel_current_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_diamond_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_identity_prepared_from_poly_with_iss_correct :
@@ -1313,10 +1302,10 @@ Lemma parallel_current_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_identity_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_only_prepared_from_poly_wf_affine
-    iss_only_prepared_from_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_only_prepared_from_poly_wf_general
+            iss_only_prepared_from_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_affine_prepared_from_poly_with_iss_correct :
@@ -1329,10 +1318,10 @@ Lemma parallel_current_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_affine_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_affine_prepared_from_poly_wf_affine
-    iss_affine_prepared_from_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_affine_prepared_from_poly_wf_general
+            iss_affine_prepared_from_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_prepared_from_poly_with_iss_correct :
@@ -1345,10 +1334,10 @@ Lemma parallel_current_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_identity_prepared_from_poly_correct :
@@ -1375,8 +1364,10 @@ Lemma parallel_current_many_affine_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_affine_prepared_from_poly in Hopt.
-  finish_checked_affine_annotation
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            checked_affine_schedule_wf_general
+            checked_affine_schedule_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_prepared_from_poly_correct :
@@ -1389,10 +1380,10 @@ Lemma parallel_current_many_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_identity_tiled_prepared_from_poly_correct :
@@ -1405,10 +1396,10 @@ Lemma parallel_current_many_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_tiled_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -1425,10 +1416,10 @@ Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_tiled_prepared_from_poly_with_iss
     in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_diamond_prepared_from_poly_correct :
@@ -1441,10 +1432,10 @@ Lemma parallel_current_many_diamond_prepared_from_poly_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_diamond_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_correct :
@@ -1459,10 +1450,10 @@ Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_diamond_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_identity_prepared_from_poly_with_iss_correct :
@@ -1475,10 +1466,10 @@ Lemma parallel_current_many_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_identity_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_only_prepared_from_poly_wf_affine
-    iss_only_prepared_from_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_only_prepared_from_poly_wf_general
+            iss_only_prepared_from_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_affine_prepared_from_poly_with_iss_correct :
@@ -1491,10 +1482,10 @@ Lemma parallel_current_many_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_affine_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_affine_prepared_from_poly_wf_affine
-    iss_affine_prepared_from_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_affine_prepared_from_poly_wf_general
+            iss_affine_prepared_from_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma parallel_current_many_prepared_from_poly_with_iss_correct :
@@ -1507,60 +1498,64 @@ Lemma parallel_current_many_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
   unfold Core.parallel_current_many_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_parallel_current_many_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
 (** Result-level routes all cross the same frontend boundary.  Extraction
     produces [pol0], strengthening produces the affine program consumed by a
     prepared route, and the two semantic results are composed after
-    unstrengthening.  Keep the route-specific prepared theorem explicit at
-    each call site while sharing this proof-only bookkeeping. *)
-Local Ltac finish_extracted_result prepared_correct :=
-  lazymatch goal with
-  | [ Hopt : mayReturn _ (Okk ?pl),
-      Hsem : ParallelLoop.semantics ?pl ?st ?st'
-      |- exists st_src,
-           LoopIR.semantics ?loop ?st st_src /\ State.eq ?st' st_src ] =>
-      let pol0 := fresh "pol0" in
-      let Hextimp := fresh "Hextimp" in
-      let pol := fresh "pol" in
-      let Hextok := fresh "Hextok" in
-      let Hwf_pol := fresh "Hwf_pol" in
-      let Hroute := fresh "Hroute" in
-      let st_str := fresh "st_str" in
-      let Hstr_sem := fresh "Hstr_sem" in
-      let Heq_str := fresh "Heq_str" in
-      let Hext_corr := fresh "Hext_corr" in
-      let st_src := fresh "st_src" in
-      let Hloop_src := fresh "Hloop_src" in
-      let Heq_src := fresh "Heq_src" in
-      bind_imp_destruct Hopt pol0 Hextimp;
-      set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *;
-      pose proof Hextimp as Hextok;
-      apply res_to_alarm_correct in Hextok;
-      pose proof
-        (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-           pol0
-           (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-        as Hwf_pol;
-      assert (Hroute : exists st_str,
-          PolyLang.instance_list_semantics pol st st_str /\
-          State.eq st' st_str) by
-        (eapply prepared_correct; eauto);
-      destruct Hroute as [st_str [Hstr_sem Heq_str]];
-      eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem;
-      pose proof
-        (CoreOpt.Extractor.extractor_correct
-           loop pol0 st st_str Hextok Hstr_sem)
-        as Hext_corr;
-      destruct Hext_corr as [st_src [Hloop_src Heq_src]];
-      exists st_src;
-      split; [exact Hloop_src|];
-      eapply State.eq_trans; [exact Heq_str|exact Heq_src]
-  end.
+    unstrengthening.  The local lemma makes that composition explicit while
+    route-specific public theorems remain thin specializations. *)
+Local Lemma extracted_result_from_prepared_correct
+    {A : Type}
+    {prepared : PolyLang.t -> A ->
+      imp (result Core.ParallelCodegenCore.ParallelLoop.t)}
+    (prepared_correct :
+      forall pol arg pl st st',
+        PolyLang.wf_pprog_affine pol ->
+        mayReturn (prepared pol arg) (Okk pl) ->
+        ParallelLoop.semantics pl st st' ->
+        exists st'',
+          PolyLang.instance_list_semantics pol st st'' /\
+          State.eq st' st'') :
+  forall loop arg pl st st',
+    mayReturn
+      (BIND pol0 <-
+         res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+       let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+       prepared pol arg)
+      (Okk pl) ->
+    ParallelLoop.semantics pl st st' ->
+    exists st_src,
+      LoopIR.semantics loop st st_src /\ State.eq st' st_src.
+Proof.
+  intros loop arg pl st st' Hopt Hsem.
+  bind_imp_destruct Hopt pol0 Hextract.
+  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
+  pose proof Hextract as Hextract_ok.
+  apply res_to_alarm_correct in Hextract_ok.
+  pose proof
+    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
+       pol0
+       (CoreOpt.extractor_success_wf_pprog_affine
+          loop pol0 Hextract_ok))
+    as Hwf_pol.
+  destruct
+    (prepared_correct pol arg pl st st' Hwf_pol Hopt Hsem)
+    as [st_strengthened [Hsem_strengthened Heq_strengthened]].
+  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen
+    in Hsem_strengthened.
+  destruct
+    (CoreOpt.Extractor.extractor_correct
+       loop pol0 st st_strengthened Hextract_ok Hsem_strengthened)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply State.eq_trans; [exact Heq_strengthened|exact Heq_src].
+Qed.
 
 (** * Extraction and strengthening for parallel results *)
 
@@ -1573,7 +1568,8 @@ Theorem Opt_parallel_current_identity_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_result in Hopt.
-  finish_extracted_result parallel_current_identity_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_identity_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_result_correct :
@@ -1585,7 +1581,8 @@ Theorem Opt_parallel_current_identity_tiled_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled_result in Hopt.
-  finish_extracted_result parallel_current_identity_tiled_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_identity_tiled_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_with_iss_result_correct :
@@ -1599,7 +1596,8 @@ Theorem Opt_parallel_current_identity_tiled_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_identity_tiled_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_identity_tiled_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_affine_result_correct :
@@ -1611,7 +1609,8 @@ Theorem Opt_parallel_current_affine_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_affine_result in Hopt.
-  finish_extracted_result parallel_current_affine_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_affine_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_result_correct :
@@ -1623,7 +1622,8 @@ Theorem Opt_parallel_current_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_result in Hopt.
-  finish_extracted_result parallel_current_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_diamond_result_correct :
@@ -1635,7 +1635,8 @@ Theorem Opt_parallel_current_diamond_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond_result in Hopt.
-  finish_extracted_result parallel_current_diamond_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_diamond_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_diamond_with_iss_result_correct :
@@ -1649,7 +1650,8 @@ Theorem Opt_parallel_current_diamond_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_diamond_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_diamond_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_identity_with_iss_result_correct :
@@ -1661,7 +1663,8 @@ Theorem Opt_parallel_current_identity_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_identity_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_identity_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_affine_with_iss_result_correct :
@@ -1673,7 +1676,8 @@ Theorem Opt_parallel_current_affine_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_affine_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_affine_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_affine_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_with_iss_result_correct :
@@ -1685,7 +1689,8 @@ Theorem Opt_parallel_current_with_iss_result_correct :
 Proof.
   intros loop d pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_result_correct :
@@ -1697,7 +1702,8 @@ Theorem Opt_parallel_current_many_identity_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_result in Hopt.
-  finish_extracted_result parallel_current_many_identity_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_identity_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_result_correct :
@@ -1709,7 +1715,8 @@ Theorem Opt_parallel_current_many_identity_tiled_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled_result in Hopt.
-  finish_extracted_result parallel_current_many_identity_tiled_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_identity_tiled_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_with_iss_result_correct :
@@ -1723,7 +1730,8 @@ Theorem Opt_parallel_current_many_identity_tiled_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_identity_tiled_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_result_correct :
@@ -1735,7 +1743,8 @@ Theorem Opt_parallel_current_many_affine_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine_result in Hopt.
-  finish_extracted_result parallel_current_many_affine_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_affine_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_result_correct :
@@ -1747,7 +1756,8 @@ Theorem Opt_parallel_current_many_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_result in Hopt.
-  finish_extracted_result parallel_current_many_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_result_correct :
@@ -1759,7 +1769,8 @@ Theorem Opt_parallel_current_many_diamond_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond_result in Hopt.
-  finish_extracted_result parallel_current_many_diamond_prepared_from_poly_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_diamond_prepared_from_poly_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_with_iss_result_correct :
@@ -1771,7 +1782,8 @@ Theorem Opt_parallel_current_many_diamond_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_many_diamond_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_diamond_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_with_iss_result_correct :
@@ -1783,7 +1795,8 @@ Theorem Opt_parallel_current_many_identity_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_many_identity_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_identity_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_with_iss_result_correct :
@@ -1795,7 +1808,8 @@ Theorem Opt_parallel_current_many_affine_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_many_affine_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_affine_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_with_iss_result_correct :
@@ -1807,7 +1821,8 @@ Theorem Opt_parallel_current_many_with_iss_result_correct :
 Proof.
   intros loop dims pl st st' Hopt Hsem.
   unfold Core.Opt_parallel_current_many_with_iss_result in Hopt.
-  finish_extracted_result parallel_current_many_prepared_from_poly_with_iss_correct.
+  eapply (extracted_result_from_prepared_correct
+            parallel_current_many_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 (** * Alarm-free parallel entry points *)
@@ -2160,8 +2175,10 @@ Lemma vector_current_affine_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_affine_prepared_from_poly in Hopt.
-  finish_checked_affine_annotation
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            checked_affine_schedule_wf_general
+            checked_affine_schedule_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_prepared_from_poly_correct :
@@ -2174,10 +2191,10 @@ Lemma vector_current_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_identity_tiled_prepared_from_poly_correct :
@@ -2192,10 +2209,10 @@ Lemma vector_current_identity_tiled_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_tiled_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_no_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_identity_tiled_prepared_from_poly_with_iss_correct :
@@ -2210,10 +2227,10 @@ Lemma vector_current_identity_tiled_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_tiled_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
-    identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_wf
+            identity_tiling_opt_prepared_from_poly_with_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_diamond_prepared_from_poly_correct :
@@ -2226,10 +2243,10 @@ Lemma vector_current_diamond_prepared_from_poly_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_diamond_prepared_from_poly in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
@@ -2244,10 +2261,10 @@ Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_diamond_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_identity_prepared_from_poly_with_iss_correct :
@@ -2262,10 +2279,10 @@ Lemma vector_current_identity_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_identity_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_only_prepared_from_poly_wf_affine
-    iss_only_prepared_from_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_only_prepared_from_poly_wf_general
+            iss_only_prepared_from_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_affine_prepared_from_poly_with_iss_correct :
@@ -2280,10 +2297,10 @@ Lemma vector_current_affine_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_affine_prepared_from_poly_with_iss in Hopt.
-  finish_checked_iss_annotation
-    iss_affine_prepared_from_poly_wf_affine
-    iss_affine_prepared_from_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            iss_affine_prepared_from_poly_wf_general
+            iss_affine_prepared_from_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma vector_current_prepared_from_poly_with_iss_correct :
@@ -2296,10 +2313,10 @@ Lemma vector_current_prepared_from_poly_with_iss_correct :
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
   unfold Core.vector_current_prepared_from_poly_with_iss in Hopt.
-  finish_checked_annotation_after_preparation
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-    phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
-    checked_vector_current_annotated_codegen_at_correct.
+  eapply (checked_annotation_after_preparation_correct
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
 Lemma opt_vector_current_result_from_prepared_correct :
@@ -2323,25 +2340,7 @@ Lemma opt_vector_current_result_from_prepared_correct :
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros prepared loop d pl st st' Hprepared Hopt Hsem.
-  bind_imp_destruct Hopt pol0 Hextimp.
-  set (pol := CoreOpt.Strengthen.strengthen_pprog pol0) in *.
-  pose proof Hextimp as Hextok.
-  apply res_to_alarm_correct in Hextok.
-  pose proof
-    (CoreOpt.Strengthen.strengthen_pprog_wf_affine
-       pol0
-       (CoreOpt.extractor_success_wf_pprog_affine loop pol0 Hextok))
-    as Hwf_pol.
-  destruct (Hprepared pol d pl st st' Hwf_pol Hopt Hsem)
-    as [st_str [Hstr_sem Heq_str]].
-  eapply CoreOpt.Strengthen.instance_list_semantics_unstrengthen in Hstr_sem.
-  destruct
-    (CoreOpt.Extractor.extractor_correct
-       loop pol0 st st_str Hextok Hstr_sem)
-    as [st_src [Hloop_src Heq_src]].
-  exists st_src.
-  split; auto.
-  eapply State.eq_trans; eauto.
+  eapply (extracted_result_from_prepared_correct Hprepared); eauto.
 Qed.
 
 Theorem Opt_vector_current_identity_result_correct :
