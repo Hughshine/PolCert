@@ -19,8 +19,7 @@ Import ListNotations.
 Require Import ParallelCodegenCompatibility.
 
 Module ParallelCodegenCorrect (PolIRs : POLIRS).
-Module Compatibility := ParallelCodegenCompatibility PolIRs.
-Include Compatibility.
+Include ParallelCodegenCompatibility PolIRs.
 
 (** Every syntactic parallel loop in [s] is owned by one certificate in
     [certs].  This property says nothing about execution order. *)

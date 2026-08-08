@@ -19,8 +19,7 @@ Import ListNotations.
 Require Import ParallelCodegenCore.
 
 Module ParallelCodegenCompatibility (PolIRs : POLIRS).
-Module Core := ParallelCodegenCore PolIRs.
-Include Core.
+Include ParallelCodegenCore PolIRs.
 
 (** * Global-ordering compatibility wrappers
 
