@@ -49,6 +49,36 @@ Module BandAffine := Base.TilingVal.
     bridges.  The final correctness lemmas merely compose those two halves
     with [TilingValidator]. *)
 
+(** * Reader map
+
+    The main direct route is organized as follows:
+
+    - [CommonBandInfrastructure] and [SecondLevelShapeRecognition] recognize
+      ordinary and nested strip-mined layouts.
+    - [ProjectedScheduleBridge] relates witness rows to extended instruction
+      points.
+    - [CommonBandDirectChecker] proves the executable affine conflict checks.
+      Its subsection "Compatibility reduction through the affine checker" is
+      a legacy route; the current direct proof resumes at "Direct checker
+      soundness".
+    - [PerStatementBandChecker] lifts pair checks to statement lists.
+    - [SemanticBandKernel] defines
+      [pinstr_list_semantic_componentwise_permutable], the central semantic
+      component property.
+    - [ProgramWideSemanticReconstruction] uses
+      [semantic_componentwise_permutable_implies_reordering_safe] and finishes
+      at [checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt].
+    - [ScalarAwareBands] and [PhaseAwareSemanticBands] generalize the same
+      route; their final endpoints are
+      [checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt] and
+      [checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt].
+
+    The early aliases [pprog_permutable_tiling_bands] and
+    [pprog_tiling_reordering_safe] describe the projected-schedule bridge, not
+    the later semantic-component property. *)
+
+(** * Common band witnesses and row arithmetic *)
+
 Section CommonBandInfrastructure.
 
 Record pinstr_tiling_band := {
@@ -418,6 +448,11 @@ Definition second_level_band_recipe_of_witness
   end.
 
 End CommonBandInfrastructure.
+
+(** * Ordinary and second-level layout recognition
+
+    This section ends at [check_pprog_second_level_schedule_directb_sound] and
+    the program-level ordinary layout facts. *)
 
 Section SecondLevelShapeRecognition.
 
@@ -3130,6 +3165,11 @@ Qed.
 
 End SecondLevelShapeRecognition.
 
+(** * Projected schedules and composed-point witnesses
+
+    The endpoint package [composed_point_facts] is reused by each later layout
+    reversal bridge. *)
+
 Section ProjectedScheduleBridge.
 
 
@@ -4540,6 +4580,11 @@ Qed.
 
 
 End ProjectedScheduleBridge.
+
+(** * Direct affine conflict checker for a common band
+
+    The historical whole-validator reduction is explicitly marked below.  For
+    the current route, jump to "Direct checker soundness". *)
 
 Section CommonBandDirectChecker.
 
@@ -7294,6 +7339,8 @@ Qed.
 
 End CommonBandDirectChecker.
 
+(** * Lifting component checks across statement lists *)
+
 Section PerStatementBandChecker.
 
 (** Direct componentwise checking for statement-specific bands.  The
@@ -7683,6 +7730,11 @@ Proof.
 Qed.
 
 End PerStatementBandChecker.
+
+(** * Semantic componentwise permutability kernel
+
+    [pinstr_list_semantic_componentwise_permutable] is the representation-free
+    property passed from the executable checker to layout reconstruction. *)
 
 Section SemanticBandKernel.
 
@@ -8413,6 +8465,13 @@ Proof.
 Qed.
 
 End SemanticBandKernel.
+
+(** * Program-wide layout bridges and ordinary correctness endpoint
+
+    The central implication is
+    [semantic_componentwise_permutable_implies_reordering_safe]; the ordinary
+    checked endpoint is
+    [checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt]. *)
 
 Section ProgramWideSemanticReconstruction.
 
@@ -14104,6 +14163,8 @@ Qed.
 
 End ProgramWideSemanticReconstruction.
 
+(** * Scalar-aware band layouts *)
+
 Section ScalarAwareBands.
 
 (** Scalar-aware ordinary Pluto bands.
@@ -17266,6 +17327,8 @@ Proof.
 Qed.
 
 End ScalarAwareBands.
+
+(** * Phase-aware and second-level band layouts *)
 
 Section PhaseAwareSemanticBands.
 

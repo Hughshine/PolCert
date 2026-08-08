@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PolCert proof reader</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d252c;
+      --muted: #59636d;
+      --line: #cbd2d8;
+      --soft: #f3f5f6;
+      --accent: #0b5a75;
+      --warning: #fff4d6;
+      --warning-line: #b77b00;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: white;
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 64px; }
+    h1, h2, h3 { line-height: 1.2; letter-spacing: 0; }
+    h1 { margin: 0 0 8px; font-size: 2rem; }
+    h2 { margin-top: 36px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 1.35rem; }
+    h3 { margin: 22px 0 6px; font-size: 1.05rem; }
+    p { max-width: 86ch; }
+    a { color: var(--accent); }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .92em; }
+    .meta { color: var(--muted); margin-top: 0; }
+    .notice { border-left: 4px solid var(--warning-line); background: var(--warning); padding: 14px 18px; max-width: 100ch; }
+    .links { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 12px 0; }
+    .links a { font-weight: 650; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 28px; font-size: .95rem; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 12px; border: 1px solid var(--line); }
+    th { background: var(--soft); }
+    ol, ul { max-width: 95ch; }
+    li { margin: 5px 0; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 24px, 1180px); padding-top: 24px; }
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      tr { margin-bottom: 14px; border: 1px solid var(--line); }
+      td { border: 0; border-bottom: 1px solid var(--line); }
+      td:last-child { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>PolCert proof reader</h1>
+  <p class="meta">Paper-oriented entry points into the Rocq development on <code>fix/parallel-interleaving</code>.</p>
+  <nav class="links" aria-label="Generated documentation indexes">
+    <a href="toc.html">Module contents</a>
+    <a href="declarations.html">Declaration index</a>
+    <a href="../PROOF_READING_GUIDE.md">Detailed reading guide</a>
+    <a href="../proof-audits/README.md" title="Historical snapshots; use the current proof reader for theorem claims">Archived proof audits</a>
+  </nav>
+
+  <div class="notice">
+    <strong>Version boundary.</strong> The CPP 2027 paper freezes artifact commit
+    <code>0661fe0a</code>. This HTML describes the later proof-readability branch.
+    The paper's annotation section uses the frozen restricted
+    <code>interleave_safe</code> semantics and calls <code>d</code> a current
+    coordinate. The current branch uses raw order-preserving
+    <code>interleave_family</code> semantics and validates a canonical padded
+    schedule coordinate; checked codegen constructs an ordered proof companion
+    for the actual generated trace. Read the frozen row below for the paper's
+    exact theorem and the current row for the strengthened endpoint.
+  </div>
+
+  <h2>First complete pass</h2>
+  <ol>
+    <li><a href="polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct"><code>ExtractorCorrect.extractor_correct</code></a>: reconstruct source loop execution.</li>
+    <li><a href="polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct"><code>ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct</code></a>: compose partition checking with child-to-parent semantics.</li>
+    <li><a href="polcert.src.AffineValidator.html#AffineValidator.validate_correct"><code>AffineValidator.validate_correct</code></a>: fixed-instance schedule validation.</li>
+    <li><a href="polcert.src.TilingBandScheduleValidator.html#TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe"><code>TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe</code></a>: direct permutable-band argument.</li>
+    <li><a href="polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.annotated_codegen_many_raw_semantics_ordered"><code>ParallelCodegenCorrect.annotated_codegen_many_raw_semantics_ordered</code></a>: certificate to actual ordered trace.</li>
+    <li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><code>VerifiedParallelCompilerConfig.compile_correct</code></a>: final route composition.</li>
+  </ol>
+
+  <h2>Paper-to-proof crosswalk</h2>
+  <table>
+    <thead><tr><th>Paper argument</th><th>Start here</th><th>Then inspect</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Refinement contract and legal occurrence order</td>
+        <td><a href="polcert.src.PolyLang.html"><code>PolyLang</code></a></td>
+        <td><a href="polcert.polygen.InstanceListSema.html"><code>InstanceListSema.Permutable</code></a>, <a href="polcert.src.CState.html"><code>CState.eq</code></a>, and stable-list semantic transport</td>
+      </tr>
+      <tr>
+        <td>Access-conflict soundness</td>
+        <td><a href="polcert.src.AffineValidator.html"><code>no_write_collision_implies_permutable</code></a></td>
+        <td><a href="polcert.src.CInstr.html"><code>bc_condition_implie_permutbility</code></a> and access-summary soundness</td>
+      </tr>
+      <tr>
+        <td>Verified extraction and source endpoint</td>
+        <td><a href="polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct"><code>extractor_correct</code></a></td>
+        <td><a href="polcert.src.ExtractorFacts.html">prefix slices and sorted partitions</a>, then the main mutual reconstruction</td>
+      </tr>
+      <tr>
+        <td>Index-set splitting as a partition</td>
+        <td><a href="polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct"><code>checked_iss_complete_cut_shape_validate_semantics_correct</code></a></td>
+        <td><a href="polcert.src.ISSRefinement.html">coverage and disjointness</a>; <a href="polcert.src.ISSCutSemantics.html">child-to-parent semantic mapping</a></td>
+      </tr>
+      <tr>
+        <td>Inherited affine rescheduling</td>
+        <td><a href="polcert.src.AffineValidator.html#AffineValidator.validate_correct"><code>validate_correct</code></a></td>
+        <td>pairwise reversal conflicts, permutability, and stable sorting</td>
+      </tr>
+      <tr>
+        <td>Tiling exact realization</td>
+        <td><a href="polcert.src.TilingRelation.html"><code>tiling_retiled_old_to_before_instance_correct_source</code></a></td>
+        <td><a href="polcert.src.TilingWitness.html">quotient existence and uniqueness</a>, point injection/preimage, then <a href="polcert.src.TilingValidator.html"><code>tiling_validate_correct</code></a></td>
+      </tr>
+      <tr>
+        <td>Direct permutable-band checking and layout bridge</td>
+        <td><a href="polcert.src.TilingBandScheduleValidator.html#TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe"><code>semantic_componentwise_permutable_implies_reordering_safe</code></a></td>
+        <td><a href="polcert.src.TilingBandDirectRuntime.html">selected direct-runtime endpoint</a>; one ordinary and one second-level reversal bridge</td>
+      </tr>
+      <tr>
+        <td>Accepted ordinary, hierarchical, mixed, scalar, phase, and diamond layouts</td>
+        <td><a href="polcert.src.TilingBandDirectRuntime.html#TilingBandDirectRuntime.checked_tiling_sourceb_complete_direct_band_check"><code>checked_tiling_sourceb_complete_direct_band_check</code></a></td>
+        <td>Follow only the selected specialized branch; this is an expository union, not one generic layout theorem</td>
+      </tr>
+      <tr>
+        <td>Dimension eligibility</td>
+        <td><a href="polcert.src.ParallelValidator.html#ParallelValidator.checked_parallelize_current_pointwise_sound"><code>checked_parallelize_current_pointwise_sound</code></a></td>
+        <td>synthetic old/new schedules and the padded schedule-coordinate slice</td>
+      </tr>
+      <tr>
+        <td>Frozen v8 annotation semantics used by the paper</td>
+        <td><code>git show 0661fe0a:polygen/ParallelLoop.v</code></td>
+        <td><code>PTLoopPar</code> and <code>interleave_safe_refines_concat</code></td>
+      </tr>
+      <tr>
+        <td>Current arbitrary-interleaving theorem</td>
+        <td><a href="polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.annotated_codegen_many_raw_semantics_ordered"><code>annotated_codegen_many_raw_semantics_ordered</code></a></td>
+        <td><a href="polcert.src.RawCodegenOrigin.html#RawCodegenOrigin.complete_generate_many_event_source"><code>complete_generate_many_event_source</code></a>, <a href="polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.actual_multi_ordered_mutual"><code>actual_multi_ordered_mutual</code></a>, then <a href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics_refines_erased"><code>semantics_refines_erased</code></a></td>
+      </tr>
+      <tr>
+        <td>Vector annotation with sequential vector semantics</td>
+        <td><a href="polcert.src.ParallelCodegenCorrect.html"><code>checked_vector_annotated_codegen_correct_general</code></a></td>
+        <td><a href="polcert.polygen.ParallelLoop.html"><code>PTLoopVec</code></a> and the innermost-annotation checker; no SIMD runtime theorem is claimed</td>
+      </tr>
+      <tr>
+        <td>Coordinate normalization before code generation</td>
+        <td><a href="polcert.src.PolyLang.html"><code>instance_list_semantics_current_view_iff</code></a></td>
+        <td><code>current_view_pi</code>, flattening equivalence, and the current-view well-formedness bridge</td>
+      </tr>
+      <tr>
+        <td>Inherited verified loop generation</td>
+        <td><a href="polcert.src.PrepareCodegen.html#PrepareCodegen.prepared_codegen_correct_general"><code>prepared_codegen_correct_general</code></a></td>
+        <td>preparation semantics, then the inherited CodeGen, ASTGen, and LoopGen theorems</td>
+      </tr>
+      <tr>
+        <td>Complete loop-to-loop theorem</td>
+        <td><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><code>compile_correct</code></a></td>
+        <td><a href="polcert.driver.ParallelPolOptCorrect.html">route theorem</a>, frontend lifting, and explicit <code>State.eq_trans</code> composition</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Deep-reading tracks</h2>
+  <h3>Extraction</h3>
+  <p><a href="polcert.src.ExtractorFrontend.html">Frontend</a> owns the executable translation,
+     <a href="polcert.src.ExtractorFacts.html">Facts</a> owns slices and partitions, and
+     <a href="polcert.src.ExtractorCorrect.html">Correct</a> owns semantic reconstruction. The facade is intentionally omitted.</p>
+  <h3>Tiling</h3>
+  <p>Read <a href="polcert.src.TilingRelation.html">representation correspondence</a> before
+     <a href="polcert.src.TilingBandScheduleValidator.html">the band validator</a>. In the latter,
+     skip the explicitly marked legacy affine-reduction subsection on a first pass.</p>
+  <h3>Parallel code generation</h3>
+  <p><a href="polcert.src.ParallelCodegenCore.html">Core</a> defines tag/erase and source-origin primitives;
+     <a href="polcert.src.ParallelCodegenCompatibility.html">Compatibility</a> contains legacy wrappers plus the live slice/origin support interface;
+     <a href="polcert.src.ParallelCodegenCorrect.html">Correct</a> consumes certificates along the actual trace and proves the checked endpoints.</p>
+</main>
+</body>
+</html>

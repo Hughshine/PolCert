@@ -23,6 +23,17 @@ Module TilingSched : TILING_BAND_DIRECT_RUNTIME_API PolIRs :=
   TilingBandDirectRuntime PolIRs.
 Module LoopIR := PolIRs.Loop.
 
+(** * Proof map
+
+    The executable definitions first run the dimension validator, convert its
+    certificate to the codegen functor instance, and request annotation.
+    [parallel_codegen_cert_of_validator_cert_sound] proves that this conversion
+    retains pointwise soundness and the schedule-coordinate bound.  The final
+    single and multi correctness theorems consume those facts rather than
+    treating the numeric dimension as trusted metadata. *)
+
+(** * Checked single and vector annotations *)
+
 Definition parallel_plan_of_dim (d : nat) : ValidatorCore.parallel_plan :=
   {| ValidatorCore.ParallelCore.target_dim := d |}.
 
@@ -76,6 +87,8 @@ Definition parallel_codegen_cert_of_validator_cert
   {| ParallelCodegenCore.ParallelValidator.certified_dim :=
        cert.(ValidatorCore.ParallelCore.certified_dim) |}.
 
+(** * Certificate transport across functor instances *)
+
 Lemma parallel_codegen_cert_of_validator_cert_sound :
   forall pp plan cert,
     mayReturn (ValidatorCore.checked_parallelize_current pp plan) (Okk cert) ->
@@ -93,6 +106,8 @@ Proof.
       (ValidatorCore.checked_parallelize_current_implies_dim_in_range
          pp plan cert Hchecked).
 Qed.
+
+(** * Collecting multiple certified schedule coordinates *)
 
 Fixpoint collect_parallel_current_codegen_certs
     (pp : PolyLang.t)

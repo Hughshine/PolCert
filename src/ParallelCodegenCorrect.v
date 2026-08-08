@@ -21,6 +21,23 @@ Require Import ParallelCodegenCompatibility.
 Module ParallelCodegenCorrect (PolIRs : POLIRS).
 Include ParallelCodegenCompatibility PolIRs.
 
+(** * Proof map
+
+    - [par_modes_certified_stmt] and the tag lemmas assign every emitted
+      [ParMode] loop to a validator certificate.
+    - [zrange_family_pair_origin] and
+      [certified_sibling_points_permutable] transport a local generated pair
+      to the pointwise certificate theorem.
+    - [actual_multi_ordered_mutual] follows one concrete target trace and
+      constructs the ordered proof companion required for serialization.
+    - [annotated_codegen_many_raw_root_origin] connects generated events to
+      source instruction points; the following ordered/refinement theorems
+      compose that fact with code generation.
+    - the final checked endpoints reflect full cleanup back to raw code and
+      then use the certified actual-trace argument. *)
+
+(** * Mode ownership and origin tags *)
+
 (** Every syntactic parallel loop in [s] is owned by one certificate in
     [certs].  This property says nothing about execution order. *)
 Fixpoint par_modes_certified_stmt
@@ -426,6 +443,7 @@ Proof.
            apply in_concat. exists tri. split; assumption.
         -- exact Htri.
       * destruct Hmode as [cert [Hcert_in Hcert_origin]].
+        (* Recover the certificate that owns this concrete parallel loop. *)
         assert (Hcert_sound : parallel_codegen_cert_sound pp cert).
         {
           rewrite Forall_forall in Hcerts.
@@ -438,6 +456,8 @@ Proof.
           (zrange_family_pair_origin
             _ _ _ _ _ _ _ _ _ _ Htraces Hshape)
           as (z1 & z2 & Hzneq & Htrace1 & Htrace2).
+        (* Distinct sibling families expose generated points with a shared
+           outer environment and different current coordinates. *)
         destruct
           (par_trace_point_extends_env
             _ _ _ _ Hsafe Htrace1 Hin1)
@@ -467,6 +487,8 @@ Proof.
         }
         destruct (Horacle ip1 Hroot1) as [source1 Hsource1].
         destruct (Horacle ip2 Hroot2) as [source2 Hsource2].
+        (* Map both points to source schedule slices, consume the owning
+           certificate, and transport permutability back to generated points. *)
         eapply certified_sibling_points_permutable; eassumption.
       * exact Hinterleave.
     + inversion Htrace as
@@ -576,6 +598,8 @@ Proof.
     eapply IH. exact Hsafe.
 Qed.
 
+(** * Raw codegen origin, ordered traces, and certified refinement *)
+
 (** Standard raw code generation first inserts the padded schedule coordinates
     and may simplify the polyhedral loop.  This theorem composes the neutral
     trace reflection from [RawCodegenOrigin] with preparation facts to recover
@@ -599,6 +623,7 @@ Theorem annotated_codegen_many_raw_root_origin :
 Proof.
   intros pis varctxt vars certs pl env root_tr
     Hcodegen Hwf Hsafe Htrace Henv ip Hin.
+  (* Recover preparation invariants and the exact raw generator result. *)
   pose proof
     (PrepareCore.prepare_codegen_target_dim_preserved
        ((pis, varctxt), vars) Hwf) as Hprepdim.
@@ -653,6 +678,8 @@ Proof.
   rewrite parallelize_certified_dims_program_eq in Hsafe.
   rewrite parallelize_certified_dims_program_eq in Htrace.
   simpl in Hsafe, Htrace.
+  (* Cover the actual interleaving by a sequential trace, then erase the
+     annotation passes without changing its instruction points. *)
   destruct
     (par_trace_seq_cover
        (parallelize_certified_dims_stmt certs
@@ -718,6 +745,7 @@ Proof.
       (map generated_event seq_tr) (generated_event ip)
       Hctxt' Hgen' Henv Hdim' Henvdim Hsched'
       Hraw_trace Hevent_in) as Hsource_event.
+  (* Convert the neutral raw event witness to an original source point. *)
   assert (Hwidth :
     list_max
       (map (fun pi => Datatypes.length pi.(PolyLang.pi_schedule))
@@ -746,6 +774,8 @@ Theorem annotated_codegen_many_raw_semantics_ordered :
 Proof.
   intros pis varctxt vars certs pl st st'
     Hgen Hwf Hcerts Hsafe Hsem.
+  (* Expose the raw statement and the actual root trace admitted by the target
+     semantics. *)
   pose proof Hgen as Hgen_root.
   unfold annotated_codegen_many_raw in Hgen.
   apply mayReturn_bind in Hgen.
@@ -849,6 +879,8 @@ Proof.
   {
     simpl. lia.
   }
+  (* Order that same trace recursively.  No restricted target semantics or
+     global ordering premise is introduced here. *)
   pose proof
     (actual_multi_ordered_stmt
       (parallelize_certified_dims_stmt certs
@@ -957,6 +989,8 @@ Proof.
   rewrite annotated_codegen_raw_many_singleton_eq in Hgen.
   eapply annotated_codegen_many_raw_refines_prepared_codegen_certified; eauto.
 Qed.
+
+(** * Checked cleanup endpoints *)
 
 Theorem checked_annotated_codegen_correct_general :
   forall pol cert pl st st',

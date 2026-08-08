@@ -7,9 +7,41 @@ the checked pipeline after the parallel-certificate repair and the subsequent
 proof-readability pass; older declaration-level baselines remain identified in
 the linked audit reports.
 
-The cleanup branch preserves the exported declarations of the proof modules.
-Comments, sections, and proof-only tactics may change, but callers see the same
-definitions and theorem names.
+Generate the browsable Rocq site with `make proof-documentation`, then open
+`doc/proof-html/index.html`.  Its landing page maps paper arguments to the
+module pages below; coqdoc supplies the section table of contents and the
+cross-module declaration index.
+
+## Version note for paper readers
+
+The CPP 2027 paper freezes artifact commit
+`0661fe0aa121deaa6ca714f258b96906a1dc0ca8` (the annotated v8 tag).  This guide
+describes the later `fix/parallel-interleaving` readability branch.  The v8
+commit is an ancestor, so the extraction, ISS, affine, and tiling arguments
+have the same semantic spine, but names and source locations may differ after
+factoring and dead-code removal.
+
+There is one material theorem-boundary difference.  The frozen paper describes
+the v8 `ParMode` semantics, which admits only commutation-filtered
+`interleave_safe` traces and proves annotation refinement independently of the
+eligibility certificate.  The current branch gives `ParMode` the raw
+order-preserving `interleave_family` semantics and makes checked code generation
+consume the certificate to construct an `ordered_semantics` proof companion.
+Thus the paper is conservative for the current branch, but its annotation
+section is line-for-line about v8 rather than this strengthened endpoint.
+
+There is also a coordinate-interface change.  The frozen paper and v8 checker
+call `d` a current iterator coordinate.  The repaired branch interprets it as
+a canonical coordinate of the globally padded affine schedule, exactly the
+coordinate scanned and tagged by raw code generation.  This removes the old
+unproved current-coordinate-to-generated-loop identification.  When reading
+the paper against this branch, use the paper wording for v8 and the schedule
+coordinate wording in `ParallelValidator.v` for the strengthened theorem.
+
+The cleanup preserved the names and types of live theorem entry points.  It did
+remove repository-unreferenced legacy declarations, so this branch is not a
+promise of compatibility for arbitrary out-of-tree users of those dead names.
+The `Extractor` and `ParallelCodegen` facades preserve the live module paths.
 
 The declaration-level ownership and long-proof review is indexed in
 [`proof-audits/README.md`](proof-audits/README.md).  Its parallel-semantics
@@ -87,7 +119,12 @@ correspondence proof.
 
 ## 3. Extraction: Loops to Polyhedral Instances
 
-Primary file: `src/Extractor.v`.
+Primary files:
+
+- `src/ExtractorFrontend.v`: executable translation and local affine facts;
+- `src/ExtractorFacts.v`: flattening, prefix slices, ordering, and partitions;
+- `src/ExtractorCorrect.v`: semantic reconstruction and the public theorem;
+- `src/Extractor.v`: compatibility facade only.
 
 For declaration ownership, repository reachability, and the proof-by-proof
 cleanup rationale, see
@@ -104,9 +141,9 @@ The proof has four layers:
    to evaluation in a concrete iterator environment.
 2. `extract_stmt` and its success-inversion lemmas expose the generated
    statements for instructions, sequences, loops, and guards.
-3. The flattening and splitting lemmas relate a sorted list of polyhedral
+3. The flattening and splitting lemmas in `ExtractorFacts.v` relate a sorted list of polyhedral
    instances to the syntax-directed execution of each source construct.
-4. `core_sched_stmt_stmts_constrs_prefix_mutual` performs the structural
+4. `core_sched_stmt_stmts_constrs_prefix_mutual` in `ExtractorCorrect.v` performs the structural
    induction. `extract_stmt_to_loop_semantics_core_sched_constrs` specializes
    it to the top-level empty iterator prefix, and `extractor_correct` packages
    it at the program level.
@@ -123,16 +160,16 @@ Recommended reading path:
 ```text
 expr_to_aff_correct
 extract_stmt_*_success_inv
-extract_stmts_cons_semantics_split_by_nth
+extract_stmts_cons_semantics_split_by_nth_prefix_slice
 core_sched_stmt_stmts_constrs_prefix_mutual
 extract_stmt_to_loop_semantics_core_sched_constrs
 extractor_correct
 ```
 
 Most list-index and prefix lemmas support one of the two partitioning steps.
-Read them on demand from the main structural proof. The later fuel-bounded and
-constructor-specific lemmas preserve older entry points; they are not a second
-proof obligation on the path to `extractor_correct`.
+Read them on demand from the main structural proof.  The obsolete non-prefix,
+fuel-bounded, and constructor-specific proof routes were removed; there is now
+one live reconstruction route to `extractor_correct`.
 
 ## 4. ISS: One Statement to a Domain Partition
 
@@ -248,9 +285,11 @@ The second step proves that tiled coordinates represent source points exactly
 once and preserve instruction execution. The key source-based theorem is
 `tiling_retiled_old_to_before_instance_correct_source`.
 
-`tiling_after_to_before_instance_correct_via_retiled_old` composes the two
-steps. This theorem is deliberately independent of how a validator proves the
-reordering-safety premise.
+`tiling_after_to_before_poly_correct_via_retiled_old` composes the two
+polyhedral steps.  `TilingValidator.tiling_validate_correct` lifts the argument
+to complete instance-list semantics and supplies the checked representation
+facts.  The relation-level composition is deliberately independent of how a
+validator proves the reordering-safety premise.
 
 Recommended reading path:
 
@@ -262,7 +301,8 @@ tiling_rel_pinstr_structure_source_before_of_retiled_old_point_injective
 flatten_instrs_after_implies_tiling_ext_exists
 tiling_after_to_retiled_old_poly_correct
 tiling_retiled_old_to_before_instance_correct_source
-tiling_after_to_before_instance_correct_via_retiled_old
+tiling_after_to_before_poly_correct_via_retiled_old
+TilingValidator.tiling_validate_correct
 ```
 
 ### 6.2 Direct permutable-band validation
@@ -331,7 +371,13 @@ Primary files:
 - `polygen/ParallelLoop.v`
 - `src/ParallelValidator.v`
 - `src/RawCodegenOrigin.v`
-- `src/ParallelCodegen.v`
+- `src/ParallelCodegenCore.v`: executable tagging, cleanup checks, and
+  generated/source point correspondence;
+- `src/ParallelCodegenCompatibility.v`: legacy global-order wrappers plus the
+  support interface used by the checked proof;
+- `src/ParallelCodegenCorrect.v`: certificate ownership, actual-trace
+  ordering, refinement, and checked endpoints;
+- `src/ParallelCodegen.v`: compatibility facade only;
 - `driver/ParallelPolOptCorrect.v`
 
 `parallel_safe_dim_pointwise pp d` states the doall property for one padded
@@ -413,7 +459,7 @@ For a first complete pass, read these declarations in order:
 Extractor.extractor_correct
 ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct
 AffineValidator.validate_correct
-TilingRelation.tiling_after_to_before_instance_correct_via_retiled_old
+TilingRelation.tiling_after_to_before_poly_correct_via_retiled_old
 TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe
 TilingBandDirectRuntime.checked_tiling_sourceb_complete_direct_band_check_correct
 ParallelValidator.checked_parallelize_current_pointwise_sound
@@ -433,7 +479,34 @@ Then descend into the component whose premise is least clear. In particular:
 - Skim the many route-specific `Opt_*_correct` wrappers after checking one
   example; they instantiate the same composition argument.
 
-## 9. Maintenance Invariants
+## 9. Paper-to-proof crosswalk
+
+The paper sources live in the separate `paper-local` checkout.  Read the
+following rows horizontally: first the prose contract, then the named Rocq
+entry point, and only then its supporting long proof.
+
+| Paper section | Current proof entry | What to inspect next |
+| --- | --- | --- |
+| `semantics.tex`, refinement contract and occurrence order | `PolyLang.instance_list_semantics`, `PolyLang.poly_instance_list_semantics` | `InstanceListSema.Permutable`, stable sorting and list-semantics transport in `PolyLang.v` |
+| `problem.tex`, end-to-end partial correctness | `VerifiedParallelCompilerConfig.compile_correct` | `compile_verified_correct`, then only the constructor for the route being read |
+| `composition.tex`, verified extraction | `ExtractorCorrect.extractor_correct` | `core_sched_stmt_stmts_constrs_prefix_mutual`; use `ExtractorFacts.v` only when a slice or partition premise appears |
+| `transformations.tex`, index-set splitting | `ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct` | checker soundness in `ISSBoolChecker.v`, then coverage/disjointness in `ISSRefinement.v` and semantic mapping in `ISSCutSemantics.v` |
+| inherited affine rescheduling argument | `AffineValidator.validate_correct` | `validate_two_instrs_implies_no_write_collision`, `validate_implies_permutability`, and the stable-sort semantic bridge |
+| `tiling.tex`, exact realization | `TilingRelation.tiling_retiled_old_to_before_instance_correct_source` | source-point reconstruction, injectivity, flattening correspondence |
+| `tiling.tex`, permutable-band checker | `TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe` | one direct component-checker soundness theorem and one layout reversal bridge |
+| `tiling.tex`, tiling refinement | `TilingBandDirectRuntime.checked_tiling_sourceb_complete_direct_band_check_correct` | the selected layout-class endpoint, then `TilingValidator.tiling_validate_correct` |
+| `transformations.tex`, dimension eligibility | `ParallelValidator.checked_parallelize_current_pointwise_sound` | the two synthetic schedules and `parallel_safe_dim_pointwise` |
+| paper v8 restricted annotation semantics | v8 `ParallelLoop.interleave_safe_refines_concat` | use `git show 0661fe0a:polygen/ParallelLoop.v`; this is the exact frozen argument |
+| current strengthened annotation semantics | `ParallelCodegenCorrect.checked_annotated_codegen_correct_general` | `RawCodegenOrigin.complete_generate_many_event_source`, `actual_multi_ordered_mutual`, then `ParallelLoop.semantics_refines_erased` |
+| `composition.tex`, complete route composition | `ParallelPolOptCorrect.Opt_parallel_current_correct` and `VerifiedParallelCompilerConfig.compile_verified_correct` | certificate transport, frontend lifting, and the two explicit `State.eq_trans` compositions |
+
+For the first pass, skip definitions whose names end in `_inv`, `_nth_error`,
+or `_length` unless a main theorem uses that exact fact.  On the second pass,
+read one witness-recovery proof per representation change and one reversal
+bridge per layout family.  Reading every route wrapper adds coverage detail but
+does not add a new semantic argument.
+
+## 10. Maintenance Invariants
 
 Future proof cleanup should preserve these boundaries:
 

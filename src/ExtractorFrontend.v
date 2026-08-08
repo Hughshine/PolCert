@@ -33,18 +33,18 @@ Module Loop := PolIRs.Loop.
 Module Val := AffineValidator PolIRs.
 Definition ident := Instr.ident.
 
-(** * Proof map
+(** * Layer map
 
-    The executable half of this file translates affine expressions, tests,
-    and structured statements into polyhedral instructions.  The proof half
-    reconstructs the syntax-directed loop execution from the flattened list
-    of extracted instances.  Its main technical steps split that sorted list
-    at sequence boundaries and at successive loop-iterator values.
+    This file owns the executable extractor and the local correctness facts
+    for translating expressions, tests, bounds, domains, and schedule
+    prefixes.  It deliberately stops before reasoning about a complete
+    flattened execution.
 
-    [core_sched_stmt_stmts_constrs_prefix_mutual] is the structural induction.
-    [extract_stmt_to_loop_semantics_core_sched_constrs] specializes it to an
-    empty iterator prefix, and [extractor_correct] packages the result for
-    complete loop and polyhedral programs. *)
+    [ExtractorFacts] proves the list, slice, and ordering invariants of the
+    extracted instances.  [ExtractorCorrect] then uses those facts to
+    reconstruct the syntax-directed loop execution and prove
+    [extractor_correct].  Readers looking for the main structural induction
+    should therefore start in [ExtractorCorrect], not later in this file. *)
 
 (** * Affine frontend checks *)
 

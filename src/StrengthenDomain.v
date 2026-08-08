@@ -20,6 +20,15 @@ Module State := PolIRs.State.
 Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
 
+(** * Proof map
+
+    Strengthening infers constraints that mention only an already fixed loop
+    prefix.  Soundness shows they hold for every original instance; the
+    semantic endpoint therefore permits drivers to strengthen before
+    validation and erase the strengthening before invoking extraction. *)
+
+(** * Executable prefix-guard inference *)
+
 Definition env_dim_of (pp: PolyLang.t) : nat :=
   let '(_, varctxt, _) := pp in
   length varctxt.

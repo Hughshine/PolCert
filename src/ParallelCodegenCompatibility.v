@@ -21,13 +21,17 @@ Require Import ParallelCodegenCore.
 Module ParallelCodegenCompatibility (PolIRs : POLIRS).
 Include ParallelCodegenCore PolIRs.
 
-(** * Global-ordering compatibility wrappers
+(** * Compatibility layer and support interface
 
     These low-level lemmas predate the certificate-to-trace connection and
     accept an explicit [parallel_families_ordered] invariant.  They remain as
-    compatibility APIs and are not used by the checked parallel driver.  The
-    checked endpoints below instead derive ordering from the validator
-    certificate for the actual execution trace. *)
+    compatibility APIs and are not used by the checked parallel driver.
+
+    The second half of this file is not legacy: it exposes checked-result
+    inversions, schedule-slice facts, and the root-origin interface consumed by
+    [ParallelCodegenCorrect]. *)
+
+(** ** Legacy global-ordering wrappers *)
 
 Lemma annotated_codegen_refines_prepared_codegen :
   forall pp cert pl st st',
@@ -347,6 +351,8 @@ Proof.
   - exact Heq.
 Qed.
 
+(** ** Checked-codegen result inversions *)
+
 Lemma checked_annotated_codegen_ok_inv :
   forall pp cert pl,
     mayReturn (checked_annotated_codegen pp cert) (Okk pl) ->
@@ -434,6 +440,8 @@ Proof.
       eapply all_es_safeb_sound; eauto.
     + apply mayReturn_pure in Hret. discriminate.
 Qed.
+
+(** ** Generated schedule slices and source-point transport *)
 
 Definition generated_schedule_coords
     (env_dim width : nat) (current : list Z) : list Z :=
@@ -616,6 +624,8 @@ Qed.
 Scheme p_stmt_mutind := Induction for ParallelLoop.stmt Sort Prop
 with p_stmts_mutind := Induction for ParallelLoop.stmt_list Sort Prop.
 Combined Scheme p_stmt_stmts_mutind from p_stmt_mutind, p_stmts_mutind.
+
+(** ** Trace-safety transport and the root-origin interface *)
 
 Definition trace_safe_parallelize_stmt_goal (s : ParallelLoop.stmt) : Prop :=
   forall d,

@@ -32,6 +32,22 @@ Module LoopGenCore := LoopGen PolIRs.
 Module PolyLoopSimplifier := PolyLoopSimplify PolIRs.
 Module CodeGenCore := CodeGen PolIRs.
 
+(** * Proof map
+
+    This module is a neutral, proof-only trace bridge for standard raw code
+    generation:
+
+    - [poly_trace] and [loop_trace] record generated instruction events without
+      introducing state semantics;
+    - [polyloop_to_loop_trace_reflect] reflects LoopGen traces to PolyLoop;
+    - [generate_loop_many_event_origin] recovers the source polyhedral
+      instruction selected by AST generation;
+    - schedule elimination and preparation facts then yield
+      [complete_generate_many_event_source], the endpoint consumed by
+      [ParallelCodegenCorrect]. *)
+
+(** * Neutral traces for PolyLoop *)
+
 (** A proof-only trace for the intermediate polyhedral loop language.  Points
     use the polyhedral coordinate order; the operational loop environment is
     stored in the reverse order. *)
@@ -214,6 +230,8 @@ Proof.
 Qed.
 
 (** The corresponding pure trace for the generated base Loop language. *)
+(** * Neutral traces for generated Loop syntax *)
+
 Inductive loop_trace : Loop.stmt -> list Z -> list scan_event -> Prop :=
 | LETInstr : forall i es env,
     loop_trace
@@ -700,6 +718,8 @@ Qed.
 (** The direct LoopGen path preserves the neutral event trace.  This theorem is
     intentionally independent of state semantics: it records which generated
     loop iteration emits each source instruction and its concrete arguments. *)
+(** * LoopGen trace reflection *)
+
 Theorem polyloop_to_loop_trace_reflect :
   forall pstmt n out,
     mayReturn (LoopGenCore.polyloop_to_loop n pstmt) out ->
@@ -1080,6 +1100,8 @@ Proof.
     exact Heffect.
 Qed.
 
+(** * AST generation preserves source-event origin *)
+
 Theorem generate_loop_many_event_origin :
   forall d n pis pstmt env ev,
     (d <= n)%nat ->
@@ -1327,6 +1349,8 @@ Qed.
 (** The ordinary raw generator retains PolyLoop simplification.  Reflecting
     its trace through the simplifier exposes the AST generator's source-origin
     relation at the generated Loop program. *)
+(** * Standard raw codegen endpoint *)
+
 Theorem complete_generate_many_event_source :
   forall env_dim dim pis out env tr ev,
     (env_dim <= dim)%nat ->

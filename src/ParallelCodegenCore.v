@@ -291,6 +291,8 @@ Theorem prepared_event_to_source_point :
         ((pis, varctxt), vars) width ip source_ip.
 Proof.
   intros pis varctxt vars cols width ip ev Hwf Hdim Hmatch Hprepared.
+  (* Recover the original instruction and current point hidden by [prepare_pi]
+     and schedule elimination. *)
   destruct Hmatch as [Hevent_point Heffect].
   destruct Hprepared as
     [m [prep_pi
@@ -338,6 +340,8 @@ Proof.
       + rewrite is_eq_veq. exact Hp_resize.
     - exact Hprep_domain.
   }
+  (* Preparation's scan theorem supplies source membership, depth, and the
+     environment prefix. *)
   pose proof
     (PrepareCore.prepare_env_scan_true_implies_source_ip_props
       pis varctxt vars cols envv m p pi Hwf Hdim Henvv_len Hpi Hscan)
@@ -361,6 +365,8 @@ Proof.
   set (source_ip :=
     PrepareCore.source_ip_of (Datatypes.length varctxt) m pi p).
   exists source_ip.
+  (* Package semantic equivalence, the source witness, and both coordinate
+     correspondences needed by the parallel certificate proof. *)
   constructor.
   - split.
     + subst source_ip.
@@ -443,6 +449,8 @@ Fixpoint erase_test (t : ParallelLoop.test) : Loop.test :=
   | ParallelLoop.BaseLoop.Not t1 => Loop.Not (erase_test t1)
   | ParallelLoop.BaseLoop.TConstantTest b => Loop.TConstantTest b
   end.
+
+(** * Tagging, erasure, and sequential trace transport *)
 
 Lemma erase_tag_expr_eq :
   forall e,
@@ -1237,6 +1245,8 @@ Definition tagged_prepared_codegen
   BIND loop <- PrepareCore.prepared_codegen pp -;
   pure (tag_loop loop).
 
+(** * Executable annotation paths *)
+
 Definition tagged_prepared_codegen_raw
   (pp : PolyLang.t) : imp ParallelLoop.t :=
   BIND loop <- PrepareCore.prepared_codegen_raw pp -;
@@ -1386,6 +1396,8 @@ Definition result_is_ok {A} (r : result A) : bool :=
   | Okk _ => true
   | Err _ => false
   end.
+
+(** * Checked trace-safety and cleanup gates *)
 
 Fixpoint all_es_safeb_stmt (s : ParallelLoop.stmt) : bool
 with all_es_safeb_stmts (ss : ParallelLoop.stmt_list) : bool.

@@ -29,6 +29,14 @@ Module ExtractorCorrect (PolIRs : POLIRS).
 Module Facts := ExtractorFacts PolIRs.
 Include Facts.
 
+(** * Layer map
+
+    This file owns semantic reconstruction.  Statement-number rebasing and
+    sorted-list partitions feed
+    [core_sched_stmt_stmts_constrs_prefix_mutual], the single syntax-directed
+    induction for statements and statement lists.  The final specializations
+    remove the iterator prefix and package the result as [extractor_correct]. *)
+
 (** * Statement-number rebasing *)
 
 Definition rebase_ip_nth (base: nat) (ip: PolyLang.InstrPoint): PolyLang.InstrPoint :=
@@ -403,6 +411,12 @@ Proof.
         * exact Hgeall.
         * exact Hsorted_filter.
 Qed.
+
+(** * Sequence partitioning and rebasing
+
+    A source sequence numbers the tail after the head.  The following lemmas
+    split a sorted flattened list at that boundary, rebase the tail statement
+    numbers, and preserve both schedule order and instruction semantics. *)
 
 Lemma flattened_stmts_pos_ge_with_prefix_slice:
     forall stmts constrs env_dim iter_depth sched_prefix prefix pos
@@ -842,6 +856,8 @@ Proof.
           { exact Hsem1. }
           { exact Hsem2. }
 Qed.
+
+(** * Semantic bridges for individual source constructs *)
 
 Lemma nodup_all_eq_singleton:
     forall A (x: A) l,
@@ -1283,6 +1299,18 @@ Definition stmts_constrs_prefix_goal (stmts: PolIRs.Loop.stmt_list): Prop :=
       Loop.loop_semantics (PolIRs.Loop.Seq stmts) (rev (envv ++ prefix)) st1 st2' /\
       State.eq st2 st2'.
 
+(** * Main syntax-directed reconstruction
+
+    The loop case has four stages:
+
+    1. recover the next timestamp coordinate and prove its source bounds;
+    2. split the sorted instance list into one contiguous slice per iterator;
+    3. apply the body induction hypothesis to every slice;
+    4. rebuild [iter_semantics], then the source [Loop] execution.
+
+    The instruction, sequence, guard, and statement-list cases are direct
+    specializations of the facts established above. *)
+
 Lemma core_sched_stmt_stmts_constrs_prefix_mutual:
   (forall stmt, stmt_constrs_prefix_goal stmt) /\
   (forall stmts, stmts_constrs_prefix_goal stmts).
@@ -1299,6 +1327,8 @@ Proof.
     destruct Hextract as (lbc & ubc & Hlb & Hub & Hbodyext).
     eapply wf_scop_loop_inv in Hwf.
     destruct Hwf as (_ & _ & Hwf_body).
+    (* Stage 1: identify the loop coordinate in every timestamp and recover
+       the source lower and upper bounds for it. *)
     assert (Hpoint_ts_head:
       forall ip, In ip sorted_ipl ->
       exists i tsuf,
@@ -1345,6 +1375,8 @@ Proof.
       rewrite nth_after_prefix_singleton.
       exact Hbounds.
     }
+    (* Stage 2: schedule sorting makes equal iterator values contiguous, so
+       prefixes of [sorted_ipl] correspond to prefixes of [Zrange lbv ubv]. *)
     assert (Hlt_lb_nil:
       filter (fun ip : PolyLang.InstrPoint => Z.ltb (head_ts ip) lbv) sorted_ipl = []).
     {
@@ -1563,6 +1595,7 @@ Proof.
       + eapply State.eq_sym.
         exact Heq12.
     }
+    (* Stage 3: refine each iterator slice with the body induction hypothesis. *)
     assert (Hiter_loop_refined:
       forall stA stB,
       Instr.IterSem.iter_semantics
@@ -1676,6 +1709,7 @@ Proof.
         + exact Hbody_loop.
         + exact HeqY'.
     }
+    (* Stage 4: assemble the per-iterator executions into the source loop. *)
     destruct (Hiter_eq_range_from_st1 (ltac:(lia))) as [st2_mid [Hiter_range Heq2_mid]].
     destruct (Hiter_loop_refined st1 st2_mid Hiter_range)
       as [st2' [Hiter_loop Heq2']].
@@ -1991,6 +2025,11 @@ Proof.
     exact Hstmt.
 Qed.
 
+(** * Top-level specializations
+
+    These wrappers discharge the empty-prefix and program-packaging details;
+    [extractor_correct] is the public semantic endpoint. *)
+
 Lemma extract_stmt_to_loop_semantics_core_sched_constrs:
     forall stmt constrs sched_prefix (varctxt: list ident) (vars: list (ident * Ty.t))
            pis (envv: list Z) (ipl sorted_ipl: list PolyLang.InstrPoint) st1 st2,
@@ -2057,13 +2096,6 @@ Proof.
     intros.
     eapply extract_stmt_to_loop_semantics_core_sched with (sched_prefix:=[]); eauto.
 Qed.
-
-
-(* Lemma extract_stmt_correct: 
-    forall stmt constrs depth sched_prefix, 
-        extract_stmt stmt constrs depth sched_prefix = Okk [] ->
-        PolyLang.instance_list_semantics constrs [] []. *)
-
 Theorem extractor_correct: 
   forall loop pol st1 st2, 
     extractor loop = Okk pol ->

@@ -20,6 +20,12 @@
     </head>
     <body>
         <h1 align="center">Verified validation for affine polyhedral scheduling</h1>
+        <p style="border-left: 4px solid #0b5a75; padding: 0.8em 1em; background: #f3f5f6;">
+          This is the historical all-module index. For the current end-to-end
+          proof, paper crosswalk, ISS, tiling, and parallel-certificate chain,
+          build <code>make proof-documentation</code> and open
+          <a href="proof-html/index.html">the PolCert proof reader</a>.
+        </p>
         <h2>Table of contents</h2>
         <h3>General-purpose libraries</h3>
         <ul>
@@ -69,7 +75,7 @@
         <h3>Experimental</h3>
         <ul>
             <li><a href="html/polcert.src.Convert.html">Convert</a>: Transformation to and from Csyntax and CLoop (Loop instantiated with CInstr) </li>
-            <li><a href="html/polcert.src.Extractor.html">Extractor</a>: Polyhedral extraction, without proof.</li>
+            <li><a href="html/polcert.src.Extractor.html">Extractor</a>: Polyhedral extraction facade; semantic correctness is in ExtractorCorrect.</li>
             <li><a href="html/polcert.polygen.CodeGen.html">CodeGen</a>: Polyhedral code generation, wrapping of POPL'21.</li>
             <li><a href="html/polcert.driver.PolOpt.html">Complete polyhedral optimization</a>: Composing threes phrases of polyhedral compilation.</li>
         </ul>

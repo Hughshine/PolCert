@@ -33,6 +33,16 @@ Module ASTGen := ASTGen PolIRs.
 Module CodeGen := CodeGen PolIRs.
 Module Cleanup := LoopSingletonCleanup PolIRs.
 
+(** * Proof map
+
+    Preparation widens all affine objects to one code-generation dimension and
+    records enough zero-tail information to recover the original source point.
+    The central semantic collection theorem relates prepared flattened
+    instances to source instances.  The final raw and cleaned codegen theorems
+    compose that relation with the inherited [CodeGen] correctness theorem. *)
+
+(** * Dimension normalization and prepared-program invariants *)
+
 Definition resize_affine (cols: nat) (aff: list Z * Z) : list Z * Z :=
   let '(zs, c) := aff in
   (resize cols zs, c).

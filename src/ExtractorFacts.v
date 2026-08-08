@@ -29,6 +29,14 @@ Module ExtractorFacts (PolIRs : POLIRS).
 Module Frontend := ExtractorFrontend PolIRs.
 Include Frontend.
 
+(** * Layer map
+
+    This file owns representation facts about extracted instruction points:
+    flattened-list membership, fixed-prefix slices, loop-coordinate bounds,
+    timestamp heads, filtering, sorting, and statement-number partitions.
+    The lemmas do not reconstruct source execution by themselves.  Their main
+    consumer is the mutual semantic proof in [ExtractorCorrect]. *)
+
 (** * Flattened-instance witnesses *)
 
 Lemma flatten_instrs_in_intro:
@@ -409,6 +417,11 @@ Proof.
     exists tsuf.
     exact Hts.
 Qed.
+
+(** * Prefix slices and source-construct filters
+
+    These lemmas refine a flattened list after one more loop coordinate or
+    one side of a source sequence has been selected. *)
 
 Lemma loop_slice_filter_prefix_slice_gen:
     forall lb ub body constrs sched_prefix env_dim iter_depth prefix
@@ -826,6 +839,12 @@ Proof.
     exists tsuf.
     exact Hts.
 Qed.
+
+(** * Sorted-list partitioning
+
+    The semantic proof needs filters to be contiguous in schedule order, not
+    merely permutations.  The lemmas below turn timestamp and statement-number
+    comparisons into such sorted partitions. *)
 
 Lemma lex_compare_cons_head_lt:
     forall h1 h2 t1 t2,
@@ -1252,6 +1271,10 @@ Proof.
     reflexivity.
 Qed.
 
+(** * Small semantic inversions
+
+    These endpoints apply after a partition has reduced a dynamic instance
+    list to a singleton, an empty list, or an append. *)
 
 Lemma permutation_singleton:
     forall A (x: A) l,

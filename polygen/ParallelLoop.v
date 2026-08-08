@@ -22,6 +22,8 @@ Module BaseLoop := Loop IInstr.
 Module ILSema := BaseLoop.ILSema.
 Module Ty := IInstr.Ty.
 
+(** * Annotated loop syntax and transformations *)
+
 Definition ident := IInstr.ident.
 Definition instr := IInstr.t.
 Definition mem := IInstr.State.t.
@@ -221,6 +223,12 @@ with seq_traces : stmt_list -> list Z -> list InstrPoint -> Prop :=
     seq_traces sts env tr2 ->
     seq_traces (SCons st sts) env (tr1 ++ tr2).
 
+(** * Raw interleavings and ordering evidence
+
+    [interleave_family] is the unrestricted, order-preserving shuffle relation.
+    [family_ordered_permutable] is a separate proof fact used only when a
+    concrete trace is serialized. *)
+
 Inductive interleave_family : list (list InstrPoint) -> list InstrPoint -> Prop :=
 | IF_nil :
     interleave_family [] []
@@ -407,6 +415,12 @@ Proof.
     + apply IHHinter.
       eapply family_ordered_permutable_pop; eauto.
 Qed.
+
+(** * Raw and ordered trace semantics
+
+    [par_trace] admits every [interleave_family] at a parallel loop.  Its
+    companion [ordered_par_trace] records certificate-derived commutativity for
+    one actual derivation; forgetting the companion recovers the raw trace. *)
 
 Inductive par_trace : stmt -> list Z -> list InstrPoint -> Prop :=
 | PTInstr : forall i es env,
@@ -694,6 +708,8 @@ Proof.
   econstructor; eauto.
   eapply ordered_loop_semantics_of_global; eauto.
 Qed.
+
+(** * Affine trace safety and annotation erasure *)
 
 Fixpoint trace_safe_stmt (s : stmt) : Prop :=
   match s with
@@ -1451,6 +1467,12 @@ Proof.
       * exact Heq_move.
 Qed.
 
+(** * Serializing a certified concrete trace
+
+    The proof recursively serializes ordered child traces, turns a permitted
+    interleaving back into family concatenation, and erases loop modes.  The
+    public endpoint is [semantics_refines_erased]. *)
+
 Lemma ordered_par_trace_forall2_refines_erased :
   forall body env,
     (forall env' tr mem1 mem2,
@@ -1957,6 +1979,11 @@ with subst_stmts_at
   | SCons s ss' =>
       SCons (subst_stmt_at k rep s) (subst_stmts_at k rep ss')
   end.
+
+(** * Metadata-preserving cleanup
+
+    Sequential singleton loops may be substituted away.  Parallel and vector
+    loops retain their mode and origin tag. *)
 
 Fixpoint singleton_elim_stmt (s : stmt) : stmt :=
   match s with
@@ -2941,6 +2968,8 @@ Definition cleanup_stmt_pass (s : stmt) : stmt :=
     (simplify_stmt
       (singleton_elim_stmt
         (cleanup_stmt (simplify_stmt s)))).
+
+(** * Full cleanup and semantic reflection *)
 
 Definition full_cleanup (p : t) : t :=
   let '((s, ctxt), vars) := p in

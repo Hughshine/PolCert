@@ -480,6 +480,37 @@ documentation: $(FILES)
           $(filter-out doc/coq2html cparser/Parser.v, $^)
 	cp -r doc/html/ /var/www/html
 
+# Paper-oriented Rocq documentation.  Keep this set focused on the semantic
+# spine; the generated declaration index links into the supporting modules.
+PROOF_DOC_FILES = \
+  src/CState.v src/CInstr.v polygen/InstanceListSema.v src/PolyLang.v \
+  src/ExtractorFrontend.v src/ExtractorFacts.v src/ExtractorCorrect.v \
+  src/ISSRefinement.v src/ISSBoolChecker.v src/ISSCutSemantics.v src/ISSValidatorCorrect.v \
+  src/AffineValidator.v \
+  src/TilingWitness.v src/TilingRelation.v src/TilingValidator.v src/TilingBandScheduleValidator.v \
+  src/TilingBandMixedSecondValidator.v src/TilingBandPhaseScalarValidator.v \
+  src/TilingBandDirectRuntime.v \
+  polygen/ParallelLoop.v src/ParallelValidator.v src/RawCodegenOrigin.v \
+  src/ParallelCodegenCore.v src/ParallelCodegenCompatibility.v src/ParallelCodegenCorrect.v \
+  src/PrepareCodegen.v src/StrengthenDomain.v \
+  driver/PolOptCorrect.v driver/PolOptBandTiling.v driver/ParallelPolOptCorrect.v \
+  driver/VerifiedParallelCompilerConfig.v driver/ExtractedPipelineCorrect.v
+
+PROOF_DOC_OBJECTS = $(notdir $(PROOF_DOC_FILES:.v=.vo))
+PROOF_DOC_GLOBS = $(addprefix doc/,$(notdir $(PROOF_DOC_FILES:.v=.glob)))
+
+proof-documentation: $(PROOF_DOC_OBJECTS) doc/proof-index.html
+	mkdir -p doc/proof-html
+	rm -f doc/proof-html/*.html doc/proof-html/*.css
+	cat $(PROOF_DOC_GLOBS) > doc/proof-html/proof.glob
+	$(COQDOC) --html --toc --toc-depth 3 --index declarations \
+	  --interpolate --utf8 --no-lib-name \
+	  -t "PolCert proof reader" $(COQINCLUDES) \
+	  -d doc/proof-html --glob-from doc/proof-html/proof.glob $(PROOF_DOC_FILES)
+	cp doc/proof-index.html doc/proof-html/index.html
+
+.PHONY: proof-documentation
+
 tools/ndfun: tools/ndfun.ml
 ifeq ($(OCAML_NATIVE_COMP),true)
 	ocamlopt -o tools/ndfun str.cmxa tools/ndfun.ml

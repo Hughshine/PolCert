@@ -146,6 +146,7 @@ reader/*.scop
 /doc/coq2html.ml
 /doc/html
 /doc/html/
+/doc/proof-html/
 # MacOS metadata
 .DS_Store
 # Coq caches
