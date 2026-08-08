@@ -1,5 +1,12 @@
 # Read-only audit: `polygen/ParallelLoop.v`
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This inventory and
+> the line references below describe commit `9162178`.  The semantic finding is
+> fixed: `PTLoopPar` now admits raw `interleave_family` executions and recursively
+> models nested parallel bodies.  Safety is represented separately by
+> `ordered_par_trace`/`ordered_semantics` and is derived from codegen origin plus
+> validator certificates, rather than assumed by target execution semantics.
+
 ## Inventory
 
 - 1,319 lines.

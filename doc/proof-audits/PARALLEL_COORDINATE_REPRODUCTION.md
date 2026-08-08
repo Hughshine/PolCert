@@ -1,5 +1,11 @@
 # Parallel annotation coordinate reproduction
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This document
+> reproduces the pre-fix coordinate mismatch.  The validator certificate now
+> denotes the canonical padded schedule coordinate used by code generation,
+> and `RawCodegenOrigin` proves the source/generated coordinate relation used by
+> checked single- and multi-coordinate correctness.
+
 This is a read-only reproduction using the already-built `polopt` in container
 `polcert-proof-readability`.  Repository files were not changed; container and
 host outputs were written under `/tmp`.

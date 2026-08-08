@@ -98,15 +98,15 @@ The ordinary project proof and test path was used throughout:
 - `test-extracted-zero-fallback`: all six rejection paths passing;
 - `test-direct-only-tiling-routes`: all 20 cases passing with zero fallback.
 
-## Correctness boundary requiring separate work
+## Resolved parallel correctness boundary
 
 The complete theorem-path audit is
 [PARALLEL_CERTIFICATE_SEMANTICS_GAP.md](PARALLEL_CERTIFICATE_SEMANTICS_GAP.md).
 The concrete raw-codegen coordinate check is recorded separately in
 [PARALLEL_COORDINATE_REPRODUCTION.md](PARALLEL_COORDINATE_REPRODUCTION.md).
 
-The parallel audits identified a semantic connection that is not present in
-the current theorem chain:
+The parallel audits identified a semantic connection that was absent at commit
+`9162178`:
 
 - `ParallelValidator.checked_parallelize_current_sound` proves the certified
   polyhedral dimension is pairwise permutable across loop iterations.
@@ -118,15 +118,22 @@ the current theorem chain:
 - The driver obtains the validator certificate but its correctness proof does
   not apply the certificate soundness theorem.
 
-Thus the checked route currently establishes two separate facts: the chosen
-dimension has the declarative doall property, and every already-safe
-interleaving refines sequential execution.  It does not yet mechanize the
-bridge showing that every order-preserving backend interleaving for the emitted
-parallel loop is safe because of that certificate.  The unused
-`interleave_family` and `family_ordered_permutable` definitions provide the
-first generic step, but a trace-to-flattened-instance correspondence is still
-needed.  This is a theorem-design task, not a readability rewrite, and paper or
-feature claims must keep the distinction explicit until it is closed.
+That finding is now historical on `fix/parallel-interleaving`.  The target
+semantics admits arbitrary order-preserving interleavings; the validator
+certifies padded schedule coordinates; codegen-origin theorems relate actual
+generated points to source instances; and the checked endpoint uses the
+certificate to construct an ordered proof companion for each actual execution.
+The original audit remains available as evidence of the defect and its required
+proof obligations.  The formerly unused `interleave_family` and
+`family_ordered_permutable` definitions now form the generic first step; the
+new trace-origin and pointwise-certificate theorems discharge the previously
+missing program-specific obligations.
+
+The final repair snapshot was rebuilt from a clean tree with
+`make depend && make -j2 proof`: 882.05 seconds wall time, 1,437.12 seconds user
+CPU, 42.48 seconds system CPU, and 10,005,640 KiB peak RSS.  This is the proof
+reproduction cost; extraction, executable linking, and behavior suites are
+separate artifact stages.
 
 ## Refactoring discipline
 

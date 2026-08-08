@@ -18,19 +18,20 @@ every terminating target execution is matched by a source `Loop.t` execution wit
 `State.eq` final states. `compile_verified_correct` is the corresponding theorem
 after `check_config` has accepted a verified config.
 
-For `ParMode`, "target execution" refers to the current formal semantics, whose
-parallel constructor already requires an `interleave_safe` derivation.  The
-repository separately proves the doall property of a validator certificate,
-but does not yet derive this semantic premise for every order-preserving
-backend interleaving from that certificate.  It also lacks a theorem equating
-the checked current-coordinate index with the post-cleanup generated loop
-depth.  Therefore this contract is not yet an unrestricted parallel-backend
-correctness theorem.
+For `ParMode`, target semantics admits every interleaving that preserves each
+iteration trace's internal order.  It does not assume that the chosen
+interleaving is safe.  The checker certifies pairwise commutativity at a padded
+schedule coordinate, the code-generation origin proof relates that coordinate
+to the generated loop and its actual trace, and the correctness proof derives
+the ordered proof companion needed to serialize the interleaving.  This chain
+also covers nested and multi-coordinate annotations.
 
 Sequential routes are not outside this theorem. They are lifted into
 `ParallelLoop.t` with all-`SeqMode` annotations. Parallel routes return the same
 target language after running the parallel checker and adding `ParMode`
-annotations, subject to the semantic qualification above.
+annotations.  Metadata-preserving cleanup is proved by reflection to the same
+certified raw program; if a proof-relevant cleanup stage is not trace-safe, the
+checked route returns the standard-raw program instead.
 
 ## Executable `polopt` shape
 
@@ -100,7 +101,7 @@ certificate surface. Adjacent checked routes cover vector annotation and the
 supported unroll/jam subset.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
-parallel-loop hints, builds a list of candidate current dimensions, and calls a
+parallel-loop hints, builds a list of candidate padded schedule coordinates, and calls a
 `RawParallelCurrentMany*` config in the verified wrapper. It submits every
 dimension in the finite candidate list constructed for that route; no
 two-element truncation remains. Vector routes are
@@ -119,10 +120,10 @@ not a substitute for the final image review.
 
 The current theorem family is state-preserving. The unified wrapper covers
 schedule, tiling, ISS, diamond, and second-level routes that preserve the same
-observable storage under `State.eq`. Parallel and vector routes have checked
-certificate/annotation components, but their endpoint execution theorem has the
-safe-interleaving/sequential-vector scope above; unroll/jam uses its own
-theorem-backed component. The wrapper deliberately does not cover
+observable storage under `State.eq`. Parallel endpoints cover arbitrary
+order-preserving interleavings justified by the checked schedule-coordinate
+certificate; vector endpoints retain sequential-order vector semantics.
+Unroll/jam uses its own theorem-backed component. The wrapper deliberately does not cover
 storage-changing transformations such as scalar
 privatization, array contraction, layout remapping, or overlapped / reuse-based
 tiling. Those need a separate state relation rather than another flag in the

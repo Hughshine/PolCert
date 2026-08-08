@@ -12,9 +12,8 @@ definitions and theorem names.
 
 The declaration-level ownership and long-proof review is indexed in
 [`proof-audits/README.md`](proof-audits/README.md).  Its parallel-semantics
-section records an open certificate-to-execution connection.  Read that scope
-qualification before interpreting the final theorem as a theorem about all
-behaviors of an unrestricted parallel backend.
+section records the original certificate-to-execution defect and the branch
+that resolves it.
 
 ## 1. Start from the Contract
 
@@ -34,10 +33,12 @@ This is the common shape of the component theorems. A validator may reject a
 proposal or raise an alarm. If a checked route returns a target and that target
 executes, the theorem reconstructs a source execution whose final state is
 related by the abstract `State.eq` supplied by the instruction semantics.
-For a `ParMode` target, the current target semantics admits only traces that
-already carry an `interleave_safe` derivation.  The theorem does not yet derive
-that premise from the parallel validator certificate for arbitrary backend
-interleavings.
+For a `ParMode` target, the target semantics admits arbitrary interleavings that
+preserve each iteration trace's internal order.  The validator certificate is
+not a semantic premise.  Instead, codegen-origin theorems relate the actual
+generated trace to source polyhedral instances, and the checked correctness
+proof uses the certificate to construct a separate `ordered_semantics`
+derivation before serializing the trace.
 
 Read the final file in this order:
 
@@ -326,28 +327,51 @@ candidate; there is no affine-validation fallback for the tiling boundary.
 
 Primary files:
 
+- `polygen/ParallelLoop.v`
 - `src/ParallelValidator.v`
+- `src/RawCodegenOrigin.v`
 - `src/ParallelCodegen.v`
 - `driver/ParallelPolOptCorrect.v`
 
-`parallel_safe_dim pp d` states the doall property for one current loop
-dimension. Two instances are in the same parallel slice when they have the
-same parameter environment and the same current coordinates before `d`, but
-different coordinates at `d`. The property requires every such pair to
-commute.
+`parallel_safe_dim_pointwise pp d` states the doall property for one padded
+schedule coordinate. Two instances are in the same parallel slice when they
+have the same parameter environment, the same padded timestamp prefix before
+`d`, and different values at `d`. The property requires every such pair to
+commute. The older flatten-list property and theorem names remain compatibility
+corollaries.
 
 `check_pprog_parallel_currentb` reduces this property to an affine validation
-query between two synthetic schedule views: one orders only by coordinate `d`,
-and the other orders by the prefix before `d`. Its soundness theorem is
-`check_pprog_parallel_currentb_sound`; `checked_parallelize_current_sound`
-packages the resulting certificate.
+query between two synthetic schedule views built from the actual padded
+schedule rows: one orders only by coordinate `d`, and the other orders by the
+prefix before `d`. Its pointwise soundness theorem is
+`check_pprog_parallel_currentb_pointwise_sound`;
+`checked_parallelize_current_pointwise_sound` packages the certificate. The
+range theorem additionally proves that `d` is one of the schedule coordinates
+inserted by code generation.
+
+`ParallelLoop.par_trace` is the target execution model. A `ParMode` loop uses
+`interleave_family`, which admits every merge that preserves each iteration
+trace's internal order; it does not require commutativity. Nested parallel
+loops use the same raw trace relation recursively. The separate
+`ordered_par_trace` and `ordered_semantics` relations are proof companions that
+carry the pairwise commutativity needed to serialize one actual execution.
+
+`RawCodegenOrigin.v` avoids putting origin metadata in the executable target.
+It reflects a sequential cover of a generated trace through LoopGen,
+PolyLoopSimplifier, ASTGen, schedule elimination, and PrepareCodegen. The final
+event-source theorem recovers the exact source statement, domain membership,
+observable instruction effect, parameter prefix, and padded schedule
+coordinates for each generated instruction point.
 
 `ParallelCodegen.v` attaches sequential, parallel, or vector modes to generated
-loops. The semantic proof erases those annotations to the already verified
-sequential loop. For `ParMode`, the formal execution derivation already contains
-an `interleave_safe` premise; for `VecMode`, traces remain in sequential order.
-The codegen proof relates executions admitted by those semantics to erased
-execution. The endpoints are:
+loops. Its central mutual proof traverses the actual raw target trace. At each
+`ParMode` node it finds the owning certificate, maps two sibling-family points
+back to source instances, applies pointwise certificate soundness, and transports
+the resulting `Permutable` fact back to generated points. This constructs
+`ordered_semantics` for the same execution; erasure then serializes it and the
+existing PrepareCodegen theorem finishes the source refinement. Single-coordinate
+codegen is a singleton wrapper around the multi-certificate proof. The checked
+endpoints are:
 
 ```text
 checked_annotated_codegen_correct_general
@@ -355,9 +379,16 @@ checked_vector_annotated_codegen_correct_general
 checked_annotated_codegen_many_correct_general
 ```
 
-Vectorization runs the same doall checker and has a separate annotation/codegen
-theorem. The certificate soundness theorem is not consumed by either codegen
-endpoint today. In particular, the proof does not model SIMD backend behavior.
+Metadata-preserving cleanup runs after annotation. It preserves `ParMode`,
+`VecMode`, and origin tags, and removes only sequential singleton loops. The
+checked route tests every representation required by its reflection theorem;
+an accepted cleaned execution reflects to the same certified raw program. If a
+stage is not trace-safe, the route returns the checked standard-raw program.
+
+Vectorization runs the same executable doall checker and separately requires
+the emitted vector annotation to be structurally innermost. `VecMode` traces
+remain in sequential order, so this theorem does not model SIMD lanes or a
+vector backend execution model.
 
 `ParallelPolOptCorrect.v` composes preprocessing routes with these annotation
 and codegen theorems. The local `finish_checked_*` tactics only remove repeated
@@ -365,12 +396,10 @@ proof scripts. Their semantic content is: prove the prepared program is well
 formed, obtain correctness of annotation/codegen, obtain correctness of the
 preparation route, and compose `State.eq`.
 
-The missing step is not inside those tactics. It is a trace-level bridge from
-the validator's `parallel_safe_dim` property to every order-preserving
-interleaving of the emitted loop, including a proof that the certified current
-coordinate denotes the loop depth tagged after codegen cleanup. Nested
-`ParMode` annotations are also interpreted sequentially inside an outer
-parallel trace by the current `seq_trace` body premise.
+The semantic content of the driver layer is now explicit certificate transport:
+validator success yields pointwise certificate soundness and an in-range
+schedule coordinate; single and multi drivers pass those facts to the codegen
+endpoints before composing the route-level `State.eq` results.
 
 ## 8. What to Read and What to Skim
 
@@ -383,7 +412,9 @@ AffineValidator.validate_correct
 TilingRelation.tiling_after_to_before_instance_correct_via_retiled_old
 TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe
 TilingBandDirectRuntime.checked_tiling_sourceb_complete_direct_band_check_correct
-ParallelValidator.checked_parallelize_current_sound
+ParallelValidator.checked_parallelize_current_pointwise_sound
+RawCodegenOrigin.complete_generate_many_event_source
+ParallelCodegen.actual_multi_ordered_mutual
 ParallelCodegen.checked_annotated_codegen_correct_general
 ParallelPolOptCorrect.Opt_parallel_current_correct
 VerifiedParallelCompilerConfig.compile_correct

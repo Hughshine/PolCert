@@ -1,5 +1,13 @@
 # ParallelCodegen read-only audit summary
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This is a
+> historical audit of commit `9162178`, not a description of the current proof
+> chain.  The checked codegen endpoint now consumes validator certificate
+> soundness, maps actual generated traces back to source points through
+> `RawCodegenOrigin`, constructs `ordered_semantics`, and only then invokes the
+> erasure and prepared-codegen correctness theorems.  The old global-ordering
+> theorems remain compatibility APIs and are not used by the checked driver.
+
 ## Inventory
 
 - `src/ParallelCodegen.v`: 1,183 lines.

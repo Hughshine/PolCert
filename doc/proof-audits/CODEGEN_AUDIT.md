@@ -1,5 +1,10 @@
 # Read-only audit: `polygen/CodeGen.v`
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** The reproduced
+> current-coordinate/structural-depth mismatch is historical.  Parallel
+> validation now targets the padded schedule coordinate actually inserted by
+> code generation, and the trace-origin theorem proves that correspondence.
+
 ## Scope and artifacts
 
 - File size: 315 lines.

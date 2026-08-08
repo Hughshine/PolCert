@@ -137,7 +137,7 @@ TOP_LEVEL_ROUTES = [
             "checked_annotated_codegen_correct_general",
             "annotated_codegen_raw_correct_general",
         ],
-        "note": "The selector preserves trace safety by retaining the checked raw singleton-loop output when cleaned codegen is not trace-safe.",
+        "note": "The selector returns metadata-preserving cleaned output only when every proof-relevant cleanup stage passes the executable trace-safety gate; otherwise it retains the checked standard-raw singleton-loop output.",
     },
     {
         "route": "raw prepared codegen",
@@ -247,7 +247,7 @@ TOP_LEVEL_ROUTES = [
             "checked_sequential_current_annotated_codegen_correct",
             "compile_unsupported_no_result",
         ],
-        "note": "This wrapper gives a single Loop -> ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen and retain its checked raw form when cleaned codegen is not trace-safe; explicit parallel-current configs keep the existing ParMode route theorems. Pluto-hinted --parallel and --multipar are candidate-selection layers over the same checked compiler; --multipar now dispatches through RawParallelCurrentMany* configs and the extracted Coq route filters the candidate list to all certifiable dimensions before checked multi-cert codegen. The underlying route theorems live in driver/ParallelPolOptCorrect.v, including Opt_parallel_current_many_correct, Opt_parallel_current_many_identity_tiled_correct, and Opt_parallel_current_many_diamond_correct.",
+        "note": "This wrapper gives a single Loop -> ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen. Parallel routes certify padded schedule coordinates, derive ordering for each actual target execution, and use cleaned output only when every proof-relevant cleanup stage is trace-safe; otherwise they retain the checked standard-raw form. Pluto-hinted --parallel and --multipar are candidate-selection layers over the same checked compiler; --multipar dispatches through RawParallelCurrentMany* configs and the extracted Coq route filters the candidate list to all certifiable coordinates before checked multi-cert codegen. The underlying route theorems live in driver/ParallelPolOptCorrect.v, including Opt_parallel_current_many_correct, Opt_parallel_current_many_identity_tiled_correct, and Opt_parallel_current_many_diamond_correct.",
     },
     {
         "route": "checked ISS plus diamond plus parallel current",

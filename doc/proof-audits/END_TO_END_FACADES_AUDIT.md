@@ -1,5 +1,11 @@
 # Frontend and driver facade audit
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** The endpoint scope
+> warning below describes the audited pre-fix snapshot.  The final facade now
+> reaches a checked parallel chain whose raw semantics admits arbitrary
+> order-preserving interleavings and whose actual execution is justified by the
+> validator certificate through codegen-origin and ordered-trace proofs.
+
 ## Scope and generated data
 
 Read-only audit of:

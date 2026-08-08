@@ -1,5 +1,11 @@
 # Read-only audit: `src/PrepareCodegen.v`
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** The parallel gap
+> described in this historical audit is closed by the pointwise schedule
+> certificate and the new `RawCodegenOrigin` trace/source correspondence.  The
+> existing state-level PrepareCodegen theorems remain the final sequential
+> composition step; the family-preserving facts live in the new bridge.
+
 ## Scope and method
 
 - Worktree: `proof/readability-cleanup`.

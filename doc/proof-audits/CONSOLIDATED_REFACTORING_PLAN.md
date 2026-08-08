@@ -1,5 +1,12 @@
 # PolCert proof-readability audit: cross-file consolidation
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** The parallel P0 in
+> this historical plan has been implemented: unrestricted target interleavings,
+> pointwise schedule-coordinate certificates, generated-trace origin, actual
+> ordered proof companions, and cleanup reflection are connected through the
+> checked driver.  The remaining items in this document are refactoring advice,
+> not an open parallel soundness claim.
+
 ## 1. Scope, evidence, and interpretation
 
 This document consolidates the completed read-only audits under `/tmp` for:

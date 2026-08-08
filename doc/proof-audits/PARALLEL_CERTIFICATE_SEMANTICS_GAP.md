@@ -1,5 +1,15 @@
 # Parallel certificate-to-codegen soundness audit
 
+> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This document
+> records the pre-fix audit at commit `9162178`; its gap conclusion is historical.
+> `PTLoopPar` now uses unrestricted `interleave_family` traces, the validator
+> certifies a padded schedule coordinate pointwise, and `RawCodegenOrigin` plus
+> `ParallelCodegen` connect each actual generated trace to source instances.
+> The checked single- and multi-coordinate endpoints consume those certificates
+> to construct `ordered_semantics` before applying the erasure refinement.
+> Metadata-preserving cleanup is reflected back to the same certified raw
+> program, with executable trace-safety gates for every required stage.
+
 ## Scope and verdict
 
 - Snapshot: commit `91621785168a74394f2b9c771bdd8427acc618b7`.

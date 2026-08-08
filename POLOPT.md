@@ -15,7 +15,8 @@ There are four practically important theorem-facing `polopt` families:
 
 - checked affine+tiling routes, including the default sequential route
 - checked ISS+affine+tiling routes (`--iss`)
-- checked explicit-dimension parallel routes (`--parallel-current`)
+- checked explicit schedule-coordinate parallel routes (the legacy-named
+  `--parallel-current` option)
 - checked Pluto-hinted parallel routes (`--parallel`, `--parallel-strict`, and
   `--parallel --multipar`)
 
@@ -364,7 +365,7 @@ What changed:
 - the body is unchanged; the visible change is iteration-space partitioning
 - this is the characteristic shape of the theorem-aligned ISS route before later scheduling/codegen cleanup
 
-## Parallel example: explicit current dimension (`--parallel-current 0`)
+## Parallel example: explicit schedule coordinate (`--parallel-current 0`)
 
 Input `.loop`:
 
@@ -390,9 +391,9 @@ parallel for i0 in range(0, 4) {
 
 What changed:
 
-- the optimized current-space outer dimension is certified parallel and emitted as `parallel for`
-- this route is theorem-aligned for explicit dimensions: the optimizer theorem is not inferred from Pluto hints
-- the `--parallel` / `--parallel-strict` routes use Pluto hints, while `--parallel-current` fixes the dimension explicitly
+- the first padded schedule coordinate is certified parallel and emitted as `parallel for`
+- this route is theorem-aligned for explicit coordinates: the optimizer theorem is not inferred from Pluto hints
+- the `--parallel` / `--parallel-strict` routes use Pluto hints, while `--parallel-current` fixes the schedule coordinate explicitly; the option name is retained for compatibility
 
 ## What is proved
 
@@ -469,7 +470,7 @@ The repository also contains verified parallel components:
 
 Interpretation:
 
-- `--parallel-current d` uses the checked explicit-dimension parallel pipeline
+- `--parallel-current d` uses the checked explicit schedule-coordinate parallel pipeline
 - `--parallel` / `--parallel-strict` use Pluto-hinted checked one-current routes
 - `--parallel --multipar` submits every dimension in the finite candidate list
   constructed for that route to checked multi-current configs; no two-element
@@ -506,7 +507,7 @@ Interpretation:
 - `--iss --identity`: checked ISS-only split path
 - `--notile`: affine-only checked path
 - `--identity`: no Pluto scheduling phase
-- `--parallel-current d`: theorem-aligned explicit-dimension parallel route
+- `--parallel-current d`: theorem-aligned explicit schedule-coordinate parallel route
 - `--parallel`, `--parallel-strict`, `--parallel --multipar`: Pluto-hinted checked parallel routes
 - `--second-level-tile`: checked second-level tiling route for the
   tiled validation path
@@ -515,7 +516,7 @@ Interpretation:
 
 `Opt_correct` is a route-local sequential theorem. The wrapper theorem
 `VerifiedParallelCompilerConfig.compile_correct` is the end-to-end theorem that
-packages accepted sequential, ISS, explicit-current parallel, and Pluto-hinted
+packages accepted sequential, ISS, explicit-coordinate parallel, and Pluto-hinted
 parallel configs. Neither theorem says anything about:
 - textual `.loop` parsing / elaboration
 - Pluto itself

@@ -82,11 +82,11 @@ Commands:
 Status:
 
 - CLI-exposed checked routes through the unified compiler wrapper
-- runs a proved doall certificate checker and a separately proved annotated
-  code-generation component
-- current end-to-end correctness is relative to `ParallelLoop.semantics`, which
-  admits only interleavings already carrying an `interleave_safe` derivation;
-  the certificate-to-arbitrary-backend-interleaving bridge remains open
+- validates pairwise commutativity at the selected padded schedule coordinate,
+  then connects that certificate to the actual generated loop traces
+- `ParallelLoop.semantics` admits arbitrary order-preserving interleavings;
+  the code-generation proof derives an ordered proof companion for each actual
+  execution and uses the certificate to justify every cross-iteration move
 - `--parallel-strict` requires the certified loop to match Pluto's hint
 - `--multipar` submits every dimension in the finite candidate list constructed
   for that route to checked multi-current configs (`RawParallelCurrentMany*`);
@@ -102,8 +102,10 @@ Command:
 
 Status:
 
-- theorem-facing optimizer route for an explicit current dimension, with the
-  same safe-interleaving semantic scope described above
+- theorem-facing optimizer route for an explicit padded schedule coordinate;
+  `current` remains in the option name for compatibility
+- clean output is used when all proof-relevant cleanup stages are trace-safe;
+  otherwise the route returns the checked standard-raw codegen form
 - supported on identity, affine-only, and full tiled paths
 - also available with `--iss`
 
@@ -117,7 +119,7 @@ Command:
 
 Status:
 
-- theorem-aligned checked vector annotation for an explicit current dimension
+- theorem-aligned checked vector annotation for an explicit padded schedule coordinate
 - reuses the parallel/doall certificate, matching Pluto's prevector source
 - the formal `VecMode` semantics preserves sequential trace order; no SIMD
   backend execution semantics is modeled
@@ -143,7 +145,7 @@ The vector route reuses the same doall certificate family as checked
 parallelization, but emitted `vector for` annotations are justified by the vector
 codegen correctness lemmas rather than by the ordinary parallel route theorem
 alone. Pluto-hinted vector mode searches only the supplied innermost hints. It
-does not search non-innermost current dimensions.
+does not search non-innermost schedule coordinates.
 
 ### Additional tiling-family selectors
 

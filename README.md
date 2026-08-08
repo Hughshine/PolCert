@@ -85,10 +85,12 @@ By default it runs the checked affine+tiling route through the unified
 cannot establish its property is reported as `rejected`. It also exposes:
 
 - an optional checked ISS path via `--iss`
-- checked explicit-dimension parallel paths via `--parallel-current`
+- checked explicit schedule-coordinate parallel paths via the legacy-named
+  `--parallel-current`
 - checked Pluto-hinted parallel paths via `--parallel`, `--parallel-strict`,
   and `--parallel --multipar`
-- checked explicit-dimension vector annotation via `--vector-current`
+- checked explicit schedule-coordinate vector annotation via the legacy-named
+  `--vector-current`
 - checked Pluto-hinted vector annotation via `--vector` / `--prevector`
 - checked tiling-family selectors such as `--second-level-tile`,
   `--diamond-tile`, and `--full-diamond-tile`
@@ -115,6 +117,12 @@ no tiling-validation fallback.
 Vector annotations are restricted to certifiable innermost loops. `--multipar`
 passes every dimension in the finite candidate list constructed for that route
 to the checked multi-current validator; no two-element truncation remains.
+Parallel target semantics admits arbitrary order-preserving interleavings.  The
+checked code-generation proof maps each actual generated trace back to source
+polyhedral instances and uses the schedule-coordinate certificate to establish
+the commutativity needed to serialize that trace.  Cleaned output is returned
+only when every proof-relevant cleanup stage passes the executable trace-safety
+gate; otherwise the same route returns its checked standard-raw form.
 
 ## Status
 

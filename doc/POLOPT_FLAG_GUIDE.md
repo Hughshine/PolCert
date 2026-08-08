@@ -84,22 +84,23 @@ produce and validate it?
     dimension
 - `--multipar`
   - refine `--parallel`: use Pluto's multi-parallel hints and certify a list of
-    current dimensions through the checked multi-current route; every dimension
+    schedule coordinates through the checked multi-coordinate route; every dimension
     in the finite candidate list constructed for that route is considered, and
     no two-element truncation remains
 - `--parallel-current d`
-  - use the theorem-aligned explicit-dimension parallel route
+  - use the theorem-aligned explicit schedule-coordinate parallel route; the
+    option name is retained for compatibility
 - `--vector`, `--prevector`
   - use Pluto's vector loop hint when possible, then certify a doall current
     dimension and emit `vector for`; only innermost hints are considered
 - `--vector-strict`
   - refine `--vector`: require the certified loop to match Pluto's vector hint
 - `--vector-current d`
-  - use the theorem-aligned explicit-dimension vector route; reject `d` unless
+  - use the theorem-aligned explicit schedule-coordinate vector route; reject `d` unless
     it is certifiable and structurally innermost
 
 These flags answer: do we stay sequential, follow Pluto's hint, or certify a
-user-selected current dimension? Vector routes reuse the same parallel/doall
+user-selected padded schedule coordinate? Vector routes reuse the same parallel/doall
 checker because Pluto's prevector marker is derived from parallel-loop analysis.
 They deliberately do not search or annotate non-innermost loops.
 
@@ -170,7 +171,7 @@ particular:
   normal affine/tiling, ISS, identity-tiling, second-level, and diamond-family
   compositions covered by the current wrapper
 - `--parallel --multipar` follows the same hinted family but certifies a list of
-  current dimensions through `RawParallelCurrentMany*` configs. The driver
+  padded schedule coordinates through `RawParallelCurrentMany*` configs. The driver
   passes every dimension in the finite candidate list constructed for that
   route; no two-element truncation remains
 - `--parallel-current d` supports:
@@ -180,7 +181,7 @@ particular:
   - `--iss`
   - `--iss --notile`
   - `--iss --identity`
-- `--vector-current d` follows the same explicit-current support shape as
+- `--vector-current d` follows the same explicit-coordinate support shape as
   `--parallel-current d`, but emits `vector for` only for a certified innermost
   loop
 - `--second-level-tile` is also valid with:
@@ -267,10 +268,10 @@ Reason:
 - `--parallel` means "follow Pluto's hinted dimension if certification/codegen
   can make that work"
 - `--multipar` refines that same family by asking for a checked list of hinted
-  current dimensions
+  schedule coordinates
 - `--parallel-current d` means "use the proved explicit-dimension route for
-  current dimension `d`"
-- hinted and explicit-current selection are different route families, so the
+  padded schedule coordinate `d`"; `current` is a compatibility name
+- hinted and explicit-coordinate selection are different route families, so the
   frontend forces the user to pick one
 
 ### 3.5 Ordinary-Tiling Compatibility Selectors Are Intentionally Narrow
