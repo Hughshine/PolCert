@@ -1170,22 +1170,6 @@ Proof.
   - eapply IH. exact Hnth.
 Qed.
 
-Lemma nth_error_phase_scalar_layouts_inv :
-  forall entries n layout,
-    nth_error (phase_scalar_layouts entries) n = Some layout ->
-    exists entry,
-      nth_error entries n = Some entry /\
-      pse_layout entry = layout.
-Proof.
-  intros entries.
-  induction entries as [|entry entries IH];
-    intros n layout Hnth; destruct n; simpl in *; try discriminate.
-  - inversion Hnth; subst layout.
-    exists entry. split; reflexivity.
-  - destruct (IH n layout Hnth) as [entry' [Hentry Hlayout]].
-    exists entry'. split; assumption.
-Qed.
-
 Lemma phase_scalar_reversal_same_class :
   forall before_pis before_ctxt before_vars
          after_pis ws entries envv flat ip1 ip2,
