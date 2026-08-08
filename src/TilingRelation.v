@@ -484,10 +484,8 @@ Proof.
   apply Forall2_app_inv_r in Hforall2.
   destruct Hforall2 as [xs' [xy [Hhead [Htail Hsplit]]]].
   simpl in Htail.
-  inversion Htail; subst; clear Htail.
-  match goal with
-  | H : Forall2 _ _ [] |- _ => inversion H; subst; clear H
-  end.
+  inversion Htail as [|x' y' xs'' ys'' Hxy Hrest]; subst; clear Htail.
+  inversion Hrest; subst; clear Hrest.
   apply app_inj_tail in Hsplit.
   destruct Hsplit as [Hxs Hx].
   subst.

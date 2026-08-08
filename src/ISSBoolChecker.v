@@ -446,6 +446,26 @@ Definition check_domain_partition_shapeb
   check_stmt_parent_payload_relationb
     before_pis after_pis w.(iw_stmt_witnesses).
 
+Local Lemma andb4_true :
+  forall a b c d,
+    a && b && c && d = true ->
+    a = true /\ b = true /\ c = true /\ d = true.
+Proof.
+  intros a b c d Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  tauto.
+Qed.
+
+Local Lemma andb3_true :
+  forall a b c,
+    a && b && c = true ->
+    a = true /\ b = true /\ c = true.
+Proof.
+  intros a b c Hcheck.
+  repeat rewrite andb_true_iff in Hcheck.
+  tauto.
+Qed.
+
 Lemma check_domain_partition_shapeb_sound :
   forall before after w,
     check_domain_partition_shapeb before after w = true ->
@@ -458,19 +478,13 @@ Proof.
   unfold Refine.domain_partition_shape_with_witness.
   unfold Refine.domain_partition_shape.
   simpl in *.
-  repeat match goal with
-  | Hconj : _ && _ = true |- _ => apply andb_true_iff in Hconj
-  | Hconj : _ /\ _ |- _ => destruct Hconj
-  end.
-  repeat match goal with
-  | Heq : ctxt_eqb _ _ = true |- _ => apply ctxt_eqb_eq in Heq
-  | Heq : ctxt_ty_eqb _ _ = true |- _ => apply ctxt_ty_eqb_eq in Heq
-  | Heq : check_parent_witnesses_in_rangeb _ _ = true |- _ =>
-      apply check_parent_witnesses_in_rangeb_sound in Heq
-  | Heq : check_stmt_parent_payload_relationb _ _ _ = true |- _ =>
-      apply check_stmt_parent_payload_relationb_sound in Heq
-  end.
-  repeat split; assumption.
+  destruct (andb4_true _ _ _ _ Hcheck)
+    as [Hctxt [Htypes [Hparents Hpayloads]]].
+  apply ctxt_eqb_eq in Hctxt.
+  apply ctxt_ty_eqb_eq in Htypes.
+  apply check_parent_witnesses_in_rangeb_sound in Hparents.
+  apply check_stmt_parent_payload_relationb_sound in Hpayloads.
+  exact (conj Hctxt (conj Htypes (conj Hparents Hpayloads))).
 Qed.
 
 Definition check_domain_partition_cut_shapeb
@@ -494,31 +508,17 @@ Proof.
   unfold check_domain_partition_cut_shapeb in Hcheck.
   unfold Refine.domain_partition_cut_shape.
   simpl in *.
-  repeat match goal with
-  | Hconj : _ && _ = true |- _ => apply andb_true_iff in Hconj
-  | Hconj : _ /\ _ |- _ => destruct Hconj
-  end.
-  assert (Hshape_bool :
-            check_domain_partition_shapeb
-              (before_pis, before_varctxt, before_vars)
-              (after_pis, after_varctxt, after_vars) w = true).
-  {
-    unfold check_domain_partition_shapeb.
-    simpl.
-    rewrite H.
-    rewrite H4.
-    rewrite H3.
-    rewrite H2.
-    reflexivity.
-  }
+  destruct (andb3_true _ _ _ Hcheck)
+    as [Hshape_bool [Hsigns_bool Hdomains_bool]].
   pose proof (check_domain_partition_shapeb_sound
                 (before_pis, before_varctxt, before_vars)
                 (after_pis, after_varctxt, after_vars)
                 w Hshape_bool) as Hshape.
   pose proof (check_stmt_piece_signs_relationb_sound
-                (iw_cuts w) (iw_stmt_witnesses w) H1) as Hsigns.
+                (iw_cuts w) (iw_stmt_witnesses w) Hsigns_bool) as Hsigns.
   pose proof (check_stmt_domain_cut_relationb_sound
-                before_pis after_pis (iw_cuts w) (iw_stmt_witnesses w) H0)
+                before_pis after_pis (iw_cuts w) (iw_stmt_witnesses w)
+                Hdomains_bool)
     as Hdomains.
   exact (conj Hshape (conj Hsigns Hdomains)).
 Qed.
