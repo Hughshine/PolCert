@@ -914,18 +914,16 @@ Proof.
     exists [ParallelLoop.BaseLoop.mk_instr_point i es env].
     split; [constructor|]. tauto.
   - intros ss IH env tr Hsafe Htrace.
-    inversion Htrace; subst.
-    match goal with
-    | Hsub : ParallelLoop.par_traces ss env tr |- _ =>
-        destruct (IH env tr Hsafe Hsub) as [seqtr [Hseq Hcover]]
-    end.
+    inversion Htrace as [|env0 ss0 tr0 Hsub| | | | |]; subst.
+    destruct (IH env tr Hsafe Hsub) as [seqtr [Hseq Hcover]].
     exists seqtr. split; [constructor; exact Hseq|exact Hcover].
   - intros test body IH env tr Hsafe Htrace.
-    inversion Htrace; subst.
-    + match goal with
-      | Hsub : ParallelLoop.par_trace body env tr |- _ =>
-          destruct (IH env tr Hsafe Hsub) as [seqtr [Hseq Hcover]]
-      end.
+    inversion Htrace as
+      [| |
+       env0 test0 body0 tr0 Htest Hbody
+       | env0 test0 body0 Htest
+       | | |]; subst.
+    + destruct (IH env tr Hsafe Hbody) as [seqtr [Hseq Hcover]].
       exists seqtr. split; [econstructor; eauto|exact Hcover].
     + exists []. split.
       * apply ParallelLoop.STGuardFalse. assumption.
@@ -935,16 +933,13 @@ Proof.
     exists []. split; [constructor|].
     contradiction.
   - intros s IHs ss IHss env tr Hsafe Htrace.
-    inversion Htrace; subst.
+    inversion Htrace as
+      [|env0 s0 ss0 tr1 tr2 Hhead Htail]; subst.
     destruct Hsafe as [Hsafe_s Hsafe_ss].
-    match goal with
-    | Hhead : ParallelLoop.par_trace s env tr1,
-      Htail : ParallelLoop.par_traces ss env tr2 |- _ =>
-        destruct (IHs env tr1 Hsafe_s Hhead)
-          as [seqtr1 [Hseq1 Hcover1]];
-        destruct (IHss env tr2 Hsafe_ss Htail)
-          as [seqtr2 [Hseq2 Hcover2]]
-    end.
+    destruct (IHs env tr1 Hsafe_s Hhead)
+      as [seqtr1 [Hseq1 Hcover1]].
+    destruct (IHss env tr2 Hsafe_ss Htail)
+      as [seqtr2 [Hseq2 Hcover2]].
     exists (seqtr1 ++ seqtr2).
     split.
     + econstructor; eauto.
@@ -1089,20 +1084,20 @@ Proof.
       tagged_seq_trace_origin_stmts_goal.
   - intros lb ub body IH depth env tr Hsafe Htrace.
     simpl in Htrace, Hsafe.
-    inversion Htrace; subst.
+    inversion Htrace as
+      [| | | |
+       mode0 od0 lb0 ub0 body0 env0 zs0 trs0 tr0
+         Hrange Htraces Hconcat]; subst.
     rewrite map_concat_generated_event.
     econstructor.
     + reflexivity.
     + rewrite <- !tag_expr_eval.
       clear Htrace.
-      match goal with
-      | Hfor : Forall2 _ _ _ |- _ =>
-          induction Hfor as [|z tri zs trs Htri Hfor IHfor]
-      end.
+      induction Htraces as [|z tri zs trs Htri Htraces IHtraces].
       * constructor.
       * constructor.
         -- eapply IH; eauto.
-        -- exact IHfor.
+        -- exact IHtraces.
   - intros i es depth env tr Hsafe Htrace.
     simpl in Hsafe, Htrace.
     inversion Htrace; subst.
@@ -1170,20 +1165,15 @@ Lemma erase_to_loop_stmt_semantics_mutual :
 Proof.
   apply (pl_stmt_stmts_mutind erase_stmt_sem_goal erase_stmts_sem_goal).
   - intros mode od lb ub body IHbody env st1 st2 Hsem.
-    inversion Hsem; subst.
+    inversion Hsem as
+      [| | | | |
+       env0 lb0 ub0 body0 st10 st20 Hiter]; subst.
     eapply Loop.LLoop.
     rewrite !erase_expr_eval_eq.
-    lazymatch goal with
-    | Hiter :
-        Instr.IterSem.iter_semantics
-          (fun x =>
-             ParallelLoop.BaseLoop.loop_semantics
-               (ParallelLoop.erase_stmt body) (x :: env)) _ _ _ |- _ =>
-        pose proof Hiter as Hiter';
-        eapply iter_semantics_refine_exact with
-          (Q := fun x => Loop.loop_semantics (erase_to_loop_stmt body) (x :: env))
-          in Hiter'
-    end.
+    pose proof Hiter as Hiter'.
+    eapply iter_semantics_refine_exact with
+      (Q := fun x => Loop.loop_semantics (erase_to_loop_stmt body) (x :: env))
+      in Hiter'.
     + exact Hiter'.
     + intros x stA stB _ Hbody_sem.
       eapply IHbody; eauto.
