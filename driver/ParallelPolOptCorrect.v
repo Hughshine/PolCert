@@ -1827,6 +1827,30 @@ Qed.
 
 (** * Alarm-free parallel entry points *)
 
+Local Lemma alarm_free_from_result_correct
+    {A : Type}
+    (result_route : LoopIR.t -> A ->
+      imp (result Core.ParallelCodegenCore.ParallelLoop.t)) :
+  forall loop arg pl st st',
+    (forall loop arg pl st st',
+      mayReturn (result_route loop arg) (Okk pl) ->
+      ParallelLoop.semantics pl st st' ->
+      exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st'') ->
+    mayReturn
+      (BIND res <- result_route loop arg -;
+       res_to_alarm Core.parallel_dummy res)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros loop arg pl st st' Hresult Hopt Hsem.
+  bind_imp_destruct Hopt res Hres.
+  pose proof Hopt as Hopt_ok.
+  apply res_to_alarm_correct in Hopt_ok.
+  subst res.
+  eapply Hresult; eauto.
+Qed.
+
 Theorem Opt_parallel_current_identity_correct :
   forall loop d pl st st',
     mayReturn (Core.Opt_parallel_current_identity loop d) pl ->
@@ -1834,13 +1858,10 @@ Theorem Opt_parallel_current_identity_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_identity in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_identity_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_identity_result); eauto.
+  exact Opt_parallel_current_identity_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_correct :
@@ -1850,13 +1871,10 @@ Theorem Opt_parallel_current_identity_tiled_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_identity_tiled_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_identity_tiled_result); eauto.
+  exact Opt_parallel_current_identity_tiled_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_tiled_with_iss_correct :
@@ -1866,13 +1884,10 @@ Theorem Opt_parallel_current_identity_tiled_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_tiled_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_identity_tiled_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_identity_tiled_with_iss_result); eauto.
+  exact Opt_parallel_current_identity_tiled_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_affine_correct :
@@ -1882,13 +1897,10 @@ Theorem Opt_parallel_current_affine_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_affine in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_affine_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_affine_result); eauto.
+  exact Opt_parallel_current_affine_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_correct :
@@ -1898,13 +1910,10 @@ Theorem Opt_parallel_current_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_result); eauto.
+  exact Opt_parallel_current_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_diamond_correct :
@@ -1914,13 +1923,10 @@ Theorem Opt_parallel_current_diamond_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_diamond_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_diamond_result); eauto.
+  exact Opt_parallel_current_diamond_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_diamond_with_iss_correct :
@@ -1930,13 +1936,10 @@ Theorem Opt_parallel_current_diamond_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_diamond_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_diamond_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_diamond_with_iss_result); eauto.
+  exact Opt_parallel_current_diamond_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_with_iss_correct :
@@ -1946,13 +1949,10 @@ Theorem Opt_parallel_current_identity_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_identity_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_identity_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_identity_with_iss_result); eauto.
+  exact Opt_parallel_current_identity_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_affine_with_iss_correct :
@@ -1962,13 +1962,10 @@ Theorem Opt_parallel_current_affine_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_affine_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_affine_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_affine_with_iss_result); eauto.
+  exact Opt_parallel_current_affine_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_with_iss_correct :
@@ -1978,13 +1975,10 @@ Theorem Opt_parallel_current_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop d pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_with_iss_result); eauto.
+  exact Opt_parallel_current_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_correct :
@@ -1994,13 +1988,10 @@ Theorem Opt_parallel_current_many_identity_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_identity_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_identity_result); eauto.
+  exact Opt_parallel_current_many_identity_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_correct :
@@ -2010,13 +2001,10 @@ Theorem Opt_parallel_current_many_identity_tiled_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_identity_tiled_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_identity_tiled_result); eauto.
+  exact Opt_parallel_current_many_identity_tiled_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_tiled_with_iss_correct :
@@ -2028,13 +2016,10 @@ Theorem Opt_parallel_current_many_identity_tiled_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_tiled_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_identity_tiled_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_identity_tiled_with_iss_result); eauto.
+  exact Opt_parallel_current_many_identity_tiled_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_correct :
@@ -2044,13 +2029,10 @@ Theorem Opt_parallel_current_many_affine_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_affine_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_affine_result); eauto.
+  exact Opt_parallel_current_many_affine_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_correct :
@@ -2060,13 +2042,10 @@ Theorem Opt_parallel_current_many_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_result); eauto.
+  exact Opt_parallel_current_many_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_correct :
@@ -2076,13 +2055,10 @@ Theorem Opt_parallel_current_many_diamond_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_diamond_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_diamond_result); eauto.
+  exact Opt_parallel_current_many_diamond_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_diamond_with_iss_correct :
@@ -2092,13 +2068,10 @@ Theorem Opt_parallel_current_many_diamond_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_diamond_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_diamond_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_diamond_with_iss_result); eauto.
+  exact Opt_parallel_current_many_diamond_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_with_iss_correct :
@@ -2108,13 +2081,10 @@ Theorem Opt_parallel_current_many_identity_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_identity_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_identity_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_identity_with_iss_result); eauto.
+  exact Opt_parallel_current_many_identity_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_affine_with_iss_correct :
@@ -2124,13 +2094,10 @@ Theorem Opt_parallel_current_many_affine_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_affine_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_affine_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_affine_with_iss_result); eauto.
+  exact Opt_parallel_current_many_affine_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_with_iss_correct :
@@ -2140,13 +2107,10 @@ Theorem Opt_parallel_current_many_with_iss_correct :
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
-  intros loop dims pl st st' Hopt Hsem.
+  intros loop arg pl st st2 Hopt Hsem.
   unfold Core.Opt_parallel_current_many_with_iss in Hopt.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Opt_parallel_current_many_with_iss_result_correct; eauto.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_with_iss_result); eauto.
+  exact Opt_parallel_current_many_with_iss_result_correct.
 Qed.
 
 (** * Vector routes *)
@@ -2484,11 +2448,7 @@ Lemma opt_vector_current_from_result_correct :
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros result_route loop d pl st st' Hresult Hopt Hsem.
-  bind_imp_destruct Hopt res Hres.
-  pose proof Hopt as Hopt_ok.
-  apply res_to_alarm_correct in Hopt_ok.
-  subst res.
-  eapply Hresult; eauto.
+  eapply (alarm_free_from_result_correct result_route); eauto.
 Qed.
 
 Theorem Opt_vector_current_identity_correct :
