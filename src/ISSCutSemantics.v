@@ -490,6 +490,37 @@ Proof.
   eapply complete_cut_shape_after_point_signs_match; eauto.
 Qed.
 
+Local Lemma flattened_after_point_witness :
+  forall (after_pis : list PolyLang.PolyInstr)
+         (stmt_ws : list iss_stmt_witness)
+         (env : list Z)
+         (ipl : list PolyLang.InstrPoint)
+         (ip : PolyLang.InstrPoint),
+    PolyLang.flatten_instrs env after_pis ipl ->
+    length after_pis = length stmt_ws ->
+    In ip ipl ->
+    exists after_pi stmt_w,
+      nth_error after_pis ip.(PolyLang.ip_nth) = Some after_pi /\
+      nth_error stmt_ws ip.(PolyLang.ip_nth) = Some stmt_w /\
+      PolyLang.belongs_to ip after_pi.
+Proof.
+  intros after_pis stmt_ws env ipl ip Hflat Hlength Hin.
+  pose proof Hflat as Hflat_all.
+  destruct Hflat as [_ [Hmembers _]].
+  destruct (proj1 (Hmembers ip) Hin)
+    as [after_pi [Hafter [_ [Hbelongs _]]]].
+  assert (Hstmt_range : (ip.(PolyLang.ip_nth) < length stmt_ws)%nat).
+  {
+    rewrite <- Hlength.
+    eapply PolyLang.flatten_instrs_ipl_n_lt_len; eauto.
+  }
+  destruct (nth_error stmt_ws ip.(PolyLang.ip_nth)) as [stmt_w|] eqn:Hstmt.
+  - exists after_pi, stmt_w.
+    split; [exact Hafter|].
+    split; [reflexivity|exact Hbelongs].
+  - apply nth_error_None in Hstmt. lia.
+Qed.
+
 Lemma before_of_after_point_injective_complete_cut_shape :
   forall before_pis before_varctxt before_vars
          after_pis after_varctxt after_vars
@@ -511,30 +542,6 @@ Proof.
          [n1 idx1 tf1 ts1 instr1 depth1]
          [n2 idx2 tf2 ts2 instr2 depth2]
          Hcomplete Hflat Hin1 Hin2 Heq.
-  pose proof Hflat as Hflat_all.
-  destruct Hflat as [_ [Hmem [Hnodup _]]].
-  destruct (Hmem
-              {|
-                PolyLang.ip_nth := n1;
-                PolyLang.ip_index := idx1;
-                PolyLang.ip_transformation := tf1;
-                PolyLang.ip_time_stamp := ts1;
-                PolyLang.ip_instruction := instr1;
-                PolyLang.ip_depth := depth1
-              |}) as [Hmem1 _].
-  destruct (Hmem
-              {|
-                PolyLang.ip_nth := n2;
-                PolyLang.ip_index := idx2;
-                PolyLang.ip_transformation := tf2;
-                PolyLang.ip_time_stamp := ts2;
-                PolyLang.ip_instruction := instr2;
-                PolyLang.ip_depth := depth2
-              |}) as [Hmem2 _].
-  destruct (Hmem1 Hin1) as
-      [after_pi1 [Hafter1 [_ [Hbel1 _]]]].
-  destruct (Hmem2 Hin2) as
-      [after_pi2 [Hafter2 [_ [Hbel2 _]]]].
   pose proof
     (Refine.domain_partition_cut_shape_implies_shape
        (before_pis, before_varctxt, before_vars)
@@ -548,52 +555,31 @@ Proof.
        (after_pis, after_varctxt, after_vars)
        w Hshape)
     as Hlen_stmt_ws.
-  assert (Hrange1 : (n1 < length w.(iw_stmt_witnesses))%nat).
-  {
-    rewrite <- Hlen_stmt_ws.
-    pose proof
-      (PolyLang.flatten_instrs_ipl_n_lt_len
-         env after_pis ipl_after Hflat_all
-         {|
-           PolyLang.ip_nth := n1;
-           PolyLang.ip_index := idx1;
-           PolyLang.ip_transformation := tf1;
-           PolyLang.ip_time_stamp := ts1;
-           PolyLang.ip_instruction := instr1;
-           PolyLang.ip_depth := depth1
-         |}
-         Hin1) as Hlt.
-    simpl in Hlt.
-    exact Hlt.
-  }
-  assert (Hrange2 : (n2 < length w.(iw_stmt_witnesses))%nat).
-  {
-    rewrite <- Hlen_stmt_ws.
-    pose proof
-      (PolyLang.flatten_instrs_ipl_n_lt_len
-         env after_pis ipl_after Hflat_all
-         {|
-           PolyLang.ip_nth := n2;
-           PolyLang.ip_index := idx2;
-           PolyLang.ip_transformation := tf2;
-           PolyLang.ip_time_stamp := ts2;
-           PolyLang.ip_instruction := instr2;
-           PolyLang.ip_depth := depth2
-         |}
-         Hin2) as Hlt.
-    simpl in Hlt.
-    exact Hlt.
-  }
-  destruct (nth_error w.(iw_stmt_witnesses) n1) as [w1|] eqn:Hw1.
-  2: {
-    apply nth_error_None in Hw1.
-    lia.
-  }
-  destruct (nth_error w.(iw_stmt_witnesses) n2) as [w2|] eqn:Hw2.
-  2: {
-    apply nth_error_None in Hw2.
-    lia.
-  }
+  destruct (flattened_after_point_witness
+              after_pis w.(iw_stmt_witnesses) env ipl_after
+              {|
+                PolyLang.ip_nth := n1;
+                PolyLang.ip_index := idx1;
+                PolyLang.ip_transformation := tf1;
+                PolyLang.ip_time_stamp := ts1;
+                PolyLang.ip_instruction := instr1;
+                PolyLang.ip_depth := depth1
+              |}
+              Hflat Hlen_stmt_ws Hin1)
+    as [after_pi1 [w1 [Hafter1 [Hw1 Hbel1]]]].
+  destruct (flattened_after_point_witness
+              after_pis w.(iw_stmt_witnesses) env ipl_after
+              {|
+                PolyLang.ip_nth := n2;
+                PolyLang.ip_index := idx2;
+                PolyLang.ip_transformation := tf2;
+                PolyLang.ip_time_stamp := ts2;
+                PolyLang.ip_instruction := instr2;
+                PolyLang.ip_depth := depth2
+              |}
+              Hflat Hlen_stmt_ws Hin2)
+    as [after_pi2 [w2 [Hafter2 [Hw2 Hbel2]]]].
+  simpl in Hafter1, Hw1, Hbel1, Hafter2, Hw2, Hbel2.
   unfold Sem.before_of_after_point, Sem.before_parent_nth, Sem.set_ip_nth in Heq.
   simpl in Heq.
   rewrite Hw1, Hw2 in Heq.
