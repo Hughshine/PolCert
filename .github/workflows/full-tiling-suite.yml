@@ -1,11 +1,11 @@
 name: full-tiling-suite
 
 on:
-  push:
-    branches:
-      - main
-      - extractor
-  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: full-tiling-suite-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   polopt-loop-suite:
@@ -24,22 +24,16 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: ci
           load: true
           tags: polcert-tiling-ci:gha
           build-args: |
             PLUTO_IMAGE=${{ env.PLUTO_IMAGE }}
             PLUTO_GIT_REMOTE=${{ env.PLUTO_GIT_REMOTE }}
             PLUTO_GIT_COMMIT=${{ env.PLUTO_GIT_COMMIT }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Build polopt and run the strict loop suite
-        run: >-
-          docker run --rm --entrypoint bash polcert-tiling-ci:gha
-          -lc 'cd /polcert &&
-               eval "$(opam env)" &&
-               opam exec -- make depend &&
-               opam exec -- make -j1 polopt &&
-               opam exec -- make test-iss-pluto-suite &&
-               opam exec -- make test-iss-pluto-live-suite &&
-               opam exec -- make test-tiling-route-suites &&
-               opam exec -- make test-polopt-loop-suite'
+          cache-from: |
+            type=gha,scope=polcert-ci
+            type=gha,scope=buildkit
+          cache-to: type=gha,mode=max,scope=polcert-ci
+      - name: Run isolated test shards
+        run: bash tools/ci/run_ci_shards.sh polcert-tiling-ci:gha

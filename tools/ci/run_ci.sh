@@ -1,25 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /polcert
+bash /polcert/tools/ci/run_ci_build.sh
 
-eval "$(opam env)"
+shard_output="$(bash /polcert/tools/ci/run_ci_shard.sh --list)"
+readonly shard_output
+if [[ -z "$shard_output" ]]; then
+  printf 'empty CI shard list\n' >&2
+  exit 2
+fi
 
-bash /polcert/tools/ci/check_pluto_baseline.sh
-python3 /polcert/tools/tiling_routes/test_route_telemetry.py
-
-make clean
-opam exec -- make depend
-opam exec -- make proof
-opam exec -- make -s check-admitted
-opam exec -- make extraction
-opam exec -- make polopt
-opam exec -- make polcert.ini
-opam exec -- make polcert
-python3 /polcert/tools/tiling_routes/check_scalar_interleaved_fusion.py \
-  --polcert /polcert/polcert
-opam exec -- make test
-opam exec -- make test-iss-pluto-suite
-opam exec -- make test-iss-pluto-live-suite
-opam exec -- make test-tiling-route-suites
-opam exec -- make test-polopt-loop-suite
+while IFS= read -r shard; do
+  bash /polcert/tools/ci/run_ci_shard.sh "$shard"
+done <<<"$shard_output"

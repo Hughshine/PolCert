@@ -22,40 +22,55 @@ def main() -> int:
         "--manifest",
         default=str(pathlib.Path(__file__).resolve().with_name("suite_manifest.json")),
     )
+    ap.add_argument(
+        "--part",
+        choices=("all", "routes", "rejection", "manifest"),
+        default="all",
+        help="run one independently schedulable part of the suite",
+    )
     ap.add_argument("--timeout", type=int, default=120)
     args = ap.parse_args()
 
     manifest_path = pathlib.Path(args.manifest).resolve()
-    check_manifest(manifest_path)
-    check_standalone_formal_route(
-        polopt=pathlib.Path(args.polopt).resolve(),
-        loop_fixture=pathlib.Path(__file__).resolve().parent
+    polopt = pathlib.Path(args.polopt).resolve()
+    symbolic_fixture = (
+        pathlib.Path(__file__).resolve().parent
         / "fixtures"
-        / "symbolic-independent-2d.loop",
-        timeout=args.timeout,
-    )
-    check_rejected_tiling_route(
-        polopt=pathlib.Path(args.polopt).resolve(),
-        fixture=pathlib.Path(__file__).resolve().parent
-        / "fixtures"
-        / "symbolic-independent-2d.loop",
-        timeout=args.timeout,
-    )
-    check_second_level_diamond_route_matrix(
-        polopt=pathlib.Path(args.polopt).resolve(),
-        fixture=(
-            pathlib.Path(__file__).resolve().parents[1]
-            / "parallel_current"
-            / "fixtures"
-            / "diamond-example-inner-batch.loop"
-        ),
-        timeout=args.timeout,
+        / "symbolic-independent-2d.loop"
     )
 
-    return run_manifest_suite(
-        manifest_path=manifest_path,
-        polopt=pathlib.Path(args.polopt).resolve(),
-    )
+    if args.part in ("all", "routes"):
+        check_standalone_formal_route(
+            polopt=polopt,
+            loop_fixture=symbolic_fixture,
+            timeout=args.timeout,
+        )
+        check_second_level_diamond_route_matrix(
+            polopt=polopt,
+            fixture=(
+                pathlib.Path(__file__).resolve().parents[1]
+                / "parallel_current"
+                / "fixtures"
+                / "diamond-example-inner-batch.loop"
+            ),
+            timeout=args.timeout,
+        )
+
+    if args.part in ("all", "rejection"):
+        check_rejected_tiling_route(
+            polopt=polopt,
+            fixture=symbolic_fixture,
+            timeout=args.timeout,
+        )
+
+    if args.part in ("all", "manifest"):
+        check_manifest(manifest_path)
+        return run_manifest_suite(
+            manifest_path=manifest_path,
+            polopt=polopt,
+        )
+
+    return 0
 
 
 if __name__ == "__main__":
