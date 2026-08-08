@@ -11150,7 +11150,7 @@ Proof.
   - exact Heq_before.
 Qed.
 
-Lemma ordinary_pair_local_reversal_bridge_wf_with_env_len :
+Lemma ordinary_pair_local_reversal_bridge_by_schedule_len_wf_with_env_len :
   forall before_pis before_ctxt before_vars after_pis ws bands envv
          ipl_ext tau1 tau2,
     List.length before_ctxt = List.length envv ->
@@ -11171,7 +11171,11 @@ Lemma ordinary_pair_local_reversal_bridge_wf_with_env_len :
     Forall2
       (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
       before_pis ws ->
-    uniform_schedule_arity before_pis ->
+    (forall before_pi1 before_pi2,
+       nth_error before_pis (Tiling.PL.ip_nth_ext tau1) = Some before_pi1 ->
+       nth_error before_pis (Tiling.PL.ip_nth_ext tau2) = Some before_pi2 ->
+       List.length (Tiling.PL.pi_schedule before_pi1) =
+       List.length (Tiling.PL.pi_schedule before_pi2)) ->
     Forall
       (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
       before_pis ->
@@ -11201,7 +11205,7 @@ Proof.
   intros before_pis before_ctxt before_vars after_pis ws bands envv
          ipl_ext tau1 tau2
          Hlen_env Hinfer_bands Hbands Hprog_full Hwf_ws Hsizes_ws Hdepths
-         Harity_before Hwf_before_pis
+         Hsame_schedule_len Hwf_before_pis
          Hflat Hin1 Hin2 Hold Hnew
          Hsame_band Hsame_recipe.
   assert (Hwf_ws_env :
@@ -11214,7 +11218,6 @@ Proof.
   }
   destruct (pprog_tiling_bands_cert_lengths _ _ _ _ _ Hbands)
     as [Hlen_after [Hlen_ws Hlen_bands]].
-  destruct Harity_before as [before_sched_len Hbefore_sched_len].
   destruct
     (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
@@ -11784,21 +11787,14 @@ Proof.
     List.length (prefix1 ++ added1 ++ band_ts1 ++ suffix1) =
     List.length (prefix2 ++ added2 ++ band_ts2 ++ suffix2)).
   {
-    assert (Hsched_len1 :
-      List.length (Tiling.PL.pi_schedule before_pi1) = before_sched_len).
-    {
-      eapply uniform_schedule_arity_nth_error; eauto.
-    }
-    assert (Hsched_len2 :
-      List.length (Tiling.PL.pi_schedule before_pi2) = before_sched_len).
-    {
-      eapply uniform_schedule_arity_nth_error; eauto.
-    }
+    pose proof
+      (Hsame_schedule_len before_pi1 before_pi2 Hbefore1 Hbefore2)
+      as Hsched_len.
     rewrite <- Hexpected_ts1, <- Hexpected_ts2.
     unfold affine_product.
     rewrite !map_length.
     rewrite !stripmine_schedule_after_env_length.
-    rewrite Hsched_len1, Hsched_len2.
+    rewrite Hsched_len.
     reflexivity.
   }
   assert (Hnew_expected_not_lt :
@@ -11932,6 +11928,72 @@ Proof.
     repeat split; assumption.
 Qed.
 
+Lemma ordinary_pair_local_reversal_bridge_wf_with_env_len :
+  forall before_pis before_ctxt before_vars after_pis ws bands envv
+         ipl_ext tau1 tau2,
+    List.length before_ctxt = List.length envv ->
+    infer_pinstr_list_tiling_bands before_pis ws = Some bands ->
+    pprog_tiling_bands_cert
+      (List.length before_ctxt) before_pis after_pis ws bands ->
+    Tiling.tiling_rel_pprog_structure_source
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars)
+      (List.map Tiling.compiled_pinstr_tiling_witness ws) ->
+    Forall
+      (Tiling.wf_statement_tiling_witness_with_param_dim
+         (List.length before_ctxt))
+      ws ->
+    Forall
+      (fun w => Forall (fun link => 0 < tl_tile_size link) (stw_links w))
+      ws ->
+    Forall2
+      (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    uniform_schedule_arity before_pis ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    Tiling.PL.flatten_instrs_ext
+      envv
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+         (List.length envv) before_pis after_pis ws)
+      ipl_ext ->
+    In tau1 ipl_ext ->
+    In tau2 ipl_ext ->
+    Tiling.PL.instr_point_ext_old_sched_lt tau1 tau2 ->
+    Tiling.PL.instr_point_ext_new_sched_ge tau1 tau2 ->
+    (forall band1 band2,
+       nth_error bands (Tiling.PL.ip_nth_ext tau1) = Some band1 ->
+       nth_error bands (Tiling.PL.ip_nth_ext tau2) = Some band2 ->
+       band1 = band2) ->
+    (forall w1 w2,
+       nth_error ws (Tiling.PL.ip_nth_ext tau1) = Some w1 ->
+       nth_error ws (Tiling.PL.ip_nth_ext tau2) = Some w2 ->
+       tile_sizes_of_witness w1 = tile_sizes_of_witness w2) ->
+    exists band,
+      nth_error bands (Tiling.PL.ip_nth_ext tau1) = Some band /\
+      nth_error bands (Tiling.PL.ip_nth_ext tau2) = Some band /\
+      instr_point_ext_same_band_slice band tau1 tau2 /\
+      instr_point_ext_band_component_decreases band tau1 tau2.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws bands envv
+         ipl_ext tau1 tau2
+         Hlen_env Hinfer Hbands Hprog Hwf_ws Hsizes_ws Hdepths
+         [schedule_len Hschedule_len] Hwf_before
+         Hflat Hin1 Hin2 Hold Hnew Hsame_band Hsame_recipe.
+  eapply
+    (ordinary_pair_local_reversal_bridge_by_schedule_len_wf_with_env_len
+       before_pis before_ctxt before_vars after_pis ws bands envv
+       ipl_ext tau1 tau2); eauto.
+  intros before_pi1 before_pi2 Hbefore1 Hbefore2.
+  rewrite
+    (uniform_schedule_arity_nth_error
+       before_pis schedule_len _ _ Hschedule_len Hbefore1),
+    (uniform_schedule_arity_nth_error
+       before_pis schedule_len _ _ Hschedule_len Hbefore2).
+  reflexivity.
+Qed.
+
 Lemma pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len :
   forall before_pis before_ctxt before_vars after_pis ws bands envv,
     List.length before_ctxt = List.length envv ->
@@ -12019,7 +12081,7 @@ Proof.
   split; assumption.
 Qed.
 
-Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
+Lemma second_level_pair_local_reversal_bridge_by_layout_wf_with_env_len :
   forall layout before_pis before_ctxt before_vars
          after_pis ws bands recipes envv,
     List.length before_ctxt = List.length envv ->
@@ -12027,8 +12089,6 @@ Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
       Some (bands, recipes) ->
     second_level_schedule_layout_lex_equivalent
       layout (List.length before_ctxt) before_pis after_pis bands ->
-    common_second_level_recipe_sizes recipes ->
-    common_band_start bands ->
     Tiling.tiling_rel_pprog_structure_source
       (before_pis, before_ctxt, before_vars)
       (after_pis, before_ctxt, before_vars)
@@ -12056,6 +12116,15 @@ Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
       In tau2 ipl_ext ->
       Tiling.PL.instr_point_ext_old_sched_lt tau1 tau2 ->
       Tiling.PL.instr_point_ext_new_sched_ge tau1 tau2 ->
+      (forall recipe1 recipe2,
+         nth_error recipes (Tiling.PL.ip_nth_ext tau1) = Some recipe1 ->
+         nth_error recipes (Tiling.PL.ip_nth_ext tau2) = Some recipe2 ->
+         slbr_root_sizes recipe1 = slbr_root_sizes recipe2 /\
+         slbr_child_sizes recipe1 = slbr_child_sizes recipe2) ->
+      (forall band1 band2,
+         nth_error bands (Tiling.PL.ip_nth_ext tau1) = Some band1 ->
+         nth_error bands (Tiling.PL.ip_nth_ext tau2) = Some band2 ->
+         ptb_start band1 = ptb_start band2) ->
       exists band,
         nth_error bands (Tiling.PL.ip_nth_ext tau1) = Some band /\
         nth_error bands (Tiling.PL.ip_nth_ext tau2) = Some band /\
@@ -12064,9 +12133,9 @@ Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
 Proof.
   intros layout before_pis before_ctxt before_vars
          after_pis ws bands recipes envv
-         Hlen_env Hinfer Hsched Hrecipe_sizes Hcommon
-         Hprog Hwf_ws Hsizes_ws Hdepths Hwf_before
-         ipl_ext tau1 tau2 Hflat Hin1 Hin2 Hold Hnew.
+         Hlen_env Hinfer Hsched Hprog Hwf_ws Hsizes_ws Hdepths Hwf_before
+         ipl_ext tau1 tau2 Hflat Hin1 Hin2 Hold Hnew
+         Hsame_recipe_sizes Hsame_band_start.
   assert (Hwf_ws_env :
     Forall
       (Tiling.wf_statement_tiling_witness_with_param_dim (List.length envv))
@@ -12144,14 +12213,10 @@ Proof.
   destruct (infer_pinstr_second_level_band_sound _ _ _ _ Hinfer2)
     as [Hspec2 [Hband_len2 Hrows_match2]].
   destruct
-    (common_second_level_recipe_sizes_nth_error_equal
-       recipes (Tiling.PL.ip_nth_ext tau1) (Tiling.PL.ip_nth_ext tau2)
-       recipe1 recipe2 Hrecipe_sizes Hrecipe1 Hrecipe2)
+    (Hsame_recipe_sizes recipe1 recipe2 eq_refl eq_refl)
     as [Hroot_sizes_eq Hchild_sizes_eq].
   pose proof
-    (common_band_start_nth_error_equal
-       bands (Tiling.PL.ip_nth_ext tau1) (Tiling.PL.ip_nth_ext tau2)
-       band1 band2 Hcommon Hband1 Hband2) as Hstart_eq.
+    (Hsame_band_start band1 band2 eq_refl eq_refl) as Hstart_eq.
   destruct (second_level_band_recipe_spec_lengths _ _ _ _ Hspec1)
     as [Hroot_size_len1 Hchild_size_len1].
   destruct (second_level_band_recipe_spec_lengths _ _ _ _ Hspec2)
@@ -12652,6 +12717,64 @@ Proof.
     repeat split; try assumption.
     + eapply nth_error_band_block_to_full; eauto.
     + eapply nth_error_band_block_to_full; eauto.
+Qed.
+
+Lemma second_level_local_reversal_bridge_by_layout_wf_with_env_len :
+  forall layout before_pis before_ctxt before_vars
+         after_pis ws bands recipes envv,
+    List.length before_ctxt = List.length envv ->
+    infer_pinstr_list_second_level_bands before_pis ws =
+      Some (bands, recipes) ->
+    second_level_schedule_layout_lex_equivalent
+      layout (List.length before_ctxt) before_pis after_pis bands ->
+    common_second_level_recipe_sizes recipes ->
+    common_band_start bands ->
+    Tiling.tiling_rel_pprog_structure_source
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars)
+      (List.map Tiling.compiled_pinstr_tiling_witness ws) ->
+    Forall
+      (Tiling.wf_statement_tiling_witness_with_param_dim
+         (List.length before_ctxt))
+      ws ->
+    Forall
+      (fun w => Forall (fun link => 0 < tl_tile_size link) (stw_links w))
+      ws ->
+    Forall2
+      (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Forall
+      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis ->
+    forall ipl_ext tau1 tau2,
+      Tiling.PL.flatten_instrs_ext
+        envv
+        (Tiling.compose_tiling_pinstrs_ext_from_after
+           (List.length envv) before_pis after_pis ws)
+        ipl_ext ->
+      In tau1 ipl_ext ->
+      In tau2 ipl_ext ->
+      Tiling.PL.instr_point_ext_old_sched_lt tau1 tau2 ->
+      Tiling.PL.instr_point_ext_new_sched_ge tau1 tau2 ->
+      exists band,
+        nth_error bands (Tiling.PL.ip_nth_ext tau1) = Some band /\
+        nth_error bands (Tiling.PL.ip_nth_ext tau2) = Some band /\
+        instr_point_ext_same_band_slice band tau1 tau2 /\
+        instr_point_ext_band_component_decreases band tau1 tau2.
+Proof.
+  intros layout before_pis before_ctxt before_vars
+         after_pis ws bands recipes envv
+         Hlen_env Hinfer Hsched Hrecipe_sizes Hcommon
+         Hprog Hwf_ws Hsizes_ws Hdepths Hwf_before
+         ipl_ext tau1 tau2 Hflat Hin1 Hin2 Hold Hnew.
+  eapply
+    (second_level_pair_local_reversal_bridge_by_layout_wf_with_env_len
+       layout before_pis before_ctxt before_vars
+       after_pis ws bands recipes envv); eauto.
+  - intros recipe1 recipe2 Hrecipe1 Hrecipe2.
+    eapply common_second_level_recipe_sizes_nth_error_equal; eauto.
+  - intros band1 band2 Hband1 Hband2.
+    eapply common_band_start_nth_error_equal; eauto.
 Qed.
 
 Lemma second_level_local_reversal_bridge_wf_with_env_len :

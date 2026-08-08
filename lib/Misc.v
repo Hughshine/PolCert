@@ -176,6 +176,67 @@ Proof.
     + rewrite IHn; auto.
 Qed.
 
+Lemma NoDup_nth_error_injective :
+  forall (A: Type) (xs: list A) i j x,
+    NoDup xs ->
+    nth_error xs i = Some x ->
+    nth_error xs j = Some x ->
+    i = j.
+Proof.
+  intros A xs i j x Hnodup Hi Hj.
+  rewrite NoDup_nth_error in Hnodup.
+  apply Hnodup.
+  - rewrite <- nth_error_Some, Hi.
+    discriminate.
+  - rewrite Hi, Hj.
+    reflexivity.
+Qed.
+
+Fixpoint z_not_inb (z: Z) (zs: list Z) : bool :=
+  match zs with
+  | [] => true
+  | z' :: zs' => negb (Z.eqb z z') && z_not_inb z zs'
+  end.
+
+Fixpoint z_nodupb (zs: list Z) : bool :=
+  match zs with
+  | [] => true
+  | z :: zs' => z_not_inb z zs' && z_nodupb zs'
+  end.
+
+Lemma z_not_inb_sound :
+  forall z zs,
+    z_not_inb z zs = true ->
+    ~ In z zs.
+Proof.
+  intros z zs.
+  induction zs as [|z' zs IH]; intros Hcheck Hin; simpl in *.
+  - exact Hin.
+  - apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    destruct Hin as [Heq | Hin].
+    + subst z'.
+      rewrite Z.eqb_refl in Hhead.
+      discriminate.
+    + eapply IH; eauto.
+Qed.
+
+Lemma z_nodupb_sound :
+  forall zs,
+    z_nodupb zs = true ->
+    NoDup zs.
+Proof.
+  induction zs as [|z zs IH]; intros Hcheck; simpl in *.
+  - constructor.
+  - apply andb_true_iff in Hcheck.
+    destruct Hcheck as [Hhead Htail].
+    constructor.
+    + eapply z_not_inb_sound.
+      exact Hhead.
+    + eapply IH.
+      exact Htail.
+Qed.
+
 Theorem in_l_combine :
   forall (A B : Type) (l : list A) (l': list B) x,
     length l = length l' -> In x l -> (exists y, In (x, y) (combine l l')).

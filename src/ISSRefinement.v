@@ -606,14 +606,7 @@ Lemma NoDup_nth_error_injective :
     nth_error xs j = Some x ->
     i = j.
 Proof.
-  intros A xs i j x Hnd Hi Hj.
-  rewrite NoDup_nth_error in Hnd.
-  apply Hnd.
-  - rewrite <- nth_error_Some.
-    rewrite Hi.
-    discriminate.
-  - rewrite Hi, Hj.
-    reflexivity.
+  exact Misc.NoDup_nth_error_injective.
 Qed.
 
 Lemma Forall2_combine_inv :

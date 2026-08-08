@@ -33,15 +33,11 @@ Open Scope impure_scope.
 
 Definition schedule_head_constant
     (sched: Schedule) : option Z :=
-  match sched with
-  | [] => None
-  | (coeffs, c) :: _ =>
-      if forallb (fun x => Z.eqb x 0%Z) coeffs then Some c else None
-  end.
+  Mixed.schedule_head_constant sched.
 
 Definition pinstr_head_constant
     (pi: Core.Tiling.PL.PolyInstr) : option Z :=
-  schedule_head_constant (Core.Tiling.PL.pi_schedule pi).
+  Mixed.pinstr_head_constant pi.
 
 Record phase_scalar_entry := {
   pse_phase : Z;
@@ -500,14 +496,7 @@ Lemma forallb_zeqb_zero_dot_product :
     forallb (fun x => Z.eqb x 0%Z) coeffs = true ->
     Linalg.dot_product coeffs point = 0%Z.
 Proof.
-  induction coeffs as [|coeff coeffs IH];
-    intros point Hzero; destruct point as [|value point]; simpl; auto.
-  apply andb_true_iff in Hzero.
-  destruct Hzero as [Hcoeff Hcoeffs].
-  apply Z.eqb_eq in Hcoeff.
-  subst coeff.
-  rewrite IH by exact Hcoeffs.
-  lia.
+  exact Mixed.forallb_zeqb_zero_dot_product.
 Qed.
 
 Lemma schedule_head_constant_sound :
@@ -516,14 +505,7 @@ Lemma schedule_head_constant_sound :
     forall point,
       firstn 1 (affine_product sched point) = [phase].
 Proof.
-  intros sched phase Hhead point.
-  destruct sched as [|[coeffs c] sched]; simpl in Hhead; try discriminate.
-  destruct (forallb (fun x => Z.eqb x 0%Z) coeffs) eqn:Hzero;
-    try discriminate.
-  inversion Hhead; subst c; clear Hhead.
-  simpl.
-  rewrite (forallb_zeqb_zero_dot_product coeffs point Hzero).
-  f_equal.
+  exact Mixed.schedule_head_constant_sound.
 Qed.
 
 Lemma forallb_skipn_true :
@@ -531,12 +513,7 @@ Lemma forallb_skipn_true :
     forallb f xs = true ->
     forallb f (skipn n xs) = true.
 Proof.
-  intros A f n.
-  induction n as [|n IH]; intros xs Hforall; simpl; auto.
-  destruct xs as [|x xs]; simpl in *; auto.
-  apply andb_true_iff in Hforall.
-  eapply IH.
-  exact (proj2 Hforall).
+  exact Mixed.forallb_skipn_true.
 Qed.
 
 Lemma schedule_head_constant_lift :
@@ -546,26 +523,7 @@ Lemma schedule_head_constant_lift :
       (Core.Tiling.lift_schedule_after_env
          added_dims env_size sched) = Some phase.
 Proof.
-  intros sched phase added_dims env_size Hhead.
-  destruct sched as [|[coeffs c] sched]; simpl in Hhead; try discriminate.
-  destruct (forallb (fun x => Z.eqb x 0%Z) coeffs) eqn:Hzero;
-    try discriminate.
-  inversion Hhead; subst c; clear Hhead.
-  unfold Core.Tiling.lift_schedule_after_env,
-         Core.Tiling.lift_affine_function_after_env.
-  simpl.
-  unfold Core.Tiling.lift_constraint_after_env,
-         Core.Tiling.PL.insert_zeros_constraint,
-         Core.Tiling.PL.insert_zeros.
-  simpl.
-  rewrite forallb_app.
-  rewrite (resize_null_repeat env_size coeffs Hzero).
-  rewrite repeat_zero_is_null.
-  simpl.
-  rewrite forallb_app, repeat_zero_is_null.
-  simpl.
-  rewrite (forallb_skipn_true _ _ _ _ Hzero).
-  reflexivity.
+  exact Mixed.schedule_head_constant_lift.
 Qed.
 
 Lemma schedule_head_constant_lift_sound :
@@ -577,10 +535,7 @@ Lemma schedule_head_constant_lift_sound :
             added_dims env_size sched)
          point) = [phase].
 Proof.
-  intros sched phase added_dims env_size point Hhead.
-  eapply schedule_head_constant_sound.
-  eapply schedule_head_constant_lift.
-  exact Hhead.
+  exact Mixed.schedule_head_constant_lift_sound.
 Qed.
 
 Lemma scalar_aware_stripmine_expected_timestamp_prefix :
