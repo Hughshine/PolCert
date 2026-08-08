@@ -2,12 +2,12 @@ Require Import List.
 Require Import ZArith.
 Require Import SInstr.
 Require Import SPolIRs.
-Require Import Extractor.
+Require Import ExtractorFrontend.
 Require Import Result.
 Import List.ListNotations.
 Open Scope Z_scope.
 
-Module E := Extractor SPolIRs.
+Module E := ExtractorFrontend SPolIRs.
 Module Loop := SPolIRs.Loop.
 Module PolyLang := SPolIRs.PolyLang.
 

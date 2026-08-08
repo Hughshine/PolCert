@@ -3,13 +3,13 @@ Require Import ZArith.
 Require Import String.
 Require Import AST.
 Require Import Result.
-Require Import Extractor.
+Require Import ExtractorFrontend.
 Require Import TPolIRs.
 Import List.ListNotations.
 Open Scope Z_scope.
 Open Scope string_scope.
 
-Module E := Extractor TPolIRs.
+Module E := ExtractorFrontend TPolIRs.
 Module Loop := TPolIRs.Loop.
 Module PolyLang := TPolIRs.PolyLang.
 Module Instr := TPolIRs.Instr.

@@ -13,8 +13,7 @@ Require Import PolyBase.
 Require Import PolyLang.
 Require Import ISSWitness.
 Require Import ISSRefinement.
-Require Import TilingRelation.
-Require Import Extractor.
+Require Import ExtractorFacts.
 Require Import PolIRs.
 Import ListNotations.
 
@@ -24,8 +23,7 @@ Module Instr := PolIRs.Instr.
 Module State := PolIRs.State.
 Module PolyLang := PolIRs.PolyLang.
 Module Refine := ISSRefinement PolIRs.
-Module TileRel := TilingRelation Instr.
-Module Extractor := Extractor PolIRs.
+Module Extractor := ExtractorFacts PolIRs.
 
 Definition set_ip_nth
     (n: nat)

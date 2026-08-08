@@ -8,7 +8,7 @@ Require Import Vpl.Impure.
 Local Open Scope string_scope.
 Import ListNotations.
 
-Require Import Extractor.
+Require Import ExtractorFrontend.
 Require Import AffineValidator.
 Require Import JamValidator.
 Require Import LoopJamNative.
@@ -21,7 +21,7 @@ Module Loop := PolIRs.Loop.
 Module Instr := PolIRs.Instr.
 Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
-Module ExtractorCore := Extractor PolIRs.
+Module ExtractorCore := ExtractorFrontend PolIRs.
 Module AffineCore := AffineValidator PolIRs.
 Module StrengthenCore := StrengthenDomain PolIRs.
 Module JamCore := JamValidator PolIRs.
