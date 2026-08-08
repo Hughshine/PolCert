@@ -2719,6 +2719,36 @@ Proof.
   reflexivity.
 Qed.
 
+Local Lemma tiled_index_parts_facts :
+  forall idx env added_dims point_dim,
+    List.length idx =
+      (List.length env + added_dims + point_dim)%nat ->
+    firstn (List.length env) idx = env ->
+    List.length (tiled_added_part (List.length env) added_dims idx) =
+      added_dims /\
+    List.length (tiled_point_part (List.length env) added_dims idx) =
+      point_dim /\
+    idx =
+      env ++
+      tiled_added_part (List.length env) added_dims idx ++
+      tiled_point_part (List.length env) added_dims idx.
+Proof.
+  intros idx env added_dims point_dim Hlen Hprefix.
+  split.
+  - eapply tiled_added_part_length.
+    exact Hlen.
+  - split.
+    + eapply tiled_point_part_length.
+      exact Hlen.
+    + transitivity
+        (firstn (List.length env) idx ++
+         tiled_added_part (List.length env) added_dims idx ++
+         tiled_point_part (List.length env) added_dims idx).
+      * eapply tiled_index_split.
+      * rewrite Hprefix.
+        reflexivity.
+Qed.
+
 Theorem tiling_rel_pprog_structure_compiled_before_of_retiled_old_point_belongs_to_nth :
   forall before_pis before_ctxt before_vars
          after_pis after_ctxt after_vars
@@ -2772,49 +2802,22 @@ Proof.
                   (PL.ip_index ip_old)).
   set (point := tiled_point_part (List.length env) (List.length (stw_links w))
                   (PL.ip_index ip_old)).
-  assert (Hadded_len : List.length added = List.length (stw_links w)).
+  assert (Hidx_len_split :
+    List.length (PL.ip_index ip_old) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
   {
-    subst added.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
+    cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
+    rewrite Hidx_len, Hdepth_eq.
+    lia.
   }
-  assert (Hpoint_len : List.length point = stw_point_dim w).
-  {
-    subst point.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split :
-    PL.ip_index ip_old = env ++ added ++ point).
-  {
-    subst added point.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip_old) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old)).
-    - eapply tiled_index_split.
-    - rewrite Hpref.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip_old) env (List.length (stw_links w))
+       (PL.pi_depth before_pi) Hidx_len_split Hpref)
+    as [Hadded_len [Hpoint_len Hidx_split]].
+  fold added in Hadded_len, Hidx_split.
+  fold point in Hpoint_len, Hidx_split.
+  rewrite <- Hpoint_depth in Hpoint_len.
   assert (Hbefore_dom :
     in_poly (env ++ point) (PL.pi_poly before_pi) = true).
   {
@@ -2911,49 +2914,22 @@ Proof.
                   (PL.ip_index ip_old)).
   set (point := tiled_point_part (List.length env) (List.length (stw_links w))
                   (PL.ip_index ip_old)).
-  assert (Hadded_len : List.length added = List.length (stw_links w)).
+  assert (Hidx_len_split :
+    List.length (PL.ip_index ip_old) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
   {
-    subst added.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
+    cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
+    rewrite Hidx_len, Hdepth_eq.
+    lia.
   }
-  assert (Hpoint_len : List.length point = stw_point_dim w).
-  {
-    subst point.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split :
-    PL.ip_index ip_old = env ++ added ++ point).
-  {
-    subst added point.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip_old) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old)).
-    - eapply tiled_index_split.
-    - rewrite Hpref.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip_old) env (List.length (stw_links w))
+       (PL.pi_depth before_pi) Hidx_len_split Hpref)
+    as [Hadded_len [Hpoint_len Hidx_split]].
+  fold added in Hadded_len, Hidx_split.
+  fold point in Hpoint_len, Hidx_split.
+  rewrite <- Hpoint_depth in Hpoint_len.
   assert (Hbefore_dom :
     in_poly (env ++ point) (PL.pi_poly before_pi) = true).
   {
@@ -3043,116 +3019,45 @@ Proof.
                    (List.length env)
                    (List.length (stw_links (ptw_statement_witness w)))
                    (PL.ip_index ip2)).
-  assert (Hadded_len1 :
-    List.length added1 = List.length (stw_links (ptw_statement_witness w))).
+  assert (Hidx_len_split1 :
+    List.length (PL.ip_index ip1) =
+    (List.length env +
+     List.length (stw_links (ptw_statement_witness w)) +
+     PL.pi_depth before)%nat).
   {
-    subst added1.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip1) =
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) +
-       PL.pi_depth before)%nat).
-    {
-      rewrite Hidx_len1, Hdepth_eq.
-      unfold wf_pinstr_tiling_witness in Hwf.
-      rewrite Hwf.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
+    rewrite Hidx_len1, Hdepth_eq.
+    unfold wf_pinstr_tiling_witness in Hwf.
+    rewrite Hwf.
+    lia.
   }
-  assert (Hpoint_len1 :
-    List.length point1 = stw_point_dim (ptw_statement_witness w)).
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip1) env
+       (List.length (stw_links (ptw_statement_witness w)))
+       (PL.pi_depth before) Hidx_len_split1 Hpref1)
+    as [Hadded_len1 [Hpoint_len1 Hidx_split1]].
+  fold added1 in Hadded_len1, Hidx_split1.
+  fold point1 in Hpoint_len1, Hidx_split1.
+  rewrite <- Hpoint_depth in Hpoint_len1.
+  assert (Hidx_len_split2 :
+    List.length (PL.ip_index ip2) =
+    (List.length env +
+     List.length (stw_links (ptw_statement_witness w)) +
+     PL.pi_depth before)%nat).
   {
-    subst point1.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip1) =
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) +
-       PL.pi_depth before)%nat).
-    {
-      rewrite Hidx_len1, Hdepth_eq.
-      unfold wf_pinstr_tiling_witness in Hwf.
-      rewrite Hwf.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
+    rewrite Hidx_len2, Hdepth_eq.
+    rewrite Hwf.
+    lia.
   }
-  assert (Hadded_len2 :
-    List.length added2 = List.length (stw_links (ptw_statement_witness w))).
-  {
-    subst added2.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip2) =
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) +
-       PL.pi_depth before)%nat).
-    {
-      rewrite Hidx_len2, Hdepth_eq.
-      unfold wf_pinstr_tiling_witness in Hwf.
-      rewrite Hwf.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hpoint_len2 :
-    List.length point2 = stw_point_dim (ptw_statement_witness w)).
-  {
-    subst point2.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip2) =
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) +
-       PL.pi_depth before)%nat).
-    {
-      rewrite Hidx_len2, Hdepth_eq.
-      unfold wf_pinstr_tiling_witness in Hwf.
-      rewrite Hwf.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split1 :
-    PL.ip_index ip1 = env ++ added1 ++ point1).
-  {
-    subst added1 point1.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip1) ++
-       tiled_added_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip1) ++
-       tiled_point_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip1)).
-    - eapply tiled_index_split.
-    - rewrite Hpref1.
-      reflexivity.
-  }
-  assert (Hidx_split2 :
-    PL.ip_index ip2 = env ++ added2 ++ point2).
-  {
-    subst added2 point2.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip2) ++
-       tiled_added_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip2) ++
-       tiled_point_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip2)).
-    - eapply tiled_index_split.
-    - rewrite Hpref2.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip2) env
+       (List.length (stw_links (ptw_statement_witness w)))
+       (PL.pi_depth before) Hidx_len_split2 Hpref2)
+    as [Hadded_len2 [Hpoint_len2 Hidx_split2]].
+  fold added2 in Hadded_len2, Hidx_split2.
+  fold point2 in Hpoint_len2, Hidx_split2.
+  rewrite <- Hpoint_depth in Hpoint_len2.
   assert (Hpoint_eq : point1 = point2).
   {
     assert (Hidx_before_eq :
@@ -3320,6 +3225,82 @@ Proof.
         exact Hlen_old.
 Qed.
 
+Local Lemma source_before_of_retiled_old_time_stamp_core :
+  forall env before after w ip_old,
+    tiling_rel_pinstr_structure_source (List.length env) before after w ->
+    wf_pinstr_tiling_witness w ->
+    stw_point_dim (ptw_statement_witness w) = PL.pi_depth before ->
+    PL.belongs_to
+      ip_old
+      (retiled_old_pinstr
+         (List.length env) before after (ptw_statement_witness w)) ->
+    List.length (PL.ip_index ip_old) =
+    (List.length env + PL.pi_depth after)%nat ->
+    firstn (List.length env) (PL.ip_index ip_old) = env ->
+    PL.ip_time_stamp
+      (before_of_retiled_old_point
+         (List.length env)
+         (List.length (stw_links (ptw_statement_witness w)))
+         before ip_old) =
+    PL.ip_time_stamp ip_old.
+Proof.
+  intros env before after w ip_old
+         Hrel Hwf Hpoint_depth Hbel_old Hidx_len Hpref.
+  pose proof Hrel as Hrel_depth.
+  destruct Hrel_depth as [_ [Hdepth_eq _]].
+  destruct Hbel_old as [_ [_ [Hts_old [_ _]]]].
+  unfold retiled_old_pinstr in Hts_old.
+  simpl in Hts_old.
+  set (added := tiled_added_part
+                  (List.length env)
+                  (List.length (stw_links (ptw_statement_witness w)))
+                  (PL.ip_index ip_old)).
+  set (point := tiled_point_part
+                  (List.length env)
+                  (List.length (stw_links (ptw_statement_witness w)))
+                  (PL.ip_index ip_old)).
+  assert (Hidx_len_split :
+    List.length (PL.ip_index ip_old) =
+    (List.length env +
+     List.length (stw_links (ptw_statement_witness w)) +
+     PL.pi_depth before)%nat).
+  {
+    rewrite Hidx_len, Hdepth_eq.
+    unfold wf_pinstr_tiling_witness in Hwf.
+    rewrite Hwf.
+    lia.
+  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip_old) env
+       (List.length (stw_links (ptw_statement_witness w)))
+       (PL.pi_depth before) Hidx_len_split Hpref)
+    as [Hadded_len [_ Hidx_split]].
+  fold added in Hadded_len, Hidx_split.
+  fold point in Hidx_split.
+  assert (Hpoint_part_eval :
+    tiled_point_part
+      (List.length env)
+      (List.length (stw_links (ptw_statement_witness w)))
+      (env ++ added ++ point) = point).
+  {
+    unfold tiled_point_part.
+    rewrite skipn_app_le by lia.
+    replace
+      (List.length env +
+       List.length (stw_links (ptw_statement_witness w)) -
+       List.length env)%nat
+      with (List.length (stw_links (ptw_statement_witness w))) by lia.
+    rewrite skipn_app by exact Hadded_len.
+    reflexivity.
+  }
+  unfold before_of_retiled_old_point, before_index_of_retiled_old.
+  simpl.
+  rewrite Hpref, Hts_old, Hidx_split, Hpoint_part_eval.
+  symmetry.
+  eapply lift_affine_function_after_env_eval; eauto.
+Qed.
+
 Theorem tiling_rel_pinstr_structure_source_before_of_retiled_old_sched_le_iff :
   forall env before after w ip1 ip2,
     tiling_rel_pinstr_structure_source (List.length env) before after w ->
@@ -3362,76 +3343,7 @@ Proof.
          before ip1) =
     PL.ip_time_stamp ip1).
   {
-    pose proof Hrel as Hrel_depth1.
-    destruct Hrel_depth1 as [_ [Hdepth_eq1 _]].
-    destruct Hbel1 as [_ [_ [Hts_old1 [_ _]]]].
-    set (added1 := tiled_added_part
-                    (List.length env)
-                    (List.length (stw_links (ptw_statement_witness w)))
-                    (PL.ip_index ip1)).
-    set (point1 := tiled_point_part
-                    (List.length env)
-                    (List.length (stw_links (ptw_statement_witness w)))
-                    (PL.ip_index ip1)).
-    assert (Hidx_split1 :
-      PL.ip_index ip1 = env ++ added1 ++ point1).
-    {
-      subst added1 point1.
-      transitivity
-        (firstn (List.length env) (PL.ip_index ip1) ++
-         tiled_added_part
-           (List.length env)
-           (List.length (stw_links (ptw_statement_witness w)))
-           (PL.ip_index ip1) ++
-         tiled_point_part
-           (List.length env)
-           (List.length (stw_links (ptw_statement_witness w)))
-           (PL.ip_index ip1)).
-      - eapply tiled_index_split.
-      - rewrite Hpref1. reflexivity.
-    }
-    assert (Hadded_len1 :
-      List.length added1 = List.length (stw_links (ptw_statement_witness w))).
-    {
-      subst added1.
-      assert (Hidx_len_split1 :
-        List.length (PL.ip_index ip1) =
-        (List.length env +
-         List.length (stw_links (ptw_statement_witness w)) +
-         PL.pi_depth before)%nat).
-      {
-        rewrite Hidx_len1, Hdepth_eq1.
-        unfold wf_pinstr_tiling_witness in Hwf.
-        rewrite Hwf.
-        lia.
-      }
-      eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-      exact Hidx_len_split1.
-    }
-    assert (Hpoint_part_eval1 :
-      tiled_point_part
-        (List.length env)
-        (List.length (stw_links (ptw_statement_witness w)))
-        (env ++ added1 ++ point1) = point1).
-    {
-      unfold tiled_point_part.
-      rewrite skipn_app_le by lia.
-      replace
-        (List.length env +
-         List.length (stw_links (ptw_statement_witness w)) -
-         List.length env)%nat
-        with (List.length (stw_links (ptw_statement_witness w))) by lia.
-      rewrite skipn_app by exact Hadded_len1.
-      reflexivity.
-    }
-    unfold before_of_retiled_old_point, before_index_of_retiled_old.
-    simpl.
-    rewrite Hpref1.
-    rewrite Hts_old1.
-    rewrite Hidx_split1.
-    rewrite Hpoint_part_eval1.
-    symmetry.
-    eapply lift_affine_function_after_env_eval; eauto.
+    eapply source_before_of_retiled_old_time_stamp_core; eauto.
   }
   assert (Hts2 :
     PL.ip_time_stamp
@@ -3441,76 +3353,7 @@ Proof.
          before ip2) =
     PL.ip_time_stamp ip2).
   {
-    pose proof Hrel as Hrel_depth2.
-    destruct Hrel_depth2 as [_ [Hdepth_eq2 _]].
-    destruct Hbel2 as [_ [_ [Hts_old2 [_ _]]]].
-    set (added2 := tiled_added_part
-                    (List.length env)
-                    (List.length (stw_links (ptw_statement_witness w)))
-                    (PL.ip_index ip2)).
-    set (point2 := tiled_point_part
-                    (List.length env)
-                    (List.length (stw_links (ptw_statement_witness w)))
-                    (PL.ip_index ip2)).
-    assert (Hidx_split2 :
-      PL.ip_index ip2 = env ++ added2 ++ point2).
-    {
-      subst added2 point2.
-      transitivity
-        (firstn (List.length env) (PL.ip_index ip2) ++
-         tiled_added_part
-           (List.length env)
-           (List.length (stw_links (ptw_statement_witness w)))
-           (PL.ip_index ip2) ++
-         tiled_point_part
-           (List.length env)
-           (List.length (stw_links (ptw_statement_witness w)))
-           (PL.ip_index ip2)).
-      - eapply tiled_index_split.
-      - rewrite Hpref2. reflexivity.
-    }
-    assert (Hadded_len2 :
-      List.length added2 = List.length (stw_links (ptw_statement_witness w))).
-    {
-      subst added2.
-      assert (Hidx_len_split2 :
-        List.length (PL.ip_index ip2) =
-        (List.length env +
-         List.length (stw_links (ptw_statement_witness w)) +
-         PL.pi_depth before)%nat).
-      {
-        rewrite Hidx_len2, Hdepth_eq2.
-        unfold wf_pinstr_tiling_witness in Hwf.
-        rewrite Hwf.
-        lia.
-      }
-      eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-      exact Hidx_len_split2.
-    }
-    assert (Hpoint_part_eval2 :
-      tiled_point_part
-        (List.length env)
-        (List.length (stw_links (ptw_statement_witness w)))
-        (env ++ added2 ++ point2) = point2).
-    {
-      unfold tiled_point_part.
-      rewrite skipn_app_le by lia.
-      replace
-        (List.length env +
-         List.length (stw_links (ptw_statement_witness w)) -
-         List.length env)%nat
-        with (List.length (stw_links (ptw_statement_witness w))) by lia.
-      rewrite skipn_app by exact Hadded_len2.
-      reflexivity.
-    }
-    unfold before_of_retiled_old_point, before_index_of_retiled_old.
-    simpl.
-    rewrite Hpref2.
-    rewrite Hts_old2.
-    rewrite Hidx_split2.
-    rewrite Hpoint_part_eval2.
-    symmetry.
-    eapply lift_affine_function_after_env_eval; eauto.
+    eapply source_before_of_retiled_old_time_stamp_core; eauto.
   }
   unfold PL.instr_point_sched_le.
   rewrite Hts1, Hts2.
@@ -3716,92 +3559,37 @@ Proof.
                     (PL.ip_index ip2)).
   set (point2 := tiled_point_part (List.length env) (List.length (stw_links w))
                     (PL.ip_index ip2)).
-  assert (Hadded_len1 : List.length added1 = List.length (stw_links w)).
+  assert (Hidx_len_split1 :
+    List.length (PL.ip_index ip1) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
   {
-    subst added1.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip1) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len1, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
+    cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
+    rewrite Hidx_len1, Hdepth_eq.
+    lia.
   }
-  assert (Hpoint_len1 : List.length point1 = stw_point_dim w).
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip1) env (List.length (stw_links w))
+       (PL.pi_depth before) Hidx_len_split1 Hpref1)
+    as [Hadded_len1 [Hpoint_len1 Hidx_split1]].
+  fold added1 in Hadded_len1, Hidx_split1.
+  fold point1 in Hpoint_len1, Hidx_split1.
+  rewrite <- Hpoint_depth in Hpoint_len1.
+  assert (Hidx_len_split2 :
+    List.length (PL.ip_index ip2) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
   {
-    subst point1.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip1) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len1, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
+    rewrite Hidx_len2, Hdepth_eq.
+    lia.
   }
-  assert (Hadded_len2 : List.length added2 = List.length (stw_links w)).
-  {
-    subst added2.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip2) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len2, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hpoint_len2 : List.length point2 = stw_point_dim w).
-  {
-    subst point2.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip2) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len2, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split1 :
-    PL.ip_index ip1 = env ++ added1 ++ point1).
-  {
-    subst added1 point1.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip1) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip1) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip1)).
-    - eapply tiled_index_split.
-    - rewrite Hpref1.
-      reflexivity.
-  }
-  assert (Hidx_split2 :
-    PL.ip_index ip2 = env ++ added2 ++ point2).
-  {
-    subst added2 point2.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip2) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip2) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip2)).
-    - eapply tiled_index_split.
-    - rewrite Hpref2.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip2) env (List.length (stw_links w))
+       (PL.pi_depth before) Hidx_len_split2 Hpref2)
+    as [Hadded_len2 [Hpoint_len2 Hidx_split2]].
+  fold added2 in Hadded_len2, Hidx_split2.
+  fold point2 in Hpoint_len2, Hidx_split2.
+  rewrite <- Hpoint_depth in Hpoint_len2.
   assert (Hpoint_eq : point1 = point2).
   {
     assert (Hidx_before_eq :
@@ -3974,49 +3762,21 @@ Proof.
                   (PL.ip_index ip_old)).
   set (point := tiled_point_part (List.length env) (List.length (stw_links w))
                   (PL.ip_index ip_old)).
-  assert (Hadded_len : List.length added = List.length (stw_links w)).
+  assert (Hidx_len_split :
+    List.length (PL.ip_index ip_old) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
   {
-    subst added.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
+    cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
+    rewrite Hidx_len, Hdepth_eq.
+    lia.
   }
-  assert (Hpoint_len : List.length point = stw_point_dim w).
-  {
-    subst point.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split :
-    PL.ip_index ip_old = env ++ added ++ point).
-  {
-    subst added point.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip_old) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old)).
-    - eapply tiled_index_split.
-    - rewrite Hpref.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip_old) env (List.length (stw_links w))
+       (PL.pi_depth before) Hidx_len_split Hpref)
+    as [Hadded_len [_ Hidx_split]].
+  fold added in Hadded_len, Hidx_split.
+  fold point in Hidx_split.
   assert (Hpoint_part_eval :
     tiled_point_part
       (List.length env) (List.length (stw_links w))
@@ -4058,83 +3818,7 @@ Theorem tiling_rel_pinstr_structure_source_before_of_retiled_old_time_stamp :
          before ip_old) =
     PL.ip_time_stamp ip_old.
 Proof.
-  intros env before after w ip_old
-         Hrel Hwf Hpoint_depth
-         Hbel_old Hidx_len Hpref.
-  pose proof Hrel as Hrel_depth.
-  destruct Hrel_depth as [_ [Hdepth_eq _]].
-  destruct Hbel_old as [_ [_ [Hts_old [_ _]]]].
-  unfold retiled_old_pinstr in Hts_old.
-  simpl in Hts_old.
-  set (added := tiled_added_part
-                  (List.length env)
-                  (List.length (stw_links (ptw_statement_witness w)))
-                  (PL.ip_index ip_old)).
-  set (point := tiled_point_part
-                  (List.length env)
-                  (List.length (stw_links (ptw_statement_witness w)))
-                  (PL.ip_index ip_old)).
-  assert (Hadded_len :
-    List.length added = List.length (stw_links (ptw_statement_witness w))).
-  {
-    subst added.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) +
-       PL.pi_depth before)%nat).
-    {
-      rewrite Hidx_len, Hdepth_eq.
-      unfold wf_pinstr_tiling_witness in Hwf.
-      rewrite Hwf.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split :
-    PL.ip_index ip_old =
-    env ++ added ++ point).
-  {
-    subst added point.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip_old) ++
-       tiled_added_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip_old) ++
-       tiled_point_part
-         (List.length env)
-         (List.length (stw_links (ptw_statement_witness w)))
-         (PL.ip_index ip_old)).
-    - eapply tiled_index_split.
-    - rewrite Hpref.
-      reflexivity.
-  }
-  assert (Hpoint_part_eval :
-    tiled_point_part
-      (List.length env)
-      (List.length (stw_links (ptw_statement_witness w)))
-      (env ++ added ++ point) = point).
-  {
-    unfold tiled_point_part.
-    rewrite skipn_app_le by lia.
-    replace
-      (List.length env +
-       List.length (stw_links (ptw_statement_witness w)) -
-       List.length env)%nat
-      with (List.length (stw_links (ptw_statement_witness w))) by lia.
-    rewrite skipn_app by exact Hadded_len.
-    reflexivity.
-  }
-  unfold before_of_retiled_old_point, before_index_of_retiled_old.
-  simpl.
-  rewrite Hpref.
-  rewrite Hts_old.
-  rewrite Hidx_split.
-  rewrite Hpoint_part_eval.
-  symmetry.
-  eapply lift_affine_function_after_env_eval; eauto.
+  exact source_before_of_retiled_old_time_stamp_core.
 Qed.
 
 Theorem tiling_rel_pinstr_structure_compiled_before_of_retiled_old_sched_le_iff :
@@ -4337,49 +4021,22 @@ Proof.
                   (List.length env)
                   (List.length (stw_links w))
                   (PL.ip_index ip_old)).
-  assert (Hadded_len : List.length added = List.length (stw_links w)).
+  assert (Hidx_len_split :
+    List.length (PL.ip_index ip_old) =
+    (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
   {
-    subst added.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_added_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
+    cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
+    rewrite Hidx_len, Hdepth_eq.
+    lia.
   }
-  assert (Hpoint_len : List.length point = stw_point_dim w).
-  {
-    subst point.
-    rewrite Hpoint_depth.
-    assert (Hidx_len_split :
-      List.length (PL.ip_index ip_old) =
-      (List.length env + List.length (stw_links w) + PL.pi_depth before_pi)%nat).
-    {
-      cbn [compiled_pinstr_tiling_witness ptw_added_dims] in Hdepth_eq |- *.
-      rewrite Hidx_len, Hdepth_eq.
-      lia.
-    }
-    eapply tiled_point_part_length with (point_dim := PL.pi_depth before_pi).
-    exact Hidx_len_split.
-  }
-  assert (Hidx_split :
-    PL.ip_index ip_old = env ++ added ++ point).
-  {
-    subst added point.
-    transitivity
-      (firstn (List.length env) (PL.ip_index ip_old) ++
-       tiled_added_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old) ++
-       tiled_point_part (List.length env) (List.length (stw_links w))
-         (PL.ip_index ip_old)).
-    - eapply tiled_index_split.
-    - rewrite Hpref.
-      reflexivity.
-  }
+  destruct
+    (tiled_index_parts_facts
+       (PL.ip_index ip_old) env (List.length (stw_links w))
+       (PL.pi_depth before_pi) Hidx_len_split Hpref)
+    as [Hadded_len [Hpoint_len Hidx_split]].
+  fold added in Hadded_len, Hidx_split.
+  fold point in Hpoint_len, Hidx_split.
+  rewrite <- Hpoint_depth in Hpoint_len.
   assert (Heval_idx :
     eval_pinstr_tiling_index_with_env
       env point env (compiled_pinstr_tiling_witness w) =
