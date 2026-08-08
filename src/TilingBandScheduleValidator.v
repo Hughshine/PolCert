@@ -350,12 +350,6 @@ Definition project_pluto_band_component_ip_ext
     Tiling.PL.ip_depth_ext := Tiling.PL.ip_depth_ext ip_ext;
   |}.
 
-Definition project_pinstrs_ext_with_pluto_band_component
-    (pil_ext: list Tiling.PL.PolyInstr_ext)
-    (band: pinstr_tiling_band)
-    (dim: nat) : list Tiling.PL.PolyInstr_ext :=
-  List.map (project_pluto_band_component_pi_ext band dim) pil_ext.
-
 Definition prioritize_pluto_band_component_or_zero_rows
     (band: pinstr_tiling_band)
     (dim: nat)
@@ -437,20 +431,6 @@ Fixpoint max_tiling_band_len (bands: list pinstr_tiling_band) : nat :=
   | band :: bands' => Nat.max (ptb_len band) (max_tiling_band_len bands')
   end.
 
-Lemma project_pinstrs_ext_with_pluto_bands_component_length :
-  forall pil_ext bands dim,
-    List.length pil_ext = List.length bands ->
-    List.length
-      (project_pinstrs_ext_with_pluto_bands_component pil_ext bands dim) =
-    List.length pil_ext.
-Proof.
-  induction pil_ext as [|pi_ext pil_ext' IH]; intros bands dim Hlen.
-  - destruct bands; simpl in *; try discriminate; reflexivity.
-  - destruct bands as [|band bands']; simpl in *; try discriminate.
-    f_equal.
-    eapply IH.
-    lia.
-Qed.
 
 Definition project_cutoff_ip_ext
     (cutoff: nat)
@@ -467,11 +447,6 @@ Definition project_cutoff_ip_ext
     Tiling.PL.ip_instruction_ext := Tiling.PL.ip_instruction_ext ip_ext;
     Tiling.PL.ip_depth_ext := Tiling.PL.ip_depth_ext ip_ext;
   |}.
-
-Definition project_pinstrs_ext_with_cutoff
-    (pil_ext: list Tiling.PL.PolyInstr_ext)
-    (cutoff: nat) : list Tiling.PL.PolyInstr_ext :=
-  List.map (project_cutoff_pi_ext cutoff) pil_ext.
 
 Definition restore_projected_band_ip_ext
     (pi_ext: Tiling.PL.PolyInstr_ext)
@@ -494,49 +469,8 @@ Definition restore_projected_band_ip_ext
     Tiling.PL.ip_depth_ext := Tiling.PL.pi_depth_ext pi_ext;
   |}.
 
-Definition restore_projected_cutoff_ip_ext
-    (pi_ext: Tiling.PL.PolyInstr_ext)
-    (ip_ext: Tiling.PL.InstrPoint_ext) : Tiling.PL.InstrPoint_ext :=
-  {|
-    Tiling.PL.ip_nth_ext := Tiling.PL.ip_nth_ext ip_ext;
-    Tiling.PL.ip_index_ext := Tiling.PL.ip_index_ext ip_ext;
-    Tiling.PL.ip_transformation_ext := Tiling.PL.pi_transformation_ext pi_ext;
-    Tiling.PL.ip_access_transformation_ext :=
-      Tiling.PL.pi_access_transformation_ext pi_ext;
-    Tiling.PL.ip_time_stamp1_ext :=
-      affine_product
-        (Tiling.PL.pi_schedule1_ext pi_ext)
-        (Tiling.PL.ip_index_ext ip_ext);
-    Tiling.PL.ip_time_stamp2_ext :=
-      affine_product
-        (Tiling.PL.pi_schedule2_ext pi_ext)
-        (Tiling.PL.ip_index_ext ip_ext);
-    Tiling.PL.ip_instruction_ext := Tiling.PL.pi_instr_ext pi_ext;
-    Tiling.PL.ip_depth_ext := Tiling.PL.pi_depth_ext pi_ext;
-  |}.
 
 
-
-
-
-Lemma eq_except_sched_symm_local :
-  forall ip1 ip2,
-    Tiling.PL.eq_except_sched ip1 ip2 ->
-    Tiling.PL.eq_except_sched ip2 ip1.
-Proof.
-  exact Tiling.PL.ILSema.eq_except_sched_symm.
-Qed.
-
-
-Lemma permutable_eq_except_sched_local :
-  forall ip1 ip1' ip2 ip2',
-    Tiling.PL.eq_except_sched ip1 ip1' ->
-    Tiling.PL.eq_except_sched ip2 ip2' ->
-    Tiling.PL.ILSema.Permutable ip1 ip2 ->
-    Tiling.PL.ILSema.Permutable ip1' ip2'.
-Proof.
-  exact Tiling.PL.ILSema.permutable_eq_except_sched.
-Qed.
 
 
 
@@ -563,37 +497,9 @@ Proof.
   destruct ip1, ip2; simpl in *; exact Hlt.
 Qed.
 
-Lemma HdRel_map_project_pluto_band_component_ip_ext :
-  forall band dim ip xs,
-    HdRel Tiling.PL.np_lt_ext ip xs ->
-    HdRel Tiling.PL.np_lt_ext
-      (project_pluto_band_component_ip_ext band dim ip)
-      (List.map
-         (project_pluto_band_component_ip_ext band dim) xs).
-Proof.
-  intros band dim ip xs Hrel.
-  induction Hrel as [|y ys Hxy].
-  - constructor.
-  - simpl. constructor.
-    eapply project_pluto_band_component_ip_ext_preserves_np_lt.
-    exact Hxy.
-Qed.
 
 
 
-Lemma project_pluto_bands_component_ip_ext_old_eq_except_sched :
-  forall bands dim ip_ext,
-    Tiling.PL.eq_except_sched
-      (Tiling.PL.old_of_ext ip_ext)
-      (Tiling.PL.old_of_ext
-         (project_pluto_bands_component_ip_ext bands dim ip_ext)).
-Proof.
-  intros bands dim ip_ext.
-  unfold project_pluto_bands_component_ip_ext.
-  destruct (nth_error bands (Tiling.PL.ip_nth_ext ip_ext));
-    unfold Tiling.PL.eq_except_sched, Tiling.PL.old_of_ext;
-    destruct ip_ext; simpl; repeat split; reflexivity.
-Qed.
 
 
 Lemma project_pluto_bands_component_ip_ext_preserves_np_lt :
@@ -611,38 +517,7 @@ Proof.
   destruct ip1, ip2; simpl in *; exact Hlt.
 Qed.
 
-Lemma Sorted_map_project_pluto_bands_component_ip_ext :
-  forall bands dim ipl,
-    Sorted Tiling.PL.np_lt_ext ipl ->
-    Sorted Tiling.PL.np_lt_ext
-      (List.map (project_pluto_bands_component_ip_ext bands dim) ipl).
-Proof.
-  intros bands dim ipl Hsorted.
-  induction Hsorted as [|x xs Hsorted_xs IH Hrel].
-  - constructor.
-  - simpl. constructor.
-    + exact IH.
-    + induction Hrel as [|y ys Hxy].
-      * constructor.
-      * simpl. constructor.
-        eapply project_pluto_bands_component_ip_ext_preserves_np_lt.
-        exact Hxy.
-Qed.
 
-Lemma project_pluto_bands_component_ip_ext_eq_iff :
-  forall bands dim ip1 ip2,
-    project_pluto_bands_component_ip_ext bands dim ip1 =
-    project_pluto_bands_component_ip_ext bands dim ip2 ->
-    Tiling.PL.ip_nth_ext ip1 = Tiling.PL.ip_nth_ext ip2 /\
-    Tiling.PL.ip_index_ext ip1 = Tiling.PL.ip_index_ext ip2.
-Proof.
-  intros bands dim ip1 ip2 Heq.
-  unfold project_pluto_bands_component_ip_ext in Heq.
-  destruct (nth_error bands (Tiling.PL.ip_nth_ext ip1));
-  destruct (nth_error bands (Tiling.PL.ip_nth_ext ip2));
-  destruct ip1, ip2; simpl in *; inversion Heq; subst;
-    split; reflexivity.
-Qed.
 
 
 
@@ -660,21 +535,6 @@ Proof.
   destruct ip1, ip2; simpl in *; exact Hlt.
 Qed.
 
-Lemma HdRel_map_project_cutoff_ip_ext :
-  forall cutoff ip xs,
-    HdRel Tiling.PL.np_lt_ext ip xs ->
-    HdRel Tiling.PL.np_lt_ext
-      (project_cutoff_ip_ext cutoff ip)
-      (List.map (project_cutoff_ip_ext cutoff) xs).
-Proof.
-  intros cutoff ip xs Hrel.
-  induction Hrel as [|y ys Hxy].
-  - constructor.
-  - simpl.
-    constructor.
-    + eapply project_cutoff_ip_ext_preserves_np_lt.
-      exact Hxy.
-Qed.
 
 
 
@@ -768,48 +628,6 @@ Qed.
 
 
 
-Lemma restore_projected_band_ip_ext_from_pluto_bands_component_project_belongs_to_ext :
-  forall band dim pi_ext ip_ext,
-    Tiling.PL.belongs_to_ext
-      ip_ext (project_pluto_bands_component_pi_ext band dim pi_ext) ->
-    Tiling.PL.belongs_to_ext
-      (restore_projected_band_ip_ext pi_ext ip_ext)
-      pi_ext.
-Proof.
-  intros band dim pi_ext ip_ext Hbel.
-  unfold Tiling.PL.belongs_to_ext in *.
-  destruct Hbel as
-      [Hdom [Htf [Hacc_tf [_ [_ [Hins Hdepth]]]]]].
-  unfold restore_projected_band_ip_ext.
-  simpl.
-  repeat split; auto.
-Qed.
-
-Lemma project_restore_projected_pluto_bands_component_ip_ext :
-  forall bands band dim pi_ext ip_ext,
-    nth_error bands (Tiling.PL.ip_nth_ext ip_ext) = Some band ->
-    Tiling.PL.belongs_to_ext
-      ip_ext (project_pluto_bands_component_pi_ext band dim pi_ext) ->
-    project_pluto_bands_component_ip_ext bands dim
-      (restore_projected_band_ip_ext pi_ext ip_ext) = ip_ext.
-Proof.
-  intros bands band dim pi_ext ip_ext Hband Hbel.
-  unfold Tiling.PL.belongs_to_ext in Hbel.
-  destruct Hbel as
-      [Hdom [Htf [Hacc_tf [Hts1 [Hts2 [Hins Hdepth]]]]]].
-  destruct ip_ext.
-  simpl in Hband.
-  unfold project_pluto_bands_component_ip_ext,
-         project_pluto_bands_component_pi_ext,
-         restore_projected_band_ip_ext in *.
-  simpl in *.
-  rewrite Hband.
-  simpl.
-  subst.
-  f_equal; try reflexivity.
-  rewrite affine_product_prioritize_pluto_band_component_or_zero_rows.
-  reflexivity.
-Qed.
 
 
 
@@ -818,90 +636,14 @@ Qed.
 
 
 
-Lemma project_pluto_bands_component_ip_ext_belongs_to_ext_local :
-  forall bands band dim ip_ext pi_ext,
-    nth_error bands (Tiling.PL.ip_nth_ext ip_ext) = Some band ->
-    Tiling.PL.belongs_to_ext ip_ext pi_ext ->
-    Tiling.PL.belongs_to_ext
-      (project_pluto_bands_component_ip_ext bands dim ip_ext)
-      (project_pluto_bands_component_pi_ext band dim pi_ext).
-Proof.
-  intros bands band dim ip_ext pi_ext Hband Hbel.
-  unfold project_pluto_bands_component_ip_ext.
-  rewrite Hband.
-  unfold Tiling.PL.belongs_to_ext in *.
-  destruct Hbel as
-      [Hdom [Htf [Hacc_tf [Hts1 [_ [Hins Hdepth]]]]]].
-  unfold project_pluto_bands_component_pi_ext.
-  simpl.
-  repeat split.
-  - exact Hdom.
-  - exact Htf.
-  - exact Hacc_tf.
-  - exact Hts1.
-  - rewrite affine_product_prioritize_pluto_band_component_or_zero_rows.
-    rewrite Hts1.
-    reflexivity.
-  - exact Hins.
-  - exact Hdepth.
-Qed.
-
-
-
-Lemma flatten_instrs_ext_index_injective_local :
-  forall envv pil_ext ipl_ext ip1 ip2,
-    Tiling.PL.flatten_instrs_ext envv pil_ext ipl_ext ->
-    In ip1 ipl_ext ->
-    In ip2 ipl_ext ->
-    Tiling.PL.ip_nth_ext ip1 = Tiling.PL.ip_nth_ext ip2 ->
-    Tiling.PL.ip_index_ext ip1 = Tiling.PL.ip_index_ext ip2 ->
-    ip1 = ip2.
-Proof.
-  intros envv pil_ext ipl_ext ip1 ip2 Hflat Hin1 Hin2 Hnth Hidx.
-  destruct Hflat as [_ [Hmem _]].
-  destruct (Hmem ip1) as [Hmem1 _].
-  destruct (Hmem ip2) as [Hmem2 _].
-  specialize (Hmem1 Hin1).
-  specialize (Hmem2 Hin2).
-  destruct Hmem1 as (pi1 & Hnth1 & Hpref1 & Hbel1 & Hlen1).
-  destruct Hmem2 as (pi2 & Hnth2 & Hpref2 & Hbel2 & Hlen2).
-  rewrite Hnth in Hnth1.
-  rewrite Hidx in *.
-  assert (Hpi : pi1 = pi2).
-  {
-    rewrite Hnth1 in Hnth2.
-    inversion Hnth2.
-    reflexivity.
-  }
-  subst pi2.
-  unfold Tiling.PL.belongs_to_ext in Hbel1, Hbel2.
-  destruct Hbel1 as
-      [Hdom1 [Htf1 [Hacc1 [Hts11 [Hts12 [Hins1 Hdepth1]]]]]].
-  destruct Hbel2 as
-      [Hdom2 [Htf2 [Hacc2 [Hts21 [Hts22 [Hins2 Hdepth2]]]]]].
-  destruct ip1, ip2; simpl in *; subst; reflexivity.
-Qed.
 
 
 
 
-Lemma nth_error_project_pinstrs_ext_with_pluto_bands_component_local :
-  forall pil_ext bands dim n pi_ext band,
-    List.nth_error pil_ext n = Some pi_ext ->
-    List.nth_error bands n = Some band ->
-    List.nth_error
-      (project_pinstrs_ext_with_pluto_bands_component pil_ext bands dim)
-      n = Some (project_pluto_bands_component_pi_ext band dim pi_ext).
-Proof.
-  induction pil_ext as [|pi_ext0 pil_ext' IH];
-    intros bands dim n pi_ext band Hpi Hband.
-  - destruct n; simpl in Hpi; discriminate.
-  - destruct bands as [|band0 bands']; simpl in *.
-    + destruct n; simpl in Hband; discriminate.
-    + destruct n as [|n'].
-      * now inversion Hpi; inversion Hband; subst.
-      * eapply IH; eauto.
-Qed.
+
+
+
+
 
 
 
@@ -1636,34 +1378,6 @@ Definition check_pinstr_second_level_schedule_interleavedb
        env_size (Tiling.PL.pi_schedule before) band)
     (Tiling.PL.pi_schedule after).
 
-Fixpoint check_pinstr_list_second_level_schedule_stripminedb
-    (env_size: nat)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (bands: list pinstr_tiling_band) : bool :=
-  match before_pis, after_pis, bands with
-  | [], [], [] => true
-  | before_pi :: before_pis', after_pi :: after_pis', band :: bands' =>
-      check_pinstr_second_level_schedule_stripminedb
-        env_size before_pi after_pi band &&
-      check_pinstr_list_second_level_schedule_stripminedb
-        env_size before_pis' after_pis' bands'
-  | _, _, _ => false
-  end.
-
-Fixpoint check_pinstr_list_second_level_schedule_interleavedb
-    (env_size: nat)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (bands: list pinstr_tiling_band) : bool :=
-  match before_pis, after_pis, bands with
-  | [], [], [] => true
-  | before_pi :: before_pis', after_pi :: after_pis', band :: bands' =>
-      check_pinstr_second_level_schedule_interleavedb
-        env_size before_pi after_pi band &&
-      check_pinstr_list_second_level_schedule_interleavedb
-        env_size before_pis' after_pis' bands'
-  | _, _, _ => false
-  end.
-
 Definition check_pinstr_second_level_schedule_symmetricb
     (layout: second_level_schedule_layout)
     (env_size: nat)
@@ -2128,35 +1842,6 @@ Qed.
 
 
 
-Lemma project_pluto_bands_component_pi_ext_wf_tiling :
-  forall env band dim pi_ext,
-    Tiling.PL.pi_schedule1_ext pi_ext <> [] ->
-    Tiling.PL.wf_pinstr_ext_tiling env pi_ext ->
-    Tiling.PL.wf_pinstr_ext_tiling env
-      (project_pluto_bands_component_pi_ext band dim pi_ext).
-Proof.
-  intros env band dim pi_ext Hnonempty Hwf.
-  unfold Tiling.PL.wf_pinstr_ext_tiling in *.
-  destruct Hwf as [Hwf Htf].
-  unfold Tiling.PL.wf_pinstr_ext in *.
-  simpl in *.
-  destruct Hwf as
-      (Hwit & Hpoly & Htf_cols & Hacc_tf_cols &
-       Hsched1 & Hsched2 & Hw & Hr).
-  split.
-  - repeat split.
-    + exact Hwit.
-    + exact Hpoly.
-    + exact Htf_cols.
-    + exact Hacc_tf_cols.
-    + exact Hsched1.
-    + eapply
-        exact_listzzs_cols_prioritize_pluto_band_component_or_zero_rows;
-        eauto.
-    + exact Hw.
-    + exact Hr.
-  - exact Htf.
-Qed.
 
 
 
@@ -4008,72 +3693,7 @@ Proof.
 Qed.
 
 
-Lemma project_pluto_band_component_ip_ext_new_sched_ge :
-  forall band dim tau1 tau2,
-    instr_point_ext_same_band_slice band tau1 tau2 ->
-    instr_point_ext_band_component_decreases_at band dim tau1 tau2 ->
-    Tiling.PL.instr_point_ext_new_sched_ge
-      (project_pluto_band_component_ip_ext band dim tau1)
-      (project_pluto_band_component_ip_ext band dim tau2).
-Proof.
-  intros band dim tau1 tau2 Hprefix
-         [x [y [Hdim [Hx [Hy Hgt]]]]].
-  unfold Tiling.PL.instr_point_ext_new_sched_ge,
-         project_pluto_band_component_ip_ext.
-  simpl.
-  unfold prioritize_pluto_band_component_ts.
-  assert (Hone1 :
-    firstn 1
-      (skipn (ptb_start band + dim)
-         (Tiling.PL.ip_time_stamp1_ext tau1)) = [x]).
-  {
-    eapply firstn_one_skipn_of_nth_error_local; exact Hx.
-  }
-  assert (Hone2 :
-    firstn 1
-      (skipn (ptb_start band + dim)
-         (Tiling.PL.ip_time_stamp1_ext tau2)) = [y]).
-  {
-    eapply firstn_one_skipn_of_nth_error_local; exact Hy.
-  }
-  rewrite Hone1, Hone2.
-  unfold instr_point_ext_same_band_slice,
-         instr_point_ext_band_prefix_ts in Hprefix.
-  rewrite Hprefix.
-  rewrite lex_compare_app by reflexivity.
-  rewrite lex_compare_reflexive.
-  rewrite lex_compare_app by reflexivity.
-  right.
-  assert (Hcmp : Z.compare x y = Gt).
-  {
-    apply Z.compare_gt_iff.
-    lia.
-  }
-  simpl.
-  rewrite Hcmp.
-  reflexivity.
-Qed.
 
-Lemma project_pluto_bands_component_ip_ext_eq_single_if_present :
-  forall bands band dim tau,
-    nth_error bands (Tiling.PL.ip_nth_ext tau) = Some band ->
-    (dim < ptb_len band)%nat ->
-    project_pluto_bands_component_ip_ext bands dim tau =
-    project_pluto_band_component_ip_ext band dim tau.
-Proof.
-  intros bands band dim tau Hband Hdim.
-  unfold project_pluto_bands_component_ip_ext,
-         project_pluto_band_component_ip_ext,
-         prioritize_pluto_band_component_or_zero_ts.
-  rewrite Hband.
-  assert (Hltb : Nat.ltb dim (ptb_len band) = true).
-  {
-    apply Nat.ltb_lt.
-    exact Hdim.
-  }
-  rewrite Hltb.
-  destruct tau; reflexivity.
-Qed.
 
 
 
@@ -5670,21 +5290,6 @@ Definition check_pinstr_list_pluto_permutable_band_direct
     route by synthesizing schedules for the affine validator.  They remain
     available for compatibility and comparison.  The runtime dispatcher uses
     the direct definitions above and the direct soundness chain below. *)
-
-Definition check_pinstr_list_pluto_permutable_bands_component_via_validate_tiling
-    (env_size: nat)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band)
-    (dim: nat) : imp bool :=
-  let pil_ext :=
-    project_pinstrs_ext_with_pluto_bands_component
-      (Tiling.compose_tiling_pinstrs_ext_from_after
-         env_size before_pis after_pis ws)
-      bands dim in
-  let valid_access := BandAffine.check_valid_access pil_ext in
-  BIND res <- BandAffine.validate_instr_list (rev pil_ext) env_size -;
-  pure (res && valid_access).
 
 Definition check_pprog_pluto_permutable_tiling_bands_direct
     (before after: Tiling.PL.t)
