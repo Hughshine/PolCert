@@ -960,76 +960,73 @@ Proof.
       rewrite Z.leb_gt. lia.
     }
     split; intros Hsem.
-    + inversion_clear Hsem.
-      eapply (proj1 (IH (succ_expr cur) ub body env _ _ Hrest)) in H0.
-      rename H0 into Htail.
+    + inversion Hsem as
+        [| |env0 head0 tail0 mem10 memmid mem20 Hhead Htail| | |];
+        subst env0 head0 tail0 mem10 mem20; clear Hsem.
+      eapply (proj1 (IH (succ_expr cur) ub body env _ _ Hrest)) in Htail.
       destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
-      * apply Loop.LLoop.
-        rewrite <- Heqcurv, <- Hequbv.
-        rewrite Zrange_begin by lia.
-        inversion_clear H as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+      * inversion Hhead as
+          [| | |
+           env0 test0 body0 mem10 mem20 Hbody Hguard
+           | env0 test0 body0 mem0 Hguard
+           |]; subst env0 test0 body0; clear Hhead.
         -- apply Subst.subst_stmt_at_semantics in Hbody.
            simpl in Hbody.
            rewrite Hstep_eval in Hbody.
-           inversion Htail; subst; clear Htail;
-           simpl in *;
-           try rewrite succ_expr_correct in *;
-           try rewrite <- Heqcurv in *;
-           try rewrite <- Hequbv in *;
+           inversion Htail as
+             [| | | | |
+              env1 lb1 ub1 body1 mem11 mem21 Htail_iter];
+             subst env1 lb1 ub1 body1 mem11 mem21; clear Htail.
+           simpl in Htail_iter.
+           rewrite succ_expr_correct, <- Heqcurv, <- Hequbv in Htail_iter.
+           apply Loop.LLoop.
+           rewrite <- Heqcurv, <- Hequbv.
+           rewrite Zrange_begin by lia.
            econstructor; eauto.
         -- apply Htest_false in Hguard. lia.
-      * inversion_clear H as [| | | ? ? ? ? ? Hbody Hguard | ? ? ? ? Hguard |].
+      * inversion Hhead as
+          [| | |
+           env0 test0 body0 mem10 mem20 Hbody Hguard
+           | env0 test0 body0 mem0 Hguard
+           |]; subst env0 test0 body0; clear Hhead.
         -- apply Htest_true in Hguard. lia.
-        -- inversion Htail; subst; clear Htail.
-           simpl in *;
-           try rewrite succ_expr_correct in *;
-           try rewrite <- Heqcurv in *;
-           try rewrite <- Hequbv in *;
-           try rewrite Zrange_empty in * by lia;
-           repeat match goal with
-           | Hiter: Instr.IterSem.iter_semantics _ nil _ _ |- _ =>
-               inversion Hiter; subst; clear Hiter
-           end.
+        -- inversion Htail as
+             [| | | | |
+              env1 lb1 ub1 body1 mem11 mem21 Htail_iter];
+             subst env1 lb1 ub1 body1 mem11 mem21; clear Htail.
+           simpl in Htail_iter.
+           rewrite succ_expr_correct, <- Heqcurv, <- Hequbv in Htail_iter.
+           rewrite Zrange_empty in Htail_iter by lia.
+           inversion Htail_iter; subst; clear Htail_iter.
            apply Loop.LLoop.
            simpl.
            rewrite Zrange_empty by lia.
            constructor.
-    + inversion_clear Hsem.
+    + inversion Hsem as
+        [| | | | |
+         env0 lb0 ub0 body0 mem10 mem20 Hiter];
+        subst env0 lb0 ub0 body0 mem10 mem20; clear Hsem.
       destruct (Z_lt_ge_dec curv ubv) as [Hlt|Hge].
-      * match goal with
-        | Hiter: PolIRs.Instr.IterSem.iter_semantics
-            (fun x : Z => Loop.loop_semantics body (x :: env))
-            (Zrange _ _) _ _ |- _ =>
-            rewrite <- Heqcurv, <- Hequbv in Hiter;
-            rewrite Zrange_begin in Hiter by lia;
-            inversion_clear Hiter
-        end.
+      * rewrite <- Heqcurv, <- Hequbv in Hiter.
+        rewrite Zrange_begin in Hiter by lia.
+        inversion Hiter as
+          [|x xs mem10 memmid mem20 Hbody Htail];
+          subst x xs mem10 mem20; clear Hiter.
         eapply Loop.LSeq.
         -- apply Loop.LGuardTrue.
            ++ apply Subst.subst_stmt_at_semantics.
               simpl.
               rewrite Hstep_eval.
-              match goal with
-              | Hbody: Loop.loop_semantics body (curv :: env) _ _ |- _ =>
-                  exact Hbody
-              end.
+              exact Hbody.
            ++ apply Htest_true. exact Hlt.
         -- eapply (proj2 (IH (succ_expr cur) ub body env _ _ Hrest)).
            apply Loop.LLoop.
            simpl. rewrite succ_expr_correct.
            rewrite <- Heqcurv, <- Hequbv.
-           match goal with
-           | Htail: Instr.IterSem.iter_semantics _ (Zrange (curv + 1) ubv) _ _ |- _ =>
-               exact Htail
-           end.
-      * match goal with
-        | Hiter: PolIRs.Instr.IterSem.iter_semantics
-            (fun x : Z => Loop.loop_semantics body (x :: env))
-            (Zrange _ _) _ _ |- _ =>
-            rewrite <- Heqcurv, <- Hequbv in Hiter;
-            rewrite Zrange_empty in Hiter by lia;
-            inversion Hiter; subst; clear Hiter
-        end.
+           exact Htail.
+      * rewrite <- Heqcurv, <- Hequbv in Hiter.
+        rewrite Zrange_empty in Hiter by lia.
+        inversion Hiter; subst; clear Hiter.
         eapply Loop.LSeq.
         -- apply Loop.LGuardFalse.
            apply Htest_false. exact Hge.
