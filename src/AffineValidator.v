@@ -3427,6 +3427,19 @@ Proof.
       * eapply ipl_sorted_implies_compose_sorted_at; eauto.
 Qed.
 
+Local Lemma compose_pinstrs_ext_at_length_left :
+  forall env_dim pil1 pil2,
+    length pil1 = length pil2 ->
+    length (compose_pinstrs_ext_at env_dim pil1 pil2) = length pil1.
+Proof.
+  intros env_dim pil1.
+  induction pil1 as [|pi1 pil1 IH]; intros [|pi2 pil2] Hlength;
+    simpl in *; try lia.
+  f_equal.
+  apply IH.
+  lia.
+Qed.
+
 Lemma flatten_instrs_implies_flatten_instrs_ext_at:
   forall env vars envv pil1 pil2 pil_ext ipl1 ipl2,
     Forall (PolyLang.wf_pinstr_tiling env vars) pil1 ->
@@ -3512,12 +3525,9 @@ Proof.
             length pil1' =
             length (compose_pinstrs_ext_at (length env) pil1' pil2')).
         {
-          assert (Hlen_rel : length pil1' = length pil2').
-          { eapply rel_list_implies_eq_length; eauto. }
-          clear - Hlen_rel.
-          revert pil2' Hlen_rel.
-          induction pil1'; intros [|pi2h pil2t] Hlen_rel; simpl in *; try lia.
-          inversion Hlen_rel. simpl. f_equal. eauto.
+          symmetry.
+          apply compose_pinstrs_ext_at_length_left.
+          eapply rel_list_implies_eq_length; eauto.
         }
         rewrite firstn_app.
         rewrite Hlen_ext.
@@ -3559,10 +3569,8 @@ Proof.
       assert (Hlen_ext_head :
         length (compose_pinstrs_ext_at (length env) pil1' pil2') = length pil1').
       {
-        clear - Hlen_heads.
-        revert pil2' Hlen_heads.
-        induction pil1'; intros [|pi2h pil2t] Hlen_heads; simpl in *; try lia.
-        inversion Hlen_heads. simpl. f_equal. eauto.
+        apply compose_pinstrs_ext_at_length_left.
+        exact Hlen_heads.
       }
       rewrite compose_pinstrs_ext_at_app_singleton.
       * eapply PolyLang.flatten_instrs_ext_app_singleton.
