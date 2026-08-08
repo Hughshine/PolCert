@@ -5709,43 +5709,17 @@ Qed.
 
 Lemma select_helper_list_ext_implies_old_normal:
   forall r l x n y r',
-    select_helper instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb
-                  l x n r = (y, r') -> 
+    select_helper instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb l x n r = (y, r') ->
     select_helper instr_point_sched_ltb instr_point_sched_eqb
-                  (old_of_ext_list l) (old_of_ext x) n (old_of_ext_list r) = ((old_of_ext y), (old_of_ext_list r')).
+      (old_of_ext_list l) (old_of_ext x) n (old_of_ext_list r) =
+      (old_of_ext y, old_of_ext_list r').
 Proof.
-  induction r.
-  {
-    intros; simpls. 
-    inv H.
-    unfold old_of_ext_list.
-    eapply f_equal.
-    eapply remove_nth_maps_comm; eauto.
-  }
-  {
-    intros.
-    simpls.
-    destruct (instr_point_ext_old_sched_ltb x a || instr_point_ext_old_sched_eqb x a) eqn:Hord.
-    {
-      eapply IHr in H.
-      rewrite <- ext_old_ltb_implies_ltb.
-      rewrite <- ext_old_eqb_implies_eqb.
-      rewrite Hord.
-      unfolds old_of_ext_list.
-      rewrite map_app in H; simpls. 
-      trivial.    
-    }
-    {
-      eapply IHr in H.
-      rewrite <- ext_old_ltb_implies_ltb.
-      rewrite <- ext_old_eqb_implies_eqb.
-      rewrite Hord.
-      unfolds old_of_ext_list.
-      rewrite map_app in H; simpls. 
-      rewrite map_length.
-      trivial.    
-    } 
-  }
+  intros r l x n y r' Hselect.
+  unfold old_of_ext_list.
+  eapply select_helper_map; eauto.
+  - exact ext_old_ltb_implies_ltb.
+  - exact ext_old_eqb_implies_eqb.
 Qed.
 
 Lemma select_instance_list_ext_implies_old_normal:
@@ -5759,52 +5733,19 @@ Proof.
   eapply select_helper_list_ext_implies_old_normal in H; eauto.
 Qed.
 
-Lemma selsort_instance_list_ext_implies_old_normal: 
+Lemma selsort_instance_list_ext_implies_old_normal:
   forall n ipl1_ext ipl2_ext,
     selsort instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb
-    ipl1_ext n = ipl2_ext ->
+      ipl1_ext n = ipl2_ext ->
     selsort instr_point_sched_ltb instr_point_sched_eqb
-    (old_of_ext_list ipl1_ext) n = old_of_ext_list ipl2_ext.
+      (old_of_ext_list ipl1_ext) n = old_of_ext_list ipl2_ext.
 Proof.
-  induction n.
-  {
-    intros.
-    simpls.
-    destruct ipl1_ext eqn:Hipl1.
-    {
-      unfold old_of_ext_list.
-      subst; simpls; trivial.
-    }
-    {
-      unfold old_of_ext_list.
-      subst; simpls; trivial.
-    }
-  }
-  {
-    intros.
-    simpls.
-    destruct ipl1_ext eqn:Hipl1.
-    {
-      unfold old_of_ext_list.
-      subst; simpls; trivial.
-    }
-    {
-      unfold old_of_ext_list.
-      simpls.
-      destruct (select instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb i l) as (y & r') eqn:Hselect.
-      remember (selsort instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb r'
-      n) as ipl2'_ext.
-      symmetry in Heqipl2'_ext.
-      eapply IHn in Heqipl2'_ext.
-      eapply select_instance_list_ext_implies_old_normal in Hselect.
-      unfolds old_of_ext_list.
-      rewrite Hselect.
-      rewrite Heqipl2'_ext.
-      rewrite <- map_cons.
-      rewrite H.
-      trivial.
-    }
-  }
+  intros n ipl1_ext ipl2_ext Hsort.
+  subst ipl2_ext.
+  unfold old_of_ext_list.
+  eapply selsort_map.
+  - exact ext_old_ltb_implies_ltb.
+  - exact ext_old_eqb_implies_eqb.
 Qed.
 
 Lemma selection_sort_instance_list_ext_implies_old_normal: 
@@ -5822,546 +5763,95 @@ Qed.
 Definition sfunc tau1 tau2 :=
   instr_point_ext_new_sched_leb tau1 tau2.
 
-Lemma stable_permut_multi_skip: 
-    forall l1 y l2,
-        ord_all instr_point_ext_new_sched_geb y l1 ->
-        ord_all instr_point_ext_old_sched_ltb y l1 -> 
-        StablePermut instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (l1 ++ [y] ++ l2)  (y :: l1 ++ l2).
-Proof. 
-    induction l1.
-    {
-        intros until l2. 
-        intros GE; intros.
-        pose proof instr_point_ext_old_sched_cmp_irrefl as IRREFL.
-        pose proof instr_point_ext_old_sched_cmp_antisymm as ANTISYMM.
-        pose proof instr_point_ext_old_sched_eqb_symm as SYMM.
-        simpls; eauto.
-        econs; eauto. econs; eauto.
-    }
-    {
-        intros until l2. 
-        intros GE; intros.
-        pose proof instr_point_ext_old_sched_cmp_irrefl as IRREFL.
-        pose proof instr_point_ext_old_sched_cmp_antisymm as ANTISYMM.
-        pose proof instr_point_ext_old_sched_eqb_symm as SYMM.
-        unfold ord_all in H.
-        replace (a :: l1) with ([a] ++ l1) in H; eauto.
-        eapply Forall_app in H.
-        destruct H.
-        assert (ord_all instr_point_ext_old_sched_ltb y l1). {
-            eauto.
-        }
-        simpls; eauto.
-        clear H0.
-        eapply IHl1 with (l2:=l2) in H1; eauto.
-        assert (instr_point_ext_old_sched_ltb y a = true). {
-            inv H. des_ifH H3; eauto.
-        }
-        inv H1.
-        unfold StablePermut. exists (S x%nat).
-        remember (a :: l1 ++ y :: l2) as ll1.
-        remember (a :: y :: l1 ++ l2) as ll3.
-        remember (l1 ++ y :: l2) as ll1'.
-        remember (y :: l1 ++ l2) as ll3'.
-        inversion H2; eauto.
-        {
-            rename x into n.
-            subst; eauto.
-            rewrite H6.
-            assert (StablePermut' instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (y :: a :: l1 ++ l2) (y :: a :: l1 ++ l2) 0). 
-            {
-                eapply stable_permut_nil with (l := y :: a :: l1 ++ l2); eauto.
-            }
-            assert (StablePermut_step instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (a :: y :: l1 ++ l2) (y :: a :: l1 ++ l2)). {
-                remember (a :: y :: l1 ++ l2) as ll3.
-                remember (y :: a :: l1 ++ l2) as ll4.
-                eapply stable_permut_swap with (tau1 := a) (tau2:=y) (l' := l1 ++ l2); trivial.
-                (* ltb eqb gtb should be divided *) 
-                {
-                    clear - H0 IRREFL ANTISYMM.
-                    unfold antisymmetric in ANTISYMM.
-                    unfold irreflexive in IRREFL.
-                    pose proof (classic (instr_point_ext_old_sched_ltb a y = true)).
-                    destruct H.
-                    {
-                        eapply ANTISYMM in H0; eauto.
-                    }
-                    eapply eq_true_not_negb in H.
-                    eapply sflib__negb_rewrite in H; trivial.
-                }
-                {
-                    clear - H0 IRREFL ANTISYMM SYMM.
-                    unfold irreflexive in IRREFL.
-                    pose proof (classic (instr_point_ext_old_sched_eqb y a = true)).
-                    destruct H.
-                    {
-                        eapply IRREFL in H.
-                        rewrite H in H0; discriminate.                    
-                    }
-                    {
-                        eapply eq_true_not_negb in H.
-                        eapply sflib__negb_rewrite in H; trivial.
-                        unfold symmetric in SYMM.
-                        rewrite SYMM in H; trivial.
-                    }
-                }
-                {
-                  clear - GE.
-                  unfold sfunc.
-                  unfold ord_all in GE.
-                  inv GE.
-                  destruct (instr_point_ext_new_sched_geb y a) eqn:GE; tryfalse.
-                  {
-                    clear - GE.
-                    unfolds instr_point_ext_new_sched_geb.
-                    unfolds instr_point_ext_new_sched_leb.
-                    rewrite orb_true_iff in GE.
-                    rewrite orb_true_iff.
-                    destruct GE; tryfalse.
-                    {
-                      left.
-                      rewrite comparison_eqb_iff_eq in H.
-                      rewrite lex_compare_antisym.
-                      rewrite comparison_eqb_iff_eq.
-                      rewrite H.
-                      unfold CompOpp; trivial.
-                    }
-                    {
-                      right.
-                      rewrite comparison_eqb_iff_eq in H.
-                      rewrite lex_compare_antisym.
-                      rewrite comparison_eqb_iff_eq.
-                      rewrite H.
-                      unfold CompOpp; trivial.
-                    }
-                  }
-                }
-            }
-            eapply stable_permut_intro with (l3:=(a :: y :: l1 ++ l2)) (l4:=(y :: a :: l1 ++ l2)) in H3; simpls; eauto. 
-            simpl in H3; eauto.
-        }
-        {
-            subst; eauto.
-            inversion H2. 
-            eapply stable_permut_skip with (tau:=a) (l4:=a::l1++y::l2) (l5:=a::y::l1++l2) in H1; eauto; try lia.
-
-            assert (StablePermut_step instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (a :: y :: l1 ++ l2) (y :: a :: l1 ++ l2)). {
-                eapply stable_permut_swap; trivial.
-                {
-                    clear - H0 IRREFL ANTISYMM.
-                    unfold antisymmetric in ANTISYMM.
-                    unfold irreflexive in IRREFL.
-                    pose proof (classic (instr_point_ext_old_sched_ltb a y = true)).
-                    destruct H.
-                    {
-                        eapply ANTISYMM in H0; eauto.
-                    }
-                    eapply eq_true_not_negb in H.
-                    eapply sflib__negb_rewrite in H; trivial.
-                }
-                {
-                    clear - H0 IRREFL ANTISYMM SYMM.
-                    unfold irreflexive in IRREFL.
-                    pose proof (classic (instr_point_ext_old_sched_eqb y a = true)).
-                    destruct H.
-                    {
-                        eapply IRREFL in H.
-                        rewrite H in H0; discriminate.                    
-                    }
-                    {
-                        eapply eq_true_not_negb in H.
-                        eapply sflib__negb_rewrite in H; trivial.
-                        unfold symmetric in SYMM.
-                        rewrite SYMM in H; trivial.
-                    }
-                }
-                {
-                  clear - GE.
-                  unfold sfunc.
-                  unfold ord_all in GE.
-                  inv GE.
-                  destruct (instr_point_ext_new_sched_geb y a) eqn:GE; tryfalse.
-                  {
-                    clear - GE.
-                    unfolds instr_point_ext_new_sched_geb.
-                    unfolds instr_point_ext_new_sched_leb.
-                    rewrite orb_true_iff in GE.
-                    rewrite orb_true_iff.
-                    destruct GE; tryfalse.
-                    {
-                      left.
-                      rewrite comparison_eqb_iff_eq in H.
-                      rewrite lex_compare_antisym.
-                      rewrite comparison_eqb_iff_eq.
-                      rewrite H.
-                      unfold CompOpp; trivial.
-                    }
-                    {
-                      right.
-                      rewrite comparison_eqb_iff_eq in H.
-                      rewrite lex_compare_antisym.
-                      rewrite comparison_eqb_iff_eq.
-                      rewrite H.
-                      unfold CompOpp; trivial.
-                    }
-                  }
-                }
-            }
-            assert (n0 = n). {
-                lia.
-            }
-            assert (StablePermut' instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (a :: l1 ++ y :: l2) (a :: y :: l1 ++ l2) (n+1)). {
-                eapply stable_permut'_hd_cons_preserve_step with (a:=a) in H2.
-                eauto.
-            }
-            subst; eauto.
-            assert (StablePermut' instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (a :: y :: l1 ++ l2) (y :: a :: l1 ++ l2) 1). {
-                eapply stable_permut_intro with (n0:=0%nat) in H12; eauto.
-                econs; eauto.
-            }
-            clear - H14 H6.
-            eapply stable_permut'_trans with (l1:=(a :: l1 ++ y :: l2)) (l2:=(a :: y :: l1 ++ l2)) (l3:=(y :: a :: l1 ++ l2)) (n1:=(n+1)%nat) in H6; eauto.
-            replace ((n + 1 + 1)%nat) with (S (n+1%nat)) in H6; try lia; trivial.
-        }
-        {
-          clear - GE.
-          inv GE; trivial.
-        }
-    }    
+Local Lemma instr_point_ext_new_sched_ge_flip:
+  forall y x,
+    instr_point_ext_new_sched_geb y x =
+    instr_point_ext_new_sched_leb x y.
+Proof.
+  intros y x.
+  unfold instr_point_ext_new_sched_geb, instr_point_ext_new_sched_leb.
+  rewrite lex_compare_antisym.
+  destruct (lex_compare (ip_time_stamp2_ext x) (ip_time_stamp2_ext y));
+    reflexivity.
 Qed.
 
-Lemma sorted_implies_ord_all: 
+Lemma stable_permut_multi_skip:
+  forall l1 y l2,
+    ord_all instr_point_ext_new_sched_geb y l1 ->
+    ord_all instr_point_ext_old_sched_ltb y l1 ->
+    StablePermut instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb sfunc
+      (l1 ++ [y] ++ l2) (y :: l1 ++ l2).
+Proof.
+  intros l1 y l2 Hnew_ge Hold_lt.
+  eapply stable_permut_multi_skip_generic.
+  - exact instr_point_ext_old_sched_cmp_irrefl.
+  - exact instr_point_ext_old_sched_cmp_antisymm.
+  - exact instr_point_ext_old_sched_eqb_symm.
+  - unfold ord_all in Hnew_ge |- *.
+    rewrite !Forall_forall in Hnew_ge |- *.
+    intros x Hin.
+    rewrite <- instr_point_ext_new_sched_ge_flip.
+    exact (Hnew_ge x Hin).
+  - exact Hold_lt.
+Qed.
+
+Lemma sorted_implies_ord_all:
   forall lfirst y lskip,
-    Sorted_b instr_point_ext_new_sched_leb (lfirst ++ y :: lskip) -> 
+    Sorted_b instr_point_ext_new_sched_leb (lfirst ++ y :: lskip) ->
     ord_all instr_point_ext_new_sched_geb y lfirst.
 Proof.
-  induction lfirst.
-  {
-    intros; simpls.
-    eapply Forall_nil.
-  }
-  {
-    intros; simpls.
-    unfold Sorted_b in H.
-    inv H.
-    eapply IHlfirst in H2.
-    inv H3.
-    {
-      symmetry in H0.
-      eapply app_eq_nil in H0.
-      destruct H0; tryfalse.
-    }
-    {
-      econs; eauto.
-      destruct lfirst eqn:Hlfirst; simpls; tryfalse.
-      {
-        inv H.
-        assert (instr_point_ext_new_sched_geb y a = true).
-        {
-          clear - H0.
-          unfold instr_point_ext_new_sched_leb in H0.
-          unfold instr_point_ext_new_sched_geb.
-          rewrite orb_true_iff.
-          rewrite orb_true_iff in H0.
-          destruct H0; firstorder.
-          {
-            left.
-            rewrite comparison_eqb_iff_eq.
-            rewrite comparison_eqb_iff_eq in H.
-            rewrite lex_compare_antisym.
-            rewrite H. simpl; trivial.
-          }
-          {
-            right.
-            rewrite comparison_eqb_iff_eq.
-            rewrite comparison_eqb_iff_eq in H.
-            rewrite lex_compare_antisym.
-            rewrite H. simpl; trivial.
-          }
-        }
-        {
-          rewrite H; trivial.
-        }
-      }
-      {
-        inv H.
-        assert (instr_point_ext_new_sched_geb i a = true).
-        {
-          clear - H0.
-          unfold instr_point_ext_new_sched_leb in H0.
-          unfold instr_point_ext_new_sched_geb.
-          rewrite orb_true_iff.
-          rewrite orb_true_iff in H0.
-          destruct H0; firstorder.
-          {
-            left.
-            rewrite comparison_eqb_iff_eq.
-            rewrite comparison_eqb_iff_eq in H.
-            rewrite lex_compare_antisym.
-            rewrite H. simpl; trivial.
-          }
-          {
-            right.
-            rewrite comparison_eqb_iff_eq.
-            rewrite comparison_eqb_iff_eq in H.
-            rewrite lex_compare_antisym.
-            rewrite H. simpl; trivial.
-          }
-        }
-        clear - H2 H.
-        inv H2.
-        destruct (instr_point_ext_new_sched_geb y i) eqn:Hyi; tryfalse.
-        pose proof instr_point_ext_new_sched_geb_trans.
-        unfold transitive in H0.
-        eapply H0 with (a:=y) (b:=i) (c:=a) in Hyi; eauto.
-        rewrite Hyi; eauto.
-      }
-    }
-  }
+  intros lfirst y lskip Hsorted.
+  eapply sorted_prefix_implies_ord_all_reverse.
+  - exact instr_point_ext_new_sched_geb_trans.
+  - intros x z Hxz.
+    rewrite instr_point_ext_new_sched_ge_flip.
+    exact Hxz.
+  - exact Hsorted.
 Qed.
      
-Lemma select_helper_stable_permut: 
-    forall r l x (n:nat) y l', 
-        Sorted_b instr_point_ext_new_sched_leb (l ++ r) ->
-        nth n l x = x ->
-        Nat.lt n (length l) ->
-        ord_all instr_point_ext_old_sched_ltb x (firstn n l) -> (** exclude x *)
-        ord_all (combine_leb instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb) x (remove_nth n l) ->
-        select_helper instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb l x n r = (y, l') -> 
-        StablePermut instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc (l ++ r) (y :: l').
+Lemma select_helper_stable_permut:
+  forall r l x (n : nat) y l',
+    Sorted_b instr_point_ext_new_sched_leb (l ++ r) ->
+    nth n l x = x ->
+    n < length l ->
+    ord_all instr_point_ext_old_sched_ltb x (firstn n l) ->
+    ord_all
+      (combine_leb instr_point_ext_old_sched_ltb
+        instr_point_ext_old_sched_eqb)
+      x (remove_nth n l) ->
+    select_helper instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb l x n r = (y, l') ->
+    StablePermut instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb sfunc (l ++ r) (y :: l').
 Proof.
-    induction r.
-    {
-        intros until l'. 
-        intro SORTED.
-        pose proof instr_point_ext_old_sched_ltb_trans.
-        pose proof instr_point_ext_old_sched_cmp_total.
-        pose proof instr_point_ext_old_sched_eqb_refl as REFLEX.
-        pose proof instr_point_ext_old_sched_eqb_trans as TRANS_EQ.
-        pose proof instr_point_ext_old_sched_eqb_ltb_implies_ltb as TRANSL. 
-        pose proof instr_point_ext_old_sched_ltb_eqb_implies_ltb as TRANSR. 
-        pose proof instr_point_ext_old_sched_eqb_symm as SYMM_EQ.
-        pose proof instr_point_ext_old_sched_cmp_irrefl as IRREFL.
-        pose proof instr_point_ext_old_sched_cmp_antisymm as ANTISYMM.
-        do 2 intro; intros LT; intros.
-        simpls. inv H4.
-        rewrite app_nil_r.
-        remember (remove_nth n l) as l'.
-        symmetry in Heql'.
-        eapply remove_nth_implies_splits in Heql'; eauto.
-        destruct Heql' as (Hl & Hl').
-        remember (firstn n l) as lfirst.
-        remember (skipn (n+1) l) as lskip.
-        rewrite Hl; rewrite Hl'.
-        eapply stable_permut_multi_skip; eauto.
-        {
-          rewrite Hl in SORTED.
-          clear - SORTED.
-          simpls.
-          rewrite app_nil_r in SORTED.
-          eapply sorted_implies_ord_all; eauto.
-        }
-    }
-    {
-        intros until l'. 
-        intro SORTED.
-        pose proof instr_point_ext_old_sched_ltb_trans.
-        pose proof instr_point_ext_old_sched_cmp_total.
-        pose proof instr_point_ext_old_sched_eqb_refl as REFLEX.
-        pose proof instr_point_ext_old_sched_eqb_trans as TRANS_EQ.
-        pose proof instr_point_ext_old_sched_eqb_ltb_implies_ltb as TRANSL. 
-        pose proof instr_point_ext_old_sched_ltb_eqb_implies_ltb as TRANSR. 
-        pose proof instr_point_ext_old_sched_eqb_symm as SYMM_EQ.
-        pose proof instr_point_ext_old_sched_cmp_irrefl as IRREFL.
-        pose proof instr_point_ext_old_sched_cmp_antisymm as ANTISYMM.
-        do 2 intro; intros LT; intros.
-        simpls.
-        destruct ((instr_point_ext_old_sched_ltb x a)||(instr_point_ext_old_sched_eqb x a)) eqn:Hord.
-        {
-            (* x is still the smaller one *)
-            eapply IHr in H4; eauto.
-            rewrite <- app_assoc in H4. simpls; eauto.
-            rewrite <- app_assoc. simpls; eauto.
-            rewrite app_nth1; eauto.
-            rewrite app_length; lia.
-            {
-                rewrite firstn_app.
-                replace (Nat.sub n (length l)) with (0%nat); try lia; simpl.
-                rewrite app_nil_r.
-                trivial.
-            }
-            eapply ord_all_but_nth_and_nth in H3; eauto.
-            2: {
-                unfolds combine_leb; eauto. 
-                eapply orb_true_iff.
-                right.
-                unfold reflexive in REFLEX; eapply REFLEX.
-            }
-            remember (remove_nth n l) as l''.
-            symmetry in Heql''.
-            pose proof Heql''.
-            eapply remove_nth_app with (l'' := [a]) in H5; eauto.
-            
-            rewrite H5.
-            eapply ord_all_remove_nth_ord_all with (n:=n) in H3; eauto.
-            rewrite Heql'' in H3.
-            unfolds ord_all.
-            rewrite Forall_app. 
-            rewrite and_comm.
-            eapply Forall_app. simpl.
-            eapply Forall_cons; eauto.
-            unfold combine_leb. 
-            rewrite Hord; eauto.
-        }
-        {
-            (* a become the smallest one *)
-            eapply IHr in H4; eauto.
-            rewrite <- app_assoc in H4. simpls; eauto.
-            rewrite <- app_assoc. simpls; eauto.
-            rewrite app_nth2. 
-            replace (Nat.sub (length l) (length l)) with 0%nat; try lia.
-            simpls; eauto.
-            lia.
-            rewrite app_length; simpls; lia.
-            eapply ord_all_but_nth_and_nth in H3; eauto.
-            2 : {
-                unfolds combine_leb; eauto. 
-                eapply orb_true_iff.
-                right.
-                unfold reflexive in REFLEX; eapply REFLEX.
-            }
-            {
-                replace (length l) with (Nat.add (length l) 0%nat); try lia.
-                rewrite firstn_app_2. simpl.
-                rewrite app_nil_r.
-                assert (instr_point_ext_old_sched_ltb a x = true). {
-                    clear - Hord H0.
-                    unfold total in H0.
-                    eapply orb_false_iff in Hord.
-                    destruct Hord.
-                    pose proof (H0 x a).
-                    rewrite H in H2.
-                    rewrite H1 in H2.
-                    firstorder.
-                }
-                clear - H3 H5 H H0 REFLEX TRANS_EQ TRANSL TRANSR SYMM_EQ.
-                unfolds ord_all. unfolds combine_leb.
-                eapply Forall_forall. intros.
-                eapply Forall_forall in H3; eauto.
-                destruct (instr_point_ext_old_sched_ltb x x0 || instr_point_ext_old_sched_eqb x x0) eqn:Hle.
-                {
-                    eapply orb_true_iff in Hle.
-                    destruct Hle as [LT| EQ].
-                    {
-                        assert (instr_point_ext_old_sched_ltb a x0 = true). {
-                            unfold transitive in H.
-                            eapply H; eauto. 
-                        }
-                        rewrite H2; trivial.
-                    }
-                    {
-                        assert (instr_point_ext_old_sched_ltb a x0 = true). {
-                            unfold ltb_eqb_implies_ltb  in TRANSR.
-                            eapply TRANSR; eauto. 
-                        }
-                        rewrite H2; trivial.
-                    }
-                }
-                {
-                    contradiction.                
-                }
-            }
-            remember (remove_nth (length l) (l ++ [a])) as l''.
-            symmetry in Heql''.
-            pose proof Heql''.
-            rewrite remove_nth_length_append_one in H5; eauto.
-            rewrite <- H5.
-
-            pose proof (H0 x a).
-
-            assert (instr_point_ext_old_sched_ltb a x = true). {
-                clear - Hord H6.
-                eapply orb_false_iff in Hord.
-                destruct Hord.
-                rewrite H in H6; rewrite H0 in H6. firstorder.
-            }
-            clear H6 Hord.
-            {
-                (* transitivity *)
-                assert (ord_all (combine_leb instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb) x l).
-                {
-                    clear - H1 H2 H3 REFLEX.
-                    remember (remove_nth n l) as l'.
-                    unfold ord_all in H3.
-                    rewrite Forall_forall in H3. 
-                    eapply Forall_forall. intros.
-                    pose proof (H3 x0).  clear H3.
-                    symmetry in Heql'.
-                    eapply remove_nth_implies_splits in Heql'; eauto.
-                    destruct Heql'.
-                    rewrite H3 in H.
-                    rewrite in_app_iff in H.
-                    rewrite in_app_iff in H.
-                    destruct H as [G1|[G2|G3]].
-                    {
-                        assert (In x0 l'). {
-                            rewrite H4.
-                            eapply in_app_iff; eauto.
-                        }
-                        eapply H0 in H; eauto.
-                    }
-                    {
-                        assert (x0 = x). {
-                            clear - G2.
-                            simpl in G2.
-                            firstorder. 
-                        }
-                        unfold combine_leb.
-                        unfold reflexive in REFLEX.
-                        assert (instr_point_ext_old_sched_eqb x x0). { 
-                            subst.
-                            eapply REFLEX; eauto.
-                        }
-                        rewrite H5. 
-                        rewrite orb_true_r; trivial.
-                    }
-                    {
-                        assert (In x0 l'). {
-                            rewrite H4.
-                            eapply in_app_iff; eauto.
-                        }
-                        eapply H0 in H; eauto.
-                    }
-                }
-                clear - H6 H7 H REFLEX TRANS_EQ TRANSL TRANSR SYMM_EQ.
-                eapply Forall_forall. intros.
-                eapply Forall_forall in H6; eauto.
-                unfolds combine_leb.
-                destruct (instr_point_ext_old_sched_ltb x x0 || instr_point_ext_old_sched_eqb x x0) eqn:Hle.
-                {
-                    eapply orb_true_iff in Hle.
-                    destruct Hle.
-                    {
-                        assert (instr_point_ext_old_sched_ltb a x0 = true). {
-                            unfold transitive in H.
-                            eapply H; eauto.
-                        }
-                        rewrite H2; trivial.
-                    }
-                    {
-                        assert (instr_point_ext_old_sched_ltb a x0 = true). {
-                            unfold ltb_eqb_implies_ltb in TRANSR.
-                            eapply TRANSR; eauto.
-                        }
-                        rewrite H2; trivial.
-                    }   
-                }
-                {
-                    contradiction.
-                }
-            }
-        }
-    }
+  intros r l x n y l' Hsorted Hnth Hbound Hprefix Hremain Hselect.
+  eapply select_helper_stable_permut_generic.
+  - exact instr_point_ext_old_sched_ltb_trans.
+  - exact instr_point_ext_old_sched_cmp_total.
+  - exact instr_point_ext_old_sched_eqb_refl.
+  - exact instr_point_ext_old_sched_eqb_trans.
+  - exact instr_point_ext_old_sched_eqb_ltb_implies_ltb.
+  - exact instr_point_ext_old_sched_ltb_eqb_implies_ltb.
+  - exact instr_point_ext_old_sched_eqb_symm.
+  - exact instr_point_ext_old_sched_cmp_irrefl.
+  - exact instr_point_ext_old_sched_cmp_antisymm.
+  - intros lfirst selected lskip Hsorted_prefix.
+    pose proof
+      (sorted_implies_ord_all lfirst selected lskip Hsorted_prefix)
+      as Hnew_ge.
+    unfold ord_all in Hnew_ge |- *.
+    rewrite !Forall_forall in Hnew_ge |- *.
+    intros point Hin.
+    unfold sfunc.
+    rewrite <- instr_point_ext_new_sched_ge_flip.
+    exact (Hnew_ge point Hin).
+  - exact Hsorted.
+  - exact Hnth.
+  - exact Hbound.
+  - exact Hprefix.
+  - exact Hremain.
+  - exact Hselect.
 Qed.
 
 Lemma select_stable_permut: 
@@ -6384,36 +5874,14 @@ Qed.
 
 Lemma select_helper_preserve_remain_sorted:
   forall r x l y n r',
-    Sorted_b instr_point_ext_new_sched_leb (l++r) ->
-    select_helper 
-        instr_point_ext_old_sched_ltb
-        instr_point_ext_old_sched_eqb l x n r = (y, r') -> 
+    Sorted_b instr_point_ext_new_sched_leb (l ++ r) ->
+    select_helper instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb l x n r = (y, r') ->
     Sorted_b instr_point_ext_new_sched_leb r'.
 Proof.
-  induction r.
-  {
-    intros.
-    unfold select_helper in H0.
-    {
-      inv H0.
-      rewrite app_nil_r in H.
-      eapply remove_nth_preserve_sorted; eauto.
-      eapply instr_point_ext_new_sched_leb_trans; eauto.
-    }
-  }
-  {
-    intros.
-    simpls.
-    des_ifH H0.
-    {
-      eapply IHr in H0; eauto.
-      rewrite <- app_assoc. simpls. trivial.
-    }
-    {
-      eapply IHr in H0; eauto.
-      rewrite <- app_assoc. simpls. trivial.
-    }
-  }
+  intros r x l y n r' Hsorted Hselect.
+  eapply select_helper_preserve_remain_sorted_generic; eauto.
+  exact instr_point_ext_new_sched_leb_trans.
 Qed.
 
 Lemma select_preserve_remain_sorted:
@@ -6427,50 +5895,23 @@ Proof.
   eapply select_helper_preserve_remain_sorted in H0; eauto.
 Qed.
 
-Lemma selsort_stable_permut: 
-    forall n l, 
-        Sorted_b instr_point_ext_new_sched_leb l ->
-        length l = n -> 
-        StablePermut instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc l (selsort instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb l n).
+Lemma selsort_stable_permut:
+  forall n l,
+    Sorted_b instr_point_ext_new_sched_leb l ->
+    length l = n ->
+    StablePermut instr_point_ext_old_sched_ltb
+      instr_point_ext_old_sched_eqb sfunc l
+      (selsort instr_point_ext_old_sched_ltb
+        instr_point_ext_old_sched_eqb l n).
 Proof.
-    induction n as [|n' IH].
-    {
-        intros until l. intro SORTED.  intros.
-        eapply length_zero_iff_nil in H. rewrite H.
-        unfold selsort.
-        econs; econs; eauto.
-    }
-    { 
-        intros until l. intro SORTED. intros.
-        destruct l eqn:Hl.
-        unfold length in H; discriminate.
-        remember (selsort instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb (i :: l0) (S n')) as bl.
-        unfold selsort in Heqbl. folds (@selsort InstrPoint_ext).
-        destruct (select instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb i l0) eqn:Hselect.
-        assert (length l0 = n'). {
-            unfold length in H. inv H. eauto.
-        }
-        eapply IH in H0; eauto.
-        pose proof Hselect.
-        eapply select_stable_permut in H1; eauto.
-        pose proof Hselect.
-        eapply select_rest_length in H2.
-        remember (selsort instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb l1 n') as l1'.
-        assert (StablePermut instr_point_ext_old_sched_ltb instr_point_ext_old_sched_eqb sfunc l1 l1'). {
-            rewrite Heql1'.
-            eapply IH; eauto. 
-            {
-              eapply select_preserve_remain_sorted; eauto.
-            }
-             rewrite <- H2.
-            unfold length in H; inv H; eauto.
-        }
-        eapply stable_permut_hd_cons with (a:=i0) in H3.
-        eapply stable_permut_trans; subst; eauto.
-        {
-          inv SORTED; eauto.
-        } 
-    } 
+  intros n l Hsorted Hlength.
+  eapply selsort_stable_permut_generic.
+  - intros x xs y rest Hxs_sorted Hselect.
+    eapply select_stable_permut; eauto.
+  - intros x xs y rest Hxs_sorted Hselect.
+    eapply select_preserve_remain_sorted; eauto.
+  - exact Hsorted.
+  - exact Hlength.
 Qed.
 
 Lemma selection_sort_instance_list_ext_is_stable_permut: 
@@ -6490,6 +5931,51 @@ Qed.
 Notation instr_point_list_sema_stable_under_state_eq := ILSema.instr_point_list_sema_stable_under_state_eq.
 
 (** Stable permutations preserve instance-list semantics up to state equivalence. *)
+Local Lemma stable_swap_points_permutable:
+  forall ipl tau1 tau2,
+    (forall point1 point2,
+      In point1 ipl ->
+      In point2 ipl ->
+      instr_point_ext_old_sched_lt point1 point2 ->
+      instr_point_ext_new_sched_ge point1 point2 ->
+      Permutable_ext point1 point2) ->
+    In tau1 ipl ->
+    In tau2 ipl ->
+    instr_point_ext_old_sched_ltb tau1 tau2 = false ->
+    instr_point_ext_old_sched_eqb tau1 tau2 = false ->
+    sfunc tau1 tau2 = true ->
+    Permutable_ext tau1 tau2.
+Proof.
+  intros ipl tau1 tau2 Hpermutable Hin1 Hin2 Hnot_lt Hnot_eq Hstable.
+  assert (Hreverse_lt : instr_point_ext_old_sched_ltb tau2 tau1 = true).
+  {
+    destruct (instr_point_ext_old_sched_cmp_total tau1 tau2)
+      as [Hlt | [Hgt | Heq]]; congruence.
+  }
+  apply Permutable_symm.
+  eapply Hpermutable.
+  - exact Hin2.
+  - exact Hin1.
+  - unfold instr_point_ext_old_sched_lt.
+    unfold instr_point_ext_old_sched_ltb in Hreverse_lt.
+    apply comparison_eqb_iff_eq in Hreverse_lt.
+    exact Hreverse_lt.
+  - unfold sfunc, instr_point_ext_new_sched_leb in Hstable.
+    unfold instr_point_ext_new_sched_ge.
+    apply orb_true_iff in Hstable.
+    destruct Hstable as [Hlt | Heq].
+    + right.
+      rewrite lex_compare_antisym.
+      apply comparison_eqb_iff_eq in Hlt.
+      rewrite Hlt.
+      reflexivity.
+    + left.
+      rewrite lex_compare_antisym.
+      apply comparison_eqb_iff_eq in Heq.
+      rewrite Heq.
+      reflexivity.
+Qed.
+
 Lemma stable_permut_step_ext_lists_are_equivalent: 
   forall ipl1_ext ipl2_ext,
     (forall tau1 tau2,
@@ -6516,147 +6002,59 @@ Lemma stable_permut_step_ext_lists_are_equivalent:
         )
     ).
 Proof.
-  induction ipl1_ext.
-  {
-    intros until ipl2_ext; intro PERMUT; intro STABLE; intros.
-    inv STABLE; tryfalse.  
-  }
-  {
-    intros until ipl2_ext; intro PERMUT; intro STABLE. 
-    intros st1 Halias.
-    inv STABLE.
-  - split. 
-    -- 
-    inv H.
-    intros st2. intros. simpl in H.
-    inv H.
-    eapply IHipl1_ext with (st1:=st3) in H1.
-    destruct H1.
-    eapply H in H6.
-    destruct H6 as (st2' & SEMA & EQ).
-    exists st2'. split. econs; eauto. trivial.
-    {
-      intros.
-      eapply PERMUT; eauto.
-      eapply in_cons; eauto.
-      eapply in_cons; eauto.
-    }
-    {
-      inv H3.
-      eapply Instr.sema_prsv_nonalias; eauto.
-    }
-    --
-    inv H.
-    intros st2. intros. simpl in H.
-    inv H.
-    eapply IHipl1_ext with (st1:=st3) in H1.
-    destruct H1.
-    eapply H0 in H6.
-    destruct H6 as (st2' & SEMA & EQ).
-    exists st2'. split. econs; eauto. trivial.
-    {
-      intros.
-      eapply PERMUT; eauto.
-      eapply in_cons; eauto.
-      eapply in_cons; eauto.
-    }
-    {
-      inv H3.
-      eapply Instr.sema_prsv_nonalias; eauto.
-    }
-    
-  - split. 
-    -- 
-    intros. simpls. inv H.
-    assert (instr_point_ext_old_sched_ltb tau2 tau1 = true). {
-      pose proof (instr_point_ext_old_sched_cmp_total tau1 tau2). 
-      clear - H H1 H2.
-      firstorder; tryfalse.
-    }
-    assert (Permutable_ext tau1 tau2). {
-      unfold Permutable_ext.
-      eapply Permutable_symm.
-      eapply (PERMUT tau2 tau1); eauto. 
-      right; apply in_eq.
-      eapply comparison_eqb_iff_eq; eauto.
+  induction ipl1_ext as [|head tail IH].
+  - intros ipl2_ext Hpermutable Hstable.
+    inversion Hstable; subst; discriminate.
+  - intros ipl2_ext Hpermutable Hstable.
+    change
+      (ILSema.instr_point_lists_equivalent
+        (old_of_ext_list (head :: tail)) (old_of_ext_list ipl2_ext)).
+    inversion Hstable as
+      [ltb eqb stablefunc l1 l2 tau l1' l2' Hl1 Hl2 Htail
+      |ltb eqb stablefunc l1 l2 tau1 tau2 l' Hl1 Hl2
+        Hnot_lt Hnot_eq Hstable_swap];
+      subst.
+    + inversion Hl1; subst.
+      assert (Htail_equiv :
+        ILSema.instr_point_lists_equivalent
+          (old_of_ext_list l1') (old_of_ext_list l2')).
       {
-        clear - H3.
-        unfold sfunc in H3.
-        unfold instr_point_ext_new_sched_leb in H3.
-        unfold instr_point_ext_new_sched_ge.
-        rewrite orb_true_iff in H3.
-        destruct H3; firstorder.
-        {
-          right.
-          rewrite lex_compare_antisym.
-          rewrite comparison_eqb_iff_eq in H.
-          rewrite H; trivial. 
-        }
-        {
-          left.
-          rewrite lex_compare_antisym.  
-          rewrite comparison_eqb_iff_eq in H.
-          rewrite H; trivial. 
-        }
+        change
+          (forall st1,
+            Instr.NonAlias st1 ->
+            (forall st2,
+              instr_point_list_semantics (old_of_ext_list l1') st1 st2 ->
+              exists st2',
+                instr_point_list_semantics (old_of_ext_list l2') st1 st2' /\
+                Instr.State.eq st2 st2') /\
+            (forall st2,
+              instr_point_list_semantics (old_of_ext_list l2') st1 st2 ->
+              exists st2',
+                instr_point_list_semantics (old_of_ext_list l1') st1 st2' /\
+                Instr.State.eq st2 st2')).
+        apply IH; [|exact Htail].
+        intros point1 point2 Hin1 Hin2 Hold_lt Hnew_ge.
+        apply Hpermutable; simpl; auto.
       }
-    }
-    unfold Permutable_ext in H4.
-    unfold Permutable in H4.
-    pose proof H4 st1 Halias. destruct H5. simpl in H0.
-    inv H0. inv H12.
-    pose proof H5 st3 st4 H9 H8.
-    destruct H0 as (st2'' & st3m & SEMA1 & SEMA2 & EQ).
-    exists st2.
-    split. econs; eauto. econs; eauto.
-    eapply instr_point_list_sema_stable_under_state_eq; eauto.
-    eapply Instr.State.eq_refl. 
-    eapply Instr.State.eq_refl. 
-    -- 
-    intros. simpls. inv H.
-    assert (instr_point_ext_old_sched_ltb tau2 tau1 = true). {
-      pose proof (instr_point_ext_old_sched_cmp_total tau1 tau2). 
-      clear - H H1 H2.
-      firstorder; tryfalse.
-    }
-    assert (Permutable_ext tau1 tau2). {
-      unfold Permutable_ext.
-      eapply Permutable_symm.
-      eapply (PERMUT tau2 tau1); eauto. 
-      right; apply in_eq.
-      eapply comparison_eqb_iff_eq; eauto.
-      {
-        clear - H3.
-        unfold sfunc in H3.
-        unfold instr_point_ext_new_sched_leb in H3.
-        unfold instr_point_ext_new_sched_ge.
-        rewrite orb_true_iff in H3.
-        destruct H3; firstorder.
-        {
-          right.
-          rewrite lex_compare_antisym.
-          rewrite comparison_eqb_iff_eq in H.
-          rewrite H; trivial. 
-        }
-        {
-          left.
-          rewrite lex_compare_antisym.  
-          rewrite comparison_eqb_iff_eq in H.
-          rewrite H; trivial. 
-        }
-      }
-    }
-    unfold Permutable_ext in H4.
-    unfold Permutable in H4.
-    pose proof H4 st1 Halias. destruct H5. simpl in H0.
-    inv H0. inv H12.
-    pose proof H6 st3 st4 H9 H8.
-    destruct H0 as (st2'' & st3m & SEMA1 & SEMA2 & EQ).
-    exists st2.
-    split. econs; eauto. econs; eauto.
-    eapply instr_point_list_sema_stable_under_state_eq; eauto.
-    eapply Instr.State.eq_refl. 
-    eapply Instr.State.eq_refl. 
-  }
+      unfold old_of_ext_list.
+      simpl.
+      exact (ILSema.instr_point_lists_equivalent_cons
+        (old_of_ext tau) (map old_of_ext l1') (map old_of_ext l2')
+        Htail_equiv).
+    + inversion Hl1; subst.
+      pose proof
+        (stable_swap_points_permutable
+          (tau1 :: tau2 :: l') tau1 tau2 Hpermutable)
+        as Hswap.
+      specialize (Hswap
+        (or_introl eq_refl) (or_intror (or_introl eq_refl))
+        Hnot_lt Hnot_eq Hstable_swap).
+      unfold Permutable_ext in Hswap.
+      unfold old_of_ext_list.
+      simpl.
+      exact (ILSema.instr_point_lists_equivalent_swap
+        (old_of_ext tau1) (old_of_ext tau2)
+        (map old_of_ext l') Hswap).
 Qed.
 
 Lemma stable_permut'_ext_lists_are_equivalent: 
@@ -6685,72 +6083,57 @@ Lemma stable_permut'_ext_lists_are_equivalent:
         )
     ).
 Proof.
-  induction n.
-  {
-    intros ipl1_ext ipl2_ext PERMUT STABLE st1 NONALIAS.
-    inv STABLE; try lia.
-    split; intros st2 SEMA.
-    - exists st2. split; trivial.
-      eapply Instr.State.eq_refl.
-    - exists st2. split; trivial.
-      eapply Instr.State.eq_refl.
-  }
-  {
-    intros until ipl2_ext. intros PERMUT. intros until st1. intro Halias.
-    split; intros.
+  induction n as [|n IH]; intros ipl1_ext ipl2_ext Hpermutable Hstable.
+  - pose proof
+      (stable_permut'_zero_inv
+        _ _ _ _ _ _ Hstable) as Heq.
+    subst ipl2_ext.
+    change
+      (ILSema.instr_point_lists_equivalent
+        (old_of_ext_list ipl1_ext) (old_of_ext_list ipl1_ext)).
+    apply ILSema.instr_point_lists_equivalent_refl.
+  - destruct
+      (stable_permut'_succ_inv
+        _ _ _ _ _ _ _ Hstable)
+      as (ipl_mid & Hstep & Htail).
+    change
+      (ILSema.instr_point_lists_equivalent
+        (old_of_ext_list ipl1_ext) (old_of_ext_list ipl2_ext)).
+    pose proof
+      (stable_permut_step_implies_stable_permut
+        _ _ _ _ _ _ Hstep) as Hstep_permut.
+    assert (Hpermutable_tail :
+      forall tau1 tau2,
+        In tau1 ipl_mid ->
+        In tau2 ipl_mid ->
+        instr_point_ext_old_sched_lt tau1 tau2 ->
+        instr_point_ext_new_sched_ge tau1 tau2 ->
+        Permutable_ext tau1 tau2).
     {
-      inv H.  
-      assert (n0 = n). {lia. }
-      clear H1.
-      subst; eauto.
-      pose proof H2 as G.
-      eapply stable_permut_step_ext_lists_are_equivalent with (st1:=st1)in H2; eauto.
-      destruct H2. 
-      eapply IHn with (st1:=st1) in H8; eauto.
-      destruct H8 as (F & B).
-      eapply H in H0.
-      destruct H0 as (st_after_step & STEP_SEMA & STEP_EQ).
-      eapply F in STEP_SEMA.
-      destruct STEP_SEMA as (st_after_tail & TAIL_SEMA & TAIL_EQ).
-      exists st_after_tail. split; trivial.
-      {
-        exact (Instr.State.eq_trans _ _ _ STEP_EQ TAIL_EQ).
-      }
-      {
-        clear - G PERMUT.
-        eapply stable_permut_step_implies_stable_permut in G.
-        intros. eapply PERMUT; eauto.
-        rewrite stable_permut_perserves_elems; eauto.
-        rewrite stable_permut_perserves_elems; eauto.
-      }
+      intros tau1 tau2 Hin1 Hin2 Hold_lt Hnew_ge.
+      apply Hpermutable; try assumption.
+      - apply (proj2
+          (stable_permut_perserves_elems
+            _ _ _ _ _ _ tau1 Hstep_permut)).
+        exact Hin1.
+      - apply (proj2
+          (stable_permut_perserves_elems
+            _ _ _ _ _ _ tau2 Hstep_permut)).
+        exact Hin2.
     }
-    {
-      inv H.  
-      assert (n0 = n). {lia. }
-      clear H1.
-      subst; eauto.
-      pose proof H2 as G.
-      eapply stable_permut_step_ext_lists_are_equivalent with (st1:=st1)in H2; eauto.
-      destruct H2. 
-      eapply IHn with (st1:=st1) in H8; eauto.
-      destruct H8 as (F & B).
-      eapply B in H0.
-      destruct H0 as (st_before_step & TAIL_SEMA & TAIL_EQ).
-      eapply H1 in TAIL_SEMA.
-      destruct TAIL_SEMA as (st_before_all & STEP_SEMA & STEP_EQ).
-      exists st_before_all. split; trivial.
-      {
-        exact (Instr.State.eq_trans _ _ _ TAIL_EQ STEP_EQ).
-      }
-      {
-        clear - G PERMUT.
-        eapply stable_permut_step_implies_stable_permut in G.
-        intros. eapply PERMUT; eauto.
-        rewrite stable_permut_perserves_elems; eauto.
-        rewrite stable_permut_perserves_elems; eauto.
-      }    
-    }
-  }
+    pose proof
+      (stable_permut_step_ext_lists_are_equivalent
+        ipl1_ext ipl_mid Hpermutable Hstep) as Hstep_equiv.
+    change
+      (ILSema.instr_point_lists_equivalent
+        (old_of_ext_list ipl1_ext) (old_of_ext_list ipl_mid)) in Hstep_equiv.
+    pose proof
+      (IH ipl_mid ipl2_ext Hpermutable_tail Htail) as Htail_equiv.
+    change
+      (ILSema.instr_point_lists_equivalent
+        (old_of_ext_list ipl_mid) (old_of_ext_list ipl2_ext)) in Htail_equiv.
+    exact (ILSema.instr_point_lists_equivalent_trans
+      _ _ _ Hstep_equiv Htail_equiv).
 Qed.
 
 Lemma stable_permut_ext_lists_are_equivalent: 

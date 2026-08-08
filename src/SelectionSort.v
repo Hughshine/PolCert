@@ -177,6 +177,75 @@ Proof.
     eapply select_helper_length in H; eauto.
 Qed.
 
+Lemma select_helper_map:
+  forall A B (f : A -> B)
+    (ltbA eqbA : A -> A -> bool) (ltbB eqbB : B -> B -> bool),
+    (forall x y, ltbA x y = ltbB (f x) (f y)) ->
+    (forall x y, eqbA x y = eqbB (f x) (f y)) ->
+    forall r l x n y r',
+      select_helper ltbA eqbA l x n r = (y, r') ->
+      select_helper ltbB eqbB (map f l) (f x) n (map f r) =
+        (f y, map f r').
+Proof.
+  intros A B f ltbA eqbA ltbB eqbB Hlt Heq r.
+  induction r as [|a r IH]; intros l x n y r' Hselect.
+  - simpl in Hselect.
+    inversion Hselect; subst.
+    simpl.
+    rewrite remove_nth_maps_comm.
+    reflexivity.
+  - simpl in Hselect.
+    destruct (ltbA x a || eqbA x a) eqn:Hord.
+    + specialize (IH (l ++ [a]) x n y r' Hselect).
+      simpl.
+      rewrite <- (Hlt x a), <- (Heq x a), Hord.
+      rewrite map_app in IH.
+      simpl in IH.
+      exact IH.
+    + specialize (IH (l ++ [a]) a (length l) y r' Hselect).
+      simpl.
+      rewrite <- (Hlt x a), <- (Heq x a), Hord.
+      rewrite map_app in IH.
+      simpl in IH.
+      rewrite map_length.
+      exact IH.
+Qed.
+
+Lemma select_map:
+  forall A B (f : A -> B)
+    (ltbA eqbA : A -> A -> bool) (ltbB eqbB : B -> B -> bool),
+    (forall x y, ltbA x y = ltbB (f x) (f y)) ->
+    (forall x y, eqbA x y = eqbB (f x) (f y)) ->
+    forall x l y r,
+      select ltbA eqbA x l = (y, r) ->
+      select ltbB eqbB (f x) (map f l) = (f y, map f r).
+Proof.
+  intros A B f ltbA eqbA ltbB eqbB Hlt Heq x l y r Hselect.
+  unfold select in Hselect |- *.
+  exact (select_helper_map A B f ltbA eqbA ltbB eqbB
+    Hlt Heq l [x] x 0 y r Hselect).
+Qed.
+
+Lemma selsort_map:
+  forall A B (f : A -> B)
+    (ltbA eqbA : A -> A -> bool) (ltbB eqbB : B -> B -> bool),
+    (forall x y, ltbA x y = ltbB (f x) (f y)) ->
+    (forall x y, eqbA x y = eqbB (f x) (f y)) ->
+    forall n l,
+      selsort ltbB eqbB (map f l) n = map f (selsort ltbA eqbA l n).
+Proof.
+  intros A B f ltbA eqbA ltbB eqbB Hlt Heq n.
+  induction n as [|n IH]; intros l; [destruct l; reflexivity|].
+  destruct l as [|x l]; [reflexivity|].
+  simpl.
+  destruct (select ltbA eqbA x l) as [y r] eqn:Hselect.
+  rewrite (select_map A B f ltbA eqbA ltbB eqbB
+    Hlt Heq x l y r Hselect).
+  simpl.
+  rewrite IH.
+  reflexivity.
+Qed.
+
 Lemma selsort_perm: 
     forall A ltb eqb n l, 
         length l = n -> 
@@ -354,6 +423,93 @@ Proof.
     rewrite H3; eauto. 
 Qed.
 
+Lemma stable_permut_multi_skip_generic:
+  forall A (ltb eqb sfunc : A -> A -> bool) l1 y l2,
+    irreflexive ltb eqb ->
+    antisymmetric ltb eqb ->
+    symmetric eqb ->
+    ord_all (fun y x => sfunc x y) y l1 ->
+    ord_all ltb y l1 ->
+    StablePermut ltb eqb sfunc
+      (l1 ++ [y] ++ l2)
+      (y :: l1 ++ l2).
+Proof.
+  intros A ltb eqb sfunc l1.
+  induction l1 as [|a l1 IH]; intros y l2 Hirrefl Hantisym Heqb_sym
+    Hstable Hlt.
+  - simpl.
+    apply stable_permut_refl.
+  - unfold ord_all in Hstable, Hlt.
+    inversion Hstable as [|? ? Hstable_head Hstable_tail]; subst.
+    inversion Hlt as [|? ? Hlt_head Hlt_tail]; subst.
+    destruct (sfunc a y) eqn:Hay_stable; [clear Hstable_head|contradiction].
+    destruct (ltb y a) eqn:Hya; [clear Hlt_head|contradiction].
+
+    assert (Htail :
+      StablePermut ltb eqb sfunc
+        (l1 ++ [y] ++ l2)
+        (y :: l1 ++ l2)).
+    {
+      apply IH; assumption.
+    }
+    apply stable_permut_hd_cons with (a := a) in Htail.
+
+    assert (Hswap :
+      StablePermut ltb eqb sfunc
+        (a :: y :: l1 ++ l2)
+        (y :: a :: l1 ++ l2)).
+    {
+      apply stable_permut_step_implies_stable_permut.
+      eapply stable_permut_swap with (tau1 := a) (tau2 := y)
+        (l' := l1 ++ l2); try reflexivity.
+      - destruct (ltb a y) eqn:Hay; [|reflexivity].
+        unfold antisymmetric in Hantisym.
+        pose proof (Hantisym a y Hay Hya) as Heq.
+        unfold irreflexive in Hirrefl.
+        rewrite (Hirrefl a y Heq) in Hay.
+        discriminate.
+      - destruct (eqb a y) eqn:Heq; [|reflexivity].
+        unfold symmetric in Heqb_sym.
+        rewrite Heqb_sym in Heq.
+        unfold irreflexive in Hirrefl.
+        rewrite (Hirrefl y a Heq) in Hya.
+        discriminate.
+      - exact Hay_stable.
+    }
+    eapply stable_permut_trans.
+    + exact Htail.
+    + exact Hswap.
+Qed.
+
+Lemma sorted_prefix_implies_ord_all_reverse:
+  forall A (leb geb : A -> A -> bool) lfirst y lskip,
+    transitive geb ->
+    (forall x y, leb x y = true -> geb y x = true) ->
+    Sorted_b leb (lfirst ++ y :: lskip) ->
+    ord_all geb y lfirst.
+Proof.
+  intros A leb geb lfirst.
+  induction lfirst as [|a lfirst IH]; intros y lskip Htrans Hflip Hsorted.
+  - unfold ord_all. constructor.
+  - simpl in Hsorted.
+    unfold Sorted_b in Hsorted.
+    inversion Hsorted as [|? ? Htail Hhead]; subst.
+    specialize (IH y lskip Htrans Hflip Htail).
+    unfold ord_all in IH |- *.
+    constructor; [|exact IH].
+    destruct lfirst as [|next lfirst].
+    + inversion Hhead as [|? ? Hrel]; subst.
+      rewrite (Hflip a y Hrel).
+      trivial.
+    + inversion Hhead as [|? ? Hrel]; subst.
+      inversion IH as [|? ? Hy_next]; subst.
+      destruct (geb y next) eqn:Hynext; [clear Hy_next|contradiction].
+      pose proof (Hflip a next Hrel) as Hnext_a.
+      unfold transitive in Htrans.
+      rewrite (Htrans y next a Hynext Hnext_a).
+      trivial.
+Qed.
+
 Lemma ord_all_but_nth_and_nth: 
     forall A ltb x n l a, 
         n < length l ->
@@ -403,6 +559,263 @@ Proof.
     eapply Forall_app in H1.
     destruct H1.
     eapply Forall_app; splits; firstorder.
+Qed.
+
+Local Lemma total_not_combine_reverse_lt:
+  forall A (ltb eqb : A -> A -> bool) x y,
+    total ltb eqb ->
+    combine_leb ltb eqb x y = false ->
+    ltb y x = true.
+Proof.
+  intros A ltb eqb x y Htotal Hnot_le.
+  unfold combine_leb in Hnot_le.
+  apply orb_false_iff in Hnot_le.
+  destruct Hnot_le as [Hnot_lt Hnot_eq].
+  unfold total in Htotal.
+  destruct (Htotal x y) as [Hlt | [Hgt | Heq]];
+    congruence.
+Qed.
+
+Local Lemma ord_all_lt_from_lt_combine:
+  forall A (ltb eqb : A -> A -> bool) a x xs,
+    transitive ltb ->
+    ltb_eqb_implies_ltb ltb eqb ->
+    ltb a x = true ->
+    ord_all (combine_leb ltb eqb) x xs ->
+    ord_all ltb a xs.
+Proof.
+  intros A ltb eqb a x xs Htrans Hlt_eq Hax Hall.
+  unfold ord_all in Hall |- *.
+  rewrite !Forall_forall in Hall |- *.
+  intros z Hin.
+  specialize (Hall z Hin).
+  unfold combine_leb in Hall.
+  destruct (ltb x z || eqb x z) eqn:Hxz; [|contradiction].
+  apply orb_true_iff in Hxz.
+  destruct Hxz as [Hxz | Hxz].
+  - unfold transitive in Htrans.
+    rewrite (Htrans a x z Hax Hxz).
+    trivial.
+  - unfold ltb_eqb_implies_ltb in Hlt_eq.
+    rewrite (Hlt_eq a x z Hax Hxz).
+    trivial.
+Qed.
+
+Local Lemma ord_all_combine_of_lt:
+  forall A (ltb eqb : A -> A -> bool) x xs,
+    ord_all ltb x xs ->
+    ord_all (combine_leb ltb eqb) x xs.
+Proof.
+  intros A ltb eqb x xs Hall.
+  unfold ord_all in Hall |- *.
+  rewrite !Forall_forall in Hall |- *.
+  intros y Hin.
+  specialize (Hall y Hin).
+  destruct (ltb x y) eqn:Hxy; [|contradiction].
+  unfold combine_leb.
+  rewrite Hxy.
+  trivial.
+Qed.
+
+Lemma select_helper_stable_permut_generic:
+  forall A (ltb eqb sfunc sortb : A -> A -> bool),
+    transitive ltb ->
+    total ltb eqb ->
+    reflexive eqb ->
+    transitive eqb ->
+    eqb_ltb_implies_ltb ltb eqb ->
+    ltb_eqb_implies_ltb ltb eqb ->
+    symmetric eqb ->
+    irreflexive ltb eqb ->
+    antisymmetric ltb eqb ->
+    (forall lfirst y lskip,
+      Sorted_b sortb (lfirst ++ y :: lskip) ->
+      ord_all (fun y x => sfunc x y) y lfirst) ->
+    forall r l x (n : nat) y l',
+      Sorted_b sortb (l ++ r) ->
+      nth n l x = x ->
+      n < length l ->
+      ord_all ltb x (firstn n l) ->
+      ord_all (combine_leb ltb eqb) x (remove_nth n l) ->
+      select_helper ltb eqb l x n r = (y, l') ->
+      StablePermut ltb eqb sfunc (l ++ r) (y :: l').
+Proof.
+  intros A ltb eqb sfunc sortb
+    Htrans Htotal Heqb_refl Heqb_trans Heqb_lt Hlt_eq Heqb_sym
+    Hirrefl Hantisym Hprefix_stable r.
+  induction r as [|a r IH];
+    intros l x n y l' Hsorted Hnth Hbound Hprefix Hremain Hselect.
+  - simpl in Hselect.
+    inversion Hselect; subst.
+    rewrite app_nil_r in Hsorted |- *.
+    remember (remove_nth n l) as removed eqn:Hremoved.
+    symmetry in Hremoved.
+    apply remove_nth_implies_splits with (x := y) (x0 := y) in Hremoved;
+      [|exact Hbound|exact Hnth].
+    destruct Hremoved as [Hlist Hremoved].
+    rewrite Hlist, Hremoved.
+    eapply stable_permut_multi_skip_generic.
+    + exact Hirrefl.
+    + exact Hantisym.
+    + exact Heqb_sym.
+    + eapply Hprefix_stable with (lskip := skipn (n + 1) l).
+      rewrite Hlist in Hsorted.
+      simpl in Hsorted.
+      exact Hsorted.
+    + exact Hprefix.
+  - simpl in Hselect.
+    destruct (combine_leb ltb eqb x a) eqn:Hord.
+    + unfold combine_leb in Hord.
+      rewrite Hord in Hselect.
+      assert (Hremove :
+        remove_nth n (l ++ [a]) = remove_nth n l ++ [a]).
+      {
+        eapply remove_nth_app; eauto.
+      }
+      assert (Hremain_app :
+        ord_all (combine_leb ltb eqb) x (remove_nth n (l ++ [a]))).
+      {
+        rewrite Hremove.
+        unfold ord_all in Hremain |- *.
+        apply Forall_app.
+        split; [exact Hremain|].
+        constructor; [unfold combine_leb; rewrite Hord; trivial|constructor].
+      }
+      assert (Hrec :
+        StablePermut ltb eqb sfunc
+          ((l ++ [a]) ++ r) (y :: l')).
+      {
+        eapply IH.
+        - rewrite <- app_assoc.
+          simpl.
+          exact Hsorted.
+        - rewrite app_nth1; [exact Hnth|lia].
+        - rewrite app_length; simpl; lia.
+        - rewrite firstn_app.
+          replace (n - length l) with 0 by lia.
+          simpl.
+          rewrite app_nil_r.
+          exact Hprefix.
+        - exact Hremain_app.
+        - exact Hselect.
+      }
+      rewrite <- app_assoc in Hrec.
+      simpl in Hrec.
+      exact Hrec.
+    + pose proof Hord as Hnot_combine.
+      unfold combine_leb in Hord.
+      rewrite Hord in Hselect.
+      pose proof
+        (total_not_combine_reverse_lt A ltb eqb x a Htotal Hnot_combine)
+        as Hax.
+      assert (Hself : combine_leb ltb eqb x x = true).
+      {
+        unfold combine_leb.
+        unfold reflexive in Heqb_refl.
+        rewrite (Heqb_refl x), orb_true_r.
+        reflexivity.
+      }
+      assert (Hall_x : ord_all (combine_leb ltb eqb) x l).
+      {
+        eapply ord_all_but_nth_and_nth; eauto.
+      }
+      pose proof
+        (ord_all_lt_from_lt_combine A ltb eqb a x l
+          Htrans Hlt_eq Hax Hall_x)
+        as Hall_a_lt.
+      pose proof
+        (ord_all_combine_of_lt A ltb eqb a l Hall_a_lt)
+        as Hall_a_le.
+      assert (Hrec :
+        StablePermut ltb eqb sfunc
+          ((l ++ [a]) ++ r) (y :: l')).
+      {
+        eapply IH.
+        - rewrite <- app_assoc.
+          simpl.
+          exact Hsorted.
+        - rewrite app_nth2.
+          replace (length l - length l) with 0 by lia.
+          reflexivity.
+          lia.
+        - rewrite app_length; simpl; lia.
+        - rewrite firstn_app, firstn_all, Nat.sub_diag.
+          simpl.
+          rewrite app_nil_r.
+          exact Hall_a_lt.
+        - rewrite remove_nth_length_append_one.
+          exact Hall_a_le.
+        - exact Hselect.
+      }
+      rewrite <- app_assoc in Hrec.
+      simpl in Hrec.
+      exact Hrec.
+Qed.
+
+Lemma select_helper_preserve_remain_sorted_generic:
+  forall A (ltb eqb sortb : A -> A -> bool),
+    transitive sortb ->
+    forall r x l y n r',
+      Sorted_b sortb (l ++ r) ->
+      select_helper ltb eqb l x n r = (y, r') ->
+      Sorted_b sortb r'.
+Proof.
+  intros A ltb eqb sortb Htrans r.
+  induction r as [|a r IH]; intros x l y n r' Hsorted Hselect.
+  - simpl in Hselect.
+    inversion Hselect; subst.
+    rewrite app_nil_r in Hsorted.
+    eapply remove_nth_preserve_sorted; eauto.
+  - simpl in Hselect.
+    destruct (ltb x a || eqb x a) eqn:Hord.
+    + eapply IH; [|exact Hselect].
+      rewrite <- app_assoc.
+      simpl.
+      exact Hsorted.
+    + eapply IH; [|exact Hselect].
+      rewrite <- app_assoc.
+      simpl.
+      exact Hsorted.
+Qed.
+
+Lemma selsort_stable_permut_generic:
+  forall A (ltb eqb sfunc sortb : A -> A -> bool),
+    (forall x l y r,
+      Sorted_b sortb (x :: l) ->
+      select ltb eqb x l = (y, r) ->
+      StablePermut ltb eqb sfunc (x :: l) (y :: r)) ->
+    (forall x l y r,
+      Sorted_b sortb (x :: l) ->
+      select ltb eqb x l = (y, r) ->
+      Sorted_b sortb r) ->
+    forall n l,
+      Sorted_b sortb l ->
+      length l = n ->
+      StablePermut ltb eqb sfunc l (selsort ltb eqb l n).
+Proof.
+  intros A ltb eqb sfunc sortb Hselect_stable Hselect_sorted n.
+  induction n as [|n IH]; intros l Hsorted Hlength.
+  - apply length_zero_iff_nil in Hlength.
+    subst l.
+    simpl.
+    apply stable_permut_refl.
+  - destruct l as [|x l]; [discriminate|].
+    simpl.
+    destruct (select ltb eqb x l) as [y r] eqn:Hselect.
+    pose proof (Hselect_stable x l y r Hsorted Hselect) as Hstep.
+    assert (Hrest_length : length r = n).
+    {
+      apply select_rest_length in Hselect.
+      simpl in Hlength.
+      lia.
+    }
+    assert (Hrest_sorted : Sorted_b sortb r).
+    {
+      exact (Hselect_sorted x l y r Hsorted Hselect).
+    }
+    pose proof (IH r Hrest_sorted Hrest_length) as Htail.
+    apply stable_permut_hd_cons with (a := y) in Htail.
+    eapply stable_permut_trans; eauto.
 Qed.
 
 Lemma select_helper_smallest: 

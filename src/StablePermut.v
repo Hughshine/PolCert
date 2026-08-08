@@ -38,6 +38,30 @@ Inductive StablePermut' {A: Type}:
 Definition StablePermut {A: Type} (ltb: A -> A -> bool) (eqb: A -> A -> bool) (sfunc: A -> A -> bool) (l1 l2: list A) : Prop := 
     exists n, StablePermut' ltb eqb sfunc l1 l2 n.
 
+Lemma stable_permut'_zero_inv:
+    forall A ltb eqb sfunc (l1 l2 : list A),
+        StablePermut' ltb eqb sfunc l1 l2 0 ->
+        l1 = l2.
+Proof.
+    intros A ltb eqb sfunc l1 l2 Hstable.
+    inversion Hstable; subst; try lia.
+    reflexivity.
+Qed.
+
+Lemma stable_permut'_succ_inv:
+    forall A ltb eqb sfunc (l1 l3 : list A) n,
+        StablePermut' ltb eqb sfunc l1 l3 (S n) ->
+        exists l2,
+          StablePermut_step ltb eqb sfunc l1 l2 /\
+          StablePermut' ltb eqb sfunc l2 l3 n.
+Proof.
+    intros A ltb eqb sfunc l1 l3 n Hstable.
+    inversion Hstable; subst; try lia.
+    assert (n0 = n) by lia.
+    subst n0.
+    exists l2; split; assumption.
+Qed.
+
 (** some facts about stable permute *)
 (** 1. stable permute implies permutation *)
 

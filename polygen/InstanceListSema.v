@@ -358,6 +358,139 @@ Proof.
     + exact Hright.
 Qed.
 
+Lemma instr_point_sema_preserves_nonalias :
+  forall ip st1 st2,
+    instr_point_sema ip st1 st2 ->
+    Instr.NonAlias st1 ->
+    Instr.NonAlias st2.
+Proof.
+  intros ip st1 st2 Hsem Hnonalias.
+  inversion Hsem; subst.
+  eapply Instr.sema_prsv_nonalias; eauto.
+Qed.
+
+Definition instr_point_lists_equivalent
+    (l1 l2 : list InstrPoint) : Prop :=
+  forall st1,
+    Instr.NonAlias st1 ->
+    (forall st2,
+      instr_point_list_semantics l1 st1 st2 ->
+      exists st2',
+        instr_point_list_semantics l2 st1 st2' /\
+        State.eq st2 st2') /\
+    (forall st2,
+      instr_point_list_semantics l2 st1 st2 ->
+      exists st2',
+        instr_point_list_semantics l1 st1 st2' /\
+        State.eq st2 st2').
+
+Lemma instr_point_lists_equivalent_refl :
+  forall l,
+    instr_point_lists_equivalent l l.
+Proof.
+  intros l st1 Hnonalias.
+  split.
+  - intros st2 Hsem.
+    exists st2; split; [exact Hsem|apply State.eq_refl].
+  - intros st2 Hsem.
+    exists st2; split; [exact Hsem|apply State.eq_refl].
+Qed.
+
+Lemma instr_point_lists_equivalent_sym :
+  forall l1 l2,
+    instr_point_lists_equivalent l1 l2 ->
+    instr_point_lists_equivalent l2 l1.
+Proof.
+  intros l1 l2 Hequiv st1 Hnonalias.
+  specialize (Hequiv st1 Hnonalias) as [Hforward Hbackward].
+  split; assumption.
+Qed.
+
+Lemma instr_point_lists_equivalent_trans :
+  forall l1 l2 l3,
+    instr_point_lists_equivalent l1 l2 ->
+    instr_point_lists_equivalent l2 l3 ->
+    instr_point_lists_equivalent l1 l3.
+Proof.
+  intros l1 l2 l3 Hequiv12 Hequiv23 st1 Hnonalias.
+  specialize (Hequiv12 st1 Hnonalias) as [Hforward12 Hbackward12].
+  specialize (Hequiv23 st1 Hnonalias) as [Hforward23 Hbackward23].
+  split.
+  - intros st2 Hsem1.
+    destruct (Hforward12 st2 Hsem1) as [st2' [Hsem2 Heq12]].
+    destruct (Hforward23 st2' Hsem2) as [st3 [Hsem3 Heq23]].
+    exists st3; split; [exact Hsem3|].
+    eapply State.eq_trans; eauto.
+  - intros st3 Hsem3.
+    destruct (Hbackward23 st3 Hsem3) as [st2 [Hsem2 Heq32]].
+    destruct (Hbackward12 st2 Hsem2) as [st1' [Hsem1 Heq21]].
+    exists st1'; split; [exact Hsem1|].
+    eapply State.eq_trans; eauto.
+Qed.
+
+Lemma instr_point_lists_equivalent_cons :
+  forall ip l1 l2,
+    instr_point_lists_equivalent l1 l2 ->
+    instr_point_lists_equivalent (ip :: l1) (ip :: l2).
+Proof.
+  intros ip l1 l2 Hequiv st1 Hnonalias.
+  split.
+  - intros st2 Hsem.
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
+      as [stmid [Hhead Htail]].
+    pose proof (instr_point_sema_preserves_nonalias _ _ _ Hhead Hnonalias)
+      as Hmid_nonalias.
+    specialize (Hequiv stmid Hmid_nonalias) as [Hforward _].
+    destruct (Hforward st2 Htail) as [st2' [Htail' Heq]].
+    exists st2'; split; [econstructor; eauto|exact Heq].
+  - intros st2 Hsem.
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
+      as [stmid [Hhead Htail]].
+    pose proof (instr_point_sema_preserves_nonalias _ _ _ Hhead Hnonalias)
+      as Hmid_nonalias.
+    specialize (Hequiv stmid Hmid_nonalias) as [_ Hbackward].
+    destruct (Hbackward st2 Htail) as [st2' [Htail' Heq]].
+    exists st2'; split; [econstructor; eauto|exact Heq].
+Qed.
+
+Lemma instr_point_lists_equivalent_swap :
+  forall ip1 ip2 rest,
+    Permutable ip1 ip2 ->
+    instr_point_lists_equivalent
+      (ip1 :: ip2 :: rest)
+      (ip2 :: ip1 :: rest).
+Proof.
+  intros ip1 ip2 rest Hperm st1 Hnonalias.
+  specialize (Hperm st1 Hnonalias) as [Hforward Hbackward].
+  split.
+  - intros st4 Hsem.
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
+      as [st2 [Hsem1 Htail]].
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Htail)
+      as [st3 [Hsem2 Hrest]].
+    destruct (Hforward st2 st3 Hsem1 Hsem2)
+      as [st2' [st3' [Hsem2' [Hsem1' Heq]]]].
+    exists st4; split.
+    + econstructor; [exact Hsem2'|].
+      econstructor; [exact Hsem1'|].
+      eapply instr_point_list_sema_stable_under_state_eq; eauto.
+      apply State.eq_refl.
+    + apply State.eq_refl.
+  - intros st4 Hsem.
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
+      as [st2 [Hsem2 Htail]].
+    destruct (instr_point_list_semantics_cons_inv _ _ _ _ Htail)
+      as [st3 [Hsem1 Hrest]].
+    destruct (Hbackward st2 st3 Hsem2 Hsem1)
+      as [st2' [st3' [Hsem1' [Hsem2' Heq]]]].
+    exists st4; split.
+    + econstructor; [exact Hsem1'|].
+      econstructor; [exact Hsem2'|].
+      eapply instr_point_list_sema_stable_under_state_eq; eauto.
+      apply State.eq_refl.
+    + apply State.eq_refl.
+Qed.
+
 Definition veq_instance (ip1 ip2: InstrPoint): Prop :=
   ip1.(ip_nth) = ip2.(ip_nth) 
   /\ veq ip1.(ip_index) ip2.(ip_index) 
