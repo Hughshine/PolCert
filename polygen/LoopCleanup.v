@@ -339,12 +339,11 @@ Proof.
   - destruct sts as [|st2 sts]; simpl.
     + split; intros H.
       * econstructor; eauto. constructor.
-      * inversion H; subst; clear H.
-        repeat match goal with
-               | Hnil : Loop.loop_semantics (Loop.Seq Loop.SNil) _ _ _ |- _ =>
-                   inversion Hnil; subst; clear Hnil
-               end.
-        assumption.
+      * inversion H as
+          [| |env0 st0 sts0 mem10 mem20 mem30 Hhead Htail| | |];
+          subst; clear H.
+        inversion Htail; subst; clear Htail.
+        exact Hhead.
     + tauto.
 Qed.
 
@@ -462,12 +461,9 @@ Proof.
            apply Htail in H3.
            congruence.
         -- subst.
-           lazymatch goal with
-           | |- Loop.loop_semantics (Loop.Seq (Loop.SCons _ _)) env ?m ?m =>
-               eapply Loop.LSeq with (mem2 := m);
-               [ apply (proj2 (H env m m eq_refl)); reflexivity
-               | apply (proj2 (H0 env m m H1)); reflexivity ]
-           end.
+           econstructor.
+           ++ apply (proj2 (H env mem2 mem2 eq_refl)). reflexivity.
+           ++ apply (proj2 (H0 env mem2 mem2 H1)). reflexivity.
       * discriminate.
 Qed.
 
@@ -543,10 +539,7 @@ Proof.
         -- inversion_clear Hsem.
            pose proof ((proj1 (((proj1 cleanup_stmt_skip_semantics) s env mem1 mem3 (eq_sym Hc))) H1)) as Heq.
            subst.
-           match goal with
-           | Htl : Loop.loop_semantics (Loop.Seq s0) env ?m ?n |- _ =>
-               apply (proj2 (H0 env m n)); exact Htl
-           end.
+           apply (proj2 (H0 env mem3 mem2)). exact H2.
       * split; intros Hsem.
         -- inversion_clear Hsem.
            apply (proj1 (H env mem1 mem3)) in H1.
