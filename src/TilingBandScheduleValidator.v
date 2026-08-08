@@ -294,24 +294,6 @@ Definition prioritize_pluto_band_component_ts
   firstn 1 (skipn (ptb_start band + dim) ts) ++
   ts.
 
-Definition project_pluto_band_component_ip_ext
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (ip_ext: Tiling.PL.InstrPoint_ext) : Tiling.PL.InstrPoint_ext :=
-  {|
-    Tiling.PL.ip_nth_ext := Tiling.PL.ip_nth_ext ip_ext;
-    Tiling.PL.ip_index_ext := Tiling.PL.ip_index_ext ip_ext;
-    Tiling.PL.ip_transformation_ext := Tiling.PL.ip_transformation_ext ip_ext;
-    Tiling.PL.ip_access_transformation_ext :=
-      Tiling.PL.ip_access_transformation_ext ip_ext;
-    Tiling.PL.ip_time_stamp1_ext := Tiling.PL.ip_time_stamp1_ext ip_ext;
-    Tiling.PL.ip_time_stamp2_ext :=
-      prioritize_pluto_band_component_ts
-        band dim (Tiling.PL.ip_time_stamp1_ext ip_ext);
-    Tiling.PL.ip_instruction_ext := Tiling.PL.ip_instruction_ext ip_ext;
-    Tiling.PL.ip_depth_ext := Tiling.PL.ip_depth_ext ip_ext;
-  |}.
-
 Definition prioritize_pluto_band_component_or_zero_rows
     (band: pinstr_tiling_band)
     (dim: nat)
@@ -332,94 +314,11 @@ Definition prioritize_pluto_band_component_or_zero_ts
   else
     firstn (ptb_start band) ts ++ [0%Z] ++ ts.
 
-Definition project_pluto_bands_component_pi_ext
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (pi_ext: Tiling.PL.PolyInstr_ext) : Tiling.PL.PolyInstr_ext :=
-  {|
-    Tiling.PL.pi_depth_ext := Tiling.PL.pi_depth_ext pi_ext;
-    Tiling.PL.pi_instr_ext := Tiling.PL.pi_instr_ext pi_ext;
-    Tiling.PL.pi_poly_ext := Tiling.PL.pi_poly_ext pi_ext;
-    Tiling.PL.pi_point_witness_ext := Tiling.PL.pi_point_witness_ext pi_ext;
-    Tiling.PL.pi_transformation_ext := Tiling.PL.pi_transformation_ext pi_ext;
-    Tiling.PL.pi_access_transformation_ext :=
-      Tiling.PL.pi_access_transformation_ext pi_ext;
-    Tiling.PL.pi_schedule1_ext := Tiling.PL.pi_schedule1_ext pi_ext;
-    Tiling.PL.pi_schedule2_ext :=
-      prioritize_pluto_band_component_or_zero_rows
-        band dim (Tiling.PL.pi_schedule1_ext pi_ext);
-    Tiling.PL.pi_waccess_ext := Tiling.PL.pi_waccess_ext pi_ext;
-    Tiling.PL.pi_raccess_ext := Tiling.PL.pi_raccess_ext pi_ext;
-  |}.
-
-Definition project_pluto_bands_component_ip_ext
-    (bands: list pinstr_tiling_band)
-    (dim: nat)
-    (ip_ext: Tiling.PL.InstrPoint_ext) : Tiling.PL.InstrPoint_ext :=
-  match List.nth_error bands (Tiling.PL.ip_nth_ext ip_ext) with
-  | Some band =>
-      {|
-        Tiling.PL.ip_nth_ext := Tiling.PL.ip_nth_ext ip_ext;
-        Tiling.PL.ip_index_ext := Tiling.PL.ip_index_ext ip_ext;
-        Tiling.PL.ip_transformation_ext :=
-          Tiling.PL.ip_transformation_ext ip_ext;
-        Tiling.PL.ip_access_transformation_ext :=
-          Tiling.PL.ip_access_transformation_ext ip_ext;
-        Tiling.PL.ip_time_stamp1_ext :=
-          Tiling.PL.ip_time_stamp1_ext ip_ext;
-        Tiling.PL.ip_time_stamp2_ext :=
-          prioritize_pluto_band_component_or_zero_ts
-            band dim (Tiling.PL.ip_time_stamp1_ext ip_ext);
-        Tiling.PL.ip_instruction_ext := Tiling.PL.ip_instruction_ext ip_ext;
-        Tiling.PL.ip_depth_ext := Tiling.PL.ip_depth_ext ip_ext;
-      |}
-  | None => ip_ext
-  end.
-
 Fixpoint max_tiling_band_len (bands: list pinstr_tiling_band) : nat :=
   match bands with
   | [] => O
   | band :: bands' => Nat.max (ptb_len band) (max_tiling_band_len bands')
   end.
-
-
-Definition project_cutoff_ip_ext
-    (cutoff: nat)
-    (ip_ext: Tiling.PL.InstrPoint_ext) : Tiling.PL.InstrPoint_ext :=
-  {|
-    Tiling.PL.ip_nth_ext := Tiling.PL.ip_nth_ext ip_ext;
-    Tiling.PL.ip_index_ext := Tiling.PL.ip_index_ext ip_ext;
-    Tiling.PL.ip_transformation_ext := Tiling.PL.ip_transformation_ext ip_ext;
-    Tiling.PL.ip_access_transformation_ext :=
-      Tiling.PL.ip_access_transformation_ext ip_ext;
-    Tiling.PL.ip_time_stamp1_ext := Tiling.PL.ip_time_stamp1_ext ip_ext;
-    Tiling.PL.ip_time_stamp2_ext :=
-      firstn cutoff (Tiling.PL.ip_time_stamp2_ext ip_ext);
-    Tiling.PL.ip_instruction_ext := Tiling.PL.ip_instruction_ext ip_ext;
-    Tiling.PL.ip_depth_ext := Tiling.PL.ip_depth_ext ip_ext;
-  |}.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Lemma affine_product_firstn_local :
@@ -454,32 +353,7 @@ Proof.
   - destruct m as [|x m]; simpl; auto.
 Qed.
 
-Lemma affine_product_prioritize_pluto_band_component_rows :
-  forall band dim rows p,
-    affine_product
-      (prioritize_pluto_band_component_rows band dim rows) p =
-    prioritize_pluto_band_component_ts
-      band dim (affine_product rows p).
-Proof.
-  intros band dim rows p.
-  unfold prioritize_pluto_band_component_rows,
-         prioritize_pluto_band_component_ts.
-  rewrite !affine_product_app_local_component.
-  rewrite !affine_product_firstn_local.
-  rewrite affine_product_skipn_local_component.
-  reflexivity.
-Qed.
 
-Lemma affine_product_constant_schedule_row_like_zero :
-  forall rows p,
-    affine_product [constant_schedule_row_like rows 0%Z] p = [0%Z].
-Proof.
-  intros rows p.
-  destruct rows as [|[coeffs c] rows]; simpl.
-  - destruct p; reflexivity.
-  - rewrite dot_product_repeat_zero_left.
-    reflexivity.
-Qed.
 
 
 
@@ -1558,43 +1432,7 @@ Proof.
   exact Linalg.exact_listzzs_cols_app.
 Qed.
 
-Lemma exact_listzzs_cols_prioritize_pluto_band_component_rows :
-  forall cols band dim rows,
-    exact_listzzs_cols cols rows ->
-    exact_listzzs_cols cols
-      (prioritize_pluto_band_component_rows band dim rows).
-Proof.
-  intros cols band dim rows Hcols.
-  unfold prioritize_pluto_band_component_rows.
-  eapply exact_listzzs_cols_app_local_component.
-  - eapply exact_listzzs_cols_firstn_local; exact Hcols.
-  - eapply exact_listzzs_cols_app_local_component.
-    + eapply exact_listzzs_cols_firstn_local.
-      eapply exact_listzzs_cols_skipn_local_component.
-      exact Hcols.
-    + exact Hcols.
-Qed.
 
-Lemma exact_listzzs_cols_constant_schedule_row_like_zero :
-  forall cols rows,
-    rows <> [] ->
-    exact_listzzs_cols cols rows ->
-    exact_listzzs_cols cols [constant_schedule_row_like rows 0%Z].
-Proof.
-  intros cols rows Hnonempty Hcols.
-  destruct rows as [|[coeffs c] rows]; [contradiction|].
-  intros listz z listzz Hin Heq.
-  simpl in Hin.
-  destruct Hin as [Hin | Hin]; [|contradiction].
-  subst listzz.
-  simpl in Heq.
-  inversion Heq; subst listz z.
-  simpl.
-  rewrite repeat_length.
-  eapply (Hcols coeffs c (coeffs, c)).
-  - left. reflexivity.
-  - reflexivity.
-Qed.
 
 
 Lemma exact_listzzs_cols_lift_schedule_after_env_local :
