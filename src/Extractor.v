@@ -3137,15 +3137,6 @@ Proof.
         * exact Hsorted_filter.
 Qed.
 
-Lemma nth_error_map_inv:
-    forall A B (f: A -> B) l n y,
-    nth_error (map f l) n = Some y ->
-    exists x, nth_error l n = Some x /\ y = f x.
-Proof.
-    intros A B f l n y Hnth.
-    exact (Misc.nth_error_map_inv A B f n l y Hnth).
-Qed.
-
 Lemma flattened_stmts_pos_ge_with_prefix_slice:
     forall stmts constrs env_dim iter_depth sched_prefix prefix pos
            pis envv ipl ip,
