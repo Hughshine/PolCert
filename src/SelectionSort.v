@@ -833,130 +833,58 @@ Lemma select_helper_smallest:
         select_helper ltb eqb l x n r = (y, l') -> 
         ord_all (combine_leb ltb eqb) y l'.
 Proof.
-    induction r.
-    {
-        intros until l'; intros TRANS TRANS_EQ REFLEX SYMM TOTAL TRANSL TRANSR; intros.
-        unfold select_helper in H2. 
-        inversion H2.
-        subst; eauto.
-    }
-    {
-        intros until l'; intros TRANS TRANS_EQ REFLEX SYMM TOTAL TRANSL TRANSR; intros.
-        unfold select_helper in H2. folds (@select_helper A).
-        destruct ((ltb x a)||(eqb x a)) eqn:Hord; eauto.
+  intros A ltb eqb r.
+  induction r as [|a r IH];
+    intros l n x y l'
+      Htrans Htrans_eq Hrefl Hsym Htotal Heq_lt Hlt_eq
+      Hbound Hremain Hnth Hselect.
+  - simpl in Hselect.
+    inversion Hselect; subst.
+    exact Hremain.
+  - simpl in Hselect.
+    destruct (combine_leb ltb eqb x a) eqn:Hxa.
+    + pose proof Hxa as Hcombine.
+      unfold combine_leb in Hxa.
+      rewrite Hxa in Hselect.
+      eapply IH with (l := l ++ [a]) (n := n) (x := x); try eassumption.
+      * rewrite app_length. simpl. lia.
+      * assert (Hremove :
+          remove_nth n (l ++ [a]) = remove_nth n l ++ [a]).
         {
-            {
-                pose proof (IHr (l++[a]) n x y l' TRANS TRANS_EQ REFLEX SYMM TOTAL TRANSL TRANSR).
-                eapply H3; eauto.
-                rewrite app_length; lia.
-                {
-                    remember (remove_nth n l) as ll.
-                    symmetry in Heqll. 
-                    pose proof (remove_nth_app A n l ll [a]).
-                    rewrite H4; eauto. subst; eauto.
-                    unfold ord_all. 
-                    eapply Forall_app. 
-                    splits.
-                    {       
-                        unfolds ord_all; eauto. 
-                    }
-                    {
-                        eapply Forall_cons; eauto.
-                        unfold combine_leb.
-                        rewrite Hord; simpl; eauto.
-                    }
-                }
-                rewrite app_nth1; eauto.   
-            }
+          eapply remove_nth_app; eauto.
         }
+        rewrite Hremove.
+        unfold ord_all in Hremain |- *.
+        apply Forall_app.
+        split; [exact Hremain|].
+        constructor.
+        -- rewrite Hcombine. trivial.
+        -- constructor.
+      * rewrite app_nth1; [exact Hnth|lia].
+    + pose proof Hxa as Hcombine.
+      unfold combine_leb in Hxa.
+      rewrite Hxa in Hselect.
+      assert (Hax : ltb a x = true).
+      {
+        eapply total_not_combine_reverse_lt; eauto.
+      }
+      eapply IH with (l := l ++ [a]) (n := length l) (x := a);
+        try eassumption.
+      * rewrite app_length. simpl. lia.
+      * rewrite remove_nth_length_append_one.
+        assert (Hremoved_lt : ord_all ltb a (remove_nth n l)).
         {
-            {
-                simpl in H2; eauto.
-
-                pose proof (IHr (l++[a]) (length l) a y l' TRANS TRANS_EQ REFLEX SYMM TOTAL TRANSL TRANSR).
-                eapply H3; eauto.
-                rewrite app_length; simpl; lia.
-                {
-                    (** transitivity *)
-                    pose proof (TOTAL x a).
-                    assert (ltb a x = true \/ eqb x a = true). {
-                        clear - Hord H4.
-                        eapply orb_false_iff in Hord.
-                        destruct Hord.
-                        rewrite H in H4; rewrite H0 in H4. 
-                        firstorder.
-                    }
-                    clear H4 Hord.
-                    rewrite remove_nth_length_append_one.
-                    destruct H5.
-                    {
-                        (** transitivity *)
-                        assert ((combine_leb ltb eqb) a x = true). {
-                            unfold combine_leb.
-                            rewrite H4. simpl; eauto.
-                        }
-                        eapply ord_all_trans with (a:=a) in H0; eauto.
-                        eapply ord_all_but_nth_and_nth; eauto.
-                        eapply transitive_combine_implies_transitive; eauto.
-                    }
-                    {
-                        subst; eauto.
-                        assert ((combine_leb ltb eqb) x a = true). {
-                            unfold combine_leb.
-                            eapply orb_true_iff.
-                            right; eauto.
-                        }
-                        eapply ord_all_but_nth_and_nth in H0; eauto.
-                        {
-                            clear - H0 H4 H5 TRANS TRANS_EQ TRANSL TRANSR SYMM.
-                            unfold ord_all.
-                            eapply Forall_forall; intros.
-                            unfold ord_all in H0.
-                            eapply Forall_forall with (x:=x0) in H0; eauto.
-                            destruct (combine_leb ltb eqb x x0) eqn:Hle.
-                            {
-                                assert (combine_leb ltb eqb a x0 = true).
-                                {
-                                    unfolds combine_leb.
-                                    (* clear - Hle H4. *)
-                                    eapply orb_true_iff in Hle.
-                                    eapply orb_true_iff.
-                                    destruct Hle.
-                                    {
-                                        left.
-                                        unfold eqb_ltb_implies_ltb in TRANSL.
-                                        unfold symmetric in SYMM.
-                                        rewrite SYMM in H4.
-                                        eapply TRANSL; eauto.
-                                    }
-                                    {
-                                        right.
-                                        unfold symmetric in SYMM.
-                                        rewrite SYMM in H4.
-                                        unfold transitive in TRANS_EQ.
-                                        eapply TRANS_EQ; eauto.
-                                    }    
-                                }
-                                rewrite H1; eauto.
-                            }
-                            {
-                                contradiction.
-                            }
-                        }
-                        {
-                            clear - REFLEX.
-                            unfold combine_leb.
-                            eapply orb_true_iff.
-                            right.
-                            unfolds reflexive; eapply REFLEX.
-                        }
-                    }
-                }
-                rewrite app_nth2; eauto.
-                replace (length l - length l) with 0; simpl; try lia; trivial.
-            }        
+          eapply ord_all_lt_from_lt_combine; eauto.
         }
-    }
+        assert (Hremoved :
+          ord_all (combine_leb ltb eqb) a (remove_nth n l)).
+        {
+          eapply ord_all_combine_of_lt; eauto.
+        }
+        eapply ord_all_but_nth_and_nth; eauto.
+        unfold combine_leb. rewrite Hax. reflexivity.
+      * rewrite app_nth2 by lia.
+        rewrite Nat.sub_diag. simpl. reflexivity.
 Qed.
 
 Lemma select_smallest: 

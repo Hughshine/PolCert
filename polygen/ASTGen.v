@@ -601,7 +601,9 @@ Theorem generate_loop_many_preserves_sem :
     PolyLang.env_poly_lex_semantics (rev env) n pis mem1 mem2.
 Proof.
   induction d.
-  - intros n pis env mem1 mem2 Hnd st Hgen Hsem Hlen Hpidim Hinv.
+  - (* At the innermost dimension, each generated guarded instruction is one
+       lexicographic scan step for the matching source statement. *)
+    intros n pis env mem1 mem2 Hnd st Hgen Hsem Hlen Hpidim Hinv.
     simpl in *. apply mayReturn_pure in Hgen. rewrite <- Hgen in Hsem.
     apply PolyLoop.make_seq_semantics in Hsem.
     unfold PolyLang.env_poly_lex_semantics.
@@ -650,7 +652,11 @@ Proof.
       unfold PolyLang.env_scan in Hscan. destruct (nth_error pis m) as [pi|] eqn:Hpi; [|congruence].
       exists (pi, m). rewrite combine_n_range_in.
       simpl in *; reflect; auto.
-  - intros n pis env mem1 mem2 Hnd st Hgen Hsem Hlen Hpidim Hinv. simpl in *.
+  - (* For an outer dimension, [split_and_sort] partitions the source domain
+       into ordered scan slices.  The recursive generator handles each slice,
+       and the remaining obligations show that these slices are disjoint and
+       occur in lexicographic order. *)
+    intros n pis env mem1 mem2 Hnd st Hgen Hsem Hlen Hpidim Hinv. simpl in *.
     bind_imp_destruct Hgen projs Hprojs.
     bind_imp_destruct Hgen projsep Hprojsep.
     bind_imp_destruct Hgen inner Hinner.
@@ -667,6 +673,7 @@ Proof.
     eapply PolyLang.poly_lex_semantics_extensionality;
       [apply PolyLang.poly_lex_concat_seq with (to_scans := fun (arg : (polyhedron * list nat * PolyLoop.poly_stmt)) => subscan pis (fst (fst arg)) (snd (fst arg)) (rev env) n)|].
     +
+      (* Reconstruct the semantics of every generated slice. *)
       eapply Instr.IterSemImpure.iter_semantics_mapM_rev in Hsem; [|exact Hinner].
       eapply Instr.IterSem.iter_semantics_map; [|apply Hsem]. clear Hsem.
       intros [[pol pl] inner1] mem3 mem4 Hins [Hinner1 Hseminner1].
@@ -730,13 +737,16 @@ Proof.
         erewrite <- in_poly_nrlength in Hpin; [|exact (Hprojnrl _ Hins)].
         rewrite resize_app in Hpin; [auto|].
         rewrite app_length, rev_length. simpl. lia.
-    + intros. apply subscan_proper.
+    + (* Slice predicates respect point equality. *)
+      intros. apply subscan_proper.
     + intros [[pol1 pl1] inner1] k1 [[pol2 pl2] inner2] k2 m p Hscan1 Hscan2 Hnth1 Hnth2.
       rewrite nth_error_combine in Hnth1, Hnth2. simpl in *.
       destruct Hnth1 as [Hnth1 _]; destruct Hnth2 as [Hnth2 _].
       apply subscan_in in Hscan1; apply subscan_in in Hscan2.
       eapply split_and_sort_disjoint; eauto.
-    + intros [[pol1 pl1] inner1] m1 p1 k1 [[pol2 pl2] inner2] m2 p2 k2 Hcmp Hscan1 Hscan2 Hnth1 Hnth2.
+    + (* The order returned by [split_and_sort] agrees with lexicographic
+         execution order between distinct slices. *)
+      intros [[pol1 pl1] inner1] m1 p1 k1 [[pol2 pl2] inner2] m2 p2 k2 Hcmp Hscan1 Hscan2 Hnth1 Hnth2.
       rewrite nth_error_combine in Hnth1, Hnth2. simpl in *.
       destruct Hnth1 as [Hnth1 _]; destruct Hnth2 as [Hnth2 _].
       rewrite env_scan_begin with (p := p1) in Hcmp by (unfold subscan in Hscan1; reflect; destruct Hscan1; eauto).
@@ -754,7 +764,8 @@ Proof.
       specialize (Hprec Hscan2). simpl in Hprec.
       apply lex_compare_lt_head in Hcmp. rewrite !nth_skipn, !Nat.add_0_r in Hcmp.
       lia.
-    + intros m p. simpl.
+    + (* Finally, the union of all subscans is exactly the original scan. *)
+      intros m p. simpl.
       apply eq_iff_eq_true. rewrite existsb_exists. split.
       * intros [[[pol pl] inner1] [Hin Hsubscan]].
         unfold subscan in Hsubscan. reflect. tauto.
