@@ -270,50 +270,6 @@ Definition check_common_tiling_band_recipeb
       check_common_tiling_band_recipe_withb (tile_sizes_of_witness w) ws'
   end.
 
-Definition constant_schedule_row_like
-    (sched: Schedule)
-    (c: Z) : (list Z * Z) :=
-  match sched with
-  | [] => ([], c)
-  | (coeffs, _) :: _ => (repeat 0%Z (List.length coeffs), c)
-  end.
-
-Definition prioritize_pluto_band_component_rows
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (rows: list (list Z * Z)) : list (list Z * Z) :=
-  firstn (ptb_start band) rows ++
-  firstn 1 (skipn (ptb_start band + dim) rows) ++
-  rows.
-
-Definition prioritize_pluto_band_component_ts
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (ts: list Z) : list Z :=
-  firstn (ptb_start band) ts ++
-  firstn 1 (skipn (ptb_start band + dim) ts) ++
-  ts.
-
-Definition prioritize_pluto_band_component_or_zero_rows
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (rows: Schedule) : Schedule :=
-  if Nat.ltb dim (ptb_len band) then
-    prioritize_pluto_band_component_rows band dim rows
-  else
-    firstn (ptb_start band) rows ++
-    [constant_schedule_row_like rows 0%Z] ++
-    rows.
-
-Definition prioritize_pluto_band_component_or_zero_ts
-    (band: pinstr_tiling_band)
-    (dim: nat)
-    (ts: list Z) : list Z :=
-  if Nat.ltb dim (ptb_len band) then
-    prioritize_pluto_band_component_ts band dim ts
-  else
-    firstn (ptb_start band) ts ++ [0%Z] ++ ts.
-
 Fixpoint max_tiling_band_len (bands: list pinstr_tiling_band) : nat :=
   match bands with
   | [] => O
