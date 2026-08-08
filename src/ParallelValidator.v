@@ -217,16 +217,7 @@ Lemma instr_point_sema_eq_except_sched_iff :
     ILSema.instr_point_sema ip1 st1 st2 <->
     ILSema.instr_point_sema ip2 st1 st2.
 Proof.
-  intros ip1 ip2 st1 st2 Heq.
-  unfold PolyLang.eq_except_sched in Heq.
-  destruct Heq as (_ & Hidx & Htf & Hins & _).
-  split; intro Hsema; inversion Hsema as [wcs rcs Hsem]; subst.
-  - econstructor.
-    rewrite <- Hidx, <- Htf, <- Hins.
-    exact Hsem.
-  - econstructor.
-    rewrite Hidx, Htf, Hins.
-    exact Hsem.
+  exact ILSema.instr_point_sema_eq_except_sched_iff.
 Qed.
 
 Lemma eq_except_sched_symm :
@@ -234,10 +225,7 @@ Lemma eq_except_sched_symm :
     PolyLang.eq_except_sched ip1 ip2 ->
     PolyLang.eq_except_sched ip2 ip1.
 Proof.
-  intros ip1 ip2 Heq.
-  unfold PolyLang.eq_except_sched in *.
-  destruct Heq as (Hnth & Hidx & Htf & Hins & Hdepth).
-  repeat split; symmetry; assumption.
+  exact ILSema.eq_except_sched_symm.
 Qed.
 
 Lemma permutable_eq_except_sched :
@@ -247,26 +235,7 @@ Lemma permutable_eq_except_sched :
     ILSema.Permutable ip1 ip2 ->
     ILSema.Permutable ip1' ip2'.
 Proof.
-  intros ip1 ip1' ip2 ip2' Heq1 Heq2 Hperm.
-  unfold ILSema.Permutable in *.
-  intros st1 Halias.
-  specialize (Hperm st1 Halias).
-  destruct Hperm as [Hfwd Hbwd].
-  split.
-  - intros st2' st3 Hs1 Hs2.
-    pose proof (proj2 (instr_point_sema_eq_except_sched_iff ip1 ip1' st1 st2' Heq1) Hs1) as Hs1'.
-    pose proof (proj2 (instr_point_sema_eq_except_sched_iff ip2 ip2' st2' st3 Heq2) Hs2) as Hs2'.
-    destruct (Hfwd _ _ Hs1' Hs2') as (st2'' & st3' & Ht1 & Ht2 & Heq).
-    exists st2'', st3'. repeat split; auto.
-    + apply (proj1 (instr_point_sema_eq_except_sched_iff ip2 ip2' st1 st2'' Heq2)); exact Ht1.
-    + apply (proj1 (instr_point_sema_eq_except_sched_iff ip1 ip1' st2'' st3' Heq1)); exact Ht2.
-  - intros st2' st3 Hs1 Hs2.
-    pose proof (proj2 (instr_point_sema_eq_except_sched_iff ip2 ip2' st1 st2' Heq2) Hs1) as Hs1'.
-    pose proof (proj2 (instr_point_sema_eq_except_sched_iff ip1 ip1' st2' st3 Heq1) Hs2) as Hs2'.
-    destruct (Hbwd _ _ Hs1' Hs2') as (st2'' & st3' & Ht1 & Ht2 & Heq).
-    exists st2'', st3'. repeat split; auto.
-    + apply (proj1 (instr_point_sema_eq_except_sched_iff ip1 ip1' st1 st2'' Heq1)); exact Ht1.
-    + apply (proj1 (instr_point_sema_eq_except_sched_iff ip2 ip2' st2'' st3' Heq2)); exact Ht2.
+  exact ILSema.permutable_eq_except_sched.
 Qed.
 
 (** * Declarative doall property *)
@@ -596,14 +565,10 @@ Lemma nth_error_map_inv :
       nth_error l n = Some x /\
       f x = y.
 Proof.
-  intros A B f l.
-  induction l as [|x l IH]; intros n y Hnth.
-  - destruct n; simpl in Hnth; discriminate.
-  - destruct n as [|n']; simpl in Hnth.
-    + inversion Hnth; subst. exists x. split; reflexivity.
-    + eapply IH in Hnth.
-      destruct Hnth as [x' [Hnth Heq]].
-      exists x'. split; simpl; eauto.
+  intros A B f l n y Hnth.
+  destruct (Misc.nth_error_map_inv A B f n l y Hnth)
+    as [x [Hlookup Heq]].
+  exists x; split; [exact Hlookup|symmetry; exact Heq].
 Qed.
 
 Lemma nth_error_map_fwd :
@@ -611,12 +576,8 @@ Lemma nth_error_map_fwd :
     nth_error l n = Some x ->
     nth_error (List.map f l) n = Some (f x).
 Proof.
-  intros A B f l.
-  induction l as [|y l IH]; intros n x Hnth.
-  - destruct n; simpl in Hnth; discriminate.
-  - destruct n as [|n']; simpl in *.
-    + inversion Hnth; subst. reflexivity.
-    + eapply IH. exact Hnth.
+  intros A B f l n x Hnth.
+  exact (Misc.nth_error_map_fwd A B f n l x Hnth).
 Qed.
 
 Lemma flatten_instrs_member_inv :
@@ -642,12 +603,7 @@ Lemma dot_product_v0_app_1_nth :
   forall n xs,
     dot_product (V0 n ++ [1%Z]) xs = nth n xs 0%Z.
 Proof.
-  induction n as [|n IH]; intros xs.
-  - destruct xs as [|x xs]; simpl; [reflexivity|].
-    destruct xs; simpl; lia.
-  - destruct xs as [|x xs]; simpl.
-    + reflexivity.
-    + apply IH.
+  exact LinalgExt.dot_product_select_coordinate_base.
 Qed.
 
 Lemma dot_product_select_coord :
@@ -655,51 +611,7 @@ Lemma dot_product_select_coord :
     (S n <= cols)%nat ->
     dot_product (resize cols (V0 n ++ [1%Z])) xs = nth n xs 0%Z.
 Proof.
-  intros cols n xs Hle.
-  assert (Hresize :
-    resize cols (V0 n ++ [1%Z]) =
-    (V0 n ++ [1%Z]) ++ repeat 0%Z (cols - S n)).
-  {
-    rewrite resize_app_le.
-    2: {
-      unfold V0.
-      rewrite repeat_length.
-      lia.
-    }
-    replace (Datatypes.length (V0 n)) with n.
-    2: {
-      unfold V0.
-      rewrite repeat_length.
-      reflexivity.
-    }
-    replace (cols - n)%nat with (S (cols - S n)) by lia.
-    simpl.
-    rewrite resize_null_repeat by reflexivity.
-    rewrite <- app_assoc.
-    reflexivity.
-  }
-  rewrite Hresize.
-  rewrite dot_product_app_left.
-  rewrite dot_product_repeat_zero_left.
-  replace (Datatypes.length (V0 n ++ [1%Z])) with (S n).
-  2: {
-    replace (Datatypes.length (V0 n ++ [1%Z]))
-      with (Datatypes.length (V0 n) + Datatypes.length [1%Z])%nat.
-    2: {
-      rewrite app_length.
-      reflexivity.
-    }
-    unfold V0.
-    rewrite repeat_length.
-    simpl.
-    lia.
-  }
-  rewrite dot_product_v0_app_1_nth.
-  rewrite nth_resize.
-  assert ((n <? S n)%nat = true) as Hlt.
-  { apply Nat.ltb_lt. lia. }
-  rewrite Hlt.
-  lia.
+  exact LinalgExt.dot_product_select_coordinate.
 Qed.
 
 Lemma affine_product_current_coord_old_schedule :

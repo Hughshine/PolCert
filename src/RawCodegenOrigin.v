@@ -989,11 +989,8 @@ Lemma Forall2_nth_error_right_exists :
     nth_error ys n = Some y ->
     exists x, nth_error xs n = Some x /\ R x y.
 Proof.
-  intros A B R xs ys n y Hfor Hnth.
-  pose proof (Forall2_sym _ _ _ _ _ Hfor) as Hsym.
-  exact
-    (Forall2_nth_error B A (fun y x => R x y)
-       n ys xs y Hsym Hnth).
+  intros A B R xs ys n y Hforall Hy.
+  exact (Misc.Forall2_nth_error_right A B R n xs ys y Hforall Hy).
 Qed.
 
 Lemma make_npis_simplify_member_origin :

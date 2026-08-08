@@ -14,11 +14,137 @@
 Require Import Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.Wf_nat.
+Require Import SetoidList.
 
 Require Import Datatypes.
 Require Import Misc.
 
 Import ListNotations.
+
+Lemma NoDup_map_on :
+  forall (A B: Type) (f: A -> B) (xs: list A),
+    NoDup xs ->
+    (forall x y,
+      In x xs ->
+      In y xs ->
+      f x = f y ->
+      x = y) ->
+    NoDup (map f xs).
+Proof.
+  intros A B f xs Hnodup Hinjective.
+  induction Hnodup as [|x xs Hnotin Hnodup IH].
+  - constructor.
+  - simpl.
+    constructor.
+    + intro Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [y [Hfy Hiny]].
+      assert (x = y) as ->.
+      {
+        eapply Hinjective.
+        - left. reflexivity.
+        - right. exact Hiny.
+        - symmetry. exact Hfy.
+      }
+      contradiction.
+    + eapply IH.
+      intros x' y' Hinx Hiny Heq.
+      eapply Hinjective.
+      * right. exact Hinx.
+      * right. exact Hiny.
+      * exact Heq.
+Qed.
+
+Lemma NoDup_map_value_unique :
+  forall (A B: Type) (f: A -> B) xs x y,
+    NoDup (map f xs) ->
+    In x xs ->
+    In y xs ->
+    f x = f y ->
+    x = y.
+Proof.
+  intros A B f xs x y Hnodup Hinx Hiny Heq.
+  destruct (In_nth_error _ _ Hinx) as [i Hi].
+  destruct (In_nth_error _ _ Hiny) as [j Hj].
+  assert (Hfi : nth_error (map f xs) i = Some (f x)).
+  { rewrite nth_error_map_iff. eauto. }
+  assert (Hfj : nth_error (map f xs) j = Some (f x)).
+  { rewrite nth_error_map_iff. rewrite Heq. eauto. }
+  pose proof (Misc.NoDup_nth_error_injective _ _ _ _ _ Hnodup Hfi Hfj).
+  subst j.
+  rewrite Hi in Hj.
+  congruence.
+Qed.
+
+Lemma NoDup_filter_nth_error_unique :
+  forall (A: Type) (pred: A -> bool) xs i j x,
+    NoDup (filter pred xs) ->
+    nth_error xs i = Some x ->
+    nth_error xs j = Some x ->
+    pred x = true ->
+    i = j.
+Proof.
+  intros A pred xs.
+  induction xs as [|head tail IH]; intros i j x Hnodup Hi Hj Hpred.
+  - destruct i; inversion Hi.
+  - destruct i as [|i]; destruct j as [|j]; simpl in Hi, Hj.
+    + reflexivity.
+    + inversion Hi; subst head.
+      simpl in Hnodup.
+      rewrite Hpred in Hnodup.
+      apply NoDup_cons_iff in Hnodup.
+      exfalso.
+      apply (proj1 Hnodup).
+      apply filter_In.
+      split; [eapply nth_error_In; eauto|exact Hpred].
+    + inversion Hj; subst head.
+      simpl in Hnodup.
+      rewrite Hpred in Hnodup.
+      apply NoDup_cons_iff in Hnodup.
+      exfalso.
+      apply (proj1 Hnodup).
+      apply filter_In.
+      split; [eapply nth_error_In; eauto|exact Hpred].
+    + destruct (pred head) eqn:Hhead; simpl in Hnodup; rewrite Hhead in Hnodup.
+      * apply NoDup_cons_iff in Hnodup.
+        destruct Hnodup as [_ Hnodup].
+        f_equal.
+        eapply IH; eauto.
+      * f_equal.
+        eapply IH; eauto.
+Qed.
+
+Lemma NoDup_relation_unique_implies_NoDupA :
+  forall (A: Type) (R: A -> A -> Prop) xs,
+    NoDup xs ->
+    (forall x y,
+      In x xs ->
+      In y xs ->
+      R x y ->
+      x = y) ->
+    NoDupA R xs.
+Proof.
+  intros A R xs Hnodup Hunique.
+  induction Hnodup as [|x xs Hnotin Hnodup IH].
+  - constructor.
+  - constructor.
+    + intro HinA.
+      apply InA_alt in HinA.
+      destruct HinA as [y [Hxy Hiny]].
+      assert (x = y).
+      {
+        eapply Hunique; eauto.
+        - left. reflexivity.
+        - right. exact Hiny.
+      }
+      subst y.
+      contradiction.
+    + eapply IH.
+      intros x' y' Hinx Hiny Hxy.
+      eapply Hunique; eauto.
+      * right. exact Hinx.
+      * right. exact Hiny.
+Qed.
 
 (* firstn / skipn / nth_error / map / combine *)
 

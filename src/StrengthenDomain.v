@@ -259,11 +259,7 @@ Lemma exact_listzzs_cols_app:
     exact_listzzs_cols cols l2 ->
     exact_listzzs_cols cols (l1 ++ l2).
 Proof.
-  intros cols l1 l2 H1 H2 listz z listzz Hin Heq.
-  apply in_app_or in Hin.
-  destruct Hin.
-  - eapply H1; eauto.
-  - eapply H2; eauto.
+  exact Linalg.exact_listzzs_cols_app.
 Qed.
 
 Lemma strengthen_pi_wf_pinstr:

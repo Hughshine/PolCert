@@ -950,6 +950,19 @@ Definition exact_listzzs_cols (cols: nat) (listzzs: list (list Z * Z)): Prop :=
     In listzz listzzs -> 
     listzz = (listz, z) ->
     length listz = cols.   
+
+Lemma exact_listzzs_cols_app :
+  forall cols rows1 rows2,
+    exact_listzzs_cols cols rows1 ->
+    exact_listzzs_cols cols rows2 ->
+    exact_listzzs_cols cols (rows1 ++ rows2).
+Proof.
+  intros cols rows1 rows2 Hrows1 Hrows2 coeffs c row Hin Heq.
+  apply in_app_or in Hin.
+  destruct Hin as [Hin | Hin].
+  - eapply Hrows1; eauto.
+  - eapply Hrows2; eauto.
+Qed.
  
 (* separate the main matrix and the contant col *)
 Definition separate (mat: list (list Z * Z)): (list (list Z)) * list Z :=
@@ -1477,6 +1490,40 @@ Qed.
 
 Definition assign n x v :=
   resize n v ++ (x :: (skipn (S n) v)).
+
+Lemma nth_assign_neq :
+  forall (v: list Z) (i j: nat) x,
+    i <> j ->
+    (j < length v)%nat ->
+    nth i (assign j x v) 0%Z = nth i v 0%Z.
+Proof.
+  unfold assign.
+  intros v i j x Hneq Hbound.
+  destruct v eqn:Hv; destruct i eqn:Hi; destruct j eqn:Hj;
+    simpls; tryfalse; trivial.
+  - destruct n; trivial.
+  - lia.
+  - destruct (Nat.lt_ge_cases n n0) as [Hlt | Hge].
+    + rewrite app_nth1.
+      * rewrite nth_resize.
+        apply Nat.ltb_lt in Hlt.
+        rewrite Hlt; trivial.
+      * rewrite resize_length; exact Hlt.
+    + assert (exists offset, n = Nat.add n0 offset).
+      { exists (Nat.sub n n0). lia. }
+      destruct H as [offset Hoffset].
+      rewrite Hoffset.
+      replace n0 with (length (resize n0 l)) at 1.
+      2:{ rewrite resize_length; trivial. }
+      rewrite app_nth2_plus.
+      destruct offset eqn:Hoffset_case; try lia.
+      simpls.
+      destruct l eqn:Hl; simpls; try lia.
+      rewrite Misc.nth_skipn.
+      destruct (Nat.add n0 (S n1)) eqn:Hsum; try lia.
+      assert (Nat.add n0 n1 = n2) by lia.
+      subst; trivial.
+Qed.
 
 Lemma assign_id :
   forall k v, assign k (nth k v 0) v =v= v.

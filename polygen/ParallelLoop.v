@@ -877,10 +877,7 @@ Lemma instr_point_sema_stable_under_state_eq :
     ILSema.instr_point_sema ip st1 st2 ->
     ILSema.instr_point_sema ip st1' st2'.
 Proof.
-  intros ip st1 st2 st1' st2' Heq1 Heq2 Hsem.
-  inversion Hsem as [wcs rcs Hinstr]; subst.
-  econstructor.
-  eapply Instr.instr_semantics_stable_under_state_eq; eauto.
+  exact ILSema.instr_point_sema_stable_under_state_eq.
 Qed.
 
 Lemma instr_point_sema_preserve_nonalias :
@@ -899,8 +896,7 @@ Lemma instr_point_list_semantics_nil_inv :
     ILSema.instr_point_list_semantics [] st1 st2 ->
     Instr.State.eq st1 st2.
 Proof.
-  intros st1 st2 Hsem.
-  inversion Hsem; subst; assumption.
+  exact ILSema.instr_point_list_semantics_nil_inv.
 Qed.
 
 Lemma instr_point_list_semantics_singleton_inv :
@@ -908,11 +904,7 @@ Lemma instr_point_list_semantics_singleton_inv :
     ILSema.instr_point_list_semantics [ip] st1 st2 ->
     ILSema.instr_point_sema ip st1 st2.
 Proof.
-  intros ip st1 st2 Hsem.
-  inversion Hsem as [|st1' stmid st2' ip' il Hip Hnil]; subst.
-  simpl in *.
-  inversion Hnil; subst.
-  eapply instr_point_sema_stable_under_state_eq; eauto using Instr.State.eq_refl.
+  exact ILSema.instr_point_list_semantics_singleton_inv.
 Qed.
 
 Lemma instr_point_list_semantics_app_inv :
@@ -922,18 +914,7 @@ Lemma instr_point_list_semantics_app_inv :
       ILSema.instr_point_list_semantics l1 st1 st2 /\
       ILSema.instr_point_list_semantics l2 st2 st3.
 Proof.
-  induction l1 as [|ip l1 IH]; intros l2 st1 st3 Hsem.
-  - exists st1.
-    split.
-    + constructor. apply Instr.State.eq_refl.
-    + simpl in Hsem. exact Hsem.
-  - simpl in Hsem.
-    inversion Hsem as [|st1' stmid st3' ip' il Hip Htail]; subst.
-    specialize (IH l2 stmid st3 Htail) as [st2 [Hleft Hright]].
-    exists st2.
-    split.
-    + econstructor; eauto.
-    + exact Hright.
+  exact ILSema.instr_point_list_semantics_app_inv.
 Qed.
 
 Lemma base_loop_semantics_aux_implies_loop_semantics :
@@ -1291,10 +1272,7 @@ Lemma instr_point_list_semantics_cons_inv :
       ILSema.instr_point_sema ip st1 stmid /\
       ILSema.instr_point_list_semantics rest stmid st2.
 Proof.
-  intros ip rest st1 st2 Hsem.
-  inversion Hsem as [|st1' stmid st2' ip' il Hip Htail]; subst.
-  exists stmid.
-  split; assumption.
+  exact ILSema.instr_point_list_semantics_cons_inv.
 Qed.
 
 Lemma iter_semantics_preserve_nonalias :

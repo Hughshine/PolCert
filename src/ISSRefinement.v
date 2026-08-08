@@ -186,10 +186,7 @@ Lemma dot_product_opp_right_local :
   forall p v,
     dot_product p (map Z.opp v) = Z.opp (dot_product p v).
 Proof.
-  induction p as [|x p IH]; intros v.
-  - destruct v; reflexivity.
-  - destruct v as [|y v']; simpl; try lia.
-    rewrite IH. lia.
+  exact LinalgExt.dot_product_vector_opp_r.
 Qed.
 
 Lemma iss_signed_cut_constraint_correct :
@@ -575,12 +572,8 @@ Lemma nth_error_map_some :
     nth_error xs n = Some x ->
     nth_error (map f xs) n = Some (f x).
 Proof.
-  intros A B f xs.
-  induction xs as [|xhd xtl IH]; intros n x Hnth.
-  - destruct n; inversion Hnth.
-  - destruct n.
-    + simpl in *. inversion Hnth. reflexivity.
-    + simpl in *. eapply IH; eauto.
+  intros A B f xs n x Hnth.
+  exact (Misc.nth_error_map_fwd A B f n xs x Hnth).
 Qed.
 
 Lemma nth_error_map_inv :
@@ -590,13 +583,8 @@ Lemma nth_error_map_inv :
       nth_error xs n = Some x /\
       y = f x.
 Proof.
-  induction xs as [|x xs IH]; intros n y Hnth.
-  - destruct n; simpl in Hnth; discriminate.
-  - destruct n; simpl in Hnth.
-    + inversion Hnth. subst. exists x. split; reflexivity.
-    + eapply IH in Hnth.
-      destruct Hnth as [x' [Hxs Hy]].
-      exists x'. split; exact Hxs || exact Hy.
+  intros A B f xs n y Hnth.
+  exact (Misc.nth_error_map_inv A B f n xs y Hnth).
 Qed.
 
 Lemma NoDup_nth_error_injective :

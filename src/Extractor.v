@@ -636,8 +636,7 @@ Lemma dot_product_opp_right:
     forall p v,
     dot_product p (map Z.opp v) = Z.opp (dot_product p v).
 Proof.
-    induction p as [|x p IH]; intros v; destruct v as [|y v']; simpl; try lia.
-    rewrite IH. lia.
+  exact LinalgExt.dot_product_vector_opp_r.
 Qed.
 
 Lemma make_le_constr_correct:
@@ -2742,11 +2741,7 @@ Lemma instr_point_list_semantics_singleton_inv:
       PolyLang.instr_point_sema ip st1 stmid /\
       State.eq stmid st2.
 Proof.
-    intros ip st1 st2 Hsema.
-    inversion Hsema; subst; clear Hsema.
-    inversion H4; subst; clear H4.
-    exists st3.
-    split; auto.
+  exact PolyLang.ILSema.instr_point_list_semantics_singleton_decompose.
 Qed.
 
 Lemma instr_point_list_semantics_nil_inv:
@@ -2754,8 +2749,7 @@ Lemma instr_point_list_semantics_nil_inv:
     PolyLang.instr_point_list_semantics [] st1 st2 ->
     State.eq st1 st2.
 Proof.
-    intros st1 st2 Hsema.
-    inversion Hsema; subst; auto.
+  exact PolyLang.ILSema.instr_point_list_semantics_nil_inv.
 Qed.
 
 Lemma instr_point_list_semantics_app_inv:
@@ -2765,21 +2759,7 @@ Lemma instr_point_list_semantics_app_inv:
       PolyLang.instr_point_list_semantics l1 st1 st2 /\
       PolyLang.instr_point_list_semantics l2 st2 st3.
 Proof.
-    induction l1 as [|ip l1 IH]; intros l2 st1 st3 Hsema.
-    - simpl in Hsema.
-      exists st1.
-      split.
-      + constructor.
-        eapply State.eq_refl.
-      + exact Hsema.
-    - simpl in Hsema.
-      inversion Hsema; subst; clear Hsema.
-      eapply IH in H4.
-      destruct H4 as (stmid & Hleft & Hright).
-      exists stmid.
-      split.
-	      + econstructor; eauto.
-	      + exact Hright.
+  exact PolyLang.ILSema.instr_point_list_semantics_app_inv.
 Qed.
 
 (** * Statement-number rebasing *)
@@ -3163,8 +3143,7 @@ Lemma nth_error_map_inv:
     exists x, nth_error l n = Some x /\ y = f x.
 Proof.
     intros A B f l n y Hnth.
-    apply (proj1 (nth_error_map_iff A B f n l y)).
-    exact Hnth.
+    exact (Misc.nth_error_map_inv A B f n l y Hnth).
 Qed.
 
 Lemma flattened_stmts_pos_ge_with_prefix_slice:

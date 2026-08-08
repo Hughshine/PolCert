@@ -15,6 +15,102 @@ Open Scope Z_scope.
 Open Scope list_scope.
 Open Scope vector_scope.
 
+Definition vector_zero (n: nat) : list Z := repeat 0%Z n.
+
+Definition vector_opp (v: list Z) : list Z := map Z.opp v.
+
+Lemma vector_opp_app :
+  forall v1 v2,
+    vector_opp (v1 ++ v2) = vector_opp v1 ++ vector_opp v2.
+Proof.
+  intros v1 v2.
+  unfold vector_opp.
+  apply map_app.
+Qed.
+
+Lemma vector_opp_involutive :
+  forall v,
+    vector_opp (vector_opp v) = v.
+Proof.
+  induction v as [|x v IH]; simpl; [reflexivity|].
+  rewrite IH, Z.opp_involutive.
+  reflexivity.
+Qed.
+
+Lemma vector_opp_zero :
+  forall n,
+    vector_opp (vector_zero n) = vector_zero n.
+Proof.
+  induction n as [|n IH]; simpl; [reflexivity|].
+  unfold vector_opp, vector_zero in *.
+  simpl.
+  f_equal.
+  exact IH.
+Qed.
+
+Lemma dot_product_vector_opp_l :
+  forall v1 v2,
+    dot_product (vector_opp v1) v2 = Z.opp (dot_product v1 v2).
+Proof.
+  induction v1 as [|x v1 IH]; intros [|y v2]; simpl; try lia.
+  rewrite IH.
+  lia.
+Qed.
+
+Lemma dot_product_vector_opp_r :
+  forall v1 v2,
+    dot_product v1 (vector_opp v2) = Z.opp (dot_product v1 v2).
+Proof.
+  induction v1 as [|x v1 IH]; intros [|y v2]; simpl; try lia.
+  rewrite IH.
+  lia.
+Qed.
+
+Lemma dot_product_select_coordinate_base :
+  forall n xs,
+    dot_product (vector_zero n ++ [1%Z]) xs = nth n xs 0%Z.
+Proof.
+  unfold vector_zero.
+  induction n as [|n IH]; intros xs.
+  - destruct xs as [|x xs]; simpl; [reflexivity|].
+    cbn [dot_product].
+    destruct x; destruct xs; reflexivity.
+  - destruct xs as [|x xs]; simpl.
+    + reflexivity.
+    + apply IH.
+Qed.
+
+Lemma dot_product_select_coordinate :
+  forall cols n xs,
+    (S n <= cols)%nat ->
+    dot_product (resize cols (vector_zero n ++ [1%Z])) xs = nth n xs 0%Z.
+Proof.
+  intros cols n xs Hcols.
+  assert (Hresize :
+    resize cols (vector_zero n ++ [1%Z]) =
+    (vector_zero n ++ [1%Z]) ++ repeat 0%Z (cols - S n)).
+  {
+    rewrite resize_app_le.
+    2:{ unfold vector_zero. rewrite repeat_length. lia. }
+    replace (length (vector_zero n)) with n.
+    2:{ unfold vector_zero. symmetry. apply repeat_length. }
+    replace (cols - n)%nat with (S (cols - S n)) by lia.
+    simpl.
+    rewrite resize_null_repeat by reflexivity.
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  rewrite Hresize, dot_product_app_left, dot_product_repeat_zero_left.
+  replace (length (vector_zero n ++ [1%Z])) with (S n).
+  2:{ unfold vector_zero. rewrite app_length, repeat_length. simpl. lia. }
+  rewrite dot_product_select_coordinate_base.
+  rewrite nth_resize.
+  assert ((n <? S n)%nat = true) as Hlt.
+  { apply Nat.ltb_lt. lia. }
+  rewrite Hlt.
+  lia.
+Qed.
+
 Lemma is_eq_iff_cmp_eq: 
     forall t1 t2,
         is_eq t1 t2 = true <-> lex_compare t1 t2 = Eq.
@@ -151,368 +247,141 @@ Proof.
     }
 Qed.
 
-Lemma lex_compare_trans: 
-    forall b a c cmp, 
-        lex_compare a b = cmp -> 
-        lex_compare b c = cmp -> 
-        lex_compare a c = cmp.
-Proof. 
-    induction b.
+Local Lemma lex_compare_lt_trans:
+  forall b a c,
+    lex_compare a b = Lt ->
+    lex_compare b c = Lt ->
+    lex_compare a c = Lt.
+Proof.
+  induction b.
+  {
+    intros.
+    simpls.
+    destruct a eqn:Ha; tryfalse.
+    simpls.
+    destruct c eqn:Hc; tryfalse.
+    destruct z eqn:Hz; tryfalse; try lia.
     {
-        intros.
-        destruct cmp.
-        {
-            eapply is_eq_iff_cmp_eq in H.
-            rewrite <- H0.
-            eapply lex_compare_left_eq; eauto.
-        }
-        {
-            simpls.
-            destruct a eqn:Ha; tryfalse. 
-            simpls.
-            destruct c eqn:Hc; tryfalse.
-            {
-                destruct z eqn:Hz; tryfalse; try lia.
-                {
-                    destruct z0 eqn:Hz0; tryfalse.
-                    {
-                        rewrite Z.compare_refl.
-                        simpls.
-                        eapply lex_compare_nil_trans; eauto.
-                    }
-                    {
-                        simpls; trivial.
-                    }                    
-                }
-                {
-                    destruct z0 eqn:Hz0; tryfalse.
-                    {
-                        simpls; trivial.
-                    }
-                    {
-                        simpls; trivial.
-                    }     
-                }
-            }
-        }
-        {
-            simpls.
-            destruct a eqn:Ha; tryfalse. 
-            simpls.
-            destruct c eqn:Hc; tryfalse.
-            {
-                destruct z eqn:Hz; tryfalse; try lia.
-                {
-                    destruct z0 eqn:Hz0; tryfalse.
-                    {
-                        rewrite Z.compare_refl.
-                        simpls.
-                        eapply lex_compare_nil_trans; eauto.
-                    }
-                    {
-                        simpls; trivial.
-                    }                    
-                }
-                {
-                    destruct z0 eqn:Hz0; tryfalse.
-                    {
-                        simpls; trivial.
-                    }
-                    {
-                        simpls; trivial.
-                    }     
-                }
-            }
-        
-        }   
+      destruct z0 eqn:Hz0; tryfalse.
+      {
+        rewrite Z.compare_refl.
+        simpls.
+        eapply lex_compare_nil_trans; eauto.
+      }
+      {
+        simpls; trivial.
+      }
     }
     {
-        intros.
-        rename a into tau.
-        rename a0 into a.
-        destruct cmp.
-        {
-            eapply is_eq_iff_cmp_eq in H.
-            rewrite <- H0.
-            eapply lex_compare_left_eq; eauto.
-        }
-        {
-            simpls.
-            destruct c eqn:Hc; tryfalse.
-            {
-                destruct tau eqn:Htau; tryfalse.
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    { 
-                        rewrite H in H0.
-                        unfold CompOpp in H0; tryfalse.
-                    }
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        eapply IHb with (c:=nil) in H; eauto.
-                        {
-                            rewrite lex_compare_nil_right in H; trivial.
-                        }
-                        {
-                            rewrite <- lex_compare_nil_right in H0; trivial.
-                        }
-                    }
-                }   
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                    }
-                }
-            }
-            {
-                destruct tau eqn:Htau; tryfalse.
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        eapply IHb with (a:=nil) in H0; eauto.
-                        {
-                            rewrite lex_compare_nil_left in H0; trivial.
-                        }
-                        {
-                            rewrite <- lex_compare_nil_left in H; trivial.
-                        }
-                    }
-                    {   
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        {
-                            destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                            eapply IHb; eauto.
-                        }
-                        {
-                            destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        }
-                        
-                    }
-                }   
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                    }
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Pos.compare_refl.
-                                eapply IHb; eauto.
-                            }
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                subst.
-                                rewrite Hpp0; trivial.
-                            }   
-                        }
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Hp1p; trivial.
-                            }
-                            {
-                                eapply Pos.lt_trans with (m:=p)in Hp1p; eauto.
-                                rewrite Hp1p; trivial.
-                            }   
-                        }
-                    }
-                }
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        unfold CompOpp.
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+      destruct z0 eqn:Hz0; tryfalse.
+      {
+        simpls; trivial.
+      }
+      {
+        simpls; trivial.
+      }
+    }
+  }
+  {
+    intros.
+    rename a into tau.
+    rename a0 into a.
+    simpls.
+    destruct c eqn:Hc; tryfalse.
+    {
+      destruct tau eqn:Htau; tryfalse.
+      - destruct a eqn:Ha; simpls; tryfalse.
+        + rewrite H in H0.
+          unfold CompOpp in H0; tryfalse.
+        + destruct z eqn:Hz; simpls; tryfalse; trivial.
+          eapply IHb with (c := nil) in H; eauto.
+          * rewrite lex_compare_nil_right in H; trivial.
+          * rewrite <- lex_compare_nil_right in H0; trivial.
+      - destruct a eqn:Ha; simpls; tryfalse.
+        destruct z eqn:Hz; simpls; tryfalse; trivial.
+    }
+    {
+      destruct tau eqn:Htau; tryfalse.
+      - destruct a eqn:Ha; simpls; tryfalse.
+        + destruct z eqn:Hz; simpls; tryfalse; trivial.
+          eapply IHb with (a := nil) in H0; eauto.
+          * rewrite lex_compare_nil_left in H0; trivial.
+          * rewrite <- lex_compare_nil_left in H; trivial.
+        + destruct z eqn:Hz; simpls; tryfalse; trivial.
+          * destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+            eapply IHb; eauto.
+          * destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+      - destruct a eqn:Ha; simpls; tryfalse.
+        + destruct z eqn:Hz; simpls; tryfalse; trivial.
+        + destruct z eqn:Hz; simpls; tryfalse; trivial.
+          destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+          destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
+          * destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
+            -- apply Pos.compare_eq_iff in Hp1p.
+               apply Pos.compare_eq_iff in Hpp0.
+               subst; simpls.
+               rewrite Pos.compare_refl.
+               eapply IHb; eauto.
+            -- apply Pos.compare_eq_iff in Hp1p.
+               subst.
+               rewrite Hpp0; trivial.
+          * destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
+            -- apply Pos.compare_eq_iff in Hpp0.
+               subst; simpls.
+               rewrite Hp1p; trivial.
+            -- eapply Pos.lt_trans with (m := p) in Hp1p; eauto.
+               rewrite Hp1p; trivial.
+      - destruct a eqn:Ha; simpls; tryfalse.
+        unfold CompOpp.
+        destruct z eqn:Hz; simpls; tryfalse; trivial.
+        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
+        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
+        + destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
+          * apply Pos.compare_eq_iff in Hp1p.
+            apply Pos.compare_eq_iff in Hpp0.
+            subst; simpls.
+            rewrite Pos.compare_refl.
+            eapply IHb; eauto.
+          * apply Pos.compare_eq_iff in Hp1p.
+            subst.
+            rewrite Hpp0; trivial.
+        + destruct ((p ?= p0)%positive) eqn:Hpp0; tryfalse.
+          * apply Pos.compare_eq_iff in Hpp0.
+            subst; simpls.
+            rewrite Hp1p; trivial.
+          * simpls.
+            rewrite Pos.compare_gt_iff in Hp1p.
+            rewrite Pos.compare_gt_iff in Hpp0.
+            eapply Pos.lt_trans with (m := p) in Hp1p; eauto.
+            rewrite <- Pos.compare_antisym.
+            rewrite Hp1p; trivial.
+    }
+  }
+Qed.
 
-                        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Pos.compare_refl.
-                                eapply IHb; eauto.
-                            }
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                subst.
-                                rewrite Hpp0; trivial.
-                            }   
-                        }
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; tryfalse.
-                            {
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Hp1p; trivial.
-                            }
-                            {   
-                                simpls.
-                                rewrite Pos.compare_gt_iff in Hp1p.
-                                rewrite Pos.compare_gt_iff in Hpp0.
-                                eapply Pos.lt_trans with (m:=p)in Hp1p; eauto.
-                                rewrite <- Pos.compare_antisym.
-                                rewrite Hp1p; trivial.
-                            }   
-                        }
-                    }
-                }
-            }
-        }
-        { (** Gt *)
-            simpls.
-            destruct c eqn:Hc; tryfalse.
-            {
-                destruct tau eqn:Htau; tryfalse.
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    { 
-                        rewrite H in H0.
-                        unfold CompOpp in H0; tryfalse.
-                    }
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        eapply IHb with (c:=nil) in H; eauto.
-                        {
-                            rewrite lex_compare_nil_right in H; trivial.
-                        }
-                        {
-                            rewrite <- lex_compare_nil_right in H0; trivial.
-                        }
-                    }
-                }   
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                    }
-                }
-            }
-            {
-                destruct tau eqn:Htau; tryfalse.
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        eapply IHb with (a:=nil) in H0; eauto.
-                        {
-                            rewrite lex_compare_nil_left in H0; trivial.
-                        }
-                        {
-                            rewrite <- lex_compare_nil_left in H; trivial.
-                        }
-                    }
-                    {   
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        {
-                            destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                            eapply IHb; eauto.
-                        }
-                        {
-                            destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        }
-                        
-                    }
-                }   
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        unfold CompOpp.
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Pos.compare_refl.
-                                eapply IHb; eauto.
-                            }
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                subst.
-                                rewrite Hpp0; trivial.
-                            }   
-                        }
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; tryfalse.
-                            {
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Hp1p; trivial.
-                            }
-                            {   
-                                simpls.
-                                rewrite Pos.compare_gt_iff in Hp1p.
-                                rewrite Pos.compare_gt_iff in Hpp0.
-                                eapply Pos.lt_trans with (m:=p)in Hp1p; eauto.
-                                rewrite Pos.compare_antisym.
-                                rewrite Hp1p; trivial.
-                            }   
-                        }
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                    }
-                }
-                {
-                    destruct a eqn:Ha; simpls; tryfalse.
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                    }
-                    {
-                        destruct z eqn:Hz; simpls; tryfalse; trivial.
-                        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-                        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Pos.compare_refl.
-                                eapply IHb; eauto.
-                            }
-                            {
-                                eapply Pos.compare_eq_iff in Hp1p.
-                                subst.
-                                rewrite Hpp0; trivial.
-                            }   
-                        }
-                        {
-                            destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-                            {
-                                eapply Pos.compare_eq_iff in Hpp0.
-                                subst; simpls.
-                                rewrite Hp1p; trivial.
-                            }
-                            {
-                                eapply Pos.lt_trans with (m:=p)in Hp1p; eauto.
-                                rewrite Hp1p; trivial.
-                            }   
-                        }
-                    }
-                }
-            }
-        }
+Lemma lex_compare_trans:
+  forall b a c cmp,
+    lex_compare a b = cmp ->
+    lex_compare b c = cmp ->
+    lex_compare a c = cmp.
+Proof.
+  intros b a c cmp Hab Hbc.
+  destruct cmp.
+  - apply is_eq_iff_cmp_eq in Hab.
+    rewrite (lex_compare_left_eq a b c Hab).
+    exact Hbc.
+  - eapply lex_compare_lt_trans; eauto.
+  - assert (Hca : lex_compare c a = Lt).
+    {
+      eapply lex_compare_lt_trans with (b := b).
+      - rewrite lex_compare_antisym, Hbc. reflexivity.
+      - rewrite lex_compare_antisym, Hab. reflexivity.
     }
-Qed. 
+    rewrite lex_compare_antisym, Hca.
+    reflexivity.
+Qed.
 
 Lemma lex_compare_total: 
     forall a b, 

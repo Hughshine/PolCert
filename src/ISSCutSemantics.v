@@ -8,6 +8,7 @@ Require Import Sorting.Permutation.
 Require Import Base.
 Require Import Linalg.
 Require Import LinalgExt.
+Require Import ListExt.
 Require Import Misc.
 Require Import PolyBase.
 Require Import PolyLang.
@@ -315,28 +316,7 @@ Lemma NoDup_map_value_unique :
     f x = f y ->
     x = y.
 Proof.
-  intros A B f xs x y Hnodup Hinx Hiny Heq.
-  destruct (In_nth_error _ _ Hinx) as [nx Hx].
-  destruct (In_nth_error _ _ Hiny) as [ny Hy].
-  assert (Hmx :
-            nth_error (map f xs) nx = Some (f x)).
-  {
-    eapply Refine.nth_error_map_some; eauto.
-  }
-  assert (Hmy :
-            nth_error (map f xs) ny = Some (f y)).
-  {
-    eapply Refine.nth_error_map_some; eauto.
-  }
-  rewrite <- Heq in Hmy.
-  assert (nx = ny).
-  {
-    eapply Refine.NoDup_nth_error_injective; eauto.
-  }
-  subst ny.
-  rewrite Hx in Hy.
-  inversion Hy.
-  reflexivity.
+  exact ListExt.NoDup_map_value_unique.
 Qed.
 
 Lemma parent_sign_partition_complete_nodup_child_pairs :
@@ -373,46 +353,7 @@ Lemma NoDup_filter_nth_error_unique :
     pred x = true ->
     i = j.
 Proof.
-  intros A pred xs.
-  induction xs as [|h t IH]; intros i j x Hnd Hi Hj Hpred.
-  - destruct i; inversion Hi.
-  - destruct i as [|i']; destruct j as [|j']; simpl in Hi, Hj.
-    + reflexivity.
-    + inversion Hi; subst h; clear Hi.
-      simpl in Hnd.
-      rewrite Hpred in Hnd.
-      apply NoDup_cons_iff in Hnd.
-      destruct Hnd as [Hnotin _].
-      exfalso.
-      apply Hnotin.
-      apply filter_In.
-      split.
-      * eapply nth_error_In; eauto.
-      * exact Hpred.
-    + inversion Hj; subst h; clear Hj.
-      simpl in Hnd.
-      rewrite Hpred in Hnd.
-      apply NoDup_cons_iff in Hnd.
-      destruct Hnd as [Hnotin _].
-      exfalso.
-      apply Hnotin.
-      apply filter_In.
-      split.
-      * eapply nth_error_In; eauto.
-      * exact Hpred.
-    + destruct (pred h) eqn:Hph.
-      -- simpl in Hnd.
-         rewrite Hph in Hnd.
-         simpl in Hnd.
-         apply NoDup_cons_iff in Hnd.
-         destruct Hnd as [_ Hnd].
-         f_equal.
-         exact (IH i' j' x Hnd Hi Hj Hpred).
-      -- simpl in Hnd.
-         rewrite Hph in Hnd.
-         simpl in Hnd.
-         f_equal.
-         exact (IH i' j' x Hnd Hi Hj Hpred).
+  exact ListExt.NoDup_filter_nth_error_unique.
 Qed.
 
 Lemma Forall2_nth_error_local :
@@ -422,16 +363,8 @@ Lemma Forall2_nth_error_local :
     nth_error ys n = Some y ->
     P x y.
 Proof.
-  intros A B P xs ys n.
-  revert xs ys.
-  induction n as [|n IH]; intros xs ys x y Hrel Hx Hy.
-  - destruct xs as [|xh xt], ys as [|yh yt];
-      inversion Hrel; simpl in *; try discriminate.
-    inversion Hx; inversion Hy; subst.
-    assumption.
-  - destruct xs as [|xh xt], ys as [|yh yt];
-      inversion Hrel; simpl in *; try discriminate.
-    eapply IH; eauto.
+  intros A B P xs ys n x y Hforall Hx Hy.
+  exact (Misc.Forall2_nth_error_both A B P n xs ys x y Hforall Hx Hy).
 Qed.
 
 Lemma domain_partition_complete_cut_shape_nth_domain_relation :
@@ -874,26 +807,10 @@ Lemma NoDup_np_eq_unique_implies_NoDupA :
       ip1 = ip2) ->
     NoDupA PolyLang.np_eq ipl.
 Proof.
-  intros ipl Hnodup Huniq.
-  induction Hnodup as [|ip ipl Hnotin Hnodup IH].
-  - constructor.
-  - constructor.
-    + intro HinA.
-      apply InA_alt in HinA.
-      destruct HinA as [ip' [Hnpeq Hin']].
-      assert (ip = ip').
-      {
-        eapply Huniq; eauto.
-        left; reflexivity.
-        right; exact Hin'.
-      }
-      subst ip'.
-      contradiction.
-    + eapply IH.
-      intros ip1 ip2 Hin1 Hin2 Hnpeq.
-      eapply Huniq; eauto.
-      right; exact Hin1.
-      right; exact Hin2.
+  intros ipl Hnodup Hunique.
+  eapply
+    (ListExt.NoDup_relation_unique_implies_NoDupA
+       _ PolyLang.np_eq ipl); eauto.
 Qed.
 
 Lemma lex_compare_eq_same_length_implies_eq_local :

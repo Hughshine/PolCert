@@ -293,8 +293,7 @@ Lemma nth_error_map_inv :
       y = f x.
 Proof.
   intros A B f xs n y Hnth.
-  apply (proj1 (Misc.nth_error_map_iff A B f n xs y)).
-  exact Hnth.
+  exact (Misc.nth_error_map_inv A B f n xs y Hnth).
 Qed.
 
 Lemma nth_error_map :
@@ -303,9 +302,7 @@ Lemma nth_error_map :
     nth_error (List.map f xs) n = Some (f x).
 Proof.
   intros A B f xs n x Hnth.
-  apply (proj2 (Misc.nth_error_map_iff A B f n xs (f x))).
-  exists x.
-  split; [exact Hnth|reflexivity].
+  exact (Misc.nth_error_map_fwd A B f n xs x Hnth).
 Qed.
 
 Lemma outer_to_tiling_belongs_to_iff :

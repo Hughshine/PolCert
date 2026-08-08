@@ -4073,9 +4073,7 @@ Lemma eq_except_sched_refl :
   forall ip,
     PolyLang.eq_except_sched ip ip.
 Proof.
-  intros ip.
-  unfold PolyLang.eq_except_sched.
-  repeat split; reflexivity.
+  exact PolyLang.ILSema.eq_except_sched_refl.
 Qed.
 
 Lemma eq_except_sched_trans :
@@ -4084,11 +4082,7 @@ Lemma eq_except_sched_trans :
     PolyLang.eq_except_sched ip2 ip3 ->
     PolyLang.eq_except_sched ip1 ip3.
 Proof.
-  intros ip1 ip2 ip3 Heq12 Heq23.
-  unfold PolyLang.eq_except_sched in *.
-  destruct Heq12 as (Hnth12 & Hidx12 & Htf12 & Hins12 & Hdepth12).
-  destruct Heq23 as (Hnth23 & Hidx23 & Htf23 & Hins23 & Hdepth23).
-  repeat split; congruence.
+  exact PolyLang.ILSema.eq_except_sched_trans.
 Qed.
 
 Lemma new_of_ext_eq_except_old_of_ext :

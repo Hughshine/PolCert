@@ -919,10 +919,7 @@ Lemma eq_except_sched_symm_local :
     Tiling.PL.eq_except_sched ip1 ip2 ->
     Tiling.PL.eq_except_sched ip2 ip1.
 Proof.
-  intros ip1 ip2 Heq.
-  unfold Tiling.PL.eq_except_sched in *.
-  destruct Heq as (Hnth & Hidx & Htf & Hins & Hdepth).
-  repeat split; symmetry; assumption.
+  exact Tiling.PL.ILSema.eq_except_sched_symm.
 Qed.
 
 Lemma instr_point_sema_eq_except_sched_iff_local :
@@ -931,16 +928,7 @@ Lemma instr_point_sema_eq_except_sched_iff_local :
     Tiling.PL.ILSema.instr_point_sema ip1 st1 st2 <->
     Tiling.PL.ILSema.instr_point_sema ip2 st1 st2.
 Proof.
-  intros ip1 ip2 st1 st2 Heq.
-  unfold Tiling.PL.eq_except_sched in Heq.
-  destruct Heq as (_ & Hidx & Htf & Hins & _).
-  split; intro Hsema; inversion Hsema as [wcs rcs Hsem]; subst.
-  - econstructor.
-    rewrite <- Hidx, <- Htf, <- Hins.
-    exact Hsem.
-  - econstructor.
-    rewrite Hidx, Htf, Hins.
-    exact Hsem.
+  exact Tiling.PL.ILSema.instr_point_sema_eq_except_sched_iff.
 Qed.
 
 Lemma permutable_eq_except_sched_local :
@@ -950,50 +938,7 @@ Lemma permutable_eq_except_sched_local :
     Tiling.PL.ILSema.Permutable ip1 ip2 ->
     Tiling.PL.ILSema.Permutable ip1' ip2'.
 Proof.
-  intros ip1 ip1' ip2 ip2' Heq1 Heq2 Hperm.
-  unfold Tiling.PL.ILSema.Permutable in *.
-  intros st1 Halias.
-  specialize (Hperm st1 Halias).
-  destruct Hperm as [Hfwd Hbwd].
-  split.
-  - intros st2' st3 Hs1 Hs2.
-    pose proof
-      (proj2
-         (instr_point_sema_eq_except_sched_iff_local ip1 ip1' st1 st2' Heq1)
-         Hs1) as Hs1'.
-    pose proof
-      (proj2
-         (instr_point_sema_eq_except_sched_iff_local ip2 ip2' st2' st3 Heq2)
-         Hs2) as Hs2'.
-    destruct (Hfwd _ _ Hs1' Hs2') as (st2'' & st3' & Ht1 & Ht2 & Heq).
-    exists st2'', st3'. repeat split; auto.
-    + apply
-        (proj1
-           (instr_point_sema_eq_except_sched_iff_local ip2 ip2' st1 st2'' Heq2)).
-      exact Ht1.
-    + apply
-        (proj1
-           (instr_point_sema_eq_except_sched_iff_local ip1 ip1' st2'' st3' Heq1)).
-      exact Ht2.
-  - intros st2' st3 Hs1 Hs2.
-    pose proof
-      (proj2
-         (instr_point_sema_eq_except_sched_iff_local ip2 ip2' st1 st2' Heq2)
-         Hs1) as Hs1'.
-    pose proof
-      (proj2
-         (instr_point_sema_eq_except_sched_iff_local ip1 ip1' st2' st3 Heq1)
-         Hs2) as Hs2'.
-    destruct (Hbwd _ _ Hs1' Hs2') as (st2'' & st3' & Ht1 & Ht2 & Heq).
-    exists st2'', st3'. repeat split; auto.
-    + apply
-        (proj1
-           (instr_point_sema_eq_except_sched_iff_local ip1 ip1' st1 st2'' Heq1)).
-      exact Ht1.
-    + apply
-        (proj1
-           (instr_point_sema_eq_except_sched_iff_local ip2 ip2' st2'' st3' Heq2)).
-      exact Ht2.
+  exact Tiling.PL.ILSema.permutable_eq_except_sched.
 Qed.
 
 Lemma project_band_ip_ext_preserves_np_eq :
@@ -4086,11 +4031,7 @@ Lemma exact_listzzs_cols_app_local_component :
     exact_listzzs_cols cols rows2 ->
     exact_listzzs_cols cols (rows1 ++ rows2).
 Proof.
-  intros cols rows1 rows2 Hrows1 Hrows2 listz z listzz Hin Heq.
-  apply in_app_or in Hin.
-  destruct Hin as [Hin | Hin].
-  - eapply Hrows1; eauto.
-  - eapply Hrows2; eauto.
+  exact Linalg.exact_listzzs_cols_app.
 Qed.
 
 Lemma exact_listzzs_cols_prioritize_pluto_band_component_rows :

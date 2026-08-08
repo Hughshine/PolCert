@@ -16,6 +16,7 @@ Require Import TilingList.
 Require Import InstrTy.
 Require Import Linalg.
 Require Import LinalgExt.
+Require Import ListExt.
 Require Import Misc.
 Require Import Base.
 
@@ -112,28 +113,7 @@ Lemma NoDup_map_on :
       x = y) ->
     NoDup (List.map f l).
 Proof.
-  intros A B f l Hnodup Hinj.
-  induction Hnodup as [|x l Hnotin Hnodup IH].
-  - constructor.
-  - simpl.
-    constructor.
-    + intro Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [y [Hfy Hin_y]].
-      assert (x = y) as ->.
-      {
-        eapply Hinj.
-        - left. reflexivity.
-        - right. exact Hin_y.
-        - symmetry. exact Hfy.
-      }
-      contradiction.
-    + eapply IH.
-      intros x' y' Hinx Hiny Heq.
-      eapply Hinj.
-      * right. exact Hinx.
-      * right. exact Hiny.
-      * exact Heq.
+  exact ListExt.NoDup_map_on.
 Qed.
 
 Lemma Forall_nth_error :
@@ -155,15 +135,8 @@ Lemma Forall2_nth_error :
     List.nth_error ys n = Some y0 ->
     P x0 y0.
 Proof.
-  intros A B P xs ys n x0 y0 Hforall2.
-  revert n x0 y0.
-  induction Hforall2; intros n x0 y0 Hnthx Hnthy.
-  - destruct n; inversion Hnthx.
-  - destruct n.
-    + simpl in *.
-      inversion Hnthx; inversion Hnthy; subst; assumption.
-    + simpl in *.
-      eapply IHHforall2; eauto.
+  intros A B P xs ys n x0 y0 Hforall Hx Hy.
+  exact (Misc.Forall2_nth_error_both A B P n xs ys x0 y0 Hforall Hx Hy).
 Qed.
 
 Lemma nth_error_map_some :
@@ -171,12 +144,8 @@ Lemma nth_error_map_some :
     List.nth_error xs n = Some x ->
     List.nth_error (List.map f xs) n = Some (f x).
 Proof.
-  intros A B f xs.
-  induction xs as [|xhd xtl IH]; intros n x Hnth.
-  - destruct n; inversion Hnth.
-  - destruct n.
-    + simpl in *. inversion Hnth. reflexivity.
-    + simpl in *. eapply IH; eauto.
+  intros A B f xs n x Hnth.
+  exact (Misc.nth_error_map_fwd A B f n xs x Hnth).
 Qed.
 
 Definition eval_pinstr_tiling_index_with_env

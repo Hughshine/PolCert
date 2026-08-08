@@ -322,43 +322,28 @@ Definition TimeStamp := list Z.
 
 Definition V0 (n: nat): list Z := repeat 0%Z n.
 
-Definition Vopp (v: list Z) : list Z := List.map (Z.opp) v.
+Definition Vopp (v: list Z) : list Z := List.map Z.opp v.
 Notation "-- v" := (Vopp v) (at level 35, right associativity).
 
 Lemma opp_app: 
   forall v1 v2, 
     -- (v1 ++ v2) = (-- v1) ++ (-- v2).
 Proof.
-  induction v1.
-  {
-    intros; simpls; trivial.
-  }
-  {
-    intros. simpls. rewrite IHv1; trivial.
-  }
+  exact LinalgExt.vector_opp_app.
 Qed.
 
 Lemma opp_opp: 
   forall v, 
     -- (-- v) = v.
 Proof.
-  induction v. 
-  {
-    intros; simpls; trivial.
-  }
-  {
-    intros; simpls. rewrite IHv; trivial.
-    rewrite Z.opp_involutive; trivial.
-  }
+  exact LinalgExt.vector_opp_involutive.
 Qed.
 
 Lemma opp_v0_v0: 
   forall n, 
     -- (V0 n) = V0 n.
 Proof.
-  induction n; simpls; trivial.
-  unfold V0. 
-  unfold repeat. eapply f_equal. eapply IHn.
+  exact LinalgExt.vector_opp_zero.
 Qed.
 
 Lemma v0_n_app_1_dot_product_p_is_nth_p:
@@ -394,34 +379,14 @@ Lemma dot_product_opp_l:
   forall v1 v2, 
     dot_product (-- v1) v2 = Z.opp (dot_product v1 v2).
 Proof.
-  induction v1.
-  {
-    intros; simpls.
-    destruct v2; trivial.
-  }
-  {
-    intros; simpls. 
-    destruct v2 eqn:Hv2; simpls; trivial.
-    rewrite IHv1.
-    lia.
-  }
+  exact LinalgExt.dot_product_vector_opp_l.
 Qed.
 
 Lemma dot_product_opp_r: 
   forall v1 v2, 
     dot_product v1 (-- v2) = Z.opp (dot_product v1 v2).
-Proof. 
-  induction v1.
-  {
-    intros; simpls.
-    destruct v2; trivial.
-  }
-  {
-    intros; simpls. 
-    destruct v2 eqn:Hv2; simpls; trivial.
-    rewrite IHv1.
-    lia.
-  }
+Proof.
+  exact LinalgExt.dot_product_vector_opp_r.
 Qed.
 
 (*********************)
@@ -2280,14 +2245,8 @@ Lemma nth_repeat_default:
   forall {A: Type} (n n': nat) (d: A),
     nth n (repeat d n') d = d.
 Proof.
-  induction n.
-  {
-    intros; simpls; destruct n'; trivial. 
-  }
-  {
-    intros. simpls.
-    destruct n'; simpls; trivial.
-  }
+  intros A n n' d.
+  exact (Misc.nth_repeat A d n n').
 Qed.
   
 Lemma nth_assign_different: 
@@ -2296,44 +2255,8 @@ Lemma nth_assign_different:
     n' < length l ->
     nth n (assign n' v l) 0%Z = nth n l 0%Z.
 Proof.
-  unfold assign.
-  intros; simpls.
-  destruct l eqn:Hl; destruct n eqn:Hn; destruct n' eqn:Hn'; simpls; tryfalse; trivial.
-  {
-    destruct n0; trivial.
-  }
-  {
-    lia.
-  }
-  {
-    pose proof (classic (n0 < n1)).
-    destruct H1.
-    {
-      rewrite app_nth1.
-      rewrite nth_resize.
-      eapply Nat.ltb_lt in H1.
-      rewrite H1; trivial.
-      rewrite resize_length; trivial.
-    }
-    {
-      assert (exists c, n0 = n1 + c).
-      {
-        exists (n0 - n1).
-        lia.
-      }
-      destruct H2 as (c & N).
-      rewrite N. 
-      replace n1 with (length (resize n1 l0)) at 1. 2: {rewrite resize_length; trivial. }
-      rewrite app_nth2_plus.
-      destruct c eqn:Hc; try lia.
-      simpls. 
-      destruct l0 eqn:Hl0; simpls; try lia.
-      rewrite Misc.nth_skipn.
-      destruct (n1 + S n2) eqn:Hn0; try lia.
-      assert (n1 + n2 = n3). {lia. }
-      subst; trivial.
-    }  
-  }
+  intros l n n' d v Hneq Hbound.
+  eapply Linalg.nth_assign_neq; eauto.
 Qed.
 
 

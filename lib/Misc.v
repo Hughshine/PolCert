@@ -137,6 +137,27 @@ Proof.
     + apply IHn.
 Qed.
 
+Lemma nth_error_map_inv :
+  forall A B (f : A -> B) n l y,
+    nth_error (map f l) n = Some y ->
+    exists x, nth_error l n = Some x /\ y = f x.
+Proof.
+  intros A B f n l y Hnth.
+  apply (proj1 (nth_error_map_iff A B f n l y)) in Hnth.
+  destruct Hnth as [x [Hlookup Heq]].
+  exists x; split; [exact Hlookup|exact Heq].
+Qed.
+
+Lemma nth_error_map_fwd :
+  forall A B (f : A -> B) n l x,
+    nth_error l n = Some x ->
+    nth_error (map f l) n = Some (f x).
+Proof.
+  intros A B f n l x Hnth.
+  apply (proj2 (nth_error_map_iff A B f n l (f x))).
+  exists x; split; [exact Hnth|reflexivity].
+Qed.
+
 Lemma nth_error_nth :
   forall (A : Type) n (l : list A) d x, nth_error l n = Some x -> nth n l d = x.
 Proof.
@@ -325,6 +346,36 @@ Proof.
   - intros xs ys x Hforall Hnth; destruct Hforall; simpl in *; [|exists y; split]; try congruence.
   - intros xs ys x Hforall Hnth; destruct Hforall; simpl in *; [congruence|].
     eapply IHn; eauto.
+Qed.
+
+Lemma Forall2_nth_error_both :
+  forall (A B : Type) (R : A -> B -> Prop) n xs ys x y,
+    Forall2 R xs ys ->
+    nth_error xs n = Some x ->
+    nth_error ys n = Some y ->
+    R x y.
+Proof.
+  intros A B R n xs ys x y Hforall Hx Hy.
+  destruct (Forall2_nth_error A B R n xs ys x Hforall Hx)
+    as [y' [Hy' Hxy]].
+  rewrite Hy in Hy'.
+  inversion Hy'.
+  exact Hxy.
+Qed.
+
+Lemma Forall2_nth_error_right :
+  forall (A B : Type) (R : A -> B -> Prop) n xs ys y,
+    Forall2 R xs ys ->
+    nth_error ys n = Some y ->
+    exists x, nth_error xs n = Some x /\ R x y.
+Proof.
+  intros A B R n xs ys y Hforall.
+  revert n y.
+  induction Hforall; intros [|n] y' Hy; simpl in Hy; try discriminate.
+  - inversion Hy; subst.
+    exists x; split; [reflexivity|exact H].
+  - destruct (IHHforall n y' Hy) as [x' [Hx' Hrel]].
+    exists x'; split; [exact Hx'|exact Hrel].
 Qed.
 
 Lemma Forall2_sym :
