@@ -298,118 +298,62 @@ Proof.
     }
 Qed.
 
-Local Lemma lex_compare_lt_trans:
+Local Lemma lex_compare_uncons :
+  forall a b,
+    lex_compare a b =
+    match hd 0 a ?= hd 0 b with
+    | Eq => lex_compare (tl a) (tl b)
+    | cmp => cmp
+    end.
+Proof.
+  intros [|x xs] [|y ys]; simpl.
+  - reflexivity.
+  - destruct y; destruct ys; reflexivity.
+  - destruct x; destruct xs; reflexivity.
+  - reflexivity.
+Qed.
+
+Local Lemma compare_step_lt_inv :
+  forall cmp tail,
+    (match cmp with Eq => tail | Lt => Lt | Gt => Gt end) = Lt ->
+    cmp = Lt \/ (cmp = Eq /\ tail = Lt).
+Proof.
+  intros [| |] tail Hstep; simpl in Hstep; intuition discriminate.
+Qed.
+
+Local Lemma lex_compare_lt_trans :
   forall b a c,
     lex_compare a b = Lt ->
     lex_compare b c = Lt ->
     lex_compare a c = Lt.
 Proof.
-  induction b.
-  {
-    intros.
-    simpls.
-    destruct a eqn:Ha; tryfalse.
-    simpls.
-    destruct c eqn:Hc; tryfalse.
-    destruct z eqn:Hz; tryfalse; try lia.
-    {
-      destruct z0 eqn:Hz0; tryfalse.
-      {
-        rewrite Z.compare_refl.
-        simpls.
-        eapply lex_compare_nil_trans; eauto.
-      }
-      {
-        simpls; trivial.
-      }
-    }
-    {
-      destruct z0 eqn:Hz0; tryfalse.
-      {
-        simpls; trivial.
-      }
-      {
-        simpls; trivial.
-      }
-    }
-  }
-  {
-    intros.
-    rename a into tau.
-    rename a0 into a.
-    simpls.
-    destruct c eqn:Hc; tryfalse.
-    {
-      destruct tau eqn:Htau; tryfalse.
-      - destruct a eqn:Ha; simpls; tryfalse.
-        + rewrite H in H0.
-          unfold CompOpp in H0; tryfalse.
-        + destruct z eqn:Hz; simpls; tryfalse; trivial.
-          eapply IHb with (c := nil) in H; eauto.
-          * rewrite lex_compare_nil_right in H; trivial.
-          * rewrite <- lex_compare_nil_right in H0; trivial.
-      - destruct a eqn:Ha; simpls; tryfalse.
-        destruct z eqn:Hz; simpls; tryfalse; trivial.
-    }
-    {
-      destruct tau eqn:Htau; tryfalse.
-      - destruct a eqn:Ha; simpls; tryfalse.
-        + destruct z eqn:Hz; simpls; tryfalse; trivial.
-          eapply IHb with (a := nil) in H0; eauto.
-          * rewrite lex_compare_nil_left in H0; trivial.
-          * rewrite <- lex_compare_nil_left in H; trivial.
-        + destruct z eqn:Hz; simpls; tryfalse; trivial.
-          * destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-            eapply IHb; eauto.
-          * destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-      - destruct a eqn:Ha; simpls; tryfalse.
-        + destruct z eqn:Hz; simpls; tryfalse; trivial.
-        + destruct z eqn:Hz; simpls; tryfalse; trivial.
-          destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-          destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-          * destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-            -- apply Pos.compare_eq_iff in Hp1p.
-               apply Pos.compare_eq_iff in Hpp0.
-               subst; simpls.
-               rewrite Pos.compare_refl.
-               eapply IHb; eauto.
-            -- apply Pos.compare_eq_iff in Hp1p.
-               subst.
-               rewrite Hpp0; trivial.
-          * destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-            -- apply Pos.compare_eq_iff in Hpp0.
-               subst; simpls.
-               rewrite Hp1p; trivial.
-            -- eapply Pos.lt_trans with (m := p) in Hp1p; eauto.
-               rewrite Hp1p; trivial.
-      - destruct a eqn:Ha; simpls; tryfalse.
-        unfold CompOpp.
-        destruct z eqn:Hz; simpls; tryfalse; trivial.
-        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-        destruct z0 eqn:Hz0; simpls; tryfalse; trivial.
-        destruct ((p1 ?= p)%positive) eqn:Hp1p; simpls; tryfalse; trivial.
-        + destruct ((p ?= p0)%positive) eqn:Hpp0; simpls; tryfalse; trivial.
-          * apply Pos.compare_eq_iff in Hp1p.
-            apply Pos.compare_eq_iff in Hpp0.
-            subst; simpls.
-            rewrite Pos.compare_refl.
-            eapply IHb; eauto.
-          * apply Pos.compare_eq_iff in Hp1p.
-            subst.
-            rewrite Hpp0; trivial.
-        + destruct ((p ?= p0)%positive) eqn:Hpp0; tryfalse.
-          * apply Pos.compare_eq_iff in Hpp0.
-            subst; simpls.
-            rewrite Hp1p; trivial.
-          * simpls.
-            rewrite Pos.compare_gt_iff in Hp1p.
-            rewrite Pos.compare_gt_iff in Hpp0.
-            eapply Pos.lt_trans with (m := p) in Hp1p; eauto.
-            rewrite <- Pos.compare_antisym.
-            rewrite Hp1p; trivial.
-    }
-  }
+  induction b as [|y ys IH]; intros a c Hab Hbc.
+  - rewrite lex_compare_nil_right in Hab.
+    rewrite lex_compare_nil_left in Hbc.
+    eapply lex_compare_nil_trans; eauto.
+  - rewrite lex_compare_uncons in Hab, Hbc |- *.
+    apply compare_step_lt_inv in Hab, Hbc.
+    destruct Hab as [Hhead_ab | [Hhead_ab Hab_tail]];
+      destruct Hbc as [Hhead_bc | [Hhead_bc Hbc_tail]].
+    + apply Z.compare_lt_iff in Hhead_ab, Hhead_bc.
+      assert (Hhead_ac : (hd 0 a ?= hd 0 c) = Lt).
+      { apply Z.compare_lt_iff. eapply Z.lt_trans; eauto. }
+      rewrite Hhead_ac. reflexivity.
+    + apply Z.compare_lt_iff in Hhead_ab.
+      apply Z.compare_eq_iff in Hhead_bc.
+      assert (Hhead_ac : (hd 0 a ?= hd 0 c) = Lt).
+      { apply Z.compare_lt_iff. rewrite <- Hhead_bc. exact Hhead_ab. }
+      rewrite Hhead_ac. reflexivity.
+    + apply Z.compare_eq_iff in Hhead_ab.
+      apply Z.compare_lt_iff in Hhead_bc.
+      assert (Hhead_ac : (hd 0 a ?= hd 0 c) = Lt).
+      { apply Z.compare_lt_iff. rewrite Hhead_ab. exact Hhead_bc. }
+      rewrite Hhead_ac. reflexivity.
+    + apply Z.compare_eq_iff in Hhead_ab, Hhead_bc.
+      assert (Hhead_ac : (hd 0 a ?= hd 0 c) = Eq).
+      { apply Z.compare_eq_iff. lia. }
+      rewrite Hhead_ac.
+      exact (IH (tl a) (tl c) Hab_tail Hbc_tail).
 Qed.
 
 Lemma lex_compare_trans:
