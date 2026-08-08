@@ -480,17 +480,20 @@ Proof.
   - intros s.
     induction s as [lb ub body IHbody|i es|ss _|t body IHbody];
       intros env tr mem1 mem2 Hsafe Htrace Hsem.
-    + inversion Htrace; subst; clear Htrace.
-      lazymatch goal with
-      | Hfor : Forall2 _ ?zs ?traces |- _ =>
-          pose proof
-            (seq_trace_forall2_refines_loop
-               body env IHbody zs traces mem1 mem2 Hsafe Hfor Hsem)
-            as [mem2' [Hloop_sem Heq]];
-          exists mem2';
-          split;
-          [econstructor; exact Hloop_sem | exact Heq]
-      end.
+    + inversion Htrace as
+        [| | | |
+         lb0 ub0 body0 env0 zs traces tr0 Hrange Htraces Hconcat];
+        subst; clear Htrace.
+      pose proof
+        (seq_trace_forall2_refines_loop
+           body env IHbody
+           (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub))
+           traces mem1 mem2 Hsafe Htraces Hsem)
+        as [mem2' [Hloop_sem Heq]].
+      exists mem2'.
+      split.
+      * econstructor. exact Hloop_sem.
+      * exact Heq.
     + inversion Htrace; subst.
       simpl in Hsafe.
       pose proof (instr_point_list_semantics_singleton_inv _ _ _ Hsem) as Hip.
@@ -623,18 +626,17 @@ Lemma seq_trace_jammed_two_inv :
       tr = jam_zip traces1 traces2.
 Proof.
   intros lb ub body1 body2 env tr Htrace.
-  inversion Htrace; subst; clear Htrace.
-  lazymatch goal with
-  | Hfor : Forall2 _ (Zrange _ _) ?traces0 |- _ =>
-      destruct (seq2_forall2_trace_split
-                  (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub))
-                  traces0 body1 body2 env Hfor)
-        as [traces1 [traces2 [Hfor1 [Hfor2 Hzip]]]];
-      exists (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)),
-        traces1, traces2;
-      repeat split; auto;
-      exact Hzip
-  end.
+  inversion Htrace as
+    [| | | |
+     lb0 ub0 body0 env0 zs0 traces0 tr0 Hrange Htraces Hconcat];
+    subst; clear Htrace.
+  destruct (seq2_forall2_trace_split
+              (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub))
+              traces0 body1 body2 env Htraces)
+    as [traces1 [traces2 [Hfor1 [Hfor2 Hzip]]]].
+  exists (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)),
+    traces1, traces2.
+  repeat split; auto.
 Qed.
 
 Definition same_range_trace_cross_permutable

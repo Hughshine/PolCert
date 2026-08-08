@@ -123,21 +123,20 @@ Lemma seq_trace_jammed_two_inv :
 Proof.
   intros d lb ub body1 body2 env tr Htrace.
   simpl in Htrace.
-  inversion Htrace; subst; clear Htrace.
-  lazymatch goal with
-  | Hfor : Forall2 _ (Zrange _ _) ?traces0 |- _ =>
-      rewrite !tag_expr_eval_eq in Hfor;
-      destruct
-        (seq2_forall2_trace_split
-           (S d)
-           (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub))
-           traces0 body1 body2 env Hfor)
-        as [traces1 [traces2 [Hfor1 [Hfor2 Hzip]]]];
-      exists (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)),
-        traces1, traces2;
-      repeat split; auto;
-      exact Hzip
-  end.
+  inversion Htrace as
+    [| | | |
+     mode0 od0 lb0 ub0 body0 env0 zs0 traces0 tr0
+       Hrange Htraces Hconcat]; subst; clear Htrace.
+  rewrite !tag_expr_eval_eq in Htraces.
+  destruct
+    (seq2_forall2_trace_split
+       (S d)
+       (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub))
+       traces0 body1 body2 env Htraces)
+    as [traces1 [traces2 [Hfor1 [Hfor2 Hzip]]]].
+  exists (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)),
+    traces1, traces2.
+  repeat split; auto.
 Qed.
 
 Lemma seq_trace_unjammed_two :
