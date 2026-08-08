@@ -46,65 +46,19 @@ Definition ident := Instr.ident.
     paired-instance construction; collision exclusion; lifting to flattened
     lists; and [validate_correct] at the program boundary. *)
 
-Definition list_Z_eqb : list Z -> list Z -> bool :=
-  PointWitness.list_Z_eqb.
 
-Definition affine_expr_eqb : affine_expr -> affine_expr -> bool :=
-  PointWitness.affine_expr_eqb.
 
-Definition tile_link_eqb : tile_link -> tile_link -> bool :=
-  PointWitness.tile_link_eqb.
 
-Definition tile_link_list_eqb : list tile_link -> list tile_link -> bool :=
-  PointWitness.tile_link_list_eqb.
 
-Definition statement_tiling_witness_eqb
-    : statement_tiling_witness -> statement_tiling_witness -> bool :=
-  PointWitness.statement_tiling_witness_eqb.
 
 Definition point_space_witness_eqb
     : point_space_witness -> point_space_witness -> bool :=
   PointWitness.point_space_witness_eqb.
 
-Lemma list_Z_eqb_eq :
-  forall xs ys,
-    list_Z_eqb xs ys = true ->
-    xs = ys.
-Proof.
-  exact PointWitness.list_Z_eqb_eq.
-Qed.
 
-Lemma affine_expr_eqb_eq :
-  forall e1 e2,
-    affine_expr_eqb e1 e2 = true ->
-    e1 = e2.
-Proof.
-  exact PointWitness.affine_expr_eqb_eq.
-Qed.
 
-Lemma tile_link_eqb_eq :
-  forall l1 l2,
-    tile_link_eqb l1 l2 = true ->
-    l1 = l2.
-Proof.
-  exact PointWitness.tile_link_eqb_eq.
-Qed.
 
-Lemma tile_link_list_eqb_eq :
-  forall ls1 ls2,
-    tile_link_list_eqb ls1 ls2 = true ->
-    ls1 = ls2.
-Proof.
-  exact PointWitness.tile_link_list_eqb_eq.
-Qed.
 
-Lemma statement_tiling_witness_eqb_eq :
-  forall w1 w2,
-    statement_tiling_witness_eqb w1 w2 = true ->
-    w1 = w2.
-Proof.
-  exact PointWitness.statement_tiling_witness_eqb_eq.
-Qed.
 
 Lemma point_space_witness_eqb_eq :
   forall pw1 pw2,
@@ -114,15 +68,6 @@ Proof.
   exact PointWitness.point_space_witness_eqb_eq.
 Qed.
 
-Lemma existsb_bool_eta :
-  forall (A : Type) (f : A -> bool) xs,
-    existsb (fun x => if f x then true else false) xs = existsb f xs.
-Proof.
-  intros A f xs.
-  induction xs as [|x xs IH]; simpl; [reflexivity|].
-  rewrite IH.
-  destruct (f x); reflexivity.
-Qed.
 
 Local Lemma existsb_access_cols_eta :
   forall accesses cols,
@@ -358,28 +303,7 @@ Fixpoint forallb_imp {A} (f: A -> imp bool) (l: list A): (imp bool) :=
     if b then forallb_imp f l' else pure false
   end.
 
-Lemma forallb_imp_true_head_true:
-  forall {A} (f: A -> imp bool) (a: A) (l: list A),
-  mayReturn (forallb_imp f (a::l)) true -> 
-  mayReturn (f a) true.
-Proof.
-  intros. simpls.
-  bind_imp_destruct H b H'.
-  destruct b; trivial.
-  eapply mayReturn_pure in H; tryfalse.
-Qed.
 
-Lemma forallb_imp_true_tail_true:
-  forall {A} (f: A -> imp bool) (a: A) (l: list A),
-  mayReturn (forallb_imp f (a::l)) true -> 
-  mayReturn (forallb_imp f l) true.
-Proof.
-  intros. 
-  simpls. 
-  bind_imp_destruct H b H'. 
-  destruct b; eauto.
-  eapply mayReturn_pure in H; tryfalse.
-Qed.
 
 Definition validate_lt_ge_pair (pol_lt pol_ge sameloc_enveq_indom_pol: polyhedron) := 
   BIND sameloc_pol_lt <- poly_inter pol_lt sameloc_enveq_indom_pol -;
@@ -521,49 +445,6 @@ Definition validate_two_instrs (pi1 pi2: PolyLang.PolyInstr_ext) (env_dim: nat) 
 
   pure (res1 && res2 && res3).
 
-Definition validate_two_instrs_under_guards
-    (pi1 pi2: PolyLang.PolyInstr_ext)
-    (env_dim: nat)
-    (order_guards bad_guards: list polyhedron) :=
-  let iter_dim1 := pi1.(PolyLang.pi_depth_ext) in
-  let iter_dim2 := pi2.(PolyLang.pi_depth_ext) in
-  let dom_dim1 := (env_dim + iter_dim1)%nat in
-  let dom_dim2 := (env_dim + iter_dim2)%nat in
-  let env_eq_poly := make_poly_env_eq env_dim iter_dim1 iter_dim2 in
-  BIND in_domain_poly <-
-    poly_product
-      pi1.(PolyLang.pi_poly_ext)
-      pi2.(PolyLang.pi_poly_ext)
-      dom_dim1 dom_dim2 -;
-  BIND env_eq_in_domain <- poly_inter env_eq_poly in_domain_poly -;
-  BIND ww <- forallb_imp (
-    fun waccess1 => forallb_imp (fun waccess2 =>
-      validate_two_accesses
-        waccess1 waccess2
-        pi1.(PolyLang.pi_access_transformation_ext)
-        pi2.(PolyLang.pi_access_transformation_ext)
-        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
-    ) pi2.(PolyLang.pi_waccess_ext)
-  ) pi1.(PolyLang.pi_waccess_ext) -;
-  BIND wr <- forallb_imp (
-    fun waccess1 => forallb_imp (fun raccess2 =>
-      validate_two_accesses
-        waccess1 raccess2
-        pi1.(PolyLang.pi_access_transformation_ext)
-        pi2.(PolyLang.pi_access_transformation_ext)
-        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
-    ) pi2.(PolyLang.pi_raccess_ext)
-  ) pi1.(PolyLang.pi_waccess_ext) -;
-  BIND rw <- forallb_imp (
-    fun raccess1 => forallb_imp (fun waccess2 =>
-      validate_two_accesses
-        raccess1 waccess2
-        pi1.(PolyLang.pi_access_transformation_ext)
-        pi2.(PolyLang.pi_access_transformation_ext)
-        env_eq_in_domain order_guards bad_guards dom_dim1 dom_dim2
-    ) pi2.(PolyLang.pi_waccess_ext)
-  ) pi1.(PolyLang.pi_raccess_ext) -;
-  pure (ww && wr && rw).
 
 Fixpoint validate_instr_and_list (pi_ext: PolyLang.PolyInstr_ext) (pil_ext: list PolyLang.PolyInstr_ext) (env_dim: nat) := 
   match pil_ext with
@@ -1102,20 +983,6 @@ Proof.
   - rewrite Hwitness. exact Hlen.
 Qed.
 
-Lemma current_access_transformation_of_eq_at:
-  forall pi current env_dim,
-    witness_current_point_dim (PolyLang.pi_point_witness pi) =
-      PolyLang.pi_depth pi ->
-    length current = (env_dim + PolyLang.pi_depth pi)%nat ->
-    PolyLang.current_access_transformation_of pi current =
-    PolyLang.current_access_transformation_at env_dim pi.
-Proof.
-  intros pi current env_dim Hwitness Hlen.
-  unfold PolyLang.current_access_transformation_of.
-  rewrite (current_env_dim_of_eq (PolyLang.pi_point_witness pi) current env_dim).
-  - reflexivity.
-  - rewrite Hwitness. exact Hlen.
-Qed.
 
 Lemma eqdom_pinstr_implies_current_transformation_at_eq:
   forall env_dim pi1 pi2,
@@ -1130,73 +997,9 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma eqdom_pinstr_implies_current_access_transformation_at_eq:
-  forall env_dim pi1 pi2,
-    PolyLang.eqdom_pinstr pi1 pi2 ->
-    PolyLang.current_access_transformation_at env_dim pi1 =
-    PolyLang.current_access_transformation_at env_dim pi2.
-Proof.
-  intros env_dim pi1 pi2 Heq.
-  destruct Heq as (_ & _ & _ & Hwit & _ & Htf & _ & _).
-  unfold PolyLang.current_access_transformation_at.
-  rewrite Hwit, Htf.
-  reflexivity.
-Qed.
 
-Lemma insert_zeros_length_exact :
-  forall d i l,
-    (i <= length l)%nat ->
-    length (PolyLang.insert_zeros d i l) = (d + length l)%nat.
-Proof.
-  intros d i l Hle.
-  unfold PolyLang.insert_zeros.
-  rewrite app_length, app_length.
-  rewrite repeat_length.
-  rewrite resize_length.
-  rewrite skipn_length.
-  lia.
-Qed.
 
-Lemma exact_listzzs_cols_insert_zeros_constraint :
-  forall cols added env_dim affs,
-    exact_listzzs_cols cols affs ->
-    (env_dim <= cols)%nat ->
-    exact_listzzs_cols (added + cols)%nat
-      (List.map (PolyLang.insert_zeros_constraint added env_dim) affs).
-Proof.
-  intros cols added env_dim affs Hcols Henv listz z listzz Hin Heq.
-  rewrite in_map_iff in Hin.
-  destruct Hin as [[v c] [Hmap Hin0]].
-  rewrite Heq in Hmap.
-  unfold PolyLang.insert_zeros_constraint in Hmap; simpl in Hmap.
-  inversion Hmap; subst listz z.
-  specialize (Hcols v c (v, c) Hin0 eq_refl).
-  unfold PolyLang.insert_zeros_constraint; simpl.
-  rewrite insert_zeros_length_exact.
-  - rewrite Hcols. reflexivity.
-  - rewrite Hcols. exact Henv.
-Qed.
 
-Lemma exact_listzzs_cols_current_insert_zeros_constraint :
-  forall cols added env_dim affs,
-    exact_listzzs_cols cols affs ->
-    (env_dim <= cols)%nat ->
-    exact_listzzs_cols (added + cols)%nat
-      (List.map (PolyLang.current_insert_zeros_constraint added env_dim) affs).
-Proof.
-  intros cols added env_dim affs Hcols Henv listz z listzz Hin Heq.
-  rewrite in_map_iff in Hin.
-  destruct Hin as [[v c] [Hmap Hin0]].
-  rewrite Heq in Hmap.
-  unfold PolyLang.current_insert_zeros_constraint in Hmap; simpl in Hmap.
-  inversion Hmap; subst listz z.
-  specialize (Hcols v c (v, c) Hin0 eq_refl).
-  unfold PolyLang.current_insert_zeros_constraint; simpl.
-  rewrite app_length, app_length.
-  rewrite repeat_length, resize_length, skipn_length.
-  rewrite Hcols.
-  lia.
-Qed.
 
 Lemma exact_listzzs_cols_current_transformation_at :
   forall (env: list ident) (pi: PolyLang.PolyInstr),
@@ -1235,14 +1038,6 @@ Proof.
   eapply PolyLang.current_transformation_at_preserve_length.
 Qed.
 
-Lemma current_access_transformation_at_preserve_length :
-  forall (env: list ident) (pi: PolyLang.PolyInstr),
-    length (PolyLang.current_access_transformation_at (length env) pi) =
-    length (PolyLang.pi_access_transformation pi).
-Proof.
-  intros env pi.
-  eapply PolyLang.current_access_transformation_at_preserve_length.
-Qed.
 
 Lemma wf_pinstr_tiling_implies_wf_pinstr_ext_tiling_at :
   forall env vars pi pi',
@@ -1356,35 +1151,7 @@ Proof.
   eapply current_transformation_of_eq_at; eauto.
 Qed.
 
-Lemma expand_ip_instr_eq_current_access_tf_at:
-  forall env vars envv nth pi ipl ip,
-    PolyLang.wf_pinstr env vars pi ->
-    length env = length envv ->
-    PolyLang.flatten_instr_nth envv nth pi ipl ->
-    In ip ipl ->
-    PolyLang.current_access_transformation_of pi (PolyLang.ip_index ip) =
-      PolyLang.current_access_transformation_at (length env) pi.
-Proof.
-  intros env vars envv nth pi ipl ip Hwf Henvlen Hflat Hin.
-  destruct Hwf as [Hwitness _].
-  destruct Hflat as [_ [HBEL _]].
-  destruct (HBEL ip) as [Hfwd _].
-  destruct (Hfwd Hin) as [_ [_ [_ Hlen]]].
-  rewrite Henvlen.
-  eapply current_access_transformation_of_eq_at; eauto.
-Qed.
 
-Lemma wf_pinstr_tiling_implies_current_tf_eq_current_access_tf_at:
-  forall env vars pi,
-    PolyLang.wf_pinstr_tiling env vars pi ->
-    PolyLang.current_transformation_at (length env) pi =
-    PolyLang.current_access_transformation_at (length env) pi.
-Proof.
-  intros env vars pi Hwf.
-  destruct Hwf as [_ Heq].
-  unfold PolyLang.current_transformation_at, PolyLang.current_access_transformation_at.
-  destruct (PolyLang.pi_point_witness pi); simpl; now rewrite Heq.
-Qed.
 
 
 Lemma in_compose_ipl_ext_at_inv:
@@ -3049,64 +2816,6 @@ Proof.
   - eapply Forall_forall in Hvalid_ext; eauto.
 Qed.
 
-Lemma validate_two_instrs_under_guards_implies_no_write_collision:
-  forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
-         order_guards bad_guards,
-    WHEN res <-
-      validate_two_instrs_under_guards
-        pi1_ext pi2_ext (length env) order_guards bad_guards
-    THEN
-    res = true ->
-    PolyLang.wf_pinstr_ext_tiling env pi1_ext ->
-    PolyLang.wf_pinstr_ext_tiling env pi2_ext ->
-    length env = length envv ->
-    PolyLang.flatten_instr_nth_ext envv nth1 pi1_ext ipl1_ext ->
-    PolyLang.flatten_instr_nth_ext envv nth2 pi2_ext ipl2_ext ->
-    forall ip1_ext ip2_ext,
-      In ip1_ext ipl1_ext ->
-      In ip2_ext ipl2_ext ->
-      Exists
-        (fun pol =>
-           in_poly
-             (PolyLang.ip_index_ext ip1_ext ++
-              PolyLang.ip_index_ext ip2_ext) pol = true)
-        order_guards ->
-      Exists
-        (fun pol =>
-           in_poly
-             (PolyLang.ip_index_ext ip1_ext ++
-              PolyLang.ip_index_ext ip2_ext) pol = true)
-        bad_guards ->
-      no_write_collision
-        (pi1_ext.(PolyLang.pi_waccess_ext))
-        (pi2_ext.(PolyLang.pi_waccess_ext))
-        (pi1_ext.(PolyLang.pi_raccess_ext))
-        (pi2_ext.(PolyLang.pi_raccess_ext))
-        ip1_ext ip2_ext.
-Proof.
-  intros pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
-    order_guards bad_guards res Hval Hres Hwf1 Hwf2 Henvlen
-    Hext1 Hext2 ip1 ip2 Hip1 Hip2 Horder Hbad.
-  unfold validate_two_instrs_under_guards in Hval.
-  bind_imp_destruct Hval in_domain_poly Hdomain.
-  bind_imp_destruct Hval env_eq_in_domain Henv.
-  bind_imp_destruct Hval ww Hww.
-  bind_imp_destruct Hval wr Hwr.
-  bind_imp_destruct Hval rw Hrw.
-  apply mayReturn_pure in Hval.
-  rewrite Hres in Hval.
-  do 2 rewrite andb_true_iff in Hval.
-  destruct Hval as ((HwwT & HwrT) & HrwT).
-  subst ww wr rw.
-  eapply
-    (validated_access_checks_imply_no_write_collision
-       validate_two_accesses validate_two_accesses_checker_sound)
-    with
-      (in_domain_poly:=in_domain_poly)
-      (env_eq_in_domain:=env_eq_in_domain)
-      (order_guards:=order_guards)
-      (bad_guards:=bad_guards); eauto.
-Qed.
 
 Lemma validate_pinstr_implies_permutability1: 
   forall  env pi1_ext pi2_ext envv nth1 nth2 ipl1_ext ipl2_ext,
@@ -3382,12 +3091,6 @@ Proof.
       * lia.
 Qed.
 
-Lemma eq_except_sched_refl :
-  forall ip,
-    PolyLang.eq_except_sched ip ip.
-Proof.
-  exact PolyLang.ILSema.eq_except_sched_refl.
-Qed.
 
 Lemma eq_except_sched_trans :
   forall ip1 ip2 ip3,
@@ -3946,112 +3649,8 @@ Proof.
       (ipl1_ext:=ipl2_ext) (ipl2_ext:=ipl1_ext); eauto.
 Qed.
 
-Lemma eqdom_pinstrs_implies_flatten_same_length:
-  forall pil1 pil2 envv ipl1 ipl2, 
-  rel_list PolyLang.eqdom_pinstr pil1 pil2 -> 
-  PolyLang.flatten_instrs envv pil1 ipl1 ->
-  PolyLang.flatten_instrs envv pil2 ipl2 -> 
-  length ipl1 = length ipl2.
-Proof. 
-  induction pil1 using rev_ind.
-  {
-    intros. simpls.
-    destruct pil2; tryfalse. 
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H0. 
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H1.
-    subst; simpls; trivial. 
-  }
-  {
-    intros. simpls.
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hpil2. {
-      clear - H.
-      eapply rel_list_implies_eq_length in H.
-      destruct pil2.
-      - rewrite app_length in H; simpls; try lia.
-      - assert (length (p::pil2) > 0). {rewrite app_length in H; simpls; try lia. }
-        exists (last (p::pil2) (p)) (removelast (p::pil2)).
-        eapply app_removelast_last. intro; tryfalse.
-    }
-    destruct Hpil2 as (pi2 & pil2' & Hpil2). 
-    rename x into pi1; rename pil1 into pil1'.
 
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H0.
-    rewrite Hpil2 in H1.
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H1.
 
-    destruct H0 as (iplh1 & iplt1 & FLT1 & FLT1' & CONCAT1).
-    destruct H1 as (iplh2 & iplt2 & FLT2 & FLT2' & CONCAT2).
-
-    rewrite CONCAT1. rewrite CONCAT2.
-    do 2 rewrite app_length.
-    f_equal.
-    {
-      eapply IHpil1; eauto. 
-      {
-        rewrite Hpil2 in H.
-        eapply rel_list_app_singleton in H.
-        destruct H as (Hrel & Hrell). eauto.
-      }
-    }
-    {
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel' with (pi1:=pi1) (ipl1:=iplt1) in FLT2'; eauto.
-      eapply rel_list_implies_eq_length in FLT2'; eauto.
-      subst.
-      {
-        eapply rel_list_app_singleton in H.
-        destruct H as (Hrel & Hrell). eauto.
-      }
-      assert (length pil1' = length pil2'). {
-        subst.
-        eapply rel_list_app_singleton in H.
-        destruct H as (Hrel & Hrell). eauto.
-        eapply rel_list_implies_eq_length; eauto.
-      }
-      rewrite <- H0.
-      eauto.
-    } 
-  }
-Qed. 
-
-Lemma compose_pinstrs_ext_preserve_length: 
-  forall pil1 pil2 pil_ext, 
-    length pil1 = length pil2 -> 
-    PolyLang.compose_pinstrs_ext pil1 pil2 = pil_ext -> 
-    length pil1 = length pil_ext.
-Proof.
-  induction pil1.
-  {
-    intros; simpls.
-    destruct pil2; tryfalse. subst; simpls; reflexivity.
-  }
-  {
-    intros; simpls.
-    destruct pil2 eqn:Hpil2; tryfalse. simpls.
-    inv H. simpls.
-    f_equal.
-    eapply IHpil1; eauto.
-  }
-Qed.
-
-Lemma compose_pinstrs_ext_at_preserve_length: 
-  forall env_dim pil1 pil2 pil_ext, 
-    length pil1 = length pil2 -> 
-    compose_pinstrs_ext_at env_dim pil1 pil2 = pil_ext -> 
-    length pil1 = length pil_ext.
-Proof.
-  induction pil1.
-  {
-    intros; simpls.
-    destruct pil2; tryfalse. subst; simpls; reflexivity.
-  }
-  {
-    intros; simpls.
-    destruct pil2 eqn:Hpil2; tryfalse. simpls.
-    inv H. simpls.
-    f_equal.
-    eapply IHpil1; eauto.
-  }
-Qed.
 
 
 Lemma validate_pinstrs_ext_implies_permutability:
