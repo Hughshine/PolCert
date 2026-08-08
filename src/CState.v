@@ -1,5 +1,6 @@
 Require Import Bool.
 Require Import List.
+Require Import Coqlib.
 Require Import Csem.
 Require Import Memory.
 Require Import StateTy.
@@ -162,6 +163,151 @@ Module CState <: STATE.
       }  
     Qed.
 
+    Local Lemma pmap_set_commute :
+      forall (A : Type) (i j : positive) (x y : A) (m : PMap.t A),
+        i <> j ->
+        PMap.set i x (PMap.set j y m) =
+        PMap.set j y (PMap.set i x m).
+    Proof.
+      intros A i j x y [default tree] Hneq.
+      unfold PMap.set; simpl.
+      f_equal.
+      apply PTree.extensionality.
+      intros key.
+      rewrite !PTree.gsspec.
+      destruct (peq key i), (peq key j); subst; try congruence; reflexivity.
+    Qed.
+
+    Local Lemma zmap_set_commute :
+      forall (A : Type) (i j : Z) (x y : A) (m : ZMap.t A),
+        i <> j ->
+        ZMap.set i x (ZMap.set j y m) =
+        ZMap.set j y (ZMap.set i x m).
+    Proof.
+      intros A i j x y m Hneq.
+      unfold ZMap.set.
+      apply pmap_set_commute.
+      intro Hindices.
+      apply Hneq.
+      apply ZIndexed.index_inj.
+      exact Hindices.
+    Qed.
+
+    Local Lemma setN_set_outside :
+      forall (values : list memval) start point value
+             (contents : ZMap.t memval),
+        (point < start \/
+         point >= start + Z.of_nat (length values)) ->
+        Mem.setN values start (ZMap.set point value contents) =
+        ZMap.set point value (Mem.setN values start contents).
+    Proof.
+      induction values as [|head values IH];
+        intros start point value contents Houtside.
+      - reflexivity.
+      - simpl in *.
+        rewrite zmap_set_commute by lia.
+        rewrite IH by lia.
+        reflexivity.
+    Qed.
+
+    Local Lemma setN_disjoint_commute :
+      forall values1 values2 start1 start2 (contents : ZMap.t memval),
+        (start1 + Z.of_nat (length values1) <= start2 \/
+         start2 + Z.of_nat (length values2) <= start1) ->
+        Mem.setN values2 start2 (Mem.setN values1 start1 contents) =
+        Mem.setN values1 start1 (Mem.setN values2 start2 contents).
+    Proof.
+      induction values2 as [|head values2 IH];
+        intros start1 start2 contents Hdisjoint.
+      - reflexivity.
+      - simpl in *.
+        rewrite <- setN_set_outside by lia.
+        rewrite IH by lia.
+        reflexivity.
+    Qed.
+
+    Local Lemma store_preserves_mem_eq :
+      forall chunk m1 m2 b ofs value m1',
+        mem_eq m1 m2 ->
+        Mem.store chunk m1 b ofs value = Some m1' ->
+        exists m2',
+          Mem.store chunk m2 b ofs value = Some m2' /\
+          mem_eq m1' m2'.
+    Proof.
+      intros chunk m1 m2 b ofs value m1'
+             [Hforward Hbackward] Hstore1.
+      destruct
+        (Mem.store_within_extends
+           chunk m1 m2 b ofs value m1' value
+           Hforward Hstore1 (Val.lessdef_refl value))
+        as [m2' [Hstore2 Hresult_forward]].
+      destruct
+        (Mem.store_within_extends
+           chunk m2 m1 b ofs value m2' value
+           Hbackward Hstore2 (Val.lessdef_refl value))
+        as [m1'' [Hstore1' Hresult_backward]].
+      rewrite Hstore1 in Hstore1'.
+      inversion Hstore1'; subst m1''.
+      exists m2'.
+      split; [exact Hstore2|].
+      split; assumption.
+    Qed.
+
+    Local Lemma disjoint_store_commute :
+      forall chunk m b1 ofs1 v1 m1 b2 ofs2 v2 m12 m2 m21,
+        Mem.store chunk m b1 ofs1 v1 = Some m1 ->
+        Mem.store chunk m1 b2 ofs2 v2 = Some m12 ->
+        Mem.store chunk m b2 ofs2 v2 = Some m2 ->
+        Mem.store chunk m2 b1 ofs1 v1 = Some m21 ->
+        (b1 <> b2 \/
+         ofs1 + size_chunk chunk <= ofs2 \/
+         ofs2 + size_chunk chunk <= ofs1) ->
+        m12 = m21.
+    Proof.
+      intros chunk m b1 ofs1 v1 m1 b2 ofs2 v2 m12 m2 m21
+             Hstore1 Hstore12 Hstore2 Hstore21 Hdisjoint.
+      assert (Hcontents : Mem.mem_contents m12 = Mem.mem_contents m21).
+      {
+        rewrite (Mem.store_mem_contents _ _ _ _ _ _ Hstore12).
+        rewrite (Mem.store_mem_contents _ _ _ _ _ _ Hstore1).
+        rewrite (Mem.store_mem_contents _ _ _ _ _ _ Hstore21).
+        rewrite (Mem.store_mem_contents _ _ _ _ _ _ Hstore2).
+        destruct (peq b1 b2) as [Heq|Hneq].
+        - subst b2.
+          rewrite !PMap.gss, !PMap.set2.
+          f_equal.
+          apply setN_disjoint_commute.
+          destruct Hdisjoint as [Hneq|Hoffsets]; [contradiction|].
+          rewrite !encode_val_length, <- !size_chunk_conv.
+          exact Hoffsets.
+        - rewrite !PMap.gso by congruence.
+          apply pmap_set_commute.
+          congruence.
+      }
+      assert (Haccess : Mem.mem_access m12 = Mem.mem_access m21).
+      {
+        rewrite (Mem.store_access _ _ _ _ _ _ Hstore12).
+        rewrite (Mem.store_access _ _ _ _ _ _ Hstore1).
+        rewrite (Mem.store_access _ _ _ _ _ _ Hstore21).
+        rewrite (Mem.store_access _ _ _ _ _ _ Hstore2).
+        reflexivity.
+      }
+      assert (Hnext : Mem.nextblock m12 = Mem.nextblock m21).
+      {
+        rewrite (Mem.nextblock_store _ _ _ _ _ _ Hstore12).
+        rewrite (Mem.nextblock_store _ _ _ _ _ _ Hstore1).
+        rewrite (Mem.nextblock_store _ _ _ _ _ _ Hstore21).
+        rewrite (Mem.nextblock_store _ _ _ _ _ _ Hstore2).
+        reflexivity.
+      }
+      destruct m12 as
+          [contents12 access12 next12 max12 noaccess12 default12].
+      destruct m21 as
+          [contents21 access21 next21 max21 noaccess21 default21].
+      simpl in Hcontents, Haccess, Hnext.
+      apply Mem.mkmem_ext; assumption.
+    Qed.
+
 
     Lemma swap_store_cell_neq_prsv_mem_eq:
       forall m0 b1 ofs1 v1 m1' m1 b2 ofs2 v2 m2' m0' m1x' m1x m2x' chunk,
@@ -174,1017 +320,39 @@ Module CState <: STATE.
         mem_eq m1x m1x' ->
         (b1 <> b2 \/ ofs1 + (size_chunk chunk) <= ofs2 \/ ofs2 + (size_chunk chunk) <= ofs1 ) ->
         mem_eq m2' m2x'.
-    Proof. 
-      intros. split.
-      - econs.
-        + 
-          assert (Mem.nextblock m2' = Mem.nextblock m0). {
-            eapply Mem.nextblock_store in H0.
-            eapply mem_eq_prsv_next_block in H4.
-            eapply Mem.nextblock_store in H.
-            eapply mem_eq_prsv_next_block in H3.
-            lia.
-          }
-          assert (Mem.nextblock m2x' = Mem.nextblock m0'). {
-            eapply Mem.nextblock_store in H2.
-            eapply mem_eq_prsv_next_block in H5.
-            eapply Mem.nextblock_store in H1.
-            eapply mem_eq_prsv_next_block in H4.
-            lia.
-          }
-          eapply mem_eq_prsv_next_block in H3. lia.
-        + econs. 
-          -- intros. unfold inject_id in H7. inv H7. 
-             replace (ofs + 0) with ofs; try lia.
-              eapply Mem.perm_store_1; eauto.
-              eapply mem_eq_prsv_perm with (m:=m1x'). eapply mem_eq_sym; trivial.
-              eapply Mem.perm_store_1; eauto.
-              eapply mem_eq_prsv_perm with (m:=m0); eauto.
-              eapply Mem.perm_store_2; eauto.
-              eapply mem_eq_prsv_perm with (m:=m1); eauto.
-              eapply Mem.perm_store_2; eauto.
-          -- intros. unfold inject_id in H7. inv H7.
-             destruct chunk0; simpls; exists 0; try lia.
-          -- intros. unfolds inject_id. inv H7.
-             replace (ofs + 0) with ofs; try lia.
-
-             assert (forall b ofs, 
-              Mem.perm m2' b ofs Cur Readable ->
-              ZMap.get ofs (Mem.mem_contents m2')!!b = ZMap.get ofs (Mem.mem_contents m2x')!!b). {
-              intros. rename ofs into ofs3. rename H8 into Hperm'.
-              rename H7 into Hperm. 
-              pose proof H as Hw1.
-              pose proof H0 as Hw2.
-              pose proof H1 as Hw3.
-              pose proof H2 as Hw4.
-              pose proof H3 as Heq0. pose proof H4 as Heq1. pose proof H5 as Heq1x.
-              
-              rename ofs0 into ofs.
-              
-              assert (b = b1 \/ b = b2 \/ (b <> b1 /\ b <> b2)). {
-                clear. destruct b; destruct b1; destruct b2; try lia.
-              }
-              destruct H7 as [B | [B | B]].
-              - subst.
-                assert (b1 <> b2 \/ b1 = b2). {
-                  clear. destruct b1; destruct b2; lia.
-                }
-                destruct H7.
-                --  
-                eapply Mem.store_mem_contents in H0. rewrite H0.
-                rewrite PMap.gso; trivial.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H4; trivial.
-                rewrite H4.
-                eapply Mem.store_mem_contents in H. rewrite H.
-                rewrite PMap.gss.
-                eapply Mem.store_mem_contents in H2. rewrite H2.
-                rewrite PMap.gss.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H5; trivial.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H3; trivial.
-
-                assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-                destruct H8 as [OFS | OFS].
-                {
-                  pose proof OFS as OFS'.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b1) in OFS.
-                  rewrite OFS.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b1) in OFS'.
-                  rewrite OFS'.
-                  rewrite H5.
-                  eapply Mem.store_mem_contents in H1.
-                  rewrite H1. rewrite PMap.gso; trivial.
-                }
-                {
-                  rewrite setN_inside_nth; trivial.
-                  rewrite setN_inside_nth; trivial.
-                  assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                    clear - OFS; lia.
-                  }
-                  eapply nth_indep; trivial.
-                }
-                {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in Heq1; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-                {
-                  assert (Mem.perm m0 b1 ofs Cur Readable). {
-                    eapply Mem.perm_store_2; eauto.
-                    eapply mem_eq_prsv_perm in Heq1; eauto.
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                  eapply Mem.perm_store_1 in Hw3; eauto.
-                  eapply mem_eq_prsv_perm; eauto. 
-                  eapply mem_eq_sym; trivial.
-                }
-                {
-                  eapply Mem.perm_store_2; eauto.
-                }
-                -- destruct H6; tryfalse. subst.
-                eapply Mem.store_mem_contents in H0. rewrite H0.
-                rewrite PMap.gss.
-                eapply Mem.store_mem_contents in H2. rewrite H2.
-                rewrite PMap.gss; trivial.
-
-                assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-
-                
-                assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-
-
-                destruct H7 as [OFS1 | OFS1].
-                {
-                  pose proof OFS1 as OFS1'.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b2) in OFS1.
-                  rewrite OFS1.
-                  destruct H8 as [OFS2 | OFS2].
-                  {
-                    pose proof OFS2 as OFS2'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                    rewrite OFS2.
-                    eapply mem_eq_prsv_contents in H4.
-                    rewrite H4.
-                    eapply Mem.store_mem_contents in H.
-                    rewrite H.
-                    rewrite PMap.gss; trivial.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b2) in OFS1'. 
-                    rewrite OFS1'.
-                    eapply mem_eq_prsv_contents in H3.
-                    rewrite H3.
-
-                    eapply mem_eq_prsv_contents in H5.
-                    rewrite H5.
-                    eapply Mem.store_mem_contents in H1.
-                    rewrite H1.
-
-                    rewrite PMap.gss; trivial.
-
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS2'. rewrite OFS2'. trivial.
-                    {
-                      assert (Mem.perm m0 b2 ofs Cur Readable). {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                      eapply Mem.perm_store_1 in Hw3; eauto.
-                      eapply mem_eq_prsv_perm; eauto. 
-                      eapply mem_eq_sym; trivial.
-                    }
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                      eapply mem_eq_prsv_perm in Heq1; eauto.
-                      eapply Mem.perm_store_2; eauto.
-                    }                  
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                  }
-                  { (* ofs inside write 2 range *)
-                    rewrite setN_inside_nth; trivial.
-                    assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                      clear - OFS2. lia.
-                    }
-                    eapply mem_eq_prsv_contents in H5.
-                    rewrite H5.
-                    eapply Mem.store_mem_contents in H1.
-                    rewrite H1.
-
-                    rewrite PMap.gss; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    eapply nth_indep; trivial.
-                    {
-                      assert (Mem.perm m0 b2 ofs Cur Readable). {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                      eapply Mem.perm_store_1 in Hw3; eauto.
-                      eapply mem_eq_prsv_perm; eauto. 
-                      eapply mem_eq_sym; trivial.
-                    }
-                  }
-                }
-                {
-                  destruct H8 as [OFS2 | OFS2].
-                  { (* ofs inside write 2 range *)
-                    pose proof OFS1 as OFS1'.
-                    eapply setN_inside_nth in OFS1; trivial.
-                    rewrite OFS1.
-                    assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                      clear - OFS1'. lia.
-                    }
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                    rewrite OFS2.
-                    eapply mem_eq_prsv_contents in H4.
-                    rewrite H4.
-                    eapply Mem.store_mem_contents in H.
-                    rewrite H.
-                    rewrite PMap.gss; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    eapply nth_indep; trivial.
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                    }                  
-                  }
-                  {
-                    clear - H6 OFS1 OFS2.
-                    rewrite encode_val_length in OFS1, OFS2.
-                    rewrite <- size_chunk_conv in OFS1, OFS2.
-                    lia.
-                  }
-                }
-              - subst.
-                assert (b1 <> b2 \/ b1 = b2). {
-                  clear. destruct b1; destruct b2; lia.
-                }
-                destruct H7.
-                --  
-                eapply Mem.store_mem_contents in H0. rewrite H0.
-                rewrite PMap.gss; trivial.
-                eapply Mem.store_mem_contents in H2. rewrite H2.
-                rewrite PMap.gso; try lia.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b2) in H5.
-                rewrite H5.
-                eapply Mem.store_mem_contents in H1.
-                rewrite H1. rewrite PMap.gss; trivial.
-
-                assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-                destruct H8 as [OFS | OFS].
-                {
-                  pose proof OFS as OFS'.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS.
-                  rewrite OFS.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS'.
-                  rewrite OFS'.
-                  
-                eapply mem_eq_prsv_contents in H3.
-                rewrite <- H3.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b2) in H4.
-                rewrite H4.
-                
-                eapply Mem.store_mem_contents in H. rewrite H.
-                rewrite PMap.gso; try lia.
-                trivial. 
-                {
-                  eapply Mem.perm_store_2; eauto.
-                }
-                {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in Heq1; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-                }
-                {
-                  rewrite setN_inside_nth; trivial.
-                  rewrite setN_inside_nth; trivial.
-                  assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                    clear - OFS; lia.
-                  }
-                  eapply nth_indep; trivial.
-                }
-                {
-                assert (Mem.perm m0 b2 ofs Cur Readable). {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in Heq1; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-                eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                eapply Mem.perm_store_1 in Hw3; eauto.
-                eapply mem_eq_prsv_perm; eauto. 
-                eapply mem_eq_sym; trivial.
-              }
-              -- destruct H6; tryfalse. subst.
-                eapply Mem.store_mem_contents in H0. rewrite H0.
-                rewrite PMap.gss.
-                eapply Mem.store_mem_contents in H2. rewrite H2.
-                rewrite PMap.gss; trivial.
-
-                assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-                assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                  rewrite encode_val_length.
-                  rewrite <- size_chunk_conv.
-                  clear. 
-                  assert (size_chunk chunk > 0). {
-                    destruct chunk; simpls; try lia.
-                  }
-                  destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                  all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                }
-                destruct H7 as [OFS1 | OFS1].
-                {
-                  pose proof OFS1 as OFS1'.
-                  eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b2) in OFS1.
-                  rewrite OFS1.
-                  destruct H8 as [OFS2 | OFS2].
-                  {
-                    pose proof OFS2 as OFS2'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                    rewrite OFS2.
-                    eapply mem_eq_prsv_contents in H4.
-                    rewrite H4.
-                    eapply Mem.store_mem_contents in H.
-                    rewrite H.
-                    rewrite PMap.gss; trivial.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b2) in OFS1'. 
-                    rewrite OFS1'.
-                    eapply mem_eq_prsv_contents in H3.
-                    rewrite H3.
-
-                    eapply mem_eq_prsv_contents in H5.
-                    rewrite H5.
-                    eapply Mem.store_mem_contents in H1.
-                    rewrite H1.
-
-                    rewrite PMap.gss; trivial.
-
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS2'. rewrite OFS2'. trivial.
-                    {
-                      assert (Mem.perm m0 b2 ofs Cur Readable). {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                      eapply Mem.perm_store_1 in Hw3; eauto.
-                      eapply mem_eq_prsv_perm; eauto. 
-                      eapply mem_eq_sym; trivial.
-                    }
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                      eapply mem_eq_prsv_perm in Heq1; eauto.
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                    
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                  }
-                  { (* ofs inside write 2 range *)
-                    rewrite setN_inside_nth; trivial.
-                    assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                      clear - OFS2. lia.
-                    }
-                    eapply mem_eq_prsv_contents in H5.
-                    rewrite H5.
-                    eapply Mem.store_mem_contents in H1.
-                    rewrite H1.
-
-                    rewrite PMap.gss; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    eapply nth_indep; trivial.
-                    {
-                      assert (Mem.perm m0 b2 ofs Cur Readable). {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                      eapply Mem.perm_store_1 in Hw3; eauto.
-                      eapply mem_eq_prsv_perm; eauto. 
-                      eapply mem_eq_sym; trivial.
-                    }
-                  }
-                }
-                {
-                  destruct H8 as [OFS2 | OFS2].
-                  { (* ofs inside write 2 range *)
-                    pose proof OFS1 as OFS1'.
-                    eapply setN_inside_nth in OFS1; trivial.
-                    rewrite OFS1.
-                    assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                      clear - OFS1'. lia.
-                    }
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                    rewrite OFS2.
-                    eapply mem_eq_prsv_contents in H4.
-                    rewrite H4.
-                    eapply Mem.store_mem_contents in H.
-                    rewrite H.
-                    rewrite PMap.gss; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    eapply nth_indep; trivial.                    
-                    {
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                  }
-                  {
-                    clear - H6 OFS1 OFS2.
-                    rewrite encode_val_length in OFS1, OFS2.
-                    rewrite <- size_chunk_conv in OFS1, OFS2.
-                    lia.
-                  }
-                }
-              - destruct B as [B1 B2].
-              eapply Mem.store_mem_contents in H0. rewrite H0.
-              rewrite PMap.gso; trivial. 
-              eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H4.
-              rewrite H4.
-              eapply Mem.store_mem_contents in H. rewrite H.
-              rewrite PMap.gso; trivial.
-              eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H3.
-              rewrite H3.
-              eapply Mem.store_mem_contents in H2. rewrite H2.
-              rewrite PMap.gso; trivial.
-              eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H5.
-              rewrite H5.
-              eapply Mem.store_mem_contents in H1. rewrite H1.
-              rewrite PMap.gso; trivial.
-              {
-                assert (Mem.perm m0 b ofs Cur Readable). {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in Heq1; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-                eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                eapply Mem.perm_store_1 in Hw3; eauto.
-                eapply mem_eq_prsv_perm; eauto. 
-                eapply mem_eq_sym; trivial.
-              }
-              {
-                eapply Mem.perm_store_2; eauto.
-                eapply mem_eq_prsv_perm in Heq1; eauto.
-                eapply Mem.perm_store_2; eauto.
-              }
-              {
-                eapply Mem.perm_store_2; eauto.
-              }             
-            }
-             rewrite H7. 
-             destruct (ZMap.get ofs (Mem.mem_contents m2x')!!b3); econs; eauto.
-             destruct v; econs; eauto.
-             rewrite Integers.Ptrofs.add_zero. trivial. trivial.
-        + intros.
-          assert (Mem.perm m0 b ofs k p). {
-            eapply mem_eq_prsv_perm with (m:=m0'). eapply mem_eq_sym; trivial.
-            eapply Mem.perm_store_2; eauto.
-            eapply mem_eq_prsv_perm in H5; eauto.
-            eapply Mem.perm_store_2; eauto.
-          }
-          assert (Mem.perm m2' b ofs k p). {
-            eapply Mem.perm_store_1; eauto.
-            eapply mem_eq_prsv_perm with (m:=m1'). eapply mem_eq_sym; trivial.
-            eapply Mem.perm_store_1; eauto.
-          }
-          left; trivial.
-          - econs.
-          + 
-            assert (Mem.nextblock m2' = Mem.nextblock m0). {
-              eapply Mem.nextblock_store in H0.
-              eapply mem_eq_prsv_next_block in H4.
-              eapply Mem.nextblock_store in H.
-              eapply mem_eq_prsv_next_block in H3.
-              lia.
-            }
-            assert (Mem.nextblock m2x' = Mem.nextblock m0'). {
-              eapply Mem.nextblock_store in H2.
-              eapply mem_eq_prsv_next_block in H5.
-              eapply Mem.nextblock_store in H1.
-              eapply mem_eq_prsv_next_block in H4.
-              lia.
-            }
-            eapply mem_eq_prsv_next_block in H3. lia.
-          + econs. 
-            -- intros. unfold inject_id in H7. inv H7. 
-               replace (ofs + 0) with ofs; try lia.
-                eapply Mem.perm_store_1; eauto.
-                eapply mem_eq_prsv_perm with (m:=m1'); eauto. 
-                eapply mem_eq_sym; trivial.
-                eapply Mem.perm_store_1; eauto.
-                eapply mem_eq_prsv_perm with (m:=m0'); eauto.
-                eapply mem_eq_sym; trivial.
-                
-                eapply Mem.perm_store_2; eauto.
-                eapply mem_eq_prsv_perm with (m:=m1x). trivial. 
-                eapply Mem.perm_store_2; eauto.
-            -- intros. unfold inject_id in H7. inv H7.
-               destruct chunk0; simpls; exists 0; try lia.
-            -- intros. unfolds inject_id. inv H7.
-               replace (ofs + 0) with ofs; try lia.
-
-               assert (forall b ofs, 
-               Mem.perm m2' b ofs Cur Readable ->
-               ZMap.get ofs (Mem.mem_contents m2')!!b = ZMap.get ofs (Mem.mem_contents m2x')!!b). {
-                intros. clear H8 ofs. 
-                rename H7 into Hperm.
-                rename ofs0 into ofs.
-                pose proof H as Hw1.
-                pose proof H0 as Hw2.
-                pose proof H1 as Hw3.
-                pose proof H2 as Hw4.
-                pose proof H3 as Heq0. pose proof H4 as Heq1. pose proof H5 as Heq1x.
-  
-                assert (b = b1 \/ b = b2 \/ (b <> b1 /\ b <> b2)). {
-                  clear. destruct b; destruct b1; destruct b2; try lia.
-                }
-                destruct H7 as [B | [B | B]].
-                - subst.
-                  assert (b1 <> b2 \/ b1 = b2). {
-                    clear. destruct b1; destruct b2; lia.
-                  }
-                  destruct H7.
-                  --  
-                  eapply Mem.store_mem_contents in H0. rewrite H0.
-                  rewrite PMap.gso; trivial.
-                  eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H4.
-                  rewrite H4.
-                  eapply Mem.store_mem_contents in H. rewrite H.
-                  rewrite PMap.gss.
-                  eapply Mem.store_mem_contents in H2. rewrite H2.
-                  rewrite PMap.gss.
-                  eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H5.
-                  eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b1) in H3.
-  
-                  assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-                  destruct H8 as [OFS | OFS].
-                  {
-                    pose proof OFS as OFS'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b1) in OFS.
-                    rewrite OFS.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b1) in OFS'.
-                    rewrite OFS'.
-                    rewrite H5.
-                    eapply Mem.store_mem_contents in H1.
-                    rewrite H1. rewrite PMap.gso; trivial.
-                  }
-                  {
-                    rewrite setN_inside_nth; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                      clear - OFS; lia.
-                    }
-                    eapply nth_indep; trivial.
-                  }
-                  {
-                    eapply Mem.perm_store_2; eauto.
-                    eapply mem_eq_prsv_perm in Heq1; eauto.
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  {
-                    assert (Mem.perm m0 b1 ofs Cur Readable). {
-                      eapply Mem.perm_store_2; eauto.
-                      eapply mem_eq_prsv_perm in Heq1; eauto.
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                    eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                    eapply Mem.perm_store_1 in Hw3; eauto.
-                    eapply mem_eq_prsv_perm; eauto. 
-                    eapply mem_eq_sym; trivial.
-                  }
-                  {
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  -- destruct H6; tryfalse. subst.
-                  eapply Mem.store_mem_contents in H0. rewrite H0.
-                  rewrite PMap.gss.
-                  eapply Mem.store_mem_contents in H2. rewrite H2.
-                  rewrite PMap.gss; trivial.
-  
-                  assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-  
-                  
-                  assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-  
-  
-                  destruct H7 as [OFS1 | OFS1].
-                  {
-                    pose proof OFS1 as OFS1'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b2) in OFS1.
-                    rewrite OFS1.
-                    destruct H8 as [OFS2 | OFS2].
-                    {
-                      pose proof OFS2 as OFS2'.
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                      rewrite OFS2.
-                      eapply mem_eq_prsv_contents in H4.
-                      rewrite H4.
-                      eapply Mem.store_mem_contents in H.
-                      rewrite H.
-                      rewrite PMap.gss; trivial.
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b2) in OFS1'. 
-                      rewrite OFS1'.
-                      eapply mem_eq_prsv_contents in H3.
-                      rewrite H3.
-  
-                      eapply mem_eq_prsv_contents in H5.
-                      rewrite H5.
-                      eapply Mem.store_mem_contents in H1.
-                      rewrite H1.
-  
-                      rewrite PMap.gss; trivial.
-  
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS2'. rewrite OFS2'. trivial.
-                      {
-                        assert (Mem.perm m0 b2 ofs Cur Readable). {
-                          eapply Mem.perm_store_2; eauto.
-                          eapply mem_eq_prsv_perm in Heq1; eauto.
-                          eapply Mem.perm_store_2; eauto.
-                        }
-                        eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                        eapply Mem.perm_store_1 in Hw3; eauto.
-                        eapply mem_eq_prsv_perm; eauto. 
-                        eapply mem_eq_sym; trivial.
-                      }
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                    }
-                    { (* ofs inside write 2 range *)
-                      rewrite setN_inside_nth; trivial.
-                      assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                        clear - OFS2. lia.
-                      }
-                      eapply mem_eq_prsv_contents in H5.
-                      rewrite H5.
-                      eapply Mem.store_mem_contents in H1.
-                      rewrite H1.
-  
-                      rewrite PMap.gss; trivial.
-                      rewrite setN_inside_nth; trivial.
-                      eapply nth_indep; trivial.
-                      {
-                        assert (Mem.perm m0 b2 ofs Cur Readable). {
-                          eapply Mem.perm_store_2; eauto.
-                          eapply mem_eq_prsv_perm in Heq1; eauto.
-                          eapply Mem.perm_store_2; eauto.
-                        }
-                        eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                        eapply Mem.perm_store_1 in Hw3; eauto.
-                        eapply mem_eq_prsv_perm; eauto. 
-                        eapply mem_eq_sym; trivial.
-                      }
-                    }
-                  }
-                  {
-                    destruct H8 as [OFS2 | OFS2].
-                    { (* ofs inside write 2 range *)
-                      pose proof OFS1 as OFS1'.
-                      eapply setN_inside_nth in OFS1; trivial.
-                      rewrite OFS1.
-                      assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                        clear - OFS1'. lia.
-                      }
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                      rewrite OFS2.
-                      eapply mem_eq_prsv_contents in H4.
-                      rewrite H4.
-                      eapply Mem.store_mem_contents in H.
-                      rewrite H.
-                      rewrite PMap.gss; trivial.
-                      rewrite setN_inside_nth; trivial.
-                      eapply nth_indep; trivial.
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                    }
-                    {
-                      clear - H6 OFS1 OFS2.
-                      rewrite encode_val_length in OFS1, OFS2.
-                      rewrite <- size_chunk_conv in OFS1, OFS2.
-                      lia.
-                    }
-                  }
-                - subst.
-                  assert (b1 <> b2 \/ b1 = b2). {
-                    clear. destruct b1; destruct b2; lia.
-                  }
-                  destruct H7.
-                  --  
-                  eapply Mem.store_mem_contents in H0. rewrite H0.
-                  rewrite PMap.gss; trivial.
-                  eapply Mem.store_mem_contents in H2. rewrite H2.
-                  rewrite PMap.gso; try lia.
-                  eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b2) in H5.
-                  rewrite H5.
-                  eapply Mem.store_mem_contents in H1.
-                  rewrite H1. rewrite PMap.gss; trivial.
-  
-                  assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-                  destruct H8 as [OFS | OFS].
-                  {
-                    pose proof OFS as OFS'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS.
-                    rewrite OFS.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS'.
-                    rewrite OFS'.
-                    
-                  eapply mem_eq_prsv_contents in H3.
-                  rewrite <- H3.
-                  eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b2) in H4.
-                  rewrite H4.
-                  
-                  eapply Mem.store_mem_contents in H. rewrite H.
-                  rewrite PMap.gso; try lia.
-                  trivial.
-                  {
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  {
-                    eapply Mem.perm_store_2; eauto.
-                    eapply mem_eq_prsv_perm in Heq1; eauto.
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  }
-                  {
-                    rewrite setN_inside_nth; trivial.
-                    rewrite setN_inside_nth; trivial.
-                    assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                      clear - OFS; lia.
-                    }
-                    eapply nth_indep; trivial.
-                  }
-                  {
-                    assert (Mem.perm m0 b2 ofs Cur Readable). {
-                      eapply Mem.perm_store_2; eauto.
-                      eapply mem_eq_prsv_perm in Heq1; eauto.
-                      eapply Mem.perm_store_2; eauto.
-                    }
-                    eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                    eapply Mem.perm_store_1 in Hw3; eauto.
-                    eapply mem_eq_prsv_perm; eauto. 
-                    eapply mem_eq_sym; trivial.
-                  }
-              -- destruct H6; tryfalse. subst.
-                  eapply Mem.store_mem_contents in H0. rewrite H0.
-                  rewrite PMap.gss.
-                  eapply Mem.store_mem_contents in H2. rewrite H2.
-                  rewrite PMap.gss; trivial.
-  
-                  assert ((ofs < ofs1 \/ ofs >= ofs1 + Z.of_nat (length (encode_val chunk v1))) \/ (ofs1 <= ofs /\ ofs < ofs1 + Z.of_nat (length (encode_val chunk v1)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs1; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-                  assert ((ofs < ofs2 \/ ofs >= ofs2 + Z.of_nat (length (encode_val chunk v2))) \/ (ofs2 <= ofs /\ ofs < ofs2 + Z.of_nat (length (encode_val chunk v2)))). {
-                    rewrite encode_val_length.
-                    rewrite <- size_chunk_conv.
-                    clear. 
-                    assert (size_chunk chunk > 0). {
-                      destruct chunk; simpls; try lia.
-                    }
-                    destruct ofs; destruct ofs2; simpls; try solve [right; econs; lia]; try solve [left; left; lia]; try solve [left; right; lia]. 
-                    all: destruct (size_chunk chunk); tryfalse; try lia.                   
-                  }
-                  destruct H7 as [OFS1 | OFS1].
-                  {
-                    pose proof OFS1 as OFS1'.
-                    eapply Mem.setN_outside with (c:=(Mem.mem_contents m1x)!!b2) in OFS1.
-                    rewrite OFS1.
-                    destruct H8 as [OFS2 | OFS2].
-                    {
-                      pose proof OFS2 as OFS2'.
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                      rewrite OFS2.
-                      eapply mem_eq_prsv_contents in H4.
-                      rewrite H4.
-                      eapply Mem.store_mem_contents in H.
-                      rewrite H.
-                      rewrite PMap.gss; trivial.
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m0)!!b2) in OFS1'. 
-                      rewrite OFS1'.
-                      eapply mem_eq_prsv_contents in H3.
-                      rewrite H3.
-  
-                      eapply mem_eq_prsv_contents in H5.
-                      rewrite H5.
-                      eapply Mem.store_mem_contents in H1.
-                      rewrite H1.
-  
-                      rewrite PMap.gss; trivial.
-  
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m0')!!b2) in OFS2'. rewrite OFS2'. trivial.
-                      {
-                        assert (Mem.perm m0 b2 ofs Cur Readable). {
-                          eapply Mem.perm_store_2; eauto.
-                          eapply mem_eq_prsv_perm in Heq1; eauto.
-                          eapply Mem.perm_store_2; eauto.
-                        }
-                        eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                        eapply Mem.perm_store_1 in Hw3; eauto.
-                        eapply mem_eq_prsv_perm; eauto. 
-                        eapply mem_eq_sym; trivial.
-                      }
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                        eapply mem_eq_prsv_perm in Heq1; eauto.
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                    }
-                    { (* ofs inside write 2 range *)
-                      rewrite setN_inside_nth; trivial.
-                      assert (Z.to_nat (ofs - ofs2) < length (encode_val chunk v2))%nat. {
-                        clear - OFS2. lia.
-                      }
-                      eapply mem_eq_prsv_contents in H5.
-                      rewrite H5.
-                      eapply Mem.store_mem_contents in H1.
-                      rewrite H1.
-  
-                      rewrite PMap.gss; trivial.
-                      rewrite setN_inside_nth; trivial.
-                      eapply nth_indep; trivial.
-                      {
-                        assert (Mem.perm m0 b2 ofs Cur Readable). {
-                          eapply Mem.perm_store_2; eauto.
-                          eapply mem_eq_prsv_perm in Heq1; eauto.
-                          eapply Mem.perm_store_2; eauto.
-                        }
-                        eapply mem_eq_prsv_perm with (m':=m0') in H8; trivial.
-                        eapply Mem.perm_store_1 in Hw3; eauto.
-                        eapply mem_eq_prsv_perm; eauto. 
-                        eapply mem_eq_sym; trivial.
-                      }
-                    }
-                  }
-                  {
-                    destruct H8 as [OFS2 | OFS2].
-                    { (* ofs inside write 2 range *)
-                      pose proof OFS1 as OFS1'.
-                      eapply setN_inside_nth in OFS1; trivial.
-                      rewrite OFS1.
-                      assert (Z.to_nat (ofs - ofs1) < length (encode_val chunk v1))%nat. {
-                        clear - OFS1'. lia.
-                      }
-                      eapply Mem.setN_outside with (c:=(Mem.mem_contents m1)!!b2) in OFS2.
-                      rewrite OFS2.
-                      eapply mem_eq_prsv_contents in H4.
-                      rewrite H4.
-                      eapply Mem.store_mem_contents in H.
-                      rewrite H.
-                      rewrite PMap.gss; trivial.
-                      rewrite setN_inside_nth; trivial.
-                      eapply nth_indep; trivial.
-                      {
-                        eapply Mem.perm_store_2; eauto.
-                      }
-                    }
-                    {
-                      clear - H6 OFS1 OFS2.
-                      rewrite encode_val_length in OFS1, OFS2.
-                      rewrite <- size_chunk_conv in OFS1, OFS2.
-                      lia.
-                    }
-                  }
-                - destruct B as [B1 B2].
-                eapply Mem.store_mem_contents in H0. rewrite H0.
-                rewrite PMap.gso; trivial. 
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H4.
-                rewrite H4.
-                eapply Mem.store_mem_contents in H. rewrite H.
-                rewrite PMap.gso; trivial.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H3.
-                rewrite H3.
-                eapply Mem.store_mem_contents in H2. rewrite H2.
-                rewrite PMap.gso; trivial.
-                eapply mem_eq_prsv_contents with (ofs:=ofs) (b:=b) in H5.
-                rewrite H5.
-                eapply Mem.store_mem_contents in H1. rewrite H1.
-                rewrite PMap.gso; trivial.
-                {
-                  assert (Mem.perm m0 b ofs Cur Readable). {
-                    eapply Mem.perm_store_2; eauto.
-                    eapply mem_eq_prsv_perm in Heq1; eauto.
-                    eapply Mem.perm_store_2; eauto.
-                  }
-                  eapply mem_eq_prsv_perm with (m':=m0') in H7; trivial.
-                  eapply Mem.perm_store_1 in Hw3; eauto.
-                  eapply mem_eq_prsv_perm; eauto. 
-                  eapply mem_eq_sym; trivial.
-                }
-                {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in Heq1; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-                {
-                  eapply Mem.perm_store_2; eauto.
-                }
-               }
-               rewrite H7. 
-               destruct (ZMap.get ofs (Mem.mem_contents m2x')!!b3); econs; eauto.
-               destruct v; econs; eauto.
-               rewrite Integers.Ptrofs.add_zero. trivial. 
-               assert (Mem.perm m0' b3 ofs Cur Readable). {
-                  eapply Mem.perm_store_2; eauto.
-                  eapply mem_eq_prsv_perm in H5; eauto.
-                  eapply Mem.perm_store_2; eauto.
-                }
-               assert (Mem.perm m0 b3 ofs Cur Readable). {
-                  eapply mem_eq_prsv_perm; eauto.
-                  eapply mem_eq_sym; trivial.
-                }
-                  eapply Mem.perm_store_1; eauto.
-                  eapply mem_eq_prsv_perm with (m:=m1'). eapply mem_eq_sym; trivial.
-                  eapply Mem.perm_store_1; eauto.
-          + intros.
-            assert (Mem.perm m0 b ofs k p). {
-              eapply Mem.perm_store_2; eauto.
-              eapply mem_eq_prsv_perm in H4; eauto.
-              eapply Mem.perm_store_2; eauto.
-            }
-            assert (Mem.perm m2x' b ofs k p). {
-              eapply Mem.perm_store_1; eauto.
-              eapply mem_eq_prsv_perm with (m:=m1x'). eapply mem_eq_sym; trivial.
-              eapply Mem.perm_store_1; eauto.
-              eapply mem_eq_prsv_perm; eauto.
-            }
-            left; trivial.
+    Proof.
+      intros m0 b1 ofs1 v1 m1' m1 b2 ofs2 v2 m2'
+             m0' m1x' m1x m2x' chunk
+             Hstore1 Hstore2 Hstore2x Hstore1x
+             Hbase_eq Hafter1_eq Hafter2_eq Hdisjoint.
+      destruct
+        (store_preserves_mem_eq
+           chunk m1 m1' b2 ofs2 v2 m2' Hafter1_eq Hstore2)
+        as [m12 [Hstore12 Hresult12_eq]].
+      destruct
+        (store_preserves_mem_eq
+           chunk m1x m1x' b1 ofs1 v1 m2x' Hafter2_eq Hstore1x)
+        as [m21 [Hstore21 Hresult21_eq]].
+      destruct
+        (store_preserves_mem_eq
+           chunk m0 m0' b1 ofs1 v1 m1' Hbase_eq Hstore1)
+        as [m1_on_right [Hstore1_right Hafter1_right_eq]].
+      destruct
+        (store_preserves_mem_eq
+           chunk m1' m1_on_right b2 ofs2 v2 m12
+           Hafter1_right_eq Hstore12)
+        as [m12_on_right [Hstore12_right Hresult12_right_eq]].
+      pose proof
+        (disjoint_store_commute
+           chunk m0' b1 ofs1 v1 m1_on_right b2 ofs2 v2
+           m12_on_right m1x' m21
+           Hstore1_right Hstore12_right Hstore2x Hstore21 Hdisjoint)
+        as Hcommute.
+      eapply mem_eq_trans; [exact Hresult12_eq|].
+      eapply mem_eq_trans; [exact Hresult12_right_eq|].
+      rewrite Hcommute.
+      apply mem_eq_sym.
+      exact Hresult21_eq.
     Qed.
 
     Definition eq (st st': t): Prop := 
@@ -1267,6 +435,40 @@ Module CState <: STATE.
       end
     .
 
+    Local Lemma calc_offset_success_facts :
+      forall basety bounds sub ofs,
+        calc_offset (CTy.arr_type_intro basety bounds) sub = Some ofs ->
+        length bounds = length sub /\
+        Forall (fun bound => (bound > 0)%Z) (rev bounds) /\
+        Forall (fun index => (index >= 0)%Z) (rev sub) /\
+        calc_offset_helper
+          (rev bounds) (rev sub) (CTy.basetype_size basety) = Some ofs.
+    Proof.
+      intros basety bounds sub ofs Hcalc.
+      unfold calc_offset in Hcalc; simpl in Hcalc.
+      destruct
+        (Nat.eqb (length bounds) (length sub) &&
+         forallb (fun bound => (bound >? 0)%Z) bounds &&
+         forallb (fun index => (index >=? 0)%Z) sub)
+        eqn:Hchecks; try discriminate.
+      do 2 rewrite andb_true_iff in Hchecks.
+      destruct Hchecks as [[Hlength Hbounds] Hindices].
+      apply Nat.eqb_eq in Hlength.
+      repeat split.
+      - exact Hlength.
+      - apply Forall_forall.
+        intros bound Hin.
+        apply forallb_forall with (x := bound) in Hbounds.
+        + lia.
+        + apply in_rev. exact Hin.
+      - apply Forall_forall.
+        intros index Hin.
+        apply forallb_forall with (x := index) in Hindices.
+        + lia.
+        + apply in_rev. exact Hin.
+      - exact Hcalc.
+    Qed.
+
     Example calc_offset_example:
         calc_offset (CTy.arr_type_intro (CTy.int32s) [10;10;10]%Z) [1;2;3]%Z = Some 492%Z.
         (* 3*4 + 2*(10*4) + (1*(10*10*4))*)
@@ -1303,134 +505,58 @@ Module CState <: STATE.
         sz > 0 ->
         ofs1 + sz <= ofs2 \/ ofs2 + sz <= ofs1.
     Proof.
-      induction bounds.
-      - intros. simpls.
-        destruct sub1; destruct sub2; tryfalse.
-        exfalso. eapply H1. eapply veq_refl.
-      - intros. simpls.
-        destruct sub1 eqn:Hsub1; destruct sub2 eqn:Hsub2; tryfalse.
-        rename z into z1; rename l into l1.
-        rename z0 into z2; rename l0 into l2. rename a into bd.
-        destruct (bd <=? z1) eqn:Hbd1; tryfalse.
-        destruct (bd <=? z2) eqn:Hbd2; tryfalse.
-        destruct (calc_offset_helper bounds l1 (sz * bd)) eqn:Hofs1; tryfalse.
-        destruct (calc_offset_helper bounds l2 (sz * bd)) eqn:Hofs2; tryfalse.
-        inv H; inv H0.
-        assert (z1 = z2 \/ z1 <> z2). { lia. }
-        destruct H.
-        + subst. 
-          assert (~l1 =v= l2). {
-            clear - H1. intro. apply H1.
-            rewrite H. eapply veq_refl.
-          }
-          assert (bd > 0). {inv H2; trivial. }
-          assert (z2 >= 0). {inv H3; trivial. }
-          eapply IHbounds with (sz:=sz*bd) in H; eauto.
-          destruct H.
-          (** each bound should > 0; each subscript should >= 0. *)  
-          -- left.
-          assert (z2 = 0 \/ z2 > 0). { lia. }
-          destruct H7. {
-            subst. 
-            cut (z + sz <= z0); try lia.
-            clear - H5 H0 H.
-            cut (z + sz <= z + sz * bd); try lia.
-            eapply Zplus_le_compat_l.
-            replace sz with (sz * 1%Z) at 1; try lia.
-            eapply OrdersEx.Z_as_OT.mul_le_mono_nonneg_l; try lia.
-          }
-          eapply OrdersEx.Z_as_OT.leb_gt in Hbd1.
-          clear - Hbd1 H H0 H5 H7.
-          cut (z + sz * bd + sz <= z0 + sz * z2).
+      induction bounds as [|bound bounds IH];
+        intros sub1 sub2 sz ofs1 ofs2
+               Hcalc1 Hcalc2 Hneq Hbounds Hsub1 Hsub2 Hsz.
+      - simpl in Hcalc1, Hcalc2.
+        destruct sub1, sub2; try discriminate.
+        exfalso. apply Hneq. apply veq_refl.
+      - destruct sub1 as [|index1 tail1], sub2 as [|index2 tail2];
+          simpl in Hcalc1, Hcalc2; try discriminate.
+        destruct (bound <=? index1)%Z eqn:Hindex1; try discriminate.
+        destruct (bound <=? index2)%Z eqn:Hindex2; try discriminate.
+        destruct (calc_offset_helper bounds tail1 (sz * bound))
+          as [tail_offset1|] eqn:Htail1; try discriminate.
+        destruct (calc_offset_helper bounds tail2 (sz * bound))
+          as [tail_offset2|] eqn:Htail2; try discriminate.
+        inversion Hcalc1; inversion Hcalc2; subst ofs1 ofs2.
+        inversion Hbounds as [|? ? Hbound Hbounds_tail]; subst.
+        inversion Hsub1 as [|? ? Hnonneg1 Hsub1_tail]; subst.
+        inversion Hsub2 as [|? ? Hnonneg2 Hsub2_tail]; subst.
+        apply Z.leb_gt in Hindex1, Hindex2.
+        destruct (is_eq tail1 tail2) eqn:Htails.
+        + assert (Htails_eq : tail1 =v= tail2).
+          { unfold veq. exact Htails. }
+          assert (Htail_lists : tail1 = tail2).
           {
-            intro.
-            cut (z + sz * z2 + sz <= z + sz * bd + sz).
-            intro. lia.
-            eapply Zplus_le_compat_r.
-            eapply Zplus_le_compat_l.
-            eapply Zmult_le_compat_l; try lia.
+            apply same_length_eq.
+            - eapply calc_offset_helper_same_bounds_same_length; eauto.
+            - exact Htails_eq.
           }
-          eapply OrdersEx.Z_as_DT.add_le_mono; try lia.
-          replace sz with (sz * 1%Z) at 1; try lia.
-          eapply OrdersEx.Z_as_OT.mul_le_mono_nonneg_l; try lia.
-          -- right. 
-            assert (z2 = 0 \/ z2 > 0). { lia. }
-            destruct H7. {
-              subst. 
-              cut (z0 + sz <= z); try lia.
-              clear - H5 H0 H.
-              cut (z0 + sz <= z0 + sz * bd); try lia.
-              eapply Zplus_le_compat_l.
-              replace sz with (sz * 1%Z) at 1; try lia.
-              eapply OrdersEx.Z_as_OT.mul_le_mono_nonneg_l; try lia.
-            }
-            eapply OrdersEx.Z_as_OT.leb_gt in Hbd1.
-            clear - Hbd1 H H0 H5 H7.
-            cut (z0 + sz * bd + sz <= z + sz * z2).
-            {
-              intro.
-              cut (z0 + sz * z2 + sz <= z0 + sz * bd + sz).
-              intro. lia.
-              eapply Zplus_le_compat_r.
-              eapply Zplus_le_compat_l.
-              eapply Zmult_le_compat_l; try lia.
-            }
-            eapply OrdersEx.Z_as_DT.add_le_mono; try lia.
-            replace sz with (sz * 1%Z) at 1; try lia.
-            eapply OrdersEx.Z_as_OT.mul_le_mono_nonneg_l; try lia.
-          -- inv H2; trivial.
-          -- inv H3; trivial.   
-          -- inv H4; trivial.
-          -- lia.
-        + assert (z1 < z2 \/ z2 < z1). {lia. }
-        assert (l1 =v= l2 \/ ~l1 =v= l2). {tauto. }
-        assert (bd > 0). {inv H2; trivial. }
-        assert (z1 >= 0). {inv H3; trivial. }
-        assert (z2 >= 0). {inv H4; trivial. }
-        assert (z1 < bd). {lia. }
-        assert (z2 < bd). {lia. }
-        destruct H6.
-        ++ (* if remained eq, then z = z0 *)
-          assert (z = z0). {
-            assert (l1 = l2). {
-              clear - Hofs1 Hofs2 H6.
-              assert (length l1 = length l2). {
-                eapply calc_offset_helper_same_bounds_same_length; eauto.
-              }
-              eapply same_length_eq; trivial.
-            }
-            subst.
-            rewrite Hofs1 in Hofs2. inv Hofs2; trivial.
+          subst tail2.
+          rewrite Htail1 in Htail2.
+          inversion Htail2; subst tail_offset2.
+          assert (Hindices_neq : index1 <> index2).
+          {
+            intro Heq. subst index2.
+            apply Hneq.
+            unfold veq; simpl.
+            rewrite Z.eqb_refl.
+            exact Htails_eq.
           }
-          subst. 
-          destruct H0.
-          -- left.
-            replace (z0 + sz * z1 + sz) with (z0 + sz * (z1 + 1)); try lia.
-            eapply Zplus_le_compat_l.
-            eapply Zmult_le_compat_l; try lia.
-          -- right.
-            replace (z0 + sz * z2 + sz) with (z0 + sz * (z2 + 1)); try lia.
-            eapply Zplus_le_compat_l.
-            eapply Zmult_le_compat_l; try lia.
-        ++ rename z into ofs1. rename z0 into ofs2.
-          eapply IHbounds with (sz:=sz*bd) in H6; eauto; try lia.
-          (* the outest dimension decide ofs order *)
-          (* note that, z1 z2 are the innest dimension *)
-          (* so it do not contribute to order *)
-          destruct H6.
-          -- left. clear H H0.
-            replace (ofs1 + sz * z1 + sz) with (ofs1 + sz * (z1 + 1)); try lia.
-            cut (ofs1 + sz* (z1 + 1) <= ofs1 + sz * bd); try lia.
-            eapply Zplus_le_compat_l.
-            eapply Zmult_le_compat_l; try lia.
-          -- right. clear H H0.
-            replace (ofs2 + sz * z2 + sz) with (ofs2 + sz * (z2 + 1)); try lia.
-            cut (ofs2 + sz* (z2 + 1) <= ofs2 + sz * bd); try lia.
-            eapply Zplus_le_compat_l.
-            eapply Zmult_le_compat_l; try lia.
-          -- inv H2; trivial.
-          -- inv H3; trivial.
-          -- inv H4; trivial.
+          destruct (Z.lt_trichotomy index1 index2) as [Hlt|[Heq|Hgt]];
+            [left|contradiction|right]; nia.
+        + assert (Htails_neq : ~ tail1 =v= tail2).
+          {
+            unfold veq. intro Htails_eq.
+            rewrite Htails_eq in Htails. discriminate.
+          }
+          specialize
+            (IH tail1 tail2 (sz * bound) tail_offset1 tail_offset2
+                Htail1 Htail2 Htails_neq Hbounds_tail
+                Hsub1_tail Hsub2_tail ltac:(nia)).
+          destruct IH as [Htail_order|Htail_order];
+            [left|right]; nia.
     Qed.
 
     
@@ -1443,46 +569,29 @@ Module CState <: STATE.
         CTy.basetype_access_mode (CTy.basetype_of_arrtype aty) = By_value chunk ->
         (ofs1 + size_chunk chunk <= ofs2)%Z \/ (ofs2 + size_chunk chunk <= ofs1)%Z.
     Proof.
-      intros. 
-      unfolds calc_offset.
-      destruct aty eqn:Haty.
-      destruct ( (length l =? length sub1)%nat && forallb (fun bd : Z => bd >? 0) l &&
-      forallb (fun s : Z => s >=? 0) sub1)%nat eqn:Hlen1; tryfalse.
-      destruct ( (length l =? length sub2)%nat && forallb (fun bd : Z => bd >? 0) l &&
-      forallb (fun s : Z => s >=? 0) sub2)%nat eqn:Hlen2; tryfalse.
-      do 2 rewrite andb_true_iff in Hlen1.
-      do 2 rewrite andb_true_iff in Hlen2.
-      destruct Hlen1 as ((Hlen1 & Hbd1) & Hsub1).
-      destruct Hlen2 as ((Hlen2 & Hbd2) & Hsub2).
-      eapply Nat.eqb_eq in Hlen1, Hlen2. rewrite Hlen1 in Hlen2.
-      simpls. 
-      eapply CTy.basety_size_eq_size_chunk in H2.
-      rewrite H2 in H, H0.
-      eapply calc_offset_helper_correct 
-        with (bounds:=List.rev l) (sub1:=List.rev sub1) (sub2:=List.rev sub2); eauto.
-      clear - H1 Hlen2. intro. apply H1.
-      eapply veq_implies_rev_veq in H; eauto.
-      do 2 rewrite List.rev_involutive in H. trivial.
-      do 2 rewrite List.rev_length; trivial. 
-      {
-        eapply Forall_forall. intros.
-        eapply forallb_forall with (x:=x) in Hbd1.
-        lia. eapply in_rev; trivial.
-      }
-      {
-        eapply Forall_forall. intros.
-        eapply forallb_forall with (x:=x) in Hsub1.
-        lia. eapply in_rev; trivial.
-      }
-      {
-        eapply Forall_forall. intros.
-        eapply forallb_forall with (x:=x) in Hsub2.
-        lia. eapply in_rev; trivial.
-      }
-      {
-        clear - H2. unfold CTy.basetype_size in H2.
-        destruct b. simpls. lia.
-      }
+      intros [basety bounds] chunk sub1 sub2 ofs1 ofs2
+             Hcalc1 Hcalc2 Hsubscripts_neq Hmode.
+      pose proof
+        (calc_offset_success_facts
+           basety bounds sub1 ofs1 Hcalc1)
+        as [Hlength1 [Hbounds [Hindices1 Hhelper1]]].
+      pose proof
+        (calc_offset_success_facts
+           basety bounds sub2 ofs2 Hcalc2)
+        as [Hlength2 [_ [Hindices2 Hhelper2]]].
+      simpl in Hmode.
+      apply CTy.basety_size_eq_size_chunk in Hmode.
+      rewrite Hmode in Hhelper1, Hhelper2.
+      eapply calc_offset_helper_correct; eauto.
+      - intro Hreversed_eq.
+        apply Hsubscripts_neq.
+        apply veq_implies_rev_veq in Hreversed_eq.
+        rewrite !rev_involutive in Hreversed_eq.
+        exact Hreversed_eq.
+        rewrite !rev_length, <- Hlength1, <- Hlength2.
+        reflexivity.
+      - unfold CTy.basetype_size in Hmode.
+        destruct basety; simpl in Hmode; lia.
     Qed.
 
     Definition valid (id: ident) (ty: Ty.t) (st: t): Prop := 
@@ -1591,6 +700,47 @@ Module CState <: STATE.
           get_var_loc_type st id2 = Some (b2, ty2) ->
           id1 <> id2 -> 
           b1 <> b2.
+
+    Local Lemma cell_neq_implies_disjoint_access :
+      forall st id1 id2 sub1 sub2 b1 b2 ty1 ty2 aty1 aty2
+             ofs1 ofs2 chunk1 chunk2,
+        get_var_loc_type st id1 = Some (b1, ty1) ->
+        get_var_loc_type st id2 = Some (b2, ty2) ->
+        CTy.of_compcert_arrtype ty1 = Some aty1 ->
+        CTy.of_compcert_arrtype ty2 = Some aty2 ->
+        calc_offset aty1 sub1 = Some ofs1 ->
+        calc_offset aty2 sub2 = Some ofs2 ->
+        CTy.basetype_access_mode (CTy.basetype_of_arrtype aty1) =
+          By_value chunk1 ->
+        CTy.basetype_access_mode (CTy.basetype_of_arrtype aty2) =
+          By_value chunk2 ->
+        cell_neq
+          {| arr_id := id1; arr_index := sub1 |}
+          {| arr_id := id2; arr_index := sub2 |} ->
+        non_alias st ->
+        b1 <> b2 \/
+        ofs1 + size_chunk chunk1 <= ofs2 \/
+        ofs2 + size_chunk chunk2 <= ofs1.
+    Proof.
+      intros st id1 id2 sub1 sub2 b1 b2 ty1 ty2 aty1 aty2
+             ofs1 ofs2 chunk1 chunk2
+             Hloc1 Hloc2 Haty1 Haty2 Hoff1 Hoff2
+             Hmode1 Hmode2 Hcells_neq Hnonalias.
+      unfold cell_neq in Hcells_neq; simpl in Hcells_neq.
+      destruct Hcells_neq as [Hids_neq|Hsubscripts_neq].
+      - left. eapply Hnonalias; eauto.
+      - destruct (peq id1 id2) as [Hids_eq|Hids_neq].
+        + subst id2.
+          rewrite Hloc1 in Hloc2.
+          inversion Hloc2; subst b2 ty2.
+          rewrite Haty1 in Haty2.
+          inversion Haty2; subst aty2.
+          rewrite Hmode1 in Hmode2.
+          inversion Hmode2; subst chunk2.
+          right.
+          eapply calc_offset_different_sub_implies_disjoint; eauto.
+        + left. eapply Hnonalias; eauto.
+    Qed.
     
 
   Lemma write_cell_prsv_env:
@@ -1786,28 +936,7 @@ Module CState <: STATE.
           - eapply mem_eq_trans; eauto. eapply mem_eq_sym; trivial.
           - eapply mem_eq_trans; eauto. eapply mem_eq_sym; trivial.
           - eapply mem_eq_sym; trivial.
-          - 
-            unfold cell_neq in Hneq. simpl in Hneq. destruct Hneq.
-            {
-              left. eapply Halias; eauto. 
-            }  
-            {
-              assert (id1 = id2 \/ id1 <> id2). {
-                clear. destruct id1; destruct id2; simpls; try lia.
-              }
-              destruct H0. 2: {  
-                eapply Halias in H0; eauto. 
-              }
-              right. subst. 
-              assert (b1 = b2 /\ ty1 = ty2). {
-                clear - H1 H10.
-                simpls. rewrite H1 in H10. inv H10; split; trivial.
-              } destruct H0; subst. rename b2 into b; rename ty2 into ty. 
-              rewrite H2 in H7. inv H7. rename ty2' into ty'.
-              rewrite H5 in H12. inv H12.
-              
-              eapply calc_offset_different_sub_implies_disjoint; eauto.
-            }
+          - eapply cell_neq_implies_disjoint_access; eauto.
         }
         eapply mem_eq_trans; eauto. eapply mem_eq_sym; trivial.
       }

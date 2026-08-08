@@ -6489,7 +6489,7 @@ Qed.
 
 Notation instr_point_list_sema_stable_under_state_eq := ILSema.instr_point_list_sema_stable_under_state_eq.
 
-(** Stable permut instances lists are equivalent *)
+(** Stable permutations preserve instance-list semantics up to state equivalence. *)
 Lemma stable_permut_step_ext_lists_are_equivalent: 
   forall ipl1_ext ipl2_ext,
     (forall tau1 tau2,
@@ -6687,10 +6687,13 @@ Lemma stable_permut'_ext_lists_are_equivalent:
 Proof.
   induction n.
   {
-    intros until ipl2_ext; intros PERMUT; intros. 
-    split; intros.
-    inv H; firstorder; eexists; splits; eauto; try lia. eapply Instr.State.eq_refl.
-    inv H; firstorder; eexists; splits; eauto; try lia. eapply Instr.State.eq_refl.
+    intros ipl1_ext ipl2_ext PERMUT STABLE st1 NONALIAS.
+    inv STABLE; try lia.
+    split; intros st2 SEMA.
+    - exists st2. split; trivial.
+      eapply Instr.State.eq_refl.
+    - exists st2. split; trivial.
+      eapply Instr.State.eq_refl.
   }
   {
     intros until ipl2_ext. intros PERMUT. intros until st1. intro Halias.
@@ -6703,16 +6706,15 @@ Proof.
       pose proof H2 as G.
       eapply stable_permut_step_ext_lists_are_equivalent with (st1:=st1)in H2; eauto.
       destruct H2. 
-      eapply IHn in H8; eauto.
+      eapply IHn with (st1:=st1) in H8; eauto.
       destruct H8 as (F & B).
       eapply H in H0.
-      destruct H0 as (st2' & SEMA & EQ). 
-      eapply F in SEMA.
-      destruct SEMA as (st2'' & SEMA' & EQ').
-      exists st2''. split; trivial.
+      destruct H0 as (st_after_step & STEP_SEMA & STEP_EQ).
+      eapply F in STEP_SEMA.
+      destruct STEP_SEMA as (st_after_tail & TAIL_SEMA & TAIL_EQ).
+      exists st_after_tail. split; trivial.
       {
-        clear - EQ EQ'.
-        eapply Instr.State.eq_trans with (s2:=st2'); trivial.
+        exact (Instr.State.eq_trans _ _ _ STEP_EQ TAIL_EQ).
       }
       {
         clear - G PERMUT.
@@ -6730,16 +6732,15 @@ Proof.
       pose proof H2 as G.
       eapply stable_permut_step_ext_lists_are_equivalent with (st1:=st1)in H2; eauto.
       destruct H2. 
-      eapply IHn in H8; eauto.
+      eapply IHn with (st1:=st1) in H8; eauto.
       destruct H8 as (F & B).
       eapply B in H0.
-      destruct H0 as (st2' & SEMA & EQ).
-      eapply H1 in SEMA. 
-      destruct SEMA as (st2'' & SEMA' & EQ').
-      exists st2''. split; trivial.
+      destruct H0 as (st_before_step & TAIL_SEMA & TAIL_EQ).
+      eapply H1 in TAIL_SEMA.
+      destruct TAIL_SEMA as (st_before_all & STEP_SEMA & STEP_EQ).
+      exists st_before_all. split; trivial.
       {
-        clear - EQ EQ'.
-        eapply Instr.State.eq_trans with (s2:=st2'); trivial.
+        exact (Instr.State.eq_trans _ _ _ TAIL_EQ STEP_EQ).
       }
       {
         clear - G PERMUT.
@@ -6750,7 +6751,6 @@ Proof.
       }    
     }
   }
-  Unshelve. exact Instr.State.dummy_state. exact Instr.State.dummy_state.
 Qed.
 
 Lemma stable_permut_ext_lists_are_equivalent: 
@@ -6780,7 +6780,7 @@ Lemma stable_permut_ext_lists_are_equivalent:
     ).
 Proof.
   intros.
-  unfold StablePermut in H0. destruct H0.
+  destruct H0 as (n & STABLE).
   eapply stable_permut'_ext_lists_are_equivalent; eauto.
 Qed.
 

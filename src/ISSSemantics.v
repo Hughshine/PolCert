@@ -7,6 +7,7 @@ Require Import Sorting.Sorted.
 Require Import SetoidList.
 Require Import SelectionSort.
 Require Import Base.
+Require Import Misc.
 Require Import Linalg.
 Require Import PolyBase.
 Require Import PolyLang.
@@ -208,6 +209,18 @@ Proof.
   - rewrite Hdepth. exact Hdepth_ip.
 Qed.
 
+Local Lemma payload_eq_except_domain_sym :
+  forall source piece,
+    Refine.payload_eq_except_domain source piece ->
+    Refine.payload_eq_except_domain piece source.
+Proof.
+  intros source piece Hpayload.
+  unfold Refine.payload_eq_except_domain in *.
+  destruct Hpayload as
+      [Hdepth [Hinstr [Hsched [Hwitness [Htf [Hatf [Hwacc Hracc]]]]]]].
+  repeat split; symmetry; assumption.
+Qed.
+
 Local Lemma payload_eq_except_domain_transfer_belongs_to_child :
   forall source piece ip,
     Refine.payload_eq_except_domain source piece ->
@@ -216,22 +229,11 @@ Local Lemma payload_eq_except_domain_transfer_belongs_to_child :
     PolyLang.belongs_to ip piece.
 Proof.
   intros source piece ip Hpayload Hdom Hbel.
-  unfold Refine.payload_eq_except_domain in Hpayload.
-  unfold PolyLang.belongs_to in *.
-  destruct Hpayload as
-      [Hdepth [Hinstr [Hsched [Hwitness [Htf [Hatf [Hwacc Hracc]]]]]]].
-  destruct Hbel as [_ [Htf_ip [Hts_ip [Hinstr_ip Hdepth_ip]]]].
-  repeat split.
+  eapply payload_eq_except_domain_transfer_belongs_to.
+  - apply payload_eq_except_domain_sym.
+    exact Hpayload.
   - exact Hdom.
-  - unfold PolyLang.current_transformation_of,
-           PolyLang.current_env_dim_of,
-           PolyLang.current_transformation_at,
-           PolyLang.current_transformation_for_witness in *.
-    rewrite <- Hwitness, <- Htf.
-    exact Htf_ip.
-  - rewrite <- Hsched. exact Hts_ip.
-  - rewrite <- Hinstr. exact Hinstr_ip.
-  - rewrite <- Hdepth. exact Hdepth_ip.
+  - exact Hbel.
 Qed.
 
 Lemma stmt_partition_refinement_payload_of_child :
@@ -299,18 +301,12 @@ Lemma in_combine_nth_error_local :
       nth_error xs n = Some x /\
       nth_error ys n = Some y.
 Proof.
-  intros A B xs.
-  induction xs as [|xh xt IH]; intros ys x y Hin.
-  - destruct ys; simpl in Hin; contradiction.
-  - destruct ys as [|yh yt]; simpl in Hin.
-    + contradiction.
-    + destruct Hin as [Heq | Hin].
-      * inversion Heq; subst.
-        exists 0%nat.
-        split; reflexivity.
-      * destruct (IH yt x y Hin) as [n [Hxn Hyn]].
-        exists (S n).
-        split; assumption.
+  intros A B xs ys x y Hin.
+  apply In_nth_error in Hin.
+  destruct Hin as [n Hnth].
+  exists n.
+  apply (proj1 (nth_error_combine A B n xs ys x y)).
+  exact Hnth.
 Qed.
 
 Lemma nth_error_combine_local :
@@ -319,17 +315,9 @@ Lemma nth_error_combine_local :
     nth_error ys n = Some y ->
     nth_error (combine xs ys) n = Some (x, y).
 Proof.
-  intros A B xs.
-  induction xs as [|xh xt IH]; intros ys n x y Hx Hy.
-  - destruct n; inversion Hx.
-  - destruct ys as [|yh yt].
-    + destruct n; inversion Hy.
-    + destruct n.
-      * simpl in *.
-        inversion Hx; inversion Hy; subst.
-        reflexivity.
-      * simpl in *.
-        eapply IH; eauto.
+  intros A B xs ys n x y Hx Hy.
+  apply (proj2 (nth_error_combine A B n xs ys x y)).
+  split; assumption.
 Qed.
 
 Lemma nth_error_after_stmt_implies_child :

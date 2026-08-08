@@ -149,6 +149,24 @@ Local Definition parallel_point_ext
     PolyLang.ip_depth_ext := tau.(PolyLang.ip_depth)
   |}.
 
+Local Definition parallel_pinstr_ext
+    (pp : PolyLang.t) (d : nat) (pi : PolyLang.PolyInstr) :
+    PolyLang.PolyInstr_ext :=
+  let env_dim := Datatypes.length (pprog_varctxt pp) in
+  let width := schedule_width pp in
+  AffineCore.compose_pinstr_ext_at env_dim
+    (parallel_old_pi env_dim width d pi)
+    (parallel_new_pi env_dim width d pi).
+
+Local Definition parallel_pinstrs_ext
+    (pp : PolyLang.t) (d : nat) : list PolyLang.PolyInstr_ext :=
+  let '((pis, varctxt), _) := pp in
+  let env_dim := Datatypes.length varctxt in
+  let width := schedule_width_of_pis pis in
+  AffineCore.compose_pinstrs_ext_at env_dim
+    (List.map (parallel_old_pi env_dim width d) pis)
+    (List.map (parallel_new_pi env_dim width d) pis).
+
 Definition check_current_view_pinstrb (pi : PolyLang.PolyInstr) : bool :=
   match pi.(PolyLang.pi_point_witness) with
   | PSWIdentity d' => Nat.eqb d' pi.(PolyLang.pi_depth)
@@ -1205,6 +1223,140 @@ Proof.
   unfold env_dim_of. rewrite Hlen, Hdepth. lia.
 Qed.
 
+Local Lemma parallel_single_point_view :
+  forall pis varctxt vars d tau pi,
+    nth_error pis tau.(PolyLang.ip_nth) = Some pi ->
+    PolyLang.belongs_to tau pi ->
+    Datatypes.length tau.(PolyLang.ip_index) =
+      (Datatypes.length varctxt + pi.(PolyLang.pi_depth))%nat ->
+    check_current_view_pinstrb pi = true ->
+    (Datatypes.length pi.(PolyLang.pi_schedule) <=
+      schedule_width_of_pis pis)%nat ->
+    (d < schedule_width_of_pis pis)%nat ->
+    In
+      (parallel_pinstr_ext ((pis, varctxt), vars) d pi)
+      (parallel_pinstrs_ext ((pis, varctxt), vars) d) /\
+    PolyLang.belongs_to_ext
+      (parallel_point_ext ((pis, varctxt), vars) d pi tau)
+      (parallel_pinstr_ext ((pis, varctxt), vars) d pi) /\
+    Datatypes.length
+      (parallel_point_ext ((pis, varctxt), vars) d pi tau).(PolyLang.ip_index_ext) =
+      (Datatypes.length varctxt +
+       (parallel_pinstr_ext
+          ((pis, varctxt), vars) d pi).(PolyLang.pi_depth_ext))%nat /\
+    PolyLang.eq_except_sched
+      (PolyLang.old_of_ext
+        (parallel_point_ext ((pis, varctxt), vars) d pi tau))
+      tau.
+Proof.
+  intros pis varctxt vars d tau pi Hnth Hbel Hlen Hcurrent Hwidth Hd.
+  split.
+  - unfold parallel_pinstr_ext, parallel_pinstrs_ext.
+    simpl. eapply parallel_ext_pi_in. exact Hnth.
+  - split.
+    + unfold parallel_pinstr_ext. simpl.
+      eapply parallel_point_ext_belongs; eauto.
+    + split.
+      * unfold parallel_point_ext, parallel_pinstr_ext. simpl.
+        exact Hlen.
+      * eapply parallel_point_ext_eq_except_sched.
+Qed.
+
+Local Lemma parallel_direction_pointwise_permutable :
+  forall pis varctxt vars d tau1 tau2 pi1 pi2,
+    mayReturn
+      (AffineCore.validate
+        (parallel_old_pprog ((pis, varctxt), vars) d)
+        (parallel_new_pprog ((pis, varctxt), vars) d))
+      true ->
+    nth_error pis tau1.(PolyLang.ip_nth) = Some pi1 ->
+    nth_error pis tau2.(PolyLang.ip_nth) = Some pi2 ->
+    PolyLang.belongs_to tau1 pi1 ->
+    PolyLang.belongs_to tau2 pi2 ->
+    Datatypes.length tau1.(PolyLang.ip_index) =
+      (Datatypes.length varctxt + pi1.(PolyLang.pi_depth))%nat ->
+    Datatypes.length tau2.(PolyLang.ip_index) =
+      (Datatypes.length varctxt + pi2.(PolyLang.pi_depth))%nat ->
+    check_current_view_pinstrb pi1 = true ->
+    check_current_view_pinstrb pi2 = true ->
+    (Datatypes.length pi1.(PolyLang.pi_schedule) <=
+      schedule_width_of_pis pis)%nat ->
+    (Datatypes.length pi2.(PolyLang.pi_schedule) <=
+      schedule_width_of_pis pis)%nat ->
+    (d < schedule_width_of_pis pis)%nat ->
+    same_env_of tau1 tau2 ->
+    same_prefix_before ((pis, varctxt), vars) d tau1 tau2 ->
+    (nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z <
+     nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z)%Z ->
+    ILSema.Permutable tau1 tau2.
+Proof.
+  intros pis varctxt vars d tau1 tau2 pi1 pi2 Hval Hnth1 Hnth2
+    Hbel1 Hbel2 Hlen1 Hlen2 Hcurrent1 Hcurrent2 Hwidth1 Hwidth2 Hd
+    Hsame_env Hprefix Hlt.
+  destruct
+    (parallel_single_point_view
+      pis varctxt vars d tau1 pi1
+      Hnth1 Hbel1 Hlen1 Hcurrent1 Hwidth1 Hd)
+    as (Hinext1 & Hbelext1 & Hidxext1 & Heq1).
+  destruct
+    (parallel_single_point_view
+      pis varctxt vars d tau2 pi2
+      Hnth2 Hbel2 Hlen2 Hcurrent2 Hwidth2 Hd)
+    as (Hinext2 & Hbelext2 & Hidxext2 & Heq2).
+  set (pi1_ext := parallel_pinstr_ext ((pis, varctxt), vars) d pi1) in *.
+  set (pi2_ext := parallel_pinstr_ext ((pis, varctxt), vars) d pi2) in *.
+  set (tau1_ext := parallel_point_ext ((pis, varctxt), vars) d pi1 tau1) in *.
+  set (tau2_ext := parallel_point_ext ((pis, varctxt), vars) d pi2 tau2) in *.
+  assert (Hsameidx :
+    firstn (Datatypes.length varctxt) tau1_ext.(PolyLang.ip_index_ext) =
+    firstn (Datatypes.length varctxt) tau2_ext.(PolyLang.ip_index_ext)).
+  {
+    subst tau1_ext tau2_ext. simpl.
+    unfold same_env_of, env_prefix_of in Hsame_env.
+    rewrite
+      (env_dim_of_pointwise varctxt tau1 pi1 Hbel1 Hlen1),
+      (env_dim_of_pointwise varctxt tau2 pi2 Hbel2 Hlen2)
+      in Hsame_env.
+    exact Hsame_env.
+  }
+  assert (Hnew_eq :
+    PolyLang.ip_time_stamp2_ext tau1_ext =
+    PolyLang.ip_time_stamp2_ext tau2_ext).
+  {
+    subst tau1_ext tau2_ext. simpl. exact Hprefix.
+  }
+  assert (Hold : PolyLang.instr_point_ext_old_sched_lt tau1_ext tau2_ext).
+  {
+    unfold PolyLang.instr_point_ext_old_sched_lt.
+    subst tau1_ext tau2_ext. simpl.
+    apply lex_compare_singleton_lt. exact Hlt.
+  }
+  assert (Hnew : PolyLang.instr_point_ext_new_sched_ge tau1_ext tau2_ext).
+  {
+    unfold PolyLang.instr_point_ext_new_sched_ge. left.
+    rewrite Hnew_eq. apply lex_compare_reflexive.
+  }
+  assert (Hperm : PolyLang.Permutable_ext tau1_ext tau2_ext).
+  {
+    eapply AffineCore.validate_pointwise_implies_permutability
+      with
+        (pp1 := parallel_old_pprog ((pis, varctxt), vars) d)
+        (pp2 := parallel_new_pprog ((pis, varctxt), vars) d)
+        (env1 := varctxt) (env2 := varctxt)
+        (vars1 := vars) (vars2 := vars)
+        (pil1 := List.map
+          (parallel_old_pi
+            (Datatypes.length varctxt) (schedule_width_of_pis pis) d) pis)
+        (pil2 := List.map
+          (parallel_new_pi
+            (Datatypes.length varctxt) (schedule_width_of_pis pis) d) pis)
+        (pi1_ext := pi1_ext) (pi2_ext := pi2_ext); eauto.
+  }
+  eapply (permutable_eq_except_sched
+    (PolyLang.old_of_ext tau1_ext) tau1
+    (PolyLang.old_of_ext tau2_ext) tau2); eauto.
+Qed.
+
 Lemma check_pprog_parallel_currentb_pointwise_sound :
   forall pp plan,
     mayReturn (check_pprog_parallel_currentb pp plan) true ->
@@ -1236,61 +1388,7 @@ Proof.
     unfold check_current_view_pprogb in Hcurrent.
     eapply forallb_forall in Hcurrent; eauto.
   }
-  set (pi1_ext :=
-    AffineCore.compose_pinstr_ext_at (Datatypes.length varctxt)
-      (parallel_old_pi (Datatypes.length varctxt) width d pi1)
-      (parallel_new_pi (Datatypes.length varctxt) width d pi1)).
-  set (pi2_ext :=
-    AffineCore.compose_pinstr_ext_at (Datatypes.length varctxt)
-      (parallel_old_pi (Datatypes.length varctxt) width d pi2)
-      (parallel_new_pi (Datatypes.length varctxt) width d pi2)).
-  set (tau1_ext := parallel_point_ext ((pis, varctxt), vars) d pi1 tau1).
-  set (tau2_ext := parallel_point_ext ((pis, varctxt), vars) d pi2 tau2).
-  assert (Hinext1 : In pi1_ext
-    (AffineCore.compose_pinstrs_ext_at (Datatypes.length varctxt)
-      (List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
-      (List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis))).
-  {
-    subst pi1_ext. eapply parallel_ext_pi_in. exact Hnth1.
-  }
-  assert (Hinext2 : In pi2_ext
-    (AffineCore.compose_pinstrs_ext_at (Datatypes.length varctxt)
-      (List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
-      (List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis))).
-  {
-    subst pi2_ext. eapply parallel_ext_pi_in. exact Hnth2.
-  }
-  assert (Hbelext1 : PolyLang.belongs_to_ext tau1_ext pi1_ext).
-  {
-    subst tau1_ext pi1_ext width.
-    eapply parallel_point_ext_belongs; eauto.
-  }
-  assert (Hbelext2 : PolyLang.belongs_to_ext tau2_ext pi2_ext).
-  {
-    subst tau2_ext pi2_ext width.
-    eapply parallel_point_ext_belongs; eauto.
-  }
-  assert (Hidxext1 :
-    Datatypes.length tau1_ext.(PolyLang.ip_index_ext) =
-      (Datatypes.length varctxt + pi1_ext.(PolyLang.pi_depth_ext))%nat).
-  { subst tau1_ext pi1_ext. simpl. exact Hlen1. }
-  assert (Hidxext2 :
-    Datatypes.length tau2_ext.(PolyLang.ip_index_ext) =
-      (Datatypes.length varctxt + pi2_ext.(PolyLang.pi_depth_ext))%nat).
-  { subst tau2_ext pi2_ext. simpl. exact Hlen2. }
   destruct Hslice as (Hsame_env & Hprefix & Hdiff).
-  assert (Hsameidx :
-    firstn (Datatypes.length varctxt) tau1_ext.(PolyLang.ip_index_ext) =
-    firstn (Datatypes.length varctxt) tau2_ext.(PolyLang.ip_index_ext)).
-  {
-    subst tau1_ext tau2_ext. simpl.
-    unfold same_env_of, env_prefix_of in Hsame_env.
-    rewrite
-      (env_dim_of_pointwise varctxt tau1 pi1 Hbel1 Hlen1),
-      (env_dim_of_pointwise varctxt tau2 pi2 Hbel2 Hlen2)
-      in Hsame_env.
-    exact Hsame_env.
-  }
   assert (Hneq_coord :
     nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z <>
     nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z).
@@ -1306,78 +1404,28 @@ Proof.
     2: { unfold padded_timestamp. rewrite resize_length. exact Hd. }
     now rewrite Heq.
   }
-  assert (Hnew_eq :
-    PolyLang.ip_time_stamp2_ext tau1_ext =
-    PolyLang.ip_time_stamp2_ext tau2_ext).
-  {
-    subst tau1_ext tau2_ext. simpl. exact Hprefix.
-  }
-  assert (Heq1 := parallel_point_ext_eq_except_sched
-    ((pis, varctxt), vars) d pi1 tau1).
-  assert (Heq2 := parallel_point_ext_eq_except_sched
-    ((pis, varctxt), vars) d pi2 tau2).
-  fold tau1_ext in Heq1. fold tau2_ext in Heq2.
   destruct
     (Z_lt_ge_dec
       (nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)
       (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z))
     as [Hlt12 | Hge12].
-  - assert (Hold : PolyLang.instr_point_ext_old_sched_lt tau1_ext tau2_ext).
-    {
-      unfold PolyLang.instr_point_ext_old_sched_lt.
-      subst tau1_ext tau2_ext. simpl.
-      apply lex_compare_singleton_lt. exact Hlt12.
-    }
-    assert (Hnew : PolyLang.instr_point_ext_new_sched_ge tau1_ext tau2_ext).
-    {
-      unfold PolyLang.instr_point_ext_new_sched_ge. left.
-      rewrite Hnew_eq. apply lex_compare_reflexive.
-    }
-    assert (Hperm : PolyLang.Permutable_ext tau1_ext tau2_ext).
-    {
-      eapply AffineCore.validate_pointwise_implies_permutability
-        with
-          (pp1 := parallel_old_pprog ((pis, varctxt), vars) d)
-          (pp2 := parallel_new_pprog ((pis, varctxt), vars) d)
-          (env1 := varctxt) (env2 := varctxt)
-          (vars1 := vars) (vars2 := vars)
-          (pil1 := List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
-          (pil2 := List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis)
-          (pi1_ext := pi1_ext) (pi2_ext := pi2_ext); eauto.
-    }
-    eapply (permutable_eq_except_sched
-      (PolyLang.old_of_ext tau1_ext) tau1
-      (PolyLang.old_of_ext tau2_ext) tau2); eauto.
+  - subst width.
+    eapply
+      (parallel_direction_pointwise_permutable
+        pis varctxt vars d tau1 tau2 pi1 pi2); eassumption.
   - assert (Hlt21 :
       (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z <
        nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)%Z) by lia.
-    assert (Hold : PolyLang.instr_point_ext_old_sched_lt tau2_ext tau1_ext).
-    {
-      unfold PolyLang.instr_point_ext_old_sched_lt.
-      subst tau1_ext tau2_ext. simpl.
-      apply lex_compare_singleton_lt. exact Hlt21.
-    }
-    assert (Hnew : PolyLang.instr_point_ext_new_sched_ge tau2_ext tau1_ext).
-    {
-      unfold PolyLang.instr_point_ext_new_sched_ge. left.
-      rewrite Hnew_eq. apply lex_compare_reflexive.
-    }
-    assert (Hperm_rev : PolyLang.Permutable_ext tau2_ext tau1_ext).
-    {
-      eapply AffineCore.validate_pointwise_implies_permutability
-        with
-          (pp1 := parallel_old_pprog ((pis, varctxt), vars) d)
-          (pp2 := parallel_new_pprog ((pis, varctxt), vars) d)
-          (env1 := varctxt) (env2 := varctxt)
-          (vars1 := vars) (vars2 := vars)
-          (pil1 := List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
-          (pil2 := List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis)
-          (pi1_ext := pi2_ext) (pi2_ext := pi1_ext); eauto.
-    }
-    pose proof (PolyLang.Permutable_ext_symm _ _ Hperm_rev) as Hperm.
-    eapply (permutable_eq_except_sched
-      (PolyLang.old_of_ext tau1_ext) tau1
-      (PolyLang.old_of_ext tau2_ext) tau2); eauto.
+    assert (Hsame_env_rev : same_env_of tau2 tau1).
+    { unfold same_env_of in *. symmetry. exact Hsame_env. }
+    assert (Hprefix_rev :
+      same_prefix_before ((pis, varctxt), vars) d tau2 tau1).
+    { unfold same_prefix_before in *. symmetry. exact Hprefix. }
+    apply ILSema.Permutable_symm.
+    subst width.
+    eapply
+      (parallel_direction_pointwise_permutable
+        pis varctxt vars d tau2 tau1 pi2 pi1); eassumption.
 Qed.
 
 Lemma parallel_safe_dim_pointwise_implies_safe_dim :

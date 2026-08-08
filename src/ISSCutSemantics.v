@@ -44,28 +44,7 @@ Lemma NoDup_map_on_local :
       x = y) ->
     NoDup (List.map f l).
 Proof.
-  intros A B f l Hnodup Hinj.
-  induction Hnodup as [|x l Hnotin Hnodup IH].
-  - constructor.
-  - simpl.
-    constructor.
-    + intro Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [y [Hfy Hin_y]].
-      assert (x = y) as ->.
-      {
-        eapply Hinj.
-        - left. reflexivity.
-        - right. exact Hin_y.
-        - symmetry. exact Hfy.
-      }
-      contradiction.
-    + eapply IH.
-      intros x' y' Hinx Hiny Heq.
-      eapply Hinj.
-      * right. exact Hinx.
-      * right. exact Hiny.
-      * exact Heq.
+  apply TileRel.NoDup_map_on.
 Qed.
 
 Definition instr_point_np_key (ip: PolyLang.InstrPoint) : list Z :=

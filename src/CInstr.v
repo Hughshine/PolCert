@@ -486,10 +486,14 @@ Module CInstr <: INSTR.
       eval_maexpr e p v <->
       eval_maexpr (-e) p (-v).
   Proof. 
-    intros. split; intro.
-    - econs; eauto.
-    - inv H. rewrite sem_unary_operation_Z_correct in H5. inv H5. 
-      assert (v0 = v)%Z. {lia. } subst; trivial. 
+    intros e p v. split; intro Heval.
+    - econstructor; [exact Heval|apply sem_unary_operation_Z_correct].
+    - inversion Heval as
+          [| |op r envv arg result Harg Hop|]; subst.
+      rewrite sem_unary_operation_Z_correct in Hop.
+      inversion Hop; subst.
+      replace arg with v in Harg by lia.
+      exact Harg.
   Qed.
 
   Lemma eval_opp_maexpr_val_opp:
@@ -511,10 +515,11 @@ Module CInstr <: INSTR.
     eval_maexpr e2 p v2 /\
     (v1 + v2 = v)%Z.
   Proof. 
-    intros.
-    inv H.
-    do 2 eexists; splits; eauto.
-    unfold sem_binary_operation_Z in H7. inv H7. lia.
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
   Qed.
 
   Lemma eval_add_maexpr_val_sub:
@@ -525,10 +530,11 @@ Module CInstr <: INSTR.
     eval_maexpr e2 p v2 /\
     (v1 - v2 = v)%Z.
   Proof. 
-    intros.
-    inv H.
-    do 2 eexists; splits; eauto.
-    unfold sem_binary_operation_Z in H7. inv H7. lia.
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
   Qed.
 
   Lemma eval_add_maexpr_val_mul:
@@ -539,10 +545,11 @@ Module CInstr <: INSTR.
     eval_maexpr e2 p v2 /\
     (v1 * v2 = v)%Z.
   Proof. 
-    intros.
-    inv H.
-    do 2 eexists; splits; eauto.
-    unfold sem_binary_operation_Z in H7. inv H7. lia.
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
   Qed.
 
   Lemma eval_maexpr_symb_correct:
@@ -551,56 +558,68 @@ Module CInstr <: INSTR.
       eval_maexpr e p v ->
       (dot_product v1 p + c1)%Z = v.
   Proof.
-    induction e.
-    - intros. simpls. inv H. 
-      inv H0. simpls. destruct p; trivial.
-    - intros. simpls. inv H. inv H0.
-      eapply v0_n_app_1_dot_product_p_is_nth_p in H1. rewrite H1. lia.
-    - intros. simpls. 
-      destruct (eval_maexpr_symb e) eqn:He; tryfalse.
-      destruct op; destruct p0 as (v0, c0); tryfalse.
-      inv H. rewrite dot_product_opp_l. 
-      assert (dot_product v0 p + c0 = -v)%Z. {
+    induction e as
+        [constant|index|op e IHe|op e1 IHe1 e2 IHe2];
+      intros coeff offset env result Hsymbolic Heval.
+    - simpl in Hsymbolic. inversion Hsymbolic; subst.
+      inversion Heval; subst. simpl. destruct env; reflexivity.
+    - simpl in Hsymbolic. inversion Hsymbolic; subst.
+      inversion Heval as [|index' env' result' Hnth| |]; subst.
+      eapply v0_n_app_1_dot_product_p_is_nth_p in Hnth.
+      rewrite Hnth. lia.
+    - simpl in Hsymbolic.
+      destruct (eval_maexpr_symb e) as [[inner_coeff inner_offset]|]
+        eqn:Hinner_symbolic; try discriminate.
+      destruct op; try discriminate.
+      inversion Hsymbolic; subst.
+      rewrite dot_product_opp_l.
+      assert
+        (Hinner_value :
+          (dot_product inner_coeff env + inner_offset)%Z = (- result)%Z).
+      {
         eapply IHe; eauto.
-        eapply eval_maexpr_opp_val_opp in H0.
-        eapply eval_opp_maexpr_val_opp. trivial.
+        apply eval_maexpr_opp_val_opp in Heval.
+        apply eval_opp_maexpr_val_opp. exact Heval.
       }
       lia.
-    - intros. simpls. 
-      destruct (eval_maexpr_symb e1) eqn:He1; tryfalse.
-      destruct p0 as (v0, c0).
-      destruct (eval_maexpr_symb e2) eqn:He2; tryfalse.
-      destruct p0 as (v0', c0').
-      destruct op; tryfalse.
+    - simpl in Hsymbolic.
+      destruct (eval_maexpr_symb e1) as [[coeff1 offset1]|]
+        eqn:Hleft_symbolic; try discriminate.
+      destruct (eval_maexpr_symb e2) as [[coeff2 offset2]|]
+        eqn:Hright_symbolic; try discriminate.
+      destruct op; try discriminate.
       + (* Oadd *)
-        inv H.
+        inversion Hsymbolic; subst.
         rewrite add_vector_dot_product_distr_left.
-        eapply eval_add_maexpr_val_add in H0. 
-        destruct H0 as (v1 & v2 & Heval1 & Heval2 & Hadd).
+        apply eval_add_maexpr_val_add in Heval.
+        destruct Heval as (v1 & v2 & Heval1 & Heval2 & Hadd).
         eapply IHe1 in Heval1; eauto.
         eapply IHe2 in Heval2; eauto.
         lia.
       + (* Osub *)
-        inv H.
+        inversion Hsymbolic; subst.
         rewrite add_vector_dot_product_distr_left.
         rewrite dot_product_opp_l.
-        eapply eval_add_maexpr_val_sub in H0.
-        destruct H0 as (v1 & v2 & Heval1 & Heval2 & Hsub).
+        apply eval_add_maexpr_val_sub in Heval.
+        destruct Heval as (v1 & v2 & Heval1 & Heval2 & Hsub).
         eapply IHe1 in Heval1; eauto.
         eapply IHe2 in Heval2; eauto.
         lia.
       + (* Omul *)
-        inv H.
-        destruct (negb (is_null v0)) eqn:Hv0null; tryfalse.
-        inv H2.
-        eapply negb_false_iff in Hv0null; eauto.
+        destruct (negb (is_null coeff1)) eqn:Hnonconstant;
+          try discriminate.
+        inversion Hsymbolic; subst.
+        apply negb_false_iff in Hnonconstant.
         rewrite dot_product_mult_left.
-        eapply eval_add_maexpr_val_mul in H0.
-        destruct H0 as (v1 & v2 & Heval1 & Heval2 & Hmul).
-        assert (c0 * (dot_product v0' p + c0') = v)%Z. {
+        apply eval_add_maexpr_val_mul in Heval.
+        destruct Heval as (v1 & v2 & Heval1 & Heval2 & Hmul).
+        assert
+          (Hproduct :
+            (offset1 * (dot_product coeff2 env + offset2) = result)%Z).
+        {
           eapply IHe1 in Heval1; eauto.
           eapply IHe2 in Heval2; eauto.
-          rewrite dot_product_null_left in Heval1; trivial.
+          rewrite dot_product_null_left in Heval1; [|exact Hnonconstant].
           lia.
         }
         lia.
@@ -744,51 +763,51 @@ Module CInstr <: INSTR.
     all: try solve [intros; split; intro; inv H2; econstructor; eauto].
     - (* Eaccess *)
       intros until bty. intros H H0 Halias.  split; intro.
-      + inv H1. inv H0. clear H5. 
+      + inv H1. inv H0. clear H5.
         econstructor; eauto.
         eapply State.read_after_write_cell_neq; eauto. eapply cell_neq_symm; trivial.
-      + inv H1. inv H0. clear H5. 
+      + inv H1. inv H0. clear H5.
         econstructor; eauto.
         rewrite <- State.read_after_write_cell_neq; eauto. eapply cell_neq_symm; trivial.
-    - (* unop *)  
-      intros until bty. intros H H0 Halias. split; intro. 
-      + inversion_clear H1. 
+    - (* unop *)
+      intros until bty. intros H H0 Halias. split; intro.
+      + inversion_clear H1.
         rename e0 into env2. rename m into m2. rename ge into ge2.
         destruct st1 as ((ge1 & env1) & m1) eqn:Hst1. subst.
         assert (sem_unary_operation op v0 (Ty.basetype_to_compcert_type (typeof_expr e)) m1 = Some v). {
-          eapply State.sem_unary_operation_write_cell_invariant with 
+          eapply State.sem_unary_operation_write_cell_invariant with
             (op:=op) (v:=v0) (ty':= (typeof_expr e)) (v':=v) in H; eauto.
           eapply H. trivial.
         }
         rewrite IHe with (st2:=(ge2, env2, m2)) in H3; eauto.
         eapply eval_unop; eauto.
-      + inversion_clear H1. 
+      + inversion_clear H1.
         rename e0 into env1. rename m into m1. rename ge into ge1.
         destruct st2 as ((ge2 & env2) & m2) eqn:Hst2. subst.
         assert (sem_unary_operation op v0  (Ty.basetype_to_compcert_type (typeof_expr e)) m2 = Some v). {
-          eapply State.sem_unary_operation_write_cell_invariant with 
+          eapply State.sem_unary_operation_write_cell_invariant with
             (op:=op) (v:=v0) (ty':= ((typeof_expr e))) (v':=v) in H; eauto.
           eapply H. trivial.
         }
         rewrite <- IHe with (st2:=(ge2, env2, m2)) in H3; eauto.
         eapply eval_unop; eauto.
     - (* binop *)
-      intros until bty. intros H H0 Halias. split; intro. 
+      intros until bty. intros H H0 Halias. split; intro.
       + inversion H1. subst.
         destruct st1 as ((ge1 & env1) & m1) eqn:Hst1. subst.
         assert (sem_binary_operation ge op v1 (Ty.basetype_to_compcert_type (typeof_expr e1)) v2 (Ty.basetype_to_compcert_type (typeof_expr e2)) m1 = Some v). {
           pose proof State.sem_binary_operation_write_cell_invariant op v1 v2.
           eapply H2 with (m4:=m) (m3:=m1) in H13; trivial.
-          assert (ge = ge1). 
+          assert (ge = ge1).
           {inv H. clear - H16 H17. destruct H16. destruct H17. subst; trivial. }
           subst. eauto.
         }
-        rewrite IHe1 with (st2:=(ge, e, m)) in H11; eauto. 
+        rewrite IHe1 with (st2:=(ge, e, m)) in H11; eauto.
         2: {eapply Forall_app in H0; destruct H0; trivial. }
         rewrite IHe2 with (st2:=(ge, e, m)) in H12; eauto.
         2: {eapply Forall_app in H0; destruct H0; trivial. }
         eapply eval_binop; eauto.
-        assert (ge1 = ge). 
+        assert (ge1 = ge).
         {inv H. clear - H16 H15. destruct H16. destruct H15. subst; trivial.  }
         subst. trivial.
       + inversion H1. subst.
@@ -797,12 +816,12 @@ Module CInstr <: INSTR.
           pose proof State.sem_binary_operation_write_cell_invariant op v1 v2.
           eapply H2 with (m4:=m2) in H13; trivial. eauto.
         }
-        rewrite <- IHe1 with (st1:=(ge, e, m)) in H11; eauto. 
+        rewrite <- IHe1 with (st1:=(ge, e, m)) in H11; eauto.
         2: {eapply Forall_app in H0; destruct H0; trivial. }
         rewrite <- IHe2 with (st1:=(ge, e, m)) in H12; eauto.
         2: {eapply Forall_app in H0; destruct H0; trivial. }
         eapply eval_binop; eauto.
-        assert (ge = ge2). 
+        assert (ge = ge2).
         {inv H. clear - H16 H15. destruct H16. destruct H15. subst; trivial. }
         subst. trivial.
   Qed.
@@ -921,79 +940,37 @@ Module CInstr <: INSTR.
       ma_expr_eqb e e' = true <-> 
       e = e'.
   Proof.
-    induction e. 
-    {
-      intros. split.
-      {
-        intro.
-        unfold ma_expr_eqb in H.
-        destruct e' eqn:He'; tryfalse.
-        eapply Z.eqb_eq in H.
-        subst; trivial.
-      }
-      {
-        intros.
-        unfold ma_expr_eqb.
-        destruct e' eqn:He'; tryfalse.
-        inv H. eapply Z.eqb_refl. 
-      }
-    }
-    {
-      intros. split.
-      {
-        intro.
-        unfold ma_expr_eqb in H.
-        destruct e' eqn:He'; tryfalse.
-        eapply Nat.eqb_eq in H.
-        subst; trivial.
-      }
-      {
-        intros.
-        unfold ma_expr_eqb.
-        destruct e' eqn:He'; tryfalse.
-        inv H.
-        rewrite Nat.eqb_eq; trivial.
-      }
-    }
-    { 
-      intros. split.
-      {
-        intro.
-        unfold ma_expr_eqb in H.
-        fold ma_expr_eqb in H.
-        destruct e' eqn:He'; tryfalse.
-        eapply andb_true_iff in H.
-        destruct H.
-        eapply unaryop_eqb_eq in H.
-        eapply IHe in H0.
-        subst; trivial.
-      }
-      {
-        intros.
-        rewrite H.
-        eapply ma_expr_eqb_refl.
-      }
-    }
-    {
-      intro. split.
-      {
-        intro.
-        unfold ma_expr_eqb in H.
-        fold ma_expr_eqb in H.
-        destruct e' eqn:He'; tryfalse.
-        do 2 rewrite andb_true_iff in H.
-        do 2 destruct H.
-        eapply biop_eqb_eq in H.
-        eapply IHe1 in H1.
-        eapply IHe2 in H0.
-        subst; trivial.
-      }
-      {
-        intro.
-        rewrite H.
-        eapply ma_expr_eqb_refl.
-      }
-    }
+    induction e as [v|n|op e IHe|op e1 IHe1 e2 IHe2];
+      intros e'; split; intro Heq.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply Z.eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply Nat.eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hop Harg].
+      apply unaryop_eqb_eq in Hop.
+      apply IHe in Harg.
+      subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      do 2 rewrite andb_true_iff in Heq.
+      destruct Heq as [[Hop Hleft] Hright].
+      apply biop_eqb_eq in Hop.
+      apply IHe1 in Hleft.
+      apply IHe2 in Hright.
+      subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+  Qed.
+
+  Local Lemma ma_exprlist_eqb_refl:
+    forall es,
+      ma_exprlist_eqb es es = true.
+  Proof.
+    induction es as [e|e es IHes]; simpl.
+    - apply ma_expr_eqb_refl.
+    - rewrite andb_true_iff. split; [apply ma_expr_eqb_refl|exact IHes].
   Qed.
   
   Lemma ma_exprlist_eqb_eq: 
@@ -1001,44 +978,32 @@ Module CInstr <: INSTR.
       ma_exprlist_eqb es es' = true <-> 
       es = es'.
   Proof.
-    induction es. 
-    {
-      intros. split.
-      {
-        intro.
-        destruct es'; tryfalse.
-        simpls.
-        eapply ma_expr_eqb_eq in H. subst; trivial.
-      }
-      {
-        intro.
-        rewrite <- H.
-        simpls.
-        eapply ma_expr_eqb_refl.
-      }
-    }
-    {
-      intros. split.
-      {
-        intros.
-        destruct es'; tryfalse.
-        simpls.
-        rewrite andb_true_iff in H.
-        destruct H.
-        eapply ma_expr_eqb_eq in H.
-        eapply IHes in H0. 
-        subst; trivial.
-      }
-      {
-        intro.
-        rewrite <- H.
-        simpls.
-        rewrite andb_true_iff.
-        split.
-        eapply ma_expr_eqb_refl.
-        eapply IHes; trivial.
-      }
-    }
+    induction es as [e|e es IHes];
+      intros es'; split; intro Heq.
+    - destruct es'; simpl in Heq; try discriminate.
+      apply ma_expr_eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_exprlist_eqb_refl.
+    - destruct es'; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hhead Htail].
+      apply ma_expr_eqb_eq in Hhead.
+      apply IHes in Htail.
+      subst. reflexivity.
+    - subst. apply ma_exprlist_eqb_refl.
+  Qed.
+
+  Local Lemma arr_access_eqb_refl:
+    forall a,
+      arr_access_eqb a a = true.
+  Proof.
+    intros [id ty|id es ty]; unfold arr_access_eqb.
+    - rewrite andb_true_iff. split.
+      + apply Pos.eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 2 rewrite andb_true_iff.
+      split; [split|].
+      + apply Pos.eqb_refl.
+      + apply ma_exprlist_eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
   Qed.
   
   Lemma arr_access_eqb_eq: 
@@ -1046,46 +1011,47 @@ Module CInstr <: INSTR.
       arr_access_eqb a a' = true <-> 
       a = a'.
   Proof.
-    intros. split.
-    { 
-      intro.
-      unfold arr_access_eqb in H.
-      destruct a; destruct a'; tryfalse.
-      {
-        rewrite andb_true_iff in H.
-        destruct H.
-        eapply Pos.eqb_eq in H.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; trivial.
-      }
-      {
-        do 2 rewrite andb_true_iff in H.
-        do 2 destruct H.
-        eapply Pos.eqb_eq in H.
-        eapply ma_exprlist_eqb_eq in H1.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; trivial.
-      }
-    }
-    {
-      intro.
-      rewrite H.
-      unfold arr_access_eqb.
-      destruct a'.
-      {
-        rewrite andb_true_iff.
-        split.
-        eapply Pos.eqb_refl.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-      {
-        do 2 rewrite andb_true_iff.
-        eapply and_assoc. splits; simpls.
-        eapply Pos.eqb_eq; trivial.
-        eapply ma_exprlist_eqb_eq; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-    }
+    intros a a'. split; intro Heq.
+    - destruct a; destruct a'; simpl in Heq; try discriminate.
+      + apply andb_true_iff in Heq as [Hid Hty].
+        apply Pos.eqb_eq in Hid.
+        apply Ty.basetype_eqb_eq in Hty.
+        subst. reflexivity.
+      + do 2 rewrite andb_true_iff in Heq.
+        destruct Heq as [[Hid Hindices] Hty].
+        apply Pos.eqb_eq in Hid.
+        apply ma_exprlist_eqb_eq in Hindices.
+        apply Ty.basetype_eqb_eq in Hty.
+        subst. reflexivity.
+    - subst. apply arr_access_eqb_refl.
+  Qed.
+
+  Local Lemma expr_eqb_refl:
+    forall e,
+      expr_eqb e e = true.
+  Proof.
+    induction e as [v ty|n ty|a ty|op e IHe ty|op e1 IHe1 e2 IHe2 ty];
+      simpl.
+    - rewrite andb_true_iff. split.
+      + apply Val.eqb_eq. reflexivity.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - rewrite andb_true_iff. split.
+      + apply Nat.eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - rewrite andb_true_iff. split.
+      + apply arr_access_eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 2 rewrite andb_true_iff.
+      split; [split|].
+      + apply unaryop_eqb_refl.
+      + exact IHe.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 3 rewrite andb_true_iff.
+      split; [split; [split|]|].
+      + apply biop_eqb_refl.
+      + exact IHe1.
+      + exact IHe2.
+      + apply Ty.basetype_eqb_eq. reflexivity.
   Qed.
   
   Lemma expr_eqb_eq: 
@@ -1093,124 +1059,44 @@ Module CInstr <: INSTR.
       expr_eqb e1 e2 = true <-> 
       e1 = e2.
   Proof.
-    induction e1.
-    {
-      intro. split. 
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        simpls.
-        rewrite andb_true_iff in H. destruct H.
-        eapply Val.eqb_eq in H.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; trivial.
-      }
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        rewrite H.
-        simpls.
-        rewrite andb_true_iff.
-        split; trivial.
-        eapply Val.eqb_eq; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-    }
-    {
-      intro. split.
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse; simpls; try destruct oid; tryfalse.         
-        rewrite andb_true_iff in H.
-        destruct H.
-        eapply Nat.eqb_eq in H.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; trivial.
-      }
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse. 
-        rewrite H. simpls.
-        rewrite andb_true_iff.
-        split; trivial.
-        eapply Nat.eqb_eq; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      } 
-    }
-    {
-      intro. split.
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        simpls.
-        rewrite andb_true_iff in H. destruct H.
-        eapply arr_access_eqb_eq in H.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; eauto.
-      }
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        rewrite H.
-        simpls.
-        rewrite andb_true_iff.
-        split; trivial.
-        eapply arr_access_eqb_eq; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-    }
-    {
-      intro. split. 
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        simpls.
-        do 2 rewrite andb_true_iff in H. 
-        do 2 destruct H.
-        eapply unaryop_eqb_eq in H.
-        eapply IHe1 in H1.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; eauto.
-      }
-      {
-        intro.
-        rewrite <- H.
-        simpls.
-        do 2 rewrite andb_true_iff.
-        eapply and_assoc.
-        splits; trivial.
-        eapply unaryop_eqb_eq; trivial.
-        rewrite IHe1; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-    }
-    {
-      intro. split. 
-      {
-        intro.
-        destruct e2 eqn:He2; tryfalse.
-        simpls.
-        do 3 rewrite andb_true_iff in H.
-        do 3 destruct H.
-        eapply biop_eqb_eq in H.
-        eapply IHe1_1 in H2.
-        eapply IHe1_2 in H1.
-        eapply Ty.basetype_eqb_eq in H0.
-        subst; eauto.
-      }
-      {
-        intro.
-        rewrite <- H.
-        simpls.
-        do 3 rewrite andb_true_iff.
-        do 2 eapply and_assoc.
-        splits; trivial.
-        eapply biop_eqb_eq; trivial.
-        eapply IHe1_1; trivial.
-        eapply IHe1_2; trivial.
-        eapply Ty.basetype_eqb_eq; trivial.
-      }
-    }
+    induction e1 as
+        [v ty|n ty|a ty|op e IHe ty|op e1 IHe1 e2 IHe2 ty];
+      intros e'; split; intro Heq.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hval Hty].
+      apply Val.eqb_eq in Hval.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hindex Hty].
+      apply Nat.eqb_eq in Hindex.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Haccess Hty].
+      apply arr_access_eqb_eq in Haccess.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      do 2 rewrite andb_true_iff in Heq.
+      destruct Heq as [[Hop Harg] Hty].
+      apply unaryop_eqb_eq in Hop.
+      apply IHe in Harg.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e'; simpl in Heq; try discriminate.
+      do 3 rewrite andb_true_iff in Heq.
+      destruct Heq as [[[Hop Hleft] Hright] Hty].
+      apply biop_eqb_eq in Hop.
+      apply IHe1 in Hleft.
+      apply IHe2 in Hright.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
   Qed.
   
   
@@ -1464,6 +1350,113 @@ Module CInstr <: INSTR.
       end
     end.
 
+  Local Lemma replay_write_on_equivalent_source:
+    forall wcell1 bty1 v1 st1 st2 wcell2 bty2 v2 st3,
+      State.write_cell wcell1 bty1 v1 st1 st2 ->
+      State.write_cell wcell2 bty2 v2 st2 st3 ->
+      exists st1' st2',
+        State.write_cell_dec wcell2 bty2 v2 st1' = Some st2' /\
+        State.eq st1 st1'.
+  Proof.
+    intros wcell1 bty1 v1 st1 st2 wcell2 bty2 v2 st3
+      Hwrite1 Hwrite2.
+    inversion Hwrite1 as
+        [cell1 value1 raw_source1 raw_target1 source1 target1
+         id1 sub1 raw_ge1 raw_env1 raw_mem1 raw_mem1_after
+         block1 comp_ty1 offset1 arr_ty1 base_ty1 chunk1
+         Hcell1 Hraw_source1 Hlookup1 Harr_ty1 Hbase_ty1
+         Hoffset1 Hmode1 Hstore1 Hraw_target1
+         Hsource1_eq Htarget1_eq].
+    inversion Hwrite2 as
+        [cell2 value2 raw_source2 raw_target2 source2 target2
+         id2 sub2 raw_ge2 raw_env2 raw_mem2 raw_mem2_after
+         block2 comp_ty2 offset2 arr_ty2 base_ty2 chunk2
+         Hcell2 Hraw_source2 Hlookup2 Harr_ty2 Hbase_ty2
+         Hoffset2 Hmode2 Hstore2 Hraw_target2
+         Hsource2_eq Htarget2_eq].
+    subst raw_source1. subst raw_target1.
+    subst raw_source2. subst raw_target2.
+    destruct st1 as [[outer_ge1 outer_env1] outer_mem1].
+    destruct st2 as [[outer_ge2 outer_env2] outer_mem2].
+    destruct st3 as [[outer_ge3 outer_env3] outer_mem3].
+    unfold State.eq in
+      Hsource1_eq, Htarget1_eq, Hsource2_eq, Htarget2_eq.
+    simpl in Hsource1_eq, Htarget1_eq, Hsource2_eq, Htarget2_eq.
+    destruct Hsource1_eq as
+      (Hge_source1 & Henv_source1 & Hmem_source1).
+    destruct Htarget1_eq as
+      (Hge_target1 & Henv_target1 & Hmem_target1).
+    destruct Hsource2_eq as
+      (Hge_source2 & Henv_source2 & Hmem_source2).
+    destruct Htarget2_eq as
+      (Hge_target2 & Henv_target2 & Hmem_target2).
+    assert (Hintermediate_mem : State.mem_eq raw_mem1_after raw_mem2).
+    {
+      eapply State.mem_eq_trans; [exact Hmem_target1|].
+      apply State.mem_eq_sym. exact Hmem_source2.
+    }
+    destruct
+      (State.advance_store_valid
+        chunk1 raw_mem1 block1 offset1 v1
+        chunk2 raw_mem1_after block2 offset2 v2 raw_mem2_after
+        raw_mem2 Hstore1 Hintermediate_mem Hstore2)
+      as [replayed_mem Hstore2_source].
+    exists
+      (raw_ge2, raw_env2, raw_mem1)
+      (raw_ge2, raw_env2, replayed_mem).
+    split.
+    - unfold State.write_cell_dec.
+      rewrite Hcell2. simpl.
+      simpl in Hlookup2.
+      rewrite Hlookup2, Harr_ty2.
+      rewrite Hbase_ty2, Ty.basetype_eqb_refl, Hoffset2, Hmode2.
+      rewrite Hstore2_source. reflexivity.
+    - unfold State.eq. simpl.
+      split; [congruence|].
+      split; [congruence|].
+      apply State.mem_eq_sym. exact Hmem_source1.
+  Qed.
+
+  Local Lemma singleton_writes_disjoint:
+    forall wcell1 wcell2,
+      Forall
+        (fun wc2 => Forall (fun wc1 => cell_neq wc1 wc2) [wcell1])
+        [wcell2] ->
+      cell_neq wcell1 wcell2.
+  Proof.
+    intros wcell1 wcell2 Hwrites.
+    inversion Hwrites as [|wc2 rest Hagainst Hrest]; subst.
+    inversion Hagainst as [|wc1 rest' Hneq Hrest']; subst.
+    exact Hneq.
+  Qed.
+
+  Local Lemma reads_avoid_prior_write:
+    forall wcell reads,
+      Forall
+        (fun rc => Forall (fun wc' => cell_neq wc' rc) [wcell])
+        reads ->
+      Forall (fun rc => cell_neq rc wcell) reads.
+  Proof.
+    intros wcell reads Hreads.
+    apply Forall_forall.
+    intros rcell Hin.
+    apply Forall_forall with (x := rcell) in Hreads; [|exact Hin].
+    inversion Hreads as [|wc rest Hneq Hrest]; subst.
+    apply cell_neq_symm. exact Hneq.
+  Qed.
+
+  Local Lemma prior_reads_avoid_write:
+    forall reads wcell,
+      Forall
+        (fun wc => Forall (fun rc => cell_neq rc wc) reads)
+        [wcell] ->
+      Forall (fun rc => cell_neq rc wcell) reads.
+  Proof.
+    intros reads wcell Hreads.
+    inversion Hreads as [|wc rest Hdisjoint Hrest]; subst.
+    exact Hdisjoint.
+  Qed.
+
   Lemma bc_condition_implie_permutbility:
     forall i1 p1 wcs1 rcs1 st1 st2 st3 i2 p2 wcs2 rcs2,
       NonAlias st1 ->
@@ -1493,7 +1486,14 @@ Module CInstr <: INSTR.
     intros NOALIAS SEMA BC.
     destruct SEMA as (SEMA1 & SEMA2).
     destruct BC as (WW & WR & RW).
-    inv SEMA1; inv SEMA2; tryfalse.
+    inversion SEMA1 as
+        [env1 state1 state2 Hskip1
+         |a1 e1 env1 state1 state2 v1 wcell1 reads1
+            Haccess1 Heval1 Hwrite1]; subst;
+      inversion SEMA2 as
+        [env2 state2' state3 Hskip2
+         |a2 e2 env2 state2' state3 v2 wcell2 reads2
+            Haccess2 Heval2 Hwrite2]; subst.
     {
       (* Case: skip, skip. trivial. *)
       exists st3 st3. 
@@ -1505,7 +1505,7 @@ Module CInstr <: INSTR.
     {
       (* Case: skip, assign. trivial. *)
       exists st3 st3. splits.
-      eapply eval_expr_prsv_val_if_state_eq with (st':=st1) in H1. 
+      eapply eval_expr_prsv_val_if_state_eq with (st':=st1) in Heval2.
       econs; eauto.
       eapply State.write_cell_stable_under_eq; eauto.
       eapply State.eq_sym; trivial. eapply State.eq_refl. 
@@ -1518,71 +1518,46 @@ Module CInstr <: INSTR.
       eapply State.eq_refl.
       econs; eauto. 
       eapply State.write_cell_stable_under_eq 
-        with (st1:=st1) (st1':=st1) (st2:=st2) (st2':=st3) in H1; eauto.
+        with (st1:=st1) (st1':=st1) (st2:=st2) (st2':=st3)
+        in Hwrite1; eauto.
       eapply State.eq_refl. 
       eapply State.eq_refl.
     }
     {
       (* Case: assign, assign. *)    
-      rename H into Hw1. 
-      rename v0 into v2. rename a0 into a2. rename a into a1. rename wcell0 into wcell2. rename v into v1. rename e into e1. rename e0 into e2. rename wcell into wcell1.
-      assert (exists st1' st2', State.write_cell_dec wcell2 (typeof_access a2) v2 st1' = Some st2' /\ State.eq st1 st1'). {
-        clear - H1 H4.
-        inv H1. inv H4.
-        destruct st1 as ((ge1 & env1) & m1) eqn:Hst1. 
-        destruct st2 as ((ge2 & env2) & m2) eqn:Hst2.
-        destruct st3 as ((ge3 & env3) & m3) eqn:Hst3.
-        simpls.
-        destruct H10 as (EQGE & EQE & EQM4); subst.
-        destruct H11 as (EQGE & EQE & EQM2); subst.
-        destruct H18 as (EQGE & EQE & EQM3); subst.
-        destruct H17 as (EQGE & EQE & EQM1); subst.
-        eapply State.advance_store_valid with (m2:=m') in H15; eauto.
-        destruct H15 as (m2' & Hw2').
-        exists (ge2,env2,m) (ge2,env2,m2').
-        simpls.
-        (* destruct H *)
-        rewrite H1. rewrite H9. rewrite H12.
-        rewrite Ty.basetype_eqb_refl. rewrite H13. rewrite H14.
-        rewrite Hw2'; trivial. splits; trivial. 
-        - clear - EQM4. unfolds State.mem_eq. destruct EQM4; split; trivial.
-        - clear - EQM2 EQM1. unfolds State.mem_eq.
-          destruct EQM1. destruct EQM2. split; trivial.
-          eapply Memory.Mem.extends_extends_compose; eauto.
-          eapply Memory.Mem.extends_extends_compose; eauto.
-      }
-      destruct H as (st1'&st2'& Hw2_dec & HEQ1).
+      destruct
+        (replay_write_on_equivalent_source
+          wcell1 (typeof_access a1) v1 st1 st2
+          wcell2 (typeof_access a2) v2 st3 Hwrite1 Hwrite2)
+        as (st1' & st2' & Hw2_dec & HEQ1).
       eapply State.write_cell_dec_correct in Hw2_dec.
-      assert (cell_neq wcell1 wcell2) as NEQ. {
-        clear - WW.
-        inv WW. inv H1. trivial.
-      }
-      assert (State.write_cell wcell2 (typeof_access a2) v2 st1 st2'). {
+      pose proof (singleton_writes_disjoint wcell1 wcell2 WW) as NEQ.
+      assert
+        (Hwrite2_source :
+          State.write_cell wcell2 (typeof_access a2) v2 st1 st2').
+      {
         clear - Hw2_dec HEQ1.
         eapply State.write_cell_stable_under_eq in Hw2_dec; eauto.
         eapply State.eq_sym; trivial.
         eapply State.eq_refl.
       }
-      pose proof State.write_after_write_cell_neq wcell1 wcell2 v1 v2 
-         st1 st2 st3 st2' (typeof_access a1) (typeof_access a2) H1 H4 NEQ H NOALIAS.
-      destruct H5 as (st3' & Hw1' & Heq).
-      (* Now we tries to prove the execution is permutable *) 
-      (* 1. instantiate st2' with (assign wcell2 with v2)*)
+      pose proof
+        (State.write_after_write_cell_neq wcell1 wcell2 v1 v2
+          st1 st2 st3 st2' (typeof_access a1) (typeof_access a2)
+          Hwrite1 Hwrite2 NEQ Hwrite2_source NOALIAS)
+        as Hswapped_writes.
+      destruct Hswapped_writes as (st3' & Hw1' & Heq).
+      (* Execute the second assignment first. *)
       exists st2' st3'. split.
-      (* 2. Then we prove Iassign a2 e2 => st2': all val of e2 do not read wcell1, so v2 does not change (WR). wcell2 is still accessible. case finished. *)
       - eapply IassignSem with (v:=v2); eauto.
-        + 
+        + (* Its right-hand side does not read the first write cell. *)
           eapply eval_expr_prsv_val_if_neq_wr_cell with (wc:=wcell1) (st2:=st2) (v:=v2); eauto.
-          clear - WR.
-          eapply Forall_forall. intros.
-          eapply Forall_forall in WR; simpls; eauto.
-          inv WR. eapply cell_neq_symm. trivial.
-      (* 3. Then we prove Iassign a1 e1 (st2') => st3: all val of e1 do not read wcell2 (RW), so v1 does not change; and wcell1 is not wcell2 (WW), so the final state are equal (setoid) *)
+          eapply reads_avoid_prior_write. exact WR.
       - split. 
         eapply IassignSem with (v:=v1); eauto.
-        + 
+        + (* The first right-hand side does not read the second write cell. *)
           eapply eval_expr_prsv_val_if_neq_wr_cell with (st1:=st1) (wc:=wcell2) (v':=v2) (bty:=(typeof_access a2)); trivial.
-          inv RW. trivial.
+          eapply prior_reads_avoid_write. exact RW.
         + trivial.
     }
   Qed.

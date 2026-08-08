@@ -1060,34 +1060,40 @@ Lemma make_constrs_eq_correct:
   in_poly (p1 ++ p2) (make_constrs_eq (v1, c1) (v2, c2)) = true <->
   (dot_product v1 p1 + c1)%Z = (dot_product v2 p2 + c2)%Z.
 Proof. 
-  intros. split; intro. 
+  intros p1 p2 v1 v2 c1 c2 Hlen.
+  split; intro Hcomparison.
+  (* Decode the two opposite rows as the two directions of an equality. *)
   {
     simpls. unfolds satisfies_constraint; simpls.
-    rewrite opp_app in H0. rewrite opp_opp in H0.
-    rewrite dot_product_app in H0; trivial.
-    rewrite dot_product_opp_r in H0.
-    do 2 rewrite andb_true_iff in H0.
-    destruct H0 as (Hlt & Hgt & _).
-    assert ((dot_product v1 p1 + c1 <=? dot_product v2 p2 + c2)%Z = true). 
+    rewrite opp_app in Hcomparison. rewrite opp_opp in Hcomparison.
+    rewrite dot_product_app in Hcomparison; trivial.
+    rewrite dot_product_opp_r in Hcomparison.
+    do 2 rewrite andb_true_iff in Hcomparison.
+    destruct Hcomparison as (Hrow12 & Hrow21 & _).
+    assert (Hle12 :
+      (dot_product v1 p1 + c1 <=? dot_product v2 p2 + c2)%Z = true).
     {
-      rewrite dot_product_commutative in Hlt. 
+      rewrite dot_product_commutative in Hrow12.
       replace (dot_product v2 p2) with (dot_product p2 v2). 2: {
         eapply dot_product_commutative.
       }
       lia.
     }
-    assert ((dot_product v2 p2 + c2 <=? dot_product v1 p1 + c1)%Z = true). {
-      rewrite dot_product_app in Hgt; trivial.
+    assert (Hle21 :
+      (dot_product v2 p2 + c2 <=? dot_product v1 p1 + c1)%Z = true).
+    {
+      rewrite dot_product_app in Hrow21; trivial.
       2: {
         unfold "--". rewrite map_length. subst; trivial.
       }
-      rewrite dot_product_opp_r in Hgt. 
-      rewrite dot_product_commutative in Hgt.
+      rewrite dot_product_opp_r in Hrow21.
+      rewrite dot_product_commutative in Hrow21.
       rewrite dot_product_commutative.
       lia. 
     }
     lia.
   }
+  (* Conversely, equality makes both generated inequalities immediate. *)
   {
     simpls. unfolds satisfies_constraint; simpls.
     rewrite opp_app. rewrite opp_opp.
@@ -1095,8 +1101,8 @@ Proof.
     rewrite dot_product_app; trivial.
     do 2 rewrite dot_product_opp_r. 
     do 2 rewrite andb_true_iff.
-    rewrite dot_product_commutative in H0.
-    replace (dot_product v2 p2) with (dot_product p2 v2) in H0. 2: {
+    rewrite dot_product_commutative in Hcomparison.
+    replace (dot_product v2 p2) with (dot_product p2 v2) in Hcomparison. 2: {
       eapply dot_product_commutative.
     }
     splits; trivial; try lia.
@@ -1141,6 +1147,7 @@ Lemma make_poly_lt_correct':
     )
     (make_poly_lt sched1 sched2 dim1 dim2 pol).
 Proof.
+  (* The empty-left cases reduce comparison to the all-zero right bridge. *)
   induction sched1.
   {
     intros until pol. intros Hlen1 Hlen2 Hwf1.
@@ -1193,6 +1200,7 @@ Proof.
     intros until pol. intros Hlen1 Hlen2 Hwf1.
     split; intro. 
     {
+      (* Forward: select the first schedule coordinate that is strictly less. *)
       destruct H as (Hin & Hlt).
       destruct sched2 eqn:Hsched2.
       {
@@ -1256,6 +1264,7 @@ Proof.
       }
     }
     {
+      (* Reverse: interpret either the head candidate or a recursive candidate. *)
       destruct sched2 eqn:Hsched2.
       {
         subst. 
@@ -1432,6 +1441,7 @@ Lemma make_poly_gt_correct':
     )
     (make_poly_gt sched1 sched2 dim1 dim2 pol).
 Proof.
+  (* The empty-left cases reduce comparison to the all-zero right bridge. *)
   induction sched1.
   {
     intros until pol. intros Hlen1 Hlen2 Hwf1.
@@ -1478,6 +1488,7 @@ Proof.
     intros until pol. intros Hlen1 Hlen2 Hwf1.
     split; intro. 
     {
+      (* Forward: select the first schedule coordinate that is strictly greater. *)
       destruct H as (Hin & Hgt).
       destruct sched2 eqn:Hsched2.
       {
@@ -1538,6 +1549,7 @@ Proof.
       }
     }
     {
+      (* Reverse: interpret either the head candidate or a recursive candidate. *)
       destruct sched2 eqn:Hsched2.
       {
         subst. 
@@ -1894,6 +1906,8 @@ Lemma make_poly_eq_correct_true:
      (make_poly_eq func1 func2 dim1 dim2 []) = true
     <-> (veq (affine_product func1 p1) (affine_product func2 p2)). (* <- should also correct *)
 Proof.
+  (* Compare schedule heads while both schedules are nonempty; an unmatched
+     suffix is handled by the corresponding all-zero bridge. *)
   induction func1; intros.
   {
     destruct func2 eqn:Hf2. 
@@ -1920,6 +1934,7 @@ Proof.
     destruct p as (v2, c2). rename a into func2'. rename v into v1. rename c into c1.
     split; intro.  
     {
+        (* Decode the head equality rows, then recurse on the tails. *)
         inv H2.
         eapply make_constrs_eq_correct in H3; eauto. simpls. rewrite H3. unfold veq; simpl.
         rewrite andb_true_iff. split; try lia. 
@@ -1932,6 +1947,7 @@ Proof.
         } 
     }
     {
+      (* Rebuild the head rows and the recursive equality certificate. *)
       inversion H2. 
       rewrite andb_true_iff in H4.
       destruct H4.
@@ -2375,6 +2391,53 @@ Proof.
 Qed.
 
 
+Local Lemma signed_coordinate_constraint_satisfied :
+  forall point total_dim left_index right_index sign,
+    left_index <> right_index ->
+    left_index < total_dim ->
+    right_index < total_dim ->
+    nth left_index point 0%Z = nth right_index point 0%Z ->
+    satisfies_constraint point
+      (assign right_index sign
+         (assign left_index (- sign)%Z (V0 total_dim)), 0%Z) = true.
+Proof.
+  intros point total_dim left_index right_index sign
+         Hindices Hleft_bound Hright_bound Hcoordinates.
+  unfold satisfies_constraint; simpl.
+  rewrite !dot_product_assign_right.
+  assert (Hleft_zero : nth left_index (V0 total_dim) 0%Z = 0%Z).
+  {
+    unfold V0.
+    apply nth_repeat_default.
+  }
+  assert
+    (Hright_zero :
+       nth right_index (assign left_index (- sign)%Z (V0 total_dim)) 0%Z =
+       0%Z).
+  {
+    assert
+      (Hoff_index :
+         nth right_index
+           (assign left_index (- sign)%Z (V0 total_dim)) 0%Z =
+         nth right_index (V0 total_dim) 0%Z).
+    {
+      eapply
+        (nth_assign_different
+           (V0 total_dim) right_index left_index 0%Z (- sign)%Z).
+      - congruence.
+      - unfold V0; rewrite repeat_length; exact Hleft_bound.
+    }
+    rewrite Hoff_index.
+    apply nth_repeat_default.
+  }
+  unfold V0 in *.
+  rewrite dot_product_repeat_zero_right, Hleft_zero, Hright_zero,
+          Hcoordinates.
+  apply Z.leb_le.
+  lia.
+Qed.
+
+
 Lemma make_poly_env_eq'_correct: 
   forall n len1 len2 len3 p1 p2,
     firstn n (firstn len1 p1) = firstn n (firstn len1 p2) ->
@@ -2383,114 +2446,76 @@ Lemma make_poly_env_eq'_correct:
     length p2 = len1 + len3 ->
     in_poly (p1 ++ p2) (make_poly_env_eq' len1 len2 len3 n) = true.
 Proof.
-  induction n.
-  {
-    intros; simpls; trivial.
-  }
-  {
-    intros.
+  induction n as [|n IHn].
+  - intros; simpls; trivial.
+  - intros len1 len2 len3 p1 p2
+           Hprefix Hprefix_bound Hp1_length Hp2_length.
     destruct p1 eqn:Hp1; destruct p2 eqn:Hp2; simpls; try lia.
     rename z into z1; rename l into l1; rename z0 into z2; rename l0 into l2.
-    assert (exists len1', len1 = S len1'). {
-      destruct len1 eqn:Hlen1; simpls; try lia.
+    assert (Hlen1_positive : exists len1', len1 = S len1'). {
+      destruct len1 eqn:Hlen1_case; simpls; try lia.
       eexists; eauto. 
     }
-    destruct H3 as [len1' Hlen1'].
-    rewrite Hlen1' in *; simpls. inversion H1. inversion H2. 
+    destruct Hlen1_positive as [len1' Hlen1'].
+    rewrite Hlen1' in *; simpls.
+    assert (Htail_len1 : length l1 = len1' + len2) by lia.
+    assert (Htail_len2 : length l2 = len1' + len3) by lia.
+
+    (* The shared environment prefix gives the one coordinate equality used
+       by both signed constraint rows. *)
+    assert
+      (Hcoordinate :
+         nth n ((z1 :: l1) ++ (z2 :: l2)) 0%Z =
+         nth (S (length l1 + n)) ((z1 :: l1) ++ (z2 :: l2)) 0%Z).
+    {
+      rewrite <- Hp1, <- Hp2.
+      do 2 rewrite firstn_firstn in Hprefix.
+      replace (Init.Nat.min n len1') with n in Hprefix; try lia.
+      do 2 rewrite <- firstn_cons in Hprefix.
+      rewrite <- Hp1 in Hprefix; rewrite <- Hp2 in Hprefix.
+      replace (S (length l1 + n)) with (S (length l1) + n) by lia.
+      replace (S (length l1)) with (length p1).
+      2: { rewrite Htail_len1, Hp1; trivial. }
+      rewrite app_nth2_plus.
+      rewrite app_nth1 by (rewrite Hp1; simpl; rewrite Htail_len1; lia).
+      eapply firstn_eq_implies_nth_eq with (n := S n) (n' := n); eauto.
+    }
     do 2 rewrite andb_true_iff.
     splits.
-    { 
-      (* *)
-      unfolds satisfies_constraint.
-      replace (z1 ::l1 ++ z2 :: l2) with ((z1 :: l1) ++ (z2 :: l2)); trivial.
-      rewrite <- Hp1. rewrite <- Hp2. simpls.
-
-      replace (S (length l1 + S len1' + len3)) with ((S (length l1)) + (S (length l2))); try lia.
-
-      rewrite dot_product_assign_right.
-      rewrite dot_product_assign_right.
-      rewrite dot_product_repeat_zero_right.
-      assert (nth n (p1 ++ p2) 0%Z = nth (S (length l1 + n)) (p1 ++ p2) 0%Z). {
-        do 2 rewrite firstn_firstn in H.
-        replace (Init.Nat.min n len1') with n in H; try lia.
-        do 2 rewrite <- firstn_cons in H.
-        rewrite <- Hp1 in H; rewrite <- Hp2 in H.
-
-        replace (S (length l1 + n)) with ((S (length l1)) + n); try lia.
-        replace (S (length l1)) with (length p1). 2: {rewrite H4. rewrite Hp1. trivial. }
-
-        rewrite app_nth2_plus.
-        rewrite app_nth1. 2: { rewrite Hp1. simpl. rewrite H4. lia. }
-        clear - H.
-        eapply firstn_eq_implies_nth_eq with (n:=(S n)) (n':=n); eauto.
-      }
-      repeat rewrite <- H3.
-      assert (nth n (V0 (S (length l1) + S (length l2))) 0%Z = 0%Z). {
-        unfold V0.
-        eapply nth_repeat_default; eauto.
-      }
-      rewrite H6.
-      assert (nth (S (length l1 + n)) (assign n (-1) (V0 (S (length l1) + S (length l2)))) 0%Z = 0%Z). {
-        rewrite nth_assign_different; try lia; eauto. 
-        eapply nth_repeat_default; eauto.
-        unfold V0; rewrite repeat_length.
-        lia.
-      }
-      rewrite H7.
-      lia.
-    }
-    { (* copy paste *)
-      unfolds satisfies_constraint.
-      replace (z1 ::l1 ++ z2 :: l2) with ((z1 :: l1) ++ (z2 :: l2)); trivial.
-      rewrite <- Hp1. rewrite <- Hp2. simpls.
-
-      replace (S (length l1 + S len1' + len3)) with ((S (length l1)) + (S (length l2))); try lia.
-
-      rewrite dot_product_assign_right.
-      rewrite dot_product_assign_right.
-      rewrite dot_product_repeat_zero_right.
-      assert (nth n (p1 ++ p2) 0%Z = nth (S (length l1 + n)) (p1 ++ p2) 0%Z). {
-        do 2 rewrite firstn_firstn in H.
-        replace (Init.Nat.min n len1') with n in H; try lia.
-        do 2 rewrite <- firstn_cons in H.
-        rewrite <- Hp1 in H; rewrite <- Hp2 in H.
-
-        replace (S (length l1 + n)) with ((S (length l1)) + n); try lia.
-        replace (S (length l1)) with (length p1). 2: {rewrite H4. rewrite Hp1. trivial. }
-
-        rewrite app_nth2_plus.
-        rewrite app_nth1. 2: { rewrite Hp1. simpl. rewrite H4. lia. }
-        clear - H.
-        eapply firstn_eq_implies_nth_eq with (n:=(S n)) (n':=n); eauto.
-      }
-      repeat rewrite <- H3.
-      assert (nth n (V0 (S (length l1) + S (length l2))) 0%Z = 0%Z). {
-        unfold V0.
-        eapply nth_repeat_default; eauto.
-      }
-      rewrite H6.
-      assert (nth (S (length l1 + n)) (assign n (1) (V0 (S (length l1) + S (length l2)))) 0%Z = 0%Z). {
-        rewrite nth_assign_different; try lia; eauto. 
-        eapply nth_repeat_default; eauto.
-        unfold V0; rewrite repeat_length.
-        lia.
-      }
-      rewrite H7.
-      lia.
+    (* The two rows differ only in the chosen sign. *)
+    {
+      replace (S (length l1 + S len1' + len3))
+        with (S (length l1) + S (length l2)) by lia.
+      eapply signed_coordinate_constraint_satisfied.
+      - lia.
+      - lia.
+      - lia.
+      - rewrite <- Htail_len1; exact Hcoordinate.
     }
     {
-       
+      replace (S (length l1 + S len1' + len3))
+        with (S (length l1) + S (length l2)) by lia.
+      eapply signed_coordinate_constraint_satisfied.
+      - lia.
+      - lia.
+      - lia.
+      - rewrite <- Htail_len1; exact Hcoordinate.
+    }
+    (* Recurse after removing the coordinate handled by these rows. *)
+    {
       replace (z1 :: l1 ++ z2 :: l2) with ((z1 :: l1) ++ (z2 :: l2)). 2: {trivial. }
       eapply IHn with (len1:=S len1'); trivial. 2: {try lia. }
-      (* replace (S len1' -n) with (S (len1' - n)); try lia. *)
       replace (firstn (S len1') (z1 :: l1)) with (z1 :: (firstn len1' l1)); trivial.
       replace (firstn (S len1') (z2 :: l2)) with (z2 :: (firstn len1' l2)); trivial.
-      inv H.
+      assert (Hhead : z1 = z2) by congruence.
+      assert
+        (Htail_prefix :
+           firstn n (firstn len1' l1) =
+           firstn n (firstn len1' l2)) by congruence.
+      subst z2.
       destruct n eqn:Hn; simpl; trivial.
-      clear - H7.
-      eapply firstn_ge_implies_firstn in H7; eauto.
+      eapply firstn_ge_implies_firstn in Htail_prefix; eauto.
     }  
-  }
 Qed.
 
 (** make_poly_env_eq is used for validate_two_accesses, which only works on the 

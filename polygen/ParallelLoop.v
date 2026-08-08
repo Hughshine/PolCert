@@ -295,12 +295,15 @@ Proof.
     destruct Hrec as [Hhead Htail].
     destruct pre1 as [|tr0 pre1].
     + simpl in Hshape.
+      pose proof
+        (f_equal (@tl (list InstrPoint)) Hshape) as Htail_shape.
+      simpl in Htail_shape.
       inversion Hshape; subst tr1.
       apply Hhead with (ip1 := ip1) (ip2 := ip2); auto.
       apply in_concat.
       exists tr2.
       split; auto.
-      rewrite H1.
+      rewrite Htail_shape.
       apply in_or_app.
       right. simpl. auto.
     + simpl in Hshape.
@@ -631,32 +634,20 @@ Proof.
            |d lb' ub' body' env' zs trs tr' Hzs Hfor Hinter];
         subst.
       * simpl in Hglobal.
-        lazymatch goal with
-        | Hfor0 :
-            Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
-            pose proof
-              (ordered_par_trace_forall2_of_global
-                 body env IHbody Hglobal zs0 trs0 Hfor0) as Hordered_for
-        end.
+        pose proof
+          (ordered_par_trace_forall2_of_global
+             body env IHbody Hglobal _ _ Hfor) as Hordered_for.
         eapply OPTLoopSeq; eauto.
       * simpl in Hglobal.
-        lazymatch goal with
-        | Hfor0 :
-            Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
-            pose proof
-              (ordered_par_trace_forall2_of_global
-                 body env IHbody Hglobal zs0 trs0 Hfor0) as Hordered_for
-        end.
+        pose proof
+          (ordered_par_trace_forall2_of_global
+             body env IHbody Hglobal _ _ Hfor) as Hordered_for.
         eapply OPTLoopVec; eauto.
       * simpl in Hglobal.
         destruct Hglobal as [Hglobal_body Hglobal_family].
-        lazymatch goal with
-        | Hfor0 :
-            Forall2 (fun z tri => par_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
-            pose proof
-              (ordered_par_trace_forall2_of_global
-                 body env IHbody Hglobal_body zs0 trs0 Hfor0) as Hordered_for
-        end.
+        pose proof
+          (ordered_par_trace_forall2_of_global
+             body env IHbody Hglobal_body _ _ Hfor) as Hordered_for.
         eapply OPTLoopPar; eauto.
     + inversion Htrace; constructor.
     + inversion Htrace; subst.
@@ -1092,14 +1083,10 @@ Proof.
     + inversion Htrace as
           [| | | | mode' od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat];
         subst.
-      match goal with
-      | Hfor0 :
-          Forall2 (fun z tri => seq_trace body (z :: env) tri) ?zs0 ?trs0 |- _ =>
-          pose proof
-            (seq_trace_forall2_refines_erased
-               body env IHbody zs0 trs0 mem1 mem2 Hsafe Hfor0 Hsem)
-            as [mem2' [Hloop_sem Heq]]
-      end.
+      pose proof
+        (seq_trace_forall2_refines_erased
+           body env IHbody _ _ mem1 mem2 Hsafe Hfor Hsem)
+        as [mem2' [Hloop_sem Heq]].
       exists mem2'. split.
       * econstructor. exact Hloop_sem.
       * exact Heq.
@@ -1355,17 +1342,16 @@ Proof.
        base_stmt_preserve_nonalias_goal
        base_stmts_preserve_nonalias_goal).
   - intros lb ub body IHbody env mem1 mem2 Hsem Hna.
-    inversion Hsem; subst.
-    lazymatch goal with
-    | Hiter : Instr.IterSem.iter_semantics _ _ _ _ |- _ =>
-        eapply
-          (iter_semantics_preserve_nonalias
-             Z
-             (fun x mem1 mem2 => BaseLoop.loop_semantics body (x :: env) mem1 mem2));
-          [intros x mem1' mem2' Hbody_sem Hna'; eapply IHbody; eauto
-          | exact Hiter
-          | exact Hna]
-    end.
+    inversion Hsem as
+        [| | | | |
+         env' lb' ub' body' mem1' mem2' Hiterations]; subst.
+    eapply
+      (iter_semantics_preserve_nonalias
+         Z
+         (fun x mem1 mem2 => BaseLoop.loop_semantics body (x :: env) mem1 mem2));
+      [intros x mem1' mem2' Hbody_sem Hna'; eapply IHbody; eauto
+      | exact Hiterations
+      | exact Hna].
   - intros i es env mem1 mem2 Hsem Hna.
     inversion Hsem; subst.
     eauto using Instr.sema_prsv_nonalias.
@@ -1417,7 +1403,10 @@ Lemma interleave_safe_refines_concat :
 Proof.
   intros trs out st1 st2 Hna Hsafe.
   revert st1 st2 Hna.
-  induction Hsafe; intros st1 st2 Hna Hsem.
+  induction Hsafe as
+      [|trs out Hsafe IHsafe
+       |pre x xs post out Hbefore Hsafe IHsafe];
+    intros st1 st2 Hna Hsem.
   - simpl in Hsem.
     exists st1.
     split.
@@ -1425,17 +1414,18 @@ Proof.
     + eapply Instr.State.eq_sym.
       eapply instr_point_list_semantics_nil_inv; eauto.
   - simpl in Hsem.
-    eapply IHHsafe; eauto.
+    eapply IHsafe; eauto.
   - destruct (instr_point_list_semantics_cons_inv _ _ _ _ Hsem)
       as [stmid [Hx Htail]].
     assert (Hna_mid : Instr.NonAlias stmid).
     {
       eapply instr_point_sema_preserve_nonalias; eauto.
     }
-    destruct (IHHsafe stmid st2 Hna_mid Htail)
+    (* Sequentialize the remaining interleaving after executing [x]. *)
+    destruct (IHsafe stmid st2 Hna_mid Htail)
       as [st2' [Hconcat_tail Heq_tail]].
     assert
-      (Hshape_rest :
+      (Hconcat_reduced :
          concat (pre ++ xs :: post) =
          concat pre ++ concat (xs :: post)).
     {
@@ -1443,17 +1433,17 @@ Proof.
       reflexivity.
     }
     assert
-      (Hcons :
+      (Hselected_first :
          ILSema.instr_point_list_semantics
            (x :: concat pre ++ concat (xs :: post)) st1 st2').
     {
       econstructor.
       - exact Hx.
-      - rewrite <- Hshape_rest.
+      - rewrite <- Hconcat_reduced.
         exact Hconcat_tail.
     }
     assert
-      (Hshape :
+      (Hconcat_original :
          concat (pre ++ (x :: xs) :: post) =
          concat pre ++ x :: concat (xs :: post)).
     {
@@ -1461,22 +1451,23 @@ Proof.
       simpl.
       reflexivity.
     }
+    (* Move [x] behind the earlier families to recover concatenation order. *)
     destruct
       (move_back_permutable
          x (concat pre) (concat (xs :: post)) st1 st2'
-         Hna H Hcons)
+         Hna Hbefore Hselected_first)
       as [st2'' [Hconcat_full Heq_move]].
     assert
-      (Hconcat_full' :
+      (Horiginal_sem :
          ILSema.instr_point_list_semantics
            (concat (pre ++ (x :: xs) :: post)) st1 st2'').
     {
-      rewrite Hshape.
+      rewrite Hconcat_original.
       exact Hconcat_full.
     }
     exists st2''.
     split.
-    + exact Hconcat_full'.
+    + exact Horiginal_sem.
     + eapply Instr.State.eq_trans.
       * exact Heq_tail.
       * exact Heq_move.
@@ -1568,57 +1559,36 @@ Proof.
            |d lb' ub' body' env' zs trs tr' Hzs Hfor Hordered_for Hfamily Hinter];
         subst.
       * simpl in Hsafe.
-        match goal with
-        | Hfor0 :
-            Forall2
-              (fun z tri => ordered_par_trace body (z :: env) tri)
-              ?zs0 ?trs0 |- _ =>
-            pose proof
-              (ordered_par_trace_forall2_refines_erased
-                 body env IHbody zs0 trs0 mem1 mem2
-                 Hna Hsafe Hfor0 Hsem)
-              as [mem2' [Hloop_sem Heq]]
-        end.
+        pose proof
+          (ordered_par_trace_forall2_refines_erased
+             body env IHbody _ _ mem1 mem2
+             Hna Hsafe Hordered_for Hsem)
+          as [mem2' [Hloop_sem Heq]].
         exists mem2'. split.
         -- econstructor. exact Hloop_sem.
         -- exact Heq.
       * simpl in Hsafe.
-        match goal with
-        | Hfor0 :
-            Forall2
-              (fun z tri => ordered_par_trace body (z :: env) tri)
-              ?zs0 ?trs0 |- _ =>
-            pose proof
-              (ordered_par_trace_forall2_refines_erased
-                 body env IHbody zs0 trs0 mem1 mem2
-                 Hna Hsafe Hfor0 Hsem)
-              as [mem2' [Hloop_sem Heq]]
-        end.
+        pose proof
+          (ordered_par_trace_forall2_refines_erased
+             body env IHbody _ _ mem1 mem2
+             Hna Hsafe Hordered_for Hsem)
+          as [mem2' [Hloop_sem Heq]].
         exists mem2'. split.
         -- econstructor. exact Hloop_sem.
         -- exact Heq.
       * simpl in Hsafe.
-        lazymatch goal with
-        | Hfor0 :
-            Forall2
-              (fun z tri => ordered_par_trace body (z :: env) tri)
-              ?zs0 ?trs0 |- _ =>
-            lazymatch goal with
-            | Hinter0 : interleave_family trs0 ?tr0 |- _ =>
-                pose proof
-                  (family_ordered_interleave_safe
-                     trs0 tr0 Hfamily Hinter0) as Hinter_safe;
-                pose proof
-                  (interleave_safe_refines_concat
-                     trs0 tr0 mem1 mem2 Hna Hinter_safe Hsem)
-                  as [mem2a [Hconcat_sem Heq_concat]];
-                pose proof
-                  (ordered_par_trace_forall2_refines_erased
-                     body env IHbody zs0 trs0 mem1 mem2a
-                     Hna Hsafe Hfor0 Hconcat_sem)
-                  as [mem2' [Hloop_sem Heq_seq]]
-            end
-        end.
+        pose proof
+          (family_ordered_interleave_safe
+             _ _ Hfamily Hinter) as Hinter_safe.
+        pose proof
+          (interleave_safe_refines_concat
+             _ _ mem1 mem2 Hna Hinter_safe Hsem)
+          as [mem2a [Hconcat_sem Heq_concat]].
+        pose proof
+          (ordered_par_trace_forall2_refines_erased
+             body env IHbody _ _ mem1 mem2a
+             Hna Hsafe Hordered_for Hconcat_sem)
+          as [mem2' [Hloop_sem Heq_seq]].
         exists mem2'. split.
         -- econstructor. exact Hloop_sem.
         -- eapply Instr.State.eq_trans; eauto.
@@ -2293,6 +2263,23 @@ Proof.
     exists (z :: zs). split; constructor; assumption.
 Qed.
 
+Local Lemma par_trace_families_refine :
+  forall body1 body2
+      (env1 env2 : Z -> list Z) zs trs,
+    (forall z tr,
+      par_trace body1 (env1 z) tr ->
+      exists tr0,
+        par_trace body2 (env2 z) tr0 /\
+        Forall2 point_sema_equiv tr tr0) ->
+    Forall2 (fun z tr => par_trace body1 (env1 z) tr) zs trs ->
+    exists trs0,
+      Forall2 (fun z tr => par_trace body2 (env2 z) tr) zs trs0 /\
+      Forall2 (Forall2 point_sema_equiv) trs trs0.
+Proof.
+  intros body1 body2 env1 env2 zs trs Hpoint Htraces.
+  eapply Forall2_trace_refine; eauto.
+Qed.
+
 Definition subst_trace_stmt_goal (s : stmt) : Prop :=
   forall pre suf rep tr,
     trace_safe_stmt s ->
@@ -2315,6 +2302,36 @@ Definition subst_trace_stmts_goal (ss : stmt_list) : Prop :=
         (pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr0 /\
       Forall2 point_sema_equiv tr tr0.
 
+Local Lemma subst_par_trace_families_refine :
+  forall body pre suf rep zs trs,
+    subst_trace_stmt_goal body ->
+    trace_safe_stmt body ->
+    trace_safe_stmt
+      (subst_stmt_at (S (length pre)) (lift_expr rep) body) ->
+    Forall2
+      (fun z tr =>
+        par_trace
+          (subst_stmt_at (S (length pre)) (lift_expr rep) body)
+          (z :: pre ++ suf) tr)
+      zs trs ->
+    exists trs0,
+      Forall2
+        (fun z tr =>
+          par_trace body
+            (z :: pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tr)
+        zs trs0 /\
+      Forall2 (Forall2 point_sema_equiv) trs trs0.
+Proof.
+  intros body pre suf rep zs trs IH Hsafe Hsafe_sub Htraces.
+  eapply par_trace_families_refine; [|exact Htraces].
+  intros z tr Htrace.
+  specialize
+    (IH (z :: pre) suf (lift_expr rep) tr Hsafe Hsafe_sub Htrace).
+  simpl in IH.
+  rewrite lift_expr_correct in IH.
+  exact IH.
+Qed.
+
 Lemma subst_par_trace_refine_mutual :
   (forall s, subst_trace_stmt_goal s) /\
   (forall ss, subst_trace_stmts_goal ss).
@@ -2330,23 +2347,9 @@ Proof.
              Hrange Htraces Hconcat
            | |]; subst.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace
-            (subst_stmt_at (S (length pre)) (lift_expr rep) body)
-            (z :: pre ++ suf) tri)
-          (fun z tri => par_trace body
-            (z :: pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (subst_par_trace_families_refine
+          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz.
-        specialize (IH (z :: pre) suf (lift_expr rep) tri
-          Hsafe Hsafe_sub).
-        simpl in IH.
-        rewrite lift_expr_correct in IH.
-        apply IH. exact Hz.
-      }
       exists (concat trs0). split.
       * eapply PTLoopSeq with
             (zs := Zrange
@@ -2364,23 +2367,9 @@ Proof.
            d0 lb0 ub0 body0 env0 zs trs' tr'
              Hrange Htraces Hinter]; subst.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace
-            (subst_stmt_at (S (length pre)) (lift_expr rep) body)
-            (z :: pre ++ suf) tri)
-          (fun z tri => par_trace body
-            (z :: pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (subst_par_trace_families_refine
+          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz.
-        specialize (IH (z :: pre) suf (lift_expr rep) tri
-          Hsafe Hsafe_sub).
-        simpl in IH.
-        rewrite lift_expr_correct in IH.
-        apply IH. exact Hz.
-      }
       destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
         as [tr0 [Hinter0 Hrel0]].
       exists tr0. split.
@@ -2401,23 +2390,9 @@ Proof.
              Hrange Htraces Hconcat
            |]; subst.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace
-            (subst_stmt_at (S (length pre)) (lift_expr rep) body)
-            (z :: pre ++ suf) tri)
-          (fun z tri => par_trace body
-            (z :: pre ++ BaseLoop.eval_expr (pre ++ suf) rep :: suf) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (subst_par_trace_families_refine
+          body pre suf rep _ _ IH Hsafe Hsafe_sub Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz.
-        specialize (IH (z :: pre) suf (lift_expr rep) tri
-          Hsafe Hsafe_sub).
-        simpl in IH.
-        rewrite lift_expr_correct in IH.
-        apply IH. exact Hz.
-      }
       exists (concat trs0). split.
       * eapply PTLoopVec with
             (zs := Zrange
@@ -2559,17 +2534,12 @@ Proof.
                Hrange Htraces Hconcat
              | |]; subst.
         destruct
-          (Forall2_trace_refine
-            _ _ _
-            (fun z tri => par_trace
-              (singleton_elim_stmt body) (z :: env) tri)
-            (fun z tri => par_trace body (z :: env) tri)
-            (Forall2 point_sema_equiv) _ _ Htraces)
+          (par_trace_families_refine
+            (singleton_elim_stmt body) body
+            (fun z => z :: env) (fun z => z :: env)
+            _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_clean Hz)
+            Htraces)
           as [trs0 [Htraces0 Hrels]].
-        {
-          intros z tri Hz.
-          eapply IH; eauto.
-        }
         exists (concat trs0). split.
         -- eapply PTLoopSeq with
               (zs := Zrange
@@ -2583,17 +2553,12 @@ Proof.
            d0 lb0 ub0 body0 env0 zs trs' tr'
              Hrange Htraces Hinter]; subst.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace
-            (singleton_elim_stmt body) (z :: env) tri)
-          (fun z tri => par_trace body (z :: env) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (par_trace_families_refine
+          (singleton_elim_stmt body) body
+          (fun z => z :: env) (fun z => z :: env)
+          _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_clean Hz)
+          Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz.
-        eapply IH; eauto.
-      }
       destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
         as [tr0 [Hinter0 Hrel0]].
       exists tr0. split.
@@ -2610,17 +2575,12 @@ Proof.
              Hrange Htraces Hconcat
            |]; subst.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace
-            (singleton_elim_stmt body) (z :: env) tri)
-          (fun z tri => par_trace body (z :: env) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (par_trace_families_refine
+          (singleton_elim_stmt body) body
+          (fun z => z :: env) (fun z => z :: env)
+          _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_clean Hz)
+          Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz.
-        eapply IH; eauto.
-      }
       exists (concat trs0). split.
       * eapply PTLoopVec with
             (zs := Zrange
@@ -3057,6 +3017,25 @@ Local Definition structural_trace_stmts_goal (ss : stmt_list) : Prop :=
     par_traces (cleanup_stmts ss) env tr ->
     par_traces ss env tr.
 
+Local Lemma par_traces_cons_reflect :
+  forall head1 head2 tail1 tail2 env tr,
+    (forall head_tr,
+      par_trace head1 env head_tr ->
+      par_trace head2 env head_tr) ->
+    (forall tail_tr,
+      par_traces tail1 env tail_tr ->
+      par_traces tail2 env tail_tr) ->
+    par_traces (SCons head1 tail1) env tr ->
+    par_traces (SCons head2 tail2) env tr.
+Proof.
+  intros head1 head2 tail1 tail2 env tr Hhead_reflect Htail_reflect Htrace.
+  inversion Htrace as
+      [|env0 head0 tail0 head_tr tail_tr Hhead Htail]; subst.
+  econstructor.
+  - eapply Hhead_reflect. exact Hhead.
+  - eapply Htail_reflect. exact Htail.
+Qed.
+
 Local Lemma cleanup_structural_par_trace_reflect_mutual :
   (forall s, structural_trace_stmt_goal s) /\
   (forall ss, structural_trace_stmts_goal ss).
@@ -3111,16 +3090,14 @@ Proof.
   - intros s IHs ss IHss env tr Htrace. simpl in Htrace.
     destruct (cleanup_stmt s) as
       [mode od lb ub body|i es|clean_ss|tst body] eqn:Hclean.
-    + inversion Htrace as
-          [|env0 clean_s clean_tail tr1 tr2 Hhead Htail]; subst.
-      econstructor.
-      * eapply IHs. exact Hhead.
-      * eapply IHss. exact Htail.
-    + inversion Htrace as
-          [|env0 clean_s clean_tail tr1 tr2 Hhead Htail]; subst.
-      econstructor.
-      * eapply IHs. exact Hhead.
-      * eapply IHss. exact Htail.
+    + eapply par_traces_cons_reflect.
+      * intros head_tr Hhead. eapply IHs. exact Hhead.
+      * intros tail_tr Htail. eapply IHss. exact Htail.
+      * exact Htrace.
+    + eapply par_traces_cons_reflect.
+      * intros head_tr Hhead. eapply IHs. exact Hhead.
+      * intros tail_tr Htail. eapply IHss. exact Htail.
+      * exact Htrace.
     + destruct clean_ss as [|clean_s clean_tail].
       * assert (Hskip :
           par_trace (cleanup_stmt s) env []).
@@ -3131,16 +3108,14 @@ Proof.
         eapply PTTracesCons with (tr1 := []) (tr2 := tr).
         -- eapply IHs. exact Hskip.
         -- eapply IHss. exact Htrace.
-      * inversion Htrace as
-            [|env0 clean_s0 clean_tail0 tr1 tr2 Hhead Htail]; subst.
-        econstructor.
-        -- eapply IHs. exact Hhead.
-        -- eapply IHss. exact Htail.
-    + inversion Htrace as
-          [|env0 clean_s clean_tail tr1 tr2 Hhead Htail]; subst.
-      econstructor.
-      * eapply IHs. exact Hhead.
-      * eapply IHss. exact Htail.
+      * eapply par_traces_cons_reflect.
+        -- intros head_tr Hhead. eapply IHs. exact Hhead.
+        -- intros tail_tr Htail. eapply IHss. exact Htail.
+        -- exact Htrace.
+    + eapply par_traces_cons_reflect.
+      * intros head_tr Hhead. eapply IHs. exact Hhead.
+      * intros tail_tr Htail. eapply IHss. exact Htail.
+      * exact Htrace.
 Qed.
 
 Local Lemma cleanup_structural_par_trace_reflect :
@@ -3196,6 +3171,24 @@ Local Definition simplify_trace_stmts_goal (ss : stmt_list) : Prop :=
       par_traces ss env tr0 /\
       Forall2 point_sema_equiv tr tr0.
 
+Local Lemma simplify_par_trace_families_refine :
+  forall body env zs trs,
+    simplify_trace_stmt_goal body ->
+    trace_safe_stmt body ->
+    trace_safe_stmt (simplify_stmt body) ->
+    Forall2
+      (fun z tr => par_trace (simplify_stmt body) (z :: env) tr)
+      zs trs ->
+    exists trs0,
+      Forall2 (fun z tr => par_trace body (z :: env) tr) zs trs0 /\
+      Forall2 (Forall2 point_sema_equiv) trs trs0.
+Proof.
+  intros body env zs trs IH Hsafe Hsafe_simpl Htraces.
+  eapply par_trace_families_refine; [|exact Htraces].
+  intros z tr Htrace.
+  eapply IH; eauto.
+Qed.
+
 Local Lemma simplify_par_trace_reflect_mutual :
   (forall s, simplify_trace_stmt_goal s) /\
   (forall ss, simplify_trace_stmts_goal ss).
@@ -3211,15 +3204,9 @@ Proof.
            | |]; subst.
       rewrite !simpl_expr_correct in Htraces.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace (simplify_stmt body) (z :: env) tri)
-          (fun z tri => par_trace body (z :: env) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (simplify_par_trace_families_refine
+          body env _ _ IH Hsafe Hsafe_simpl Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz. eapply IH; eauto.
-      }
       exists (concat trs0). split.
       * eapply PTLoopSeq with
           (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))
@@ -3230,15 +3217,9 @@ Proof.
            d0 lb0 ub0 body0 env0 zs trs tr0 Hrange Htraces Hinter]; subst.
       rewrite !simpl_expr_correct in Htraces.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace (simplify_stmt body) (z :: env) tri)
-          (fun z tri => par_trace body (z :: env) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (simplify_par_trace_families_refine
+          body env _ _ IH Hsafe Hsafe_simpl Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz. eapply IH; eauto.
-      }
       destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
         as [tr0 [Hinter0 Hrel0]].
       exists tr0. split.
@@ -3252,15 +3233,9 @@ Proof.
            |]; subst.
       rewrite !simpl_expr_correct in Htraces.
       destruct
-        (Forall2_trace_refine
-          _ _ _
-          (fun z tri => par_trace (simplify_stmt body) (z :: env) tri)
-          (fun z tri => par_trace body (z :: env) tri)
-          (Forall2 point_sema_equiv) _ _ Htraces)
+        (simplify_par_trace_families_refine
+          body env _ _ IH Hsafe Hsafe_simpl Htraces)
         as [trs0 [Htraces0 Hrels]].
-      {
-        intros z tri Hz. eapply IH; eauto.
-      }
       exists (concat trs0). split.
       * eapply PTLoopVec with
           (zs := Zrange (BaseLoop.eval_expr env lb) (BaseLoop.eval_expr env ub))

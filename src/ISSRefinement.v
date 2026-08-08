@@ -69,19 +69,21 @@ Lemma payload_eq_except_domainb_correct :
 Proof.
   intros pi1 pi2 H.
   unfold payload_eq_except_domainb in H.
-  repeat match goal with
-  | Hconj : _ && _ = true |- _ => apply andb_true_iff in Hconj
-  | Hconj : _ /\ _ |- _ => destruct Hconj
-  end.
-  repeat match goal with
-  | Heq : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in Heq
-  | Heq : Instr.eqb _ _ = true |- _ => apply Instr.eqb_eq in Heq
-  | Heq : listzzs_strict_eqb _ _ = true |- _ => apply listzzs_strict_eqb_eq in Heq
-  | Heq : PointWitness.point_space_witness_eqb _ _ = true |- _ =>
-      apply PointWitness.point_space_witness_eqb_eq in Heq
-  | Heq : access_list_strict_eqb _ _ = true |- _ =>
-      apply access_list_strict_eqb_eq in Heq
-  end.
+  apply andb_true_iff in H as [H Hraccess].
+  apply andb_true_iff in H as [H Hwaccess].
+  apply andb_true_iff in H as [H Haccess_transformation].
+  apply andb_true_iff in H as [H Htransformation].
+  apply andb_true_iff in H as [H Hwitness].
+  apply andb_true_iff in H as [H Hsched].
+  apply andb_true_iff in H as [Hdepth Hinstr].
+  apply Nat.eqb_eq in Hdepth.
+  apply Instr.eqb_eq in Hinstr.
+  apply listzzs_strict_eqb_eq in Hsched.
+  apply PointWitness.point_space_witness_eqb_eq in Hwitness.
+  apply listzzs_strict_eqb_eq in Htransformation.
+  apply listzzs_strict_eqb_eq in Haccess_transformation.
+  apply access_list_strict_eqb_eq in Hwaccess.
+  apply access_list_strict_eqb_eq in Hraccess.
   unfold payload_eq_except_domain.
   repeat split.
   all: assumption.
@@ -819,6 +821,82 @@ Proof.
     reflexivity.
 Qed.
 
+Local Lemma child_endpoint_facts :
+  forall before_pis after_pis stmt_ws cuts parent source i piece,
+    stmt_domain_cut_relation before_pis after_pis cuts stmt_ws ->
+    nth_error before_pis parent = Some source ->
+    nth_error (children_for_parent parent after_pis stmt_ws) i = Some piece ->
+    exists w piece_constrs,
+      nth_error (child_pairs_for_parent parent after_pis stmt_ws) i =
+        Some (piece, w) /\
+      isw_parent_stmt w = parent /\
+      stmt_domain_matches_cuts before_pis cuts piece w /\
+      nth_error before_pis (isw_parent_stmt w) = Some source /\
+      iss_piece_constraints cuts (isw_piece_signs w) = Some piece_constrs.
+Proof.
+  intros before_pis after_pis stmt_ws cuts parent source i piece
+         Hrel Hsource Hchild.
+  unfold children_for_parent in Hchild.
+  apply nth_error_map_inv in Hchild.
+  destruct Hchild as [[piece' w] [Hpair Hpiece]].
+  simpl in Hpiece.
+  subst piece'.
+  assert (Hin_pair :
+            In (piece, w)
+              (child_pairs_for_parent parent after_pis stmt_ws)).
+  {
+    eapply nth_error_In.
+    exact Hpair.
+  }
+  unfold child_pairs_for_parent, iss_pairs in Hin_pair.
+  apply filter_In in Hin_pair.
+  destruct Hin_pair as [Hin_pair Hparent].
+  simpl in Hparent.
+  apply Nat.eqb_eq in Hparent.
+  pose proof
+    (Forall2_combine_inv _ _ _ _ _ _ _ Hrel Hin_pair)
+    as Hmatch.
+  unfold stmt_domain_matches_cuts in Hmatch.
+  destruct Hmatch as
+      (source' & piece_constrs & Hsource' & Hconstrs & Hpoly).
+  rewrite Hparent in Hsource'.
+  rewrite Hsource in Hsource'.
+  inversion Hsource'; subst source'; clear Hsource'.
+  exists w, piece_constrs.
+  repeat split.
+  - exact Hpair.
+  - exact Hparent.
+  - exists source, piece_constrs.
+    split.
+    + rewrite Hparent.
+      exact Hsource.
+    + split; assumption.
+  - rewrite Hparent.
+    exact Hsource.
+  - exact Hconstrs.
+Qed.
+
+Local Lemma child_sign_nth :
+  forall parent after_pis stmt_ws i piece w,
+    nth_error (child_pairs_for_parent parent after_pis stmt_ws) i =
+      Some (piece, w) ->
+    nth_error (child_signs_for_parent parent after_pis stmt_ws) i =
+      Some (isw_piece_signs w).
+Proof.
+  intros parent after_pis stmt_ws i piece w Hpair.
+  unfold child_signs_for_parent.
+  pose proof
+    (nth_error_map_some
+       (PolyLang.PolyInstr * iss_stmt_witness)
+       (list iss_halfspace_sign)
+       (fun pair => isw_piece_signs (snd pair))
+       (child_pairs_for_parent parent after_pis stmt_ws)
+       i (piece, w) Hpair)
+    as Hsign.
+  simpl in Hsign.
+  exact Hsign.
+Qed.
+
 Lemma stmt_domain_cut_relation_disjoint :
   forall before_pis after_pis stmt_ws cuts parent source,
     stmt_domain_cut_relation before_pis after_pis cuts stmt_ws ->
@@ -828,86 +906,26 @@ Lemma stmt_domain_cut_relation_disjoint :
       (children_for_parent parent after_pis stmt_ws).
 Proof.
   intros before_pis after_pis stmt_ws cuts parent source
-         Hrel [Hnodup Hcomplete] Hsource.
+         Hrel [Hnodup _] Hsource.
   unfold domains_pairwise_disjoint.
   intros point i j pi1 pi2 Hi Hj Hneq Hdom1 Hdom2.
-  set (pairs := child_pairs_for_parent parent after_pis stmt_ws).
-  set (sign_rows := child_signs_for_parent parent after_pis stmt_ws).
-  assert (Hpair1 :
-            exists w1,
-              nth_error pairs i = Some (pi1, w1)).
-  {
-    unfold pairs, children_for_parent, child_pairs_for_parent in Hi.
-    eapply nth_error_map_inv in Hi.
-    destruct Hi as [[pi w] [Hnth Heq]].
-    simpl in Heq. inversion Heq; subst.
-    exists w. exact Hnth.
-  }
-  assert (Hpair2 :
-            exists w2,
-              nth_error pairs j = Some (pi2, w2)).
-  {
-    unfold pairs, children_for_parent, child_pairs_for_parent in Hj.
-    eapply nth_error_map_inv in Hj.
-    destruct Hj as [[pi w] [Hnth Heq]].
-    simpl in Heq. inversion Heq; subst.
-    exists w. exact Hnth.
-  }
-  destruct Hpair1 as [w1 Hpair1].
-  destruct Hpair2 as [w2 Hpair2].
-  assert (Hin_pair1 : In (pi1, w1) pairs).
-  { apply nth_error_In with (n := i). exact Hpair1. }
-  assert (Hin_pair2 : In (pi2, w2) pairs).
-  { apply nth_error_In with (n := j). exact Hpair2. }
-  unfold pairs, child_pairs_for_parent in Hin_pair1, Hin_pair2.
-  apply filter_In in Hin_pair1.
-  apply filter_In in Hin_pair2.
-  destruct Hin_pair1 as [Hin_pair1 Hparent1].
-  destruct Hin_pair2 as [Hin_pair2 Hparent2].
-  simpl in Hparent1, Hparent2.
-  apply Nat.eqb_eq in Hparent1.
-  apply Nat.eqb_eq in Hparent2.
-  pose proof (Forall2_combine_inv _ _ _ _ _ _ _ Hrel Hin_pair1) as Hmatch1.
-  pose proof (Forall2_combine_inv _ _ _ _ _ _ _ Hrel Hin_pair2) as Hmatch2.
-  unfold stmt_domain_matches_cuts in Hmatch1.
-  unfold stmt_domain_matches_cuts in Hmatch2.
-  destruct Hmatch1 as (source1 & constrs1 & Hnth1 & Hconstrs1 & Hpoly1).
-  destruct Hmatch2 as (source2 & constrs2 & Hnth2 & Hconstrs2 & Hpoly2).
-  rewrite Hparent1 in Hnth1.
-  rewrite Hparent2 in Hnth2.
-  rewrite Hsource in Hnth1. inversion Hnth1; subst source1; clear Hnth1.
-  rewrite Hsource in Hnth2. inversion Hnth2; subst source2; clear Hnth2.
-  assert (Hmatch1_rel : stmt_domain_matches_cuts before_pis cuts pi1 w1).
-  {
-    exists source, constrs1.
-    split.
-    - rewrite Hparent1. exact Hsource.
-    - split; assumption.
-  }
-  assert (Hmatch2_rel : stmt_domain_matches_cuts before_pis cuts pi2 w2).
-  {
-    exists source, constrs2.
-    split.
-    - rewrite Hparent2. exact Hsource.
-    - split; assumption.
-  }
-  assert (Hsource1 :
-            nth_error before_pis (isw_parent_stmt w1) = Some source).
-  {
-    rewrite Hparent1. exact Hsource.
-  }
-  assert (Hsource2 :
-            nth_error before_pis (isw_parent_stmt w2) = Some source).
-  {
-    rewrite Hparent2. exact Hsource.
-  }
+  destruct (child_endpoint_facts
+              before_pis after_pis stmt_ws cuts parent source i pi1
+              Hrel Hsource Hi)
+    as [w1 [constrs1
+      [Hpair1 [_ [Hmatch1 [Hsource1 Hconstrs1]]]]]].
+  destruct (child_endpoint_facts
+              before_pis after_pis stmt_ws cuts parent source j pi2
+              Hrel Hsource Hj)
+    as [w2 [constrs2
+      [Hpair2 [_ [Hmatch2 [Hsource2 Hconstrs2]]]]]].
   assert (Hsat1 :
             Forall2 (point_satisfies_iss_cut point) cuts (isw_piece_signs w1)).
   {
     pose proof
       ((proj1 (stmt_domain_matches_cuts_in_domain_iff
                  before_pis cuts pi1 w1 point source constrs1
-                 Hmatch1_rel Hsource1 Hconstrs1)) Hdom1)
+                 Hmatch1 Hsource1 Hconstrs1)) Hdom1)
       as Hpair_sat1.
     exact (proj2 Hpair_sat1).
   }
@@ -917,7 +935,7 @@ Proof.
     pose proof
       ((proj1 (stmt_domain_matches_cuts_in_domain_iff
                  before_pis cuts pi2 w2 point source constrs2
-                 Hmatch2_rel Hsource2 Hconstrs2)) Hdom2)
+                 Hmatch2 Hsource2 Hconstrs2)) Hdom2)
       as Hpair_sat2.
     exact (proj2 Hpair_sat2).
   }
@@ -927,32 +945,20 @@ Proof.
     eapply point_satisfies_iss_cuts_functional; eauto.
   }
   assert (Hsign_nth1 :
-            nth_error sign_rows i = Some (isw_piece_signs w1)).
+            nth_error
+              (child_signs_for_parent parent after_pis stmt_ws) i =
+              Some (isw_piece_signs w1)).
   {
-    unfold sign_rows, child_signs_for_parent, pairs.
-    exact
-      (nth_error_map_some
-         (PolyLang.PolyInstr * iss_stmt_witness)
-         (list iss_halfspace_sign)
-         (fun pair => isw_piece_signs (snd pair))
-         (child_pairs_for_parent parent after_pis stmt_ws)
-         i
-         (pi1, w1)
-         Hpair1).
+    eapply child_sign_nth.
+    exact Hpair1.
   }
   assert (Hsign_nth2 :
-            nth_error sign_rows j = Some (isw_piece_signs w2)).
+            nth_error
+              (child_signs_for_parent parent after_pis stmt_ws) j =
+              Some (isw_piece_signs w2)).
   {
-    unfold sign_rows, child_signs_for_parent, pairs.
-    exact
-      (nth_error_map_some
-         (PolyLang.PolyInstr * iss_stmt_witness)
-         (list iss_halfspace_sign)
-         (fun pair => isw_piece_signs (snd pair))
-         (child_pairs_for_parent parent after_pis stmt_ws)
-         j
-         (pi2, w2)
-         Hpair2).
+    eapply child_sign_nth.
+    exact Hpair2.
   }
   rewrite <- Hsigns_eq in Hsign_nth2.
   assert (i = j).

@@ -1870,9 +1870,6 @@ Proof.
   destruct ip1, ip2.
   simpl in *.
   subst.
-  repeat match goal with
-         | H : _ = _ |- _ => rewrite H
-         end.
   reflexivity.
 Qed.
 
@@ -5442,6 +5439,26 @@ Proof.
   lia.
 Qed.
 
+Local Lemma find_schedule_block_start_fit :
+  forall sched block found,
+    find_schedule_block_start sched block = Some found ->
+    (found + List.length block <= List.length sched)%nat.
+Proof.
+  intros sched block found Hfind.
+  pose proof (find_schedule_block_start_bound _ _ _ Hfind) as Hstart.
+  pose proof (find_schedule_block_start_sound _ _ _ Hfind) as Hblock.
+  assert (Hblock_length :
+    List.length (firstn (List.length block) (skipn found sched)) =
+    List.length block).
+  { rewrite Hblock. reflexivity. }
+  rewrite firstn_length, skipn_length in Hblock_length.
+  destruct
+    (le_gt_dec (List.length block) (List.length sched - found)%nat).
+  - lia.
+  - rewrite Nat.min_r in Hblock_length by lia.
+    lia.
+Qed.
+
 Definition check_pinstr_tiling_bandb
     (before: Tiling.PL.PolyInstr)
     (w: statement_tiling_witness) : bool :=
@@ -5507,46 +5524,10 @@ Proof.
   destruct (find_schedule_block_start (Tiling.PL.pi_schedule before) rows)
     as [start|] eqn:Hstart; try discriminate.
   inversion Hinfer; subst; clear Hinfer.
-  pose proof (find_schedule_block_start_bound _ _ _ Hstart) as Hstart_bound.
-  pose proof (find_schedule_block_start_sound _ _ _ Hstart) as Hblock.
   pose proof (schedule_rows_of_links_length _ _ Hrows) as Hrows_len.
-  assert (Hrows_fit :
-    (List.length rows <=
-     List.length (Tiling.PL.pi_schedule before) - start)%nat).
-  {
-    assert (Hlen_block :
-      List.length
-        (firstn (List.length rows)
-           (skipn start (Tiling.PL.pi_schedule before))) =
-      List.length rows).
-    {
-      rewrite Hblock.
-      reflexivity.
-    }
-    rewrite firstn_length, skipn_length in Hlen_block.
-    destruct
-      (le_gt_dec (List.length rows)
-         (List.length (Tiling.PL.pi_schedule before) - start)%nat); auto.
-    rewrite Nat.min_r in Hlen_block by lia.
-    lia.
-  }
-  assert (Hle_skip :
-    (List.length (stw_links w) <=
-     List.length (Tiling.PL.pi_schedule before) - start)%nat).
-  {
-    rewrite <- Hrows_len.
-    exact Hrows_fit.
-  }
-  eapply Nat.le_trans.
-  - apply (proj1 (Nat.add_le_mono_l
-                    (List.length (stw_links w))
-                    (List.length (Tiling.PL.pi_schedule before) - start)
-                    start)).
-    exact Hle_skip.
-  - replace
-      (start + (List.length (Tiling.PL.pi_schedule before) - start))%nat
-      with (List.length (Tiling.PL.pi_schedule before)) by lia.
-    apply Nat.le_refl.
+  rewrite <- Hrows_len.
+  eapply find_schedule_block_start_fit.
+  exact Hstart.
 Qed.
 
 Definition check_pinstr_tiling_schedule_stripminedb
@@ -5674,30 +5655,9 @@ Proof.
        (Tiling.PL.pi_schedule before) (slbr_root_rows recipe0))
     as [start|] eqn:Hstart; try discriminate.
   inversion Hinfer; subst band recipe0; clear Hinfer.
-  pose proof (find_schedule_block_start_bound _ _ _ Hstart) as Hstart_bound.
-  pose proof (find_schedule_block_start_sound _ _ _ Hstart) as Hblock.
-  assert (Hrows_fit :
-    (List.length (slbr_root_rows recipe) <=
-     List.length (Tiling.PL.pi_schedule before) - start)%nat).
-  {
-    assert (Hlen_block :
-      List.length
-        (firstn (List.length (slbr_root_rows recipe))
-           (skipn start (Tiling.PL.pi_schedule before))) =
-      List.length (slbr_root_rows recipe)).
-    {
-      rewrite Hblock.
-      reflexivity.
-    }
-    rewrite firstn_length, skipn_length in Hlen_block.
-    destruct
-      (le_gt_dec (List.length (slbr_root_rows recipe))
-         (List.length (Tiling.PL.pi_schedule before) - start)%nat); auto.
-    rewrite Nat.min_r in Hlen_block by lia.
-    lia.
-  }
   simpl.
-  lia.
+  eapply find_schedule_block_start_fit.
+  exact Hstart.
 Qed.
 
 Lemma second_level_band_recipe_spec_root_rows_nonempty :
@@ -8457,23 +8417,26 @@ Proof.
   unfold Tiling.PL.eqdom_pprog.
   intros pil1 pil2 varctxt1 varctxt2 vars1 vars2 Hpp1 Hpp2.
   inversion Hpp1; inversion Hpp2; subst.
-  repeat match goal with |- _ /\ _ => split end.
+  split.
   - reflexivity.
-  - reflexivity.
-  - rewrite retiled_old_band_old_pinstrs_preserve_length
-      with (after_pis := after_pis) (ws := ws) (bands := bands); eauto.
-    rewrite Tiling.retiled_old_pinstrs_preserve_length
-      with (after_pis := after_pis) (ws := ws); eauto.
-  - clear Hpp1 Hpp2.
-    induction before_pis as [|before_pi before_pis' IH]
-      in after_pis, ws, bands, Hlen_before_after, Hlen_ws, Hlen_bands |- *.
-    + destruct after_pis, ws, bands; simpl in *; try discriminate; exact I.
-    + destruct after_pis as [|after_pi after_pis']; simpl in *; try discriminate.
-      destruct ws as [|w ws']; simpl in *; try discriminate.
-      destruct bands as [|band bands']; simpl in *; try discriminate.
-      split.
-      * apply retiled_old_band_old_pi_eqdom_retiled_old.
-      * eapply IH; lia.
+  - split.
+    + reflexivity.
+    + split.
+      * rewrite retiled_old_band_old_pinstrs_preserve_length
+          with (after_pis := after_pis) (ws := ws) (bands := bands); eauto.
+        rewrite Tiling.retiled_old_pinstrs_preserve_length
+          with (after_pis := after_pis) (ws := ws); eauto.
+      * clear Hpp1 Hpp2.
+        induction before_pis as [|before_pi before_pis' IH]
+          in after_pis, ws, bands, Hlen_before_after, Hlen_ws, Hlen_bands |- *.
+        -- destruct after_pis, ws, bands; simpl in *; try discriminate; exact I.
+        -- destruct after_pis as [|after_pi after_pis'];
+             simpl in *; try discriminate.
+           destruct ws as [|w ws']; simpl in *; try discriminate.
+           destruct bands as [|band bands']; simpl in *; try discriminate.
+           split.
+           ++ apply retiled_old_band_old_pi_eqdom_retiled_old.
+           ++ eapply IH; lia.
 Qed.
 
 Lemma after_stripmined_band_new_pprog_eqdom_after :
@@ -8494,17 +8457,19 @@ Proof.
   unfold Tiling.PL.eqdom_pprog.
   intros pil1 pil2 varctxt1 varctxt2 vars1 vars2 Hpp1 Hpp2.
   inversion Hpp1; inversion Hpp2; subst.
-  repeat match goal with |- _ /\ _ => split end.
+  split.
   - reflexivity.
-  - reflexivity.
-  - eapply after_stripmined_band_new_pinstrs_preserve_length; eauto.
-  - clear Hpp1 Hpp2.
-    induction pil2 as [|after_pi after_pis' IH] in bands, Hlen_bands |- *.
-    + destruct bands; simpl in *; try discriminate; exact I.
-    + destruct bands as [|band bands']; simpl in *; try discriminate.
-      split.
-      * apply after_stripmined_band_new_pi_eqdom_after.
-      * eapply IH; lia.
+  - split.
+    + reflexivity.
+    + split.
+      * eapply after_stripmined_band_new_pinstrs_preserve_length; eauto.
+      * clear Hpp1 Hpp2.
+        induction pil2 as [|after_pi after_pis' IH] in bands, Hlen_bands |- *.
+        -- destruct bands; simpl in *; try discriminate; exact I.
+        -- destruct bands as [|band bands']; simpl in *; try discriminate.
+           split.
+           ++ apply after_stripmined_band_new_pi_eqdom_after.
+           ++ eapply IH; lia.
 Qed.
 
 Lemma check_pinstr_list_tiling_schedule_stripminedb_sound :
@@ -8814,6 +8779,63 @@ Proof.
   split; [exact Hbel_tau|].
   cbn [Tiling.compose_tiling_pinstr_ext] in Hlen_tau.
   exact Hlen_tau.
+Qed.
+
+Local Definition composed_point_facts
+    (before_pis after_pis : list Tiling.PL.PolyInstr)
+    (ws : list statement_tiling_witness)
+    (envv : list Z)
+    (tau : Tiling.PL.InstrPoint_ext) : Prop :=
+  exists before_pi after_pi w,
+    List.nth_error before_pis (Tiling.PL.ip_nth_ext tau) = Some before_pi /\
+    List.nth_error after_pis (Tiling.PL.ip_nth_ext tau) = Some after_pi /\
+    List.nth_error ws (Tiling.PL.ip_nth_ext tau) = Some w /\
+    Tiling.wf_statement_tiling_witness_with_param_dim
+      (List.length envv) w /\
+    Forall (fun link => 0 < tl_tile_size link) (stw_links w) /\
+    stw_point_dim w = Tiling.PL.pi_depth before_pi /\
+    firstn (List.length envv) (Tiling.PL.ip_index_ext tau) = envv /\
+    Tiling.PL.belongs_to_ext
+      tau
+      (Tiling.compose_tiling_pinstr_ext
+        (List.length envv) before_pi after_pi w) /\
+    List.length (Tiling.PL.ip_index_ext tau) =
+      (List.length envv + Tiling.PL.pi_depth after_pi)%nat.
+
+Local Lemma composed_point_pair_facts_of_members :
+  forall before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws envv ipl_ext tau1 tau2,
+    Tiling.tiling_rel_pprog_structure_source
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, after_ctxt, after_vars)
+      (List.map Tiling.compiled_pinstr_tiling_witness ws) ->
+    Forall
+      (Tiling.wf_statement_tiling_witness_with_param_dim (List.length envv))
+      ws ->
+    Forall
+      (fun w => Forall (fun link => 0 < tl_tile_size link) (stw_links w))
+      ws ->
+    Forall2
+      (fun before_pi w => stw_point_dim w = Tiling.PL.pi_depth before_pi)
+      before_pis ws ->
+    Tiling.PL.flatten_instrs_ext
+      envv
+      (Tiling.compose_tiling_pinstrs_ext_from_after
+        (List.length envv) before_pis after_pis ws)
+      ipl_ext ->
+    In tau1 ipl_ext ->
+    In tau2 ipl_ext ->
+    composed_point_facts before_pis after_pis ws envv tau1 /\
+    composed_point_facts before_pis after_pis ws envv tau2.
+Proof.
+  intros before_pis before_ctxt before_vars
+         after_pis after_ctxt after_vars ws envv ipl_ext tau1 tau2
+         Hprog Hwf_ws Hsizes_ws Hdepths Hflat Hin1 Hin2.
+  split; unfold composed_point_facts.
+  - eapply flatten_instrs_ext_from_after_member_nth_data_source;
+      eassumption.
+  - eapply flatten_instrs_ext_from_after_member_nth_data_source;
+      eassumption.
 Qed.
 
 Lemma tiling_schedule_stripmined_validate_correct_with_bands :
@@ -11194,14 +11216,16 @@ Proof.
     as [Hlen_after [Hlen_ws Hlen_bands]].
   destruct Harity_before as [before_sched_len Hbefore_sched_len].
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv ipl_ext tau1
-       Hprog_full Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hsizes1 [Hpoint_depth1 [Hpref1 [Hbel1 Hlen1]]]]]]]]]]].
+       ws envv ipl_ext tau1 tau2
+       Hprog_full Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hsizes1 [Hpoint_depth1 [Hpref1 [Hbel1 Hlen1]]]]]]]]]]].
   assert (Hbefore1_some :
     nth_error before_pis (Tiling.PL.ip_nth_ext tau1) <> None).
   {
@@ -11216,15 +11240,9 @@ Proof.
     apply nth_error_Some in Hbefore1_some.
     lia.
   }
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv ipl_ext tau2
-       Hprog_full Hwf_ws_env Hsizes_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hsizes2 [Hpoint_depth2 [Hpref2 [Hbel2 Hlen2]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hsizes2 [Hpoint_depth2 [Hpref2 [Hbel2 Hlen2]]]]]]]]]]].
   assert (Hbefore2_some :
     nth_error before_pis (Tiling.PL.ip_nth_ext tau2) <> None).
   {
@@ -12060,25 +12078,21 @@ Proof.
   destruct (infer_pinstr_list_second_level_bands_lengths _ _ _ _ Hinfer)
     as [Hlen_ws [Hlen_bands Hlen_recipes]].
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv ipl_ext tau1
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hsizes1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hlen1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv ipl_ext tau2
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hsizes2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hlen2]]]]]]]]]]].
+       ws envv ipl_ext tau1 tau2
+       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hsizes1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hlen1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hsizes2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hlen2]]]]]]]]]]].
   destruct (nth_error bands (Tiling.PL.ip_nth_ext tau1))
     as [band1|] eqn:Hband1.
   2:{
@@ -17597,25 +17611,21 @@ Proof.
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv flat ip1
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv flat ip2
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+       ws envv flat ip1 ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
   assert
     (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
   {
@@ -19259,30 +19269,35 @@ Proof.
     inversion Hwits; subst after_pis.
     inversion Hcols; subst lifted_rows.
     constructor.
-  - destruct after_pis as [|after_pi after_pis];
-      destruct ws as [|w ws];
-      inversion Hdepths; inversion Hwits; subst.
-    inversion Hcols; subst.
-    simpl.
-    constructor.
-    + match goal with
-      | Hwit : Tiling.after_matches_tiling_witness after_pi w |- _ =>
-          unfold Tiling.after_matches_tiling_witness in Hwit;
-          destruct Hwit as [Hpw Hafter_depth]
-      end.
-      simpl.
-      rewrite <- Hafter_depth, Hpw.
-      unfold witness_current_point_dim,
-             witness_base_point_dim, witness_added_dims.
-      simpl.
-      replace
-        (env_size +
-         (stw_point_dim w + List.length (stw_links w)))%nat
-        with
-        (env_size + List.length (stw_links w) +
-         stw_point_dim w)%nat by lia.
-      exact H1.
-    + eapply IH; eauto.
+  - destruct ws as [|w ws].
+    + inversion Hdepths.
+    + destruct after_pis as [|after_pi after_pis].
+      * inversion Hwits.
+      * inversion Hdepths as
+          [|before_pi0 w0 before_pis0 ws0 Hdepth Hdepths_tail].
+        inversion Hwits as
+          [|after_pi0 w1 after_pis0 ws1 Hwit Hwits_tail].
+        subst.
+        inversion Hcols as
+          [|w0 lifted0 ws0 lifted_rows0 Hcols_head Hcols_tail].
+        subst.
+        simpl.
+        constructor.
+        -- unfold Tiling.after_matches_tiling_witness in Hwit.
+           destruct Hwit as [Hpw Hafter_depth].
+           simpl.
+           rewrite <- Hafter_depth, Hpw.
+           unfold witness_current_point_dim,
+                  witness_base_point_dim, witness_added_dims.
+           simpl.
+           replace
+             (env_size +
+              (stw_point_dim w + List.length (stw_links w)))%nat
+             with
+             (env_size + List.length (stw_links w) +
+              stw_point_dim w)%nat by lia.
+           exact Hcols_head.
+        -- eapply IH; eauto.
 Qed.
 
 (** The second-level bridge follows the same five-step argument as
@@ -19402,25 +19417,21 @@ Proof.
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv flat ip1
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv flat ip2
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+       ws envv flat ip1 ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
   assert
     (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
   {
@@ -23158,25 +23169,21 @@ Proof.
     exact Hwf_ws.
   }
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv flat ip1
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv flat ip2
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+       ws envv flat ip1 ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
   assert
     (Hlayout_idx1 :
        (Tiling.PL.ip_nth_ext ip1 < List.length layouts)%nat).
@@ -25142,10 +25149,7 @@ Proof.
       as [rest|] eqn:Hrest; try discriminate.
     inversion Hfull; subst full_rows.
     constructor.
-    + match goal with
-      | Hdepth : stw_point_dim w = Tiling.PL.pi_depth before_pi |- _ =>
-          rewrite Hdepth
-      end.
+    + rewrite Hdepth.
       eapply phase_semantic_lifted_band_rows_exact_cols.
       exact Hwf_head.
     + exact (IH ws mask rest Hrest Hwf_tail Hdepths_tail).
@@ -26518,25 +26522,21 @@ Proof.
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv flat ip1
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv flat ip2
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+       ws envv flat ip1 ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
   assert
     (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
   {
@@ -27475,25 +27475,21 @@ Proof.
   unfold semantic_rows_reversal_bridge.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
   destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
+    (composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv flat ip1
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
-         [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
-  destruct
-    (flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv flat ip2
-       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
-         [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+       ws envv flat ip1 ip2
+       Hprog Hwf_ws_env Hpositive_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as [before_pi1 [after_pi1 [w1
+    [Hbefore1 [Hafter1 [Hw1
+    [Hwf_stmt1 [Hpositive1 [Hpoint_depth1
+    [Hpref1 [Hbel1 Hidx_len1]]]]]]]]]]].
+  destruct Hpoint2 as [before_pi2 [after_pi2 [w2
+    [Hbefore2 [Hafter2 [Hw2
+    [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
+    [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
   assert
     (Hn1 : (Tiling.PL.ip_nth_ext ip1 < List.length ws)%nat).
   {

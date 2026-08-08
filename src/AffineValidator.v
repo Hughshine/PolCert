@@ -46,59 +46,32 @@ Definition ident := Instr.ident.
     paired-instance construction; collision exclusion; lifting to flattened
     lists; and [validate_correct] at the program boundary. *)
 
-Fixpoint list_Z_eqb (xs ys: list Z) : bool :=
-  match xs, ys with
-  | [], [] => true
-  | x :: xs', y :: ys' => Z.eqb x y && list_Z_eqb xs' ys'
-  | _, _ => false
-  end.
+Definition list_Z_eqb : list Z -> list Z -> bool :=
+  PointWitness.list_Z_eqb.
 
-Definition affine_expr_eqb (e1 e2: affine_expr) : bool :=
-  list_Z_eqb e1.(ae_var_coeffs) e2.(ae_var_coeffs) &&
-  list_Z_eqb e1.(ae_param_coeffs) e2.(ae_param_coeffs) &&
-  Z.eqb e1.(ae_const) e2.(ae_const).
+Definition affine_expr_eqb : affine_expr -> affine_expr -> bool :=
+  PointWitness.affine_expr_eqb.
 
-Definition tile_link_eqb (l1 l2: tile_link) : bool :=
-  affine_expr_eqb l1.(tl_expr) l2.(tl_expr) &&
-  Z.eqb l1.(tl_tile_size) l2.(tl_tile_size).
+Definition tile_link_eqb : tile_link -> tile_link -> bool :=
+  PointWitness.tile_link_eqb.
 
-Fixpoint tile_link_list_eqb (ls1 ls2: list tile_link) : bool :=
-  match ls1, ls2 with
-  | [], [] => true
-  | l1 :: ls1', l2 :: ls2' => tile_link_eqb l1 l2 && tile_link_list_eqb ls1' ls2'
-  | _, _ => false
-  end.
+Definition tile_link_list_eqb : list tile_link -> list tile_link -> bool :=
+  PointWitness.tile_link_list_eqb.
 
 Definition statement_tiling_witness_eqb
-    (w1 w2: statement_tiling_witness) : bool :=
-  Nat.eqb w1.(stw_point_dim) w2.(stw_point_dim) &&
-  tile_link_list_eqb w1.(stw_links) w2.(stw_links).
+    : statement_tiling_witness -> statement_tiling_witness -> bool :=
+  PointWitness.statement_tiling_witness_eqb.
 
 Definition point_space_witness_eqb
-    (pw1 pw2: point_space_witness) : bool :=
-  match pw1, pw2 with
-  | PSWIdentity d1, PSWIdentity d2 => Nat.eqb d1 d2
-  | PSWTiling w1, PSWTiling w2 => statement_tiling_witness_eqb w1 w2
-  | PSWInsertAfterEnv d1 pw1', PSWInsertAfterEnv d2 pw2' =>
-      Nat.eqb d1 d2 && point_space_witness_eqb pw1' pw2'
-  | PSWInsertAtEnd d1 pw1', PSWInsertAtEnd d2 pw2' =>
-      Nat.eqb d1 d2 && point_space_witness_eqb pw1' pw2'
-  | _, _ => false
-  end.
+    : point_space_witness -> point_space_witness -> bool :=
+  PointWitness.point_space_witness_eqb.
 
 Lemma list_Z_eqb_eq :
   forall xs ys,
     list_Z_eqb xs ys = true ->
     xs = ys.
 Proof.
-  induction xs as [|x xs IH]; intros ys H.
-  - destruct ys; simpl in *; congruence.
-  - destruct ys as [|y ys]; simpl in *; try discriminate.
-    apply andb_true_iff in H.
-    destruct H as [Hxy Htl].
-    apply Z.eqb_eq in Hxy.
-    apply IH in Htl.
-    subst. reflexivity.
+  exact PointWitness.list_Z_eqb_eq.
 Qed.
 
 Lemma affine_expr_eqb_eq :
@@ -106,15 +79,7 @@ Lemma affine_expr_eqb_eq :
     affine_expr_eqb e1 e2 = true ->
     e1 = e2.
 Proof.
-  intros [v1 p1 c1] [v2 p2 c2] H.
-  unfold affine_expr_eqb in H.
-  simpl in H.
-  repeat rewrite andb_true_iff in H.
-  destruct H as [[Hv Hp] Hc].
-  apply list_Z_eqb_eq in Hv.
-  apply list_Z_eqb_eq in Hp.
-  apply Z.eqb_eq in Hc.
-  subst. reflexivity.
+  exact PointWitness.affine_expr_eqb_eq.
 Qed.
 
 Lemma tile_link_eqb_eq :
@@ -122,14 +87,7 @@ Lemma tile_link_eqb_eq :
     tile_link_eqb l1 l2 = true ->
     l1 = l2.
 Proof.
-  intros [e1 t1] [e2 t2] H.
-  unfold tile_link_eqb in H.
-  simpl in H.
-  apply andb_true_iff in H.
-  destruct H as [He Ht].
-  apply affine_expr_eqb_eq in He.
-  apply Z.eqb_eq in Ht.
-  subst. reflexivity.
+  exact PointWitness.tile_link_eqb_eq.
 Qed.
 
 Lemma tile_link_list_eqb_eq :
@@ -137,14 +95,7 @@ Lemma tile_link_list_eqb_eq :
     tile_link_list_eqb ls1 ls2 = true ->
     ls1 = ls2.
 Proof.
-  induction ls1 as [|l1 ls1 IH]; intros ls2 H.
-  - destruct ls2; simpl in *; congruence.
-  - destruct ls2 as [|l2 ls2]; simpl in *; try discriminate.
-    apply andb_true_iff in H.
-    destruct H as [Hhd Htl].
-    apply tile_link_eqb_eq in Hhd.
-    apply IH in Htl.
-    subst. reflexivity.
+  exact PointWitness.tile_link_list_eqb_eq.
 Qed.
 
 Lemma statement_tiling_witness_eqb_eq :
@@ -152,14 +103,7 @@ Lemma statement_tiling_witness_eqb_eq :
     statement_tiling_witness_eqb w1 w2 = true ->
     w1 = w2.
 Proof.
-  intros [d1 ls1] [d2 ls2] H.
-  unfold statement_tiling_witness_eqb in H.
-  simpl in H.
-  apply andb_true_iff in H.
-  destruct H as [Hd Hls].
-  apply Nat.eqb_eq in Hd.
-  apply tile_link_list_eqb_eq in Hls.
-  subst. reflexivity.
+  exact PointWitness.statement_tiling_witness_eqb_eq.
 Qed.
 
 Lemma point_space_witness_eqb_eq :
@@ -167,20 +111,7 @@ Lemma point_space_witness_eqb_eq :
     point_space_witness_eqb pw1 pw2 = true ->
     pw1 = pw2.
 Proof.
-  induction pw1 as [d1|w1|added1 inner1 IH|added1 inner1 IH]; intros pw2 H;
-    destruct pw2; simpl in H; try discriminate.
-  - apply Nat.eqb_eq in H. subst. reflexivity.
-  - apply statement_tiling_witness_eqb_eq in H. subst. reflexivity.
-  - apply andb_true_iff in H.
-    destruct H as [Hd Hinner].
-    apply Nat.eqb_eq in Hd.
-    apply PointWitness.point_space_witness_eqb_eq in Hinner.
-    subst. reflexivity.
-  - apply andb_true_iff in H.
-    destruct H as [Hd Hinner].
-    apply Nat.eqb_eq in Hd.
-    apply PointWitness.point_space_witness_eqb_eq in Hinner.
-    subst. reflexivity.
+  exact PointWitness.point_space_witness_eqb_eq.
 Qed.
 
 Lemma existsb_bool_eta :
@@ -2752,8 +2683,122 @@ Proof.
   eapply cell_neq_symm. exact Hnoncollision.
 Qed.
 
+Lemma forallb_imp_true_forall :
+  forall {A} (f: A -> imp bool) xs,
+    mayReturn (forallb_imp f xs) true ->
+    forall x, In x xs -> mayReturn (f x) true.
+Proof.
+  intros A f xs.
+  induction xs as [|a xs IH]; intros Hcheck x Hin.
+  - inversion Hin.
+  - simpl in Hcheck.
+    bind_imp_destruct Hcheck head_ok Hhead.
+    destruct head_ok.
+    + destruct Hin as [Heq | Hin].
+      * subst x. exact Hhead.
+      * eapply IH; eauto.
+    + apply mayReturn_pure in Hcheck.
+      discriminate.
+Qed.
+
+Local Definition access_pair_checker :=
+  AccessFunction -> AccessFunction ->
+  AffineFunction -> AffineFunction ->
+  polyhedron -> list polyhedron -> list polyhedron ->
+  nat -> nat -> imp bool.
+
+Local Definition access_pair_checker_sound
+    (checker: access_pair_checker) : Prop :=
+  forall pols_old_lt pols_new_ge a1 a2 tf1 tf2 p1 p2 pol_dom
+         dom_dim1 dom_dim2,
+    WHEN res <-
+      checker a1 a2 tf1 tf2 pol_dom
+        pols_old_lt pols_new_ge dom_dim1 dom_dim2
+    THEN
+    res = true ->
+    length p1 = dom_dim1 ->
+    length p2 = dom_dim2 ->
+    exact_listzzs_cols dom_dim1 tf1 ->
+    exact_listzzs_cols dom_dim2 tf2 ->
+    access_matches_tf tf1 a1 ->
+    access_matches_tf tf2 a2 ->
+    in_poly (p1 ++ p2) pol_dom = true ->
+    Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_old_lt ->
+    Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_new_ge ->
+    cell_neq
+      (exact_cell a1 (affine_product tf1 p1))
+      (exact_cell a2 (affine_product tf2 p2)).
+
+Local Lemma validate_two_accesses_checker_sound :
+  access_pair_checker_sound validate_two_accesses.
+Proof.
+  exact validate_two_accesses_implies_permut_no_collision.
+Qed.
+
+Local Lemma validated_access_pair_lists_imply_noncollision:
+  forall checker,
+    access_pair_checker_sound checker ->
+    forall accesses1 accesses2 tf1 tf2 p1 p2 pol_dom
+           pols_old_lt pols_new_ge dom_dim1 dom_dim2,
+      mayReturn
+        (forallb_imp
+          (fun access1 =>
+             forallb_imp
+               (fun access2 =>
+                  checker access1 access2 tf1 tf2 pol_dom
+                    pols_old_lt pols_new_ge dom_dim1 dom_dim2)
+               accesses2)
+          accesses1)
+        true ->
+      length p1 = dom_dim1 ->
+      length p2 = dom_dim2 ->
+      exact_listzzs_cols dom_dim1 tf1 ->
+      exact_listzzs_cols dom_dim2 tf2 ->
+      Forall (access_matches_tf tf1) accesses1 ->
+      Forall (access_matches_tf tf2) accesses2 ->
+      in_poly (p1 ++ p2) pol_dom = true ->
+      Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_old_lt ->
+      Exists (fun pol => in_poly (p1 ++ p2) pol = true) pols_new_ge ->
+      Forall
+        (fun access1 =>
+           Forall
+             (fun access2 =>
+                cell_neq
+                  (exact_cell access1 (affine_product tf1 p1))
+                  (exact_cell access2 (affine_product tf2 p2)))
+             accesses2)
+        accesses1.
+Proof.
+  intros checker Hchecker accesses1 accesses2 tf1 tf2 p1 p2 pol_dom
+    pols_old_lt pols_new_ge dom_dim1 dom_dim2 Hchecks
+    Hlen1 Hlen2 Htf1 Htf2 Haccesses1 Haccesses2 Hdom Hlt Hge.
+  apply Forall_forall. intros access1 Haccess1.
+  apply Forall_forall. intros access2 Haccess2.
+  pose proof
+    (forallb_imp_true_forall _ _ Hchecks access1 Haccess1)
+    as Hchecks2.
+  pose proof
+    (forallb_imp_true_forall _ _ Hchecks2 access2 Haccess2)
+    as Hcheck.
+  eapply (Hchecker pols_old_lt pols_new_ge access1 access2
+    tf1 tf2 p1 p2 pol_dom dom_dim1 dom_dim2 true Hcheck eq_refl).
+  - exact Hlen1.
+  - exact Hlen2.
+  - exact Htf1.
+  - exact Htf2.
+  - rewrite Forall_forall in Haccesses1.
+    exact (Haccesses1 access1 Haccess1).
+  - rewrite Forall_forall in Haccesses2.
+    exact (Haccesses2 access2 Haccess2).
+  - exact Hdom.
+  - exact Hlt.
+  - exact Hge.
+Qed.
+
 Local Lemma validated_access_checks_imply_no_write_collision:
-  forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
+  forall checker,
+    access_pair_checker_sound checker ->
+    forall pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
          in_domain_poly env_eq_in_domain order_guards bad_guards ip1 ip2,
     mayReturn
       (poly_product
@@ -2773,7 +2818,7 @@ Local Lemma validated_access_checks_imply_no_write_collision:
     mayReturn
       (forallb_imp
         (fun waccess1 => forallb_imp (fun waccess2 =>
-          validate_two_accesses
+          checker
             waccess1 waccess2
             pi1_ext.(PolyLang.pi_access_transformation_ext)
             pi2_ext.(PolyLang.pi_access_transformation_ext)
@@ -2786,7 +2831,7 @@ Local Lemma validated_access_checks_imply_no_write_collision:
     mayReturn
       (forallb_imp
         (fun waccess1 => forallb_imp (fun raccess2 =>
-          validate_two_accesses
+          checker
             waccess1 raccess2
             pi1_ext.(PolyLang.pi_access_transformation_ext)
             pi2_ext.(PolyLang.pi_access_transformation_ext)
@@ -2799,7 +2844,7 @@ Local Lemma validated_access_checks_imply_no_write_collision:
     mayReturn
       (forallb_imp
         (fun raccess1 => forallb_imp (fun waccess2 =>
-          validate_two_accesses
+          checker
             raccess1 waccess2
             pi1_ext.(PolyLang.pi_access_transformation_ext)
             pi2_ext.(PolyLang.pi_access_transformation_ext)
@@ -2835,7 +2880,8 @@ Local Lemma validated_access_checks_imply_no_write_collision:
       pi2_ext.(PolyLang.pi_raccess_ext)
       ip1 ip2.
 Proof.
-  intros pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
+  intros checker Hchecker
+    pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
     in_domain_poly env_eq_in_domain order_guards bad_guards ip1 ip2
     Hdomain Henv Hww Hwr Hrw Hwf1 Hwf2 Henvlen
     Hext1 Hext2 Hip1 Hip2 Horder Hbad.
@@ -2908,30 +2954,45 @@ Proof.
       eapply PolyLang.expand_same_env_implies_in_domain_product_pol;
         eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
-  pose proof Hww as Hww_no_collision.
-  eapply validate_two_accesslist_implies_permut_no_collision1
-    with (p1 := PolyLang.ip_index_ext ip1)
-         (p2 := PolyLang.ip_index_ext ip2)
-    in Hww_no_collision.
-  specialize
-    (Hww_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HW1 HW2
-       Hbase Horder Hbad).
-  pose proof Hwr as Hwr_no_collision.
-  eapply validate_two_accesslist_implies_permut_no_collision1
-    with (p1 := PolyLang.ip_index_ext ip1)
-         (p2 := PolyLang.ip_index_ext ip2)
-    in Hwr_no_collision.
-  specialize
-    (Hwr_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HW1 HR2
-       Hbase Horder Hbad).
-  pose proof Hrw as Hrw_no_collision.
-  eapply validate_two_accesslist_implies_permut_no_collision1
-    with (p1 := PolyLang.ip_index_ext ip1)
-         (p2 := PolyLang.ip_index_ext ip2)
-    in Hrw_no_collision.
-  specialize
-    (Hrw_no_collision eq_refl Hidx1 Hidx2 HTF1 HTF2 HR1 HW2
-       Hbase Horder Hbad).
+  pose proof
+    (validated_access_pair_lists_imply_noncollision checker Hchecker
+       (PolyLang.pi_waccess_ext pi1_ext)
+       (PolyLang.pi_waccess_ext pi2_ext)
+       (PolyLang.pi_access_transformation_ext pi1_ext)
+       (PolyLang.pi_access_transformation_ext pi2_ext)
+       (PolyLang.ip_index_ext ip1) (PolyLang.ip_index_ext ip2)
+       env_eq_in_domain order_guards bad_guards
+       (length env + PolyLang.pi_depth_ext pi1_ext)
+       (length env + PolyLang.pi_depth_ext pi2_ext)
+       Hww
+       Hidx1 Hidx2 HTF1 HTF2 HW1 HW2 Hbase Horder Hbad)
+    as Hww_no_collision.
+  pose proof
+    (validated_access_pair_lists_imply_noncollision checker Hchecker
+       (PolyLang.pi_waccess_ext pi1_ext)
+       (PolyLang.pi_raccess_ext pi2_ext)
+       (PolyLang.pi_access_transformation_ext pi1_ext)
+       (PolyLang.pi_access_transformation_ext pi2_ext)
+       (PolyLang.ip_index_ext ip1) (PolyLang.ip_index_ext ip2)
+       env_eq_in_domain order_guards bad_guards
+       (length env + PolyLang.pi_depth_ext pi1_ext)
+       (length env + PolyLang.pi_depth_ext pi2_ext)
+       Hwr
+       Hidx1 Hidx2 HTF1 HTF2 HW1 HR2 Hbase Horder Hbad)
+    as Hwr_no_collision.
+  pose proof
+    (validated_access_pair_lists_imply_noncollision checker Hchecker
+       (PolyLang.pi_raccess_ext pi1_ext)
+       (PolyLang.pi_waccess_ext pi2_ext)
+       (PolyLang.pi_access_transformation_ext pi1_ext)
+       (PolyLang.pi_access_transformation_ext pi2_ext)
+       (PolyLang.ip_index_ext ip1) (PolyLang.ip_index_ext ip2)
+       env_eq_in_domain order_guards bad_guards
+       (length env + PolyLang.pi_depth_ext pi1_ext)
+       (length env + PolyLang.pi_depth_ext pi2_ext)
+       Hrw
+       Hidx1 Hidx2 HTF1 HTF2 HR1 HW2 Hbase Horder Hbad)
+    as Hrw_no_collision.
   unfold no_write_collision, no_ww_collision, no_wr_collision.
   rewrite HTFIP1, HTFIP2.
   repeat split.
@@ -3006,7 +3067,9 @@ Proof.
     eapply PolyLang.ip_new_sched_ge_implies_in_pi_new_sched_ge_pol;
       eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
   }
-  eapply validated_access_checks_imply_no_write_collision
+  eapply
+    (validated_access_checks_imply_no_write_collision
+       validate_two_accesses validate_two_accesses_checker_sound)
     with
       (in_domain_poly:=in_domain_poly)
       (env_eq_in_domain:=eq_env_poly)
@@ -3492,7 +3555,9 @@ Proof.
   do 2 rewrite andb_true_iff in Hval.
   destruct Hval as ((HwwT & HwrT) & HrwT).
   subst ww wr rw.
-  eapply validated_access_checks_imply_no_write_collision
+  eapply
+    (validated_access_checks_imply_no_write_collision
+       validate_two_accesses validate_two_accesses_checker_sound)
     with
       (in_domain_poly:=in_domain_poly)
       (env_eq_in_domain:=env_eq_in_domain)
@@ -5437,24 +5502,6 @@ Qed.
     it is empty.  This path is deliberately separate from the ordinary
     affine validator. *)
 
-Lemma forallb_imp_true_forall :
-  forall {A} (f: A -> imp bool) xs,
-    mayReturn (forallb_imp f xs) true ->
-    forall x, In x xs -> mayReturn (f x) true.
-Proof.
-  intros A f xs.
-  induction xs as [|a xs IH]; intros Hcheck x Hin.
-  - inversion Hin.
-  - simpl in Hcheck.
-    bind_imp_destruct Hcheck head_ok Hhead.
-    destruct head_ok.
-    + destruct Hin as [Heq | Hin].
-      * subst x. exact Hhead.
-      * eapply IH; eauto.
-    + apply mayReturn_pure in Hcheck.
-      discriminate.
-Qed.
-
 Definition validate_lt_ge_pair_integer
     (pol_lt pol_ge sameloc_enveq_indom_pol: polyhedron) :=
   BIND sameloc_pol_lt <-
@@ -5650,6 +5697,12 @@ Proof.
   }
 Qed.
 
+Local Lemma validate_two_accesses_integer_checker_sound :
+  access_pair_checker_sound validate_two_accesses_integer.
+Proof.
+  exact validate_two_accesses_integer_implies_permut_no_collision.
+Qed.
+
 Definition validate_two_instrs_under_guards_integer
     (pi1 pi2: PolyLang.PolyInstr_ext)
     (env_dim: nat)
@@ -5730,8 +5783,8 @@ Lemma validate_two_instrs_under_guards_integer_implies_no_write_collision:
         ip1_ext ip2_ext.
 Proof.
   intros pi1_ext pi2_ext env nth1 nth2 envv ipl1_ext ipl2_ext
-         order_guards bad_guards res Hval Hres Hwf1 Hwf2 Henvlen
-         Hext1 Hext2 ip1 ip2 Hip1 Hip2 Horder Hbad.
+    order_guards bad_guards res Hval Hres Hwf1 Hwf2 Henvlen
+    Hext1 Hext2 ip1 ip2 Hip1 Hip2 Horder Hbad.
   unfold validate_two_instrs_under_guards_integer in Hval.
   bind_imp_destruct Hval in_domain_poly Hdomain.
   bind_imp_destruct Hval env_eq_in_domain Henv.
@@ -5743,297 +5796,15 @@ Proof.
   do 2 rewrite andb_true_iff in Hval.
   destruct Hval as ((HwwT & HwrT) & HrwT).
   subst ww wr rw.
-  assert (Hidx1 :
-    length (PolyLang.ip_index_ext ip1) =
-      (length env + PolyLang.pi_depth_ext pi1_ext)%nat).
-  {
-    rewrite Henvlen.
-    eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-  }
-  assert (Hidx2 :
-    length (PolyLang.ip_index_ext ip2) =
-      (length env + PolyLang.pi_depth_ext pi2_ext)%nat).
-  {
-    rewrite Henvlen.
-    eapply PolyLang.ip_index_size_eq_pi_dom_size_ext; eauto.
-  }
-  assert (HTF1 :
-    exact_listzzs_cols
-      (length env + PolyLang.pi_depth_ext pi1_ext)
-      (PolyLang.pi_access_transformation_ext pi1_ext)).
-  {
-    eapply wf_pinstr_ext_tiling_access_transformation_cols.
-    exact Hwf1.
-  }
-  assert (HTF2 :
-    exact_listzzs_cols
-      (length env + PolyLang.pi_depth_ext pi2_ext)
-      (PolyLang.pi_access_transformation_ext pi2_ext)).
-  {
-    eapply wf_pinstr_ext_tiling_access_transformation_cols.
-    exact Hwf2.
-  }
-  assert (HTFIP1 :
-    PolyLang.ip_access_transformation_ext ip1 =
-      PolyLang.pi_access_transformation_ext pi1_ext).
-  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
-  assert (HTFIP2 :
-    PolyLang.ip_access_transformation_ext ip2 =
-      PolyLang.pi_access_transformation_ext pi2_ext).
-  { eapply PolyLang.expand_ip_instr_eq_pi_access_tf_ext; eauto. }
-  assert (HW1 :
-    Forall
-      (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
-      (PolyLang.pi_waccess_ext pi1_ext)).
-  { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
-  assert (HR1 :
-    Forall
-      (access_matches_tf (PolyLang.pi_access_transformation_ext pi1_ext))
-      (PolyLang.pi_raccess_ext pi1_ext)).
-  { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
-  assert (HW2 :
-    Forall
-      (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
-      (PolyLang.pi_waccess_ext pi2_ext)).
-  { eapply wf_pinstr_ext_tiling_implies_waccess_matches; eauto. }
-  assert (HR2 :
-    Forall
-      (access_matches_tf (PolyLang.pi_access_transformation_ext pi2_ext))
-      (PolyLang.pi_raccess_ext pi2_ext)).
-  { eapply wf_pinstr_ext_tiling_implies_raccess_matches; eauto. }
-  assert (Hbase :
-    in_poly
-      (PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)
-      env_eq_in_domain = true).
-  {
-    eapply poly_inter_def
-      with (p := PolyLang.ip_index_ext ip1 ++ PolyLang.ip_index_ext ip2)
-      in Henv.
-    rewrite poly_inter_pure_def in Henv.
-    rewrite Henv.
-    apply andb_true_intro.
-    split.
-    - rewrite Henvlen.
-      eapply PolyLang.expand_same_env_implies_in_eq_env_pol_ext; eauto.
-    - rewrite Henvlen in Hdomain.
-      eapply PolyLang.expand_same_env_implies_in_domain_product_pol;
-        eauto using PolyLang.wf_pinstr_ext_tiling_implies_wf_pinstr_ext.
-  }
-  assert (Hww_no_collision :
-    Forall
-      (fun waccess1 =>
-         Forall
-           (fun waccess2 =>
-              cell_neq
-                (exact_cell
-                   waccess1
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi1_ext)
-                      (PolyLang.ip_index_ext ip1)))
-                (exact_cell
-                   waccess2
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi2_ext)
-                      (PolyLang.ip_index_ext ip2))))
-           (PolyLang.pi_waccess_ext pi2_ext))
-      (PolyLang.pi_waccess_ext pi1_ext)).
-  {
-    apply Forall_forall.
-    intros waccess1 Hwaccess1.
-    apply Forall_forall.
-    intros waccess2 Hwaccess2.
-    pose proof
-      (forallb_imp_true_forall
-         (fun waccess1 =>
-            forallb_imp
-              (fun waccess2 =>
-                 validate_two_accesses_integer
-                   waccess1 waccess2
-                   (PolyLang.pi_access_transformation_ext pi1_ext)
-                   (PolyLang.pi_access_transformation_ext pi2_ext)
-                   env_eq_in_domain order_guards bad_guards
-                   (length env + PolyLang.pi_depth_ext pi1_ext)
-                   (length env + PolyLang.pi_depth_ext pi2_ext))
-              (PolyLang.pi_waccess_ext pi2_ext))
-         (PolyLang.pi_waccess_ext pi1_ext)
-         Hww waccess1 Hwaccess1)
-      as Hww1.
-    pose proof
-      (forallb_imp_true_forall
-         (fun waccess2 =>
-            validate_two_accesses_integer
-              waccess1 waccess2
-              (PolyLang.pi_access_transformation_ext pi1_ext)
-              (PolyLang.pi_access_transformation_ext pi2_ext)
-              env_eq_in_domain order_guards bad_guards
-              (length env + PolyLang.pi_depth_ext pi1_ext)
-              (length env + PolyLang.pi_depth_ext pi2_ext))
-         (PolyLang.pi_waccess_ext pi2_ext)
-         Hww1 waccess2 Hwaccess2)
-      as Hpair.
-    eapply
-      (validate_two_accesses_integer_implies_permut_no_collision
-         order_guards bad_guards waccess1 waccess2
-         (PolyLang.pi_access_transformation_ext pi1_ext)
-         (PolyLang.pi_access_transformation_ext pi2_ext)
-         (PolyLang.ip_index_ext ip1)
-         (PolyLang.ip_index_ext ip2)
-         env_eq_in_domain
-         (length env + PolyLang.pi_depth_ext pi1_ext)
-         (length env + PolyLang.pi_depth_ext pi2_ext)
-         true Hpair eq_refl Hidx1 Hidx2 HTF1 HTF2).
-    - eapply Forall_forall in HW1; eauto.
-    - eapply Forall_forall in HW2; eauto.
-    - exact Hbase.
-    - exact Horder.
-    - exact Hbad.
-  }
-  assert (Hwr_no_collision :
-    Forall
-      (fun waccess1 =>
-         Forall
-           (fun raccess2 =>
-              cell_neq
-                (exact_cell
-                   waccess1
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi1_ext)
-                      (PolyLang.ip_index_ext ip1)))
-                (exact_cell
-                   raccess2
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi2_ext)
-                      (PolyLang.ip_index_ext ip2))))
-           (PolyLang.pi_raccess_ext pi2_ext))
-      (PolyLang.pi_waccess_ext pi1_ext)).
-  {
-    apply Forall_forall.
-    intros waccess1 Hwaccess1.
-    apply Forall_forall.
-    intros raccess2 Hraccess2.
-    pose proof
-      (forallb_imp_true_forall
-         (fun waccess1 =>
-            forallb_imp
-              (fun raccess2 =>
-                 validate_two_accesses_integer
-                   waccess1 raccess2
-                   (PolyLang.pi_access_transformation_ext pi1_ext)
-                   (PolyLang.pi_access_transformation_ext pi2_ext)
-                   env_eq_in_domain order_guards bad_guards
-                   (length env + PolyLang.pi_depth_ext pi1_ext)
-                   (length env + PolyLang.pi_depth_ext pi2_ext))
-              (PolyLang.pi_raccess_ext pi2_ext))
-         (PolyLang.pi_waccess_ext pi1_ext)
-         Hwr waccess1 Hwaccess1)
-      as Hwr1.
-    pose proof
-      (forallb_imp_true_forall
-         (fun raccess2 =>
-            validate_two_accesses_integer
-              waccess1 raccess2
-              (PolyLang.pi_access_transformation_ext pi1_ext)
-              (PolyLang.pi_access_transformation_ext pi2_ext)
-              env_eq_in_domain order_guards bad_guards
-              (length env + PolyLang.pi_depth_ext pi1_ext)
-              (length env + PolyLang.pi_depth_ext pi2_ext))
-         (PolyLang.pi_raccess_ext pi2_ext)
-         Hwr1 raccess2 Hraccess2)
-      as Hpair.
-    eapply
-      (validate_two_accesses_integer_implies_permut_no_collision
-         order_guards bad_guards waccess1 raccess2
-         (PolyLang.pi_access_transformation_ext pi1_ext)
-         (PolyLang.pi_access_transformation_ext pi2_ext)
-         (PolyLang.ip_index_ext ip1)
-         (PolyLang.ip_index_ext ip2)
-         env_eq_in_domain
-         (length env + PolyLang.pi_depth_ext pi1_ext)
-         (length env + PolyLang.pi_depth_ext pi2_ext)
-         true Hpair eq_refl Hidx1 Hidx2 HTF1 HTF2).
-    - eapply Forall_forall in HW1; eauto.
-    - eapply Forall_forall in HR2; eauto.
-    - exact Hbase.
-    - exact Horder.
-    - exact Hbad.
-  }
-  assert (Hrw_no_collision :
-    Forall
-      (fun raccess1 =>
-         Forall
-           (fun waccess2 =>
-              cell_neq
-                (exact_cell
-                   raccess1
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi1_ext)
-                      (PolyLang.ip_index_ext ip1)))
-                (exact_cell
-                   waccess2
-                   (affine_product
-                      (PolyLang.pi_access_transformation_ext pi2_ext)
-                      (PolyLang.ip_index_ext ip2))))
-           (PolyLang.pi_waccess_ext pi2_ext))
-      (PolyLang.pi_raccess_ext pi1_ext)).
-  {
-    apply Forall_forall.
-    intros raccess1 Hraccess1.
-    apply Forall_forall.
-    intros waccess2 Hwaccess2.
-    pose proof
-      (forallb_imp_true_forall
-         (fun raccess1 =>
-            forallb_imp
-              (fun waccess2 =>
-                 validate_two_accesses_integer
-                   raccess1 waccess2
-                   (PolyLang.pi_access_transformation_ext pi1_ext)
-                   (PolyLang.pi_access_transformation_ext pi2_ext)
-                   env_eq_in_domain order_guards bad_guards
-                   (length env + PolyLang.pi_depth_ext pi1_ext)
-                   (length env + PolyLang.pi_depth_ext pi2_ext))
-              (PolyLang.pi_waccess_ext pi2_ext))
-         (PolyLang.pi_raccess_ext pi1_ext)
-         Hrw raccess1 Hraccess1)
-      as Hrw1.
-    pose proof
-      (forallb_imp_true_forall
-         (fun waccess2 =>
-            validate_two_accesses_integer
-              raccess1 waccess2
-              (PolyLang.pi_access_transformation_ext pi1_ext)
-              (PolyLang.pi_access_transformation_ext pi2_ext)
-              env_eq_in_domain order_guards bad_guards
-              (length env + PolyLang.pi_depth_ext pi1_ext)
-              (length env + PolyLang.pi_depth_ext pi2_ext))
-         (PolyLang.pi_waccess_ext pi2_ext)
-         Hrw1 waccess2 Hwaccess2)
-      as Hpair.
-    eapply
-      (validate_two_accesses_integer_implies_permut_no_collision
-         order_guards bad_guards raccess1 waccess2
-         (PolyLang.pi_access_transformation_ext pi1_ext)
-         (PolyLang.pi_access_transformation_ext pi2_ext)
-         (PolyLang.ip_index_ext ip1)
-         (PolyLang.ip_index_ext ip2)
-         env_eq_in_domain
-         (length env + PolyLang.pi_depth_ext pi1_ext)
-         (length env + PolyLang.pi_depth_ext pi2_ext)
-         true Hpair eq_refl Hidx1 Hidx2 HTF1 HTF2).
-    - eapply Forall_forall in HR1; eauto.
-    - eapply Forall_forall in HW2; eauto.
-    - exact Hbase.
-    - exact Horder.
-    - exact Hbad.
-  }
-  unfold no_write_collision, no_ww_collision, no_wr_collision.
-  rewrite HTFIP1, HTFIP2.
-  repeat split.
-  - exact Hww_no_collision.
-  - eapply transpose_access_noncollision.
-    exact Hwr_no_collision.
-  - eapply symmetrize_access_noncollision.
-    exact Hrw_no_collision.
+  eapply
+    (validated_access_checks_imply_no_write_collision
+       validate_two_accesses_integer
+       validate_two_accesses_integer_checker_sound)
+    with
+      (in_domain_poly:=in_domain_poly)
+      (env_eq_in_domain:=env_eq_in_domain)
+      (order_guards:=order_guards)
+      (bad_guards:=bad_guards); eauto.
 Qed.
 
 End AffineValidator.

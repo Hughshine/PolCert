@@ -7660,8 +7660,6 @@ Proof.
     intros test body IHbody constrs sched_prefix env_dim iter_depth prefix
       pis envv ipl sorted_ipl st1 st2
       Hprefixlen Hwf Hextract Hconstr Hflat Hperm Hsorted Hipls Hlenenv.
-    pose proof Hwf as Hwf_guard.
-    pose proof Hextract as Hextract_guard.
     eapply extract_stmt_guard_success_inv in Hextract.
     destruct Hextract as (test_constrs & Htest & Hbodyext).
     eapply wf_scop_guard_inv in Hwf.
@@ -7785,7 +7783,7 @@ Proof.
     ) as Hsplit.
     destruct Hsplit as
       (pis1 & pis2 & stmid &
-       Hhdext & Htlext & Hpis &
+       Hhdext & Htlext & _ &
        Hflat1 & Hflat2 & Hsem1 & Hsem2).
     assert (Hperm1:
       Permutation
@@ -8146,10 +8144,8 @@ Lemma core_sched_loop_constrs_len_todo:
     exists st2',
       Loop.loop_semantics (PolIRs.Loop.Loop lb ub body) (rev envv) st1 st2' /\ State.eq st2 st2'.
 Proof.
-    intros lb ub body constrs sched_prefix varctxt vars
-      pis envv ipl sorted_ipl st1 st2
-      Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hipls Hlenenv.
-    eapply extracted_stmt_core_from_prefix; eauto.
+    intros lb ub body.
+    exact (extracted_stmt_core_from_prefix (PolIRs.Loop.Loop lb ub body)).
 Qed.
 
 Scheme loop_stmt_mutind := Induction for PolIRs.Loop.stmt Sort Prop
@@ -8191,14 +8187,8 @@ Lemma core_sched_stmt_stmts_constrs_mutual:
   (forall stmts, stmts_constrs_goal stmts).
 Proof.
     split.
-    - intros stmt.
-      unfold stmt_constrs_goal.
-      intros.
-      eapply extracted_stmt_core_from_prefix; eauto.
-    - intros stmts.
-      unfold stmts_constrs_goal.
-      intros.
-      eapply extracted_stmts_core_from_prefix; eauto.
+    - exact extracted_stmt_core_from_prefix.
+    - exact extracted_stmts_core_from_prefix.
 Qed.
 
 Lemma core_sched_seq_tail_constrs_len_todo:
@@ -8290,9 +8280,10 @@ Lemma extract_stmt_to_loop_semantics_core_sched_constrs_fuel:
       Loop.loop_semantics stmt (rev envv) st1 st2' /\ State.eq st2 st2'.
 Proof.
     intros fuel stmt constrs sched_prefix varctxt vars
-      pis envv ipl sorted_ipl st1 st2
-      _ Hwf Hextract Hconstr Hchk Hflat Hperm Hsorted Hipls Hlenenv.
-    eapply extracted_stmt_core_from_prefix; eauto.
+      pis envv ipl sorted_ipl st1 st2 _.
+    exact (extracted_stmt_core_from_prefix
+      stmt constrs sched_prefix varctxt vars
+      pis envv ipl sorted_ipl st1 st2).
 Qed.
 
 Lemma extract_stmt_to_loop_semantics_core_sched_constrs:

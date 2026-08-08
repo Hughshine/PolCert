@@ -21,6 +21,7 @@ Require Import PolIRs.
 Require Import OpenScop.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
+Require Import Misc.
 
 Module TilingValidator (PolIRs: POLIRS).
 
@@ -154,6 +155,49 @@ Definition tiling_to_outer_pprog
 
 Definition from_tiling_pprog := tiling_to_outer_pprog.
 
+Local Lemma tiling_to_outer_ip_outer_to_tiling_ip :
+  forall ip,
+    tiling_to_outer_ip (outer_to_tiling_ip ip) = ip.
+Proof.
+  intros [nth index transformation time_stamp instruction depth].
+  reflexivity.
+Qed.
+
+Local Lemma outer_to_tiling_ip_tiling_to_outer_ip :
+  forall ip,
+    outer_to_tiling_ip (tiling_to_outer_ip ip) = ip.
+Proof.
+  intros [nth index transformation time_stamp instruction depth].
+  reflexivity.
+Qed.
+
+Local Lemma outer_to_tiling_ip_injective :
+  forall ip1 ip2,
+    outer_to_tiling_ip ip1 = outer_to_tiling_ip ip2 -> ip1 = ip2.
+Proof.
+  intros ip1 ip2 Heq.
+  apply (f_equal tiling_to_outer_ip) in Heq.
+  now repeat rewrite tiling_to_outer_ip_outer_to_tiling_ip in Heq.
+Qed.
+
+Local Lemma tiling_to_outer_ip_injective :
+  forall ip1 ip2,
+    tiling_to_outer_ip ip1 = tiling_to_outer_ip ip2 -> ip1 = ip2.
+Proof.
+  intros ip1 ip2 Heq.
+  apply (f_equal outer_to_tiling_ip) in Heq.
+  now repeat rewrite outer_to_tiling_ip_tiling_to_outer_ip in Heq.
+Qed.
+
+Local Lemma tiling_to_outer_pinstr_outer_to_tiling_pinstr :
+  forall pi,
+    tiling_to_outer_pinstr (outer_to_tiling_pinstr pi) = pi.
+Proof.
+  intros [depth instr poly schedule point_witness transformation
+          access_transformation waccess raccess].
+  reflexivity.
+Qed.
+
 Lemma outer_to_tiling_wf_pinstr_affine :
   forall varctxt vars pi,
     PolIRs.PolyLang.wf_pinstr_affine varctxt vars pi ->
@@ -248,13 +292,9 @@ Lemma nth_error_map_inv :
       nth_error xs n = Some x /\
       y = f x.
 Proof.
-  induction xs as [|x xs IH]; intros n y Hnth.
-  - destruct n; simpl in Hnth; discriminate.
-  - destruct n; simpl in Hnth.
-    + inversion Hnth. subst. exists x. split; reflexivity.
-    + eapply IH in Hnth.
-      destruct Hnth as [x' [Hxs Hy]].
-      exists x'. split; exact Hxs || exact Hy.
+  intros A B f xs n y Hnth.
+  apply (proj1 (Misc.nth_error_map_iff A B f n xs y)).
+  exact Hnth.
 Qed.
 
 Lemma nth_error_map :
@@ -262,11 +302,10 @@ Lemma nth_error_map :
     nth_error xs n = Some x ->
     nth_error (List.map f xs) n = Some (f x).
 Proof.
-  induction xs as [|x0 xs IH]; intros n x Hnth.
-  - destruct n; discriminate.
-  - destruct n; simpl in *.
-    + inversion Hnth. subst. reflexivity.
-    + eapply IH. exact Hnth.
+  intros A B f xs n x Hnth.
+  apply (proj2 (Misc.nth_error_map_iff A B f n xs (f x))).
+  exists x.
+  split; [exact Hnth|reflexivity].
 Qed.
 
 Lemma outer_to_tiling_belongs_to_iff :
@@ -351,15 +390,11 @@ Lemma tiling_to_outer_instr_point_sema_iff :
     Tiling.PL.instr_point_sema ip st1 st2.
 Proof.
   intros ip st1 st2.
-  split; intro Hsema.
-  - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
-    econstructor.
-    simpl in *.
-    exact Hsem.
-  - inversion Hsema as [wcs rcs Hsem]; clear Hsema.
-    econstructor.
-    simpl in *.
-    exact Hsem.
+  pose proof
+    (outer_to_tiling_instr_point_sema_iff
+       (tiling_to_outer_ip ip) st1 st2) as Hsema.
+  rewrite outer_to_tiling_ip_tiling_to_outer_ip in Hsema.
+  tauto.
 Qed.
 
 Lemma tiling_to_outer_ipl_outer_to_tiling :
@@ -368,8 +403,8 @@ Lemma tiling_to_outer_ipl_outer_to_tiling :
 Proof.
   induction ipl as [|ip ipl IH]; simpl.
   - reflexivity.
-  - destruct ip; simpl.
-    f_equal; exact IH.
+  - rewrite tiling_to_outer_ip_outer_to_tiling_ip, IH.
+    reflexivity.
 Qed.
 
 Lemma outer_to_tiling_ipl_tiling_to_outer :
@@ -378,8 +413,95 @@ Lemma outer_to_tiling_ipl_tiling_to_outer :
 Proof.
   induction ipl as [|ip ipl IH]; simpl.
   - reflexivity.
-  - destruct ip; simpl.
-    f_equal; exact IH.
+  - rewrite outer_to_tiling_ip_tiling_to_outer_ip, IH.
+    reflexivity.
+Qed.
+
+Local Lemma in_outer_to_tiling_ipl_iff :
+  forall ip ipl,
+    In ip (outer_to_tiling_ipl ipl) <->
+    In (tiling_to_outer_ip ip) ipl.
+Proof.
+  intros ip ipl.
+  unfold outer_to_tiling_ipl.
+  split; intro Hin.
+  - apply List.in_map_iff in Hin.
+    destruct Hin as [outer_ip [Heq Hin]].
+    apply (f_equal tiling_to_outer_ip) in Heq.
+    rewrite tiling_to_outer_ip_outer_to_tiling_ip in Heq.
+    now rewrite <- Heq.
+  - apply List.in_map_iff.
+    exists (tiling_to_outer_ip ip).
+    split.
+    + apply outer_to_tiling_ip_tiling_to_outer_ip.
+    + exact Hin.
+Qed.
+
+Local Lemma outer_to_tiling_ipl_forall_iff :
+  forall
+      (inner_property : Tiling.PL.InstrPoint -> Prop)
+      (outer_property : PolIRs.PolyLang.InstrPoint -> Prop)
+      ipl,
+    (forall ip,
+       inner_property (outer_to_tiling_ip ip) <-> outer_property ip) ->
+    (forall ip,
+       In ip (outer_to_tiling_ipl ipl) -> inner_property ip) <->
+    (forall ip, In ip ipl -> outer_property ip).
+Proof.
+  intros inner_property outer_property ipl Hproperty.
+  split.
+  - intros Hforall ip Hin.
+    apply (proj1 (Hproperty ip)).
+    apply Hforall.
+    apply List.in_map.
+    exact Hin.
+  - intros Hforall ip Hin.
+    rewrite <- (outer_to_tiling_ip_tiling_to_outer_ip ip).
+    apply (proj2 (Hproperty (tiling_to_outer_ip ip))).
+    apply Hforall.
+    apply (proj1 (in_outer_to_tiling_ipl_iff ip ipl)).
+    exact Hin.
+Qed.
+
+Local Lemma outer_to_tiling_ipl_characterization_iff :
+  forall
+      (inner_property : Tiling.PL.InstrPoint -> Prop)
+      (outer_property : PolIRs.PolyLang.InstrPoint -> Prop)
+      ipl,
+    (forall ip,
+       inner_property (outer_to_tiling_ip ip) <-> outer_property ip) ->
+    (forall ip,
+       In ip (outer_to_tiling_ipl ipl) <-> inner_property ip) <->
+    (forall ip, In ip ipl <-> outer_property ip).
+Proof.
+  intros inner_property outer_property ipl Hproperty.
+  split.
+  - intros Hcharacterization ip.
+    split; intro H.
+    + apply (proj1 (Hproperty ip)).
+      apply (proj1 (Hcharacterization (outer_to_tiling_ip ip))).
+      apply List.in_map.
+      exact H.
+    + pose proof
+        (proj1 (in_outer_to_tiling_ipl_iff
+           (outer_to_tiling_ip ip) ipl)
+           (proj2 (Hcharacterization (outer_to_tiling_ip ip))
+              (proj2 (Hproperty ip) H))) as Hin.
+      now rewrite tiling_to_outer_ip_outer_to_tiling_ip in Hin.
+  - intros Hcharacterization ip.
+    split; intro H.
+    + pose proof
+        (proj1 (in_outer_to_tiling_ipl_iff ip ipl) H) as Hin.
+      pose proof
+        (proj1 (Hcharacterization (tiling_to_outer_ip ip)) Hin)
+        as Houter.
+      rewrite <- (outer_to_tiling_ip_tiling_to_outer_ip ip).
+      apply (proj2 (Hproperty (tiling_to_outer_ip ip))).
+      exact Houter.
+    + apply (proj2 (in_outer_to_tiling_ipl_iff ip ipl)).
+      apply (proj2 (Hcharacterization (tiling_to_outer_ip ip))).
+      apply (proj1 (Hproperty (tiling_to_outer_ip ip))).
+      now rewrite outer_to_tiling_ip_tiling_to_outer_ip.
 Qed.
 
 Lemma outer_to_tiling_instr_point_list_semantics :
@@ -436,18 +558,11 @@ Lemma NoDup_outer_to_tiling_ipl :
     NoDup (outer_to_tiling_ipl ipl).
 Proof.
   intros ipl Hnodup.
-  induction Hnodup as [|ip ipl Hnotin Hnodup IH].
-  - constructor.
-  - simpl.
-    constructor.
-    + intro Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [ip' [Heq Hin']].
-      assert (ip = ip').
-      { destruct ip, ip'; simpl in Heq; inversion Heq; subst; reflexivity. }
-      subst.
-      contradiction.
-    + exact IH.
+  apply Tiling.NoDup_map_on.
+  - exact Hnodup.
+  - intros ip1 ip2 _ _ Heq.
+    apply outer_to_tiling_ip_injective.
+    exact Heq.
 Qed.
 
 Lemma NoDup_tiling_to_outer_ipl :
@@ -456,18 +571,11 @@ Lemma NoDup_tiling_to_outer_ipl :
     NoDup (List.map tiling_to_outer_ip ipl).
 Proof.
   intros ipl Hnodup.
-  induction Hnodup as [|ip ipl Hnotin Hnodup IH].
-  - constructor.
-  - simpl.
-    constructor.
-    + intro Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [ip' [Heq Hin']].
-      assert (ip = ip').
-      { destruct ip, ip'; simpl in Heq; inversion Heq; subst; reflexivity. }
-      subst.
-      contradiction.
-    + exact IH.
+  apply Tiling.NoDup_map_on.
+  - exact Hnodup.
+  - intros ip1 ip2 _ _ Heq.
+    apply tiling_to_outer_ip_injective.
+    exact Heq.
 Qed.
 
 Lemma Sorted_outer_to_tiling_ipl :
@@ -506,6 +614,226 @@ Proof.
         exact H.
 Qed.
 
+Local Lemma NoDup_outer_to_tiling_ipl_iff :
+  forall ipl,
+    NoDup (outer_to_tiling_ipl ipl) <-> NoDup ipl.
+Proof.
+  intro ipl.
+  split; intro Hnodup.
+  - pose proof (NoDup_tiling_to_outer_ipl _ Hnodup) as Houter.
+    now rewrite tiling_to_outer_ipl_outer_to_tiling in Houter.
+  - apply NoDup_outer_to_tiling_ipl.
+    exact Hnodup.
+Qed.
+
+Local Lemma Sorted_outer_to_tiling_ipl_iff :
+  forall ipl,
+    Sorted Tiling.PL.np_lt (outer_to_tiling_ipl ipl) <->
+    Sorted PolIRs.PolyLang.np_lt ipl.
+Proof.
+  intro ipl.
+  split; intro Hsorted.
+  - pose proof (Sorted_tiling_to_outer_ipl _ Hsorted) as Houter.
+    now rewrite tiling_to_outer_ipl_outer_to_tiling in Houter.
+  - apply Sorted_outer_to_tiling_ipl.
+    exact Hsorted.
+Qed.
+
+Local Lemma Sorted_outer_to_tiling_sched_le :
+  forall ipl,
+    Sorted PolIRs.PolyLang.instr_point_sched_le ipl ->
+    Sorted Tiling.PL.instr_point_sched_le (outer_to_tiling_ipl ipl).
+Proof.
+  intros ipl Hsorted.
+  induction Hsorted.
+  - constructor.
+  - simpl.
+    constructor.
+    + exact IHHsorted.
+    + induction H.
+      * constructor.
+      * constructor.
+        apply (proj2 (outer_to_tiling_instr_point_sched_le_iff a b)).
+        exact H.
+Qed.
+
+Local Lemma Sorted_tiling_to_outer_sched_le :
+  forall ipl,
+    Sorted Tiling.PL.instr_point_sched_le ipl ->
+    Sorted PolIRs.PolyLang.instr_point_sched_le
+      (List.map tiling_to_outer_ip ipl).
+Proof.
+  intros ipl Hsorted.
+  induction Hsorted.
+  - constructor.
+  - simpl.
+    constructor.
+    + exact IHHsorted.
+    + induction H.
+      * constructor.
+      * constructor.
+        apply (proj1 (tiling_to_outer_instr_point_sched_le_iff a b)).
+        exact H.
+Qed.
+
+Local Lemma Sorted_outer_to_tiling_sched_le_iff :
+  forall ipl,
+    Sorted Tiling.PL.instr_point_sched_le (outer_to_tiling_ipl ipl) <->
+    Sorted PolIRs.PolyLang.instr_point_sched_le ipl.
+Proof.
+  intro ipl.
+  split; intro Hsorted.
+  - pose proof (Sorted_tiling_to_outer_sched_le _ Hsorted) as Houter.
+    now rewrite tiling_to_outer_ipl_outer_to_tiling in Houter.
+  - apply Sorted_outer_to_tiling_sched_le.
+    exact Hsorted.
+Qed.
+
+Local Lemma outer_to_tiling_ip_env_prefix_iff :
+  forall envv ip,
+    firstn (Datatypes.length envv)
+      (Tiling.PL.ip_index (outer_to_tiling_ip ip)) = envv <->
+    firstn (Datatypes.length envv)
+      (PolIRs.PolyLang.ip_index ip) = envv.
+Proof.
+  intros envv ip.
+  simpl.
+  tauto.
+Qed.
+
+Local Lemma outer_to_tiling_flatten_shape_iff :
+  forall envv ipl
+      (inner_property : Tiling.PL.InstrPoint -> Prop)
+      (outer_property : PolIRs.PolyLang.InstrPoint -> Prop),
+    (forall ip,
+       inner_property (outer_to_tiling_ip ip) <-> outer_property ip) ->
+    ((forall ip,
+        In ip (outer_to_tiling_ipl ipl) ->
+        firstn (Datatypes.length envv) (Tiling.PL.ip_index ip) = envv) /\
+     (forall ip,
+        In ip (outer_to_tiling_ipl ipl) <-> inner_property ip) /\
+     NoDup (outer_to_tiling_ipl ipl) /\
+     Sorted Tiling.PL.np_lt (outer_to_tiling_ipl ipl)) <->
+    ((forall ip,
+        In ip ipl ->
+        firstn (Datatypes.length envv)
+          (PolIRs.PolyLang.ip_index ip) = envv) /\
+     (forall ip, In ip ipl <-> outer_property ip) /\
+     NoDup ipl /\
+     Sorted PolIRs.PolyLang.np_lt ipl).
+Proof.
+  intros envv ipl inner_property outer_property Hproperty.
+  split; intros [Henv [Hcharacterization [Hnodup Hsorted]]].
+  - split.
+    + apply (proj1
+        (outer_to_tiling_ipl_forall_iff
+           (fun ip =>
+              firstn (Datatypes.length envv) (Tiling.PL.ip_index ip) = envv)
+           (fun ip =>
+              firstn (Datatypes.length envv)
+                (PolIRs.PolyLang.ip_index ip) = envv)
+           ipl (outer_to_tiling_ip_env_prefix_iff envv))).
+      exact Henv.
+    + split.
+      * apply (proj1
+          (outer_to_tiling_ipl_characterization_iff
+             inner_property outer_property ipl Hproperty)).
+        exact Hcharacterization.
+      * split.
+        -- apply (proj1 (NoDup_outer_to_tiling_ipl_iff ipl)).
+           exact Hnodup.
+        -- apply (proj1 (Sorted_outer_to_tiling_ipl_iff ipl)).
+           exact Hsorted.
+  - split.
+    + apply (proj2
+        (outer_to_tiling_ipl_forall_iff
+           (fun ip =>
+              firstn (Datatypes.length envv) (Tiling.PL.ip_index ip) = envv)
+           (fun ip =>
+              firstn (Datatypes.length envv)
+                (PolIRs.PolyLang.ip_index ip) = envv)
+           ipl (outer_to_tiling_ip_env_prefix_iff envv))).
+      exact Henv.
+    + split.
+      * apply (proj2
+          (outer_to_tiling_ipl_characterization_iff
+             inner_property outer_property ipl Hproperty)).
+        exact Hcharacterization.
+      * split.
+        -- apply (proj2 (NoDup_outer_to_tiling_ipl_iff ipl)).
+           exact Hnodup.
+        -- apply (proj2 (Sorted_outer_to_tiling_ipl_iff ipl)).
+           exact Hsorted.
+Qed.
+
+Local Lemma outer_to_tiling_flatten_instr_nth_point_iff :
+  forall envv nth pi ip,
+    (firstn (Datatypes.length envv)
+       (Tiling.PL.ip_index (outer_to_tiling_ip ip)) = envv /\
+     Tiling.PL.belongs_to
+       (outer_to_tiling_ip ip) (outer_to_tiling_pinstr pi) /\
+     Tiling.PL.ip_nth (outer_to_tiling_ip ip) = nth /\
+     Datatypes.length (Tiling.PL.ip_index (outer_to_tiling_ip ip)) =
+       (Datatypes.length envv +
+        Tiling.PL.pi_depth (outer_to_tiling_pinstr pi))%nat) <->
+    (firstn (Datatypes.length envv)
+       (PolIRs.PolyLang.ip_index ip) = envv /\
+     PolIRs.PolyLang.belongs_to ip pi /\
+     PolIRs.PolyLang.ip_nth ip = nth /\
+     Datatypes.length (PolIRs.PolyLang.ip_index ip) =
+       (Datatypes.length envv + PolIRs.PolyLang.pi_depth pi)%nat).
+Proof.
+  intros envv nth pi ip.
+  simpl.
+  rewrite outer_to_tiling_belongs_to_iff.
+  tauto.
+Qed.
+
+Local Lemma outer_to_tiling_flatten_instrs_point_iff :
+  forall envv pis ip,
+    (exists pi,
+       nth_error (List.map outer_to_tiling_pinstr pis)
+         (Tiling.PL.ip_nth (outer_to_tiling_ip ip)) = Some pi /\
+       firstn (Datatypes.length envv)
+         (Tiling.PL.ip_index (outer_to_tiling_ip ip)) = envv /\
+       Tiling.PL.belongs_to (outer_to_tiling_ip ip) pi /\
+       Datatypes.length (Tiling.PL.ip_index (outer_to_tiling_ip ip)) =
+         (Datatypes.length envv + Tiling.PL.pi_depth pi)%nat) <->
+    (exists pi,
+       nth_error pis (PolIRs.PolyLang.ip_nth ip) = Some pi /\
+       firstn (Datatypes.length envv)
+         (PolIRs.PolyLang.ip_index ip) = envv /\
+       PolIRs.PolyLang.belongs_to ip pi /\
+       Datatypes.length (PolIRs.PolyLang.ip_index ip) =
+         (Datatypes.length envv + PolIRs.PolyLang.pi_depth pi)%nat).
+Proof.
+  intros envv pis ip.
+  split; intros [tiling_pi [Hnth [Hprefix [Hbelongs Hlength]]]].
+  - destruct
+      (nth_error_map_inv
+         _ _ outer_to_tiling_pinstr _ _ _ Hnth)
+      as [pi [Hnth_outer Hpi]].
+    subst tiling_pi.
+    exists pi.
+    split; [exact Hnth_outer|].
+    split; [simpl in Hprefix; exact Hprefix|].
+    split.
+    + apply (proj1 (outer_to_tiling_belongs_to_iff ip pi)).
+      exact Hbelongs.
+    + simpl in Hlength.
+      exact Hlength.
+  - exists (outer_to_tiling_pinstr tiling_pi).
+    split.
+    + apply nth_error_map.
+      exact Hnth.
+    + split; [simpl; exact Hprefix|].
+      split.
+      * apply (proj2 (outer_to_tiling_belongs_to_iff ip tiling_pi)).
+        exact Hbelongs.
+      * simpl.
+        exact Hlength.
+Qed.
+
 Lemma outer_to_tiling_flatten_instr_nth_iff :
   forall envv nth pi ipl,
     Tiling.PL.flatten_instr_nth envv nth (outer_to_tiling_pinstr pi)
@@ -513,109 +841,11 @@ Lemma outer_to_tiling_flatten_instr_nth_iff :
     PolIRs.PolyLang.flatten_instr_nth envv nth pi ipl.
 Proof.
   intros envv nth pi ipl.
-  split; intros Hflat.
-  - destruct Hflat as [Henv [Hbel [Hnodup Hsorted]]].
-    split.
-    + intros ip Hin.
-      change
-        (firstn (Datatypes.length envv)
-           (Tiling.PL.ILSema.ip_index (outer_to_tiling_ip ip)) = envv).
-      apply Henv.
-      apply in_map_iff.
-      exists ip.
-      split; [reflexivity|exact Hin].
-    + split.
-      * intros ip.
-        specialize (Hbel (outer_to_tiling_ip ip)).
-        destruct Hbel as [Hfwd Hbwd].
-        split; intro Hin.
-        -- assert (Hmap : In (outer_to_tiling_ip ip) (outer_to_tiling_ipl ipl)).
-           { apply in_map_iff.
-             exists ip.
-             split; [reflexivity|exact Hin]. }
-           specialize (Hfwd Hmap).
-           destruct Hfwd as [Hpref [Hbel' [Hnth Hlen]]].
-           split; [simpl in Hpref; exact Hpref|].
-           split.
-           { apply (proj1 (outer_to_tiling_belongs_to_iff ip pi)); exact Hbel'. }
-           split; [simpl in Hnth; exact Hnth|].
-           simpl in Hlen.
-           exact Hlen.
-        -- assert (Hmap_in : In (outer_to_tiling_ip ip) (outer_to_tiling_ipl ipl)).
-           {
-             apply Hbwd.
-             destruct Hin as [Hpref [Hbel' [Hnth Hlen]]].
-             split; [simpl; exact Hpref|].
-             split.
-             { apply (proj2 (outer_to_tiling_belongs_to_iff ip pi)); exact Hbel'. }
-             split; [simpl; exact Hnth|].
-             simpl.
-             exact Hlen.
-           }
-           apply in_map_iff in Hmap_in.
-           destruct Hmap_in as [ip' [Hip_eq Hin0]].
-           destruct ip, ip'; simpl in Hip_eq; inversion Hip_eq; subst.
-           exact Hin0.
-      * split.
-        -- pose proof (NoDup_tiling_to_outer_ipl _ Hnodup) as Hnodup0.
-           now rewrite tiling_to_outer_ipl_outer_to_tiling in Hnodup0.
-        -- pose proof (Sorted_tiling_to_outer_ipl _ Hsorted) as Hsorted0.
-           now rewrite tiling_to_outer_ipl_outer_to_tiling in Hsorted0.
-  - destruct Hflat as [Henv [Hbel [Hnodup Hsorted]]].
-    split.
-    + intros ip_t Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [ip [Hip_eq Hin0]].
-      subst ip_t.
-      pose proof (Henv _ Hin0) as Henv0.
-      simpl in Henv0.
-      exact Henv0.
-    + split.
-      * intros ip_t.
-        split; intro Hin.
-        -- apply in_map_iff in Hin.
-           destruct Hin as [ip [Hip_eq Hin0]].
-           subst ip_t.
-           specialize (Hbel ip).
-           destruct Hbel as [Hfwd _].
-           destruct (Hfwd Hin0) as [Hpref [Hbel' [Hnth Hlen]]].
-           split; [simpl in Hpref; exact Hpref|].
-           split.
-           { apply (proj2 (outer_to_tiling_belongs_to_iff ip pi)).
-             exact Hbel'. }
-           split; [simpl in Hnth; exact Hnth|].
-           simpl in Hlen.
-           exact Hlen.
-        -- apply in_map_iff.
-           exists
-             {| PolIRs.PolyLang.ip_nth := Tiling.PL.ip_nth ip_t;
-                PolIRs.PolyLang.ip_index := Tiling.PL.ip_index ip_t;
-                PolIRs.PolyLang.ip_transformation := Tiling.PL.ip_transformation ip_t;
-                PolIRs.PolyLang.ip_time_stamp := Tiling.PL.ip_time_stamp ip_t;
-                PolIRs.PolyLang.ip_instruction := Tiling.PL.ip_instruction ip_t;
-                PolIRs.PolyLang.ip_depth := Tiling.PL.ip_depth ip_t |}.
-           split; [destruct ip_t; reflexivity|].
-           specialize
-             (Hbel
-                {| PolIRs.PolyLang.ip_nth := Tiling.PL.ip_nth ip_t;
-                   PolIRs.PolyLang.ip_index := Tiling.PL.ip_index ip_t;
-                   PolIRs.PolyLang.ip_transformation := Tiling.PL.ip_transformation ip_t;
-                   PolIRs.PolyLang.ip_time_stamp := Tiling.PL.ip_time_stamp ip_t;
-                   PolIRs.PolyLang.ip_instruction := Tiling.PL.ip_instruction ip_t;
-                   PolIRs.PolyLang.ip_depth := Tiling.PL.ip_depth ip_t |}).
-           destruct Hbel as [_ Hbwd].
-           apply Hbwd.
-           destruct Hin as [Hpref [Hbel' [Hnth Hlen]]].
-           split; [simpl; exact Hpref|].
-           split.
-           { apply (proj1 (outer_to_tiling_belongs_to_iff _ pi)).
-             exact Hbel'. }
-           split; [simpl; exact Hnth|].
-           simpl.
-           exact Hlen.
-      * split.
-        -- apply NoDup_outer_to_tiling_ipl; exact Hnodup.
-        -- apply Sorted_outer_to_tiling_ipl; exact Hsorted.
+  unfold Tiling.PL.flatten_instr_nth,
+         PolIRs.PolyLang.flatten_instr_nth.
+  eapply outer_to_tiling_flatten_shape_iff.
+  intro ip.
+  apply outer_to_tiling_flatten_instr_nth_point_iff.
 Qed.
 
 Lemma outer_to_tiling_flatten_instrs_iff :
@@ -625,116 +855,10 @@ Lemma outer_to_tiling_flatten_instrs_iff :
     PolIRs.PolyLang.flatten_instrs envv pis ipl.
 Proof.
   intros envv pis ipl.
-  split; intros Hflat.
-  - destruct Hflat as [Henv [Hbel [Hnodup Hsorted]]].
-    split.
-    + intros ip Hin.
-      change
-        (firstn (Datatypes.length envv)
-           (Tiling.PL.ILSema.ip_index (outer_to_tiling_ip ip)) = envv).
-      apply Henv.
-      apply in_map_iff.
-      exists ip.
-      split; [reflexivity|exact Hin].
-    + split.
-      * intros ip.
-        specialize (Hbel (outer_to_tiling_ip ip)).
-        destruct Hbel as [Hfwd Hbwd].
-        split; intro Hin.
-        -- assert (Hmap : In (outer_to_tiling_ip ip) (outer_to_tiling_ipl ipl)).
-           { apply in_map_iff.
-             exists ip.
-             split; [reflexivity|exact Hin]. }
-           specialize (Hfwd Hmap).
-           destruct Hfwd as [pi_t [Hnth [Hpref [Hbel' Hlen]]]].
-           destruct (nth_error_map_inv _ _ outer_to_tiling_pinstr _ _ _ Hnth)
-             as [pi [Hnth0 Hpi_t]].
-           subst pi_t.
-           exists pi.
-           split; [exact Hnth0|].
-           split; [exact Hpref|].
-           split.
-           { apply (proj1 (outer_to_tiling_belongs_to_iff ip pi)); exact Hbel'. }
-           exact Hlen.
-        -- assert (Hmap_in : In (outer_to_tiling_ip ip) (outer_to_tiling_ipl ipl)).
-           {
-             apply Hbwd.
-             destruct Hin as [pi [Hnth [Hpref [Hbel' Hlen]]]].
-             exists (outer_to_tiling_pinstr pi).
-             split.
-             { eapply nth_error_map. exact Hnth. }
-             split; [exact Hpref|].
-             split.
-             { apply (proj2 (outer_to_tiling_belongs_to_iff ip pi)); exact Hbel'. }
-             exact Hlen.
-           }
-           apply in_map_iff in Hmap_in.
-           destruct Hmap_in as [ip' [Hip_eq Hin0]].
-           destruct ip, ip'; simpl in Hip_eq; inversion Hip_eq; subst.
-           exact Hin0.
-      * split.
-        -- pose proof (NoDup_tiling_to_outer_ipl _ Hnodup) as Hnodup0.
-           now rewrite tiling_to_outer_ipl_outer_to_tiling in Hnodup0.
-        -- pose proof (Sorted_tiling_to_outer_ipl _ Hsorted) as Hsorted0.
-           now rewrite tiling_to_outer_ipl_outer_to_tiling in Hsorted0.
-  - destruct Hflat as [Henv [Hbel [Hnodup Hsorted]]].
-    split.
-    + intros ip_t Hin.
-      apply in_map_iff in Hin.
-      destruct Hin as [ip [Hip_eq Hin0]].
-      subst ip_t.
-      pose proof (Henv _ Hin0) as Henv0.
-      simpl in Henv0.
-      exact Henv0.
-    + split.
-      * intros ip_t.
-        split; intro Hin.
-        -- apply in_map_iff in Hin.
-           destruct Hin as [ip [Hip_eq Hin0]].
-           subst ip_t.
-           specialize (Hbel ip).
-           destruct Hbel as [Hfwd _].
-           destruct (Hfwd Hin0) as [pi [Hnth [Hpref [Hbel' Hlen]]]].
-           exists (outer_to_tiling_pinstr pi).
-           split.
-           { eapply nth_error_map. exact Hnth. }
-           split; [exact Hpref|].
-           split.
-           { apply (proj2 (outer_to_tiling_belongs_to_iff ip pi)); exact Hbel'. }
-           exact Hlen.
-        -- apply in_map_iff.
-           destruct ip_t as [nth idx tf ts instr depth].
-           exists
-             {| PolIRs.PolyLang.ip_nth := nth;
-                PolIRs.PolyLang.ip_index := idx;
-                PolIRs.PolyLang.ip_transformation := tf;
-                PolIRs.PolyLang.ip_time_stamp := ts;
-                PolIRs.PolyLang.ip_instruction := instr;
-                PolIRs.PolyLang.ip_depth := depth |}.
-           split; [reflexivity|].
-           specialize
-             (Hbel
-                {| PolIRs.PolyLang.ip_nth := nth;
-                   PolIRs.PolyLang.ip_index := idx;
-                   PolIRs.PolyLang.ip_transformation := tf;
-                   PolIRs.PolyLang.ip_time_stamp := ts;
-                   PolIRs.PolyLang.ip_instruction := instr;
-                   PolIRs.PolyLang.ip_depth := depth |}).
-           destruct Hbel as [_ Hbwd].
-           apply Hbwd.
-           destruct Hin as [pi_t [Hnth [Hpref [Hbel' Hlen]]]].
-           destruct (nth_error_map_inv _ _ outer_to_tiling_pinstr _ _ _ Hnth)
-             as [pi [Hnth0 Hpi_t]].
-           subst pi_t.
-           exists pi.
-           split; [exact Hnth0|].
-           split; [exact Hpref|].
-           split.
-           { apply (proj1 (outer_to_tiling_belongs_to_iff _ pi)); exact Hbel'. }
-           exact Hlen.
-      * split.
-        -- apply NoDup_outer_to_tiling_ipl; exact Hnodup.
-        -- apply Sorted_outer_to_tiling_ipl; exact Hsorted.
+  unfold Tiling.PL.flatten_instrs, PolIRs.PolyLang.flatten_instrs.
+  eapply outer_to_tiling_flatten_shape_iff.
+  intro ip.
+  apply outer_to_tiling_flatten_instrs_point_iff.
 Qed.
 
 Lemma outer_to_tiling_poly_instance_list_semantics_iff :
@@ -763,17 +887,8 @@ Proof.
       exact Hflat.
     + apply Permutation_map.
       exact Hperm.
-    + clear Hperm Hipl.
-      induction Hsorted.
-      * constructor.
-      * simpl.
-        constructor.
-        -- exact IHHsorted.
-        -- induction H.
-           ++ constructor.
-           ++ constructor.
-              ** apply (proj1 (tiling_to_outer_instr_point_sched_le_iff a b)).
-                 exact H.
+    + apply Sorted_tiling_to_outer_sched_le.
+      exact Hsorted.
     + pose proof
         (proj1
            (outer_to_tiling_instr_point_list_semantics_iff
@@ -795,17 +910,8 @@ Proof.
       apply Permutation_map.
       eapply Permutation_sym.
       exact Hperm.
-    + clear Hperm Hipl.
-      induction Hsorted.
-      * constructor.
-      * simpl in *.
-        constructor.
-        -- exact IHHsorted.
-        -- induction H.
-           ++ constructor.
-           ++ constructor.
-              ** apply (proj2 (outer_to_tiling_instr_point_sched_le_iff a b)).
-                 exact H.
+    + apply Sorted_outer_to_tiling_sched_le.
+      exact Hsorted.
     + pose proof
         (proj2
            (outer_to_tiling_instr_point_list_semantics_iff
@@ -870,9 +976,7 @@ Proof.
   {
     induction pis as [|pi pis IH]; simpl.
     - reflexivity.
-    - assert (tiling_to_outer_pinstr (outer_to_tiling_pinstr pi) = pi) as Hpi.
-      { destruct pi; reflexivity. }
-      rewrite Hpi, IH.
+    - rewrite tiling_to_outer_pinstr_outer_to_tiling_pinstr, IH.
       reflexivity.
   }
   rewrite Hmap.
@@ -1026,32 +1130,17 @@ Proof.
        (before_pis, varctxt, vars)
        (after_pis, after_ctxt, after_vars) ws Hcheck)
     as [Hprog [Hbefore_ids [Hwf [Hsizes Hdepths]]]].
+  pose proof Hprog as Hprog_full.
+  pose proof
+    (Tiling.tiling_rel_pprog_structure_source_lengths
+       before_pis varctxt vars after_pis after_ctxt after_vars
+       (List.map Tiling.compiled_pinstr_tiling_witness ws) Hprog)
+    as [Hlen_after Hlen_ws].
+  rewrite List.map_length in Hlen_ws.
   unfold Tiling.tiling_rel_pprog_structure_source in Hprog.
   simpl in Hprog.
   destruct Hprog as [Hctxt [Hvars Hrel]].
   subst after_ctxt after_vars.
-  pose proof
-    (Tiling.tiling_rel_pinstr_list_source_lengths
-       (List.length varctxt) before_pis after_pis
-       (List.map Tiling.compiled_pinstr_tiling_witness ws) Hrel)
-    as [Hlen_after Hlen_ws_map].
-  assert (Hlen_ws : List.length after_pis = List.length ws).
-  {
-    rewrite List.map_length in Hlen_ws_map.
-    exact Hlen_ws_map.
-  }
-  assert (Hprog_full :
-    Tiling.tiling_rel_pprog_structure_source
-      (before_pis, varctxt, vars)
-      (after_pis, varctxt, vars)
-      (List.map Tiling.compiled_pinstr_tiling_witness ws)).
-  {
-    unfold Tiling.tiling_rel_pprog_structure_source.
-    simpl.
-    split; [reflexivity|].
-    split; [reflexivity|].
-    exact Hrel.
-  }
   eapply tiling_validate_correct; eauto.
 Qed.
 

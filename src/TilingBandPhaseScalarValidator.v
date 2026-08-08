@@ -408,11 +408,14 @@ Proof.
              as [link_rows
                  [Hlink_rows [Hnonempty [Hband_len Hselected]]]].
            exists link_rows, expected.
-           repeat split; try assumption.
-           ++ rewrite Hlinks.
-              exact Hexpected.
+           split; [exact Hlink_rows|].
+           split; [exact Hnonempty|].
+           split; [exact Hband_len|].
+           split; [exact Hselected|].
+           split.
+           ++ rewrite Hlinks. exact Hexpected.
            ++ eapply
-             Core.check_schedule_with_trailing_zero_paddingb_sound.
+                Core.check_schedule_with_trailing_zero_paddingb_sound.
               exact Hschedule.
         -- reflexivity.
       * eapply IH. exact Htail.
@@ -657,7 +660,8 @@ Lemma phase_scalar_entry_shape_tiled_inv :
 Proof.
   intros env_size before_pi after_pi w entry Hshape Hidentity.
   inversion Hshape; subst.
-  - repeat split; assumption.
+  - split; [assumption|].
+    split; assumption.
   - congruence.
 Qed.
 
@@ -993,6 +997,63 @@ Definition pinstr_list_phase_scalar_componentwise_permutable
     Core.scalar_aware_component_active layout dim pi1 pi2 ip1 ip2 ->
     Core.Tiling.PL.Permutable_ext ip1 ip2.
 
+Local Definition phase_scalar_component_endpoint_facts
+    (env : list Core.Tiling.PL.ident)
+    (envv : list Z)
+    (pis : list Core.Tiling.PL.PolyInstr_ext)
+    (flat : list Core.Tiling.PL.InstrPoint_ext)
+    (ip : Core.Tiling.PL.InstrPoint_ext)
+    (pi : Core.Tiling.PL.PolyInstr_ext) : Prop :=
+  exists slice,
+    Core.Tiling.PL.flatten_instr_nth_ext
+      envv (Core.Tiling.PL.ip_nth_ext ip) pi slice /\
+    In ip slice /\
+    Core.Tiling.PL.wf_pinstr_ext_tiling env pi /\
+    Core.Instr.valid_access_function
+      (Core.Tiling.PL.pi_waccess_ext pi)
+      (Core.Tiling.PL.pi_raccess_ext pi)
+      (Core.Tiling.PL.pi_instr_ext pi).
+
+Local Lemma phase_scalar_component_endpoint_facts_of_member :
+  forall env envv pis flat ip pi,
+    Core.Tiling.PL.flatten_instrs_ext envv pis flat ->
+    In ip flat ->
+    nth_error pis (Core.Tiling.PL.ip_nth_ext ip) = Some pi ->
+    Forall (Core.Tiling.PL.wf_pinstr_ext_tiling env) pis ->
+    Forall
+      (fun candidate =>
+         Core.Instr.valid_access_function
+           (Core.Tiling.PL.pi_waccess_ext candidate)
+           (Core.Tiling.PL.pi_raccess_ext candidate)
+           (Core.Tiling.PL.pi_instr_ext candidate))
+      pis ->
+    phase_scalar_component_endpoint_facts env envv pis flat ip pi.
+Proof.
+  intros env envv pis flat ip pi Hflat Hin Hnth Hwf Hvalid.
+  destruct
+    (Core.flatten_instrs_ext_member_slice_local
+      envv pis flat ip pi Hflat Hin Hnth)
+    as [slice [Hslice Hin_slice]].
+  exists slice.
+  split; [exact Hslice|].
+  split; [exact Hin_slice|].
+  split.
+  - exact
+      (Core.Tiling.Forall_nth_error
+         Core.Tiling.PL.PolyInstr_ext
+         (Core.Tiling.PL.wf_pinstr_ext_tiling env)
+         pis (Core.Tiling.PL.ip_nth_ext ip) pi Hwf Hnth).
+  - exact
+      (Core.Tiling.Forall_nth_error
+         Core.Tiling.PL.PolyInstr_ext
+         (fun candidate =>
+            Core.Instr.valid_access_function
+              (Core.Tiling.PL.pi_waccess_ext candidate)
+              (Core.Tiling.PL.pi_raccess_ext candidate)
+              (Core.Tiling.PL.pi_instr_ext candidate))
+         pis (Core.Tiling.PL.ip_nth_ext ip) pi Hvalid Hnth).
+Qed.
+
 Lemma check_pprog_phase_scalar_components_direct_sound :
   forall env envv before_pis after_pis ws layouts,
     List.length env = List.length envv ->
@@ -1008,6 +1069,7 @@ Lemma check_pprog_phase_scalar_components_direct_sound :
       envv before_pis after_pis ws layouts.
 Proof.
   intros env envv before_pis after_pis ws layouts Henv Hwf Hcheck.
+  (* Recover the executable alignment and program-wide access checks. *)
   unfold check_pprog_phase_scalar_components_direct in Hcheck.
   destruct
     (Nat.eqb (List.length before_pis) (List.length after_pis) &&
@@ -1041,6 +1103,7 @@ Proof.
     eapply Core.BandAffine.check_valid_access_correct.
     exact Hvalid_true.
   }
+  (* Specialize the certificate to one active component of one point pair. *)
   unfold pinstr_list_phase_scalar_componentwise_permutable.
   intros flat ip1 ip2 pi1 pi2 layout dim
          Hflat Hin1 Hin2 Hnth1 Hnth2 Hlayout1 Hlayout2
@@ -1067,6 +1130,7 @@ Proof.
     rewrite Henv.
     exact Hnth2.
   }
+  (* Select the pair from the all-layout, all-component traversal. *)
   assert (Hentry1 : In (pi1, layout) (combine pis layouts)).
   {
     eapply Core.nth_error_combine_some_in_local.
@@ -1112,66 +1176,18 @@ Proof.
        Nat.ltb dim (List.length (Core.sabl_loop_mask layout)) = true).
   { apply Nat.ltb_lt. exact Hdim. }
   rewrite Hdim_bool in Hpair.
+  (* Package each endpoint for the Core pairwise checker. *)
   destruct
-    (Core.flatten_instrs_ext_member_slice_local
-       envv pis flat ip1 pi1 Hflat_pis Hin1 Hnth1_pis)
-    as [slice1 [Hslice1 Hin_slice1]].
+    (phase_scalar_component_endpoint_facts_of_member
+       env envv pis flat ip1 pi1
+       Hflat_pis Hin1 Hnth1_pis Hwf Hvalid)
+    as [slice1 [Hslice1 [Hin_slice1 [Hwf1 Hvalid1]]]].
   destruct
-    (Core.flatten_instrs_ext_member_slice_local
-       envv pis flat ip2 pi2 Hflat_pis Hin2 Hnth2_pis)
-    as [slice2 [Hslice2 Hin_slice2]].
-  assert (Hwf1 : Core.Tiling.PL.wf_pinstr_ext_tiling env pi1).
-  {
-    exact
-      (Core.Tiling.Forall_nth_error
-         Core.Tiling.PL.PolyInstr_ext
-         (Core.Tiling.PL.wf_pinstr_ext_tiling env)
-         pis (Core.Tiling.PL.ip_nth_ext ip1) pi1
-         Hwf Hnth1_pis).
-  }
-  assert (Hwf2 : Core.Tiling.PL.wf_pinstr_ext_tiling env pi2).
-  {
-    exact
-      (Core.Tiling.Forall_nth_error
-         Core.Tiling.PL.PolyInstr_ext
-         (Core.Tiling.PL.wf_pinstr_ext_tiling env)
-         pis (Core.Tiling.PL.ip_nth_ext ip2) pi2
-         Hwf Hnth2_pis).
-  }
-  assert (Hvalid1 :
-    Core.Instr.valid_access_function
-      (Core.Tiling.PL.pi_waccess_ext pi1)
-      (Core.Tiling.PL.pi_raccess_ext pi1)
-      (Core.Tiling.PL.pi_instr_ext pi1)).
-  {
-    exact
-      (Core.Tiling.Forall_nth_error
-         Core.Tiling.PL.PolyInstr_ext
-         (fun pi =>
-            Core.Instr.valid_access_function
-              (Core.Tiling.PL.pi_waccess_ext pi)
-              (Core.Tiling.PL.pi_raccess_ext pi)
-              (Core.Tiling.PL.pi_instr_ext pi))
-         pis (Core.Tiling.PL.ip_nth_ext ip1) pi1
-         Hvalid Hnth1_pis).
-  }
-  assert (Hvalid2 :
-    Core.Instr.valid_access_function
-      (Core.Tiling.PL.pi_waccess_ext pi2)
-      (Core.Tiling.PL.pi_raccess_ext pi2)
-      (Core.Tiling.PL.pi_instr_ext pi2)).
-  {
-    exact
-      (Core.Tiling.Forall_nth_error
-         Core.Tiling.PL.PolyInstr_ext
-         (fun pi =>
-            Core.Instr.valid_access_function
-              (Core.Tiling.PL.pi_waccess_ext pi)
-              (Core.Tiling.PL.pi_raccess_ext pi)
-              (Core.Tiling.PL.pi_instr_ext pi))
-         pis (Core.Tiling.PL.ip_nth_ext ip2) pi2
-         Hvalid Hnth2_pis).
-  }
+    (phase_scalar_component_endpoint_facts_of_member
+       env envv pis flat ip2 pi2
+       Hflat_pis Hin2 Hnth2_pis Hwf Hvalid)
+    as [slice2 [Hslice2 [Hin_slice2 [Hwf2 Hvalid2]]]].
+  (* Delegate the collision and permutability argument to Core. *)
   eapply
     (Core.validate_two_instrs_scalar_aware_band_component_direct_sound
        env envv
@@ -1255,6 +1271,7 @@ Proof.
          after_pis ws entries envv flat ip1 ip2
          Hlen_env Hsource Hshape Hconsistent
          Hflat Hin1 Hin2 Hold Hnew.
+  (* Recover the source relation and witness invariants. *)
   pose proof
     (Core.TilingCheck.check_pprog_tiling_sourceb_sound
        (before_pis, before_ctxt, before_vars)
@@ -1270,6 +1287,7 @@ Proof.
     rewrite <- Hlen_env.
     exact Hwf_ws.
   }
+  (* Recover source, target, and witness data for both endpoints. *)
   destruct
     (Core.flatten_instrs_ext_from_after_member_nth_data_source
        before_pis before_ctxt before_vars
@@ -1290,6 +1308,7 @@ Proof.
          [Hbefore2 [Hafter2 [Hw2
          [Hwf_stmt2 [Hpositive2 [Hpoint_depth2
          [Hpref2 [Hbel2 Hidx_len2]]]]]]]]]]].
+  (* Select the aligned phase entry for each endpoint. *)
   destruct
     (phase_scalar_shape_entries_lengths
        (List.length before_ctxt)
@@ -1327,6 +1346,7 @@ Proof.
     }
     lia.
   }
+  (* Derive each statement-local phase shape and constant head. *)
   pose proof
     (phase_scalar_shape_entries_nth_error
        (List.length before_ctxt)
@@ -1353,6 +1373,7 @@ Proof.
        (List.length before_ctxt)
        before_pi2 after_pi2 w2 entry2 Hentry_shape2)
     as Hhead2.
+  (* Recover source and target timestamps from the composed points. *)
   unfold Core.Tiling.compose_tiling_pinstr_ext in Hbel1, Hbel2.
   destruct Hbel1 as [_ [_ [_ [Hts11 [Hts21 [_ _]]]]]].
   destruct Hbel2 as [_ [_ [_ [Hts12 [Hts22 [_ _]]]]]].
@@ -1388,6 +1409,7 @@ Proof.
          (Core.Tiling.PL.pi_schedule after_pi2)
          (Core.Tiling.PL.ip_index_ext ip2)).
   { rewrite Hts22. reflexivity. }
+  (* Expose the scalar prefix preserved by both target timestamps. *)
   destruct
     (phase_scalar_entry_target_phase_decomposition
        (List.length before_ctxt)
@@ -1422,6 +1444,7 @@ Proof.
     rewrite <- Hlen_env.
     exact Htime_eq2_raw.
   }
+  (* A reversal across equal-length preserved prefixes forces equal phases. *)
   assert
     (Hnew_not_lt :
        lex_compare
@@ -1505,6 +1528,7 @@ Proof.
     inversion Hprefix.
     reflexivity.
   }
+  (* Class consistency rules out identity reversal or aligns tiled entries. *)
   destruct
     (Hconsistent entry1 entry2
        (nth_error_In entries _ Hentry1)
@@ -1567,6 +1591,7 @@ Proof.
     unfold Core.Tiling.PL.instr_point_ext_old_sched_lt in Hold.
     rewrite Hcompare in Hnew_not_lt.
     contradiction.
+  (* Return the common tiled layout and equal tile-size recipe. *)
   - assert (Hidentity2 : pse_identity entry2 = false).
     { symmetry. exact Hsame_kind. }
     destruct (Hsame_tiled_data eq_refl)
@@ -1585,10 +1610,18 @@ Proof.
       as [_ [_ Hentry_sizes2]].
     rewrite Hentry_sizes1, Hentry_sizes2 in Hsame_sizes.
     exists (pse_layout entry1), w1, w2, entry1, entry2.
-    repeat split; try assumption.
+    split; [reflexivity|].
+    split; [reflexivity|].
+    split; [exact Hidentity1|].
+    split; [exact Hidentity2|].
+    split.
     + eapply nth_error_phase_scalar_layouts. exact Hentry1.
-    + rewrite Hsame_layout.
-      eapply nth_error_phase_scalar_layouts. exact Hentry2.
+    + split.
+      * rewrite Hsame_layout.
+        eapply nth_error_phase_scalar_layouts. exact Hentry2.
+      * split; [exact Hw1|].
+        split; [exact Hw2|].
+        exact Hsame_sizes.
 Qed.
 
 Definition checked_tiling_sourceb_phase_scalar_direct
@@ -1645,7 +1678,51 @@ Proof.
     as [entries|] eqn:Hshape.
   2:{ apply mayReturn_pure in Hcheck. discriminate. }
   exists entries.
-  repeat split; assumption.
+  split; [reflexivity|].
+  split; [reflexivity|exact Hcheck].
+Qed.
+
+Local Lemma phase_scalar_tiled_shape_at :
+  forall env_size before_pis after_pis ws entries n entry class_layout,
+    phase_scalar_shape_entries
+      env_size before_pis after_pis ws entries ->
+    nth_error entries n = Some entry ->
+    pse_identity entry = false ->
+    nth_error (phase_scalar_layouts entries) n = Some class_layout ->
+    forall before_pi after_pi w layout,
+      nth_error before_pis n = Some before_pi ->
+      nth_error after_pis n = Some after_pi ->
+      nth_error ws n = Some w ->
+      nth_error (phase_scalar_layouts entries) n = Some layout ->
+      Core.scalar_aware_entry_shape
+        env_size layout before_pi after_pi w.
+Proof.
+  intros env_size before_pis after_pis ws entries n entry class_layout
+         Hshapes Hentry Hidentity Hclass_layout
+         before_pi after_pi w layout Hbefore Hafter Hw Hlayout.
+  pose proof
+    (phase_scalar_shape_entries_nth_error
+       env_size before_pis after_pis ws entries n
+       before_pi after_pi w entry
+       Hshapes Hbefore Hafter Hw Hentry)
+    as Hentry_shape.
+  destruct
+    (phase_scalar_entry_shape_tiled_inv
+       env_size before_pi after_pi w entry Hentry_shape Hidentity)
+    as [_ [Htiled_shape _]].
+  assert (Hlayout_eq : layout = class_layout).
+  { rewrite Hclass_layout in Hlayout. congruence. }
+  assert (Hentry_layout : pse_layout entry = class_layout).
+  {
+    pose proof
+      (nth_error_phase_scalar_layouts entries n entry Hentry)
+      as Hentry_layout_nth.
+    rewrite Hclass_layout in Hentry_layout_nth.
+    congruence.
+  }
+  subst layout.
+  rewrite <- Hentry_layout.
+  exact Htiled_shape.
 Qed.
 
 Lemma checked_tiling_sourceb_phase_scalar_direct_reordering_safe :
@@ -1667,6 +1744,7 @@ Lemma checked_tiling_sourceb_phase_scalar_direct_reordering_safe :
 Proof.
   intros before_pis before_ctxt before_vars after_pis ws envv
          Hlen_env Hwf_before Hwf_after Hcheck.
+  (* Invert the three executable checks and recover their semantic facts. *)
   destruct
     (checked_tiling_sourceb_phase_scalar_direct_true_inv
        before_pis before_ctxt before_vars
@@ -1692,6 +1770,7 @@ Proof.
     symmetry.
     exact Hentries_len.
   }
+  (* Establish the source relation and well-formed composed instructions. *)
   pose proof
     (Core.TilingCheck.check_pprog_tiling_sourceb_sound
        (before_pis, before_ctxt, before_vars)
@@ -1731,6 +1810,7 @@ Proof.
     - exact Hcomposed_wf.
     - exact Hcomponents.
   }
+  (* Classify an arbitrary target reversal by its preserved scalar phase. *)
   unfold Core.pprog_tiling_reordering_safe,
          Core.pprog_permutable_tiling_bands.
   intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
@@ -1744,98 +1824,20 @@ Proof.
          [Hentry1 [Hentry2 [Hidentity1 [Hidentity2
          [Hclass_layout1 [Hclass_layout2
          [Hw1 [Hw2 Hclass_sizes]]]]]]]]]]]]].
-  assert
-    (Hshape_at1 :
-       forall before_pi after_pi w layout,
-         nth_error before_pis (Core.Tiling.PL.ip_nth_ext ip1) =
-           Some before_pi ->
-         nth_error after_pis (Core.Tiling.PL.ip_nth_ext ip1) =
-           Some after_pi ->
-         nth_error ws (Core.Tiling.PL.ip_nth_ext ip1) = Some w ->
-         nth_error
-           (phase_scalar_layouts entries)
-           (Core.Tiling.PL.ip_nth_ext ip1) = Some layout ->
-         Core.scalar_aware_entry_shape
-           (List.length before_ctxt) layout before_pi after_pi w).
-  {
-    intros before_pi after_pi w layout
-           Hbefore Hafter Hw Hlayout.
-    pose proof
-      (phase_scalar_shape_entries_nth_error
-         (List.length before_ctxt) before_pis after_pis ws entries
-         (Core.Tiling.PL.ip_nth_ext ip1)
-         before_pi after_pi w entry1
-         Hshape_entries Hbefore Hafter Hw Hentry1)
-      as Hentry_shape.
-    destruct
-      (phase_scalar_entry_shape_tiled_inv
-         (List.length before_ctxt)
-         before_pi after_pi w entry1 Hentry_shape Hidentity1)
-      as [_ [Hscalar_shape _]].
-    assert (Hlayout_eq : layout = class_layout).
-    {
-      rewrite Hclass_layout1 in Hlayout.
-      congruence.
-    }
-    assert (Hentry_layout : pse_layout entry1 = class_layout).
-    {
-      pose proof
-        (nth_error_phase_scalar_layouts
-           entries (Core.Tiling.PL.ip_nth_ext ip1) entry1 Hentry1)
-        as Hentry_layout_nth.
-      rewrite Hclass_layout1 in Hentry_layout_nth.
-      congruence.
-    }
-    subst layout.
-    rewrite <- Hentry_layout.
-    exact Hscalar_shape.
-  }
-  assert
-    (Hshape_at2 :
-       forall before_pi after_pi w layout,
-         nth_error before_pis (Core.Tiling.PL.ip_nth_ext ip2) =
-           Some before_pi ->
-         nth_error after_pis (Core.Tiling.PL.ip_nth_ext ip2) =
-           Some after_pi ->
-         nth_error ws (Core.Tiling.PL.ip_nth_ext ip2) = Some w ->
-         nth_error
-           (phase_scalar_layouts entries)
-           (Core.Tiling.PL.ip_nth_ext ip2) = Some layout ->
-         Core.scalar_aware_entry_shape
-           (List.length before_ctxt) layout before_pi after_pi w).
-  {
-    intros before_pi after_pi w layout
-           Hbefore Hafter Hw Hlayout.
-    pose proof
-      (phase_scalar_shape_entries_nth_error
-         (List.length before_ctxt) before_pis after_pis ws entries
-         (Core.Tiling.PL.ip_nth_ext ip2)
-         before_pi after_pi w entry2
-         Hshape_entries Hbefore Hafter Hw Hentry2)
-      as Hentry_shape.
-    destruct
-      (phase_scalar_entry_shape_tiled_inv
-         (List.length before_ctxt)
-         before_pi after_pi w entry2 Hentry_shape Hidentity2)
-      as [_ [Hscalar_shape _]].
-    assert (Hlayout_eq : layout = class_layout).
-    {
-      rewrite Hclass_layout2 in Hlayout.
-      congruence.
-    }
-    assert (Hentry_layout : pse_layout entry2 = class_layout).
-    {
-      pose proof
-        (nth_error_phase_scalar_layouts
-           entries (Core.Tiling.PL.ip_nth_ext ip2) entry2 Hentry2)
-        as Hentry_layout_nth.
-      rewrite Hclass_layout2 in Hentry_layout_nth.
-      congruence.
-    }
-    subst layout.
-    rewrite <- Hentry_layout.
-    exact Hscalar_shape.
-  }
+  (* Build the two tiled-shape callbacks from their selected phase entries. *)
+  pose proof
+    (phase_scalar_tiled_shape_at
+       (List.length before_ctxt) before_pis after_pis ws entries
+       (Core.Tiling.PL.ip_nth_ext ip1) entry1 class_layout
+       Hshape_entries Hentry1 Hidentity1 Hclass_layout1)
+    as Hshape_at1.
+  pose proof
+    (phase_scalar_tiled_shape_at
+       (List.length before_ctxt) before_pis after_pis ws entries
+       (Core.Tiling.PL.ip_nth_ext ip2) entry2 class_layout
+       Hshape_entries Hentry2 Hidentity2 Hclass_layout2)
+    as Hshape_at2.
+  (* Supply common-layout and common-recipe callbacks to the Core bridge. *)
   assert
     (Hsame_layout :
        forall layout1 layout2,
@@ -1866,6 +1868,7 @@ Proof.
     inversion Hwitness1; inversion Hwitness2; subst.
     exact Hclass_sizes.
   }
+  (* Core identifies the decreasing active component; the checker certifies it. *)
   destruct
     (Core.scalar_aware_pair_local_reversal_bridge_wf_with_env_len
        before_pis before_ctxt before_vars after_pis ws
