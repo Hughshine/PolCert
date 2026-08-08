@@ -101,11 +101,11 @@ let usage prog =
       "                       loop hints; supported on both the default and `--iss` pipelines,\n";
       "                       with or without `--notile`\n";
       "                       In Pluto-compatible mode, --multipar enables checked\n";
-      "                       parallel dimensions when the validator accepts them\n";
+      "                       schedule coordinates when the validator accepts them\n";
       "  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n";
       "                       Pluto-hinted dimension; reject if that dimension is not certifiable\n";
-      "  --parallel-current d : theorem-aligned verified `parallel for` on explicit current\n";
-      "                         dimension d; supported on identity, affine-only, and full\n";
+      "  --parallel-current d : theorem-aligned verified `parallel for` on padded\n";
+      "                         schedule coordinate d (legacy option name); supported on identity, affine-only, and full\n";
       "                         tiled paths, including their `--iss` variants and the\n";
       "                         non-ISS and ISS diamond routes\n";
       "  --vector          : experimental checked `vector for` route driven by Pluto\n";
@@ -114,8 +114,8 @@ let usage prog =
       "                       sequential producer is retained\n";
       "  --vector-strict   : compatibility spelling for explicit hint-only vector intent;\n";
       "                       the current vector route is already innermost-hint-only\n";
-      "  --vector-current d : theorem-aligned checked `vector for` on explicit current\n";
-      "                         dimension d, requiring both doall and innermost checks\n";
+      "  --vector-current d : theorem-aligned checked `vector for` on padded schedule\n";
+      "                         coordinate d (legacy option name), requiring doall and innermost checks\n";
       "  --pluto-compat    : parse Pluto-style optimizer flags in this OCaml driver,\n";
       "                      reject unsupported Pluto defaults/features with explicit\n";
       "                      reasons, then run the matching checked polopt route\n";
@@ -128,8 +128,8 @@ let usage prog =
       Printf.sprintf "  %s --full-diamond-tile file.loop    # stronger diamond producer mode over the same checked route\n" prog;
       Printf.sprintf "  %s --parallel file.loop             # Pluto-hinted verified parallel path\n" prog;
       Printf.sprintf "  %s --parallel --parallel-strict file.loop\n" prog;
-      Printf.sprintf "  %s --parallel-current 0 file.loop   # theorem-aligned explicit-dimension parallel path\n" prog;
-      Printf.sprintf "  %s --vector-current 0 file.loop     # theorem-aligned explicit-dimension vector path\n" prog;
+      Printf.sprintf "  %s --parallel-current 0 file.loop   # theorem-aligned explicit schedule-coordinate parallel path\n" prog;
+      Printf.sprintf "  %s --vector-current 0 file.loop     # theorem-aligned explicit schedule-coordinate vector path\n" prog;
       Printf.sprintf "  %s --diamond-tile --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --iss --parallel-current 0 file.loop\n" prog;
       Printf.sprintf "  %s --notile file.loop               # affine-only checked path\n" prog;
@@ -463,9 +463,9 @@ let validate_pluto_compat prog cfg =
     if cfg.pluto_tile_seen && cfg.pluto_notile_seen then
       pluto_reject prog "--tile and --notile are both present; this driver rejects contradictory phase controls";
     if cfg.parallel_current_dim <> None then
-      pluto_reject prog "--parallel-current: not a Pluto flag; use native polopt mode for explicit-current parallel certification";
+      pluto_reject prog "--parallel-current: not a Pluto flag; use native polopt mode for explicit schedule-coordinate parallel certification";
     if cfg.vector_current_dim <> None then
-      pluto_reject prog "--vector-current: not a Pluto flag; use native polopt mode for explicit-current vector certification";
+      pluto_reject prog "--vector-current: not a Pluto flag; use native polopt mode for explicit schedule-coordinate vector certification";
     if cfg.pluto_parallel_seen && cfg.pluto_no_parallel_seen then
       pluto_reject prog "--parallel and --noparallel are both present; this driver rejects contradictory phase controls";
     if cfg.pluto_diamond_seen && cfg.pluto_nodiamond_seen then

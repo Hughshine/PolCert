@@ -757,12 +757,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_absent=("vector for",),
+        effect_needles=("vector for i5", "32 *", "/ 32"),
         stderr_needles=(
-            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+            "[vector-validation] status=applied source=pluto-hint scope=innermost",
         ),
         stderr_absent=("[alarm]",),
         tiling_route="permutable-band",
+        differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
         "native-vector",
@@ -771,13 +772,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_needles=("32 *", "/ 32"),
-        effect_absent=("vector for",),
+        effect_needles=("vector for i5", "32 *", "/ 32"),
         stderr_needles=(
-            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+            "[vector-validation] status=applied source=pluto-hint scope=innermost",
         ),
         stderr_absent=("[alarm]",),
         tiling_route="permutable-band",
+        differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
         "native-vector-strict-hint-only",
@@ -796,12 +797,13 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "polopt args: --vector",
-        effect_absent=("vector for",),
+        effect_needles=("vector for i5", "32 *", "/ 32"),
         stderr_needles=(
-            "[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost",
+            "[vector-validation] status=applied source=pluto-hint scope=innermost",
         ),
         stderr_absent=("[alarm]",),
         tiling_route="permutable-band",
+        differs_from_args=(tuple(MATMUL_TILED),),
     ),
     Check(
         "const-unrolljam-constant-loop",

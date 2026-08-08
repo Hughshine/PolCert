@@ -102,6 +102,9 @@ Proof.
   intros pol dims pl st st' Hopt Hwf Hsem.
   unfold Core.checked_parallel_current_many_annotated_codegen_at in Hopt.
   bind_imp_destruct Hopt certs Hcerts.
+  pose proof
+    (Core.collect_parallel_current_codegen_certs_sound
+       (PolyLang.current_view_pprog pol) dims certs Hcerts) as Hcerts_sound.
   destruct certs as [|cert certs].
   - apply mayReturn_pure in Hopt.
     discriminate Hopt.

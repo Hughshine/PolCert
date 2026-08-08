@@ -103,8 +103,9 @@ Proof.
          (ParallelCodegenCore.tag_loop loop) Hsafe)
       as Htrace_safe.
     pose proof
-      (ParallelLoop.semantics_refines_erased
-         (ParallelCodegenCore.tag_loop loop) st st' Htrace_safe Hsem)
+      (ParallelLoop.semantics_refines_erased_global
+         (ParallelCodegenCore.tag_loop loop) st st' Htrace_safe
+         (ParallelCodegenCore.tag_loop_ordered loop) Hsem)
       as [st'' [Herased Heq]].
     exists st''.
     split.

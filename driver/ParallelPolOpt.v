@@ -76,6 +76,24 @@ Definition parallel_codegen_cert_of_validator_cert
   {| ParallelCodegenCore.ParallelValidator.certified_dim :=
        cert.(ValidatorCore.ParallelCore.certified_dim) |}.
 
+Lemma parallel_codegen_cert_of_validator_cert_sound :
+  forall pp plan cert,
+    mayReturn (ValidatorCore.checked_parallelize_current pp plan) (Okk cert) ->
+    ParallelCodegenCore.parallel_codegen_cert_sound pp
+      (parallel_codegen_cert_of_validator_cert cert).
+Proof.
+  intros pp plan cert Hchecked.
+  unfold ParallelCodegenCore.parallel_codegen_cert_sound,
+    parallel_codegen_cert_of_validator_cert.
+  split; simpl.
+  - exact
+      (ValidatorCore.checked_parallelize_current_pointwise_sound
+         pp plan cert Hchecked).
+  - exact
+      (ValidatorCore.checked_parallelize_current_implies_dim_in_range
+         pp plan cert Hchecked).
+Qed.
+
 Fixpoint collect_parallel_current_codegen_certs
     (pp : PolyLang.t)
     (dims : list nat)
@@ -93,6 +111,26 @@ Fixpoint collect_parallel_current_codegen_certs
           collect_parallel_current_codegen_certs pp dims'
       end
   end.
+
+Lemma collect_parallel_current_codegen_certs_sound :
+  forall pp dims certs,
+    mayReturn (collect_parallel_current_codegen_certs pp dims) certs ->
+    Forall (ParallelCodegenCore.parallel_codegen_cert_sound pp) certs.
+Proof.
+  intros pp dims.
+  induction dims as [|d dims IH]; intros certs Hcollect; simpl in Hcollect.
+  - apply mayReturn_pure in Hcollect. subst certs. constructor.
+  - apply mayReturn_bind in Hcollect.
+    destruct Hcollect as [cert_res [Hchecked Hrest]].
+    destruct cert_res as [cert | msg].
+    + apply mayReturn_bind in Hrest.
+      destruct Hrest as [certs' [Htail Hpure]].
+      apply mayReturn_pure in Hpure. subst certs.
+      constructor.
+      * eapply parallel_codegen_cert_of_validator_cert_sound; eauto.
+      * eapply IH; eauto.
+    + eapply IH; eauto.
+Qed.
 
 Definition checked_parallel_current_many_annotated_codegen_at
     (pol : PolyLang.t)
@@ -1138,7 +1176,10 @@ Proof.
   apply mayReturn_bind in Hopt.
   destruct Hopt as [cert_res [Hcert Hret]].
   destruct cert_res as [cert|msg].
-  - eapply ParallelCodegenCore.checked_annotated_codegen_correct_general; eauto.
+  - pose proof
+      (parallel_codegen_cert_of_validator_cert_sound
+         (PolyLang.current_view_pprog pol) plan cert Hcert) as Hcert_sound.
+    eapply ParallelCodegenCore.checked_annotated_codegen_correct_general; eauto.
   - apply mayReturn_pure in Hret.
     discriminate.
 Qed.

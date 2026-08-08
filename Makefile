@@ -157,7 +157,7 @@ POLCERT_SRC = Base.v Convert.v \
   Extractor.v PrepareCodegen.v StrengthenDomain.v \
   OpenScop.v OpenScopAST.v PolyBase.v PolyLang.v \
   SelectionSort.v StablePermut.v CState.v AffineValidator.v \
-  ParallelValidator.v JamValidator.v LoopJamTrace.v LoopJamFusion.v LoopJamNative.v LoopJamLower.v LoopJamValidator.v ParallelCodegen.v \
+  ParallelValidator.v JamValidator.v LoopJamTrace.v LoopJamFusion.v LoopJamNative.v LoopJamLower.v LoopJamValidator.v RawCodegenOrigin.v ParallelCodegen.v \
   PointWitness.v ISSWitness.v ISSRefinement.v \
   ISSBoolChecker.v ISSValidator.v ISSSemantics.v \
   ISSCutSemantics.v ISSValidatorCorrect.v \

@@ -77,15 +77,27 @@ Definition same_prefix_before := ParallelCore.same_prefix_before.
 Definition different_dim_at := ParallelCore.different_dim_at.
 Definition same_parallel_slice := ParallelCore.same_parallel_slice.
 Definition parallel_safe_dim := ParallelCore.parallel_safe_dim.
+Definition parallel_safe_dim_pointwise :=
+  ParallelCore.parallel_safe_dim_pointwise.
 Definition parallel_cert_sound := ParallelCore.parallel_cert_sound.
+Definition parallel_cert_pointwise_sound :=
+  ParallelCore.parallel_cert_pointwise_sound.
 Definition check_pprog_parallel_currentb :=
   ParallelCore.check_pprog_parallel_currentb.
 Definition checked_parallelize_current :=
   ParallelCore.checked_parallelize_current.
 Definition check_pprog_parallel_currentb_sound :=
   ParallelCore.check_pprog_parallel_currentb_sound.
+Definition check_pprog_parallel_currentb_pointwise_sound :=
+  ParallelCore.check_pprog_parallel_currentb_pointwise_sound.
 Definition checked_parallelize_current_sound :=
   ParallelCore.checked_parallelize_current_sound.
+Definition checked_parallelize_current_pointwise_sound :=
+  ParallelCore.checked_parallelize_current_pointwise_sound.
+Definition parallel_safe_dim_pointwise_implies_safe_dim :=
+  ParallelCore.parallel_safe_dim_pointwise_implies_safe_dim.
+Definition parallel_cert_pointwise_sound_implies_sound :=
+  ParallelCore.parallel_cert_pointwise_sound_implies_sound.
 Definition checked_parallelize_current_implies_dim_in_range :=
   ParallelCore.checked_parallelize_current_implies_dim_in_range.
 
