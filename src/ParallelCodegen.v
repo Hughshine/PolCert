@@ -2601,6 +2601,106 @@ Qed.
     certificate soundness.  Sequential, vector, guard, and sequence cases only
     propagate the resulting ordered-trace evidence. *)
 
+Local Lemma zrange_family_pair_origin :
+  forall lb ub body env trs pre1 tr1 pre2 tr2 post,
+    Forall2
+      (fun z tri => ParallelLoop.par_trace body (z :: env) tri)
+      (Zrange lb ub) trs ->
+    trs = pre1 ++ tr1 :: pre2 ++ tr2 :: post ->
+    exists z1 z2,
+      z1 <> z2 /\
+      ParallelLoop.par_trace body (z1 :: env) tr1 /\
+      ParallelLoop.par_trace body (z2 :: env) tr2.
+Proof.
+  intros lb ub body env trs pre1 tr1 pre2 tr2 post Htraces Hshape.
+  set (i := Datatypes.length pre1).
+  set (j := (Datatypes.length pre1 + S (Datatypes.length pre2))%nat).
+  assert (Hnth1 : nth_error trs i = Some tr1).
+  {
+    rewrite Hshape.
+    unfold i; rewrite nth_error_app2 by lia.
+    replace (Datatypes.length pre1 - Datatypes.length pre1)%nat
+      with 0%nat by lia.
+    reflexivity.
+  }
+  assert (Hnth2 : nth_error trs j = Some tr2).
+  {
+    rewrite Hshape.
+    unfold j; rewrite nth_error_app2 by lia.
+    replace
+      (Datatypes.length pre1 + S (Datatypes.length pre2) -
+       Datatypes.length pre1)%nat
+      with (S (Datatypes.length pre2)) by lia.
+    simpl; rewrite nth_error_app2 by lia.
+    replace (Datatypes.length pre2 - Datatypes.length pre2)%nat
+      with 0%nat by lia.
+    reflexivity.
+  }
+  pose proof (Forall2_sym _ _ _ _ _ Htraces) as Htraces_sym.
+  destruct (Forall2_nth_error _ _ _ _ _ _ _ Htraces_sym Hnth1)
+    as [z1 [Hz1 Htrace1]].
+  destruct (Forall2_nth_error _ _ _ _ _ _ _ Htraces_sym Hnth2)
+    as [z2 [Hz2 Htrace2]].
+  exists z1, z2.
+  refine (conj _ (conj Htrace1 Htrace2)).
+  rewrite Zrange_nth_error in Hz1, Hz2.
+  destruct Hz1 as [_ ->]; destruct Hz2 as [_ ->].
+  intro Heqz.
+  assert (Hindices : Z.of_nat i = Z.of_nat j) by lia.
+  apply Nat2Z.inj in Hindices.
+  unfold i, j in Hindices; lia.
+Qed.
+
+Local Lemma certified_sibling_points_permutable :
+  forall pp cert depth env z1 z2 suffix1 suffix2
+         generated1 generated2 source1 source2,
+    parallel_codegen_cert_sound pp cert ->
+    depth = cert.(ParallelValidator.certified_dim) ->
+    Datatypes.length env =
+      (Datatypes.length (ParallelValidator.pprog_varctxt pp) + depth)%nat ->
+    z1 <> z2 ->
+    generated1.(ParallelLoop.ILSema.ip_index) = suffix1 ++ z1 :: env ->
+    generated2.(ParallelLoop.ILSema.ip_index) = suffix2 ++ z2 :: env ->
+    generated_source_point_full
+      pp (ParallelValidator.schedule_width pp) generated1 source1 ->
+    generated_source_point_full
+      pp (ParallelValidator.schedule_width pp) generated2 source2 ->
+    ParallelLoop.ILSema.Permutable generated1 generated2.
+Proof.
+  intros pp cert depth env z1 z2 suffix1 suffix2
+    generated1 generated2 source1 source2
+    [Hpointwise Hbound] Hdepth Henv Hzneq Hindex1 Hindex2
+    Hsource1 Hsource2.
+  destruct Hsource1 as [Hbasic1 Hprefix1 Hsched1].
+  destruct Hsource2 as [Hbasic2 Hprefix2 Hsched2].
+  destruct Hbasic1 as [Hequiv1 [pi1 [Hpi1 [Hbelongs1 Hlen1]]]].
+  destruct Hbasic2 as [Hequiv2 [pi2 [Hpi2 [Hbelongs2 Hlen2]]]].
+  eapply permutable_of_point_sema_equiv; [exact Hequiv1|exact Hequiv2|].
+  eapply Hpointwise with (pi1 := pi1) (pi2 := pi2);
+    try eassumption.
+  rewrite <- Hdepth.
+  eapply generated_source_siblings_same_slice
+    with (width := ParallelValidator.schedule_width pp)
+         (env := env) (z1 := z1) (z2 := z2)
+         (suffix1 := suffix1) (suffix2 := suffix2)
+         (generated1 := generated1) (generated2 := generated2);
+    try eassumption.
+  - reflexivity.
+  - rewrite Hdepth; exact Hbound.
+  - constructor.
+    + split; [exact Hequiv1|].
+      exists pi1; split; [exact Hpi1|].
+      split; [exact Hbelongs1|exact Hlen1].
+    + exact Hprefix1.
+    + exact Hsched1.
+  - constructor.
+    + split; [exact Hequiv2|].
+      exists pi2; split; [exact Hpi2|].
+      split; [exact Hbelongs2|exact Hlen2].
+    + exact Hprefix2.
+    + exact Hsched2.
+Qed.
+
 Definition actual_multi_ordered_stmt_goal (s : ParallelLoop.stmt) : Prop :=
   forall depth pp certs env tr root,
     tagged_from_depth_stmt depth s ->
@@ -2691,46 +2791,13 @@ Proof.
           rewrite Forall_forall in Hcerts.
           eapply Hcerts. exact Hcert_in.
         }
-        destruct Hcert_sound as [Hpointwise Hbound].
         assert (Hdepth_cert : depth = cert.(ParallelValidator.certified_dim)).
         { inversion Hcert_origin. reflexivity. }
         intros pre1 tr1 pre2 tr2 post ip1 ip2 Hshape Hin1 Hin2.
-        set (i := Datatypes.length pre1).
-        set (j :=
-          (Datatypes.length pre1 + S (Datatypes.length pre2))%nat).
-        assert (Hnth1 :
-          nth_error (pre1 ++ tr1 :: pre2 ++ tr2 :: post) i = Some tr1).
-        {
-          unfold i. rewrite nth_error_app2 by lia.
-          replace (Datatypes.length pre1 - Datatypes.length pre1)%nat
-            with 0%nat by lia. reflexivity.
-        }
-        assert (Hnth2 :
-          nth_error (pre1 ++ tr1 :: pre2 ++ tr2 :: post) j = Some tr2).
-        {
-          unfold j. rewrite nth_error_app2 by lia.
-          replace
-            (Datatypes.length pre1 + S (Datatypes.length pre2) -
-             Datatypes.length pre1)%nat
-            with (S (Datatypes.length pre2)) by lia.
-          simpl. rewrite nth_error_app2 by lia.
-          replace (Datatypes.length pre2 - Datatypes.length pre2)%nat
-            with 0%nat by lia. reflexivity.
-        }
-        rewrite <- Hshape in Hnth1, Hnth2.
-        pose proof (Forall2_sym _ _ _ _ _ Htraces) as Htraces_sym.
-        destruct (Forall2_nth_error _ _ _ _ _ _ _ Htraces_sym Hnth1)
-          as [z1 [Hz1 Htrace1]].
-        destruct (Forall2_nth_error _ _ _ _ _ _ _ Htraces_sym Hnth2)
-          as [z2 [Hz2 Htrace2]].
-        assert (Hzneq : z1 <> z2).
-        {
-          rewrite Zrange_nth_error in Hz1, Hz2.
-          destruct Hz1 as [_ ->]. destruct Hz2 as [_ ->].
-          intro Heqz.
-          assert (Hznat : Z.of_nat i = Z.of_nat j) by lia.
-          apply Nat2Z.inj in Hznat. unfold i, j in Hznat. lia.
-        }
+        destruct
+          (zrange_family_pair_origin
+            _ _ _ _ _ _ _ _ _ _ Htraces Hshape)
+          as (z1 & z2 & Hzneq & Htrace1 & Htrace2).
         destruct
           (par_trace_point_extends_env
             _ _ _ _ Hsafe Htrace1 Hin1)
@@ -2760,48 +2827,7 @@ Proof.
         }
         destruct (Horacle ip1 Hroot1) as [source1 Hsource1].
         destruct (Horacle ip2 Hroot2) as [source2 Hsource2].
-        destruct Hsource1 as [Hbasic1 Hprefix1 Hsched1].
-        destruct Hsource2 as [Hbasic2 Hprefix2 Hsched2].
-        destruct Hbasic1 as
-          [Hequiv1 [pi1 [Hpi1 [Hbelongs1 Hlen1]]]].
-        destruct Hbasic2 as
-          [Hequiv2 [pi2 [Hpi2 [Hbelongs2 Hlen2]]]].
-        eapply permutable_of_point_sema_equiv.
-        -- exact Hequiv1.
-        -- exact Hequiv2.
-        -- eapply Hpointwise with (pi1 := pi1) (pi2 := pi2).
-           ++ exact Hpi1.
-           ++ exact Hpi2.
-           ++ exact Hbelongs1.
-           ++ exact Hbelongs2.
-           ++ exact Hlen1.
-           ++ exact Hlen2.
-           ++ rewrite <- Hdepth_cert.
-              eapply generated_source_siblings_same_slice
-                with (width := ParallelValidator.schedule_width pp)
-                     (env := env) (z1 := z1) (z2 := z2)
-                     (suffix1 := suffix1) (suffix2 := suffix2)
-                     (generated1 := ip1) (generated2 := ip2).
-              ** reflexivity.
-              ** exact Henv.
-              ** rewrite Hdepth_cert. exact Hbound.
-              ** exact Hzneq.
-              ** exact Hindex1.
-              ** exact Hindex2.
-              ** constructor.
-                 --- split.
-                     +++ exact Hequiv1.
-                     +++ exists pi1. split; [exact Hpi1|].
-                         split; [exact Hbelongs1|exact Hlen1].
-                 --- exact Hprefix1.
-                 --- exact Hsched1.
-              ** constructor.
-                 --- split.
-                     +++ exact Hequiv2.
-                     +++ exists pi2. split; [exact Hpi2|].
-                         split; [exact Hbelongs2|exact Hlen2].
-                 --- exact Hprefix2.
-                 --- exact Hsched2.
+        eapply certified_sibling_points_permutable; eassumption.
       * exact Hinterleave.
     + inversion Htrace as
         [| | | | |
@@ -2948,8 +2974,7 @@ Proof.
     (PolyLang.pprog_current_dim ((pis, varctxt), vars) <= cols)%nat).
   {
     subst cols.
-    eapply
-      PrepareCore.wf_pprog_affine_implies_pprog_current_dim_le_target.
+    apply PrepareCore.wf_pprog_affine_implies_pprog_current_dim_le_target.
     exact Hwf.
   }
   assert (Henvdim :
@@ -2959,24 +2984,9 @@ Proof.
   {
     intros prep_pi Hprep_pi.
     subst prep_pis env_dim cols.
-    apply in_map_iff in Hprep_pi.
-    destruct Hprep_pi as [pi0 [Hpi0 Hin0]].
-    subst prep_pi.
-    pose proof Hwf as Hwf_affine.
-    unfold PolyLang.wf_pprog_affine in Hwf_affine.
-    destruct Hwf_affine as [_ Hwfpis].
-    pose proof (Hwfpis pi0 Hin0) as Hwfpi.
-    unfold PolyLang.wf_pinstr_affine in Hwfpi.
-    destruct Hwfpi as [Hwfpi [Hwit _]].
-    unfold PolyLang.wf_pinstr in Hwfpi.
-    destruct Hwfpi as
-      [_ [_ [_ [_ [_ [_ [_ [_ [_ _]]]]]]]]].
-    pose proof
-      (PrepareCore.wf_pprog_affine_implies_source_cols_le
-         _ _ _ _ _ Hwf Hsource_dim Hin0) as Hsrc_cols_le.
-    apply PrepareCore.prepare_pi_current_env_dim_in_dim_affine.
-    - exact Hsrc_cols_le.
-    - exact Hwit.
+    exact
+      (PrepareCore.prepared_pi_current_env_dim_for_codegen
+        pis varctxt vars prep_pi Hwf Hprep_pi).
   }
   unfold annotated_codegen_many_raw in Hcodegen.
   apply mayReturn_bind in Hcodegen.

@@ -1833,7 +1833,7 @@ Proof.
   - exact Hexec_sem.
 Qed.
 
-Local Lemma prepared_pi_current_env_dim_for_codegen :
+Lemma prepared_pi_current_env_dim_for_codegen :
   forall pis varctxt vars pi,
     PolyLang.wf_pprog_affine (pis, varctxt, vars) ->
     In pi
