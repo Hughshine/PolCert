@@ -1333,10 +1333,7 @@ Proof.
     split; intros Hsem.
     + apply seq_values_semantics in Hsem.
       apply Loop.LLoop.
-      match goal with
-      | Hiter: Instr.IterSem.iter_semantics _ (Zrange _ _) _ _ |- _ =>
-          eapply Instr.IterSem.iter_semantics_map; [|exact Hiter]
-      end.
+      eapply Instr.IterSem.iter_semantics_map; [|exact Hsem].
       intros x mem3 mem4 Hx Hbody.
       apply H. exact Hbody.
     + inversion_clear Hsem.
