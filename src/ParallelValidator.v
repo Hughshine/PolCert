@@ -281,38 +281,7 @@ Proof.
   lia.
 Qed.
 
-Lemma exact_listzzs_cols_padded_pi_schedule :
-  forall env_dim width pi,
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
-    exact_listzzs_cols
-      (env_dim + pi.(PolyLang.pi_depth))%nat
-      (padded_pi_schedule env_dim width pi).
-Proof.
-  intros env_dim width pi Hcols coeffs c row Hin Heq.
-  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len in Hin.
-  apply in_app_or in Hin.
-  destruct Hin as [Hin | Hin].
-  - eapply Hcols; eauto.
-  - apply repeat_spec in Hin.
-    subst row.
-    inversion Heq; subst coeffs c.
-    unfold PolyLang.zero_affine_function.
-    simpl.
-    apply repeat_length.
-Qed.
 
-Lemma in_firstn :
-  forall A n (xs : list A) x,
-    In x (firstn n xs) -> In x xs.
-Proof.
-  intros A n.
-  induction n as [|n IH]; intros xs x Hin; destruct xs; simpl in *.
-  - contradiction.
-  - contradiction.
-  - contradiction.
-  - destruct Hin as [Hin | Hin]; [left; exact Hin | right; eapply IH; eauto].
-Qed.
 
 
 
@@ -338,18 +307,6 @@ Qed.
 
 
 
-Lemma nth_error_map_inv :
-  forall A B (f : A -> B) l n y,
-    nth_error (List.map f l) n = Some y ->
-    exists x,
-      nth_error l n = Some x /\
-      f x = y.
-Proof.
-  intros A B f l n y Hnth.
-  destruct (Misc.nth_error_map_inv A B f n l y Hnth)
-    as [x [Hlookup Heq]].
-  exists x; split; [exact Hlookup|symmetry; exact Heq].
-Qed.
 
 
 Lemma flatten_instrs_member_inv :
@@ -381,16 +338,6 @@ Proof.
 Qed.
 
 
-Lemma seq_shift_succ :
-  forall start len,
-    seq (S start) len = List.map S (seq start len).
-Proof.
-  intros start len.
-  revert start.
-  induction len as [|len IH]; intros start; simpl.
-  - reflexivity.
-  - rewrite IH. reflexivity.
-Qed.
 
 
 
