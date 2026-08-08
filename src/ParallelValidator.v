@@ -29,10 +29,12 @@ Module AffineCore := AffineValidator PolIRs.
 (** * Proof map
 
     A certificate for dimension [d] states that instances with the same
-    environment and current-loop prefix, but different coordinates at [d],
-    commute.  The checker expresses a violation as an affine schedule reversal
-    between two synthetic schedule views.  Affine-validator soundness then
-    yields [parallel_safe_dim] and, finally,
+    environment and canonical schedule prefix, but different schedule
+    coordinates at [d], commute.  All statement schedules are padded to their
+    program-wide maximum width, matching the coordinates introduced before
+    code generation.  The checker expresses a violation as an affine schedule
+    reversal between two synthetic schedule views.  Affine-validator soundness
+    then yields [parallel_safe_dim] and, finally,
     [checked_parallelize_current_sound]. *)
 
 Record parallel_plan := {
@@ -61,14 +63,35 @@ Definition current_coord_prefix_schedule
   (env_dim depth d : nat) : list (list Z * Z) :=
   map (current_coord_schedule_row env_dim depth) (seq 0 d).
 
+Definition schedule_width_of_pis (pis : list PolyLang.PolyInstr) : nat :=
+  list_max
+    (List.map (fun pi => Datatypes.length pi.(PolyLang.pi_schedule)) pis).
+
+Definition schedule_width (pp : PolyLang.t) : nat :=
+  schedule_width_of_pis (pprog_pis pp).
+
+Definition padded_pi_schedule
+  (env_dim width : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
+  PolyLang.pad_schedule_to_len
+    (env_dim + pi.(PolyLang.pi_depth)) width pi.(PolyLang.pi_schedule).
+
+Definition schedule_coord_old_schedule
+  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
+  [nth d (padded_pi_schedule env_dim width pi)
+     (PolyLang.zero_affine_function (env_dim + pi.(PolyLang.pi_depth)))].
+
+Definition schedule_coord_prefix_schedule
+  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
+  firstn d (padded_pi_schedule env_dim width pi).
+
 Definition parallel_old_pi
-  (env_dim d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
+  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
   {|
     PolyLang.pi_depth := pi.(PolyLang.pi_depth);
     PolyLang.pi_instr := pi.(PolyLang.pi_instr);
     PolyLang.pi_poly := pi.(PolyLang.pi_poly);
     PolyLang.pi_schedule :=
-      current_coord_old_schedule env_dim pi.(PolyLang.pi_depth) d;
+      schedule_coord_old_schedule env_dim width d pi;
     PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
     PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
     PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
@@ -77,13 +100,13 @@ Definition parallel_old_pi
   |}.
 
 Definition parallel_new_pi
-  (env_dim d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
+  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
   {|
     PolyLang.pi_depth := pi.(PolyLang.pi_depth);
     PolyLang.pi_instr := pi.(PolyLang.pi_instr);
     PolyLang.pi_poly := pi.(PolyLang.pi_poly);
     PolyLang.pi_schedule :=
-      current_coord_prefix_schedule env_dim pi.(PolyLang.pi_depth) d;
+      schedule_coord_prefix_schedule env_dim width d pi;
     PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
     PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
     PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
@@ -94,12 +117,16 @@ Definition parallel_new_pi
 Definition parallel_old_pprog
   (pp : PolyLang.t) (d : nat) : PolyLang.t :=
   let '(pis, varctxt, vars) := pp in
-  ((List.map (parallel_old_pi (Datatypes.length varctxt) d) pis, varctxt), vars).
+  let width := schedule_width_of_pis pis in
+  ((List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis,
+    varctxt), vars).
 
 Definition parallel_new_pprog
   (pp : PolyLang.t) (d : nat) : PolyLang.t :=
   let '(pis, varctxt, vars) := pp in
-  ((List.map (parallel_new_pi (Datatypes.length varctxt) d) pis, varctxt), vars).
+  let width := schedule_width_of_pis pis in
+  ((List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis,
+    varctxt), vars).
 
 Definition check_current_view_pinstrb (pi : PolyLang.PolyInstr) : bool :=
   match pi.(PolyLang.pi_point_witness) with
@@ -125,45 +152,25 @@ Definition current_coords_of (ip : PolyLang.InstrPoint) : list Z :=
 Definition same_env_of (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
   env_prefix_of ip1 = env_prefix_of ip2.
 
+Definition padded_timestamp
+  (pp : PolyLang.t) (ip : PolyLang.InstrPoint) : list Z :=
+  resize (schedule_width pp) ip.(PolyLang.ip_time_stamp).
+
 Definition same_prefix_before
-  (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  firstn d (current_coords_of ip1) = firstn d (current_coords_of ip2).
+  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
+  firstn d (padded_timestamp pp ip1) =
+  firstn d (padded_timestamp pp ip2).
 
 Definition different_dim_at
-  (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  nth_error (current_coords_of ip1) d <>
-  nth_error (current_coords_of ip2) d.
+  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
+  nth_error (padded_timestamp pp ip1) d <>
+  nth_error (padded_timestamp pp ip2) d.
 
 Definition same_parallel_slice
-  (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
+  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
   same_env_of ip1 ip2 /\
-  same_prefix_before d ip1 ip2 /\
-  different_dim_at d ip1 ip2.
-
-Lemma eq_except_sched_preserves_same_parallel_slice :
-  forall d ip1 ip1' ip2 ip2',
-    PolyLang.eq_except_sched ip1 ip1' ->
-    PolyLang.eq_except_sched ip2 ip2' ->
-    same_parallel_slice d ip1 ip2 ->
-    same_parallel_slice d ip1' ip2'.
-Proof.
-  intros d ip1 ip1' ip2 ip2' Heq1 Heq2 Hslice.
-  unfold PolyLang.eq_except_sched in Heq1, Heq2.
-  unfold same_parallel_slice in *.
-  destruct Heq1 as (_ & Hidx1 & _ & _ & Hdepth1).
-  destruct Heq2 as (_ & Hidx2 & _ & _ & Hdepth2).
-  destruct Hslice as (Henv & Hprefix & Hdiff).
-  repeat split.
-  - unfold same_env_of, env_prefix_of, env_dim_of in *; simpl in *.
-    rewrite <- Hidx1, <- Hidx2, <- Hdepth1, <- Hdepth2.
-    exact Henv.
-  - unfold same_prefix_before, current_coords_of, env_dim_of in *; simpl in *.
-    rewrite <- Hidx1, <- Hidx2, <- Hdepth1, <- Hdepth2.
-    exact Hprefix.
-  - unfold different_dim_at, current_coords_of, env_dim_of in *; simpl in *.
-    rewrite <- Hidx1, <- Hidx2, <- Hdepth1, <- Hdepth2.
-    exact Hdiff.
-Qed.
+  same_prefix_before pp d ip1 ip2 /\
+  different_dim_at pp d ip1 ip2.
 
 Lemma instr_point_sema_eq_except_sched_iff :
   forall ip1 ip2 st1 st2,
@@ -231,7 +238,7 @@ Definition parallel_safe_dim (pp : PolyLang.t) (d : nat) : Prop :=
     PolyLang.flatten_instrs envv (pprog_pis pp) ipl ->
     In tau1 ipl ->
     In tau2 ipl ->
-    same_parallel_slice d tau1 tau2 ->
+    same_parallel_slice pp d tau1 tau2 ->
     ILSema.Permutable tau1 tau2.
 
 Definition parallel_cert_sound
@@ -277,38 +284,132 @@ Proof.
   apply current_coord_schedule_row_cols.
 Qed.
 
-Lemma eqdom_parallel_old_pi :
-  forall env_dim d pi,
-    PolyLang.eqdom_pinstr pi (parallel_old_pi env_dim d pi).
+Lemma schedule_width_ge_pinstr :
+  forall pis varctxt vars pi,
+    In pi pis ->
+    (Datatypes.length pi.(PolyLang.pi_schedule) <=
+     schedule_width ((pis, varctxt), vars))%nat.
 Proof.
-  intros env_dim d pi.
+  intros pis varctxt vars pi Hin.
+  unfold schedule_width, schedule_width_of_pis, pprog_pis.
+  simpl.
+  apply list_max_ge.
+  rewrite in_map_iff.
+  exists pi.
+  split; [reflexivity | exact Hin].
+Qed.
+
+Lemma padded_pi_schedule_length :
+  forall env_dim width pi,
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    Datatypes.length (padded_pi_schedule env_dim width pi) = width.
+Proof.
+  intros env_dim width pi Hlen.
+  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len.
+  rewrite app_length, repeat_length.
+  lia.
+Qed.
+
+Lemma exact_listzzs_cols_padded_pi_schedule :
+  forall env_dim width pi,
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat
+      (padded_pi_schedule env_dim width pi).
+Proof.
+  intros env_dim width pi Hcols coeffs c row Hin Heq.
+  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len in Hin.
+  apply in_app_or in Hin.
+  destruct Hin as [Hin | Hin].
+  - eapply Hcols; eauto.
+  - apply repeat_spec in Hin.
+    subst row.
+    inversion Heq; subst coeffs c.
+    unfold PolyLang.zero_affine_function.
+    simpl.
+    apply repeat_length.
+Qed.
+
+Lemma in_firstn :
+  forall A n (xs : list A) x,
+    In x (firstn n xs) -> In x xs.
+Proof.
+  intros A n.
+  induction n as [|n IH]; intros xs x Hin; destruct xs; simpl in *.
+  - contradiction.
+  - contradiction.
+  - contradiction.
+  - destruct Hin as [Hin | Hin]; [left; exact Hin | right; eapply IH; eauto].
+Qed.
+
+Lemma exact_listzzs_cols_schedule_coord_old_schedule :
+  forall env_dim width d pi,
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    (d < width)%nat ->
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat
+      (schedule_coord_old_schedule env_dim width d pi).
+Proof.
+  intros env_dim width d pi Hlen Hd Hcols coeffs c row Hin Heq.
+  simpl in Hin.
+  destruct Hin as [Hin | []].
+  subst row.
+  eapply exact_listzzs_cols_padded_pi_schedule; eauto.
+  - apply nth_In.
+    rewrite padded_pi_schedule_length by exact Hlen.
+    exact Hd.
+Qed.
+
+Lemma exact_listzzs_cols_schedule_coord_prefix_schedule :
+  forall env_dim width d pi,
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat pi.(PolyLang.pi_schedule) ->
+    exact_listzzs_cols
+      (env_dim + pi.(PolyLang.pi_depth))%nat
+      (schedule_coord_prefix_schedule env_dim width d pi).
+Proof.
+  intros env_dim width d pi Hcols coeffs c row Hin Heq.
+  unfold schedule_coord_prefix_schedule in Hin.
+  eapply exact_listzzs_cols_padded_pi_schedule; eauto.
+  eapply in_firstn; eauto.
+Qed.
+
+Lemma eqdom_parallel_old_pi :
+  forall env_dim width d pi,
+    PolyLang.eqdom_pinstr pi (parallel_old_pi env_dim width d pi).
+Proof.
+  intros env_dim width d pi.
   unfold PolyLang.eqdom_pinstr, parallel_old_pi.
   repeat split; reflexivity.
 Qed.
 
 Lemma eqdom_parallel_new_pi :
-  forall env_dim d pi,
-    PolyLang.eqdom_pinstr pi (parallel_new_pi env_dim d pi).
+  forall env_dim width d pi,
+    PolyLang.eqdom_pinstr pi (parallel_new_pi env_dim width d pi).
 Proof.
-  intros env_dim d pi.
+  intros env_dim width d pi.
   unfold PolyLang.eqdom_pinstr, parallel_new_pi.
   repeat split; reflexivity.
 Qed.
 
 Lemma eqdom_parallel_old_new_pi :
-  forall env_dim d pi,
+  forall env_dim width d pi,
     PolyLang.eqdom_pinstr
-      (parallel_old_pi env_dim d pi)
-      (parallel_new_pi env_dim d pi).
+      (parallel_old_pi env_dim width d pi)
+      (parallel_new_pi env_dim width d pi).
 Proof.
-  intros env_dim d pi.
+  intros env_dim width d pi.
   unfold PolyLang.eqdom_pinstr, parallel_old_pi, parallel_new_pi.
   repeat split; reflexivity.
 Qed.
 
 Lemma rel_list_eqdom_parallel_old :
-  forall env_dim d pis,
-    rel_list PolyLang.eqdom_pinstr pis (List.map (parallel_old_pi env_dim d) pis).
+  forall env_dim width d pis,
+    rel_list PolyLang.eqdom_pinstr pis
+      (List.map (parallel_old_pi env_dim width d) pis).
 Proof.
   induction pis as [|pi pis IH]; simpl.
   - constructor.
@@ -318,8 +419,9 @@ Proof.
 Qed.
 
 Lemma rel_list_eqdom_parallel_new :
-  forall env_dim d pis,
-    rel_list PolyLang.eqdom_pinstr pis (List.map (parallel_new_pi env_dim d) pis).
+  forall env_dim width d pis,
+    rel_list PolyLang.eqdom_pinstr pis
+      (List.map (parallel_new_pi env_dim width d) pis).
 Proof.
   induction pis as [|pi pis IH]; simpl.
   - constructor.
@@ -329,10 +431,10 @@ Proof.
 Qed.
 
 Lemma rel_list_eqdom_parallel_old_new :
-  forall env_dim d pis,
+  forall env_dim width d pis,
     rel_list PolyLang.eqdom_pinstr
-      (List.map (parallel_old_pi env_dim d) pis)
-      (List.map (parallel_new_pi env_dim d) pis).
+      (List.map (parallel_old_pi env_dim width d) pis)
+      (List.map (parallel_new_pi env_dim width d) pis).
 Proof.
   induction pis as [|pi pis IH]; simpl.
   - constructor.
@@ -368,12 +470,14 @@ Proof.
 Qed.
 
 Lemma wf_pinstr_affine_parallel_old_pi :
-  forall env vars env_dim d pi,
+  forall env vars env_dim width d pi,
     PolyLang.wf_pinstr_affine env vars pi ->
     env_dim = Datatypes.length env ->
-    PolyLang.wf_pinstr_affine env vars (parallel_old_pi env_dim d pi).
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    (d < width)%nat ->
+    PolyLang.wf_pinstr_affine env vars (parallel_old_pi env_dim width d pi).
 Proof.
-  intros env vars env_dim d pi Hwf Henvdim.
+  intros env vars env_dim width d pi Hwf Henvdim Hlen Hd.
   unfold PolyLang.wf_pinstr_affine in *.
   destruct Hwf as [Hwf [Hid Hacc]].
   unfold PolyLang.wf_pinstr in *.
@@ -392,19 +496,19 @@ Proof.
     + exact Hpoly.
     + exact Htf.
     + exact Hacc_tf.
-    + apply exact_listzzs_cols_current_coord_old_schedule.
+    + eapply exact_listzzs_cols_schedule_coord_old_schedule; eauto.
     + exact Hw.
     + exact Hr.
   - split; [exact Hid | exact Hacc].
 Qed.
 
 Lemma wf_pinstr_affine_parallel_new_pi :
-  forall env vars env_dim d pi,
+  forall env vars env_dim width d pi,
     PolyLang.wf_pinstr_affine env vars pi ->
     env_dim = Datatypes.length env ->
-    PolyLang.wf_pinstr_affine env vars (parallel_new_pi env_dim d pi).
+    PolyLang.wf_pinstr_affine env vars (parallel_new_pi env_dim width d pi).
 Proof.
-  intros env vars env_dim d pi Hwf Henvdim.
+  intros env vars env_dim width d pi Hwf Henvdim.
   unfold PolyLang.wf_pinstr_affine in *.
   destruct Hwf as [Hwf [Hid Hacc]].
   unfold PolyLang.wf_pinstr in *.
@@ -423,7 +527,7 @@ Proof.
     + exact Hpoly.
     + exact Htf.
     + exact Hacc_tf.
-    + eapply exact_listzzs_cols_current_coord_prefix_schedule.
+    + eapply exact_listzzs_cols_schedule_coord_prefix_schedule; eauto.
     + exact Hw.
     + exact Hr.
   - split; [exact Hid | exact Hacc].
@@ -620,6 +724,111 @@ Proof.
       lia.
 Qed.
 
+Lemma affine_product_repeat_zero_affine_function :
+  forall cols n idx,
+    affine_product (repeat (PolyLang.zero_affine_function cols) n) idx =
+    repeat 0%Z n.
+Proof.
+  intros cols n idx.
+  induction n as [|n IH]; simpl.
+  - reflexivity.
+  - unfold PolyLang.zero_affine_function.
+    simpl.
+    rewrite dot_product_repeat_zero_left.
+    f_equal.
+    exact IH.
+Qed.
+
+Lemma affine_product_app :
+  forall rows1 rows2 idx,
+    affine_product (rows1 ++ rows2) idx =
+    affine_product rows1 idx ++ affine_product rows2 idx.
+Proof.
+  intros rows1 rows2 idx.
+  unfold affine_product.
+  rewrite map_app.
+  reflexivity.
+Qed.
+
+Lemma affine_product_padded_pi_schedule :
+  forall env_dim width pi idx,
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    affine_product (padded_pi_schedule env_dim width pi) idx =
+    resize width (affine_product pi.(PolyLang.pi_schedule) idx).
+Proof.
+  intros env_dim width pi idx Hlen.
+  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len.
+  rewrite affine_product_app.
+  rewrite affine_product_repeat_zero_affine_function.
+  rewrite <- (app_nil_r (affine_product pi.(PolyLang.pi_schedule) idx)) at 2.
+  rewrite resize_app_le.
+  - rewrite resize_null_repeat by reflexivity.
+    unfold affine_product.
+    rewrite map_length.
+    reflexivity.
+  - unfold affine_product.
+    rewrite map_length.
+    exact Hlen.
+Qed.
+
+Lemma affine_product_firstn :
+  forall d rows idx,
+    affine_product (firstn d rows) idx =
+    firstn d (affine_product rows idx).
+Proof.
+  induction d as [|d IH]; intros rows idx; destruct rows; simpl.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - rewrite IH. reflexivity.
+Qed.
+
+Lemma affine_product_schedule_coord_old_schedule :
+  forall env_dim width d pi idx,
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    (d < width)%nat ->
+    affine_product (schedule_coord_old_schedule env_dim width d pi) idx =
+    [nth d (resize width (affine_product pi.(PolyLang.pi_schedule) idx)) 0%Z].
+Proof.
+  intros env_dim width d pi idx Hlen Hd.
+  unfold schedule_coord_old_schedule.
+  simpl.
+  rewrite <- (affine_product_padded_pi_schedule env_dim) by exact Hlen.
+  unfold affine_product.
+  assert
+    (Hrow :
+       nth_error (padded_pi_schedule env_dim width pi) d =
+       Some
+         (nth d (padded_pi_schedule env_dim width pi)
+            (PolyLang.zero_affine_function
+               (env_dim + pi.(PolyLang.pi_depth))))).
+  {
+    apply nth_error_nth'.
+    rewrite padded_pi_schedule_length by exact Hlen.
+    exact Hd.
+  }
+  pose proof
+    (map_nth_error
+       (fun t => dot_product (fst t) idx + snd t)
+       d (padded_pi_schedule env_dim width pi)
+       Hrow) as Hmap.
+  apply nth_error_nth with (d := 0%Z) in Hmap.
+  now rewrite Hmap.
+Qed.
+
+Lemma affine_product_schedule_coord_prefix_schedule :
+  forall env_dim width d pi idx,
+    (Datatypes.length pi.(PolyLang.pi_schedule) <= width)%nat ->
+    affine_product (schedule_coord_prefix_schedule env_dim width d pi) idx =
+    firstn d (resize width (affine_product pi.(PolyLang.pi_schedule) idx)).
+Proof.
+  intros env_dim width d pi idx Hlen.
+  unfold schedule_coord_prefix_schedule.
+  rewrite affine_product_firstn.
+  rewrite affine_product_padded_pi_schedule by exact Hlen.
+  reflexivity.
+Qed.
+
 Lemma flatten_parallel_old_member_inv :
   forall pis varctxt vars d envv ipl ip,
     PolyLang.flatten_instrs envv
@@ -627,7 +836,9 @@ Lemma flatten_parallel_old_member_inv :
     In ip ipl ->
     exists pi,
       nth_error pis ip.(PolyLang.ip_nth) = Some pi /\
-      PolyLang.belongs_to ip (parallel_old_pi (Datatypes.length varctxt) d pi) /\
+      PolyLang.belongs_to ip
+        (parallel_old_pi
+           (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi) /\
       Datatypes.length ip.(PolyLang.ip_index) =
         (Datatypes.length envv + pi.(PolyLang.pi_depth))%nat.
 Proof.
@@ -651,7 +862,9 @@ Lemma flatten_parallel_new_member_inv :
     In ip ipl ->
     exists pi,
       nth_error pis ip.(PolyLang.ip_nth) = Some pi /\
-      PolyLang.belongs_to ip (parallel_new_pi (Datatypes.length varctxt) d pi) /\
+      PolyLang.belongs_to ip
+        (parallel_new_pi
+           (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi) /\
       Datatypes.length ip.(PolyLang.ip_index) =
         (Datatypes.length envv + pi.(PolyLang.pi_depth))%nat.
 Proof.
@@ -674,41 +887,46 @@ Lemma member_parallel_old_timestamp :
       (pprog_pis (parallel_old_pprog (pis, varctxt, vars) d)) ipl ->
     In ip ipl ->
     nth_error pis ip.(PolyLang.ip_nth) = Some pi ->
-    (d < pi.(PolyLang.pi_depth))%nat ->
+    (Datatypes.length pi.(PolyLang.pi_schedule) <=
+     schedule_width_of_pis pis)%nat ->
+    (d < schedule_width_of_pis pis)%nat ->
     ip.(PolyLang.ip_time_stamp) =
-    [nth (Datatypes.length varctxt + d)%nat ip.(PolyLang.ip_index) 0%Z].
+    [nth d
+       (resize (schedule_width_of_pis pis)
+          (affine_product pi.(PolyLang.pi_schedule) ip.(PolyLang.ip_index)))
+       0%Z].
 Proof.
-  intros pis varctxt vars d envv ipl ip pi Hflat Hin Hnth Hd.
+  intros pis varctxt vars d envv ipl ip pi Hflat Hin Hnth Hlen Hd.
   destruct (flatten_parallel_old_member_inv _ _ _ _ _ _ _ Hflat Hin)
     as [pi' [Hnth' [Hbel _]]].
   rewrite Hnth in Hnth'. inversion Hnth'. subst pi'.
   unfold PolyLang.belongs_to in Hbel.
   destruct Hbel as [_ [_ [Hts _]]].
   rewrite Hts.
-  eapply affine_product_current_coord_old_schedule.
-  exact Hd.
+  eapply affine_product_schedule_coord_old_schedule; eauto.
 Qed.
 
 Lemma member_parallel_new_timestamp :
   forall pis varctxt vars d envv ipl ip pi,
-    Datatypes.length envv = Datatypes.length varctxt ->
     PolyLang.flatten_instrs envv
       (pprog_pis (parallel_new_pprog (pis, varctxt, vars) d)) ipl ->
     In ip ipl ->
     nth_error pis ip.(PolyLang.ip_nth) = Some pi ->
-    (d <= pi.(PolyLang.pi_depth))%nat ->
+    (Datatypes.length pi.(PolyLang.pi_schedule) <=
+     schedule_width_of_pis pis)%nat ->
     ip.(PolyLang.ip_time_stamp) =
-    firstn d (skipn (Datatypes.length varctxt) ip.(PolyLang.ip_index)).
+    firstn d
+      (resize (schedule_width_of_pis pis)
+         (affine_product pi.(PolyLang.pi_schedule) ip.(PolyLang.ip_index))).
 Proof.
-  intros pis varctxt vars d envv ipl ip pi Henvlen Hflat Hin Hnth Hd.
+  intros pis varctxt vars d envv ipl ip pi Hflat Hin Hnth Hlen.
   destruct (flatten_parallel_new_member_inv _ _ _ _ _ _ _ Hflat Hin)
-    as [pi' [Hnth' [Hbel Hlen]]].
+    as [pi' [Hnth' [Hbel _]]].
   rewrite Hnth in Hnth'. inversion Hnth'. subst pi'.
   unfold PolyLang.belongs_to in Hbel.
   destruct Hbel as [_ [_ [Hts _]]].
   rewrite Hts.
-  rewrite Henvlen in Hlen.
-  eapply affine_product_current_coord_prefix_schedule; eauto.
+  eapply affine_product_schedule_coord_prefix_schedule; eauto.
 Qed.
 
 Lemma old_new_of_ext_eq_except_sched :
@@ -814,12 +1032,15 @@ Qed.
 
 (** * Executable certificate and soundness *)
 
+(** The public [*_current*] names below are retained for compatibility.
+    Their dimensions now denote canonical schedule coordinates, rather than
+    coordinates in the current iteration point. *)
+
 Definition check_pprog_parallel_currentb
   (pp : PolyLang.t) (plan : parallel_plan) : imp bool :=
   let d := plan.(target_dim) in
-  if Nat.ltb d (PolyLang.pprog_current_dim pp)
+  if Nat.ltb d (schedule_width pp)
      && check_current_view_pprogb pp
-     && all_pinstrs_cover_dimb d pp
   then AffineCore.validate (parallel_old_pprog pp d) (parallel_new_pprog pp d)
   else pure false.
 
@@ -833,9 +1054,8 @@ Definition checked_parallelize_current
 Lemma check_pprog_parallel_currentb_true_inv :
   forall pp plan,
     mayReturn (check_pprog_parallel_currentb pp plan) true ->
-    (target_dim plan < PolyLang.pprog_current_dim pp)%nat /\
+    (target_dim plan < schedule_width pp)%nat /\
     check_current_view_pprogb pp = true /\
-    all_pinstrs_cover_dimb (target_dim plan) pp = true /\
     mayReturn
       (AffineCore.validate
          (parallel_old_pprog pp plan.(target_dim))
@@ -845,17 +1065,13 @@ Proof.
   intros pp plan Hret.
   unfold check_pprog_parallel_currentb in Hret.
   destruct
-    ((Nat.ltb (target_dim plan) (PolyLang.pprog_current_dim pp)
-        && check_current_view_pprogb pp
-        && all_pinstrs_cover_dimb (target_dim plan) pp)%bool) eqn:Hguard.
+    ((Nat.ltb (target_dim plan) (schedule_width pp)
+        && check_current_view_pprogb pp)%bool) eqn:Hguard.
   - apply andb_true_iff in Hguard.
-    destruct Hguard as [Hguard1 Hcover].
-    apply andb_true_iff in Hguard1.
-    destruct Hguard1 as [Hlt Hcur].
+    destruct Hguard as [Hlt Hcur].
     split.
     + apply Nat.ltb_lt. exact Hlt.
-    + split; [exact Hcur |].
-      split; [exact Hcover | exact Hret].
+    + split; [exact Hcur | exact Hret].
   - apply mayReturn_pure in Hret.
     discriminate.
 Qed.
@@ -870,32 +1086,33 @@ Proof.
   pose proof
     (check_pprog_parallel_currentb_true_inv
        ((pis, varctxt), vars) {| target_dim := d |} Hcheck)
-    as (_ & _ & Hcover & Hval).
+    as (Hd & _ & Hval).
   unfold parallel_safe_dim.
   intros envv ipl tau1 tau2 Henvlen Hflat Hin1 Hin2 Hslice.
   simpl in *.
+  set (width := schedule_width_of_pis pis) in *.
   pose proof
     (PolyLang.eqdom_pinstrs_implies_flatten_instrs_exists
        pis
-       (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
+       (List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
        ipl envv
-       (rel_list_eqdom_parallel_old (Datatypes.length varctxt) d pis)
+       (rel_list_eqdom_parallel_old (Datatypes.length varctxt) width d pis)
        Hflat)
     as [ipl_old Hflat_old].
   pose proof
     (PolyLang.eqdom_pinstrs_implies_flatten_instrs_exists
        pis
-       (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
+       (List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis)
        ipl envv
-       (rel_list_eqdom_parallel_new (Datatypes.length varctxt) d pis)
+       (rel_list_eqdom_parallel_new (Datatypes.length varctxt) width d pis)
        Hflat)
     as [ipl_new Hflat_new].
   pose proof
     (PolyLang.eqdom_pinstrs_implies_flatten_instr_nth_rel'
        pis
-       (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
+       (List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
        ipl envv ipl_old
-       (rel_list_eqdom_parallel_old (Datatypes.length varctxt) d pis)
+       (rel_list_eqdom_parallel_old (Datatypes.length varctxt) width d pis)
        Hflat Hflat_old)
     as Hrel_old.
   destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin1)
@@ -906,57 +1123,78 @@ Proof.
   { eapply nth_error_In. exact Hnth1. }
   assert (Hinpi2 : In pi2 pis).
   { eapply nth_error_In. exact Hnth2. }
-  pose proof
-    (all_pinstrs_cover_dimb_sound ((pis, varctxt), vars) d pi1 Hcover Hinpi1)
-    as Hd1.
-  pose proof
-    (all_pinstrs_cover_dimb_sound ((pis, varctxt), vars) d pi2 Hcover Hinpi2)
-    as Hd2.
+  assert
+    (Hwidth1 :
+       (Datatypes.length pi1.(PolyLang.pi_schedule) <= width)%nat).
+  {
+    subst width.
+    exact (schedule_width_ge_pinstr pis varctxt vars pi1 Hinpi1).
+  }
+  assert
+    (Hwidth2 :
+       (Datatypes.length pi2.(PolyLang.pi_schedule) <= width)%nat).
+  {
+    subst width.
+    exact (schedule_width_ge_pinstr pis varctxt vars pi2 Hinpi2).
+  }
   destruct (rel_list_eq_except_sched_member _ _ _ Hrel_old Hin1)
     as [tau1_old [Hin1_old Heq1]].
   destruct (rel_list_eq_except_sched_member _ _ _ Hrel_old Hin2)
     as [tau2_old [Hin2_old Heq2]].
-  assert (Hslice_old : same_parallel_slice d tau1_old tau2_old).
-  {
-    eapply eq_except_sched_preserves_same_parallel_slice; eauto.
-  }
   pose proof Heq1 as Heq1_full.
   pose proof Heq2 as Heq2_full.
-  destruct Heq1 as (Hnth_eq1 & _ & _ & _ & _).
-  destruct Heq2 as (Hnth_eq2 & _ & _ & _ & _).
+  destruct Heq1 as (Hnth_eq1 & Hidx_eq1 & _ & _ & _).
+  destruct Heq2 as (Hnth_eq2 & Hidx_eq2 & _ & _ & _).
   assert (Hnth1_old : nth_error pis tau1_old.(PolyLang.ip_nth) = Some pi1).
   { rewrite <- Hnth_eq1. exact Hnth1. }
   assert (Hnth2_old : nth_error pis tau2_old.(PolyLang.ip_nth) = Some pi2).
   { rewrite <- Hnth_eq2. exact Hnth2. }
-  assert
-    (Hnth1_old_map :
-       nth_error (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
-         tau1_old.(PolyLang.ip_nth) =
-       Some (parallel_old_pi (Datatypes.length varctxt) d pi1)).
-  { rewrite <- Hnth_eq1. apply nth_error_map_fwd. exact Hnth1. }
-  assert
-    (Hnth2_old_map :
-       nth_error (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
-         tau2_old.(PolyLang.ip_nth) =
-       Some (parallel_old_pi (Datatypes.length varctxt) d pi2)).
-  { rewrite <- Hnth_eq2. apply nth_error_map_fwd. exact Hnth2. }
   pose proof
     (member_parallel_old_timestamp
        pis varctxt vars d envv ipl_old tau1_old pi1
-       Hflat_old Hin1_old Hnth1_old Hd1)
+       Hflat_old Hin1_old Hnth1_old Hwidth1 Hd)
     as Hts1_old.
   pose proof
     (member_parallel_old_timestamp
        pis varctxt vars d envv ipl_old tau2_old pi2
-       Hflat_old Hin2_old Hnth2_old Hd2)
+       Hflat_old Hin2_old Hnth2_old Hwidth2 Hd)
     as Hts2_old.
+  unfold PolyLang.belongs_to in Hbel1, Hbel2.
+  destruct Hbel1 as (_ & _ & Hts1_source & _).
+  destruct Hbel2 as (_ & _ & Hts2_source & _).
+  assert
+    (Hts1_old_source :
+       tau1_old.(PolyLang.ip_time_stamp) =
+       [nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z]).
+  {
+    rewrite Hts1_old.
+    unfold padded_timestamp, schedule_width, pprog_pis.
+    simpl.
+    fold width.
+    rewrite <- Hidx_eq1.
+    rewrite <- Hts1_source.
+    reflexivity.
+  }
+  assert
+    (Hts2_old_source :
+       tau2_old.(PolyLang.ip_time_stamp) =
+       [nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z]).
+  {
+    rewrite Hts2_old.
+    unfold padded_timestamp, schedule_width, pprog_pis.
+    simpl.
+    fold width.
+    rewrite <- Hidx_eq2.
+    rewrite <- Hts2_source.
+    reflexivity.
+  }
   pose proof
     (AffineCore.validate_implies_permutability
        (parallel_old_pprog ((pis, varctxt), vars) d)
        (parallel_new_pprog ((pis, varctxt), vars) d)
        varctxt varctxt envv vars vars
-       (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
-       (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
+       (List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis)
+       (List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis)
        ipl_old ipl_new true Hval eq_refl eq_refl eq_refl (eq_sym Henvlen)
        Hflat_old Hflat_new)
     as Hperm_data.
@@ -968,21 +1206,10 @@ Proof.
     as [tau1_ext [Hin1_ext Hold1]].
   destruct (in_old_of_ext_list_inv _ _ Hin2_old)
     as [tau2_ext [Hin2_ext Hold2]].
-  assert (Hslice_ext_old :
-    same_parallel_slice d (PolyLang.old_of_ext tau1_ext) (PolyLang.old_of_ext tau2_ext)).
-  {
-    rewrite Hold1, Hold2.
-    exact Hslice_old.
-  }
   pose proof (old_new_of_ext_eq_except_sched tau1_ext) as Hext_eq1.
   pose proof (old_new_of_ext_eq_except_sched tau2_ext) as Hext_eq2.
-  assert (Hslice_new :
-    same_parallel_slice d (PolyLang.new_of_ext tau1_ext) (PolyLang.new_of_ext tau2_ext)).
-  {
-    eapply eq_except_sched_preserves_same_parallel_slice; eauto.
-  }
-  destruct Hext_eq1 as (Hnth_ext1 & _ & _ & _ & _).
-  destruct Hext_eq2 as (Hnth_ext2 & _ & _ & _ & _).
+  destruct Hext_eq1 as (Hnth_ext1 & Hidx_ext1 & _ & _ & _).
+  destruct Hext_eq2 as (Hnth_ext2 & Hidx_ext2 & _ & _ & _).
   assert (Hin1_new : In (PolyLang.new_of_ext tau1_ext) ipl_new).
   { rewrite <- Hnewext. unfold PolyLang.new_of_ext_list. apply in_map. exact Hin1_ext. }
   assert (Hin2_new : In (PolyLang.new_of_ext tau2_ext) ipl_new).
@@ -1006,109 +1233,79 @@ Proof.
   pose proof
     (member_parallel_new_timestamp
        pis varctxt vars d envv ipl_new (PolyLang.new_of_ext tau1_ext) pi1
-       Henvlen Hflat_new Hin1_new Hnth1_new (Nat.lt_le_incl _ _ Hd1))
+       Hflat_new Hin1_new Hnth1_new Hwidth1)
     as Hts1_new.
   pose proof
     (member_parallel_new_timestamp
        pis varctxt vars d envv ipl_new (PolyLang.new_of_ext tau2_ext) pi2
-       Henvlen Hflat_new Hin2_new Hnth2_new (Nat.lt_le_incl _ _ Hd2))
+       Hflat_new Hin2_new Hnth2_new Hwidth2)
     as Hts2_new.
   assert
-    (Hnth1_new_map :
-       nth_error (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
-         (PolyLang.ip_nth (PolyLang.new_of_ext tau1_ext)) =
-       Some (parallel_new_pi (Datatypes.length varctxt) d pi1)).
+    (Hidx1_new_source :
+       (PolyLang.new_of_ext tau1_ext).(PolyLang.ip_index) =
+       tau1.(PolyLang.ip_index)).
   {
-    rewrite <- Hnth_ext1.
+    rewrite <- Hidx_ext1.
     rewrite Hold1.
-    apply nth_error_map_fwd.
-    exact Hnth1_old.
+    rewrite <- Hidx_eq1.
+    reflexivity.
   }
   assert
-    (Hnth2_new_map :
-       nth_error (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
-         (PolyLang.ip_nth (PolyLang.new_of_ext tau2_ext)) =
-       Some (parallel_new_pi (Datatypes.length varctxt) d pi2)).
+    (Hidx2_new_source :
+       (PolyLang.new_of_ext tau2_ext).(PolyLang.ip_index) =
+       tau2.(PolyLang.ip_index)).
   {
-    rewrite <- Hnth_ext2.
+    rewrite <- Hidx_ext2.
     rewrite Hold2.
-    apply nth_error_map_fwd.
-    exact Hnth2_old.
+    rewrite <- Hidx_eq2.
+    reflexivity.
   }
-  pose proof
-    (current_coords_of_flat_member
-       envv
-       (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
-       ipl_old tau1_old
-       (parallel_old_pi (Datatypes.length varctxt) d pi1)
-       Hflat_old Hin1_old_flat Hnth1_old_map)
-    as Hcur1_old.
-  pose proof
-    (current_coords_of_flat_member
-       envv
-       (List.map (parallel_old_pi (Datatypes.length varctxt) d) pis)
-       ipl_old tau2_old
-       (parallel_old_pi (Datatypes.length varctxt) d pi2)
-       Hflat_old Hin2_old_flat Hnth2_old_map)
-    as Hcur2_old.
-  pose proof
-    (current_coords_of_flat_member
-       envv
-       (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
-       ipl_new (PolyLang.new_of_ext tau1_ext)
-       (parallel_new_pi (Datatypes.length varctxt) d pi1)
-       Hflat_new Hin1_new Hnth1_new_map)
-    as Hcur1_new.
-  pose proof
-    (current_coords_of_flat_member
-       envv
-       (List.map (parallel_new_pi (Datatypes.length varctxt) d) pis)
-       ipl_new (PolyLang.new_of_ext tau2_ext)
-       (parallel_new_pi (Datatypes.length varctxt) d pi2)
-       Hflat_new Hin2_new Hnth2_new_map)
-    as Hcur2_new.
-  destruct Hslice_old as (_ & Hprefix_old & Hdiff_old).
-  destruct Hslice_new as (_ & Hprefix_new & _).
-  unfold different_dim_at in Hdiff_old.
-  unfold same_prefix_before in Hprefix_new.
-  rewrite Hcur1_old, Hcur2_old in Hdiff_old.
-  rewrite Hcur1_new, Hcur2_new in Hprefix_new.
-  pose proof Heq1_full as Heq1_idx.
-  pose proof Heq2_full as Heq2_idx.
-  destruct Heq1_idx as (_ & Hidx_eq1 & _ & _ & _).
-  destruct Heq2_idx as (_ & Hidx_eq2 & _ & _ & _).
   assert
-    (Hlen1_old_full :
-       Datatypes.length tau1_old.(PolyLang.ip_index) =
-       (Datatypes.length envv + PolyLang.pi_depth pi1)%nat).
-  { rewrite <- Hidx_eq1. exact Hlen1. }
+    (Hts1_new_source :
+       (PolyLang.new_of_ext tau1_ext).(PolyLang.ip_time_stamp) =
+       firstn d (padded_timestamp ((pis, varctxt), vars) tau1)).
+  {
+    rewrite Hts1_new.
+    rewrite Hidx1_new_source.
+    unfold padded_timestamp, schedule_width, pprog_pis.
+    simpl.
+    fold width.
+    rewrite <- Hts1_source.
+    reflexivity.
+  }
   assert
-    (Hlen2_old_full :
-       Datatypes.length tau2_old.(PolyLang.ip_index) =
-       (Datatypes.length envv + PolyLang.pi_depth pi2)%nat).
-  { rewrite <- Hidx_eq2. exact Hlen2. }
+    (Hts2_new_source :
+       (PolyLang.new_of_ext tau2_ext).(PolyLang.ip_time_stamp) =
+       firstn d (padded_timestamp ((pis, varctxt), vars) tau2)).
+  {
+    rewrite Hts2_new.
+    rewrite Hidx2_new_source.
+    unfold padded_timestamp, schedule_width, pprog_pis.
+    simpl.
+    fold width.
+    rewrite <- Hts2_source.
+    reflexivity.
+  }
+  destruct Hslice as (_ & Hprefix & Hdiff).
+  unfold same_prefix_before in Hprefix.
+  unfold different_dim_at in Hdiff.
   assert
     (Hneq_coord :
-       nth (Datatypes.length envv + d)%nat tau1_old.(PolyLang.ip_index) 0%Z <>
-       nth (Datatypes.length envv + d)%nat tau2_old.(PolyLang.ip_index) 0%Z).
+       nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z <>
+       nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z).
   {
     intro Heq.
-    apply Hdiff_old.
-    rewrite <- !nth_error_skipn.
-    replace (d + Datatypes.length envv)%nat with (Datatypes.length envv + d)%nat by lia.
-    change
-      (nth_error tau1_old.(PolyLang.ip_index) (Datatypes.length envv + d) =
-       nth_error tau2_old.(PolyLang.ip_index) (Datatypes.length envv + d)).
+    apply Hdiff.
     rewrite nth_error_nth' with
         (d := 0%Z)
-        (n := (Datatypes.length envv + d)%nat)
-        (l := PolyLang.ILSema.ip_index tau1_old).
-    2: { rewrite Hlen1_old_full. lia. }
+        (n := d)
+        (l := padded_timestamp ((pis, varctxt), vars) tau1).
+    2: { unfold padded_timestamp. rewrite resize_length. exact Hd. }
     rewrite nth_error_nth' with
         (d := 0%Z)
-        (n := (Datatypes.length envv + d)%nat)
-        (l := PolyLang.ILSema.ip_index tau2_old).
-    2: { rewrite Hlen2_old_full. lia. }
+        (n := d)
+        (l := padded_timestamp ((pis, varctxt), vars) tau2).
+    2: { unfold padded_timestamp. rewrite resize_length. exact Hd. }
     now rewrite Heq.
   }
   assert
@@ -1116,17 +1313,13 @@ Proof.
        PolyLang.ip_time_stamp (PolyLang.new_of_ext tau1_ext) =
        PolyLang.ip_time_stamp (PolyLang.new_of_ext tau2_ext)).
   {
-    replace (Datatypes.length varctxt)%nat with (Datatypes.length envv)%nat in Hts1_new
-      by (rewrite <- Henvlen; reflexivity).
-    replace (Datatypes.length varctxt)%nat with (Datatypes.length envv)%nat in Hts2_new
-      by (rewrite <- Henvlen; reflexivity).
-    rewrite Hts1_new, Hts2_new.
-    exact Hprefix_new.
+    rewrite Hts1_new_source, Hts2_new_source.
+    exact Hprefix.
   }
   destruct
     (Z_lt_ge_dec
-       (nth (Datatypes.length envv + d)%nat tau1_old.(PolyLang.ip_index) 0%Z)
-       (nth (Datatypes.length envv + d)%nat tau2_old.(PolyLang.ip_index) 0%Z))
+       (nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)
+       (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z))
     as [Hlt12 | Hge12].
   - assert (PolyLang.instr_point_ext_old_sched_lt tau1_ext tau2_ext) as Hold_lt.
     {
@@ -1136,8 +1329,7 @@ Proof.
            (PolyLang.ip_time_stamp (PolyLang.old_of_ext tau1_ext))
            (PolyLang.ip_time_stamp (PolyLang.old_of_ext tau2_ext)) = Lt).
       rewrite Hold1, Hold2.
-      rewrite Hts1_old, Hts2_old.
-      rewrite Henvlen in Hlt12.
+      rewrite Hts1_old_source, Hts2_old_source.
       apply lex_compare_singleton_lt.
       exact Hlt12.
     }
@@ -1152,16 +1344,19 @@ Proof.
       rewrite Hnew_eq.
       apply lex_compare_reflexive.
     }
-    eapply permutable_eq_except_sched.
+    eapply
+      (permutable_eq_except_sched tau1_old tau1 tau2_old tau2).
     + apply eq_except_sched_symm. exact Heq1_full.
     + apply eq_except_sched_symm. exact Heq2_full.
     + unfold PolyLang.Permutable_ext.
       rewrite <- Hold1, <- Hold2.
-      eapply Hperm_ext; eauto.
+      exact
+        (Hperm_ext
+           tau1_ext tau2_ext Hin1_ext Hin2_ext Hold_lt Hnew_ge).
   - assert
-      (Hgt21 :
-         (nth (Datatypes.length envv + d)%nat tau2_old.(PolyLang.ip_index) 0%Z <
-          nth (Datatypes.length envv + d)%nat tau1_old.(PolyLang.ip_index) 0%Z)%Z).
+    (Hgt21 :
+         (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z <
+          nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)%Z).
     { lia. }
     assert (PolyLang.instr_point_ext_old_sched_lt tau2_ext tau1_ext) as Hold_lt.
     {
@@ -1171,8 +1366,7 @@ Proof.
            (PolyLang.ip_time_stamp (PolyLang.old_of_ext tau2_ext))
            (PolyLang.ip_time_stamp (PolyLang.old_of_ext tau1_ext)) = Lt).
       rewrite Hold1, Hold2.
-      rewrite Hts1_old, Hts2_old.
-      rewrite Henvlen in Hgt21.
+      rewrite Hts1_old_source, Hts2_old_source.
       apply lex_compare_singleton_lt.
       exact Hgt21.
     }
@@ -1187,12 +1381,15 @@ Proof.
       rewrite Hnew_eq.
       apply lex_compare_reflexive.
     }
-    eapply permutable_eq_except_sched.
+    eapply
+      (permutable_eq_except_sched tau1_old tau1 tau2_old tau2).
     + apply eq_except_sched_symm. exact Heq1_full.
     + apply eq_except_sched_symm. exact Heq2_full.
     + assert (Hperm_rev : PolyLang.Permutable_ext tau2_ext tau1_ext).
       {
-        eapply Hperm_ext; eauto.
+        exact
+          (Hperm_ext
+             tau2_ext tau1_ext Hin2_ext Hin1_ext Hold_lt Hnew_ge).
       }
       pose proof (PolyLang.Permutable_ext_symm _ _ Hperm_rev) as Hperm_fwd.
       unfold PolyLang.Permutable_ext in Hperm_fwd.
@@ -1222,7 +1419,7 @@ Qed.
 Lemma checked_parallelize_current_implies_dim_in_range :
   forall pp plan cert,
     mayReturn (checked_parallelize_current pp plan) (Okk cert) ->
-    (certified_dim cert < PolyLang.pprog_current_dim pp)%nat.
+    (certified_dim cert < schedule_width pp)%nat.
 Proof.
   intros pp plan cert Hchecked.
   unfold checked_parallelize_current in Hchecked.
