@@ -15,6 +15,56 @@ Open Scope Z_scope.
 Open Scope list_scope.
 Open Scope vector_scope.
 
+Definition insert_zeros_at (added index : nat) (values : list Z) : list Z :=
+  resize index values ++ repeat 0%Z added ++ skipn index values.
+
+Lemma insert_zeros_at_commute :
+  forall added d index values,
+    insert_zeros_at added (index + d) (insert_zeros_at d index values) =
+    insert_zeros_at d index (insert_zeros_at added index values).
+Proof.
+  intros added d index values.
+  unfold insert_zeros_at.
+  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
+  rewrite Linalg.resize_length.
+  replace (index + d - index)%nat with d by lia.
+  rewrite List.skipn_app by lia.
+  replace (d - d)%nat with 0%nat by lia.
+  simpl.
+  rewrite Linalg.resize_app_le by (rewrite List.repeat_length; lia).
+  rewrite Linalg.resize_length.
+  rewrite List.skipn_app by lia.
+  replace (d - d)%nat with 0%nat by lia.
+  replace (0 - added)%nat with 0%nat by lia.
+  simpl.
+  replace (index + d - index)%nat with d by lia.
+  replace (d - length (repeat 0%Z d))%nat with 0%nat by
+    (rewrite List.repeat_length; lia).
+  simpl.
+  replace (skipn (index + d) (resize index values)) with ([] : list Z).
+  2:{ rewrite List.skipn_all2; [reflexivity|rewrite Linalg.resize_length; lia]. }
+  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
+  2:{ rewrite List.skipn_all2; [reflexivity|rewrite List.repeat_length; lia]. }
+  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
+  rewrite Linalg.resize_length.
+  rewrite List.skipn_app by lia.
+  replace (index - index)%nat with 0%nat by lia.
+  replace (0 - added)%nat with 0%nat by lia.
+  simpl.
+  replace (skipn index (resize index values)) with ([] : list Z).
+  2:{ rewrite List.skipn_all2; [reflexivity|rewrite Linalg.resize_length; lia]. }
+  replace (index - length (resize index values))%nat with 0%nat by
+    (rewrite Linalg.resize_length; lia).
+  replace (index + d - index)%nat with d by lia.
+  replace (d - length (repeat 0%Z d))%nat with 0%nat by
+    (rewrite List.repeat_length; lia).
+  simpl.
+  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
+  2:{ rewrite List.skipn_all2; [reflexivity|rewrite List.repeat_length; lia]. }
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
 Definition vector_zero (n: nat) : list Z := repeat 0%Z n.
 
 Definition vector_opp (v: list Z) : list Z := map Z.opp v.

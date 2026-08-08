@@ -15,11 +15,92 @@ Require Import Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.Wf_nat.
 Require Import SetoidList.
+Require Import Classical.
+Require Import Sorting.Sorted.
+Require Import Relations.Relation_Definitions.
 
 Require Import Datatypes.
 Require Import Misc.
 
 Import ListNotations.
+
+Lemma NoDup_sorted_same_elements :
+  forall A (lt : A -> A -> Prop) (l1 l2 : list A),
+    NoDup l1 ->
+    NoDup l2 ->
+    (forall x, In x l1 <-> In x l2) ->
+    Irreflexive lt ->
+    Transitive lt ->
+    Sorted lt l1 ->
+    Sorted lt l2 ->
+    l1 = l2.
+Proof.
+  intros A lt l1.
+  induction l1 as [|head1 tail1 IH]; intros l2 Hnodup1 Hnodup2 Helems
+    Hirrefl Htrans Hsorted1 Hsorted2.
+  - destruct l2 as [|head2 tail2]; [reflexivity|].
+    specialize (Helems head2).
+    simpl in Helems.
+    tauto.
+  - destruct l2 as [|head2 tail2].
+    + specialize (Helems head1).
+      simpl in Helems.
+      tauto.
+    + apply Sorted_StronglySorted in Hsorted1; [|exact Htrans].
+      apply Sorted_StronglySorted in Hsorted2; [|exact Htrans].
+      inversion Hnodup1 as [|? ? Hhead1_fresh Hnodup_tail1]; subst.
+      inversion Hnodup2 as [|? ? Hhead2_fresh Hnodup_tail2]; subst.
+      inversion Hsorted1 as [|? ? Hsorted_tail1 Hhead1_lt]; subst.
+      inversion Hsorted2 as [|? ? Hsorted_tail2 Hhead2_lt]; subst.
+      pose proof
+        (proj1 (Forall_forall (lt head1) tail1) Hhead1_lt)
+        as Hhead1_before_tail.
+      pose proof
+        (proj1 (Forall_forall (lt head2) tail2) Hhead2_lt)
+        as Hhead2_before_tail.
+      assert (Hheads : head1 = head2).
+      {
+        destruct (classic (head1 = head2)) as [Heq|Hneq]; [exact Heq|].
+        assert (Hhead1_in_tail2 : In head1 tail2).
+        {
+          specialize (Helems head1).
+          simpl in Helems.
+          destruct (proj1 Helems (or_introl eq_refl)) as [Heq|Hin].
+          - exfalso; apply Hneq; symmetry; exact Heq.
+          - exact Hin.
+        }
+        assert (Hhead2_in_tail1 : In head2 tail1).
+        {
+          specialize (Helems head2).
+          simpl in Helems.
+          destruct (proj2 Helems (or_introl eq_refl)) as [Heq|Hin].
+          - exfalso; apply Hneq; exact Heq.
+          - exact Hin.
+        }
+        pose proof
+          (Hhead1_before_tail head2 Hhead2_in_tail1) as Hlt12.
+        pose proof
+          (Hhead2_before_tail head1 Hhead1_in_tail2) as Hlt21.
+        exfalso.
+        apply (Hirrefl head1).
+        eapply Htrans; eauto.
+      }
+      subst head2.
+      f_equal.
+      apply StronglySorted_Sorted in Hsorted_tail1.
+      apply StronglySorted_Sorted in Hsorted_tail2.
+      apply IH; try assumption.
+      intro x.
+      specialize (Helems x).
+      simpl in Helems.
+      split; intro Hin.
+      * destruct (proj1 Helems (or_intror Hin)) as [Heq|Htail].
+        -- subst x; contradiction.
+        -- exact Htail.
+      * destruct (proj2 Helems (or_intror Hin)) as [Heq|Htail].
+        -- subst x; contradiction.
+        -- exact Htail.
+Qed.
 
 Lemma NoDup_map_on :
   forall (A B: Type) (f: A -> B) (xs: list A),

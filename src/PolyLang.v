@@ -17,6 +17,7 @@ Require Import PolyBase.
 Require Import TilingWitness.
 Require Import PointWitness.
 Require Import Misc.
+Require Import ListExt.
 Require Import Sorting.Sorted.
 Require Import Permutation.
 Require Import Coqlib.
@@ -1575,37 +1576,6 @@ Inductive poly_semantics : nat -> (nat -> list Z -> bool) -> (list PolyInstr) ->
     poly_semantics env_dim (scanned to_scan n p) poly_instrs st2 st3 ->
     poly_semantics env_dim to_scan poly_instrs st1 st3.
 
-Inductive poly_semantics_k : nat -> (nat -> list Z -> bool) -> (list PolyInstr) -> State.t -> State.t -> nat -> Prop :=
-| PolyDoneK : forall env_dim to_scan poly_instrs st, 
-    (forall n p, to_scan n p = false) -> 
-    poly_semantics_k env_dim to_scan poly_instrs st st 0%nat
-| PolyProgressK : forall env_dim to_scan poly_instrs st1 st2 st3 poly_instr n p k wcs rcs,
-    to_scan n p = true -> 
-    nth_error poly_instrs n = Some poly_instr ->
-    (forall n2 p2 poly_instr2, nth_error poly_instrs n2 = Some poly_instr2 ->
-                          lex_compare (affine_product poly_instr2.(pi_schedule) p2) (affine_product poly_instr.(pi_schedule) p) = Lt ->
-                          to_scan n2 p2 = false) ->
-    Instr.instr_semantics poly_instr.(pi_instr) (current_src_args_in_dim env_dim poly_instr p) wcs rcs st1 st2 ->
-    poly_semantics_k env_dim (scanned to_scan n p) poly_instrs st2 st3 k ->
-    poly_semantics_k env_dim to_scan poly_instrs st1 st3 (S k).
-
-Lemma poly_sema_k_eq: 
-  forall env_dim to_scan poly_instrs st1 st2,
-    (exists k, poly_semantics_k env_dim to_scan poly_instrs st1 st2 k) <->
-    poly_semantics env_dim to_scan poly_instrs st1 st2.
-Proof.
-  intros until st2. split.
-    - intro Hsem.  
-      destruct Hsem as (k, Hsem). 
-      induction Hsem; econs; eauto.
-    - intro Hsem.
-      induction Hsem. 
-      * exists 0; econs; eauto.
-      * destruct IHHsem as (k & Hsem'). 
-        exists (S k). econs; eauto.  
-Qed.
-
-
 Definition env_poly_semantics (env : list Z) (dim : nat) (pis : list PolyInstr) (mem1 mem2 : State.t) :=
   poly_semantics dim (env_scan pis env dim) pis mem1 mem2.
 
@@ -1647,92 +1617,6 @@ Lemma scanned_wf_compat :
   forall to_scan n p, wf_scan to_scan -> wf_scan (scanned to_scan n p).
 Proof.
   intros to_scan n p Hwf. apply scanned_proper; [exact Hwf | reflexivity | reflexivity].
-Qed.
-
-Theorem poly_semantics_concat :
-  forall env_dim to_scan1 prog mem1 mem2,
-    poly_semantics env_dim to_scan1 prog mem1 mem2 ->
-    forall to_scan2 mem3,
-    wf_scan to_scan1 ->
-    (forall n p, to_scan1 n p = false \/ to_scan2 n p = false) ->
-    (forall n1 p1 pi1 n2 p2 pi2, nth_error prog n1 = Some pi1 -> nth_error prog n2 = Some pi2 ->
-                           lex_compare (affine_product pi2.(pi_schedule) p2) (affine_product pi1.(pi_schedule) p1) = Lt ->
-                           to_scan1 n1 p1 = false \/ to_scan2 n2 p2 = false) ->
-    
-    poly_semantics env_dim to_scan2 prog mem2 mem3 ->
-    poly_semantics env_dim (fun n p => to_scan1 n p || to_scan2 n p) prog mem1 mem3.
-Proof.
-  intros env_dim to_scan1 prog mem1 mem2 Hsem.
-  induction Hsem as
-      [env_dim to_scan3 prog1 mem4 Hdone
-      |env_dim to_scan3 prog1 mem4 mem5 mem6 wcs rcs pi n p Hscanp Heqpi Hts Hsem1 Hsem2 IH].
-  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem1.
-    eapply poly_semantics_extensionality with (to_scan1 := to_scan2); [exact Hsem1|].
-    intros n0 p0.
-    destruct (to_scan2 n0 p0); simpl.
-    + rewrite (Hdone n0 p0). reflexivity.
-    + rewrite (Hdone n0 p0). reflexivity.
-  - intros to_scan2 mem3 Hwf1 Hdisj Hcmp Hsem3.
-    refine
-      (@PolyProgress
-         env_dim
-         (fun n0 p0 => to_scan3 n0 p0 || to_scan2 n0 p0)
-         prog1 mem4 mem5 mem3 wcs rcs pi n p
-         _ _ _ _ _).
-    + simpl.
-      rewrite Hscanp.
-      reflexivity.
-    + exact Heqpi.
-    + intros n2 p2 pi2 Heqpi2 Hts2.
-      reflect; split.
-      * apply (Hts n2 p2 pi2); auto.
-      * destruct (Hcmp n p pi n2 p2 pi2) as [H | H]; auto; congruence.
-    + exact Hsem1.
-    + assert (Hrest :
-          poly_semantics env_dim
-            (fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0)
-            prog1 mem5 mem3).
-      {
-        assert (Hwf_scanned : wf_scan (scanned to_scan3 n p)).
-        { apply scanned_wf_compat; auto. }
-        assert (Hdisj_scanned :
-          forall n0 p0,
-            scanned to_scan3 n p n0 p0 = false \/ to_scan2 n0 p0 = false).
-        {
-          intros n0 p0. autounfold. simpl.
-          destruct (to_scan3 n0 p0) eqn:Hscan3; simpl.
-          - destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
-          - left. reflexivity.
-        }
-        assert (Hcmp_scanned :
-          forall n1 p1 pi1 n2 p2 pi2,
-            nth_error prog1 n1 = Some pi1 ->
-            nth_error prog1 n2 = Some pi2 ->
-            lex_compare (affine_product (pi_schedule pi2) p2)
-              (affine_product (pi_schedule pi1) p1) = Lt ->
-            scanned to_scan3 n p n1 p1 = false \/ to_scan2 n2 p2 = false).
-        {
-          intros n1 p1 pi1 n2 p2 pi2 Heqpi1 Heqpi2 Hcmp1.
-          destruct (Hcmp n1 p1 pi1 n2 p2 pi2 Heqpi1 Heqpi2 Hcmp1) as [H | H].
-          - left.
-            autounfold.
-            rewrite H.
-            destruct (is_eq p p1 && (n =? n1)%nat); reflexivity.
-          - right. exact H.
-        }
-        pose proof (IH to_scan2 mem3 Hwf_scanned Hdisj_scanned Hcmp_scanned Hsem3) as Hrest.
-        exact Hrest.
-      }
-      eapply poly_semantics_extensionality with
-          (to_scan1 := fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0).
-      * exact Hrest.
-      * intros n0 p0. autounfold. simpl.
-        destruct (Hdisj n0 p0) as [H | H].
-        -- rewrite H. simpl.
-           destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl.
-           ++ reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
-           ++ rewrite andb_true_r. reflexivity.
-        -- rewrite H. destruct (to_scan3 n0 p0); simpl; rewrite ?orb_false_r; auto.
 Qed.
 
 (** Part 2: Instruction Point Semantics *)
@@ -2205,87 +2089,125 @@ Proof.
       inv H2. inv Heq. trivial.
 Qed.
 
+Local Lemma flatten_append_singleton_shape:
+  forall (Point Item : Type)
+    (rank : Point -> nat)
+    (prefix : Point -> Prop)
+    (facts : Point -> Item -> Prop)
+    (order : Point -> Point -> Prop)
+    (items : list Item) (item : Item) (left right : list Point),
+    (forall point, In point left -> prefix point) ->
+    (forall point,
+      In point left <->
+      exists old_item,
+        nth_error items (rank point) = Some old_item /\
+        facts point old_item) ->
+    NoDup left ->
+    Sorted order left ->
+    (forall point, In point right -> prefix point) ->
+    (forall point,
+      In point right <->
+      facts point item /\ rank point = length items) ->
+    NoDup right ->
+    Sorted order right ->
+    (forall point1 point2,
+      rank point1 < rank point2 -> order point1 point2) ->
+    (forall point, In point (left ++ right) -> prefix point) /\
+    (forall point,
+      In point (left ++ right) <->
+      exists old_item,
+        nth_error (items ++ [item]) (rank point) = Some old_item /\
+        facts point old_item) /\
+    NoDup (left ++ right) /\
+    Sorted order (left ++ right).
+Proof.
+  intros Point Item rank prefix facts order items item left right
+    Hleft_prefix Hleft_member Hleft_nodup Hleft_sorted
+    Hright_prefix Hright_member Hright_nodup Hright_sorted Hrank_order.
+  refine (conj _ (conj _ (conj _ _))).
+  - intros point Hin.
+    apply in_app_or in Hin.
+    destruct Hin as [Hin|Hin].
+    + exact (Hleft_prefix point Hin).
+    + exact (Hright_prefix point Hin).
+  - intros point.
+    split.
+    + intro Hin.
+      apply in_app_or in Hin.
+      destruct Hin as [Hin|Hin].
+      * apply Hleft_member in Hin.
+        destruct Hin as (old_item & Hnth & Hfacts).
+        exists old_item; split; [|exact Hfacts].
+        rewrite nth_error_app1; [exact Hnth|].
+        apply nth_error_Some' in Hnth; exact Hnth.
+      * apply Hright_member in Hin.
+        destruct Hin as [Hfacts Hrank].
+        exists item; split; [|exact Hfacts].
+        rewrite nth_error_app2; [|lia].
+        rewrite Hrank, Nat.sub_diag.
+        reflexivity.
+    + intros (old_item & Hnth & Hfacts).
+      apply nth_error_Some' in Hnth as Hrank_bound.
+      rewrite app_length in Hrank_bound; simpl in Hrank_bound.
+      destruct (Nat.lt_trichotomy (rank point) (length items))
+        as [Hleft|[Heq|Hright]]; [| |lia].
+      * apply in_or_app; left.
+        apply Hleft_member.
+        exists old_item; split; [|exact Hfacts].
+        rewrite nth_error_app1 in Hnth; [exact Hnth|exact Hleft].
+      * apply in_or_app; right.
+        apply Hright_member.
+        split; [|exact Heq].
+        rewrite nth_error_app2 in Hnth; [|lia].
+        rewrite Heq, Nat.sub_diag in Hnth.
+        simpl in Hnth; inversion Hnth; subst.
+        exact Hfacts.
+  - eapply NoDup_app; eauto.
+    intros point Hin_left Hin_right.
+    apply Hleft_member in Hin_left.
+    apply Hright_member in Hin_right.
+    destruct Hin_left as (old_item & Hnth & Hfacts_left).
+    destruct Hin_right as [Hfacts_right Hrank].
+    rewrite Hrank in Hnth.
+    assert (Hnone : nth_error items (length items) = None).
+    { apply nth_error_None; lia. }
+    rewrite Hnone in Hnth; discriminate.
+  - eapply Sorted_app; eauto.
+    intros point1 point2 Hin1 Hin2.
+    apply Hleft_member in Hin1.
+    apply Hright_member in Hin2.
+    destruct Hin1 as (old_item & Hnth & Hfacts1).
+    destruct Hin2 as [Hfacts2 Hrank2].
+    apply Hrank_order.
+    rewrite Hrank2.
+    apply nth_error_Some' in Hnth; exact Hnth.
+Qed.
+
 Lemma flatten_instrs_app_singleton:
   forall envv pis pi ipl ipl' ,
     flatten_instrs envv pis ipl ->
     flatten_instr_nth envv (length pis) pi ipl' ->
     flatten_instrs envv (pis++[pi]) (ipl++ipl').
 Proof.
-  intros. 
-  destruct H as (H1 & H2 & H3 & H4).
-  destruct H0 as (H1' & H2' & H3' & H4').
-  splits.
-  - intros. 
-    eapply in_app_or in H.
-    destruct H.
-    + eapply H1; eauto.
-    + eapply H1'; eauto.
-  - intros.
-    split; intro.
-    +
-      eapply in_app_or in H.
-      destruct H.
-      * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & Hpref & H & Hlen).
-        exists pi0.
-        splits; eauto.
-        rewrite nth_error_app1; eauto.
-        eapply nth_error_Some; rewrite NTH; eauto.
-        intro. tryfalse.
-      * 
-        eapply H2' in H; eauto.
-        destruct H as (Hpref & H & NTH & Hlen).
-        exists pi.
-        splits; eauto.
-        rewrite nth_error_app2; eauto; try lia.
-        replace (ip_nth ip - length pis) with 0; try lia.
-        simpls. trivial. 
-    + intros.
-      destruct H.
-      destruct H as (NTH & HPREF & BEL & LEN).
-      * 
-        assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
-          eapply nth_error_Some' in NTH.
-          rewrite app_length in NTH.
-          clear - NTH. simpls. lia.
-        }
-        destruct H.
-        -- 
-        rewrite in_app. left. 
-        eapply H2.
-        exists x.
-        rewrite nth_error_app1 in NTH; eauto.
-        --
-        rewrite in_app. right.
-        eapply H2'.
-        rewrite H in NTH.
-        rewrite nth_error_app2 in NTH; eauto.
-        replace (length pis - length pis) with 0 in NTH; try lia.
-        simpls; trivial. inv NTH. trivial.
-        splits; eauto.
-  - 
-    eapply NoDup_app; eauto.
-    intros.
-    eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & Hpref & H & Hlen).
-    intro. eapply H2' in H0.
-    destruct H0 as (Hpref' & H0 & NTH' & Hlen').
-    rewrite NTH' in NTH.
-    assert (nth_error pis (length pis) = None). {
-      eapply nth_error_None; eauto.
-    }
-    tryfalse.
-  - 
-    clear - H4 H4' H2 H2'.
-    eapply Sorted_app; eauto.
-    intros.
-    eapply H2 in H; eauto.
-    eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & Hpref & H & Hlen).
-    destruct H0 as (Hpref' & H' & NTH' & Hlen').
-    unfold np_lt. left.
-    clear - NTH NTH'.
-    eapply nth_error_Some' in NTH. lia.
+  intros envv pis pi ipl ipl_tail Hflat Htail.
+  unfold flatten_instrs in Hflat |- *.
+  unfold flatten_instr_nth in Htail.
+  destruct Hflat as (Hprefix & Hmember & Hnodup & Hsorted).
+  destruct Htail as (Htail_prefix & Htail_member & Htail_nodup & Htail_sorted).
+  eapply flatten_append_singleton_shape with
+    (rank := ip_nth)
+    (prefix := fun ip => firstn (length envv) (ip_index ip) = envv)
+    (facts := fun ip item =>
+      firstn (length envv) (ip_index ip) = envv /\
+      belongs_to ip item /\
+      length (ip_index ip) = length envv + pi_depth item)
+    (order := np_lt);
+    try eassumption.
+  - intros point.
+    specialize (Htail_member point).
+    tauto.
+  - intros point1 point2 Hrank.
+    unfold np_lt; left; exact Hrank.
 Qed.
 
 Lemma flatten_instrs_ipl_n_lt_len:
@@ -2302,124 +2224,169 @@ Proof.
   eapply nth_error_Some' in NTH. trivial.
 Qed.
 
+Local Lemma flatten_split_singleton_shape:
+  forall (Point Item : Type)
+    (rank : Point -> nat)
+    (prefix : Point -> Prop)
+    (facts : Point -> Item -> Prop)
+    (equiv order : Point -> Point -> Prop)
+    (items : list Item) (item : Item) (whole : list Point),
+    Equivalence equiv ->
+    StrictOrder order ->
+    Proper (equiv ==> equiv ==> iff) order ->
+    (forall point, In point whole -> prefix point) ->
+    (forall point,
+      In point whole <->
+      exists old_item,
+        nth_error (items ++ [item]) (rank point) = Some old_item /\
+        facts point old_item) ->
+    NoDup whole ->
+    Sorted order whole ->
+    (forall point1 point2,
+      rank point1 < rank point2 -> order point1 point2) ->
+    exists left right,
+      ((forall point, In point left -> prefix point) /\
+       (forall point,
+         In point left <->
+         exists old_item,
+           nth_error items (rank point) = Some old_item /\
+           facts point old_item) /\
+       NoDup left /\ Sorted order left) /\
+      ((forall point, In point right -> prefix point) /\
+       (forall point,
+         In point right <->
+         facts point item /\ rank point = length items) /\
+       NoDup right /\ Sorted order right) /\
+      whole = left ++ right.
+Proof.
+  intros Point Item rank prefix facts equiv order items item whole
+    Hequiv Horder Hproper Hprefix Hmember Hnodup Hsorted Hrank_order.
+  set (is_left := fun point : Point => rank point <? length items).
+  set (is_right := fun point : Point => Nat.eqb (length items) (rank point)).
+  exists (filter is_left whole).
+  exists (filter is_right whole).
+  assert (Hrank_bound :
+    forall point, In point whole -> rank point <= length items).
+  {
+    intros point Hin.
+    apply Hmember in Hin.
+    destruct Hin as (old_item & Hnth & Hfacts).
+    apply nth_error_Some' in Hnth.
+    rewrite app_length in Hnth; simpl in Hnth; lia.
+  }
+  refine (conj _ (conj _ _)).
+  - refine (conj _ (conj _ (conj _ _))).
+    + intros point Hin.
+      apply filter_In in Hin.
+      exact (Hprefix point (proj1 Hin)).
+    + intros point.
+      split.
+      * intro Hin.
+        apply filter_In in Hin.
+        destruct Hin as [Hin Hleft].
+        apply Hmember in Hin.
+        destruct Hin as (old_item & Hnth & Hfacts).
+        exists old_item; split; [|exact Hfacts].
+        rewrite nth_error_app1 in Hnth; [exact Hnth|].
+        unfold is_left in Hleft.
+        apply Nat.ltb_lt in Hleft; exact Hleft.
+      * intros (old_item & Hnth & Hfacts).
+        apply filter_In; split.
+        -- apply Hmember.
+           exists old_item; split; [|exact Hfacts].
+           rewrite nth_error_app1; [exact Hnth|].
+           apply nth_error_Some' in Hnth; exact Hnth.
+        -- unfold is_left.
+           apply Nat.ltb_lt.
+           apply nth_error_Some' in Hnth; exact Hnth.
+    + apply NoDup_filter; exact Hnodup.
+    + eapply filter_sort; eauto.
+  - refine (conj _ (conj _ (conj _ _))).
+    + intros point Hin.
+      apply filter_In in Hin.
+      exact (Hprefix point (proj1 Hin)).
+    + intros point.
+      split.
+      * intro Hin.
+        apply filter_In in Hin.
+        destruct Hin as [Hin Hright].
+        apply Hmember in Hin.
+        destruct Hin as (old_item & Hnth & Hfacts).
+        unfold is_right in Hright.
+        apply Nat.eqb_eq in Hright.
+        rewrite nth_error_app2 in Hnth; [|lia].
+        rewrite <- Hright, Nat.sub_diag in Hnth.
+        simpl in Hnth; inversion Hnth; subst.
+        split; [exact Hfacts|symmetry; exact Hright].
+      * intros [Hfacts Hrank].
+        apply filter_In; split.
+        -- apply Hmember.
+           exists item; split; [|exact Hfacts].
+           rewrite nth_error_app2; [|lia].
+           rewrite Hrank, Nat.sub_diag; reflexivity.
+        -- unfold is_right.
+           apply Nat.eqb_eq; symmetry; exact Hrank.
+    + apply NoDup_filter; exact Hnodup.
+    + eapply filter_sort; eauto.
+  - assert (Hsplit :
+      whole = filter is_left whole ++ filter (fun point => negb (is_left point)) whole).
+    {
+      eapply filter_split; eauto.
+      intros point1 point2 Hleft Hright.
+      apply Hrank_order.
+      unfold is_left in Hleft, Hright.
+      apply Nat.ltb_lt in Hleft.
+      apply Nat.ltb_ge in Hright.
+      lia.
+    }
+    rewrite Hsplit at 1.
+    f_equal.
+    apply filter_ext_in.
+    intros point Hin.
+    specialize (Hrank_bound point Hin).
+    unfold is_left, is_right.
+    destruct (rank point <? length items) eqn:Hleft;
+      destruct (Nat.eqb (length items) (rank point)) eqn:Hright;
+      simpl; try reflexivity.
+    + apply Nat.ltb_lt in Hleft.
+      apply Nat.eqb_eq in Hright; lia.
+    + apply Nat.ltb_ge in Hleft.
+      apply Nat.eqb_neq in Hright; lia.
+Qed.
+
 Lemma flatten_instrs_app_singleton_inv:
   forall envv pis pi ipl0 ,
     flatten_instrs envv (pis++[pi]) (ipl0) ->
     exists ipl ipl',
     flatten_instrs envv pis ipl /\ flatten_instr_nth envv (length pis) pi ipl' /\ ipl0 = ipl++ipl'.
 Proof.
-  intros.
-  pose proof H as G. 
-  destruct H as (H1 & H2 & H3 & H4).
-  exists (filter (fun ip => ip_nth ip <? length pis) ipl0).
-  exists (filter (fun ip => Nat.eqb (length pis) (ip_nth ip)) ipl0).
-  splits.
-  - 
-    splits.
-    + intros.
-      eapply filter_In in H.
-      destruct H as (H & Hlt).
-      eapply H1; eauto.
-    + intros.
-      split; intro.
-      * 
-        eapply filter_In in H.
-        destruct H as (H & Hlt).
-        eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & Hpref & H & Hlen).
-        exists pi0.
-        rewrite nth_error_app1 in NTH; eauto.
-        repeat split; eauto.
-        eapply Nat.ltb_lt in Hlt. trivial.
-      * 
-        eapply filter_In.
-        destruct H as (pi' & NTH & HPREF & BEL & LEN).
-        split.
-        -- eapply H2. 
-          exists pi'.
-          rewrite nth_error_app1; eauto.
-          repeat split; eauto.
-          clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
-        -- eapply Nat.ltb_lt.
-          eapply nth_error_Some' in NTH. trivial.
-    + eapply NoDup_filter; trivial.
-    + 
-      eapply filter_sort; eauto. 
-      eapply np_eq_equivalence; eauto.
-      eapply np_lt_strict; eauto.
-      eapply np_lt_proper; eauto.
-  - 
-    splits.
-    + intros.
-      eapply filter_In in H.
-      destruct H as (H & Hlt).
-      eapply H1; eauto.
-    + intros.
-      splits; intro.
-      * 
-        eapply filter_In in H.
-        destruct H as (H & Hlt).
-        eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
-        eapply Nat.eqb_eq in Hlt.
-        assert (pi = pi'). {
-          rewrite nth_error_app2 in NTH.
-          replace (ip_nth ip - length pis) with 0 in NTH; simpls; try lia. inv NTH; trivial.
-          lia. 
-        }
-        subst.
-        splits; eauto.
-      * 
-        eapply filter_In.
-        destruct H as (HPREF & BEL & NTH & LEN).
-        split.
-        -- eapply H2. 
-          exists pi.
-          splits; eauto.
-          rewrite nth_error_app2; eauto; try lia.
-          replace (ip_nth ip - length pis) with 0; try lia.
-          simpls; trivial. 
-        -- eapply Nat.eqb_eq. lia.
-    + eapply NoDup_filter; trivial.
-    + 
-      eapply filter_sort; eauto. 
-      eapply np_eq_equivalence; eauto.
-      eapply np_lt_strict; eauto.
-      eapply np_lt_proper; eauto.
-  - 
-    cut (ipl0 =
-    filter (fun ip : InstrPoint => ip_nth ip <? Datatypes.length pis)
-      ipl0 ++
-    filter
-      (fun x => negb ((fun ip : InstrPoint => ip_nth ip <? Datatypes.length pis) x))
-      ipl0). 
-    2: {
-      eapply filter_split; eauto.
-      eapply np_eq_equivalence; eauto.
-      eapply np_lt_strict; eauto.
-      eapply np_lt_proper; eauto.
-      clear.
-      intros. 
-      eapply Nat.ltb_lt in H.
-      eapply Nat.ltb_ge in H0.
-      unfold np_lt.
-      left; lia.
-    }
-    intro. rewrite H at 1. f_equal; eauto.
-    eapply filter_ext_in. 
-    assert (forall ip, In ip ipl0 -> 
-      (ip_nth ip <= length pis)%nat
-    ). {
-      intros.
-      eapply flatten_instrs_ipl_n_lt_len in G; eauto.
-      rewrite app_length in G. simpls. lia.
-    }
-    intros. eapply (H0 a) in H5.
-    rewrite <- Nat.leb_antisym.
-    destruct (Datatypes.length pis <=? ip_nth a) eqn:Hltb;
-    destruct (Datatypes.length pis =? ip_nth a)%nat eqn:Heqb; trivial.
-    eapply Nat.leb_le in Hltb. eapply Nat.eqb_neq in Heqb. lia.
-    eapply Nat.leb_gt in Hltb. eapply Nat.eqb_eq in Heqb. lia.
+  intros envv pis pi ipl0 Hflat.
+  unfold flatten_instrs in Hflat.
+  destruct Hflat as (Hprefix & Hmember & Hnodup & Hsorted).
+  pose proof
+    (flatten_split_singleton_shape
+      InstrPoint PolyInstr ip_nth
+      (fun ip => firstn (length envv) (ip_index ip) = envv)
+      (fun ip item =>
+        firstn (length envv) (ip_index ip) = envv /\
+        belongs_to ip item /\
+        length (ip_index ip) = length envv + pi_depth item)
+      np_eq np_lt pis pi ipl0
+      np_eq_equivalence np_lt_strict np_lt_proper
+      Hprefix Hmember Hnodup Hsorted
+      (fun point1 point2 Hrank => or_introl Hrank))
+    as Hsplit.
+  destruct Hsplit as (ipl & ipl_tail & Hleft & Hright & Happ).
+  exists ipl.
+  exists ipl_tail.
+  refine (conj Hleft (conj _ Happ)).
+  unfold flatten_instr_nth.
+  destruct Hright as
+    (Htail_prefix & Htail_member & Htail_nodup & Htail_sorted).
+  refine (conj Htail_prefix (conj _ (conj Htail_nodup Htail_sorted))).
+  intros point.
+  specialize (Htail_member point).
+  tauto.
 Qed.
 
 Lemma flatten_instrs_nil_implies_nil:
@@ -2671,112 +2638,6 @@ Proof.
   eapply H2; eauto.
 Qed.
 
-Lemma eqdom_pinstr_implies_flatten_instr_nth_exists:
-  forall ipl1 pi1 pi2 envv n,
-    eqdom_pinstr pi1 pi2 ->
-    flatten_instr_nth envv n pi1 ipl1 ->
-    exists ipl2,
-    flatten_instr_nth envv n pi2 ipl2.
-Proof.
-  intros ipl1 pi1 pi2 envv n Heq Hflat.
-  exists (map (fun ip1 =>
-    {|
-      ip_nth := ip_nth ip1;
-      ip_index := ip_index ip1;
-      ip_transformation := ip_transformation ip1;
-      ip_time_stamp := affine_product (pi_schedule pi2) (ip_index ip1);
-      ip_instruction := ip_instruction ip1;
-      ip_depth := pi_depth pi2;
-    |}) ipl1).
-  destruct Heq as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
-  destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
-  refine (conj _ (conj _ (conj _ _))).
-  { intros ip Hin.
-    apply in_map_iff in Hin.
-    destruct Hin as (ip1 & Hip & Hin1).
-    subst ip.
-    simpl.
-    apply Hprefix.
-    exact Hin1. }
-  { intros ip.
-    split.
-    - intro Hin.
-      rewrite in_map_iff in Hin.
-      destruct Hin as (ip1 & Hip & Hin1).
-      subst ip.
-      destruct (Hmem ip1) as [Hin1_to _].
-      specialize (Hin1_to Hin1).
-      destruct Hin1_to as (HPREF & HBEL & HNTH & HLEN).
-      destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
-      split.
-      + exact HPREF.
-      + split.
-        * unfold belongs_to; simpl.
-          split.
-          { rewrite <- DOM. exact HPOL. }
-          split.
-          { unfold current_transformation_of, current_transformation_at in *; simpl in *.
-            rewrite <- WIT, <- TSF.
-            exact HTRANS. }
-          split.
-          { reflexivity. }
-          split.
-          { rewrite <- INSTR. exact HINSTR. }
-          { reflexivity. }
-        * split.
-          { exact HNTH. }
-          { rewrite <- DEPTH. exact HLEN. }
-    - intro Hin.
-      destruct Hin as (HPREF & HBEL & HNTH & HLEN).
-      rewrite in_map_iff.
-      exists {|
-        ip_nth := ip_nth ip;
-        ip_index := ip_index ip;
-        ip_transformation := ip_transformation ip;
-        ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
-        ip_instruction := ip_instruction ip;
-        ip_depth := pi_depth pi2;
-      |}.
-      split.
-      + destruct ip; simpl in *.
-        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
-        simpl in *.
-        subst.
-        f_equal; auto.
-      + destruct (Hmem {|
-           ip_nth := ip_nth ip;
-           ip_index := ip_index ip;
-           ip_transformation := ip_transformation ip;
-           ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
-           ip_instruction := ip_instruction ip;
-           ip_depth := pi_depth pi2;
-         |}) as [_ Hback].
-        apply Hback.
-        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
-        refine (conj HPREF _).
-        refine (conj _ _).
-        * unfold belongs_to; simpl in *.
-          split.
-          { rewrite DOM. exact HPOL. }
-          split.
-          { unfold current_transformation_of, current_transformation_at in *; simpl in *.
-            rewrite WIT, TSF.
-            exact HTRANS. }
-          split.
-          { reflexivity. }
-          split.
-          { rewrite INSTR. exact HINSTR. }
-          { rewrite DEPTH. reflexivity. }
-        * split.
-          { exact HNTH. }
-          { rewrite DEPTH. exact HLEN. } }
-  { pose proof (conj Hprefix (conj Hmem (conj Hnodup Hsorted))) as G0.
-    eapply flatten_instr_nth_NoDupA_np in G0.
-    eapply NoDup_implies_NoDupA_np.
-    eapply NoDupA_iplies_map_np_implies_NoDupA_np; eauto. }
-  { eapply Sorted_ipl_map_np_sorted_np; eauto. }
-Qed.
-
 Definition retime_ip (sch: Schedule) (ip: InstrPoint) : InstrPoint :=
   {|
     ip_nth := ip.(ip_nth);
@@ -2786,119 +2647,6 @@ Definition retime_ip (sch: Schedule) (ip: InstrPoint) : InstrPoint :=
     ip_instruction := ip.(ip_instruction);
     ip_depth := ip.(ip_depth);
   |}.
-
-Lemma same_elem_lt_sorted_implies_same_list_pre:
-  forall A (l1 l2: list A) lt,
-    NoDup l1 ->
-    NoDup l2 ->
-    (forall i,
-      In i l1 <-> In i l2) ->
-    (forall i, ~lt i i) ->
-    (Relations_1.Transitive lt) ->
-    Sorted lt l1 ->
-    Sorted lt l2 ->
-    l1 = l2.
-Proof.
-  induction l1. 
-  - intros. simpls. destruct l2; trivial.
-    assert (In a (a::l2)). {eapply in_eq. }
-    eapply H1 in H6; tryfalse. 
-  - intros. simpls. destruct l2; trivial.
-    assert (In a (a::l1)). {eapply in_eq. }
-    eapply H1 in H6; tryfalse.
-  -- 
-    simpls. f_equal.
-    2: {
-      eapply IHl1; eauto. 
-      inv H; trivial. inv H0; trivial. 
-      {
-        intro. pose proof H1 i. destruct H6.
-        split. 
-        - intro.
-          assert (a = i \/ In i l1). {right; trivial. }
-          eapply H6 in H9. destruct H9; trivial.
-          (* a < i; and [i..a] in l2, exfalso *)
-          eapply Sorted_StronglySorted in H4; trivial.
-          inv H4.
-          assert (lt a i). {
-            clear - H8 H13.
-            eapply Forall_forall in H13; eauto.
-          }
-          assert (In a l2). {
-            clear - H1 H5 H4 H2.
-            pose proof H1 a.
-            assert (i = a \/ In a l2). eapply H; left; trivial.
-            destruct H0; trivial; subst.
-            eapply H2 in H4; tryfalse.
-          }
-          eapply Sorted_StronglySorted in H5; trivial.
-          inv H5; tryfalse.
-          assert (lt i a). {
-            clear - H15 H9.
-            eapply Forall_forall in H15; eauto.
-          }
-          clear - H2 H3 H4 H5.
-          assert (lt a a). {
-            eapply H3; eauto.
-          }
-          eapply H2 in H; tryfalse.
-        - intro.
-          assert (a0 = i \/ In i l2). {right; trivial. }
-          eapply H7 in H9. destruct H9; trivial.
-          eapply Sorted_StronglySorted in H5; trivial.
-          inv H5.
-          assert (lt a0 i). {
-            clear - H8 H13.
-            eapply Forall_forall in H13; eauto.
-          }
-          assert (In a0 l1). {
-            clear - H1 H5 H4 H2.
-            pose proof H1 a0.
-            assert (i = a0 \/ In a0 l1). eapply H; left; trivial.
-            destruct H0; trivial; subst.
-            eapply H2 in H5; tryfalse.
-          }
-          eapply Sorted_StronglySorted in H4; trivial.
-          inv H4; tryfalse.
-          assert (lt i a0). {
-            clear - H15 H9.
-            eapply Forall_forall in H15; eauto.
-          }
-          clear - H2 H3 H4 H5.
-          assert (lt a0 a0). {
-            eapply H3; eauto.
-          }
-          eapply H2 in H; tryfalse.
-      }
-      inv H4; trivial. inv H5; trivial.
-    }
-    pose proof (classic (a = a0)).
-    destruct H6; trivial.
-    pose proof (H1 a0).
-    assert (a = a0 \/ In a0 l1). {eapply H7; left; trivial. }
-    destruct H8; trivial.
-    eapply Sorted_StronglySorted in H4; trivial.
-    inv H4.
-    assert (lt a a0). {
-      clear - H8 H12.
-      eapply Forall_forall in H12; eauto.
-    }
-    assert (In a l2). {
-      clear - H1 H5 H4 H2.
-      pose proof H1 a.
-      assert (a0 = a \/ In a l2). eapply H; left; trivial.
-      destruct H0; trivial; subst.
-      eapply H2 in H4; tryfalse.
-    }
-    eapply Sorted_StronglySorted in H5; trivial.
-    inv H5.
-    assert (lt a0 a). {
-      clear - H15 H9.
-      eapply Forall_forall in H15; eauto.
-    }
-    assert (lt a a). {eapply H3; eauto. }
-    eapply H2 in H10; tryfalse.
-Qed.
 
 Lemma eqdom_pinstr_implies_flatten_instr_nth_retime:
   forall ipl1 pi1 pi2 envv n,
@@ -2994,6 +2742,35 @@ Proof.
   - eapply Sorted_ipl_map_np_sorted_np; eauto.
 Qed.
 
+Lemma eqdom_pinstr_implies_flatten_instr_nth_exists:
+  forall ipl1 pi1 pi2 envv n,
+    eqdom_pinstr pi1 pi2 ->
+    flatten_instr_nth envv n pi1 ipl1 ->
+    exists ipl2,
+    flatten_instr_nth envv n pi2 ipl2.
+Proof.
+  intros ipl1 pi1 pi2 envv n Heq Hflat.
+  exists (map (retime_ip (pi_schedule pi2)) ipl1).
+  eapply eqdom_pinstr_implies_flatten_instr_nth_retime; eauto.
+Qed.
+
+Lemma same_elem_lt_sorted_implies_same_list_pre:
+  forall A (l1 l2: list A) lt,
+    NoDup l1 ->
+    NoDup l2 ->
+    (forall i,
+      In i l1 <-> In i l2) ->
+    (forall i, ~lt i i) ->
+    (Relations_1.Transitive lt) ->
+    Sorted lt l1 ->
+    Sorted lt l2 ->
+    l1 = l2.
+Proof.
+  intros A l1 l2 lt Hnodup1 Hnodup2 Helems Hirrefl Htrans Hsorted1 Hsorted2.
+  eapply ListExt.NoDup_sorted_same_elements; eauto.
+Qed.
+
+
 Lemma retime_ip_eq_except_sched:
   forall sch ip,
     eq_except_sched ip (retime_ip sch ip).
@@ -3081,648 +2858,6 @@ Proof.
     eapply flatten_instrs_app_singleton in FL2'; eauto.
     rewrite <- LEN.
     eauto.
-Qed.
-
-Definition same_np_set (ipl1 ipl2: list InstrPoint): Prop :=
-  (forall ip1,
-    In ip1 ipl1 ->
-    InA np_eq ip1 ipl2)
-  /\
-  (
-    forall ip2,
-    In ip2 ipl2 ->
-    InA np_eq ip2 ipl1
-  ).
-
-Lemma same_np_set_sym:
-  forall ipl1 ipl2, 
-    same_np_set ipl1 ipl2 ->
-    same_np_set ipl2 ipl1.
-Proof.
-  intros. firstorder.
-Qed.
-
-Lemma eqdom_pinstr_implies_flatten_same_np_set:
-  forall pi1 pi2,
-    eqdom_pinstr pi1 pi2 ->
-    forall envv ipl1 ipl2 n,
-      flatten_instr_nth envv n pi1 ipl1 ->
-      flatten_instr_nth envv n pi2 ipl2 ->
-      same_np_set ipl1 ipl2.
-Proof.
-  intros.
-  unfold same_np_set. split.
-  - intros. 
-    destruct H0 as (ENV & BEL & NODUP & SORTED).
-    destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
-    eapply InA_alt.
-    remember {|
-      ip_nth := ip_nth ip1;
-      ip_index := ip_index ip1;
-      ip_transformation := ip_transformation ip1;
-      ip_time_stamp := affine_product (pi_schedule pi2) (ip_index ip1);
-      ip_instruction := ip_instruction ip1;
-      ip_depth := pi_depth pi2;
-    |} as ip2.
-    exists ip2. split; simpls.
-    unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
-    subst ip2.
-    destruct H as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
-    eapply BEL'.
-    split; [exact HPREF|].
-    split.
-    { destruct BEL1 as (POL & TS & T & I & D).
-      splits; try solve [subst; simpls; trivial].
-      rewrite <- DOM; subst; simpls; trivial.
-      unfold current_transformation_of, current_transformation_at in *; simpl in *.
-      rewrite <- WIT, <- TSF; subst; simpls; trivial.
-      rewrite <- INSTR; subst; simpls; trivial. }
-    split; [subst; simpls; trivial|].
-    rewrite <- DEPTH; subst; simpls; trivial.
-  - intros. 
-    destruct H0 as (ENV & BEL & NODUP & SORTED).
-    destruct H1 as (ENV' & BEL' & NODUP' & SORTED').
-    eapply BEL' in H2. destruct H2 as (HPREF & BEL1 & NTH & LEN).
-    eapply InA_alt.
-    remember {|
-      ip_nth := ip_nth ip2;
-      ip_index := ip_index ip2;
-      ip_transformation := ip_transformation ip2;
-      ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip2);
-      ip_instruction := ip_instruction ip2;
-      ip_depth := pi_depth pi1;
-    |} as ip1.
-    exists ip1. split; simpls.
-    unfold np_eq; subst; simpls. split; trivial. eapply lex_compare_reflexive.
-    subst ip1.
-    destruct H as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
-    eapply BEL.
-    split; [exact HPREF|].
-    split.
-    { destruct BEL1 as (POL & TS & T & I & D).
-      splits; try solve [subst; simpls; trivial].
-      rewrite DOM; subst; simpls; trivial.
-      unfold current_transformation_of, current_transformation_at in *; simpl in *.
-      rewrite WIT, TSF; subst; simpls; trivial.
-      rewrite INSTR; subst; simpls; trivial. }
-    split; [subst; simpls; trivial|].
-    rewrite DEPTH; subst; simpls; trivial.
-Qed.
-
-Lemma same_np_set_cons_inv:
-  forall ip1 ip2 ipl1 ipl2,
-    same_np_set (ip1::ipl1) (ip2::ipl2) ->
-    NoDupA np_eq (ip1::ipl1) ->
-    NoDupA np_eq (ip2::ipl2) ->
-    Sorted np_lt (ip1::ipl1) ->
-    Sorted np_lt (ip2::ipl2) ->
-    same_np_set ipl1 ipl2.
-Proof.
-  intros.
-  unfold same_np_set in H. 
-  destruct H as (L & R).
-  assert (In ip1 (ip1::ipl1)) as IN1. {eapply in_eq. }
-  assert (In ip2 (ip2::ipl2)) as IN2. {eapply in_eq. }
-  eapply L in IN1. eapply R in IN2.
-  rewrite InA_cons in IN1. rewrite InA_cons in IN2.
-  destruct IN1; destruct IN2.
-  - split.
-    -- 
-    intros ip1' IN1'.
-    assert (ip1 = ip1' \/ In ip1' ipl1) as G. {
-      right; trivial.
-    }
-    eapply L in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip1 ip1'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H0 IN1' H6.
-    exfalso. inv H0. apply H2.
-    eapply InA_alt. exists ip1'. split; trivial.
-    -- 
-    intros ip2' IN2'.
-    assert (ip2 = ip2' \/ In ip2' ipl2) as G. {
-      right; trivial.
-    }
-    eapply R in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip2 ip2'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H1 IN2' H6.
-    exfalso. inv H1. apply H2.
-    eapply InA_alt. exists ip2'. split; trivial.
-  - split.
-    -- 
-    intros ip1' IN1'.
-    assert (ip1 = ip1' \/ In ip1' ipl1) as G. {
-      right; trivial.
-    }
-    eapply L in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip1 ip1'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H0 IN1' H6.
-    exfalso. inv H0. apply H2.
-    eapply InA_alt. exists ip1'. split; trivial.
-    -- 
-    intros ip2' IN2'.
-    assert (ip2 = ip2' \/ In ip2' ipl2) as G. {
-      right; trivial.
-    }
-    eapply R in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip2 ip2'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H1 IN2' H6.
-    exfalso. inv H1. apply H2.
-    eapply InA_alt. exists ip2'. split; trivial.
-  - split.
-    -- 
-    intros ip1' IN1'.
-    assert (ip1 = ip1' \/ In ip1' ipl1) as G. {
-      right; trivial.
-    }
-    eapply L in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip1 ip1'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H0 IN1' H6.
-    exfalso. inv H0. apply H2.
-    eapply InA_alt. exists ip1'. split; trivial.
-    -- 
-    intros ip2' IN2'.
-    assert (ip2 = ip2' \/ In ip2' ipl2) as G. {
-      right; trivial.
-    }
-    eapply R in G. eapply InA_cons in G.
-    destruct G; trivial.
-    assert (np_eq ip2 ip2'). {
-      pose proof np_eq_equivalence. destruct H6.
-      eapply Equivalence_Transitive; eauto.
-    }
-    clear - H1 IN2' H6.
-    exfalso. inv H1. apply H2.
-    eapply InA_alt. exists ip2'. split; trivial.
-  - 
-    rewrite InA_alt in H.
-    rewrite InA_alt in H4.
-    destruct H as (ip2' & EQ2 & IN2').
-    destruct H4 as (ip1' & EQ1 & IN1').
-    (* now we try to prove contradiction by the sorted information *)
-    assert (np_lt ip2 ip2'). {
-      eapply Sorted_StronglySorted in H3.
-      2: {eapply np_lt_trans. }
-      inv H3. eapply Forall_forall with (x:=ip2') in H6; eauto.
-    }
-    assert (np_lt ip1 ip1'). {
-      eapply Sorted_StronglySorted in H2.
-      2: {eapply np_lt_trans. }
-      inv H2. eapply Forall_forall with (x:=ip1') in H7; eauto.
-    }
-    clear - EQ2 EQ1 H H4.
-    (* ip1 < ip1' = ip2 < ip2' = ip1, contradition *)
-    exfalso.
-    eapply np_eq_equivalence in EQ1.
-    eapply np_lt_proper with (x:=ip1) (x0:=ip2) in H4; eauto.
-    2: {
-      eapply np_eq_equivalence.
-    }
-    2: {
-      eapply np_eq_equivalence; trivial.
-    }
-    assert (np_lt ip1 ip2'). {
-      eapply np_lt_trans in H4; eauto.
-    }
-    eapply np_lt_proper with (x:=ip1) (x0:=ip1) in H0; trivial.
-    2: {
-      eapply np_eq_equivalence; trivial.
-    }
-    eapply np_lt_strict in H0; tryfalse.
-Qed.
-
-Lemma same_np_set_sorted_NoDupA_nth:
-  forall n ip1 ip2 ipl1 ipl2,
-    same_np_set ipl1 ipl2 ->
-    Sorted np_lt ipl1 ->
-    Sorted np_lt ipl2 ->
-    NoDupA np_eq ipl1 ->
-    NoDupA np_eq ipl2 ->
-      nth_error ipl1 n = Some ip1 ->
-      nth_error ipl2 n = Some ip2 ->
-      np_eq ip1 ip2.
-Proof.
-  induction n.
-  - intros until ipl2. 
-    intros SET SORT1 SORT2 NODUP1 NODUP2 NTH1 NTH2. simpls. 
-    destruct ipl1 eqn:Hipl1; tryfalse. 
-    destruct ipl2 eqn:Hipl2; tryfalse. 
-    inv NTH1. inv NTH2.
-    destruct SET as (R & L).
-    assert (In ip1 (ip1 ::l)) as IN1. {
-      eapply in_eq.
-    }
-    assert (In ip2 (ip2::l0)) as IN2. {
-      eapply in_eq.
-    }
-    eapply (R ip1) in IN1.
-    eapply (L ip2) in IN2.
-    eapply InA_alt in IN1.
-    eapply InA_alt in IN2.
-    destruct IN1 as (ip2' & EQ1 & IN2').
-    destruct IN2 as (ip1' & EQ2 & IN1').
-    inversion_clear IN2'; inversion_clear IN1'.
-    -- subst. trivial.
-    -- subst. trivial.
-    -- subst. eapply np_eq_equivalence; trivial.
-    --
-      (* now we try to prove contradiction by the sorted information *)
-      assert (np_lt ip2 ip2'). {
-        eapply Sorted_StronglySorted in SORT2.
-        2: {eapply np_lt_trans. }
-        inv SORT2. eapply Forall_forall with (x:=ip2') in H4; eauto.
-      }
-      assert (np_lt ip1 ip1'). {
-        eapply Sorted_StronglySorted in SORT1.
-        2: {eapply np_lt_trans. }
-        inv SORT1. eapply Forall_forall with (x:=ip1') in H5; eauto.
-      }
-      clear - EQ2 EQ1 H1 H2.
-      (* ip1 < ip1' = ip2 < ip2' = ip1, contradition *)
-      exfalso.
-      eapply np_eq_equivalence in EQ1.
-      eapply np_lt_proper with (x:=ip1) (x0:=ip2) in H2; eauto.
-      2: {
-        eapply np_eq_equivalence.
-      }
-      assert (np_lt ip1 ip2'). {
-        eapply np_lt_trans in H2; eauto.
-      }
-      eapply np_lt_proper with (x:=ip1) (x0:=ip1) in H; trivial.
-      2: {
-        eapply np_eq_equivalence; trivial.
-      }
-      2: {
-        eapply np_eq_equivalence; trivial.
-      }
-      eapply np_lt_strict in H; tryfalse.
-  - 
-    intros. simpls.
-    destruct ipl1 eqn:Hipl1; tryfalse.
-    destruct ipl2 eqn:Hipl2; tryfalse.
-    eapply IHn with (ipl1:=l) (ipl2:=l0); eauto.
-    eapply same_np_set_cons_inv; eauto.
-    inv H0; trivial.
-    inv H1; trivial.
-    inv H2; trivial.
-    inv H3; trivial. 
-Qed.
-
-Lemma sorted_same_ipl_lt_impossible:
-  forall n n' ipl1 ipl2 ip1 ip2,
-    same_np_set ipl1 ipl2 ->
-    length ipl1 = length ipl2 ->
-    Sorted np_lt ipl1 ->
-    Sorted np_lt ipl2 ->
-    NoDupA np_eq ipl1 ->
-    NoDupA np_eq ipl2 ->
-    nth_error ipl1 n = Some ip1 ->
-    nth_error ipl2 n' = Some ip2 ->
-    np_eq ip1 ip2 ->
-    n < n' ->
-    False.
-Proof. 
-  induction n. 
-  - intros. simpls. 
-    destruct ipl1; tryfalse.
-    inv H5.
-    rename ipl1 into ipl1'.
-    assert (exists ip2' ipl2', ipl2 = ip2' :: ipl2'). {
-      destruct ipl2; simpls. inv H6; tryfalse.
-      do 2 eexists; eauto.
-    }
-    destruct H5 as (ip2' & ipl2' & Hipl2 ).
-    subst.
-    destruct H as (R & L).
-    assert (In ip2' (ip2' :: ipl2')). {
-      eapply in_eq.
-    }
-    assert (np_lt ip2' ip2). {
-      clear - H6 H H8 H2.
-      destruct n'; try lia.
-      simpl in H6.
-      eapply nth_error_in in H6.
-      eapply Sorted_StronglySorted in H2.
-      2: {eapply np_lt_trans. }
-      inv H2. eapply Forall_forall with (x:=ip2) in H4; trivial.
-    }
-    eapply L in H.
-    rewrite InA_alt in H.
-    destruct H as (ip1' & EQ & IN).
-    inv IN; tryfalse.
-    --
-      clear - EQ H5 H7.
-      eapply np_lt_proper with (x:=ip1') in H5; eauto.
-      eapply np_lt_strict; eauto.
-      eapply np_eq_equivalence; trivial.
-    -- 
-      assert (np_lt ip1 ip1'). {
-        eapply Sorted_StronglySorted in H1.
-        2: {eapply np_lt_trans. }
-        inv H1. eapply Forall_forall with (x:=ip1') in H12; trivial.
-      }
-      clear - EQ H5 H7 H9.
-      eapply np_lt_proper with (x:=ip1') in H5; eauto.
-      eapply np_lt_trans in H9. 
-      eapply H9 in H5. eapply np_lt_strict; eauto.
-      eapply np_eq_equivalence; trivial.
-  - intros. 
-    simpls.
-    destruct ipl1; tryfalse.
-    destruct ipl2; tryfalse.
-    assert (same_np_set ipl1 ipl2). {
-      eapply same_np_set_cons_inv; eauto.
-    }
-    destruct n'; try lia.
-    eapply IHn; simpls; eauto; try lia.
-    inv H1; trivial. inv H2; trivial.
-    inv H3; trivial. inv H4; trivial.
-Qed.
-
-Lemma ip_ipl_same_np_same_pos:
-  forall ipl1 ipl2 ip1 ip2,
-    same_np_set ipl1 ipl2 ->
-    length ipl1 = length ipl2 ->
-    Sorted np_lt ipl1 ->
-    Sorted np_lt ipl2 ->
-    NoDupA np_eq ipl1 ->
-    NoDupA np_eq ipl2 ->
-    In ip1 ipl1 ->
-    In ip2 ipl2 ->
-    np_eq ip1 ip2 ->
-    exists n,
-      nth_error ipl1 n = Some ip1 /\
-      nth_error ipl2 n = Some ip2.
-Proof. 
-  intros.
-  eapply In_nth_error in H5.
-  eapply In_nth_error in H6.
-  destruct H5 as (n & NTH).
-  destruct H6 as (n' & NTH').
-  assert (n = n'). {
-    pose proof Nat.lt_total n n'.
-    destruct H5 as [LT |[EQ | GT]]; trivial.
-    - 
-      exfalso.
-      eapply sorted_same_ipl_lt_impossible; eauto.
-    - 
-      exfalso.
-      eapply same_np_set_sym in H.
-      eapply np_eq_equivalence in H7.
-      eapply sorted_same_ipl_lt_impossible; eauto.
-  }
-  exists n; subst; split; trivial.
-Qed.
-
-Lemma forall_n_R_implies_rel_list:
-  forall A B (R: A -> B -> Prop) l1 l2,
-  length l1 = length l2 ->
-  (forall n e1 e2,
-  nth_error l1 n = Some e1 ->
-  nth_error l2 n = Some e2 ->
-  R e1 e2
-  ) ->
-  @rel_list A B R l1 l2.
-Proof.
-  induction l1.
-  - intros.
-    destruct l2; simpls; tryfalse; trivial. 
-  - intros.
-    destruct l2; simpls; try lia.
-    inv H. split.
-    + eapply H0 with (n:=0); eauto.
-    + eapply IHl1; eauto. intros.
-      eapply H0 with (n:=S n); eauto.
-Qed.
-
-Lemma NoDupA_dup_lt_implies_false:
-  forall n n' ipl1 ip1 ip1',
-    NoDupA np_eq ipl1 ->
-    nth_error ipl1 n = Some ip1 ->
-    nth_error ipl1 n' = Some ip1' ->
-    np_eq ip1 ip1' ->
-    n < n' ->
-    False.
-Proof. 
-  induction n.
-  - intros. simpls.
-    destruct ipl1; tryfalse. 
-    inv H0.
-    inv H.
-    apply H5.
-    rewrite InA_alt.
-    exists ip1'; split; trivial.
-    destruct n'; try lia.
-    simpls.
-    eapply nth_error_In in H1. trivial.
-  - intros.
-    simpls.
-    destruct ipl1; tryfalse.
-    destruct n'; try lia.
-    simpls.
-    eapply IHn with (ipl1:=ipl1) (ip1:=ip1) (ip1':=ip1') (n':=n'); eauto; try lia.
-    inv H; trivial.
-Qed.
-
-Lemma NoDupA_dup_implies_false:
-  forall ipl1 ip1 ip1' n n',
-    NoDupA np_eq ipl1 ->
-    nth_error ipl1 n = Some ip1 ->
-    nth_error ipl1 n' = Some ip1' ->
-    np_eq ip1 ip1' ->
-    n <> n' ->
-    False.
-Proof.
-  intros. 
-  assert (n < n' \/ n' < n). {lia. }
-  destruct H4. 
-  eapply NoDupA_dup_lt_implies_false with (n:=n) (n':=n'); eauto. 
-  eapply NoDupA_dup_lt_implies_false with (n:=n') (n':=n); eauto.
-  eapply np_eq_equivalence; eauto.
-Qed.
-
-Lemma eqdom_same_ipl_length_lt_impossible:
-  forall len1 len2 ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
-    NoDupA np_eq ipl1 -> 
-    NoDupA np_eq ipl2 -> 
-    (forall n ip1 ip2, 
-      nth_error ipl1 n = Some ip1 ->
-      nth_error ipl2 n = Some ip2 ->
-      np_eq ip1 ip2
-    ) ->
-    (forall ip1,
-      In ip1 ipl1 <->
-        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
-        in_poly (ip_index ip1) pol
-        /\ ip_transformation ip1 = tsf
-        /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
-        /\ ip_instruction ip1 = instr
-        /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n
-        /\ length (ip_index ip1) = len
-      )
-    -> 
-    (forall ip2,
-      In ip2 ipl2 <->
-        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
-        in_poly (ip_index ip2) pol
-        /\ ip_transformation ip2 = tsf
-        /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
-        /\ ip_instruction ip2 = instr
-        /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n
-        /\ length (ip_index ip2) = len
-      )
-    ->
-    len1 = length ipl1 ->
-    len2 = length ipl2 ->
-    len1 < len2 ->
-    False.
-Proof. 
-  (* nth_error len2 ipl2 will lead to contradiction *)
-  intros.
-  assert (exists ip2, nth_error ipl2 (len2-1) = Some ip2). {
-    subst.
-    assert (nth_error ipl2 (length ipl2 -1)<>None). {
-      eapply nth_error_Some; try lia.    
-    }
-    destruct (nth_error ipl2 (length ipl2 -1)) eqn:Hip2; tryfalse.
-    eexists; eauto.
-  }
-  destruct H7 as (ip2 & NTH2).
-  (* there should be ip1 in ipl1, np_eq ip1 ip2, suppose its index n'(n'<>n) *)
-  (* we now there's ip2' of ipl2[n'], and np_eq ip1 ip2' *)
-  (* so np_eq ip1 ip2 /\ np_eq ip1 ip2' => np_eq ip2 ip2' *)
-  (* but ipl2 is unique by np_eq *)
-  assert (exists ip1, In ip1 ipl1 /\ np_eq ip1 ip2). {
-    eapply nth_error_in in NTH2.
-    eapply H3 in NTH2.
-
-    remember {|
-      ip_nth := n;
-      ip_index := ip_index ip2;
-      ip_transformation := tsf;
-      ip_time_stamp := affine_product sch1 (ip_index ip2);
-      ip_instruction := instr;
-      ip_depth := depth;
-    |} as ip1.
-    exists ip1. 
-    destruct NTH2 as (HPREF & POL & TSF & T & I & D & N & L).
-    split.
-    -
-      eapply H2.
-      subst ip1.
-      simpl.
-      repeat split; eauto.
-    - unfold np_eq. split; subst; simpls; trivial.
-      eapply lex_compare_reflexive.
-  }
-  destruct H7 as (ip1 & IN1 & EQ1).
-  assert (exists n', nth_error ipl1 n' = Some ip1). {
-    eapply In_nth_error in IN1; eauto.
-  }
-  destruct H7 as (n' & NTH1).
-  assert (n' < len2 -1). {
-    assert (n' < len1). {
-      rewrite H4.
-      eapply nth_error_Some. rewrite NTH1. intro. tryfalse.
-    }
-    lia.
-  }
-  (* there should be ip2' of ipl2, and np_eq ip1 ip2' *)
-  assert (exists ip2', nth_error ipl2 n' = Some ip2'). {
-    assert (n' < length ipl2). { lia. }  
-    eapply nth_error_Some in H8.
-    destruct (nth_error ipl2 n') eqn:Hip2'; tryfalse.
-    eexists; eauto.  }
-  destruct H8 as (ip2' & NTH ).
-  assert (np_eq ip1 ip2') as EQ2. {
-    eapply H1; eauto.
-  }
-  (* np_eq ip1 ip2 /\ np_eq ip1 ip2' => np_eq ip2 ip2' *)
-  assert (np_eq ip2 ip2'). {
-    eapply np_eq_equivalence in EQ1.
-    pose proof np_eq_equivalence. destruct H8.
-    eapply Equivalence_Transitive; eauto.    
-  }
-  (* but ipl2 is unique by np_eq *)
-  eapply NoDupA_dup_implies_false with (n:=len2 -1); eauto. lia.
-Qed.
-
-Lemma eqdom_same_ipl_length:
-  forall ipl1 ipl2 envv pol tsf sch1 sch2 instr n len depth,
-    NoDupA np_eq ipl1 -> 
-    NoDupA np_eq ipl2 -> 
-    (forall n ip1 ip2, 
-      nth_error ipl1 n = Some ip1 ->
-      nth_error ipl2 n = Some ip2 ->
-      np_eq ip1 ip2
-    ) ->
-    (forall ip1,
-      In ip1 ipl1 <->
-        firstn (Datatypes.length envv) (ip_index ip1) = envv /\
-        in_poly (ip_index ip1) pol
-        /\ ip_transformation ip1 = tsf
-        /\ ip_time_stamp ip1 = affine_product sch1 (ip_index ip1)
-        /\ ip_instruction ip1 = instr
-        /\ ip_depth ip1 = depth
-        /\ ip_nth ip1 = n
-        /\ length (ip_index ip1) = len
-      )
-    -> 
-    (forall ip2,
-      In ip2 ipl2 <->
-        firstn (Datatypes.length envv) (ip_index ip2) = envv /\
-        in_poly (ip_index ip2) pol
-        /\ ip_transformation ip2 = tsf
-        /\ ip_time_stamp ip2 = affine_product sch2 (ip_index ip2)
-        /\ ip_instruction ip2 = instr
-        /\ ip_depth ip2 = depth
-        /\ ip_nth ip2 = n
-        /\ length (ip_index ip2) = len
-      )
-    ->
-    length ipl1 = length ipl2.
-Proof. 
-  intros.
-  assert (length ipl1 < length ipl2 
-    \/ length ipl1 = length ipl2
-    \/ length ipl1 > length ipl2). {
-    eapply Nat.lt_total.
-  }
-  destruct H4 as [LT | [EQ | GT]]; trivial.
-  - 
-    exfalso.
-    eapply eqdom_same_ipl_length_lt_impossible
-      with (ipl1:=ipl1) (ipl2:=ipl2); eauto.
-  - 
-    exfalso.
-    assert (length ipl2 < length ipl1). { lia. }
-    clear GT.
-    eapply eqdom_same_ipl_length_lt_impossible
-      with (ipl1:=ipl2) (ipl2:=ipl1) in H4; eauto.
-      intros. eapply np_eq_equivalence.
-      eapply H1 with (n:=n0); eauto.
 Qed.
 
 Lemma eqdom_pinstr_implies_flatten_instr_same_len:
@@ -3898,6 +3033,41 @@ Inductive instance_list_semantics: t -> State.t -> State.t -> Prop :=
     poly_instance_list_semantics envv pprog st1 st2 ->
     instance_list_semantics pprog st1 st2.
 
+Local Lemma poly_instance_list_semantics_current_view_iff :
+  forall envv pis varctxt vars st1 st2,
+    length varctxt = length envv ->
+    Forall
+      (fun pi =>
+        witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
+      pis ->
+    poly_instance_list_semantics
+      envv (current_view_pprog (pis, varctxt, vars)) st1 st2 <->
+    poly_instance_list_semantics envv (pis, varctxt, vars) st1 st2.
+Proof.
+  intros envv pis varctxt vars st1 st2 Henvdim Hcurpis.
+  split; intro Hsem;
+    inversion Hsem as
+      [envv' pprog' pis' varctxt' vars' st1' st2' ipl sorted_ipl
+        Hpprog Hflat Hperm Hsorted Hiplsem];
+    subst;
+    simpl in Hpprog;
+    inversion Hpprog; subst; clear Hpprog.
+  - eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
+      simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
+    pose proof
+      (flatten_instrs_current_view_iff
+        envv (length envv) _ ipl eq_refl Hcurpis) as Hflatiff.
+    rewrite Henvdim in Hflat.
+    apply (proj1 Hflatiff); exact Hflat.
+  - eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
+      simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
+    pose proof
+      (flatten_instrs_current_view_iff
+        envv (length envv) _ ipl eq_refl Hcurpis) as Hflatiff.
+    rewrite Henvdim.
+    apply (proj2 Hflatiff); exact Hflat.
+Qed.
+
 Lemma instance_list_semantics_current_view_iff :
   forall (pprog: t) (st1 st2: State.t),
     wf_pprog_tiling pprog ->
@@ -3907,82 +3077,45 @@ Proof.
   intros [[pis varctxt] vars] st1 st2 Hwf.
   unfold wf_pprog_tiling in Hwf; simpl in Hwf.
   destruct Hwf as [_ Hwfpis].
-  assert
-    (Hcurpis:
-       Forall
-         (fun pi =>
-            witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
-         pis).
-  { eapply Forall_forall.
+  assert (Hcurpis :
+    Forall
+      (fun pi =>
+        witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
+      pis).
+  {
+    apply Forall_forall.
     intros pi Hin.
-    pose proof (Hwfpis pi Hin) as Hwfpi.
-    unfold wf_pinstr_tiling, wf_pinstr_general, wf_pinstr in Hwfpi.
-    destruct Hwfpi as [Hwfpi _].
-    destruct Hwfpi as [Hcur _].
-    exact Hcur. }
+    specialize (Hwfpis pi Hin).
+    unfold wf_pinstr_tiling, wf_pinstr_general, wf_pinstr in Hwfpis.
+    tauto.
+  }
   split; intro Hsem;
     inversion Hsem as
-        [pprog' pis' varctxt' vars' envv st1' st2'
-           Hpprog Hcompat Hna Hinit Hpoly];
+      [pprog' pis' varctxt' vars' envv st1' st2'
+        Hpprog Hcompat Hnonalias Hinit Hpoly];
     subst;
     simpl in Hpprog;
     inversion Hpprog; subst; clear Hpprog.
   - eapply PIPSemaIntro with (envv := envv); simpl.
     + reflexivity.
     + exact Hcompat.
-    + exact Hna.
+    + exact Hnonalias.
     + exact Hinit.
-    + inversion Hpoly as
-        [envv' pprog'' pis'' varctxt'' vars'' st1'' st2'' ipl sorted_ipl
-           Hpprog'' Hflat Hperm Hsorted Hiplsem];
-        subst.
-      simpl in Hpprog''.
-      inversion Hpprog''; subst; clear Hpprog''.
-      eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
-        simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
-      pose proof (Instr.init_env_samelen _ _ _ Hinit) as Henvdim.
-      replace (length varctxt'') with (length envv) in Hflat by exact Henvdim.
-      pose proof
-        (flatten_instrs_current_view_iff
-           envv (length envv) pis ipl eq_refl Hcurpis) as Hflatiff.
-      apply (proj1 Hflatiff).
-      exact Hflat.
+    + pose proof (Instr.init_env_samelen _ _ _ Hinit) as Henvdim.
+      apply (proj1
+        (poly_instance_list_semantics_current_view_iff
+          envv _ _ _ _ _ Henvdim Hcurpis)).
+      exact Hpoly.
   - eapply PIPSemaIntro with (envv := envv); simpl.
     + reflexivity.
     + exact Hcompat.
-    + exact Hna.
+    + exact Hnonalias.
     + exact Hinit.
-    + inversion Hpoly as
-        [envv' pprog'' pis'' varctxt'' vars'' st1'' st2'' ipl sorted_ipl
-           Hpprog'' Hflat Hperm Hsorted Hiplsem];
-        subst.
-      simpl in Hpprog''.
-      inversion Hpprog''; subst; clear Hpprog''.
-      eapply PolyPointListSema with (ipl := ipl) (sorted_ipl := sorted_ipl);
-        simpl; try reflexivity; try exact Hperm; try exact Hsorted; try exact Hiplsem.
-      lazymatch type of Hwfpis with
-      | forall pi, In pi ?Q -> _ => set (PIS := Q) in *
-      end;
-      assert
-        (HcurPIS:
-           Forall
-             (fun pi =>
-                witness_current_point_dim (pi_point_witness pi) = pi_depth pi)
-             PIS).
-      { eapply Forall_forall.
-        intros pi Hin.
-        pose proof (Hwfpis pi Hin) as Hwfpi.
-        unfold wf_pinstr_tiling, wf_pinstr_general, wf_pinstr in Hwfpi.
-        destruct Hwfpi as [Hwfpi _].
-        destruct Hwfpi as [Hcur _].
-        exact Hcur. }
-      pose proof
-        (flatten_instrs_current_view_iff
-           envv (length envv) PIS ipl eq_refl HcurPIS) as Hflatiff.
-      replace (length varctxt'') with (length envv).
-      2:{ symmetry. eapply Instr.init_env_samelen; eauto. }
-      apply (proj2 Hflatiff).
-      exact Hflat.
+    + pose proof (Instr.init_env_samelen _ _ _ Hinit) as Henvdim.
+      apply (proj2
+        (poly_instance_list_semantics_current_view_iff
+          envv _ _ _ _ _ Henvdim Hcurpis)).
+      exact Hpoly.
 Qed.
 
 
@@ -4611,92 +3744,25 @@ Lemma flatten_instrs_ext_app_singleton:
     flatten_instr_nth_ext envv (length pis) pi ipl' ->
     flatten_instrs_ext envv (pis++[pi]) (ipl++ipl').
 Proof.
-  intros. 
-  destruct H as (H1 & H2 & H3 & H4).
-  destruct H0 as (H1' & H2' & H3' & H4').
-  splits.
-  - intros. 
-    eapply in_app_or in H.
-    destruct H.
-    + eapply H1; eauto.
-    + eapply H1'; eauto.
-  - intros.
-    split; intro.
-    +
-      eapply in_app_or in H.
-      destruct H.
-      * eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & HPREF & H & Hlen).
-        exists pi0.
-        split.
-        -- rewrite nth_error_app1; eauto.
-           eapply nth_error_Some; rewrite NTH; eauto.
-           intro. tryfalse.
-        -- split; [exact HPREF|].
-           split; [exact H| exact Hlen].
-      * 
-        eapply H2' in H; eauto.
-        destruct H as (HPREF & H & NTH & Hlen).
-        exists pi.
-        split.
-        -- rewrite nth_error_app2; eauto; try lia.
-           replace (ip_nth_ext ip - length pis) with 0; try lia.
-           simpls. trivial.
-        -- split; [exact HPREF|].
-           split; [exact H| exact Hlen].
-    + intros.
-      destruct H.
-      destruct H as (NTH & HPREF & BEL & LEN).
-      * 
-        assert (ip_nth_ext ip < length pis \/ ip_nth_ext ip = length pis). {
-          eapply nth_error_Some' in NTH.
-          rewrite app_length in NTH.
-          clear - NTH. simpls. lia.
-        }
-        destruct H.
-        -- 
-        rewrite in_app. left. 
-        eapply H2.
-        exists x.
-        split.
-        --- rewrite nth_error_app1 in NTH; [exact NTH|].
-            lia.
-        --- split; [exact HPREF|].
-            split; [exact BEL| exact LEN].
-        --
-        rewrite in_app. right.
-        eapply H2'.
-        rewrite H in NTH.
-        rewrite nth_error_app2 in NTH; [|lia].
-        replace (length pis - length pis) with 0 in NTH by lia.
-        simpl in NTH.
-        inv NTH.
-        split; [exact HPREF|].
-        split; [exact BEL|].
-        split; [exact H| exact LEN].
-  - 
-    eapply NoDup_app; eauto.
-    intros.
-    eapply H2 in H; eauto.
-    destruct H as (pi0 & NTH & HPREF & H & Hlen).
-    intro. eapply H2' in H0.
-    destruct H0 as (HPREF' & H0 & NTH' & Hlen').
-    rewrite NTH' in NTH.
-    assert (nth_error pis (length pis) = None). {
-      eapply nth_error_None; eauto.
-    }
-    tryfalse.
-  - 
-    clear - H4 H4' H2 H2'.
-    eapply Sorted_app; eauto.
-    intros.
-    eapply H2 in H; eauto.
-    eapply H2' in H0; eauto.
-    destruct H as (pi0 & NTH & HPREF & H & Hlen).
-    destruct H0 as (HPREF' & H' & NTH' & Hlen').
-    unfold np_lt. left.
-    clear - NTH NTH'.
-    eapply nth_error_Some' in NTH. lia.
+  intros envv pis pi ipl ipl_tail Hflat Htail.
+  unfold flatten_instrs_ext in Hflat |- *.
+  unfold flatten_instr_nth_ext in Htail.
+  destruct Hflat as (Hprefix & Hmember & Hnodup & Hsorted).
+  destruct Htail as (Htail_prefix & Htail_member & Htail_nodup & Htail_sorted).
+  eapply flatten_append_singleton_shape with
+    (rank := ip_nth_ext)
+    (prefix := fun ip => firstn (length envv) (ip_index_ext ip) = envv)
+    (facts := fun ip item =>
+      firstn (length envv) (ip_index_ext ip) = envv /\
+      belongs_to_ext ip item /\
+      length (ip_index_ext ip) = length envv + pi_depth_ext item)
+    (order := np_lt_ext);
+    try eassumption.
+  - intros point.
+    specialize (Htail_member point).
+    tauto.
+  - intros point1 point2 Hrank.
+    unfold np_lt_ext; left; exact Hrank.
 Qed.
 
 Lemma flatten_instrs_ext_ipl_n_lt_len:
@@ -4719,128 +3785,33 @@ Lemma flatten_instrs_ext_app_singleton_inv:
     exists ipl ipl',
     flatten_instrs_ext envv pis ipl /\ flatten_instr_nth_ext envv (length pis) pi ipl' /\ ipl0 = ipl++ipl'.
 Proof.
-  intros.
-  pose proof H as G. 
-  destruct H as (H1 & H2 & H3 & H4).
-  exists (filter (fun ip => ip_nth_ext ip <? length pis) ipl0).
-  exists (filter (fun ip => Nat.eqb (length pis) (ip_nth_ext ip)) ipl0).
-  splits.
-  - 
-    splits.
-    + intros.
-      eapply filter_In in H.
-      destruct H as (H & Hlt).
-      eapply H1; eauto.
-    + intros.
-      split; intro.
-      * 
-        eapply filter_In in H.
-        destruct H as (H & Hlt).
-        eapply H2 in H; eauto.
-        destruct H as (pi0 & NTH & HPREF & H & Hlen).
-        exists pi0.
-        split.
-        -- rewrite nth_error_app1 in NTH; [exact NTH|].
-           eapply Nat.ltb_lt in Hlt. trivial.
-        -- split; [exact HPREF|].
-           split; [exact H| exact Hlen].
-      * 
-        eapply filter_In.
-        destruct H as (pi' & NTH & HPREF & BEL & LEN).
-        split.
-        -- eapply H2. 
-          exists pi'.
-          split.
-          --- rewrite nth_error_app1; eauto.
-              clear - NTH. eapply nth_error_Some. rewrite NTH. intro; tryfalse.
-          --- split; [exact HPREF|].
-              split; [exact BEL| exact LEN].
-        -- eapply Nat.ltb_lt.
-          eapply nth_error_Some' in NTH. trivial.
-    + eapply NoDup_filter; trivial.
-    + 
-      eapply filter_sort; eauto. 
-      eapply np_eq_ext_equivalence; eauto.
-      eapply np_lt_ext_strict; eauto.
-      eapply np_lt_ext_proper; eauto.
-  - 
-    splits.
-    + intros.
-      eapply filter_In in H.
-      destruct H as (H & Hlt).
-      eapply H1; eauto.
-    + intros.
-      splits; intro.
-      * 
-        eapply filter_In in H.
-        destruct H as (H & Hlt).
-        eapply H2 in H; eauto.
-        destruct H as (pi' & NTH & HPREF & BEL & Hlen).
-        eapply Nat.eqb_eq in Hlt.
-        assert (pi = pi'). {
-          rewrite nth_error_app2 in NTH.
-          replace (ip_nth_ext ip - length pis) with 0 in NTH by lia.
-          simpl in NTH.
-          inv NTH; trivial.
-          lia.
-        }
-        subst.
-        split; [exact HPREF|].
-        split; [exact BEL|].
-        split; [lia| exact Hlen].
-      * 
-        eapply filter_In.
-        destruct H as (HPREF & BEL & NTH & LEN).
-        split.
-        -- eapply H2. 
-          exists pi.
-          split.
-          --- rewrite nth_error_app2; [|lia].
-              replace (ip_nth_ext ip - length pis) with 0 by lia.
-              simpls. trivial.
-          --- split; [exact HPREF|].
-              split; [exact BEL| exact LEN].
-        -- eapply Nat.eqb_eq. lia.
-    + eapply NoDup_filter; trivial.
-    + 
-      eapply filter_sort; eauto. 
-      eapply np_eq_ext_equivalence; eauto.
-      eapply np_lt_ext_strict; eauto.
-      eapply np_lt_ext_proper; eauto.
-  - 
-    cut (ipl0 =
-    filter (fun ip : InstrPoint_ext => ip_nth_ext ip <? Datatypes.length pis)
-      ipl0 ++
-    filter
-      (fun x => negb ((fun ip : InstrPoint_ext => ip_nth_ext ip <? Datatypes.length pis) x))
-      ipl0). 
-    2: {
-      eapply filter_split; eauto.
-      eapply np_eq_ext_equivalence; eauto.
-      eapply np_lt_ext_strict; eauto.
-      eapply np_lt_ext_proper; eauto.
-      clear.
-      intros. 
-      eapply Nat.ltb_lt in H.
-      eapply Nat.ltb_ge in H0.
-      unfold np_lt.
-      left; lia.
-    }
-    intro. rewrite H at 1. f_equal; eauto.
-    eapply filter_ext_in. 
-    assert (forall ip, In ip ipl0 -> 
-      (ip_nth_ext ip <= length pis)%nat
-    ). {
-      intros.
-      eapply flatten_instrs_ext_ipl_n_lt_len in G; eauto.
-      rewrite app_length in G. simpls. lia.
-    }
-    intros. eapply (H0 a) in H5.
-    rewrite <- Nat.leb_antisym.
-    destruct (Datatypes.length pis <=? ip_nth_ext a) eqn:Hltb;
-    destruct (Datatypes.length pis =? ip_nth_ext a)%nat eqn:Heqb; trivial.
-    eapply Nat.leb_le in Hltb. eapply Nat.eqb_neq in Heqb. lia.
-    eapply Nat.leb_gt in Hltb. eapply Nat.eqb_eq in Heqb. lia.
+  intros envv pis pi ipl0 Hflat.
+  unfold flatten_instrs_ext in Hflat.
+  destruct Hflat as (Hprefix & Hmember & Hnodup & Hsorted).
+  pose proof
+    (flatten_split_singleton_shape
+      InstrPoint_ext PolyInstr_ext ip_nth_ext
+      (fun ip => firstn (length envv) (ip_index_ext ip) = envv)
+      (fun ip item =>
+        firstn (length envv) (ip_index_ext ip) = envv /\
+        belongs_to_ext ip item /\
+        length (ip_index_ext ip) = length envv + pi_depth_ext item)
+      np_eq_ext np_lt_ext pis pi ipl0
+      np_eq_ext_equivalence np_lt_ext_strict np_lt_ext_proper
+      Hprefix Hmember Hnodup Hsorted
+      (fun point1 point2 Hrank => or_introl Hrank))
+    as Hsplit.
+  destruct Hsplit as (ipl & ipl_tail & Hleft & Hright & Happ).
+  exists ipl.
+  exists ipl_tail.
+  refine (conj Hleft (conj _ Happ)).
+  unfold flatten_instr_nth_ext.
+  destruct Hright as
+    (Htail_prefix & Htail_member & Htail_nodup & Htail_sorted).
+  refine (conj Htail_prefix (conj _ (conj Htail_nodup Htail_sorted))).
+  intros point.
+  specialize (Htail_member point).
+  tauto.
 Qed.
 
 Fixpoint compose_pinstrs_ext (pil1 pil2: list PolyLang.PolyInstr): list PolyInstr_ext := 
@@ -6386,7 +5357,8 @@ Open Scope Z_scope.
 Open Scope list_scope.
 (** * Translating a program from explicit scheduling to lexicographical scanning *)
 
-Definition insert_zeros (d : nat) (i : nat) (l : list Z) := resize i l ++ repeat 0 d ++ skipn i l.
+Definition insert_zeros (d : nat) (i : nat) (l : list Z) :=
+  resize i l ++ repeat 0 d ++ skipn i l.
 Definition insert_zeros_constraint (d : nat) (i : nat) (c : list Z * Z) := (insert_zeros d i (fst c), snd c).
 
 (** [make_null_poly d n] creates a polyhedron with the constraints that the variables from [d] to [d+n-1] are null *)
@@ -6589,59 +5561,7 @@ Lemma insert_zeros_commute_after_env :
     insert_zeros added (i + d)%nat (insert_zeros d i l) =
     insert_zeros d i (insert_zeros added i l).
 Proof.
-  intros added d i l.
-  unfold insert_zeros.
-  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
-  rewrite Linalg.resize_length.
-  replace (i + d - i)%nat with d by lia.
-  rewrite List.skipn_app by lia.
-  replace (d - d)%nat with 0%nat by lia.
-  simpl.
-  rewrite Linalg.resize_app_le by (rewrite List.repeat_length; lia).
-  rewrite Linalg.resize_length.
-  rewrite List.skipn_app by lia.
-  replace (d - d)%nat with 0%nat by lia.
-  replace (0 - added)%nat with 0%nat by lia.
-  simpl.
-  replace (i + d - i)%nat with d by lia.
-  replace (d - length (repeat 0%Z d))%nat with 0%nat by (rewrite List.repeat_length; lia).
-  simpl.
-  replace (skipn (i + d) (Linalg.resize i l)) with ([] : list Z).
-  2:{
-    rewrite List.skipn_all2.
-    - reflexivity.
-    - rewrite Linalg.resize_length. lia.
-  }
-  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
-  2:{
-    rewrite List.skipn_all2.
-    - reflexivity.
-    - rewrite List.repeat_length. lia.
-  }
-  rewrite Linalg.resize_app_le by (rewrite Linalg.resize_length; lia).
-  rewrite Linalg.resize_length.
-  rewrite List.skipn_app by lia.
-  replace (i - i)%nat with 0%nat by lia.
-  replace (0 - added)%nat with 0%nat by lia.
-  simpl.
-  replace (skipn i (Linalg.resize i l)) with ([] : list Z).
-  2:{
-    rewrite List.skipn_all2.
-    - reflexivity.
-    - rewrite Linalg.resize_length. lia.
-  }
-  replace (i - length (Linalg.resize i l))%nat with 0%nat by (rewrite Linalg.resize_length; lia).
-  replace (i + d - i)%nat with d by lia.
-  replace (d - length (repeat 0%Z d))%nat with 0%nat by (rewrite List.repeat_length; lia).
-  simpl.
-  replace (skipn d (repeat 0%Z d)) with ([] : list Z).
-  2:{
-    rewrite List.skipn_all2.
-    - reflexivity.
-    - rewrite List.repeat_length. lia.
-  }
-  repeat rewrite <- app_assoc.
-  reflexivity.
+  exact LinalgExt.insert_zeros_at_commute.
 Qed.
 
 Lemma current_transformation_at_pi_elim_schedule :
@@ -6911,6 +5831,85 @@ Proof.
         rewrite Hout; auto.
 Qed.
 
+Local Lemma env_scan_elim_schedule_point :
+  forall d env dim prog n p q ts pi,
+    nth_error prog n = Some pi ->
+    (length pi.(pi_schedule) <= d)%nat ->
+    (length env <= dim)%nat ->
+    length p = length env ->
+    length ts = d ->
+    env_scan (elim_schedule d (length env) prog) env (dim + d)
+      n (p ++ ts ++ q) =
+    is_eq ts (affine_product pi.(pi_schedule) (p ++ q)) &&
+      env_scan prog env dim n (p ++ q).
+Proof.
+  intros d env dim prog n p q ts pi Heqpi Hschedule Henvdim Hlp Hlts.
+  unfold env_scan, elim_schedule.
+  rewrite map_nth_error with (d := pi); auto.
+  rewrite Heqpi.
+  unfold pi_elim_schedule; simpl.
+  rewrite !resize_app with (n := length env) by apply Hlp.
+  destruct (is_eq env p); simpl; auto using andb_false_r.
+  rewrite in_poly_app.
+  rewrite andb_comm, <- andb_assoc.
+  f_equal.
+  - apply make_sched_poly_correct; eauto.
+  - rewrite andb_comm.
+    f_equal.
+    + rewrite !resize_app_le by lia.
+      rewrite !is_eq_app by lia.
+      rewrite !is_eq_reflexive.
+      simpl.
+      f_equal; f_equal; lia.
+    + unfold in_poly.
+      rewrite forallb_map.
+      apply forallb_ext.
+      intros c.
+      unfold satisfies_constraint, insert_zeros_constraint.
+      simpl.
+      f_equal.
+      rewrite dot_product_commutative.
+      rewrite insert_zeros_product_skipn.
+      rewrite resize_app by apply Hlp.
+      rewrite app_assoc, skipn_app, app_length, <- Hlp, <- Hlts.
+      rewrite dot_product_commutative, skipn_app.
+      rewrite skipn_all2; try lia.
+      simpl.
+      rewrite skipn_all2; try lia.
+      simpl.
+      replace
+        (length ts + length p - (length p + length ts))%nat
+        with 0%nat by lia.
+      rewrite skipn_O.
+      reflexivity.
+Qed.
+
+Local Lemma env_scan_true_prefix :
+  forall prog env dim n p q,
+    length p = length env ->
+    env_scan prog env dim n (p ++ q) = true ->
+    p =v= env.
+Proof.
+  intros prog env dim n p q Hlp Hscan.
+  unfold env_scan in Hscan.
+  destruct (nth_error prog n) as [pi|]; [|discriminate].
+  reflect.
+  destruct Hscan as [[Henv _] _].
+  rewrite resize_app in Henv by congruence.
+  symmetry; exact Henv.
+Qed.
+
+Local Lemma env_scan_nth_error_none :
+  forall prog env dim n p,
+    nth_error prog n = None ->
+    env_scan prog env dim n p = false.
+Proof.
+  intros prog env dim n p Hnone.
+  unfold env_scan.
+  rewrite Hnone.
+  reflexivity.
+Qed.
+
 Theorem poly_elim_schedule_semantics_env_preserve :
   forall d es env dim prog mem1 mem2,
     es = length env ->
@@ -6940,63 +5939,12 @@ Proof.
     replace (dim + d - d)%nat with dim by lia.
     exact (Henvdim n pi Hpi).
   - intros n p q ts pi Heqpi Hlp Hlts.
-    unfold env_scan.
-    unfold elim_schedule.
-    rewrite map_nth_error with (d := pi); auto.
-    rewrite Heqpi.
-    unfold pi_elim_schedule; simpl.
-    rewrite !resize_app with (n := length env) by apply Hlp.
-    destruct (is_eq env p); simpl; auto using andb_false_r.
-    rewrite in_poly_app.
-    rewrite andb_comm.
-    rewrite <- andb_assoc.
-    f_equal.
-    + apply make_sched_poly_correct; eauto.
-    + rewrite andb_comm.
-      f_equal.
-      * rewrite !resize_app_le by lia.
-        rewrite !is_eq_app by lia.
-        rewrite !is_eq_reflexive.
-        simpl.
-        f_equal.
-        f_equal.
-        lia.
-      * unfold in_poly.
-        rewrite forallb_map.
-        apply forallb_ext.
-        intros c.
-        unfold satisfies_constraint, insert_zeros_constraint.
-        simpl.
-        f_equal.
-        rewrite dot_product_commutative.
-        rewrite insert_zeros_product_skipn.
-        rewrite resize_app by apply Hlp.
-        rewrite app_assoc.
-        rewrite skipn_app.
-        rewrite app_length.
-        rewrite <- Hlp.
-        rewrite <- Hlts.
-        rewrite dot_product_commutative.
-        rewrite skipn_app.
-        rewrite skipn_all2; try lia.
-        simpl.
-        rewrite skipn_all2; try lia.
-        simpl.
-        replace (Datatypes.length ts + Datatypes.length p - (Datatypes.length p + Datatypes.length ts))%nat with 0%nat by lia.
-        rewrite skipn_O.
-        trivial.
+    replace (dim + d - d)%nat with dim by lia.
+    eapply env_scan_elim_schedule_point; eauto.
   - intros n p q Hlp Hscanp.
-    unfold env_scan in Hscanp.
-    destruct (nth_error prog n) as [pi|]; [|congruence].
-    reflect.
-    destruct Hscanp as [[He _] _].
-    rewrite resize_app in He by congruence.
-    symmetry.
-    exact He.
+    eapply env_scan_true_prefix; eauto.
   - intros n p Hnone.
-    unfold env_scan.
-    rewrite Hnone.
-    auto.
+    eapply env_scan_nth_error_none; eauto.
 Qed.
 
 Definition elim_schedule_prog (pprog: t): t := 
