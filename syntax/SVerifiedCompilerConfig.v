@@ -8,6 +8,21 @@ Require Import SBandTilingOpt.
 
 Local Open Scope string_scope.
 
+(** * Concrete extracted sequential dispatcher
+
+    This file mirrors [VerifiedCompilerConfig] using the concrete [SPolIRs]
+    modules that are extracted to OCaml.  It contains executable definitions,
+    not the generic semantic proof.  The bridge theorem for
+    [compile_verified] is
+    [ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct];
+    the raw-configuration endpoint is
+    [ExtractedPipelineCorrect.extracted_sequential_compile_correct].
+
+    The leading [S] therefore means concrete extraction-facing syntax.  It does
+    not mean a stronger theorem or an additional compiler phase. *)
+
+(** ** Concrete sequential configurations *)
+
 Inductive raw_config : Type :=
 | RawIdentity
 | RawAffine
@@ -56,9 +71,11 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawDiamondISS => Okk VDiamondISS
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
-(* This executable dispatcher is intentionally enumerated for now. A later
-   version can replace [verified_config] with a compositional pass descriptor
-   list once the route theorems are exposed in a uniform pass-composition form. *)
+(** ** Concrete verified and raw dispatchers
+
+    [compile_verified] accepts an already checked configuration; [compile]
+    runs [check_config] first.  Both still execute the validators internal to
+    the selected optimization route. *)
 Definition compile_verified
     (cfg: verified_config) (loop: SPolIRs.Loop.t)
     : imp SPolIRs.Loop.t :=

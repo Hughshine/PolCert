@@ -72,6 +72,106 @@
     exact theorem and the current row for the strengthened endpoint.
   </div>
 
+  <h2>Which <code>compile</code> endpoint?</h2>
+  <p>The repeated names encode three independent choices. A module beginning
+     with <code>S</code> is the concrete, extraction-facing implementation;
+     the theorem for it lives in <code>ExtractedPipelineCorrect</code>.
+     <code>VerifiedCompilerConfig</code> is the sequential
+     <code>Loop -&gt; Loop</code> dispatcher, while
+     <code>VerifiedParallelCompilerConfig</code> is the unified
+     <code>Loop -&gt; ParallelLoop</code> dispatcher. Finally,
+     <code>compile_verified</code> starts after the outer configuration check;
+     <code>compile</code> accepts <code>raw_config</code> and performs that check.
+     Route-specific program validators still run in both cases.</p>
+
+  <table>
+    <thead><tr><th>Correctness theorem</th><th>Specified executable</th><th>Target and role</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_verified_correct"><code>VerifiedCompilerConfig.compile_verified_correct</code></a></td>
+        <td><a href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_verified"><code>VerifiedCompilerConfig.compile_verified</code></a></td>
+        <td>Generic 13-route sequential dispatcher after config checking; target uses <code>Loop.semantics</code>.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_correct"><code>VerifiedCompilerConfig.compile_correct</code></a></td>
+        <td><a href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><code>VerifiedCompilerConfig.compile</code></a></td>
+        <td>Generic sequential dispatcher from <code>raw_config</code>.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified_correct"><code>VerifiedParallelCompilerConfig.compile_verified_correct</code></a></td>
+        <td><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified"><code>VerifiedParallelCompilerConfig.compile_verified</code></a></td>
+        <td>Generic 31-constructor unified dispatcher after config checking; target uses <code>ParallelLoop.semantics</code>.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><code>VerifiedParallelCompilerConfig.compile_correct</code></a></td>
+        <td><a href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile"><code>VerifiedParallelCompilerConfig.compile</code></a></td>
+        <td><strong>Paper-facing generic endpoint</strong> from <code>raw_config</code>.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_verified_correct"><code>extracted_sequential_compile_verified_correct</code></a></td>
+        <td><a href="polcert.syntax.SVerifiedCompilerConfig.html#compile_verified"><code>SVerifiedCompilerConfig.compile_verified</code></a></td>
+        <td>Concrete extracted sequential dispatcher after config checking.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_correct"><code>extracted_sequential_compile_correct</code></a></td>
+        <td><a href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><code>SVerifiedCompilerConfig.compile</code></a></td>
+        <td>Concrete extracted sequential dispatcher from <code>raw_config</code>.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_verified_correct"><code>extracted_parallel_compile_verified_correct</code></a></td>
+        <td><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><code>SVerifiedParallelCompilerConfig.compile_verified</code></a></td>
+        <td>Concrete extracted unified dispatcher after config checking.</td>
+      </tr>
+      <tr>
+        <td><a href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct"><code>extracted_parallel_compile_correct</code></a></td>
+        <td><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><code>SVerifiedParallelCompilerConfig.compile</code></a></td>
+        <td><strong>Closest theorem to the extracted CLI pipeline.</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Reading the 31 unified constructors</h3>
+  <table>
+    <thead><tr><th>Constructor family</th><th>Payload</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>VSeq</code></td><td>one of 13 sequential configs</td><td>Run the Loop-to-Loop dispatcher, then checked-lift it into <code>ParallelLoop</code>.</td></tr>
+      <tr><td><code>VParallelCurrent*</code></td><td>one coordinate <code>d</code></td><td>Produce one certified <code>ParMode</code> loop.</td></tr>
+      <tr><td><code>VVectorCurrent*</code></td><td>one coordinate <code>d</code></td><td>Produce one checked innermost <code>VecMode</code> loop; its formal semantics is sequential.</td></tr>
+      <tr><td><code>VParallelCurrentMany*</code></td><td>coordinate list <code>dims</code></td><td>Certify and annotate every accepted coordinate.</td></tr>
+    </tbody>
+  </table>
+  <p>Within the last three families, <code>Identity</code>,
+     <code>IdentityTiled</code>, <code>Affine</code>, <code>Default</code>, and
+     <code>Diamond</code> choose the preprocessing route; <code>ISS</code>
+     selects its ISS-aware variant. <code>Current</code> is a legacy API word:
+     the payload is now a canonical padded schedule coordinate.</p>
+
+  <h2>Reading budget</h2>
+  <p>Counts below are nonempty source lines between <code>Proof.</code> and
+     <code>Qed.</code>. They follow one ordinary tiling route and omit the
+     concrete extraction mirror, so a semantic argument is not counted twice.</p>
+  <table>
+    <thead><tr><th>Area</th><th>Core proof bodies</th><th>Lines</th></tr></thead>
+    <tbody>
+      <tr><td>Extraction</td><td>Main mutual reconstruction and public endpoint</td><td>700</td></tr>
+      <tr><td>ISS</td><td>Partition obligations, injectivity, flatten bridge, semantic/checker endpoints</td><td>376</td></tr>
+      <tr><td>Affine scheduling</td><td>Collision, pair checker, pointwise/list lift, semantic endpoint</td><td>410</td></tr>
+      <tr><td>Tiling representation</td><td>Permutation reconstruction, poly semantic core, instance endpoint</td><td>332</td></tr>
+      <tr><td>Ordinary tiling band</td><td>Component checker, reversal bridge, semantic kernel, checked/runtime endpoints</td><td>1,246</td></tr>
+      <tr><td>Parallel annotation/codegen</td><td>Serialization, checker, raw origin, actual ordering, cleanup and checked endpoint</td><td>725</td></tr>
+      <tr><td>Preparation and drivers</td><td>Prepared codegen, composition helpers, one route, generic final dispatch</td><td>105</td></tr>
+      <tr><th colspan="2">One complete ordinary route</th><th>3,894</th></tr>
+    </tbody>
+  </table>
+  <p>The main individual bodies are the ordinary tiling reversal bridge
+     (1,019), extractor mutual reconstruction (674), ISS point injectivity
+     (198), actual-trace ordering mutual proof (151), root origin (137), and
+     generated ordered semantics (122). By contrast, the generic 31-case
+     <code>compile_verified_correct</code> is 40 lines and its concrete extracted
+     bridge is 100 lines: both are coverage plumbing. A paper-first pass is
+     about 2,850 mathematical-core lines. Reading all major specialized tiling
+     bridges raises the estimate from about 3,900 to about 7,600 proof lines.</p>
+
   <h2>First complete pass</h2>
   <ol>
     <li><a href="polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct"><code>ExtractorCorrect.extractor_correct</code></a>: reconstruct source loop execution.</li>

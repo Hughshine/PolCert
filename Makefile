@@ -494,7 +494,9 @@ PROOF_DOC_FILES = \
   src/ParallelCodegenCore.v src/ParallelCodegenCompatibility.v src/ParallelCodegenCorrect.v \
   src/PrepareCodegen.v src/StrengthenDomain.v \
   driver/PolOptCorrect.v driver/PolOptBandTiling.v driver/ParallelPolOptCorrect.v \
-  driver/VerifiedParallelCompilerConfig.v driver/ExtractedPipelineCorrect.v
+  driver/VerifiedCompilerConfig.v driver/VerifiedParallelCompilerConfig.v \
+  syntax/SVerifiedCompilerConfig.v syntax/SVerifiedParallelCompilerConfig.v \
+  driver/ExtractedPipelineCorrect.v
 
 PROOF_DOC_OBJECTS = $(notdir $(PROOF_DOC_FILES:.v=.vo))
 PROOF_DOC_GLOBS = $(addprefix doc/,$(notdir $(PROOF_DOC_FILES:.v=.glob)))

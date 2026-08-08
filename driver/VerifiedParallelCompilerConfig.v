@@ -23,13 +23,37 @@ Module State := PolIRs.State.
 Module ParallelLoop := ParallelCorrect.ParallelLoop.
 Module ParallelCodegenCore := ParallelCore.ParallelCodegenCore.
 
-(** * Proof map
+(** * Unified generic compiler endpoint
 
     This is the final theorem-facing dispatcher.  Sequential routes are lifted
     into the common annotated-loop target language; parallel and vector routes
     call their corresponding [ParallelPolOptCorrect] theorems.
     [compile_verified_correct] handles the verified constructors and
-    [compile_correct] discharges raw configuration checking. *)
+    [compile_correct] discharges raw configuration checking.
+
+    The name differs from [VerifiedCompilerConfig] in one important respect:
+    this module always returns [ParallelLoop.t].  Its 31 verified constructors
+    are one wrapped sequential family, ten single-parallel routes, ten vector
+    routes, and ten multi-parallel routes.  The sequential family is not a
+    second compiler proof; [compile_seq_verified] runs the small sequential
+    dispatcher and then checked-lifts its result into [ParallelLoop].
+
+    The concrete executable mirror is [SVerifiedParallelCompilerConfig].
+    [ExtractedPipelineCorrect.extracted_parallel_compile_correct] is the theorem
+    about that hand-instantiated, extraction-facing implementation. *)
+
+(** ** Unified configuration naming
+
+    - [VSeq] wraps one of the 13 sequential configurations.
+    - [VParallelCurrent* d] requests one certified parallel schedule coordinate.
+    - [VVectorCurrent* d] requests one certified innermost vector coordinate.
+    - [VParallelCurrentMany* dims] requests every accepted coordinate in [dims].
+    - [Identity], [IdentityTiled], [Affine], [Default], and [Diamond] select the
+      preprocessing route; the [ISS] suffix selects its ISS-aware variant.
+
+    The word [Current] is retained for API compatibility.  On this branch the
+    numeric payload denotes a canonical padded schedule coordinate, not an
+    unproved source-current-coordinate to target-depth identification. *)
 
 Inductive raw_config : Type :=
 | RawSeq (cfg: SeqCompiler.raw_config)
@@ -165,18 +189,34 @@ Definition checked_sequential_current_annotated_codegen
       nil -;
   res_to_alarm ParallelCore.parallel_dummy res.
 
+(** ** Sequential lift into the common annotated target *)
+
+(** [compile_seq_verified] is an adapter, not a third public compiler family.
+    It runs [SeqCompiler.compile_verified], tags the resulting ordinary loop as
+    sequential [ParallelLoop], and checks affine trace construction.  Its
+    correctness lemma is needed only for the [VSeq] branch of the unified
+    dispatcher. *)
+
 Definition compile_seq_verified
     (cfg: SeqCompiler.verified_config)
     (loop: LoopIR.t)
   : imp ParallelLoop.t :=
   lift_sequential_compile (SeqCompiler.compile_verified cfg loop).
 
+(** ** Verified unified dispatcher
+
+    A [verified_config] records that the outer configuration was accepted.
+    Every checker belonging to the chosen transformation route still executes
+    inside the selected [Opt_*] definition. *)
+
 Definition compile_verified
     (cfg: verified_config) (loop: LoopIR.t)
   : imp ParallelLoop.t :=
   match cfg with
+  (** One wrapper for all 13 sequential configurations. *)
   | VSeq seq_cfg =>
       compile_seq_verified seq_cfg loop
+  (** Ten single-coordinate parallel routes. *)
   | VParallelCurrentIdentity d =>
       ParallelCore.Opt_parallel_current_identity loop d
   | VParallelCurrentIdentityTiled d =>
@@ -197,6 +237,7 @@ Definition compile_verified
       ParallelCore.Opt_parallel_current_affine_with_iss loop d
   | VParallelCurrentDefaultISS d =>
       ParallelCore.Opt_parallel_current_with_iss loop d
+  (** Ten single-coordinate vector routes. *)
   | VVectorCurrentIdentity d =>
       ParallelCore.Opt_vector_current_identity loop d
   | VVectorCurrentIdentityTiled d =>
@@ -217,6 +258,7 @@ Definition compile_verified
       ParallelCore.Opt_vector_current_affine_with_iss loop d
   | VVectorCurrentDefaultISS d =>
       ParallelCore.Opt_vector_current_with_iss loop d
+  (** Ten multi-coordinate parallel routes. *)
   | VParallelCurrentManyIdentity dims =>
       ParallelCore.Opt_parallel_current_many_identity loop dims
   | VParallelCurrentManyIdentityTiled dims =>
@@ -245,6 +287,8 @@ Definition compile (cfg: raw_config) (loop: LoopIR.t)
   | Okk vcfg => compile_verified vcfg loop
   | Err msg => res_to_alarm ParallelCore.parallel_dummy (Err msg)
   end.
+
+(** ** Correctness support for sequential lifting *)
 
 Lemma checked_lift_sequential_loop_correct :
   forall loop pl st st',
@@ -370,6 +414,19 @@ Proof.
   eapply State.eq_trans; eauto.
 Qed.
 
+(** ** Generic unified correctness endpoints
+
+    [compile_verified_correct] is the 31-constructor coverage theorem after
+    configuration checking.  [compile_correct] is the paper-facing generic
+    endpoint for a raw configuration.  For the executable extracted compiler,
+    use [ExtractedPipelineCorrect.extracted_parallel_compile_correct] instead.
+
+    The long proof below adds no new transformation semantics.  Its four blocks
+    establish exhaustive routing: [VSeq], ten [VParallelCurrent] variants, ten
+    [VVectorCurrent] variants, and ten [VParallelCurrentMany] variants.  Read
+    one representative theorem in [ParallelPolOptCorrect] from the desired
+    block, then skim the remaining dispatch bullets. *)
+
 Theorem compile_verified_correct :
   forall cfg loop pl st st',
     mayReturn (compile_verified cfg loop) pl ->
@@ -379,7 +436,9 @@ Theorem compile_verified_correct :
 Proof.
   intros cfg loop pl st st' Hcompile Hsem.
   destruct cfg; simpl in Hcompile.
+  (** [VSeq]: reuse the complete 13-route sequential dispatcher. *)
   - eapply compile_seq_verified_correct; eauto.
+  (** Ten [VParallelCurrent] constructors. *)
   - eapply ParallelCorrect.Opt_parallel_current_identity_correct; eauto.
   - eapply opt_parallel_current_identity_tiled_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_identity_tiled_with_iss_correct;
@@ -391,6 +450,7 @@ Proof.
   - eapply ParallelCorrect.Opt_parallel_current_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_with_iss_correct; eauto.
+  (** Ten [VVectorCurrent] constructors. *)
   - eapply ParallelCorrect.Opt_vector_current_identity_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_identity_tiled_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_identity_tiled_with_iss_correct;
@@ -402,6 +462,7 @@ Proof.
   - eapply ParallelCorrect.Opt_vector_current_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_with_iss_correct; eauto.
+  (** Ten [VParallelCurrentMany] constructors. *)
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_tiled_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_tiled_with_iss_correct;
@@ -415,6 +476,9 @@ Proof.
   - eapply ParallelCorrect.Opt_parallel_current_many_with_iss_correct; eauto.
 Qed.
 
+(** Raw-config wrapper around the 31-constructor theorem.  No parallel or
+    transformation argument is repeated here: the accepted branch calls
+    [compile_verified_correct], and the rejected branch cannot return a target. *)
 Theorem compile_correct :
   forall cfg loop pl st st',
     mayReturn (compile cfg loop) pl ->

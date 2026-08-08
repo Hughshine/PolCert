@@ -22,14 +22,33 @@ Module ParallelCodegenCore :=
   SVerifiedParallelCompilerConfig.ParallelCodegenCore.
 Module ParallelLoop := SVerifiedParallelCompilerConfig.ParallelLoop.
 
-(** * Proof map
+(** * Concrete extracted compiler endpoints
 
     Generic functor instances carry the semantic proofs, while the extracted
     compiler uses hand-instantiated concrete modules with stable OCaml names.
     The bridge lemmas rewrite concrete executions to their proved generic
     counterparts.  The two [*_compile_verified_correct] theorems then perform
     an explicit constructor-by-constructor coverage audit; the raw [compile]
-    theorems add only configuration checking. *)
+    theorems add only configuration checking.
+
+    There are four public endpoints, determined by two independent choices:
+
+    - [sequential] returns [SPolIRs.Loop.t]; [parallel] returns the unified
+      annotated [ParallelLoop.t], including sequential, parallel, and vector
+      routes;
+    - [compile_verified] starts after outer configuration checking; [compile]
+      starts from [raw_config] and includes that check.
+
+    Thus [extracted_parallel_compile_correct] is the concrete theorem closest
+    to the extracted CLI pipeline.  The sequential pair is useful when studying
+    the older Loop-to-Loop dispatcher in isolation. *)
+
+(** ** Concrete sequential endpoints *)
+
+(** This theorem is the concrete counterpart of
+    [VerifiedCompilerConfig.compile_verified_correct].  Its 13 cases do not
+    reprove the transformations: they rewrite the hand-instantiated executable
+    route to the corresponding generic module and invoke its existing theorem. *)
 
 Theorem extracted_sequential_compile_verified_correct :
   forall cfg loop st st',
@@ -69,6 +88,9 @@ Proof.
     eapply BandCorrect.Opt_diamond_band_with_iss_correct; eauto.
 Qed.
 
+(** Raw-config wrapper for the concrete sequential dispatcher.  Its only new
+    step is [SVerifiedCompilerConfig.check_config]; the successful branch calls
+    [extracted_sequential_compile_verified_correct]. *)
 Theorem extracted_sequential_compile_correct :
   forall cfg loop st st',
     WHEN loop' <- SVerifiedCompilerConfig.compile cfg loop THEN
@@ -83,6 +105,13 @@ Proof.
   - eapply extracted_sequential_compile_verified_correct; eauto.
   - apply mayReturn_alarm in Hcompile. tauto.
 Qed.
+
+(** ** Lifting a concrete sequential result into [ParallelLoop] *)
+
+(** The next two lemmas serve only the [VSeq] branch of the concrete unified
+    dispatcher.  They turn the concrete sequential target into a trace-safe,
+    sequentially tagged [ParallelLoop] target, then compose its state relation
+    with the 13-route sequential theorem above. *)
 
 Lemma extracted_checked_lift_sequential_loop_correct :
   forall loop pl st st',
@@ -117,6 +146,8 @@ Proof.
     tauto.
 Qed.
 
+(** Compose the concrete 13-route sequential theorem with the checked lift into
+    the common [ParallelLoop] target. *)
 Lemma extracted_parallel_compile_seq_verified_correct :
   forall cfg loop pl st st',
     mayReturn (SVerifiedParallelCompilerConfig.compile_seq_verified cfg loop) pl ->
@@ -142,6 +173,14 @@ Proof.
   eapply SPolIRs.State.eq_trans; eauto.
 Qed.
 
+(** ** Concrete unified annotated endpoints *)
+
+(** This is the concrete 31-constructor coverage theorem.  Each branch first
+    uses an [SParallelPolOptBridge] equality to identify the extracted route
+    with the generic route, then invokes the corresponding
+    [ParallelPolOptCorrect] theorem.  The proof is intentionally exhaustive so
+    adding an executable constructor without a theorem cannot be silent. *)
+
 Theorem extracted_parallel_compile_verified_correct :
   forall cfg loop pl st st',
     mayReturn (SVerifiedParallelCompilerConfig.compile_verified cfg loop) pl ->
@@ -152,7 +191,9 @@ Theorem extracted_parallel_compile_verified_correct :
 Proof.
   intros cfg loop pl st st' Hcompile Hsem.
   destruct cfg; simpl in Hcompile.
+  (** [VSeq]: bridge the concrete 13-route sequential dispatcher. *)
   - eapply extracted_parallel_compile_seq_verified_correct; eauto.
+  (** Ten concrete [VParallelCurrent] constructors. *)
   - rewrite SParallelPolOptBridge.opt_parallel_current_identity_impeq in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_identity_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_parallel_current_identity_tiled_impeq
@@ -180,6 +221,7 @@ Proof.
     eapply ParallelCorrect.Opt_parallel_current_affine_with_iss_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_parallel_current_with_iss_impeq in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_with_iss_correct; eauto.
+  (** Ten concrete [VVectorCurrent] constructors. *)
   - rewrite SParallelPolOptBridge.opt_vector_current_identity_impeq in Hcompile.
     eapply ParallelCorrect.Opt_vector_current_identity_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_vector_current_identity_tiled_impeq
@@ -207,6 +249,7 @@ Proof.
     eapply ParallelCorrect.Opt_vector_current_affine_with_iss_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_vector_current_with_iss_impeq in Hcompile.
     eapply ParallelCorrect.Opt_vector_current_with_iss_correct; eauto.
+  (** Ten concrete [VParallelCurrentMany] constructors. *)
   - rewrite SParallelPolOptBridge.opt_parallel_current_many_identity_impeq
       in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_many_identity_correct; eauto.
@@ -248,6 +291,9 @@ Proof.
     eapply ParallelCorrect.Opt_parallel_current_many_with_iss_correct; eauto.
 Qed.
 
+(** Raw-config wrapper for the concrete unified dispatcher.  This is the
+    theorem to use when relating the extracted CLI-facing compiler to source
+    [SPolIRs.Loop.semantics]. *)
 Theorem extracted_parallel_compile_correct :
   forall cfg loop pl st st',
     mayReturn (SVerifiedParallelCompilerConfig.compile cfg loop) pl ->
@@ -262,6 +308,8 @@ Proof.
   - eapply extracted_parallel_compile_verified_correct; eauto.
   - apply mayReturn_alarm in Hcompile. tauto.
 Qed.
+
+(** ** Explicit rejection endpoints *)
 
 Theorem extracted_sequential_unsupported_no_result :
   forall loop out,

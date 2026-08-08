@@ -48,6 +48,94 @@ The declaration-level ownership and long-proof review is indexed in
 section records the original certificate-to-execution defect and the branch
 that resolves it.
 
+## Which `compile` theorem is which?
+
+There are not several competing final proofs.  The repeated names arise from
+three independent interface choices:
+
+1. **Generic or concrete.** `Verified*` modules are functors over `POLIRS` and
+   carry the reusable proofs.  `SVerified*` modules are hand-instantiated
+   executable mirrors with stable extraction names.  Their theorems live in
+   `ExtractedPipelineCorrect.v`, which bridges concrete definitions back to the
+   generic proofs.
+2. **Sequential or unified.** `VerifiedCompilerConfig` returns an ordinary
+   `Loop.t`.  `VerifiedParallelCompilerConfig` returns `ParallelLoop.t` for
+   every route, including sequential routes that it checked-lifts into the
+   annotated target language.
+3. **Verified or raw configuration.** `compile_verified` accepts a
+   `verified_config`, meaning only that the outer configuration passed
+   `check_config`.  The selected optimization route still runs all of its
+   program validators.  `compile` accepts `raw_config` and performs that outer
+   check before calling `compile_verified`.
+
+The complete endpoint matrix is:
+
+| Correctness theorem | Executable it specifies | Target semantics | Use |
+| --- | --- | --- | --- |
+| `VerifiedCompilerConfig.compile_verified_correct` | generic `VerifiedCompilerConfig.compile_verified` | `Loop.semantics` | Generic 13-route sequential dispatcher, after config checking |
+| `VerifiedCompilerConfig.compile_correct` | generic `VerifiedCompilerConfig.compile` | `Loop.semantics` | Generic sequential dispatcher from `raw_config` |
+| `VerifiedParallelCompilerConfig.compile_verified_correct` | generic `VerifiedParallelCompilerConfig.compile_verified` | `ParallelLoop.semantics` | Generic 31-constructor unified dispatcher, after config checking |
+| `VerifiedParallelCompilerConfig.compile_correct` | generic `VerifiedParallelCompilerConfig.compile` | `ParallelLoop.semantics` | Paper-facing generic theorem from `raw_config` |
+| `ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct` | `SVerifiedCompilerConfig.compile_verified` | concrete `SPolIRs.Loop.semantics` | Extracted 13-route sequential dispatcher, after config checking |
+| `ExtractedPipelineCorrect.extracted_sequential_compile_correct` | `SVerifiedCompilerConfig.compile` | concrete `SPolIRs.Loop.semantics` | Extracted sequential dispatcher from `raw_config` |
+| `ExtractedPipelineCorrect.extracted_parallel_compile_verified_correct` | `SVerifiedParallelCompilerConfig.compile_verified` | concrete `ParallelLoop.semantics` | Extracted 31-constructor unified dispatcher, after config checking |
+| `ExtractedPipelineCorrect.extracted_parallel_compile_correct` | `SVerifiedParallelCompilerConfig.compile` | concrete `ParallelLoop.semantics` | Closest theorem to the extracted CLI pipeline |
+
+Two similarly named lemmas are internal glue rather than alternative final
+theorems.  `compile_seq_verified_correct` proves that a generic sequential
+result can be checked-lifted into `ParallelLoop`; the concrete counterpart is
+`extracted_parallel_compile_seq_verified_correct`.  Start with one of the eight
+matrix rows, and open these lift lemmas only when reading its `VSeq` branch.
+
+The 31 constructors of the unified dispatcher are also regular rather than 31
+different proof ideas:
+
+| Constructor prefix | Payload | Meaning |
+| --- | --- | --- |
+| `VSeq` | one of 13 sequential configs | Run the Loop-to-Loop dispatcher, then checked-lift the result |
+| `VParallelCurrent*` | one schedule coordinate `d` | Produce one certified `ParMode` loop |
+| `VVectorCurrent*` | one schedule coordinate `d` | Produce one checked innermost `VecMode` loop; its formal semantics is sequential |
+| `VParallelCurrentMany*` | coordinate list `dims` | Certify and annotate every accepted coordinate |
+
+Within the last three families, `Identity`, `IdentityTiled`, `Affine`,
+`Default`, and `Diamond` choose the preprocessing route; an `ISS` suffix chooses
+its ISS-aware variant.  `Current` is a retained API name: on this branch `d`
+denotes the canonical padded schedule coordinate used by raw code generation.
+
+### Reading budget
+
+The following counts use the current source and count nonempty lines strictly
+between `Proof.` and `Qed.`.  They are a reading estimate, not a code-size
+metric.  The table chooses one ordinary tiling route and excludes the concrete
+extraction mirror, so no semantic argument is counted twice.
+
+| Area | Included core proofs | Proof-body lines |
+| --- | --- | ---: |
+| Extraction | main mutual reconstruction plus `extractor_correct` | 700 |
+| ISS | partition obligations, point injectivity, flatten bridge, semantic endpoint, checked wrapper | 376 |
+| Affine scheduling | collision-to-commutativity, pair checker, pointwise/list lift, semantic endpoint | 410 |
+| Tiling representation | flattened permutation reconstruction, poly semantic core, instance endpoint | 332 |
+| Ordinary tiling band | direct component checker, ordinary reversal bridge, semantic kernel, checked/runtime endpoints | 1,246 |
+| Parallel annotation and codegen | interleaving serialization, checker soundness, raw origin, actual-trace ordering, cleanup and checked endpoint | 725 |
+| Preparation, driver composition, final generic dispatch | one prepared-codegen endpoint, two composition helpers, one public route, generic `compile` pair | 105 |
+| **One complete ordinary route** | | **3,894** |
+
+The largest individual proof bodies on that route are the ordinary tiling
+reversal bridge (1,019 lines), extractor mutual reconstruction (674), ISS point
+injectivity (198), actual-trace ordering mutual proof (151), generated root
+origin (137), and generated ordered semantics (122).  The names that prompted
+this section are much smaller: generic unified `compile_verified_correct` is 40
+proof-body lines, and the concrete extracted 31-case bridge is 100.  They are
+coverage tables, not the mathematical bottleneck.
+
+A paper-first pass can focus on the approximately 2,850 lines in those
+mathematical bottlenecks and skim the transport wrappers.  Reading every major
+specialized tiling bridge adds about 3,688 lines: second-level (1,330),
+scalar-aware (113), phase ordinary (899), phase second-level (991), and
+phase-scalar class reversal (355).  Thus a one-route deep read is roughly 3,900
+proof lines; a broad all-layout read is roughly 7,600 before optional library
+lemmas and compatibility APIs.
+
 ## 1. Start from the Contract
 
 The final theorem is
@@ -75,9 +163,11 @@ derivation before serializing the trace.
 
 Read the final file in this order:
 
-1. `compile_correct` removes the raw-configuration check.
-2. `compile_verified_correct` dispatches to one theorem per verified route.
-3. `compile_seq_verified_correct` embeds a sequential loop result in the
+1. `VerifiedParallelCompilerConfig.compile_correct` discharges the
+   raw-configuration check.
+2. `VerifiedParallelCompilerConfig.compile_verified_correct` dispatches to one
+   theorem per verified route.
+3. `VerifiedParallelCompilerConfig.compile_seq_verified_correct` embeds a sequential loop result in the
    common parallel-loop target language.
 4. `finish_strengthened_source` shows the recurring end-to-end composition:
    undo strengthening, invoke `Extractor.extractor_correct`, then compose the

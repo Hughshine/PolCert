@@ -13,6 +13,18 @@ Local Open Scope string_scope.
 Module ParallelLoop := SParallelPolOpt.ParallelLoop.
 Module ParallelCodegenCore := SParallelPolOpt.ParallelCodegenCore.
 
+(** * Concrete extracted unified dispatcher
+
+    This is the extraction-facing mirror of
+    [VerifiedParallelCompilerConfig].  It returns [ParallelLoop.t] for every
+    route: sequential results are checked-lifted, while parallel and vector
+    routes keep their annotations.  The file intentionally carries no duplicate
+    correctness proof.  The concrete endpoints are
+    [ExtractedPipelineCorrect.extracted_parallel_compile_verified_correct] and
+    [ExtractedPipelineCorrect.extracted_parallel_compile_correct]. *)
+
+(** ** Concrete unified configurations *)
+
 Inductive raw_config : Type :=
 | RawSeq (cfg: SVerifiedCompilerConfig.raw_config)
 | RawParallelCurrentIdentity (d: nat)
@@ -153,16 +165,20 @@ Definition compile_seq_verified
   : imp ParallelLoop.t :=
   lift_sequential_compile (SVerifiedCompilerConfig.compile_verified cfg loop).
 
-(* This executable dispatcher deliberately exposes a single Loop -> ParallelLoop
-   surface.  Sequential routes are checked-lifted into ParallelLoop; parallel
-   routes keep their ParMode annotations and use the existing checked current
-   dimension routes. *)
+(** ** Concrete verified and raw dispatchers
+
+    The 31 constructors have the same grouping as the generic module: one
+    wrapped sequential family, ten single-parallel, ten vector, and ten
+    multi-parallel routes.  [compile_verified] assumes only that [check_config]
+    accepted the outer configuration; route validators still run. *)
 Definition compile_verified
     (cfg: verified_config) (loop: SPolIRs.Loop.t)
   : imp ParallelLoop.t :=
   match cfg with
+  (** One wrapper for all 13 concrete sequential configurations. *)
   | VSeq seq_cfg =>
       compile_seq_verified seq_cfg loop
+  (** Ten single-coordinate parallel routes. *)
   | VParallelCurrentIdentity d =>
       SParallelPolOpt.opt_parallel_current_identity loop d
   | VParallelCurrentIdentityTiled d =>
@@ -183,6 +199,7 @@ Definition compile_verified
       SParallelPolOpt.opt_parallel_current_affine_with_iss loop d
   | VParallelCurrentDefaultISS d =>
       SParallelPolOpt.opt_parallel_current_with_iss loop d
+  (** Ten single-coordinate vector routes. *)
   | VVectorCurrentIdentity d =>
       SParallelPolOpt.opt_vector_current_identity loop d
   | VVectorCurrentIdentityTiled d =>
@@ -203,6 +220,7 @@ Definition compile_verified
       SParallelPolOpt.opt_vector_current_affine_with_iss loop d
   | VVectorCurrentDefaultISS d =>
       SParallelPolOpt.opt_vector_current_with_iss loop d
+  (** Ten multi-coordinate parallel routes. *)
   | VParallelCurrentManyIdentity dims =>
       SParallelPolOpt.opt_parallel_current_many_identity loop dims
   | VParallelCurrentManyIdentityTiled dims =>

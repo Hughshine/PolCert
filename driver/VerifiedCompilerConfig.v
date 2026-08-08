@@ -18,6 +18,24 @@ Module BandCorrect := PolOptBandTiling PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module State := PolIRs.State.
 
+(** * Generic sequential compiler endpoint
+
+    This functor is the small, sequential endpoint.  Both its source and target
+    use [LoopIR]; it contains no [ParMode] or [VecMode].  The 13 constructors of
+    [verified_config] select identity, affine, tiling, ISS, and diamond routes.
+
+    The similarly named [VerifiedParallelCompilerConfig] is the larger unified
+    endpoint: it embeds this sequential compiler into [ParallelLoop] and adds
+    single-parallel, vector, and multi-parallel annotation families.
+
+    [compile_verified] accepts a configuration that already passed
+    [check_config].  It does not bypass the validators inside the selected
+    optimization route.  [compile] is the raw-configuration wrapper, and
+    [compile_correct] is the public theorem when starting from CLI-style
+    configuration data. *)
+
+(** ** Sequential configuration families *)
+
 Inductive raw_config : Type :=
 | RawIdentity
 | RawAffine
@@ -67,11 +85,19 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
 
-(* This is intentionally enumerated for now, so every admitted CLI-facing route
-   is tied to an existing top-level route theorem. A later version can replace
-   [verified_config] with a compositional list of verified pass descriptors plus
-   a generic pass-composition theorem, once the mixed LoopIR/ParallelLoop routes
-   share a common output wrapper. *)
+(** ** Verified sequential dispatcher
+
+    This is intentionally enumerated so every accepted configuration is tied
+    to one existing route theorem.  The concrete executable mirror is
+    [SVerifiedCompilerConfig.compile_verified]; its correctness bridge is
+    [ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct].
+
+    The word "verified" qualifies [cfg], not the input program and not the
+    result.  The selected route still performs extraction, well-formedness, and
+    transformation-specific validation.  Several external route names
+    ([VDefault], [VDefaultBand], and [VSecondLevel]) deliberately converge on
+    [Opt_band]; the earlier route selection changes how the candidate was
+    produced, while this endpoint needs only the common checked theorem. *)
 Definition compile_verified (cfg: verified_config) (loop: LoopIR.t)
     : imp LoopIR.t :=
   match cfg with
@@ -98,6 +124,14 @@ Definition compile (cfg: raw_config) (loop: LoopIR.t) : imp LoopIR.t :=
   | Err msg => res_to_alarm loop (Err msg)
   end.
 
+(** ** Generic sequential correctness endpoints
+
+    [compile_verified_correct] assumes a [verified_config].
+    [compile_correct] additionally discharges [check_config].  Their semantic
+    conclusions are otherwise identical.  Cite [compile_correct] for a caller
+    that supplies [raw_config]; cite [compile_verified_correct] only when the
+    configuration-checking result is already in hand. *)
+
 Theorem compile_verified_correct :
   forall cfg loop st st',
     WHEN loop' <- compile_verified cfg loop THEN
@@ -123,6 +157,9 @@ Proof.
   - eapply BandCorrect.Opt_diamond_band_with_iss_correct; eauto.
 Qed.
 
+(** Raw-config wrapper around [compile_verified_correct].  Rejection has no
+    returned target; acceptance exposes a [verified_config] and immediately
+    reuses the theorem above. *)
 Theorem compile_correct :
   forall cfg loop st st',
     WHEN loop' <- compile cfg loop THEN
