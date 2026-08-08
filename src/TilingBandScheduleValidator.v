@@ -51,19 +51,6 @@ Module BandAffine := Base.TilingVal.
 
 Section CommonBandInfrastructure.
 
-Definition tiling_to_band_pinstr
-    (pi: Tiling.PL.PolyInstr) : BandAffine.PolyLang.PolyInstr := pi.
-
-Definition tiling_to_band_var
-    (v: Tiling.PL.ident * Tiling.PL.Ty.t)
-    : BandAffine.PolyLang.ident * BandAffine.PolyLang.Ty.t :=
-  (fst v, BandAffine.Ty.dummy).
-
-Definition tiling_to_band_pprog
-    (pp: Tiling.PL.t) : BandAffine.PolyLang.t :=
-  let '(pis, varctxt, vars) := pp in
-  (pis, varctxt, List.map tiling_to_band_var vars).
-
 Record pinstr_tiling_band := {
   ptb_start : nat;
   ptb_len : nat;
@@ -164,14 +151,6 @@ Proof.
     + eapply IH.
       exact Hrest.
 Qed.
-
-Definition schedule_row_of_affine_expr
-    (expr: affine_expr) : list Z * Z :=
-  (ae_param_coeffs expr ++ ae_var_coeffs expr, ae_const expr).
-
-Definition tile_link_has_zero_prefix
-    (prefix_len: nat) (link: tile_link) : Prop :=
-  firstn prefix_len (ae_var_coeffs (tl_expr link)) = repeat 0%Z prefix_len.
 
 Definition schedule_row_of_tile_link_base
     (prefix_len: nat) (link: tile_link) : list Z * Z :=
@@ -280,32 +259,9 @@ Definition schedule_matches_with_symmetric_trailing_zero_padding
   schedule_matches_with_trailing_zero_padding expected actual \/
   schedule_matches_with_trailing_zero_padding actual expected.
 
-Definition schedule_take_prefix_band
-    (band: pinstr_tiling_band) (sched: Schedule) : Schedule :=
-  firstn (ptb_start band + ptb_len band)%nat sched.
-
 Definition schedule_take_prefix_only
     (band: pinstr_tiling_band) (sched: Schedule) : Schedule :=
   firstn (ptb_start band) sched.
-
-Definition retiled_old_band_old_pi
-    (env_size: nat)
-    (before after: Tiling.PL.PolyInstr)
-    (w: statement_tiling_witness)
-    (band: pinstr_tiling_band) : Tiling.PL.PolyInstr :=
-  let pi := Tiling.retiled_old_pinstr env_size before after w in
-  {|
-    Tiling.PL.pi_depth := Tiling.PL.pi_depth pi;
-    Tiling.PL.pi_instr := Tiling.PL.pi_instr pi;
-    Tiling.PL.pi_poly := Tiling.PL.pi_poly pi;
-    Tiling.PL.pi_schedule := Tiling.PL.pi_schedule pi;
-    Tiling.PL.pi_point_witness := Tiling.PL.pi_point_witness pi;
-    Tiling.PL.pi_transformation := Tiling.PL.pi_transformation pi;
-    Tiling.PL.pi_access_transformation :=
-      Tiling.PL.pi_access_transformation pi;
-    Tiling.PL.pi_waccess := Tiling.PL.pi_waccess pi;
-    Tiling.PL.pi_raccess := Tiling.PL.pi_raccess pi;
-  |}.
 
 Definition retiled_old_band_new_pi
     (env_size: nat)
@@ -327,37 +283,6 @@ Definition retiled_old_band_new_pi
     Tiling.PL.pi_raccess := Tiling.PL.pi_raccess pi;
   |}.
 
-Definition after_stripmined_band_new_pi
-    (after: Tiling.PL.PolyInstr)
-    (band: pinstr_tiling_band) : Tiling.PL.PolyInstr :=
-  {|
-    Tiling.PL.pi_depth := Tiling.PL.pi_depth after;
-    Tiling.PL.pi_instr := Tiling.PL.pi_instr after;
-    Tiling.PL.pi_poly := Tiling.PL.pi_poly after;
-    Tiling.PL.pi_schedule :=
-      firstn (ptb_start band + (2 * ptb_len band))%nat
-        (Tiling.PL.pi_schedule after);
-    Tiling.PL.pi_point_witness := Tiling.PL.pi_point_witness after;
-    Tiling.PL.pi_transformation := Tiling.PL.pi_transformation after;
-    Tiling.PL.pi_access_transformation :=
-      Tiling.PL.pi_access_transformation after;
-    Tiling.PL.pi_waccess := Tiling.PL.pi_waccess after;
-    Tiling.PL.pi_raccess := Tiling.PL.pi_raccess after;
-  |}.
-
-Fixpoint retiled_old_band_old_pinstrs
-    (env_size: nat)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : list Tiling.PL.PolyInstr :=
-  match before_pis, after_pis, ws, bands with
-  | before_pi :: before_pis', after_pi :: after_pis',
-    w :: ws', band :: bands' =>
-      retiled_old_band_old_pi env_size before_pi after_pi w band ::
-      retiled_old_band_old_pinstrs env_size before_pis' after_pis' ws' bands'
-  | _, _, _, _ => []
-  end.
-
 Fixpoint retiled_old_band_new_pinstrs
     (env_size: nat)
     (before_pis after_pis: list Tiling.PL.PolyInstr)
@@ -371,27 +296,6 @@ Fixpoint retiled_old_band_new_pinstrs
   | _, _, _, _ => []
   end.
 
-Fixpoint after_stripmined_band_new_pinstrs
-    (after_pis: list Tiling.PL.PolyInstr)
-    (bands: list pinstr_tiling_band) : list Tiling.PL.PolyInstr :=
-  match after_pis, bands with
-  | after_pi :: after_pis', band :: bands' =>
-      after_stripmined_band_new_pi after_pi band ::
-      after_stripmined_band_new_pinstrs after_pis' bands'
-  | _, _ => []
-  end.
-
-Definition retiled_old_band_old_pprog
-    (before after: Tiling.PL.t)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : Tiling.PL.t :=
-  let '(before_pis, before_ctxt, before_vars) := before in
-  let '(after_pis, _, _) := after in
-  (retiled_old_band_old_pinstrs
-     (List.length before_ctxt) before_pis after_pis ws bands,
-   before_ctxt,
-   before_vars).
-
 Definition retiled_old_band_new_pprog
     (before after: Tiling.PL.t)
     (ws: list statement_tiling_witness)
@@ -400,15 +304,6 @@ Definition retiled_old_band_new_pprog
   let '(after_pis, _, _) := after in
   (retiled_old_band_new_pinstrs
      (List.length before_ctxt) before_pis after_pis ws bands,
-   before_ctxt,
-   before_vars).
-
-Definition after_stripmined_band_new_pprog
-    (before after: Tiling.PL.t)
-    (bands: list pinstr_tiling_band) : Tiling.PL.t :=
-  let '(_, before_ctxt, before_vars) := before in
-  let '(after_pis, _, _) := after in
-  (after_stripmined_band_new_pinstrs after_pis bands,
    before_ctxt,
    before_vars).
 
@@ -447,10 +342,6 @@ Definition project_pinstrs_ext_with_band
     (band: pinstr_tiling_band)
     : list Tiling.PL.PolyInstr_ext :=
   List.map (project_band_pi_ext band) pil_ext.
-
-Definition band_new_cutoff
-    (band: pinstr_tiling_band) : nat :=
-  (ptb_start band + 2 * ptb_len band)%nat.
 
 Definition tile_sizes_of_witness
     (w: statement_tiling_witness) : list Z :=
@@ -537,13 +428,6 @@ Fixpoint project_pinstrs_ext_with_pluto_phased_band
       | _, _ => None
       end
   | _, _ => None
-  end.
-
-Fixpoint max_band_new_cutoff
-    (bands: list pinstr_tiling_band) : nat :=
-  match bands with
-  | [] => 0%nat
-  | band :: bands' => Nat.max (band_new_cutoff band) (max_band_new_cutoff bands')
   end.
 
 Fixpoint max_pinstr_schedule_len
@@ -922,14 +806,6 @@ Proof.
   exact Tiling.PL.ILSema.eq_except_sched_symm.
 Qed.
 
-Lemma instr_point_sema_eq_except_sched_iff_local :
-  forall ip1 ip2 st1 st2,
-    Tiling.PL.eq_except_sched ip1 ip2 ->
-    Tiling.PL.ILSema.instr_point_sema ip1 st1 st2 <->
-    Tiling.PL.ILSema.instr_point_sema ip2 st1 st2.
-Proof.
-  exact Tiling.PL.ILSema.instr_point_sema_eq_except_sched_iff.
-Qed.
 
 Lemma permutable_eq_except_sched_local :
   forall ip1 ip1' ip2 ip2',
@@ -4375,44 +4251,7 @@ Proof.
   lia.
 Qed.
 
-Lemma schedule_matches_with_trailing_zero_padding_length_ge :
-  forall expected actual,
-    schedule_matches_with_trailing_zero_padding expected actual ->
-    (List.length expected <= List.length actual)%nat.
-Proof.
-  intros expected actual [cols [extra_rows Hactual]].
-  subst actual.
-  unfold pad_schedule_with_zero_rows.
-  rewrite app_length, repeat_length.
-  lia.
-Qed.
 
-Lemma schedule_matches_with_trailing_zero_padding_affine_product_firstn :
-  forall expected actual idx n,
-    schedule_matches_with_trailing_zero_padding expected actual ->
-    (n <= List.length expected)%nat ->
-    firstn n (affine_product actual idx) =
-    firstn n (affine_product expected idx).
-Proof.
-  intros expected actual idx n [cols [extra_rows Hactual]] Hn.
-  subst actual.
-  unfold pad_schedule_with_zero_rows.
-  rewrite <- affine_product_firstn.
-  rewrite <- affine_product_firstn.
-  rewrite firstn_app.
-  assert
-    (Hdrop :
-       firstn (n - List.length expected)%nat
-         (repeat (zero_schedule_row cols) extra_rows) = []).
-  {
-    replace (n - List.length expected)%nat with 0%nat by lia.
-    reflexivity.
-  }
-  rewrite Hdrop.
-  simpl.
-  rewrite app_nil_r.
-  reflexivity.
-Qed.
 
 Lemma affine_product_zero_schedule_rows :
   forall cols extra_rows idx,
@@ -5400,20 +5239,6 @@ Proof.
     lia.
 Qed.
 
-Definition check_pinstr_tiling_bandb
-    (before: Tiling.PL.PolyInstr)
-    (w: statement_tiling_witness) : bool :=
-  match schedule_rows_of_links w with
-  | Some rows =>
-      match find_schedule_block_start
-              (Tiling.PL.pi_schedule before)
-              rows with
-      | Some _ => true
-      | None => false
-      end
-  | None => false
-  end.
-
 Definition infer_pinstr_tiling_band
     (before: Tiling.PL.PolyInstr)
     (w: statement_tiling_witness) : option pinstr_tiling_band :=
@@ -5429,30 +5254,6 @@ Definition infer_pinstr_tiling_band
   | None => None
   end.
 
-Lemma check_pinstr_tiling_bandb_sound :
-  forall before w,
-    check_pinstr_tiling_bandb before w = true ->
-    exists band,
-      infer_pinstr_tiling_band before w = Some band /\
-      pinstr_tiling_band_matches before w band.
-Proof.
-  intros before w Hcheck.
-  unfold check_pinstr_tiling_bandb, infer_pinstr_tiling_band in *.
-  destruct (schedule_rows_of_links w) as [rows|] eqn:Hrows; try discriminate.
-  destruct (find_schedule_block_start
-              (Tiling.PL.pi_schedule before)
-              rows) as [start|] eqn:Hstart;
-    try discriminate.
-  exists {| ptb_start := start; ptb_len := List.length (stw_links w) |}.
-  split; [reflexivity|].
-  unfold pinstr_tiling_band_matches.
-  rewrite Hrows.
-  split.
-  - reflexivity.
-  - replace (List.length (stw_links w)) with (List.length rows).
-    2:{ eapply schedule_rows_of_links_length; eauto. }
-    eapply find_schedule_block_start_sound; eauto.
-Qed.
 
 Lemma infer_pinstr_tiling_band_bound :
   forall before w band,
@@ -6371,17 +6172,6 @@ Proof.
     + eapply check_common_band_startb_sound. exact Hstart.
 Qed.
 
-Fixpoint check_pinstr_list_tiling_bandb
-    (before_pis: list Tiling.PL.PolyInstr)
-    (ws: list statement_tiling_witness) : bool :=
-  match before_pis, ws with
-  | [], [] => true
-  | before_pi :: before_pis', w :: ws' =>
-      check_pinstr_tiling_bandb before_pi w &&
-      check_pinstr_list_tiling_bandb before_pis' ws'
-  | _, _ => false
-  end.
-
 Fixpoint check_pinstr_list_tiling_schedule_stripminedb
     (env_size: nat)
     (before_pis after_pis: list Tiling.PL.PolyInstr)
@@ -6409,12 +6199,6 @@ Fixpoint infer_pinstr_list_tiling_bands
       end
   | _, _ => None
   end.
-
-Definition check_pprog_tiling_bandb
-    (before: Tiling.PL.t)
-    (ws: list statement_tiling_witness) : bool :=
-  let '(before_pis, _, _) := before in
-  check_pinstr_list_tiling_bandb before_pis ws.
 
 Definition check_pprog_tiling_schedule_stripminedb
     (before after: Tiling.PL.t)
@@ -6503,23 +6287,6 @@ Definition pprog_tiling_bands_cert
     (pinstr_tiling_band_cert env_size)
     before_pis after_pis ws bands.
 
-Lemma pinstr_tiling_band_cert_after_schedule_length_ge :
-  forall env_size before after w band,
-    infer_pinstr_tiling_band before w = Some band ->
-    pinstr_tiling_band_cert env_size before after w band ->
-    (ptb_start band + 2 * ptb_len band <= List.length (Tiling.PL.pi_schedule after))%nat.
-Proof.
-  intros env_size before after w band Hinfer Hcert.
-  destruct Hcert as [Hmatch Hsched].
-  pose proof (infer_pinstr_tiling_band_bound _ _ _ Hinfer) as Hbound.
-  pose proof
-    (schedule_matches_with_trailing_zero_padding_length_ge
-       (stripmine_schedule_after_env env_size (Tiling.PL.pi_schedule before) band)
-       (Tiling.PL.pi_schedule after)
-       Hsched) as Hlen.
-  rewrite stripmine_schedule_after_env_length in Hlen.
-  lia.
-Qed.
 
 Lemma pprog_tiling_bands_cert_lengths :
   forall env_size before_pis after_pis ws bands,
@@ -6566,16 +6333,6 @@ Proof.
       eapply IH; eauto.
 Qed.
 
-Lemma inferred_tiling_band_schedule_length_lower :
-  forall env_size before after w band,
-    infer_pinstr_tiling_band before w = Some band ->
-    schedule_matches_with_trailing_zero_padding
-      (stripmine_schedule_after_env env_size (Tiling.PL.pi_schedule before) band)
-      (Tiling.PL.pi_schedule after) ->
-    True.
-Proof.
-  intros. exact I.
-Qed.
 
 End SecondLevelShapeRecognition.
 
@@ -7024,12 +6781,6 @@ Proof.
   apply lex_compare_reflexive.
 Qed.
 
-Definition instr_point_ext_tile_block_ts
-    (band: pinstr_tiling_band)
-    (tau: Tiling.PL.InstrPoint_ext) : list Z :=
-  firstn (ptb_len band)
-    (skipn (ptb_start band) (Tiling.PL.ip_time_stamp2_ext tau)).
-
 Definition pprog_pluto_permutable_band
     (envv: list Z)
     (before_pis after_pis: list Tiling.PL.PolyInstr)
@@ -7103,15 +6854,6 @@ Proof.
     as [band [Hband1 [Hband2 [Hprefix Hcomponent]]]].
   eapply Hperm; eauto.
 Qed.
-
-Definition pprog_pluto_permutable_tiling_bands
-    (envv: list Z)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : Prop :=
-  exists band,
-    common_tiling_band bands band /\
-    pprog_pluto_permutable_band envv before_pis after_pis ws band.
 
 Definition common_tiling_band_recipe_with
     (sizes: list Z)
@@ -7421,34 +7163,6 @@ Proof.
       lia.
 Qed.
 
-Lemma no_listz_component_decrease_implies_pointwise_le :
-  forall xs ys,
-    List.length xs = List.length ys ->
-    ~ (exists dim x y,
-         nth_error xs dim = Some x /\
-         nth_error ys dim = Some y /\
-         (x > y)%Z) ->
-    listz_pointwise_le xs ys.
-Proof.
-  induction xs as [|x xs IH]; intros ys Hlen Hnone.
-  - destruct ys; [constructor|discriminate].
-  - destruct ys as [|y ys]; [discriminate|].
-    constructor.
-    + assert (Hnot_gt : ~ (x > y)%Z).
-      {
-        intro Hgt.
-        apply Hnone.
-        exists O, x, y.
-        simpl. repeat split; assumption.
-      }
-      lia.
-    + eapply IH.
-      * simpl in Hlen. lia.
-      * intros [dim [x' [y' [Hx [Hy Hgt]]]]].
-        apply Hnone.
-        exists (S dim), x', y'.
-        simpl. repeat split; assumption.
-Qed.
 
 Lemma listz_component_decrease_or_pointwise_le :
   forall xs ys,
@@ -7522,32 +7236,6 @@ Proof.
     + reflexivity.
 Qed.
 
-Lemma eval_tile_links_from_common_recipe_affine_product_eq :
-  forall w point1 point2 params rows sizes,
-    List.length point1 = stw_point_dim w ->
-    List.length point2 = stw_point_dim w ->
-    schedule_rows_of_links w = Some rows ->
-    List.map tl_tile_size (stw_links w) = sizes ->
-    well_formed_statement_tiling_witness w ->
-    Forall
-      (fun link =>
-         List.length (ae_param_coeffs (tl_expr link)) = List.length params)
-      (stw_links w) ->
-    affine_product rows (params ++ point1) =
-    affine_product rows (params ++ point2) ->
-    eval_tile_links [] point1 params (stw_links w) =
-    eval_tile_links [] point2 params (stw_links w).
-Proof.
-  intros w point1 point2 params rows sizes
-         Hpoint1 Hpoint2 Hrows Hsizes Hwf Hparams Heq_aff.
-  rewrite (eval_tile_links_from_schedule_rows
-             w point1 params rows sizes
-             Hpoint1 Hrows Hsizes Hwf Hparams).
-  rewrite (eval_tile_links_from_schedule_rows
-             w point2 params rows sizes
-             Hpoint2 Hrows Hsizes Hwf Hparams).
-  now rewrite Heq_aff.
-Qed.
 
 Lemma common_recipe_equal_band_block_implies_equal_tiles :
   forall w1 w2 point1 point2 params rows1 rows2 sizes,
@@ -7678,88 +7366,9 @@ Proof.
   apply Nat.min_id.
 Qed.
 
-Lemma second_level_root_tiles_pointwise_le :
-  forall recipe params point1 point2,
-    List.length (slbr_root_rows recipe) =
-      List.length (slbr_root_sizes recipe) ->
-    Forall (fun size => (0 < size)%Z) (slbr_root_sizes recipe) ->
-    listz_pointwise_le
-      (affine_product (slbr_root_rows recipe) (params ++ point1))
-      (affine_product (slbr_root_rows recipe) (params ++ point2)) ->
-    listz_pointwise_le
-      (second_level_root_tiles recipe params point1)
-      (second_level_root_tiles recipe params point2).
-Proof.
-  intros recipe params point1 point2 Hlen Hpositive Hle.
-  unfold second_level_root_tiles.
-  eapply map_div_combine_preserves_pointwise_le; eauto.
-  unfold affine_product.
-  rewrite List.map_length.
-  exact Hlen.
-Qed.
 
-Lemma second_level_child_tiles_pointwise_le :
-  forall recipe params point1 point2,
-    List.length (slbr_root_rows recipe) =
-      List.length (slbr_root_sizes recipe) ->
-    List.length (slbr_root_rows recipe) =
-      List.length (slbr_child_sizes recipe) ->
-    Forall (fun size => (0 < size)%Z) (slbr_root_sizes recipe) ->
-    Forall (fun size => (0 < size)%Z) (slbr_child_sizes recipe) ->
-    listz_pointwise_le
-      (affine_product (slbr_root_rows recipe) (params ++ point1))
-      (affine_product (slbr_root_rows recipe) (params ++ point2)) ->
-    listz_pointwise_le
-      (second_level_child_tiles recipe params point1)
-      (second_level_child_tiles recipe params point2).
-Proof.
-  intros recipe params point1 point2 Hroot_len Hchild_len
-         Hroot_positive Hchild_positive Hle.
-  unfold second_level_child_tiles.
-  eapply map_div_combine_preserves_pointwise_le.
-  - eapply second_level_root_tiles_pointwise_le; eauto.
-  - exact Hchild_positive.
-  - rewrite second_level_root_tiles_length by exact Hroot_len.
-    lia.
-Qed.
 
-Lemma second_level_schedule_tile_block_pointwise_le :
-  forall point_dim prefix_len links recipe params point1 point2,
-    second_level_band_recipe_spec point_dim prefix_len links recipe ->
-    Forall (fun link => (0 < tl_tile_size link)%Z) links ->
-    listz_pointwise_le
-      (affine_product (slbr_root_rows recipe) (params ++ point1))
-      (affine_product (slbr_root_rows recipe) (params ++ point2)) ->
-    listz_pointwise_le
-      (second_level_schedule_tile_block recipe params point1)
-      (second_level_schedule_tile_block recipe params point2).
-Proof.
-  intros point_dim prefix_len links recipe params point1 point2
-         Hspec Hpositive Hle.
-  destruct (second_level_band_recipe_spec_lengths _ _ _ _ Hspec)
-    as [Hroot_len Hchild_len].
-  destruct
-    (second_level_band_recipe_spec_positive_sizes _ _ _ _ Hspec Hpositive)
-    as [Hroot_positive Hchild_positive].
-  unfold second_level_schedule_tile_block.
-  eapply listz_pointwise_le_app.
-  - eapply second_level_child_tiles_pointwise_le; eauto.
-  - eapply second_level_root_tiles_pointwise_le; eauto.
-Qed.
 
-Lemma second_level_schedule_tile_block_eq :
-  forall recipe params point1 point2,
-    affine_product (slbr_root_rows recipe) (params ++ point1) =
-      affine_product (slbr_root_rows recipe) (params ++ point2) ->
-    second_level_schedule_tile_block recipe params point1 =
-      second_level_schedule_tile_block recipe params point2.
-Proof.
-  intros recipe params point1 point2 Heq.
-  unfold second_level_schedule_tile_block,
-         second_level_child_tiles,
-         second_level_root_tiles.
-  now rewrite Heq.
-Qed.
 
 Lemma second_level_schedule_tile_block_eq_common_sizes :
   forall recipe1 recipe2 params point1 point2,
@@ -8137,36 +7746,7 @@ Proof.
     apply is_eq_app_repeat_zero.
 Qed.
 
-Lemma pprog_pluto_permutable_tiling_bands_common :
-  forall envv before_pis after_pis ws bands band,
-    pprog_pluto_permutable_tiling_bands envv before_pis after_pis ws bands ->
-    infer_common_tiling_band bands = Some band ->
-    pprog_pluto_permutable_band envv before_pis after_pis ws band.
-Proof.
-  intros envv before_pis after_pis ws bands band [band' [Hcommon' Hperm]] Hinfer.
-  pose proof (infer_common_tiling_band_sound _ _ Hinfer) as Hcommon.
-  assert (band = band').
-  {
-    destruct bands as [|b0 bands'].
-    - unfold infer_common_tiling_band in Hinfer. discriminate.
-    - pose proof (common_tiling_band_nth_error _ _ 0 b0 Hcommon eq_refl) as Hb.
-      pose proof (common_tiling_band_nth_error _ _ 0 b0 Hcommon' eq_refl) as Hb'.
-      congruence.
-  }
-  subst band'.
-  exact Hperm.
-Qed.
 
-Lemma pprog_pluto_permutable_tiling_bands_intro :
-  forall envv before_pis after_pis ws bands band,
-    common_tiling_band bands band ->
-    pprog_pluto_permutable_band envv before_pis after_pis ws band ->
-    pprog_pluto_permutable_tiling_bands envv before_pis after_pis ws bands.
-Proof.
-  intros envv before_pis after_pis ws bands band Hcommon Hperm.
-  exists band.
-  split; assumption.
-Qed.
 
 Lemma common_tiling_band_recipe_nth_error :
   forall ws sizes n w,
@@ -8186,259 +7766,15 @@ Proof.
     eapply IH; eauto.
 Qed.
 
-Lemma pprog_pluto_permutable_tiling_bands_strong_common :
-  forall envv before_pis after_pis ws bands band sizes,
-    pprog_pluto_permutable_tiling_bands_strong envv before_pis after_pis ws bands ->
-    infer_common_tiling_band bands = Some band ->
-    common_tiling_band_recipe_with sizes ws ->
-    pprog_pluto_permutable_band envv before_pis after_pis ws band.
-Proof.
-  intros envv before_pis after_pis ws bands band sizes
-         [band' [sizes' [Hcommon' [_ Hperm]]]] Hinfer _.
-  pose proof (infer_common_tiling_band_sound _ _ Hinfer) as Hcommon.
-  assert (band = band').
-  {
-    destruct bands as [|b0 bands'].
-    - unfold infer_common_tiling_band in Hinfer. discriminate.
-    - pose proof (common_tiling_band_nth_error _ _ 0 b0 Hcommon eq_refl) as Hb.
-      pose proof (common_tiling_band_nth_error _ _ 0 b0 Hcommon' eq_refl) as Hb'.
-      congruence.
-  }
-  subst band'.
-  exact Hperm.
-Qed.
 
-Lemma retiled_old_band_old_pi_eqdom_retiled_old :
-  forall env_size before after w band,
-    Tiling.PL.eqdom_pinstr
-      (retiled_old_band_old_pi env_size before after w band)
-      (Tiling.retiled_old_pinstr env_size before after w).
-Proof.
-  intros env_size before after w band.
-  unfold Tiling.PL.eqdom_pinstr,
-         retiled_old_band_old_pi,
-         Tiling.retiled_old_pinstr.
-  simpl.
-  repeat split; reflexivity.
-Qed.
 
-Lemma after_stripmined_band_new_pi_eqdom_after :
-  forall after band,
-    Tiling.PL.eqdom_pinstr
-      (after_stripmined_band_new_pi after band)
-      after.
-Proof.
-  intros after band.
-  unfold Tiling.PL.eqdom_pinstr, after_stripmined_band_new_pi.
-  simpl.
-  repeat split; reflexivity.
-Qed.
 
-Fixpoint rel_list_eqdom_retiled_old_band_old
-    (env_size: nat)
-    (before_pis after_pis: list Tiling.PL.PolyInstr)
-    (ws: list statement_tiling_witness)
-    (bands: list pinstr_tiling_band) : Prop :=
-  match before_pis, after_pis, ws, bands with
-  | before_pi :: before_pis', after_pi :: after_pis',
-    w :: ws', band :: bands' =>
-      Tiling.PL.eqdom_pinstr
-        (retiled_old_band_old_pi env_size before_pi after_pi w band)
-        (Tiling.retiled_old_pinstr env_size before_pi after_pi w) /\
-      rel_list_eqdom_retiled_old_band_old env_size before_pis' after_pis' ws' bands'
-  | [], [], [], [] => True
-  | _, _, _, _ => False
-  end.
 
-Fixpoint rel_list_eqdom_after_stripmined_band_new
-    (after_pis: list Tiling.PL.PolyInstr)
-    (bands: list pinstr_tiling_band) : Prop :=
-  match after_pis, bands with
-  | after_pi :: after_pis', band :: bands' =>
-      Tiling.PL.eqdom_pinstr
-        (after_stripmined_band_new_pi after_pi band)
-        after_pi /\
-      rel_list_eqdom_after_stripmined_band_new after_pis' bands'
-  | [], [] => True
-  | _, _ => False
-  end.
 
-Lemma rel_list_eqdom_retiled_old_band_old_sound :
-  forall env_size before_pis after_pis ws bands,
-    List.length before_pis = List.length after_pis ->
-    List.length before_pis = List.length ws ->
-    List.length before_pis = List.length bands ->
-    rel_list_eqdom_retiled_old_band_old env_size before_pis after_pis ws bands.
-Proof.
-  induction before_pis as [|before_pi before_pis' IH];
-    intros after_pis ws bands Hlen_after Hlen_ws Hlen_bands.
-  - destruct after_pis, ws, bands; simpl in *; try discriminate; exact I.
-  - destruct after_pis as [|after_pi after_pis']; simpl in *; try discriminate.
-    destruct ws as [|w ws']; simpl in *; try discriminate.
-    destruct bands as [|band bands']; simpl in *; try discriminate.
-    split.
-    + apply retiled_old_band_old_pi_eqdom_retiled_old.
-    + eapply IH; lia.
-Qed.
 
-Lemma rel_list_eqdom_after_stripmined_band_new_sound :
-  forall after_pis bands,
-    List.length after_pis = List.length bands ->
-    rel_list_eqdom_after_stripmined_band_new after_pis bands.
-Proof.
-  induction after_pis as [|after_pi after_pis' IH];
-    intros bands Hlen.
-  - destruct bands; simpl in *; try discriminate; exact I.
-  - destruct bands as [|band bands']; simpl in *; try discriminate.
-    split.
-    + apply after_stripmined_band_new_pi_eqdom_after.
-    + eapply IH; lia.
-Qed.
 
-Lemma retiled_old_band_old_pinstrs_preserve_length :
-  forall env_size before_pis after_pis ws bands,
-    List.length before_pis = List.length after_pis ->
-    List.length before_pis = List.length ws ->
-    List.length before_pis = List.length bands ->
-    List.length
-      (retiled_old_band_old_pinstrs env_size before_pis after_pis ws bands) =
-    List.length before_pis.
-Proof.
-  induction before_pis as [|before_pi before_pis' IH];
-    intros after_pis ws bands Hlen_after Hlen_ws Hlen_bands.
-  - destruct after_pis, ws, bands; simpl in *; try discriminate; reflexivity.
-  - destruct after_pis as [|after_pi after_pis']; simpl in *; try discriminate.
-    destruct ws as [|w ws']; simpl in *; try discriminate.
-    destruct bands as [|band bands']; simpl in *; try discriminate.
-    simpl.
-    f_equal.
-    eapply IH; lia.
-Qed.
 
-Lemma after_stripmined_band_new_pinstrs_preserve_length :
-  forall after_pis bands,
-    List.length after_pis = List.length bands ->
-    List.length (after_stripmined_band_new_pinstrs after_pis bands) =
-    List.length after_pis.
-Proof.
-  induction after_pis as [|after_pi after_pis' IH]; intros bands Hlen.
-  - destruct bands; simpl in *; try discriminate; reflexivity.
-  - destruct bands as [|band bands']; simpl in *; try discriminate.
-    simpl.
-    f_equal.
-    eapply IH; lia.
-Qed.
 
-Lemma retiled_old_band_old_pprog_eqdom_retiled_old_pprog :
-  forall before after ws bands,
-    let '(before_pis, _, _) := before in
-    let '(after_pis, _, _) := after in
-    List.length before_pis = List.length after_pis ->
-    infer_pprog_tiling_bands before ws = Some bands ->
-    Tiling.PL.eqdom_pprog
-      (retiled_old_band_old_pprog before after ws bands)
-      (let '(before_pis, before_ctxt, before_vars) := before in
-       let '(after_pis, _, _) := after in
-       (Tiling.retiled_old_pinstrs
-          (List.length before_ctxt) before_pis after_pis ws,
-        before_ctxt,
-        before_vars)).
-Proof.
-  intros before after ws bands.
-  destruct before as [[before_pis before_ctxt] before_vars].
-  destruct after as [[after_pis after_ctxt] after_vars].
-  simpl.
-  intros Hlen_before_after Hinfer.
-  unfold infer_pprog_tiling_bands in Hinfer.
-  simpl in *.
-  pose proof
-    (infer_pinstr_list_tiling_bands_lengths
-       before_pis ws bands Hinfer)
-    as [Hlen_ws Hlen_bands].
-  unfold Tiling.PL.eqdom_pprog.
-  intros pil1 pil2 varctxt1 varctxt2 vars1 vars2 Hpp1 Hpp2.
-  inversion Hpp1; inversion Hpp2; subst.
-  split.
-  - reflexivity.
-  - split.
-    + reflexivity.
-    + split.
-      * rewrite retiled_old_band_old_pinstrs_preserve_length
-          with (after_pis := after_pis) (ws := ws) (bands := bands); eauto.
-        rewrite Tiling.retiled_old_pinstrs_preserve_length
-          with (after_pis := after_pis) (ws := ws); eauto.
-      * clear Hpp1 Hpp2.
-        induction before_pis as [|before_pi before_pis' IH]
-          in after_pis, ws, bands, Hlen_before_after, Hlen_ws, Hlen_bands |- *.
-        -- destruct after_pis, ws, bands; simpl in *; try discriminate; exact I.
-        -- destruct after_pis as [|after_pi after_pis'];
-             simpl in *; try discriminate.
-           destruct ws as [|w ws']; simpl in *; try discriminate.
-           destruct bands as [|band bands']; simpl in *; try discriminate.
-           split.
-           ++ apply retiled_old_band_old_pi_eqdom_retiled_old.
-           ++ eapply IH; lia.
-Qed.
-
-Lemma after_stripmined_band_new_pprog_eqdom_after :
-  forall before after bands,
-    let '(after_pis, _, _) := after in
-    List.length after_pis = List.length bands ->
-    Tiling.PL.eqdom_pprog
-      (after_stripmined_band_new_pprog before after bands)
-      (let '(after_pis, _, _) := after in
-       let '(_, before_ctxt, before_vars) := before in
-       (after_pis, before_ctxt, before_vars)).
-Proof.
-  intros before after bands.
-  destruct before as [[before_pis before_ctxt] before_vars].
-  destruct after as [[after_pis after_ctxt] after_vars].
-  simpl.
-  intros Hlen_bands.
-  unfold Tiling.PL.eqdom_pprog.
-  intros pil1 pil2 varctxt1 varctxt2 vars1 vars2 Hpp1 Hpp2.
-  inversion Hpp1; inversion Hpp2; subst.
-  split.
-  - reflexivity.
-  - split.
-    + reflexivity.
-    + split.
-      * eapply after_stripmined_band_new_pinstrs_preserve_length; eauto.
-      * clear Hpp1 Hpp2.
-        induction pil2 as [|after_pi after_pis' IH] in bands, Hlen_bands |- *.
-        -- destruct bands; simpl in *; try discriminate; exact I.
-        -- destruct bands as [|band bands']; simpl in *; try discriminate.
-           split.
-           ++ apply after_stripmined_band_new_pi_eqdom_after.
-           ++ eapply IH; lia.
-Qed.
-
-Lemma check_pinstr_list_tiling_schedule_stripminedb_sound :
-  forall env_size before_pis after_pis ws,
-    check_pinstr_list_tiling_schedule_stripminedb
-      env_size before_pis after_pis ws = true ->
-    exists bands,
-      pprog_tiling_bands_cert env_size before_pis after_pis ws bands.
-Proof.
-  induction before_pis as [|before_pi before_pis' IH];
-    intros after_pis ws Hcheck;
-    destruct after_pis as [|after_pi after_pis'];
-    destruct ws as [|w ws'];
-    simpl in *; try discriminate.
-  - exists [].
-    reflexivity.
-  - apply andb_true_iff in Hcheck.
-    destruct Hcheck as [Hhd Htl].
-    destruct (check_pinstr_tiling_schedule_stripminedb_sound
-                env_size before_pi after_pi w Hhd)
-      as [band [Hinfer_hd [Hband_match Hband_sched]]].
-    destruct (IH _ _ Htl) as [bands' Hcert_tl].
-    exists (band :: bands').
-    simpl.
-    split.
-    + exact (conj Hband_match Hband_sched).
-    + exact Hcert_tl.
-Qed.
 
 Lemma check_pinstr_list_tiling_schedule_stripminedb_sound_infer :
   forall env_size before_pis after_pis ws,
@@ -9309,18 +8645,6 @@ Definition check_pinstr_list_permutable_tiling_band_via_validate_tiling
   let valid_access := BandAffine.check_valid_access pil_ext in
   BIND res <- BandAffine.validate_instr_list (rev pil_ext) env_size -;
   pure (res && valid_access).
-
-Fixpoint check_pinstr_list_cross_validate_tiling
-    (pil_ext: list Tiling.PL.PolyInstr_ext)
-    (env_size: nat) : imp bool :=
-  match pil_ext with
-  | [] => pure true
-  | pi_ext :: pil_ext' =>
-      BIND res <- BandAffine.validate_instr_and_list pi_ext pil_ext' env_size -;
-      if res then
-        check_pinstr_list_cross_validate_tiling pil_ext' env_size
-      else pure false
-  end.
 
 Definition check_pinstr_list_pluto_permutable_band_via_validate_tiling
     (env_size: nat)
@@ -15428,40 +14752,8 @@ Definition check_schedule_lists_zero_erasure_same_masksb
   | _, _ => false
   end.
 
-Example schedule_lists_zero_erasure_accepts_uniform_strict_zero_layouts :
-  check_schedule_lists_zero_erasure_same_masksb
-    [[([1%Z; 0%Z], 0%Z);
-      ([0%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z)]]
-    [[([0%Z; 0%Z], 0%Z);
-      ([1%Z; 0%Z], 0%Z);
-      ([0%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z);
-      ([0%Z; 0%Z], 0%Z)]] = true.
-Proof. reflexivity. Qed.
 
-Example schedule_lists_zero_erasure_rejects_nonuniform_expected_masks :
-  check_schedule_lists_zero_erasure_same_masksb
-    [[([1%Z; 0%Z], 0%Z);
-      ([0%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z)];
-     [([1%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z);
-      ([0%Z; 0%Z], 0%Z)]]
-    [[([1%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z)];
-     [([1%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z)]] = false.
-Proof. reflexivity. Qed.
 
-Example schedule_lists_zero_erasure_rejects_nonzero_scalar_deletion :
-  check_schedule_lists_zero_erasure_same_masksb
-    [[([1%Z; 0%Z], 0%Z);
-      ([0%Z; 0%Z], 7%Z);
-      ([0%Z; 1%Z], 0%Z)]]
-    [[([1%Z; 0%Z], 0%Z);
-      ([0%Z; 1%Z], 0%Z)]] = false.
-Proof. reflexivity. Qed.
 
 Record ordinary_semantic_band_shape := {
   osbs_rows : list Schedule;
@@ -16550,55 +15842,6 @@ Proof.
       exact Hsecond.
 Qed.
 
-Lemma checked_tiling_sourceb_semantic_band_direct_componentwise_sound :
-  forall before_pis before_ctxt before_vars
-         after_pis after_ctxt after_vars ws envv,
-    List.length before_ctxt = List.length envv ->
-    mayReturn
-      (checked_tiling_sourceb_semantic_band_direct
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, after_ctxt, after_vars) ws)
-      true ->
-    exists lifted_rows,
-      semantic_band_direct_shape
-        (before_pis, before_ctxt, before_vars)
-        (after_pis, after_ctxt, after_vars) ws lifted_rows /\
-      (Forall
-         (Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
-         (Tiling.compose_tiling_pinstrs_ext_from_after
-            (List.length before_ctxt) before_pis after_pis ws) ->
-       Forall2
-         (fun pi schedule =>
-            exact_listzzs_cols
-              (List.length before_ctxt + Tiling.PL.pi_depth_ext pi)%nat
-              schedule)
-         (Tiling.compose_tiling_pinstrs_ext_from_after
-            (List.length before_ctxt) before_pis after_pis ws)
-         lifted_rows ->
-       pinstr_list_semantic_componentwise_permutable
-         envv
-         (Tiling.compose_tiling_pinstrs_ext_from_after
-            (List.length before_ctxt) before_pis after_pis ws)
-         lifted_rows).
-Proof.
-  intros before_pis before_ctxt before_vars
-         after_pis after_ctxt after_vars ws envv Henv Hcheck.
-  destruct
-    (checked_tiling_sourceb_semantic_band_direct_true_inv
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, after_ctxt, after_vars) ws Hcheck)
-    as [lifted_rows [Hshape Hcomponents]].
-  exists lifted_rows.
-  split; [exact Hshape|].
-  intros Hwf Hcols.
-  eapply
-    (check_semantic_band_components_direct_sound
-       before_ctxt envv
-       (Tiling.compose_tiling_pinstrs_ext_from_after
-          (List.length before_ctxt) before_pis after_pis ws)
-       lifted_rows);
-    eauto.
-Qed.
 
 Lemma semantic_stripmined_reversal_implies_decreasing_component :
   forall old1 old2 new1 new2 semantic1 semantic2 tiles1 tiles2,
@@ -17495,30 +16738,6 @@ Proof.
       eapply IH; eauto.
 Qed.
 
-Lemma compact_semantic_schedules_length :
-  forall env_size before_pis raw_schedules mask semantic_rows,
-    compact_semantic_schedules
-      env_size before_pis raw_schedules mask = Some semantic_rows ->
-    List.length semantic_rows = List.length before_pis /\
-    List.length raw_schedules = List.length before_pis.
-Proof.
-  intros env_size before_pis.
-  induction before_pis as [|before_pi before_pis IH];
-    intros raw_schedules mask semantic_rows Hcompact;
-    destruct raw_schedules as [|raw raw_schedules];
-    simpl in Hcompact; try discriminate.
-  - inversion Hcompact.
-    split; reflexivity.
-  - destruct
-      (compact_semantic_schedules
-         env_size before_pis raw_schedules mask)
-      as [rest|] eqn:Hrest; try discriminate.
-    inversion Hcompact; subst semantic_rows.
-    destruct (IH raw_schedules mask rest Hrest)
-      as [Hsemantic Hraw].
-    simpl.
-    split; lia.
-Qed.
 
 Lemma lift_semantic_schedules_for_tiling_nth_error :
   forall env_size ws semantic_rows lifted_rows n w rows lifted,
@@ -18813,16 +18032,6 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma semantic_second_level_global_tile_block_eq :
-  forall layout root_values1 root_values2 root_sizes child_sizes,
-    root_values1 = root_values2 ->
-    semantic_second_level_global_tile_block
-      layout root_values1 root_sizes child_sizes =
-    semantic_second_level_global_tile_block
-      layout root_values2 root_sizes child_sizes.
-Proof.
-  intros. subst root_values2. reflexivity.
-Qed.
 
 Lemma semantic_second_level_global_tile_block_pointwise_le :
   forall layout root_values1 root_values2 root_sizes child_sizes,
@@ -20827,62 +20036,6 @@ Proof.
   - eapply ordinary_semantic_band_shape_reversal_bridge; eauto.
 Qed.
 
-Lemma checked_tiling_sourceb_semantic_band_direct_ordinary_correct_same_ctxt :
-  forall before_pis before_ctxt before_vars after_pis ws shape st1 st2,
-    infer_pprog_ordinary_semantic_band_shape
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars) ws = Some shape ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    mayReturn
-      (checked_tiling_sourceb_semantic_band_direct
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws)
-      true ->
-    Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 ->
-    exists st2',
-      Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws shape st1 st2
-         Hinfer Hwf_before Hwf_after Hcheck Hsem.
-  pose proof
-    (infer_pprog_ordinary_semantic_band_shape_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws shape Hinfer)
-    as Hshape.
-  unfold checked_tiling_sourceb_semantic_band_direct in Hcheck.
-  cbn beta iota zeta in Hcheck.
-  destruct
-    (TilingCheck.check_pprog_tiling_sourceb
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws)
-    eqn:Hsource.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  rewrite Hinfer in Hcheck.
-  destruct
-    (lift_semantic_schedules_for_tiling
-       (List.length before_ctxt) ws (osbs_rows shape))
-    as [lifted_rows|] eqn:Hlift.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  eapply
-    (tiling_sourceb_validate_correct_with_reordering
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars)
-       ws [] st1 st2); [exact Hsource| |exact Hsem].
-  simpl.
-  intros envv Hlen_env.
-  eapply
-    (ordinary_semantic_band_direct_reordering_safe
-       before_pis before_ctxt before_vars after_pis ws
-       shape lifted_rows envv); eauto.
-Qed.
 
 Lemma second_level_semantic_band_direct_reordering_safe :
   forall before_pis before_ctxt before_vars after_pis ws
@@ -20996,65 +20149,6 @@ Proof.
   - eapply second_level_semantic_band_shape_reversal_bridge; eauto.
 Qed.
 
-Lemma checked_tiling_sourceb_semantic_band_direct_second_correct_same_ctxt :
-  forall before_pis before_ctxt before_vars after_pis ws shape st1 st2,
-    infer_pprog_ordinary_semantic_band_shape
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars) ws = None ->
-    infer_pprog_second_level_semantic_band_shape
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars) ws = Some shape ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis ->
-    Forall
-      (Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis ->
-    mayReturn
-      (checked_tiling_sourceb_semantic_band_direct
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws)
-      true ->
-    Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 ->
-    exists st2',
-      Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2' /\
-      TilingPolIRs.State.eq st2 st2'.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws shape st1 st2
-         Hordinary Hsecond Hwf_before Hwf_after Hcheck Hsem.
-  pose proof
-    (infer_pprog_second_level_semantic_band_shape_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws shape Hsecond)
-    as Hshape.
-  unfold checked_tiling_sourceb_semantic_band_direct in Hcheck.
-  cbn beta iota zeta in Hcheck.
-  destruct
-    (TilingCheck.check_pprog_tiling_sourceb
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws)
-    eqn:Hsource.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  rewrite Hordinary, Hsecond in Hcheck.
-  destruct
-    (lift_semantic_schedules_for_tiling
-       (List.length before_ctxt) ws (slsbs_rows shape))
-    as [lifted_rows|] eqn:Hlift.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  eapply
-    (tiling_sourceb_validate_correct_with_reordering
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars)
-       ws [] st1 st2); [exact Hsource| |exact Hsem].
-  simpl.
-  intros envv Hlen_env.
-  eapply
-    (second_level_semantic_band_direct_reordering_safe
-       before_pis before_ctxt before_vars after_pis ws
-       shape lifted_rows envv); eauto.
-Qed.
 
 Lemma checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt :
   forall before_pis before_ctxt before_vars after_pis ws st1 st2,
@@ -21766,15 +20860,6 @@ Proof.
   - eapply select_scalar_rows_in. exact Hin.
   - exact Heq.
 Qed.
-
-Definition scalar_aware_component_guard_rows
-    (layout: scalar_aware_band_layout)
-    (dim: nat)
-    (sched: Schedule) : Schedule :=
-  firstn (sabl_start layout) sched ++
-  select_scalar_rows
-    (firstn dim (sabl_loop_mask layout))
-    (firstn dim (skipn (sabl_start layout) sched)).
 
 Definition make_schedule_rows_nondecreasing_poly
     (rows1 rows2: Schedule) : polyhedron :=
@@ -25219,22 +24304,6 @@ Proof.
     + exact (IH ws mask rest Hrest Hwf_tail Hdepths_tail).
 Qed.
 
-Lemma is_eq_same_length_eq :
-  forall xs ys,
-    List.length xs = List.length ys ->
-    is_eq xs ys = true ->
-    xs = ys.
-Proof.
-  induction xs as [|x xs IH]; intros ys Hlen Heq;
-    destruct ys as [|y ys]; simpl in *; try discriminate.
-  - reflexivity.
-  - apply andb_true_iff in Heq.
-    destruct Heq as [Hxy Htail].
-    apply Z.eqb_eq in Hxy.
-    subst y.
-    f_equal.
-    eapply IH; eauto.
-Qed.
 
 Lemma is_eq_zero_extend_right :
   forall xs ys,
@@ -28755,19 +27824,6 @@ Example scalar_aware_infer_recognizes_interior_scalar :
        sabl_loop_mask := [true; false; true] |}.
 Proof. reflexivity. Qed.
 
-Example scalar_aware_render_preserves_scalar_position :
-  render_scalar_aware_tile_prefix
-    [true; false; true]
-    [([0%Z; 0%Z; 1%Z; 0%Z], 0%Z);
-     ([0%Z; 0%Z; 0%Z; 0%Z], 7%Z);
-     ([0%Z; 0%Z; 0%Z; 1%Z], 0%Z)]
-    [([1%Z; 0%Z; 0%Z; 0%Z], 0%Z);
-     ([0%Z; 1%Z; 0%Z; 0%Z], 0%Z)] =
-  Some
-    [([1%Z; 0%Z; 0%Z; 0%Z], 0%Z);
-     ([0%Z; 0%Z; 0%Z; 0%Z], 7%Z);
-     ([0%Z; 1%Z; 0%Z; 0%Z], 0%Z)].
-Proof. reflexivity. Qed.
 
 End ExecutableExamples.
 
