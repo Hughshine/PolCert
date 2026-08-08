@@ -22,10 +22,15 @@ ci_run_timed clean make clean
 ci_run_timed depend opam exec --switch=polcert -- make depend
 ci_run_timed proof opam exec --switch=polcert -- make -j"$proof_jobs" proof
 ci_run_timed check-admitted opam exec --switch=polcert -- make -s check-admitted
-ci_run_timed extraction opam exec --switch=polcert -- make extraction
+ci_run_timed extraction \
+  opam exec --switch=polcert -- make -j"$proof_jobs" extraction
 ci_run_timed polcert-ini opam exec --switch=polcert -- make polcert.ini
-ci_run_timed polcert opam exec --switch=polcert -- make polcert
+ci_run_timed extraction-depend \
+  opam exec --switch=polcert -- make .depend.extr
+ci_run_timed polcert \
+  opam exec --switch=polcert -- make -f Makefile.extr -j"$proof_jobs" polcert
 # Build polopt last.  The polcert link refreshes shared extracted OCaml objects;
 # leaving polopt as the final target keeps every isolated test shard from
 # rebuilding the same executable in its private container overlay.
-ci_run_timed polopt opam exec --switch=polcert -- make polopt
+ci_run_timed polopt \
+  opam exec --switch=polcert -- make -f Makefile.extr -j"$proof_jobs" polopt
