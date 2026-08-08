@@ -213,25 +213,19 @@ Proof.
   induction vals as [|v vals IH]; intros body env mem1 mem2; simpl.
   - split; intros Hsem; inversion_clear Hsem; constructor.
   - split; intros Hsem.
-    + inversion_clear Hsem.
-      match goal with
-      | Hhead: Loop.loop_semantics
-          (Subst.subst_stmt_at 0 (Loop.Constant v) body) env _ _,
-        Htail: Loop.loop_semantics (Loop.Seq (seq_values vals body)) env _ _ |- _ =>
-          apply Subst.subst_stmt_at_semantics in Hhead;
-          simpl in Hhead;
-          apply IH in Htail;
-          econstructor; eauto
-      end.
-    + inversion_clear Hsem.
-      match goal with
-      | Hhead: Loop.loop_semantics body (v :: env) _ _,
-        Htail: Instr.IterSem.iter_semantics
-          (fun x : Z => Loop.loop_semantics body (x :: env)) vals _ _ |- _ =>
-          eapply Loop.LSeq;
-          [ apply Subst.subst_stmt_at_semantics; simpl; exact Hhead
-          | apply IH; exact Htail ]
-      end.
+    + inversion Hsem as
+        [| |env0 st0 sts0 mem10 mem20 mem30 Hhead Htail| | |];
+        subst; clear Hsem.
+      apply Subst.subst_stmt_at_semantics in Hhead.
+      simpl in Hhead.
+      apply IH in Htail.
+      econstructor; eauto.
+    + inversion Hsem as
+        [|v0 vals0 mem10 mem20 mem30 Hhead Htail];
+        subst; clear Hsem.
+      eapply Loop.LSeq.
+      * apply Subst.subst_stmt_at_semantics. simpl. exact Hhead.
+      * apply IH. exact Htail.
 Qed.
 
 Lemma seq_single_loop_semantics :
