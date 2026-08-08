@@ -59,42 +59,6 @@ Definition before_ipl_from_after
     (ipl_after: list PolyLang.InstrPoint) : list PolyLang.InstrPoint :=
   map (before_of_after_point stmt_ws) ipl_after.
 
-Fixpoint find_after_stmt_index
-    (parent: nat)
-    (point: DomIndex)
-    (after_pis: list PolyLang.PolyInstr)
-    (stmt_ws: list iss_stmt_witness)
-    : option nat :=
-  match after_pis, stmt_ws with
-  | after_pi :: after_pis', w :: stmt_ws' =>
-      if Nat.eqb (isw_parent_stmt w) parent
-      then
-        if in_poly point after_pi.(PolyLang.pi_poly)
-        then Some 0%nat
-        else option_map S (find_after_stmt_index parent point after_pis' stmt_ws')
-      else option_map S (find_after_stmt_index parent point after_pis' stmt_ws')
-  | _, _ => None
-  end.
-
-Definition after_of_before_point
-    (after_pis: list PolyLang.PolyInstr)
-    (stmt_ws: list iss_stmt_witness)
-    (ip_before: PolyLang.InstrPoint) : PolyLang.InstrPoint :=
-  match find_after_stmt_index
-          ip_before.(PolyLang.ip_nth)
-          ip_before.(PolyLang.ip_index)
-          after_pis
-          stmt_ws with
-  | Some n => set_ip_nth n ip_before
-  | None => ip_before
-  end.
-
-Definition after_ipl_from_before
-    (after_pis: list PolyLang.PolyInstr)
-    (stmt_ws: list iss_stmt_witness)
-    (ipl_before: list PolyLang.InstrPoint) : list PolyLang.InstrPoint :=
-  map (after_of_before_point after_pis stmt_ws) ipl_before.
-
 Lemma belongs_to_set_ip_nth_iff :
   forall n ip pi,
     PolyLang.belongs_to (set_ip_nth n ip) pi <->
@@ -133,21 +97,6 @@ Proof.
   apply instr_point_sema_set_ip_nth.
 Qed.
 
-Lemma point_semantics_after_of_before_preserved :
-  forall after_pis stmt_ws ip st1 st2,
-    PolyLang.instr_point_sema (after_of_before_point after_pis stmt_ws ip) st1 st2 <->
-    PolyLang.instr_point_sema ip st1 st2.
-Proof.
-  intros after_pis stmt_ws ip st1 st2.
-  unfold after_of_before_point.
-  destruct (find_after_stmt_index
-              (PolyLang.ip_nth ip)
-              (PolyLang.ip_index ip)
-              after_pis stmt_ws) as [n|].
-  - apply instr_point_sema_set_ip_nth.
-  - tauto.
-Qed.
-
 Lemma before_of_after_point_time_stamp_preserved :
   forall stmt_ws ip,
     PolyLang.ip_time_stamp (before_of_after_point stmt_ws ip) =
@@ -156,20 +105,6 @@ Proof.
   intros stmt_ws ip.
   unfold before_of_after_point, set_ip_nth.
   reflexivity.
-Qed.
-
-Lemma after_of_before_point_time_stamp_preserved :
-  forall after_pis stmt_ws ip,
-    PolyLang.ip_time_stamp (after_of_before_point after_pis stmt_ws ip) =
-    PolyLang.ip_time_stamp ip.
-Proof.
-  intros after_pis stmt_ws ip.
-  unfold after_of_before_point.
-  destruct (find_after_stmt_index
-              (PolyLang.ip_nth ip)
-              (PolyLang.ip_index ip)
-              after_pis stmt_ws) as [n|];
-    reflexivity.
 Qed.
 
 Lemma payload_eq_except_domain_implies_depth :
@@ -343,49 +278,6 @@ Proof.
       reflexivity.
 Qed.
 
-Lemma find_after_stmt_index_sound :
-  forall parent point after_pis stmt_ws n,
-    find_after_stmt_index parent point after_pis stmt_ws = Some n ->
-    exists after_pi w,
-      nth_error after_pis n = Some after_pi /\
-      nth_error stmt_ws n = Some w /\
-      isw_parent_stmt w = parent /\
-      Refine.point_in_pinstr_domain point after_pi.
-Proof.
-  intros parent point after_pis.
-  induction after_pis as [|after_pi after_pis IH];
-    intros stmt_ws n Hfind.
-  - destruct stmt_ws; simpl in Hfind; discriminate.
-  - destruct stmt_ws as [|w stmt_ws']; simpl in Hfind; try discriminate.
-    destruct (Nat.eqb (isw_parent_stmt w) parent) eqn:Hparent.
-    + destruct (in_poly point after_pi.(PolyLang.pi_poly)) eqn:Hdom.
-      * inversion Hfind; subst.
-        exists after_pi, w.
-        split.
-        -- reflexivity.
-        -- split.
-           ++ reflexivity.
-           ++ split.
-              ** apply Nat.eqb_eq in Hparent.
-                 exact Hparent.
-              ** unfold Refine.point_in_pinstr_domain.
-                 exact Hdom.
-      * destruct (find_after_stmt_index parent point after_pis stmt_ws')
-          as [n'|] eqn:Htail; try discriminate.
-        inversion Hfind; subst.
-        destruct (IH stmt_ws' n' Htail)
-          as [after_pi' [w' [Hafter [Hw' [Hparent' Hdom']]]]].
-        exists after_pi', w'.
-        repeat split; auto.
-    + destruct (find_after_stmt_index parent point after_pis stmt_ws')
-        as [n'|] eqn:Htail; try discriminate.
-      inversion Hfind; subst.
-      destruct (IH stmt_ws' n' Htail)
-        as [after_pi' [w' [Hafter [Hw' [Hparent' Hdom']]]]].
-      exists after_pi', w'.
-      repeat split; auto.
-Qed.
-
 Lemma child_in_children_for_parent_inv :
   forall parent after_pis stmt_ws piece,
     In piece (Refine.children_for_parent parent after_pis stmt_ws) ->
@@ -408,27 +300,6 @@ Proof.
     as [n [Hafter Hw]].
   exists n, w.
   repeat split; auto.
-Qed.
-
-Lemma NoDupA_np_implies_NoDup :
-  forall ipl,
-    NoDupA PolyLang.np_eq ipl ->
-    NoDup ipl.
-Proof.
-  induction ipl as [|ip ipl IH]; intro Hnd.
-  - constructor.
-  - inversion Hnd; subst.
-    constructor.
-    + intro Hin.
-      apply H1.
-      eapply InA_alt.
-      exists ip.
-      split.
-      * pose proof PolyLang.np_eq_equivalence as Heqv.
-        destruct Heqv as [Hrefl _].
-        apply Hrefl.
-      * exact Hin.
-    + eapply IH; eauto.
 Qed.
 
 Lemma before_ipl_from_after_forward :
