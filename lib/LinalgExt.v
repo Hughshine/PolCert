@@ -8,6 +8,7 @@ Require Import BinPos.
 
 Require Import Misc.
 Require Import Linalg.
+Require Import Base.
 Require Import LibTactics.
 Import List.ListNotations.
 
@@ -445,3 +446,68 @@ Proof.
     rewrite lex_compare_antisym.
     rewrite Heqres. simpls; trivial.
 Qed. 
+
+Definition lex_compare_leb (xs ys : list Z) : bool :=
+  comparison_eqb (lex_compare xs ys) Lt ||
+  comparison_eqb (lex_compare xs ys) Eq.
+
+Definition lex_compare_geb (xs ys : list Z) : bool :=
+  comparison_eqb (lex_compare xs ys) Gt ||
+  comparison_eqb (lex_compare xs ys) Eq.
+
+Lemma lex_compare_leb_trans :
+  forall xs ys zs,
+    lex_compare_leb xs ys = true ->
+    lex_compare_leb ys zs = true ->
+    lex_compare_leb xs zs = true.
+Proof.
+  intros xs ys zs Hxy Hyz.
+  unfold lex_compare_leb in *.
+  rewrite orb_true_iff in Hxy, Hyz |- *.
+  destruct Hxy as [Hxy|Hxy]; destruct Hyz as [Hyz|Hyz].
+  - left.
+    apply comparison_eqb_iff_eq in Hxy.
+    apply comparison_eqb_iff_eq in Hyz.
+    apply comparison_eqb_iff_eq.
+    eapply lex_compare_trans; eauto.
+  - left.
+    apply comparison_eqb_iff_eq in Hxy.
+    apply comparison_eqb_iff_eq in Hyz.
+    apply comparison_eqb_iff_eq.
+    rewrite <- is_eq_iff_cmp_eq in Hyz.
+    pose proof (lex_compare_right_eq xs ys zs Hyz) as Heq.
+    rewrite <- Heq; exact Hxy.
+  - left.
+    apply comparison_eqb_iff_eq in Hxy.
+    apply comparison_eqb_iff_eq in Hyz.
+    apply comparison_eqb_iff_eq.
+    rewrite <- is_eq_iff_cmp_eq in Hxy.
+    pose proof (lex_compare_left_eq xs ys zs Hxy) as Heq.
+    rewrite Heq; exact Hyz.
+  - right.
+    apply comparison_eqb_iff_eq in Hxy.
+    apply comparison_eqb_iff_eq in Hyz.
+    apply comparison_eqb_iff_eq.
+    eapply lex_compare_trans; eauto.
+Qed.
+
+Lemma lex_compare_geb_flip :
+  forall xs ys,
+    lex_compare_geb xs ys = lex_compare_leb ys xs.
+Proof.
+  intros xs ys.
+  unfold lex_compare_geb, lex_compare_leb.
+  rewrite lex_compare_antisym.
+  destruct (lex_compare ys xs); reflexivity.
+Qed.
+
+Lemma lex_compare_geb_trans :
+  forall xs ys zs,
+    lex_compare_geb xs ys = true ->
+    lex_compare_geb ys zs = true ->
+    lex_compare_geb xs zs = true.
+Proof.
+  intros xs ys zs Hxy Hyz.
+  rewrite lex_compare_geb_flip in Hxy, Hyz |- *.
+  eapply lex_compare_leb_trans; eauto.
+Qed.

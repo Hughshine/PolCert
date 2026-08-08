@@ -1316,6 +1316,26 @@ Proof.
   lia.
 Qed.
 
+Local Lemma exact_listzzs_cols_resize_at_end :
+  forall cols added affs,
+    exact_listzzs_cols cols affs ->
+    exact_listzzs_cols (cols + added)%nat
+      (List.map
+        (fun '(coeffs, rhs) =>
+          (resize (length coeffs + added) coeffs, rhs))
+        affs).
+Proof.
+  intros cols added affs Hcols coeffs rhs pair Hin Heq.
+  apply in_map_iff in Hin.
+  destruct Hin as [[source_coeffs source_rhs] [Hmap Hin]].
+  rewrite Heq in Hmap; simpl in Hmap.
+  inversion Hmap; subst coeffs rhs.
+  rewrite resize_length.
+  specialize (Hcols
+    source_coeffs source_rhs (source_coeffs, source_rhs) Hin eq_refl).
+  lia.
+Qed.
+
 Lemma exact_listzzs_cols_current_transformation_for_witness :
   forall (env: list ident) (pw: point_space_witness) tf,
     exact_listzzs_cols
@@ -1363,17 +1383,8 @@ Proof.
          (length env + witness_current_point_dim inner + added)%nat).
     { unfold witness_current_point_dim, witness_base_point_dim, witness_added_dims; simpl; lia. }
     rewrite Hcurdim.
-    intros listz z listzz Hin Heq.
-    rewrite in_map_iff in Hin.
-    destruct Hin as [[coeffs rhs] [Hmap Hin0]].
-    rewrite Heq in Hmap.
-    simpl in Hmap.
-    inversion Hmap; subst listz z.
-    specialize (Hinner coeffs rhs (coeffs, rhs) Hin0 eq_refl).
-    simpl.
-    rewrite resize_length.
-    rewrite Hinner.
-    lia.
+    apply exact_listzzs_cols_resize_at_end.
+    exact Hinner.
 Qed.
 
 Lemma exact_listzzs_cols_current_transformation_at :
@@ -1980,6 +1991,46 @@ Proof.
     exact Htf.
 Qed.
 
+Local Lemma flatten_instr_nth_current_view_member_iff :
+  forall envv env_dim nth pi ip,
+    length envv = env_dim ->
+    witness_current_point_dim (pi_point_witness pi) = pi_depth pi ->
+    (firstn (length envv) (ip_index ip) = envv /\
+     belongs_to ip (current_view_pi env_dim pi) /\
+     ip_nth ip = nth /\
+     length (ip_index ip) =
+       length envv + pi_depth (current_view_pi env_dim pi))
+    <->
+    (firstn (length envv) (ip_index ip) = envv /\
+     belongs_to ip pi /\
+     ip_nth ip = nth /\
+     length (ip_index ip) = length envv + pi_depth pi).
+Proof.
+  intros envv env_dim nth pi ip Henvdim Hcurrent.
+  assert (Hindex_length :
+    length (ip_index ip) = length envv + pi_depth pi <->
+    length (ip_index ip) =
+      length envv + pi_depth (current_view_pi env_dim pi)).
+  { simpl; tauto. }
+  assert (Hbelongs :
+    length (ip_index ip) = length envv + pi_depth pi ->
+    (belongs_to ip (current_view_pi env_dim pi) <-> belongs_to ip pi)).
+  {
+    intro Hlength.
+    apply belongs_to_current_view_pi_iff; [exact Hcurrent|].
+    rewrite Henvdim in Hlength; exact Hlength.
+  }
+  split; intros (Hprefix & Hbel & Hnth & Hlength).
+  - refine (conj Hprefix (conj _ (conj Hnth _))).
+    + apply (proj1 (Hbelongs (proj2 Hindex_length Hlength))).
+      exact Hbel.
+    + apply (proj1 Hindex_length); exact Hlength.
+  - refine (conj Hprefix (conj _ (conj Hnth _))).
+    + apply (proj2 (Hbelongs Hlength)).
+      exact Hbel.
+    + apply (proj2 Hindex_length); exact Hlength.
+Qed.
+
 Lemma flatten_instr_nth_current_view_iff :
   forall (envv: list Z) (env_dim nth: nat) (pi: PolyInstr) (ipl: list InstrPoint),
     length envv = env_dim ->
@@ -1989,51 +2040,12 @@ Lemma flatten_instr_nth_current_view_iff :
 Proof.
   intros envv env_dim nth pi ipl Henvdim Hcur.
   unfold flatten_instr_nth.
-  split; intro Hflat; destruct Hflat as [H1 [H2 [H3 H4]]].
-  - split; [exact H1|].
-    split; [|split; [exact H3|exact H4]].
-    intros ip; split; intro Hin.
-    + destruct (H2 ip) as [Hforw _].
-      destruct (Hforw Hin) as [Henv [Hbel [Hnth Hlen]]].
-      split; [exact Henv|].
-      split.
-      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
-        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
-        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
-        apply (proj1 Hbeliff). exact Hbel.
-      * split; assumption.
-    + destruct (H2 ip) as [_ Hback].
-      destruct Hin as [Henv [Hbel [Hnth Hlen]]].
-      apply Hback.
-      split; [exact Henv|].
-      split.
-      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
-        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
-        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
-        apply (proj2 Hbeliff). exact Hbel.
-      * split; assumption.
-  - split; [exact H1|].
-    split; [|split; [exact H3|exact H4]].
-    intros ip; split; intro Hin.
-    + destruct (H2 ip) as [Hforw _].
-      destruct (Hforw Hin) as [Henv [Hbel [Hnth Hlen]]].
-      split; [exact Henv|].
-      split.
-      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
-        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
-        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
-        apply (proj2 Hbeliff). exact Hbel.
-      * split; assumption.
-    + destruct (H2 ip) as [_ Hback].
-      destruct Hin as [Henv [Hbel [Hnth Hlen]]].
-      apply Hback.
-      split; [exact Henv|].
-      split.
-      * assert (Hlen' : length (ip_index ip) = (env_dim + pi_depth pi)%nat).
-        { rewrite Henvdim in Hlen. simpl in Hlen. exact Hlen. }
-        pose proof (belongs_to_current_view_pi_iff env_dim pi ip Hcur Hlen') as Hbeliff.
-        apply (proj1 Hbeliff). exact Hbel.
-      * split; assumption.
+  split; intros (Hprefix & Hmember & Hnodup & Hsorted);
+    refine (conj Hprefix (conj _ (conj Hnodup Hsorted)));
+    intro ip; rewrite Hmember.
+  - apply flatten_instr_nth_current_view_member_iff; assumption.
+  - symmetry.
+    apply flatten_instr_nth_current_view_member_iff; assumption.
 Qed.
 
 Lemma NoDup_app:
@@ -2414,55 +2426,18 @@ Lemma flatten_instrs_nil_sub_nil:
     flatten_instrs envv (pis++[pi]) [] <->
     flatten_instrs envv pis [] /\ flatten_instr_nth envv (length pis) pi [].
 Proof.
-  intros. 
-  split; intro.
-  -- 
-    destruct H as (H1 & H2 & H3 & H4).
-    splits; eauto.
-    splits; eauto.
-    -
-    intros. split; intros; trivial.
-    inv H; tryfalse.
-    destruct H as (pi' & NTH & HPREF & BEL & LEN).
-    eapply H2.
-    exists pi'. splits; trivial.
-    rewrite nth_error_app1; eauto.
-    eapply nth_error_Some'; eauto.
-    - 
-    splits; intros; trivial.
-    inv H; tryfalse.
-    split; intro; tryfalse.
-    eapply H2.
-    exists pi. 
-    destruct H as (HPREF & BEL & NTH & LEN).
-    rewrite NTH.
-    splits; eauto.
-    rewrite nth_error_app2; try lia.
-    replace (length pis - length pis) with 0; try lia. simpls; trivial.
-  -- 
-    destruct H.
-    splits; eauto; try solve [econs; eauto].
-    intros. inv H1; tryfalse.
-    intros. split; intro. inv H1; tryfalse.
-    destruct H1 as (pi' & NTH & HPREF & BEL & LEN).
-    assert (ip_nth ip < length pis \/ ip_nth ip = length pis). {
-      eapply nth_error_Some' in NTH.
-      rewrite app_length in NTH.
-      clear - NTH. simpls. lia.
-    }
-    destruct H1.
-    + 
-      rewrite nth_error_app1 in NTH; eauto.
-      destruct H as (ENV & B & NODUP & SORTED).
-      eapply B.
-      exists pi'. splits; eauto.
-    + 
-      rewrite nth_error_app2 in NTH; eauto; try lia.
-      replace (ip_nth ip - length pis) with 0 in NTH; try lia.
-      destruct H0 as (ENV & B & NODUP & SORTED).
-      eapply B.
-      simpls; inv NTH.
-      splits; eauto.
+  intros envv pis pi.
+  split.
+  - intro Hflat.
+    destruct (flatten_instrs_app_singleton_inv envv pis pi [] Hflat)
+      as (left & right & Hleft & Hright & Happ).
+    symmetry in Happ.
+    apply app_eq_nil in Happ as [Hleft_nil Hright_nil].
+    subst left right.
+    split; assumption.
+  - intros [Hleft Hright].
+    change (flatten_instrs envv (pis ++ [pi]) ([] ++ [])).
+    apply flatten_instrs_app_singleton; assumption.
 Qed.
 
 Lemma flatten_instrs_nil:
@@ -2648,6 +2623,39 @@ Definition retime_ip (sch: Schedule) (ip: InstrPoint) : InstrPoint :=
     ip_depth := ip.(ip_depth);
   |}.
 
+Local Lemma eqdom_pinstr_retime_belongs :
+  forall pi1 pi2 ip,
+    eqdom_pinstr pi1 pi2 ->
+    belongs_to ip pi1 ->
+    belongs_to (retime_ip (pi_schedule pi2) ip) pi2.
+Proof.
+  intros pi1 pi2 ip Heq Hbelongs.
+  destruct Heq as (Hdepth & Hinstr & Hdomain & Hwitness & Htf & Haccess & Hw & Hr).
+  destruct Hbelongs as (Hpoly & Htransformation & Htimestamp & Hinstruction & Hpoint_depth).
+  unfold belongs_to, retime_ip; simpl.
+  refine (conj _ (conj _ (conj eq_refl (conj _ _)))).
+  - rewrite <- Hdomain; exact Hpoly.
+  - unfold current_transformation_of, current_transformation_at in *; simpl in *.
+    rewrite <- Hwitness, <- Htf.
+    exact Htransformation.
+  - rewrite <- Hinstr; exact Hinstruction.
+  - rewrite <- Hdepth; exact Hpoint_depth.
+Qed.
+
+Local Lemma retime_ip_roundtrip :
+  forall pi1 pi2 ip,
+    belongs_to ip pi2 ->
+    retime_ip (pi_schedule pi2) (retime_ip (pi_schedule pi1) ip) = ip.
+Proof.
+  intros pi1 pi2
+    [point_nth point_index point_transformation point_timestamp
+     point_instruction point_depth]
+    Hbelongs.
+  destruct Hbelongs as
+    (Hpoly & Htransformation & Htimestamp & Hinstruction & Hdepth).
+  simpl in *; subst point_timestamp; reflexivity.
+Qed.
+
 Lemma eqdom_pinstr_implies_flatten_instr_nth_retime:
   forall ipl1 pi1 pi2 envv n,
     eqdom_pinstr pi1 pi2 ->
@@ -2655,6 +2663,7 @@ Lemma eqdom_pinstr_implies_flatten_instr_nth_retime:
     flatten_instr_nth envv n pi2 (map (retime_ip (pi_schedule pi2)) ipl1).
 Proof.
   intros ipl1 pi1 pi2 envv n Heq Hflat.
+  pose proof Heq as Heq_original.
   destruct Heq as (DEPTH & INSTR & DOM & WIT & TSF & ATSF & W & R).
   destruct Hflat as (Hprefix & Hmem & Hnodup & Hsorted).
   refine (conj _ (conj _ (conj _ _))).
@@ -2670,71 +2679,25 @@ Proof.
       destruct Hin as (ip1 & Hip & Hin1).
       subst ip.
       destruct (Hmem ip1) as [Hin1_to _].
-      specialize (Hin1_to Hin1).
-      destruct Hin1_to as (HPREF & HBEL & HNTH & HLEN).
-      destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
-      split.
-      * exact HPREF.
-      * split.
-        { unfold belongs_to; simpl.
-          split.
-          - rewrite <- DOM. exact HPOL.
-          - split.
-            + unfold current_transformation_of, current_transformation_at in *; simpl in *.
-              rewrite <- WIT, <- TSF.
-              exact HTRANS.
-            + split.
-              * reflexivity.
-              * split.
-                { rewrite <- INSTR. exact HINSTR. }
-                { rewrite <- DEPTH. exact HDEPTH. } }
-        { split.
-          - exact HNTH.
-          - rewrite <- DEPTH. exact HLEN. }
+      destruct (Hin1_to Hin1) as (Hprefix1 & Hbelongs1 & Hnth1 & Hlength1).
+      refine (conj Hprefix1 (conj _ (conj Hnth1 _))).
+      * apply eqdom_pinstr_retime_belongs with (pi1 := pi1); assumption.
+      * simpl; rewrite <- DEPTH; exact Hlength1.
     + intro Hin.
       destruct Hin as (HPREF & HBEL & HNTH & HLEN).
       rewrite in_map_iff.
-      exists {|
-        ip_nth := ip.(ip_nth);
-        ip_index := ip.(ip_index);
-        ip_transformation := ip.(ip_transformation);
-        ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
-        ip_instruction := ip.(ip_instruction);
-        ip_depth := ip.(ip_depth);
-      |}.
+      exists (retime_ip (pi_schedule pi1) ip).
       split.
-      * destruct ip; simpl in *.
-        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
-        simpl in *.
-        subst.
-        f_equal; auto.
-      * destruct (Hmem {|
-           ip_nth := ip_nth ip;
-           ip_index := ip_index ip;
-           ip_transformation := ip_transformation ip;
-           ip_time_stamp := affine_product (pi_schedule pi1) (ip_index ip);
-           ip_instruction := ip_instruction ip;
-           ip_depth := ip_depth ip;
-         |}) as [_ Hback].
+      * apply retime_ip_roundtrip; exact HBEL.
+      * destruct (Hmem (retime_ip (pi_schedule pi1) ip)) as [_ Hback].
         apply Hback.
-        destruct HBEL as (HPOL & HTRANS & HTS & HINSTR & HDEPTH).
         refine (conj HPREF _).
         refine (conj _ _).
-        { unfold belongs_to; simpl in *.
-          split.
-          - rewrite DOM. exact HPOL.
-          - split.
-            + unfold current_transformation_of, current_transformation_at in *; simpl in *.
-              rewrite WIT, TSF.
-              exact HTRANS.
-            + split.
-              * reflexivity.
-              * split.
-                { rewrite INSTR. exact HINSTR. }
-                { rewrite DEPTH. exact HDEPTH. } }
-        { split.
-          - exact HNTH.
-          - rewrite DEPTH. exact HLEN. }
+        { apply eqdom_pinstr_retime_belongs with (pi1 := pi2).
+          - apply eqdom_pinstr_symm; exact Heq_original.
+          - exact HBEL. }
+        { split; [exact HNTH|].
+          simpl; rewrite DEPTH; exact HLEN. }
   - pose proof (conj Hprefix (conj Hmem (conj Hnodup Hsorted))) as G0.
     eapply flatten_instr_nth_NoDupA_np in G0.
     eapply NoDup_implies_NoDupA_np.
@@ -3343,38 +3306,12 @@ Proof.
         rewrite Hcur.
         reflexivity.
     + exact Hsched.
-    + assert
-        (Hlen_cur:
-           length (current_transformation_at (length env) pi) =
-           length (pi_transformation pi)).
-      { simpl.
-        rewrite current_transformation_at_preserve_length.
-        reflexivity. }
-      unfold current_view_pi; simpl.
-      revert Hlen_cur.
-      induction Hw; intros Hlen_cur.
-      * constructor.
-      * constructor.
-        -- simpl in *.
-           rewrite Hlen_cur.
-           exact H.
-        -- exact (IHHw Hlen_cur).
-    + assert
-        (Hlen_cur:
-           length (current_transformation_at (length env) pi) =
-           length (pi_transformation pi)).
-      { simpl.
-        rewrite current_transformation_at_preserve_length.
-        reflexivity. }
-      unfold current_view_pi; simpl.
-      revert Hlen_cur.
-      induction Hr; intros Hlen_cur.
-      * constructor.
-      * constructor.
-        -- simpl in *.
-           rewrite Hlen_cur.
-           exact H.
-        -- exact (IHHr Hlen_cur).
+    + unfold current_view_pi; simpl.
+      rewrite current_transformation_at_preserve_length.
+      exact Hw.
+    + unfold current_view_pi; simpl.
+      rewrite current_transformation_at_preserve_length.
+      exact Hr.
   - split.
     + reflexivity.
     + unfold current_view_pi.
@@ -4160,41 +4097,17 @@ Lemma sorted_ge_implies_ext_sorted_ge:
   Sorted instr_point_sched_le (new_of_ext_list lext) -> 
   Sorted_b instr_point_ext_new_sched_leb lext.
 Proof.
-  induction lext.
-  {
-    intro; simpls.
-    econs; eauto.
-  }
-  {
-    intro; simpls.
-    inv H.
-    eapply IHlext in H2.
-    econs; eauto.
-    inv H3.
-    {
-      unfold new_of_ext_list in H0.
-      symmetry in H0.
-      eapply map_eq_nil in H0.
-      subst.
-      econs; eauto.
-    }
-    {
-      unfold new_of_ext_list in H.
-      destruct lext eqn:Hlext; tryfalse.
-      assert (instr_point_ext_new_sched_leb a i = true).
-      {
-        rewrite map_cons in H.
-        inv H.
-        unfolds instr_point_sched_le.
-        unfolds instr_point_ext_new_sched_leb.
-        simpls.
-        rewrite orb_true_iff.
-        do 2 rewrite comparison_eqb_iff_eq.
-        trivial.
-      }
-      econs; eauto.    
-    }
-  }
+  intros lext Hsorted.
+  unfold Sorted_b.
+  unfold new_of_ext_list in Hsorted.
+  eapply ListExt.Sorted_map_inv_by; [|exact Hsorted].
+  intros point1 point2 Hle.
+  unfold instr_point_sched_le in Hle.
+  unfold instr_point_ext_new_sched_leb.
+  simpl in Hle |- *.
+  rewrite orb_true_iff.
+  rewrite !comparison_eqb_iff_eq.
+  exact Hle.
 Qed.
 
 Lemma list_ext_old_new_equivalence: 
@@ -4263,88 +4176,38 @@ Lemma instr_point_ext_new_sched_leb_trans:
     transitive instr_point_ext_new_sched_leb.
 Proof.
   unfold transitive.
-  intros.
-  unfolds instr_point_ext_new_sched_leb.
-  rewrite orb_true_iff in H.
-  rewrite orb_true_iff in H0.
-  rewrite orb_true_iff.
-  destruct H; destruct H0; tryfalse.
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    eapply lex_compare_trans; eauto.
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    rewrite <- is_eq_iff_cmp_eq in H0.
-    eapply lex_compare_right_eq with (t1:=(ip_time_stamp2_ext a)) (t2:=(ip_time_stamp2_ext b)) (t3:=(ip_time_stamp2_ext c)) in H0; eauto.
-    rewrite <- H0; trivial. 
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    rewrite <- is_eq_iff_cmp_eq in H.
-    eapply lex_compare_left_eq with (t1:=(ip_time_stamp2_ext a)) (t2:=(ip_time_stamp2_ext b)) (t3:=(ip_time_stamp2_ext c))  in H; eauto.
-    rewrite <- H0; trivial. 
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    right.
-    eapply lex_compare_trans; eauto.
-  }
+  intros point1 point2 point3 H12 H23.
+  change
+    (LinalgExt.lex_compare_leb
+      (ip_time_stamp2_ext point1) (ip_time_stamp2_ext point2) = true)
+    in H12.
+  change
+    (LinalgExt.lex_compare_leb
+      (ip_time_stamp2_ext point2) (ip_time_stamp2_ext point3) = true)
+    in H23.
+  change
+    (LinalgExt.lex_compare_leb
+      (ip_time_stamp2_ext point1) (ip_time_stamp2_ext point3) = true).
+  eapply LinalgExt.lex_compare_leb_trans; eauto.
 Qed.
 
 Lemma instr_point_ext_new_sched_geb_trans: 
     transitive instr_point_ext_new_sched_geb.
 Proof.
   unfold transitive.
-  intros.
-  unfolds instr_point_ext_new_sched_geb.
-  rewrite orb_true_iff in H.
-  rewrite orb_true_iff in H0.
-  rewrite orb_true_iff.
-  destruct H; destruct H0; tryfalse.
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    eapply lex_compare_trans; eauto.
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    rewrite <- is_eq_iff_cmp_eq in H0.
-    eapply lex_compare_right_eq with (t1:=(ip_time_stamp2_ext a)) (t2:=(ip_time_stamp2_ext b)) in H0; eauto.
-    rewrite <- H0; trivial. 
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    left.
-    rewrite <- is_eq_iff_cmp_eq in H.
-    eapply lex_compare_left_eq with (t1:=(ip_time_stamp2_ext a)) (t2:=(ip_time_stamp2_ext b)) (t3:=(ip_time_stamp2_ext c)) in H; eauto.
-    rewrite <- H0; trivial. 
-  }
-  {
-    eapply comparison_eqb_iff_eq in H.
-    eapply comparison_eqb_iff_eq in H0.
-    do 2 rewrite comparison_eqb_iff_eq.
-    right.
-    eapply lex_compare_trans; eauto.
-  }
+  intros point1 point2 point3 H12 H23.
+  change
+    (LinalgExt.lex_compare_geb
+      (ip_time_stamp2_ext point1) (ip_time_stamp2_ext point2) = true)
+    in H12.
+  change
+    (LinalgExt.lex_compare_geb
+      (ip_time_stamp2_ext point2) (ip_time_stamp2_ext point3) = true)
+    in H23.
+  change
+    (LinalgExt.lex_compare_geb
+      (ip_time_stamp2_ext point1) (ip_time_stamp2_ext point3) = true).
+  eapply LinalgExt.lex_compare_geb_trans; eauto.
 Qed.
 
 
@@ -5247,6 +5110,57 @@ Proof.
   - eapply poly_lex_semantics_extensionality; [exact H|]. auto.
 Qed.
 
+Local Lemma scanned_disjoint_right :
+  forall (to_scan1 to_scan2 : nat -> list Z -> bool) (n : nat) (p : list Z),
+    (forall m q, to_scan1 m q = false \/ to_scan2 m q = false) ->
+    forall m q,
+      scanned to_scan1 n p m q = false \/ to_scan2 m q = false.
+Proof.
+  intros to_scan1 to_scan2 n p Hdisjoint m q.
+  unfold scanned.
+  destruct (to_scan1 m q) eqn:Hscan1; simpl.
+  - destruct (Hdisjoint m q) as [Hfalse|Hfalse].
+    + congruence.
+    + right; exact Hfalse.
+  - left; reflexivity.
+Qed.
+
+Local Lemma scanned_cross_disjoint_right :
+  forall (to_scan1 to_scan2 : nat -> list Z -> bool) (n : nat) (p : list Z),
+    (forall n1 p1 n2 p2,
+      lex_compare p2 p1 = Lt ->
+      to_scan1 n1 p1 = false \/ to_scan2 n2 p2 = false) ->
+    forall n1 p1 n2 p2,
+      lex_compare p2 p1 = Lt ->
+      scanned to_scan1 n p n1 p1 = false \/ to_scan2 n2 p2 = false.
+Proof.
+  intros to_scan1 to_scan2 n p Hcross n1 p1 n2 p2 Hlt.
+  destruct (Hcross n1 p1 n2 p2 Hlt) as [Hfalse|Hfalse].
+  - left; unfold scanned; rewrite Hfalse; reflexivity.
+  - right; exact Hfalse.
+Qed.
+
+Local Lemma scanned_union_compat :
+  forall (to_scan1 to_scan2 : nat -> list Z -> bool) (n : nat) (p : list Z),
+    wf_scan to_scan1 ->
+    to_scan1 n p = true ->
+    (forall m q, to_scan1 m q = false \/ to_scan2 m q = false) ->
+    forall m q,
+      scanned to_scan1 n p m q || to_scan2 m q =
+      scanned (fun n0 p0 => to_scan1 n0 p0 || to_scan2 n0 p0) n p m q.
+Proof.
+  intros to_scan1 to_scan2 n p Hwf Hcurrent Hdisjoint m q.
+  unfold scanned; simpl.
+  destruct (Hdisjoint m q) as [Hfalse|Hfalse].
+  - rewrite Hfalse; simpl.
+    destruct (is_eq p q && (n =? m)%nat) eqn:Hequal; simpl.
+    + reflect. destruct Hequal as [Heqp Hn].
+      rewrite Heqp, Hn in Hcurrent; congruence.
+    + rewrite andb_true_r; reflexivity.
+  - rewrite Hfalse.
+    destruct (to_scan1 m q); simpl; rewrite ?orb_false_r; reflexivity.
+Qed.
+
 
 Theorem poly_lex_concat :
   forall env_dim to_scan1 prog mem1 mem2,
@@ -5283,38 +5197,19 @@ Proof.
         assert (Hdisj_scanned :
           forall n0 p0,
             scanned to_scan3 n p n0 p0 = false \/ to_scan2 n0 p0 = false).
-        {
-          intros n0 p0. autounfold. simpl.
-          destruct (to_scan3 n0 p0) eqn:Hscan3; simpl.
-          - destruct (Hdisj n0 p0) as [H | H]; [congruence|rewrite H; auto using orb_false_r].
-          - left. reflexivity.
-        }
+        { apply scanned_disjoint_right; exact Hdisj. }
         assert (Hcmp_scanned :
           forall n1 p1 n2 p2,
             lex_compare p2 p1 = Lt ->
             scanned to_scan3 n p n1 p1 = false \/ to_scan2 n2 p2 = false).
-        {
-          intros n1 p1 n2 p2 Hcmp1.
-          destruct (Hcmp n1 p1 n2 p2 Hcmp1) as [H | H].
-          - left.
-            autounfold.
-            rewrite H.
-            destruct (is_eq p p1 && (n =? n1)%nat); reflexivity.
-          - right. exact H.
-        }
+        { apply scanned_cross_disjoint_right; exact Hcmp. }
         pose proof (IH to_scan2 mem3 Hwf_scanned Hdisj_scanned Hcmp_scanned Hsem3) as Hrest.
         exact Hrest.
       }
       eapply poly_lex_semantics_extensionality with
           (to_scan1 := fun n0 p0 => scanned to_scan3 n p n0 p0 || to_scan2 n0 p0).
       * exact Hrest.
-      * intros n0 p0. autounfold. simpl.
-        destruct (Hdisj n0 p0) as [H | H].
-        -- rewrite H. simpl.
-           destruct (is_eq p p0 && (n =? n0)%nat) eqn:Hd; simpl.
-           ++ reflect. destruct Hd as [Heqp Hn]. rewrite Heqp, Hn in Hscanp. congruence.
-           ++ rewrite andb_true_r. reflexivity.
-        -- rewrite H. destruct (to_scan3 n0 p0); simpl; rewrite ?orb_false_r; auto.
+      * apply scanned_union_compat; assumption.
 Qed.
 
 Theorem poly_lex_concat_seq :

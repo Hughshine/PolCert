@@ -102,6 +102,27 @@ Proof.
         -- exact Htail.
 Qed.
 
+Lemma Sorted_map_inv_by :
+  forall (A B : Type) (f : A -> B) (source_order : B -> B -> Prop)
+    (target_order : A -> A -> Prop) xs,
+    (forall x y, source_order (f x) (f y) -> target_order x y) ->
+    Sorted source_order (map f xs) ->
+    Sorted target_order xs.
+Proof.
+  intros A B f source_order target_order xs Hreflect Hsorted.
+  induction xs as [|x xs IH].
+  - constructor.
+  - simpl in Hsorted.
+    inversion Hsorted as [|mapped_x mapped_xs Htail Hhead]; subst.
+    constructor.
+    + apply IH; exact Htail.
+    + destruct xs as [|y ys].
+      * constructor.
+      * inversion Hhead as [|mapped_y mapped_ys Hxy]; subst.
+        constructor.
+        apply Hreflect; exact Hxy.
+Qed.
+
 Lemma NoDup_map_on :
   forall (A B: Type) (f: A -> B) (xs: list A),
     NoDup xs ->
