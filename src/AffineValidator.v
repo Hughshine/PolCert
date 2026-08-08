@@ -1020,17 +1020,6 @@ Qed.
 
 (** * Construction and projection of paired instruction instances *)
 
-Definition compose_ip_ext (ip1 ip2: PolyLang.InstrPoint): PolyLang.InstrPoint_ext := 
-    {| 
-      PolyLang.ip_nth_ext := ip1.(PolyLang.ip_nth);
-      PolyLang.ip_index_ext := ip1.(PolyLang.ip_index);  
-      PolyLang.ip_transformation_ext := ip1.(PolyLang.ip_transformation);
-      PolyLang.ip_access_transformation_ext := ip1.(PolyLang.ip_transformation);
-      PolyLang.ip_time_stamp1_ext := ip1.(PolyLang.ip_time_stamp);  
-      PolyLang.ip_time_stamp2_ext := ip2.(PolyLang.ip_time_stamp);
-      PolyLang.ip_instruction_ext := ip1.(PolyLang.ip_instruction);  
-      PolyLang.ip_depth_ext := ip1.(PolyLang.ip_depth);  
-    |}.
 
 Definition compose_ip_ext_at
   (access_tf: Transformation)
@@ -1046,17 +1035,6 @@ Definition compose_ip_ext_at
       PolyLang.ip_depth_ext := ip1.(PolyLang.ip_depth);
     |}.
 
-Lemma old_of_compose_ok: 
-  forall ip1 ip2 ip_ext,
-    compose_ip_ext ip1 ip2 = ip_ext -> 
-    PolyLang.old_of_ext ip_ext = ip1.
-Proof.
-  intros.
-  unfold compose_ip_ext in H.
-  unfold PolyLang.old_of_ext.
-  destruct ip_ext; simpls.
-  inv H. destruct ip1; trivial.
-Qed.
 
 Lemma old_of_compose_at_ok:
   forall access_tf ip1 ip2 ip_ext,
@@ -1070,22 +1048,6 @@ Proof.
   inv H. destruct ip1; trivial.
 Qed.
 
-Lemma new_of_compose_ok: 
-  forall ip1 ip2 ip_ext,
-    ip1.(PolyLang.ip_nth) = ip2.(PolyLang.ip_nth) -> 
-    ip1.(PolyLang.ip_index) = ip2.(PolyLang.ip_index) -> 
-    ip1.(PolyLang.ip_transformation) = ip2.(PolyLang.ip_transformation) ->
-    ip1.(PolyLang.ip_instruction) = ip2.(PolyLang.ip_instruction) -> 
-    ip1.(PolyLang.ip_depth) = ip2.(PolyLang.ip_depth) ->
-    compose_ip_ext ip1 ip2 = ip_ext -> 
-    PolyLang.new_of_ext ip_ext = ip2.
-Proof.
-  intros.
-  unfold compose_ip_ext in H4.
-  unfold PolyLang.new_of_ext. 
-  destruct ip_ext; simpls. inv H4.
-  destruct ip1; destruct ip2; simpls; subst; trivial.
-Qed.
 
 Lemma new_of_compose_at_ok:
   forall access_tf ip1 ip2 ip_ext,
@@ -1104,14 +1066,6 @@ Proof.
   destruct ip1; destruct ip2; simpls; subst; trivial.
 Qed.
 
-Fixpoint compose_ipl_ext (ipl1 ipl2: list PolyLang.InstrPoint): list PolyLang.InstrPoint_ext := 
-  match ipl1, ipl2 with 
-  | ip1::ipl1', ip2::ipl2' =>
-      compose_ip_ext ip1 ip2 :: compose_ipl_ext ipl1' ipl2'   
-  | [], [] => []
-  | _, _ => []
-    end
-.
 
 Fixpoint compose_ipl_ext_at
   (access_tf: Transformation)
@@ -1432,36 +1386,6 @@ Proof.
   destruct (PolyLang.pi_point_witness pi); simpl; now rewrite Heq.
 Qed.
 
-Lemma in_compose_ipl_ext_inv:
-  forall ip_ext ipl1 ipl2,
-    In ip_ext (compose_ipl_ext ipl1 ipl2) ->
-    exists ip1 ip2,
-      In ip1 ipl1 /\
-      In ip2 ipl2 /\
-      ip_ext = compose_ip_ext ip1 ip2.
-Proof.
-  induction ipl1 as [|ip1 ipl1 IH]; intros ipl2 Hip.
-  - destruct ipl2; simpl in Hip; contradiction.
-  - destruct ipl2 as [|ip2 ipl2].
-    * simpl in Hip. contradiction.
-    * simpl in Hip.
-      refine (
-        match Hip with
-        | or_introl Heq =>
-            ex_intro _ ip1
-              (ex_intro _ ip2
-                (conj (or_introl eq_refl)
-                  (conj (or_introl eq_refl) (eq_sym Heq))))
-        | or_intror Hin =>
-            match IH ipl2 Hin with
-            | ex_intro _ ip1'
-                (ex_intro _ ip2' (conj Hin1 (conj Hin2 Heq'))) =>
-                ex_intro _ ip1'
-                  (ex_intro _ ip2'
-                    (conj (or_intror Hin1) (conj (or_intror Hin2) Heq')))
-            end
-        end).
-Qed.
 
 Lemma in_compose_ipl_ext_at_inv:
   forall access_tf ip_ext ipl1 ipl2,
@@ -1496,25 +1420,6 @@ Proof.
         end).
 Qed.
 
-Lemma nth_error_compose_ipl_ext_inv_local:
-  forall n ipl1 ipl2 ip_ext,
-    nth_error (compose_ipl_ext ipl1 ipl2) n = Some ip_ext ->
-    exists ip1 ip2,
-      nth_error ipl1 n = Some ip1 /\
-      nth_error ipl2 n = Some ip2 /\
-      ip_ext = compose_ip_ext ip1 ip2.
-Proof.
-  induction n; intros ipl1 ipl2 ip_ext Hnth.
-  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
-      simpl in Hnth; try discriminate.
-    inversion Hnth; subst.
-    exists ip1. exists ip2. repeat split; reflexivity.
-  - destruct ipl1 as [|ip1 ipl1']; destruct ipl2 as [|ip2 ipl2'];
-      simpl in Hnth; try discriminate.
-    eapply IHn in Hnth.
-    destruct Hnth as (ip1' & ip2' & Hnth1 & Hnth2 & Heq).
-    exists ip1'. exists ip2'. repeat split; eauto.
-Qed.
 
 Lemma nth_error_compose_ipl_ext_at_inv_local:
   forall n access_tf ipl1 ipl2 ip_ext,
@@ -1536,21 +1441,6 @@ Proof.
     exists ip1'. exists ip2'. repeat split; eauto.
 Qed.
 
-Lemma nth_error_compose_ipl_ext:
-  forall n ipl1 ipl2 ip1 ip2,
-    nth_error ipl1 n = Some ip1 ->
-    nth_error ipl2 n = Some ip2 ->
-    nth_error (compose_ipl_ext ipl1 ipl2) n = Some (compose_ip_ext ip1 ip2).
-Proof.
-  induction n; intros ipl1 ipl2 ip1 ip2 Hnth1 Hnth2.
-  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
-      simpl in *; try discriminate.
-    inversion Hnth1; inversion Hnth2; subst.
-    reflexivity.
-  - destruct ipl1 as [|ip1' ipl1']; destruct ipl2 as [|ip2' ipl2'];
-      simpl in *; try discriminate.
-    eapply IHn; eauto.
-Qed.
 
 Lemma nth_error_compose_ipl_ext_at:
   forall n access_tf ipl1 ipl2 ip1 ip2,
@@ -1569,35 +1459,6 @@ Proof.
     eapply IHn; eauto.
 Qed.
 
-Lemma old_of_compose_list_ok: 
-  forall ipl1 ipl2 ipl_ext,
-  length ipl1 = length ipl2 ->
-  compose_ipl_ext ipl1 ipl2 = ipl_ext -> 
-  PolyLang.old_of_ext_list ipl_ext = ipl1.
-Proof.
-  induction ipl1.
-  {
-    intros; simpls.
-    destruct ipl2; tryfalse.
-    subst; simpls; trivial.
-  }
-  {
-    intros; simpls.
-    destruct ipl2; tryfalse.
-    simpls.
-    inv H.
-    unfold PolyLang.old_of_ext_list.
-    unfold PolyLang.old_of_ext_list. 
-    rewrite map_cons.
-    f_equal.
-    {
-      eapply old_of_compose_ok; trivial.
-    }
-    {
-      eapply IHipl1; eauto.
-    }
-  }
-Qed.
 
 Lemma old_of_compose_list_at_ok:
   forall access_tf ipl1 ipl2 ipl_ext,
@@ -1628,35 +1489,6 @@ Proof.
   }
 Qed.
 
-Lemma new_of_compose_list_ok: 
-  forall ipl1 ipl2 ipl_ext,
-  rel_list PolyLang.eq_except_sched ipl1 ipl2 ->
-  compose_ipl_ext ipl1 ipl2 = ipl_ext -> 
-  PolyLang.new_of_ext_list ipl_ext = ipl2.
-Proof.
-  induction ipl1.
-  {
-    intros; simpls.
-    destruct ipl2; tryfalse.
-    subst; simpls; trivial.
-  }
-  {
-    intros; simpls.
-    destruct ipl2; tryfalse.
-    simpls.
-    inv H.
-    unfold PolyLang.new_of_ext_list.
-    rewrite map_cons.
-    f_equal.
-    {
-      unfold PolyLang.eq_except_sched in H1.
-      eapply new_of_compose_ok with (ip1:=a); firstorder.
-    }
-    {
-      eapply IHipl1; eauto.
-    }
-  }
-Qed.
 
 Lemma new_of_compose_list_at_ok:
   forall access_tf ipl1 ipl2 ipl_ext,
@@ -1688,69 +1520,7 @@ Proof.
   }
 Qed.
 
-Lemma ext_compose_same_length_app: 
-  forall iplh1 iplh2 iplh_ext iplt1 iplt2 iplt_ext ipl1 ipl2 ipl_ext,
-    compose_ipl_ext iplh1 iplh2 = iplh_ext ->
-    compose_ipl_ext iplt1 iplt2 = iplt_ext ->
-    ipl1 = iplh1 ++ iplt1 -> 
-    ipl2 = iplh2 ++ iplt2 -> 
-    length iplh1 = length iplh2 -> 
-    length iplt1 = length iplt2 -> 
-    ipl_ext = iplh_ext ++ iplt_ext ->
-    compose_ipl_ext ipl1 ipl2 = ipl_ext.
-Proof.
-  induction iplh1.
-  {
-    intros; simpls.
-    destruct iplh2; tryfalse. simpls. subst; trivial.
-  }
-  {
-    intros; simpls.
-    destruct ipl2 eqn:Hipl2.
-    {
-      symmetry in H2.
-      eapply app_eq_nil in H2.
-      destruct H2.
-      subst; simpls; tryfalse. 
-    }
-    {
-      rename a into iph1.
-      rename iplh1 into iplh1'.
-      destruct iplh2 eqn:Hiplh2; tryfalse.
-      rename i0 into iph2.
-      rename l0 into iplh2'. 
-      simpls.
-      inversion H2.
-      rename l into ipl2'.
-      remember (iplh1' ++ iplt1) as ipl1'.
-      remember (compose_ipl_ext iplh1' iplh2') as iplh'_ext.
-      remember (compose_ipl_ext ipl1' ipl2') as ipl'_ext.
-      subst; trivial.
-      simpls.
-      f_equal.
-      inversion H3.
-      eapply IHiplh1; eauto. 
-    }
-  }
-Qed.
 
-Lemma compose_pinstrs_ext_app_singleton:
-  forall pil1 pil2 pi1 pi2,
-    length pil1 = length pil2 ->
-    PolyLang.compose_pinstrs_ext (pil1++[pi1]) (pil2++[pi2]) = 
-    PolyLang.compose_pinstrs_ext (pil1) (pil2) 
-    ++ [PolyLang.compose_pinstr_ext pi1 pi2].
-Proof.
-  induction pil1.
-  {
-    intros; simpls. symmetry in H. rewrite length_zero_iff_nil in H. subst; trivial.
-  }
-  {
-    intros; simpls.
-    destruct pil2 eqn:Hpil2; tryfalse. simpls. inv H.
-    rewrite IHpil1; eauto.
-  }
-Qed.
 
 Lemma compose_pinstrs_ext_at_app_singleton:
   forall env_dim pil1 pil2 pi1 pi2,
@@ -1771,238 +1541,11 @@ Proof.
   }
 Qed.
 
-Lemma ext_compose_app:
-  forall ipl1 ipl2 ipl_ext iplh1 iplh2 iplh_ext ipl1' ipl2' ipl_ext',
-    ipl1 = iplh1 ++ ipl1' -> 
-    ipl2 = iplh2 ++ ipl2' -> 
-    compose_ipl_ext iplh1 iplh2 = iplh_ext -> 
-    (PolyLang.new_of_ext_list iplh_ext = iplh2 /\ PolyLang.old_of_ext_list iplh_ext = iplh1) -> 
-    compose_ipl_ext ipl1' ipl2' = ipl_ext' ->
-    (PolyLang.new_of_ext_list ipl_ext' = ipl2' /\ PolyLang.old_of_ext_list ipl_ext' = ipl1') -> 
-    compose_ipl_ext ipl1 ipl2 = ipl_ext -> 
-    (PolyLang.new_of_ext_list ipl_ext = ipl2 /\ PolyLang.old_of_ext_list ipl_ext = ipl1).
-Proof.
-  intros.
-  assert (ipl_ext = iplh_ext ++ ipl_ext'). {
-    rewrite <- H5.
-    rewrite <- H1.
-    rewrite <- H3.
-    assert (length iplh1 = length iplh2). {
-      clear - H2.
-      destruct H2.
-      unfolds PolyLang.new_of_ext_list.
-      unfolds PolyLang.old_of_ext_list.
-      subst.
-      do 2 rewrite map_length.
-      trivial.
-    }
-    assert (length ipl1' = length ipl2'). {
-      clear - H4.
-      destruct H4.
-      unfolds PolyLang.new_of_ext_list.
-      unfolds PolyLang.old_of_ext_list.
-      subst.
-      do 2 rewrite map_length.
-      trivial.
-    }
-    eapply ext_compose_same_length_app with (iplh1:=iplh1) (iplh2:=iplh2) (iplt1:=ipl1') (iplt2:=ipl2'); eauto.
-  }
 
-  unfolds PolyLang.new_of_ext_list.
-  unfolds PolyLang.old_of_ext_list.
-  destruct H2. destruct H4.
-  split. 
-  {
-    rewrite H6. 
-    rewrite map_app; eauto.
-    subst; eauto.  
-  }
-  {
-    rewrite H6.
-    rewrite map_app; eauto.
-    subst; eauto.
-  }
-Qed.
 
-Lemma eq_dom_pinstrs_implies_all_nil:
-  forall pil1 pil2 envv,
-    rel_list PolyLang.eqdom_pinstr pil1 pil2 ->
-    PolyLang.flatten_instrs envv pil1 [] <->
-    PolyLang.flatten_instrs envv pil2 [].
-Proof. 
-  induction pil1 using rev_ind.
-  - intros. simpls. destruct pil2 eqn:Hpil2; tryfalse; split; trivial.
-  - intros. simpls.
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hpil2. {
-      clear - H.
-      eapply rel_list_implies_eq_length in H.
-      destruct pil2.
-      - rewrite app_length in H; simpls; try lia.
-      - assert (length (p::pil2) > 0). {rewrite app_length in H; simpls; try lia. }
-        exists (last (p::pil2) (p)) (removelast (p::pil2)).
-        eapply app_removelast_last. intro; tryfalse.
-    }
-    destruct Hpil2 as (pi2 & pil2' & Hpil2).
-    rewrite Hpil2 in H.
-    eapply rel_list_app_singleton in H.
-    destruct H.
-    assert (length pil1 = length pil2') as LENPIL. {
-      eapply rel_list_implies_eq_length; eauto.
-    }
-    eapply IHpil1 in H; eauto.
-    rewrite Hpil2. split; intro.
-    --
-      eapply PolyLang.flatten_instrs_nil_sub_nil in H1.
-      destruct H1.
-      assert (PolyLang.flatten_instrs envv pil2' []). {
-        eapply H in H1; trivial.
-      }
-      eapply PolyLang.flatten_instrs_app_singleton in H3; eauto.
 
-      pose proof H0 as G0.
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_exists with (ipl1:=[])in H0; eauto.
-      destruct H0 as (ipl2 & FLT2).
-      assert (rel_list PolyLang.eq_except_sched [] ipl2) as REL2. {
-        eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel'; eauto.
-      } 
-      rewrite <- LENPIL; trivial.
-      assert (ipl2 = []). {
-        eapply rel_list_implies_eq_length in REL2.
-        simpls. symmetry in REL2. rewrite length_zero_iff_nil in REL2. trivial.
-      }
-      subst. trivial.
-    --
-      eapply PolyLang.flatten_instrs_nil_sub_nil in H1.
-      destruct H1.
-      assert (PolyLang.flatten_instrs envv pil1 []). {
-        eapply H in H1; trivial.
-      }
-      eapply PolyLang.flatten_instrs_app_singleton in H3; eauto.
-      eapply PolyLang.eqdom_pinstr_symm in H0.
-      pose proof H0 as G0.
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_exists with (ipl1:=[]) in H0; eauto.
-      destruct H0. 
-      assert (rel_list PolyLang.eq_except_sched [] x0) as REL1. {
-        eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel'; eauto.
-      } 
 
-      rewrite LENPIL; trivial.
-      assert (x0 = []). {
-        eapply rel_list_implies_eq_length in REL1.
-        simpls. symmetry in REL1. rewrite length_zero_iff_nil in REL1. trivial.
-      }
-      subst. trivial.
-Qed.
 
-Lemma eqdom_pinstr_implies_ext_compose:
-  forall pi1 pi2 ipl_ext envv ipl1 ipl2 n, 
-    PolyLang.eqdom_pinstr pi1 pi2 -> 
-    PolyLang.flatten_instr_nth envv n pi1 ipl1 ->
-    PolyLang.flatten_instr_nth envv n pi2 ipl2 ->
-    compose_ipl_ext ipl1 ipl2 = ipl_ext -> 
-    PolyLang.new_of_ext_list ipl_ext = ipl2 /\ 
-    PolyLang.old_of_ext_list ipl_ext = ipl1.
-Proof.
-  intros.
-  pose proof H as G.
-  destruct H as (D & I & Dom & T & W & R).
-  splits.
-  - eapply new_of_compose_list_ok; eauto.
-    eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel' with (pi1:=pi1) in G; eauto.
-  - eapply old_of_compose_list_ok with (ipl2:=ipl2); eauto.
-    eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel' with (pi1:=pi1) in G; eauto.
-    eapply rel_list_implies_eq_length; eauto.
-Qed.
-
-Lemma eqdom_pinstrs_implies_ext_compose: 
-  forall pil1 pil2 ipl_ext envv ipl1 ipl2 , 
-    rel_list PolyLang.eqdom_pinstr pil1 pil2 -> 
-    PolyLang.flatten_instrs envv pil1 ipl1 ->
-    PolyLang.flatten_instrs envv pil2 ipl2 ->
-    compose_ipl_ext ipl1 ipl2 = ipl_ext -> 
-    PolyLang.new_of_ext_list ipl_ext = ipl2 /\ 
-    PolyLang.old_of_ext_list ipl_ext = ipl1.
-Proof.
-  induction pil1 using rev_ind.
-  {
-    intros; simpls.
-    destruct pil2; tryfalse.
-    eapply (PolyLang.flatten_instrs_nil_implies_nil envv) in H0.
-    eapply (PolyLang.flatten_instrs_nil_implies_nil envv) in H1.
-    subst. simpls; trivial. split; trivial.
-  }
-  {
-    intros; simpls.
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hipl2. {
-      clear - H.
-      eapply rel_list_implies_eq_length in H.
-      destruct pil2.
-      - rewrite app_length in H; simpls; try lia.
-      - assert (length (p::pil2) > 0). {rewrite app_length in H; simpls; try lia. }
-        exists (last (p::pil2) (p)) (removelast (p::pil2)).
-        eapply app_removelast_last. intro; tryfalse.
-    }
-    destruct Hipl2 as (pi2 & pil2' & Hipl2).  
-    rename x into pi1.
-    rename pil1 into pil1'.
-    rewrite Hipl2 in H.
-    eapply rel_list_app_singleton in H.
-    destruct H as (Hrell & Hrel).
-    rewrite Hipl2 in H1.
-    pose proof Hrell as Grell.
-    eapply rel_list_implies_eq_length in Hrell.
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H0.
-    destruct H0 as (iplh1 & iplt1 & H0 & H1' & H2').
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H1.
-    destruct H1 as (iplh2 & iplt2 & H1 & H2'' & H3').
-
-    eapply IHpil1 
-      with (envv:=envv) (ipl1:=iplh1) (ipl2:=iplh2) (ipl_ext:=compose_ipl_ext iplh1 iplh2) in Grell; eauto.
-    eapply ext_compose_app; eauto.
-
-    clear - H1' H2'' Hrel Hrell.
-    pose proof Hrel as Grel.
-    eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_exists in Hrel; eauto. 
-    eapply eqdom_pinstr_implies_ext_compose; eauto.
-    rewrite Hrell; trivial.
-  }
-Qed.
-
-Lemma eqdom_implies_ext_compose: 
-  forall pis1 env1 vars1 pis2 env2 vars2 ipl1 ipl2 envv, 
-    PolyLang.eqdom_pprog (pis1, env1, vars1) (pis2, env2, vars2) -> 
-    PolyLang.flatten_instrs envv pis1 ipl1 ->
-    PolyLang.flatten_instrs envv pis2 ipl2 ->
-    (exists ipl_ext, 
-    PolyLang.new_of_ext_list ipl_ext = ipl2 /\ 
-    PolyLang.old_of_ext_list ipl_ext = ipl1).
-Proof.
-  intros.
-  exists (compose_ipl_ext ipl1 ipl2).
-  unfold PolyLang.eqdom_pprog in H.
-  pose proof (H pis1 pis2 env1 env2 vars1 vars2); simpls.
-  assert (env1 = env2). {firstorder. }
-  assert (Datatypes.length pis1 = Datatypes.length pis2). {firstorder. }
-  assert ( rel_list PolyLang.eqdom_pinstr pis1 pis2 ). { eapply H2; trivial. }
-  clear H2.
-  eapply eqdom_pinstrs_implies_ext_compose with (pil1:=pis1) (pil2:=pis2) ; eauto.
-Qed.
-
-Lemma eqdom_to_eqdom_pinstr:
-  forall pp1 pp2 varctxt1 varctxt2 vars1 vars2 pil1 pil2 n pi1 pi2,
-    PolyLang.eqdom_pprog pp1 pp2 ->
-    pp1 = (pil1, varctxt1, vars1) ->
-    pp2 = (pil2, varctxt2, vars2) ->
-    nth_error pil1 n = Some pi1 ->
-    nth_error pil2 n = Some pi2 ->
-    PolyLang.eqdom_pinstr pi1 pi2.
-Proof.
-  intros.
-  unfold PolyLang.eqdom_pprog in H.
-  pose proof (H pil1 pil2 varctxt1 varctxt2 vars1 vars2 H0 H1).
-  destruct H4. destruct H5. destruct H6.
-  eapply rel_list_implies_rel_nth; eauto.
-Qed.
 
 (** * Finiteness and pairwise access-dependence exclusion *)
 
@@ -3624,99 +3167,10 @@ Qed.
 
 (** * Lifting instruction proofs to flattened instance lists *)
 
-Lemma compose_pinstrs_ext_nil: 
-  forall pil1 pil2, 
-    length pil1 = length pil2 ->
-    PolyLang.compose_pinstrs_ext pil1 pil2 = nil -> 
-    pil1 = nil /\ pil2 = nil.
-Proof.
-  induction pil1.
-  {
-    intros; simpls. splits; trivial.
-    symmetry in H; rewrite length_zero_iff_nil in H.
-    trivial.
-  }
-  {
-    intros; simpls.
-    destruct pil2 eqn:Hpil2; trivial.
-    simpls. lia.
-    simpls. tryfalse.
-  }
-Qed.
-
-Lemma ip_not_in_compose_not_in:
-  forall ip1 ip2 ipl1 ipl2,
-    ~ In ip1 ipl1 -> 
-    ~ In ip2 ipl2 ->
-    ~ In (compose_ip_ext ip1 ip2) (compose_ipl_ext ipl1 ipl2).
-Proof.
-  induction ipl1.
-  {
-    intros. destruct ipl2; simpls; trivial.
-  }
-  {
-    intros. simpls. destruct ipl2; simpls; trivial.
-    intro. destruct H1.
-    -- 
-      rename a into ip1'; rename i into ip2'.
-      unfold compose_ip_ext in H1. inv H1.
-      apply H. destruct ip1; destruct ip2; destruct ip1'; destruct ip2'; simpls; subst; trivial. 
-      left; trivial. 
-    -- 
-    eapply IHipl1; eauto.
-  }
-Qed.
 
 
-Lemma ipl_NoDup_implies_compose_NoDup:
-  forall ipl1 ipl2,
-    NoDup ipl1 ->
-    NoDup ipl2 ->
-    NoDup (compose_ipl_ext ipl1 ipl2).
-Proof.
-  induction ipl1.
-  {
-    intros. 
-    destruct ipl2; simpls; trivial; econs.
-  }
-  {
-    intros. simpls. destruct ipl2; simpls; trivial. econs.
-    inv H.
-    eapply NoDup_cons_iff.
-    split.
-    {
-      intro.
-      inv H0.
-      assert (~In (compose_ip_ext a i) (compose_ipl_ext ipl1 ipl2)). {
-        eapply ip_not_in_compose_not_in; trivial. 
-      }
-      tryfalse.
-    }
-    {
-      eapply IHipl1; eauto. inv H0; trivial.
-    }
-  }
-Qed.
 
-Lemma ipl_sorted_implies_compose_sorted:
-  forall ipl1 ipl2,
-    Sorted PolyLang.np_lt ipl1 ->
-    Sorted PolyLang.np_lt ipl2 ->
-    Sorted PolyLang.np_lt_ext (compose_ipl_ext ipl1 ipl2).
-Proof. 
-  induction ipl1.
-  - intros. simpls. destruct ipl2; simpls; econs.
-  - intros. simpls. destruct ipl2; simpls; econs.
-    inv H. inv H0.
-    eapply IHipl1; eauto.
-    inv H; inv H0.
-    unfold compose_ip_ext.
-    destruct ipl1; destruct ipl2; try solve [econs].
-    simpls.
-    destruct a; destruct i; subst; simpls.
-    econs. unfold PolyLang.np_lt_ext; simpls. 
-    inv H4. unfold PolyLang.np_lt in H0. simpls. trivial.
-Qed.
+
 
 Lemma ipl_sorted_implies_compose_sorted_at:
   forall access_tf ipl1 ipl2,
@@ -3738,20 +3192,6 @@ Proof.
     inv H4. unfold PolyLang.np_lt in H0. simpls. trivial.
 Qed.
 
-Lemma old_new_compose:
-  forall ip1 ip2 ip,
-    ip1 = PolyLang.old_of_ext ip ->
-    ip2 = PolyLang.new_of_ext ip ->
-    PolyLang.ip_access_transformation_ext ip =
-      PolyLang.ip_transformation_ext ip ->
-    ip = compose_ip_ext ip1 ip2.
-Proof.
-  intros ip1 ip2 ip Hold Hnew Hacc.
-  subst ip1 ip2.
-  destruct ip; simpl in *.
-  subst.
-  reflexivity.
-Qed.
 
 Lemma old_new_compose_at:
   forall access_tf ip1 ip2 ip,
@@ -3767,99 +3207,8 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma ipl_in_implies_compose_in:
-  forall n ip1 ip2 ipl1 ipl2,
-    nth_error ipl1 n = Some ip1 ->
-    nth_error ipl2 n = Some ip2 ->
-    In (compose_ip_ext ip1 ip2) (compose_ipl_ext ipl1 ipl2).
-Proof. 
-  induction n.
-  - intros. simpls. 
-    destruct ipl1; destruct ipl2; simpls; tryfalse.
-    inv H; inv H0. left; trivial.
-  - intros. simpls. 
-    destruct ipl1; destruct ipl2; simpls; tryfalse.
-    right.
-    eapply IHn; eauto.
-Qed.
 
-Lemma rel_pil_implies_rel_ipl: 
-  forall pil1 pil2 ipl1 ipl2 envv,
-    rel_list PolyLang.eqdom_pinstr pil1 pil2 ->
-    PolyLang.flatten_instrs envv pil1 ipl1 -> 
-    PolyLang.flatten_instrs envv pil2 ipl2 -> 
-    rel_list PolyLang.eq_except_sched ipl1 ipl2.
-Proof.
-  induction pil1 using rev_ind.
-  {
-    intros; simpls.
-    destruct pil2; simpls; tryfalse.
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H0.
-    eapply PolyLang.flatten_instrs_nil_implies_nil in H1.
-    subst; simpls; trivial.
-  }
-  {
-    intros; simpls.
-    assert (exists pi2 pil2', pil2 = pil2' ++ [pi2]) as Hipl2. {
-      clear - H.
-      eapply rel_list_implies_eq_length in H.
-      destruct pil2.
-      - rewrite app_length in H; simpls; try lia.
-      - assert (length (p::pil2) > 0). {rewrite app_length in H; simpls; try lia. }
-        exists (last (p::pil2) (p)) (removelast (p::pil2)).
-        eapply app_removelast_last. intro; tryfalse.
-    }
-    destruct Hipl2 as (pi2 & pil2' & Hipl2).  
-    rewrite Hipl2 in H. eapply rel_list_app_singleton in H. 
-    destruct H as (Hrell & Hrel).
-    
-    rename x into pi1; rename pil1 into pil1'.
 
-    rewrite Hipl2 in H1.
-    simpls.
-
-    simpls.
-
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H0.
-    eapply PolyLang.flatten_instrs_app_singleton_inv in H1.
-    destruct H0 as (ipl1'' & ipll1'' & Hpiexpand1 & Hpilexpand1 & APP1).
-    destruct H1 as (ipl2'' & ipll2'' & Hpiexpand2 & Hpilexpand2 & APP2).
-    subst.
-
-    eapply rel_list_app.
-    {
-      eapply IHpil1; eauto.
-    }
-    {
-      eapply PolyLang.eqdom_pinstr_implies_flatten_instr_nth_rel'; eauto.
-      assert (length pil1' = length pil2'). {
-        eapply rel_list_implies_eq_length; eauto.
-      }
-      rewrite H; trivial.
-    }
-}
-Qed.
-
-Lemma flatten_instrs_ext_ip_access_eq:
-  forall env envv pil_ext ipl_ext ip,
-    Forall (PolyLang.wf_pinstr_ext_tiling env) pil_ext ->
-    PolyLang.flatten_instrs_ext envv pil_ext ipl_ext ->
-    In ip ipl_ext ->
-    PolyLang.ip_access_transformation_ext ip =
-      PolyLang.ip_transformation_ext ip.
-Proof.
-  intros env envv pil_ext ipl_ext ip Hwf Hflat Hin.
-  destruct Hflat as (_ & Hmem & _ & _).
-  specialize (Hmem ip).
-  destruct Hmem as [Hfwd _].
-  destruct (Hfwd Hin) as (pi & Hnth & _ & Hbel & _).
-  apply nth_error_In in Hnth.
-  eapply Forall_forall in Hwf; eauto.
-  destruct Hwf as [_ Heqtf].
-  destruct Hbel as (_ & Htf & Hacc_tf & _ & _ & _ & _).
-  rewrite Htf, Hacc_tf, Heqtf.
-  reflexivity.
-Qed.
 
 Local Lemma validate_instr_and_list_implies_pointwise:
   forall
@@ -4002,43 +3351,7 @@ Proof.
       (ipl1_ext:=ipl1_ext) (ipl2_ext:=ipl2_ext); eauto.
 Qed.
 
-Lemma nth_error_compose_ipl_ext_inv:
-  forall n ipl1 ipl2 ip_ext,
-    nth_error (compose_ipl_ext ipl1 ipl2) n = Some ip_ext ->
-    exists ip1 ip2,
-      nth_error ipl1 n = Some ip1 /\
-      nth_error ipl2 n = Some ip2 /\
-      ip_ext = compose_ip_ext ip1 ip2.
-Proof.
-  exact nth_error_compose_ipl_ext_inv_local.
-Qed.
 
-Lemma compose_ipl_ext_nodup:
-  forall ipl1 ipl2,
-    NoDup ipl1 ->
-    length ipl1 = length ipl2 ->
-    NoDup (compose_ipl_ext ipl1 ipl2).
-Proof.
-  induction ipl1 as [|ip1 ipl1 IH]; intros ipl2 Hnd Hlen.
-  - destruct ipl2; simpl in *; constructor.
-  - destruct ipl2 as [|ip2 ipl2]; simpl in Hlen; try discriminate.
-    inversion Hnd as [|? ? Hnin Hnd']; subst.
-    constructor.
-    + intro Hin.
-      eapply in_compose_ipl_ext_inv in Hin.
-      destruct Hin as (ip1' & ip2' & Hin1 & _ & Heq).
-      apply (f_equal PolyLang.old_of_ext) in Heq.
-      revert Hnin Hin1 Heq.
-      destruct ip1 as [n1 idx1 tf1 ts1 ins1 d1].
-      destruct ip1' as [n1' idx1' tf1' ts1' ins1' d1'].
-      simpl.
-      intros Hnin Hin1 Heq.
-      inversion Heq; subst.
-      exact (Hnin Hin1).
-    + eapply IH.
-      * exact Hnd'.
-      * lia.
-Qed.
 
 Lemma compose_ipl_ext_at_nodup:
   forall access_tf ipl1 ipl2,
