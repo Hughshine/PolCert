@@ -648,23 +648,19 @@ Proof.
               _ _ _ _ Hinfer)
     as [Hlen_ws [Hlen_bands Hlen_recipes]].
   destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
+    (Core.composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv ipl_ext tau1
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [_ [_ [_ [_ [Hbel1 _]]]]]]]]]]].
-  destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv ipl_ext tau2
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [_ [_ [_ [_ [Hbel2 _]]]]]]]]]]].
+       ws envv ipl_ext tau1 tau2
+       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold Core.composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as
+    (before_pi1 & after_pi1 & w1 & Hbefore1 & Hafter1 & Hw1 &
+     _ & _ & _ & _ & Hbel1 & _).
+  destruct Hpoint2 as
+    (before_pi2 & after_pi2 & w2 & Hbefore2 & Hafter2 & Hw2 &
+     _ & _ & _ & _ & Hbel2 & _).
   destruct (nth_error bands (Core.Tiling.PL.ip_nth_ext tau1))
     as [band1|] eqn:Hband1.
   2:{
@@ -1041,23 +1037,19 @@ Proof.
        _ _ _ _ _ Hbands)
     as [Hlen_after [Hlen_ws Hlen_bands]].
   destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
+    (Core.composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv ipl_ext tau1
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [_ [_ [_ [_ [Hbel1 _]]]]]]]]]]].
-  destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv ipl_ext tau2
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [_ [_ [_ [_ [Hbel2 _]]]]]]]]]]].
+       ws envv ipl_ext tau1 tau2
+       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold Core.composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as
+    (before_pi1 & after_pi1 & w1 & Hbefore1 & Hafter1 & Hw1 &
+     _ & _ & _ & _ & Hbel1 & _).
+  destruct Hpoint2 as
+    (before_pi2 & after_pi2 & w2 & Hbefore2 & Hafter2 & Hw2 &
+     _ & _ & _ & _ & Hbel2 & _).
   destruct (nth_error bands (Core.Tiling.PL.ip_nth_ext tau1))
     as [band1|] eqn:Hband1.
   2:{
@@ -1317,23 +1309,19 @@ Proof.
        _ _ _ _ _ Hbands)
     as [Hlen_after [Hlen_ws Hlen_bands]].
   destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
+    (Core.composed_point_pair_facts_of_members
        before_pis before_ctxt before_vars
        after_pis before_ctxt before_vars
-       ws envv ipl_ext tau1
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1)
-    as [before_pi1 [after_pi1 [w1
-         [Hbefore1 [Hafter1 [Hw1
-         [_ [_ [_ [_ [Hbel1 _]]]]]]]]]]].
-  destruct
-    (Core.flatten_instrs_ext_from_after_member_nth_data_source
-       before_pis before_ctxt before_vars
-       after_pis before_ctxt before_vars
-       ws envv ipl_ext tau2
-       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin2)
-    as [before_pi2 [after_pi2 [w2
-         [Hbefore2 [Hafter2 [Hw2
-         [_ [_ [_ [_ [Hbel2 _]]]]]]]]]]].
+       ws envv ipl_ext tau1 tau2
+       Hprog Hwf_ws_env Hsizes_ws Hdepths Hflat Hin1 Hin2)
+    as [Hpoint1 Hpoint2].
+  unfold Core.composed_point_facts in Hpoint1, Hpoint2.
+  destruct Hpoint1 as
+    (before_pi1 & after_pi1 & w1 & Hbefore1 & Hafter1 & Hw1 &
+     _ & _ & _ & _ & Hbel1 & _).
+  destruct Hpoint2 as
+    (before_pi2 & after_pi2 & w2 & Hbefore2 & Hafter2 & Hw2 &
+     _ & _ & _ & _ & Hbel2 & _).
   destruct (nth_error bands (Core.Tiling.PL.ip_nth_ext tau1))
     as [band1|] eqn:Hband1.
   2:{

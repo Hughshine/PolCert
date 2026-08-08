@@ -8722,7 +8722,7 @@ Proof.
   exact Hlen_tau.
 Qed.
 
-Local Definition composed_point_facts
+Definition composed_point_facts
     (before_pis after_pis : list Tiling.PL.PolyInstr)
     (ws : list statement_tiling_witness)
     (envv : list Z)
@@ -8743,7 +8743,7 @@ Local Definition composed_point_facts
     List.length (Tiling.PL.ip_index_ext tau) =
       (List.length envv + Tiling.PL.pi_depth after_pi)%nat.
 
-Local Lemma composed_point_pair_facts_of_members :
+Lemma composed_point_pair_facts_of_members :
   forall before_pis before_ctxt before_vars
          after_pis after_ctxt after_vars ws envv ipl_ext tau1 tau2,
     Tiling.tiling_rel_pprog_structure_source
