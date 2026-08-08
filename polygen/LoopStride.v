@@ -268,20 +268,19 @@ Proof.
       (stride_count_expr (S step') lb ub)
       (stride_body_stmt (S step') lb ub body)).
   split; intros Hsem.
-  - inversion_clear Hsem.
-    match goal with
-    | Hiter: Instr.IterSem.iter_semantics _ (Zrange _ ?q) _ _ |- _ =>
-        replace q with
-          (stride_trip_count
-            (Z.of_nat (S step'))
-            (Loop.eval_expr env lb)
-            (Loop.eval_expr env ub)) in Hiter
-        by (rewrite <- (stride_count_expr_correct (S step') lb ub env ltac:(lia));
-            reflexivity)
-    end.
-    eapply iter_semantics_filter in H.
-    + rewrite <- Instr.IterSem.iter_semantics_mapl in H.
-      exact H.
+  - inversion Hsem as
+      [| | | | |
+       env0 lb0 ub0 body0 mem10 mem20 Hiter]; subst; clear Hsem.
+    change (Instr.IterSem.iter_semantics
+      (fun j => Loop.loop_semantics
+        (stride_body_stmt (S step') lb ub body) (j :: env))
+      (Zrange (Loop.eval_expr env (Loop.Constant 0))
+        (Loop.eval_expr env (stride_count_expr (S step') lb ub)))
+      mem1 mem2) in Hiter.
+    rewrite (stride_count_expr_correct (S step') lb ub env ltac:(lia)) in Hiter.
+    eapply iter_semantics_filter in Hiter.
+    + rewrite <- Instr.IterSem.iter_semantics_mapl in Hiter.
+      exact Hiter.
     + intros j st1 st2.
       apply stride_body_stmt_semantics.
   - unfold stride_values in Hsem.
@@ -317,16 +316,13 @@ Proof.
           mem1 mem2 Hfilter)
         Hsem) as Hfull.
     apply Loop.LLoop.
-    match goal with
-    | |- Instr.IterSem.iter_semantics _ (Zrange _ ?q) _ _ =>
-        replace q with
-          (stride_trip_count
-            (Z.of_nat (S step'))
-            (Loop.eval_expr env lb)
-            (Loop.eval_expr env ub))
-        by (rewrite <- (stride_count_expr_correct (S step') lb ub env ltac:(lia));
-            reflexivity)
-    end.
+    change (Instr.IterSem.iter_semantics
+      (fun j => Loop.loop_semantics
+        (stride_body_stmt (S step') lb ub body) (j :: env))
+      (Zrange (Loop.eval_expr env (Loop.Constant 0))
+        (Loop.eval_expr env (stride_count_expr (S step') lb ub)))
+      mem1 mem2).
+    rewrite (stride_count_expr_correct (S step') lb ub env ltac:(lia)).
     exact Hfull.
 Qed.
 
@@ -458,20 +454,19 @@ Proof.
       (down_stride_count_expr (S step') lb ub)
       (down_stride_body_stmt (S step') lb ub body)).
   split; intros Hsem.
-  - inversion_clear Hsem.
-    match goal with
-    | Hiter: Instr.IterSem.iter_semantics _ (Zrange _ ?q) _ _ |- _ =>
-        replace q with
-          (down_stride_trip_count
-            (Z.of_nat (S step'))
-            (Loop.eval_expr env lb)
-            (Loop.eval_expr env ub)) in Hiter
-        by (rewrite <- (down_stride_count_expr_correct (S step') lb ub env ltac:(lia));
-            reflexivity)
-    end.
-    eapply iter_semantics_filter in H.
-    + rewrite <- Instr.IterSem.iter_semantics_mapl in H.
-      exact H.
+  - inversion Hsem as
+      [| | | | |
+       env0 lb0 ub0 body0 mem10 mem20 Hiter]; subst; clear Hsem.
+    change (Instr.IterSem.iter_semantics
+      (fun j => Loop.loop_semantics
+        (down_stride_body_stmt (S step') lb ub body) (j :: env))
+      (Zrange (Loop.eval_expr env (Loop.Constant 0))
+        (Loop.eval_expr env (down_stride_count_expr (S step') lb ub)))
+      mem1 mem2) in Hiter.
+    rewrite (down_stride_count_expr_correct (S step') lb ub env ltac:(lia)) in Hiter.
+    eapply iter_semantics_filter in Hiter.
+    + rewrite <- Instr.IterSem.iter_semantics_mapl in Hiter.
+      exact Hiter.
     + intros j st1 st2.
       apply down_stride_body_stmt_semantics.
   - unfold down_stride_values in Hsem.
@@ -507,16 +502,13 @@ Proof.
           mem1 mem2 Hfilter)
         Hsem) as Hfull.
     apply Loop.LLoop.
-    match goal with
-    | |- Instr.IterSem.iter_semantics _ (Zrange _ ?q) _ _ =>
-        replace q with
-          (down_stride_trip_count
-            (Z.of_nat (S step'))
-            (Loop.eval_expr env lb)
-            (Loop.eval_expr env ub))
-        by (rewrite <- (down_stride_count_expr_correct (S step') lb ub env ltac:(lia));
-            reflexivity)
-    end.
+    change (Instr.IterSem.iter_semantics
+      (fun j => Loop.loop_semantics
+        (down_stride_body_stmt (S step') lb ub body) (j :: env))
+      (Zrange (Loop.eval_expr env (Loop.Constant 0))
+        (Loop.eval_expr env (down_stride_count_expr (S step') lb ub)))
+      mem1 mem2).
+    rewrite (down_stride_count_expr_correct (S step') lb ub env ltac:(lia)).
     exact Hfull.
 Qed.
 
