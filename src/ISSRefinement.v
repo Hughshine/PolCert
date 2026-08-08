@@ -18,8 +18,6 @@ Module State := PolIRs.State.
 Module Ty := PolIRs.Ty.
 Module PolyLang := PolIRs.PolyLang.
 
-Definition ident := Instr.ident.
-
 (** * Proof map
 
     This file gives the declarative meaning of an ISS certificate.  A target
@@ -468,32 +466,6 @@ Proof.
   destruct after as [[after_pis after_varctxt] after_vars].
   simpl in Hcut.
   exact (proj1 Hcut).
-Qed.
-
-Lemma all_iss_sign_vectors_length :
-  forall n signs,
-    In signs (all_iss_sign_vectors n) ->
-    length signs = n.
-Proof.
-  induction n as [|n IH]; intros signs Hin.
-  - simpl in Hin.
-    destruct Hin as [Hin | []].
-    subst. reflexivity.
-  - simpl in Hin.
-    apply in_app_or in Hin.
-    destruct Hin as [Hin | Hin].
-    + apply in_map_iff in Hin.
-      destruct Hin as [tail [Hsigns Htail]].
-      subst signs.
-      simpl.
-      f_equal.
-      eapply IH; eauto.
-    + apply in_map_iff in Hin.
-      destruct Hin as [tail [Hsigns Htail]].
-      subst signs.
-      simpl.
-      f_equal.
-      eapply IH; eauto.
 Qed.
 
 Lemma iss_sign_for_point_satisfies :

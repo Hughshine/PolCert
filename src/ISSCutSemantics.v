@@ -389,30 +389,6 @@ Proof.
   eapply Forall2_nth_error_local; eauto.
 Qed.
 
-Lemma domain_partition_complete_cut_shape_nth_payload_relation :
-  forall before after w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-         n after_pi stmt_w,
-    before = (before_pis, before_varctxt, before_vars) ->
-    after = (after_pis, after_varctxt, after_vars) ->
-    Refine.domain_partition_complete_cut_shape before after w ->
-    nth_error after_pis n = Some after_pi ->
-    nth_error w.(iw_stmt_witnesses) n = Some stmt_w ->
-    Refine.stmt_payload_matches_witness before_pis after_pi stmt_w.
-Proof.
-  intros before after w before_pis after_pis before_varctxt before_vars after_varctxt after_vars
-         n after_pi stmt_w Hbefore Hafter Hcomplete Hnth_after Hnth_w.
-  subst before after.
-  unfold Refine.domain_partition_complete_cut_shape in Hcomplete.
-  destruct Hcomplete as [Hcut _].
-  unfold Refine.domain_partition_cut_shape in Hcut.
-  simpl in Hcut.
-  destruct Hcut as [Hshape _].
-  unfold Refine.domain_partition_shape in Hshape.
-  simpl in Hshape.
-  destruct Hshape as [_ [_ [_ Hrel]]].
-  eapply Forall2_nth_error_local; eauto.
-Qed.
-
 Lemma complete_cut_shape_after_point_signs_match :
   forall before_pis before_varctxt before_vars
          after_pis after_varctxt after_vars
