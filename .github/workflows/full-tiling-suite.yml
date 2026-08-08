@@ -4,8 +4,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: full-tiling-suite-${{ github.ref }}
+  group: full-tiling-suite-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  CI_CACHE_SCOPE: polcert-full-${{ github.ref_name }}
 
 jobs:
   polopt-loop-suite:
@@ -32,8 +35,9 @@ jobs:
             PLUTO_GIT_REMOTE=${{ env.PLUTO_GIT_REMOTE }}
             PLUTO_GIT_COMMIT=${{ env.PLUTO_GIT_COMMIT }}
           cache-from: |
-            type=gha,scope=polcert-ci
+            type=gha,scope=${{ env.CI_CACHE_SCOPE }}
+            type=gha,scope=polcert-ci-main
             type=gha,scope=buildkit
-          cache-to: type=gha,mode=max,scope=polcert-ci
+          cache-to: type=gha,mode=max,scope=${{ env.CI_CACHE_SCOPE }}
       - name: Run isolated test shards
         run: bash tools/ci/run_ci_shards.sh polcert-tiling-ci:gha
