@@ -241,7 +241,10 @@ The second CI pass is designed for remote behavior, not local timing:
   memory, a per-job memory allowance, and an explicit maximum;
 - proof defaults allow up to four workers with 3 GiB budget per worker;
 - test shards are separately bounded and isolated;
-- PR, push, and manual workflows have non-colliding concurrency groups;
+- feature branches run once through the PR event; automatic push builds are
+  limited to `main` and `extractor`, while manual runs remain available;
+- PR, long-lived-branch push, and manual workflows have non-colliding
+  concurrency groups;
 - branch/PR Docker cache scopes read the main cache but do not overwrite one
   another;
 - shard enumeration rejects command failure, empty output, unexpected names,

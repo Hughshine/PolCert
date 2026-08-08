@@ -2,6 +2,9 @@ name: ci
 
 on:
   push:
+    branches:
+      - main
+      - extractor
   pull_request:
   workflow_dispatch:
 
