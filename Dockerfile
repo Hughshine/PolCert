@@ -8,7 +8,6 @@ FROM ${PLUTO_IMAGE} AS development-base
 ARG PLUTO_IMAGE
 ARG PLUTO_GIT_REMOTE
 ARG PLUTO_GIT_COMMIT
-ARG POLCERT_GIT_COMMIT=unknown
 
 LABEL com.polcert.version="0.9" \
       com.polcert.pluto.image="${PLUTO_IMAGE}" \
@@ -69,12 +68,12 @@ ENV APACHE_LOG_DIR   /var/log/apache2
 RUN mkdir -p $APACHE_RUN_DIR
 RUN mkdir -p $APACHE_LOCK_DIR
 RUN mkdir -p $APACHE_LOG_DIR
-COPY doc/index.html /var/www/html
 
 EXPOSE 80
 
 # prepare the editor, here we use vim
 RUN apt-get update && apt-get install -y vim cloc && apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY doc/index.html /var/www/html
 
 SHELL ["/bin/bash", "-c"]
 
@@ -84,6 +83,7 @@ WORKDIR /polcert/
 
 RUN eval $(opam env) && ./configure x86_64-linux 
 
+ARG POLCERT_GIT_COMMIT=unknown
 LABEL org.opencontainers.image.revision="${POLCERT_GIT_COMMIT}"
 ENV POLCERT_GIT_COMMIT="${POLCERT_GIT_COMMIT}"
 
@@ -91,7 +91,17 @@ ENV POLCERT_GIT_COMMIT="${POLCERT_GIT_COMMIT}"
 
 ENTRYPOINT /usr/sbin/apache2 && bash
 
-FROM development-base AS artifact
+FROM development-base AS ci
+
+ARG CI_MAX_PROOF_JOBS=4
+ARG CI_PROOF_MEMORY_MB_PER_JOB=3072
+
+ENV CI_MAX_PROOF_JOBS="${CI_MAX_PROOF_JOBS}" \
+    CI_PROOF_MEMORY_MB_PER_JOB="${CI_PROOF_MEMORY_MB_PER_JOB}"
+
+RUN bash /polcert/tools/ci/run_ci_build.sh
+
+FROM ci AS artifact
 
 ARG POLCERT_GIT_COMMIT=unknown
 ARG POLCERT_RELEASE_TAG=unknown
@@ -103,11 +113,6 @@ RUN printf '%s' "${POLCERT_GIT_COMMIT}" \
     && test "${POLCERT_RELEASE_TAG}" != "unknown" \
     && printf '%s' "${POLCERT_SOURCE_ARCHIVE_SHA256}" \
       | grep -Eq '^[0-9a-f]{64}$'
-
-RUN eval $(opam env --switch=polcert) \
-    && make clean \
-    && make depend \
-    && /usr/bin/time -v make -j1 polopt polcert.ini polcert
 
 RUN printf '{\n  "polcert_git_commit": "%s",\n  "polcert_release_tag": "%s",\n  "polcert_source_archive_sha256": "%s",\n  "pluto_git_commit": "%s"\n}\n' \
       "${POLCERT_GIT_COMMIT}" \
@@ -124,15 +129,5 @@ ENV POLCERT_GIT_COMMIT="${POLCERT_GIT_COMMIT}" \
     POLCERT_RELEASE_TAG="${POLCERT_RELEASE_TAG}" \
     POLCERT_SOURCE_ARCHIVE_SHA256="${POLCERT_SOURCE_ARCHIVE_SHA256}" \
     POLCERT_REQUIRE_PROVENANCE=1
-
-FROM development-base AS ci
-
-ARG CI_MAX_PROOF_JOBS=4
-ARG CI_PROOF_MEMORY_MB_PER_JOB=3072
-
-ENV CI_MAX_PROOF_JOBS="${CI_MAX_PROOF_JOBS}" \
-    CI_PROOF_MEMORY_MB_PER_JOB="${CI_PROOF_MEMORY_MB_PER_JOB}"
-
-RUN bash /polcert/tools/ci/run_ci_build.sh
 
 FROM development-base AS development

@@ -640,7 +640,7 @@ with ordered_par_traces_of_global :
     ordered_par_traces ss env tr.
 Proof.
   - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss _|t body IHbody];
+    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
       intros env tr Hglobal Htrace.
     + inversion Htrace as
           [| | | |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat
@@ -1075,7 +1075,7 @@ with seq_trace_refines_erased_stmts :
       Instr.State.eq mem2 mem2'.
 Proof.
   - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss _|t body IHbody];
+    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
       intros env tr mem1 mem2 Hsafe Htrace Hsem.
     + inversion Htrace as
           [| | | | mode' od' lb' ub' body' env' zs trs tr' Hzs Hfor Hconcat];
@@ -1551,7 +1551,7 @@ with ordered_par_traces_refines_erased_stmts :
       Instr.State.eq mem2 mem2'.
 Proof.
   - intros s.
-    induction s as [mode od lb ub body IHbody|i es|ss _|t body IHbody];
+    induction s as [mode od lb ub body IHbody|i es|ss|t body IHbody];
       intros env tr mem1 mem2 Hna Hsafe Htrace Hsem.
     + inversion Htrace as
           [| | | |od' lb' ub' body' env' zs trs tr' Hzs Hfor Hordered_for Hconcat

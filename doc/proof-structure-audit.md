@@ -240,7 +240,7 @@ The second CI pass is designed for remote behavior, not local timing:
 
 - proof parallelism is derived from available CPUs, cgroup CPU quota, available
   memory, a per-job memory allowance, and an explicit maximum;
-- proof defaults allow up to two workers with 6 GiB budget per worker;
+- proof defaults allow up to four workers with 3 GiB budget per worker;
 - extraction reuses the selected worker count, then the CI script enters
   `Makefile.extr` directly for `polcert` and `polopt`; this avoids re-evaluating
   and repeating the completed Coq/extraction layer;

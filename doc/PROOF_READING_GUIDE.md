@@ -571,7 +571,7 @@ entry point, and only then its supporting long proof.
 | Paper section | Current proof entry | What to inspect next |
 | --- | --- | --- |
 | `semantics.tex`, refinement contract and occurrence order | `PolyLang.instance_list_semantics`, `PolyLang.poly_instance_list_semantics` | `InstanceListSema.Permutable`, stable sorting and list-semantics transport in `PolyLang.v` |
-| `problem.tex`, end-to-end partial correctness | `VerifiedParallelCompilerConfig.compile_correct` | `compile_verified_correct`, then only the constructor for the route being read |
+| `problem.tex`, end-to-end refinement | `VerifiedParallelCompilerConfig.compile_correct` | `compile_verified_correct`, then only the constructor for the route being read |
 | `composition.tex`, verified extraction | `ExtractorCorrect.extractor_correct` | `core_sched_stmt_stmts_constrs_prefix_mutual`; use `ExtractorFacts.v` only when a slice or partition premise appears |
 | `transformations.tex`, index-set splitting | `ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct` | checker soundness in `ISSBoolChecker.v`, then coverage/disjointness in `ISSRefinement.v` and semantic mapping in `ISSCutSemantics.v` |
 | inherited affine rescheduling argument | `AffineValidator.validate_correct` | `validate_two_instrs_implies_no_write_collision`, `validate_implies_permutability`, and the stable-sort semantic bridge |
@@ -579,7 +579,7 @@ entry point, and only then its supporting long proof.
 | `tiling.tex`, permutable-band checker | `TilingBandScheduleValidator.semantic_componentwise_permutable_implies_reordering_safe` | one direct component-checker soundness theorem and one layout reversal bridge |
 | `tiling.tex`, tiling refinement | `TilingBandDirectRuntime.checked_tiling_sourceb_complete_direct_band_check_correct` | the selected layout-class endpoint, then `TilingValidator.tiling_validate_correct` |
 | `transformations.tex`, dimension eligibility | `ParallelValidator.checked_parallelize_current_pointwise_sound` | the two synthetic schedules and `parallel_safe_dim_pointwise` |
-| paper v8 restricted annotation semantics | v8 `ParallelLoop.interleave_safe_refines_concat` | use `git show 0661fe0a:polygen/ParallelLoop.v`; this is the exact frozen argument |
+| historical v8 restricted annotation semantics | v8 `ParallelLoop.interleave_safe_refines_concat` | use `git show 0661fe0a:polygen/ParallelLoop.v`; this is the exact v8 argument |
 | current strengthened annotation semantics | `ParallelCodegenCorrect.checked_annotated_codegen_correct_general` | `RawCodegenOrigin.complete_generate_many_event_source`, `actual_multi_ordered_mutual`, then `ParallelLoop.semantics_refines_erased` |
 | `composition.tex`, complete route composition | `ParallelPolOptCorrect.Opt_parallel_current_correct` and `VerifiedParallelCompilerConfig.compile_verified_correct` | certificate transport, frontend lifting, and the two explicit `State.eq_trans` compositions |
 

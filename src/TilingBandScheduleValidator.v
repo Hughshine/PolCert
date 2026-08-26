@@ -727,7 +727,7 @@ Proof.
          (prefix ++ [root_tile; Z.div root_tile (tl_tile_size child)])
          point params Hprefix_rest eq_refl Hwf_rest' Hparams_rest)
       as IHrest.
-    simpl [eval_tile_links].
+    cbn [eval_tile_links].
     fold root_tile.
     rewrite Hchild_eval.
     replace

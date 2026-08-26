@@ -6,8 +6,10 @@ eval "$(opam env --switch=polcert)"
 
 source /polcert/tools/ci/ci_resources.sh
 
-readonly max_proof_jobs="${CI_MAX_PROOF_JOBS:-2}"
-readonly proof_memory_mb="${CI_PROOF_MEMORY_MB_PER_JOB:-6144}"
+# Keep the fallbacks aligned with the Docker CI target. Resource detection still
+# caps this by the runner's CPU quota and currently available memory.
+readonly max_proof_jobs="${CI_MAX_PROOF_JOBS:-4}"
+readonly proof_memory_mb="${CI_PROOF_MEMORY_MB_PER_JOB:-3072}"
 proof_jobs="$(ci_choose_jobs CI_PROOF_JOBS "$max_proof_jobs" "$proof_memory_mb")"
 readonly proof_jobs
 

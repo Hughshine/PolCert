@@ -478,7 +478,7 @@ with seq_trace_refines_loop_stmts :
       State.eq mem2 mem2'.
 Proof.
   - intros s.
-    induction s as [lb ub body IHbody|i es|ss _|t body IHbody];
+    induction s as [lb ub body IHbody|i es|ss|t body IHbody];
       intros env tr mem1 mem2 Hsafe Htrace Hsem.
     + inversion Htrace as
         [| | | |

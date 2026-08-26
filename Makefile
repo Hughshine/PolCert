@@ -510,6 +510,7 @@ proof-documentation: $(PROOF_DOC_OBJECTS) doc/proof-index.html
 	  -t "PolCert proof reader" $(COQINCLUDES) \
 	  -d doc/proof-html --glob-from doc/proof-html/proof.glob $(PROOF_DOC_FILES)
 	cp doc/proof-index.html doc/proof-html/index.html
+	python3 tools/docs/normalize_coqdoc_links.py doc/proof-html
 
 .PHONY: proof-documentation
 
