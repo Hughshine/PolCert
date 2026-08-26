@@ -1,6 +1,6 @@
 # PolCert proof-readability audit: cross-file consolidation
 
-> **Resolution on `fix/parallel-interleaving` (2026-08-07).** The parallel P0 in
+> **Resolution on `artifact/verified-compilation-v9-candidate` (2026-08-07).** The parallel P0 in
 > this historical plan has been implemented: unrestricted target interleavings,
 > pointwise schedule-coordinate certificates, generated-trace origin, actual
 > ordered proof companions, and cleanup reflection are connected through the

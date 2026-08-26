@@ -162,9 +162,10 @@ gate; otherwise the same route returns its checked standard-raw form.
 GitHub Actions currently has two Docker-based workflows:
 
 - `ci`
-  - clean build and regression flow on push / pull request / manual dispatch
+  - clean build and regression flow on `main` / `extractor` pushes, pull
+    requests, and manual dispatch
 - `full-tiling-suite`
-  - stricter `polopt` loop-suite workflow on `main`, `extractor`, and pull requests
+  - manually dispatched stricter `polopt` loop-suite workflow
 
 The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
 

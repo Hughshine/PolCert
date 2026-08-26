@@ -1,6 +1,6 @@
 # Read-only audit: `polygen/ParallelLoop.v`
 
-> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This inventory and
+> **Resolution on `artifact/verified-compilation-v9-candidate` (2026-08-07).** This inventory and
 > the line references below describe commit `9162178`.  The semantic finding is
 > fixed: `PTLoopPar` now admits raw `interleave_family` executions and recursively
 > models nested parallel bodies.  Safety is represented separately by

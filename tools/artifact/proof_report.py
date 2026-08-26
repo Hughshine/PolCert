@@ -63,8 +63,8 @@ TOP_LEVEL_ROUTES = [
         "cli": "internal direct branch for ordinary strip mining with statement-specific band widths after unique constant phase rows",
         "theorem_file": "src/TilingBandMixedSecondValidator.v",
         "theorem_names": [
-            "phase_separated_ordinary_reversal_same_statement",
-            "phase_separated_ordinary_local_reversal_bridge_wf_with_env_len",
+            "phase_separated_ordinary_reversal_same_class",
+            "phase_class_ordinary_local_reversal_bridge_wf_with_env_len",
             "check_pprog_phase_separated_ordinary_direct_true_inv",
             "check_pprog_phase_separated_ordinary_direct_correct_same_ctxt",
         ],
@@ -132,12 +132,16 @@ TOP_LEVEL_ROUTES = [
     {
         "route": "checked raw parallel codegen form",
         "cli": "internal checked alternative used by parallel-current routes",
-        "theorem_file": "src/ParallelCodegen.v",
-        "theorem_names": [
-            "checked_annotated_codegen_correct_general",
-            "annotated_codegen_raw_correct_general",
-        ],
+        "theorem_file": "src/ParallelCodegenCorrect.v",
+        "theorem_names": ["checked_annotated_codegen_correct_general"],
         "note": "The selector returns metadata-preserving cleaned output only when every proof-relevant cleanup stage passes the executable trace-safety gate; otherwise it retains the checked standard-raw singleton-loop output.",
+    },
+    {
+        "route": "raw parallel codegen compatibility endpoint",
+        "cli": "internal generic endpoint retained for compatibility consumers",
+        "theorem_file": "src/ParallelCodegenCompatibility.v",
+        "theorem_names": ["annotated_codegen_raw_correct_general"],
+        "note": "This compatibility theorem exposes the raw generated-program endpoint; certificate-backed compiler routes use the checked theorem above.",
     },
     {
         "route": "raw prepared codegen",

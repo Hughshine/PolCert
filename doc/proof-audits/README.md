@@ -118,7 +118,7 @@ The parallel audits identified a semantic connection that was absent at commit
 - The driver obtains the validator certificate but its correctness proof does
   not apply the certificate soundness theorem.
 
-That finding is now historical on `fix/parallel-interleaving`.  The target
+That finding is now historical on `artifact/verified-compilation-v9-candidate`.  The target
 semantics admits arbitrary order-preserving interleavings; the validator
 certifies padded schedule coordinates; codegen-origin theorems relate actual
 generated points to source instances; and the checked endpoint uses the

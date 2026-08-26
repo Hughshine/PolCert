@@ -1,6 +1,6 @@
 # ParallelCodegen read-only audit summary
 
-> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This is a
+> **Resolution on `artifact/verified-compilation-v9-candidate` (2026-08-07).** This is a
 > historical audit of commit `9162178`, not a description of the current proof
 > chain.  The checked codegen endpoint now consumes validator certificate
 > soundness, maps actual generated traces back to source points through

@@ -14,29 +14,22 @@ cross-module declaration index.
 
 ## Version note for paper readers
 
-The CPP 2027 paper freezes artifact commit
-`0661fe0aa121deaa6ca714f258b96906a1dc0ca8` (the annotated v8 tag).  This guide
-describes the later `fix/parallel-interleaving` readability branch.  The v8
-commit is an ancestor, so the extraction, ISS, affine, and tiling arguments
-have the same semantic spine, but names and source locations may differ after
-factoring and dead-code removal.
+This guide describes the
+`artifact/verified-compilation-v9-candidate` branch being prepared for the CPP
+2027 artifact.  The previously reviewed v8 tag remains the baseline for older
+quantitative evidence, but it is not the intended final paper artifact.  The
+candidate retains the extraction, ISS, affine, and tiling semantic spine while
+factoring proof ownership and removing dead compatibility routes.
 
-There is one material theorem-boundary difference.  The frozen paper describes
-the v8 `ParMode` semantics, which admits only commutation-filtered
-`interleave_safe` traces and proves annotation refinement independently of the
-eligibility certificate.  The current branch gives `ParMode` the raw
-order-preserving `interleave_family` semantics and makes checked code generation
-consume the certificate to construct an `ordered_semantics` proof companion.
-Thus the paper is conservative for the current branch, but its annotation
-section is line-for-line about v8 rather than this strengthened endpoint.
-
-There is also a coordinate-interface change.  The frozen paper and v8 checker
-call `d` a current iterator coordinate.  The repaired branch interprets it as
-a canonical coordinate of the globally padded affine schedule, exactly the
-coordinate scanned and tagged by raw code generation.  This removes the old
-unproved current-coordinate-to-generated-loop identification.  When reading
-the paper against this branch, use the paper wording for v8 and the schedule
-coordinate wording in `ParallelValidator.v` for the strengthened theorem.
+The candidate also corrects one material theorem boundary.  `ParMode` now uses
+the raw order-preserving `interleave_family` semantics rather than the v8
+commutation-filtered trace relation.  Checked code generation consumes the
+eligibility certificate and constructs an `ordered_semantics` proof companion
+for each actual target execution.  The certificate denotes the canonical
+coordinate of the globally padded affine schedule used by raw code generation,
+removing the old unproved current-coordinate-to-generated-loop identification.
+The paper narrative is being aligned with this candidate before the final
+annotated artifact tag is created.
 
 The cleanup preserved the names and types of live theorem entry points.  It did
 remove repository-unreferenced legacy declarations, so this branch is not a

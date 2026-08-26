@@ -1,6 +1,6 @@
 # Parallel certificate-to-codegen soundness audit
 
-> **Resolution on `fix/parallel-interleaving` (2026-08-07).** This document
+> **Resolution on `artifact/verified-compilation-v9-candidate` (2026-08-07).** This document
 > records the pre-fix audit at commit `9162178`; its gap conclusion is historical.
 > `PTLoopPar` now uses unrestricted `interleave_family` traces, the validator
 > certifies a padded schedule coordinate pointwise, and `RawCodegenOrigin` plus
