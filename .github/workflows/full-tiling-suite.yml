@@ -16,15 +16,15 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Load Pluto baseline
         run: >-
           grep -v '^[[:space:]]*#' tools/ci/pluto-baseline.env |
           grep -v '^[[:space:]]*$' >> "$GITHUB_ENV"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build suite image from the repository Dockerfile
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: ci
@@ -39,6 +39,5 @@ jobs:
             type=gha,scope=${{ env.CI_CACHE_SCOPE }}
             type=gha,scope=polcert-ci-main
             type=gha,scope=buildkit
-          cache-to: type=gha,mode=max,scope=${{ env.CI_CACHE_SCOPE }}
       - name: Run isolated test shards
         run: bash tools/ci/run_ci_shards.sh polcert-tiling-ci:gha
