@@ -20,21 +20,37 @@ type tiling_mode =
   | OrdinaryTiling
   | SecondLevelTiling
 
+type schedule_mode =
+  | AffineSchedule
+  | IdentitySchedule
+
 type diamond_mode =
   | NoDiamondTiling
   | DiamondTiling
   | FullDiamondTiling
 
+type intra_tile_mode =
+  | DisableIntraTile
+  | EnableIntraTile
+
 let current_tiling_mode = ref OrdinaryTiling
+let current_schedule_mode = ref AffineSchedule
 let current_diamond_mode = ref NoDiamondTiling
+let current_intra_tile_mode = ref DisableIntraTile
 let current_pluto_extra_flags = ref []
 let current_pluto_control_files = ref []
 
 let set_tiling_mode mode =
   current_tiling_mode := mode
 
+let set_schedule_mode mode =
+  current_schedule_mode := mode
+
 let set_diamond_mode mode =
   current_diamond_mode := mode
+
+let set_intra_tile_mode mode =
+  current_intra_tile_mode := mode
 
 let set_pluto_extra_flags flags =
   current_pluto_extra_flags := flags
@@ -60,6 +76,25 @@ let diamond_tiling_enabled () =
 
 let full_diamond_tiling_enabled () =
   !current_diamond_mode = FullDiamondTiling
+
+let identity_schedule_enabled () =
+  !current_schedule_mode = IdentitySchedule
+
+let intra_tile_enabled () =
+  !current_intra_tile_mode = EnableIntraTile
+
+let post_tiling_affine_enabled () =
+  diamond_tiling_enabled () || intra_tile_enabled ()
+
+let intra_tile_flags () =
+  match !current_intra_tile_mode with
+  | DisableIntraTile -> ["--nointratileopt"]
+  | EnableIntraTile -> ["--intratileopt"]
+
+let identity_schedule_flags () =
+  match !current_schedule_mode with
+  | AffineSchedule -> []
+  | IdentitySchedule -> ["--identity"]
 
 let tmp_file_abs suff =
   absolute_path (tmp_file suff)
@@ -191,7 +226,7 @@ let text_has_line tag text =
   String.split_on_char '\n' text
   |> List.exists (fun line -> String.trim line = tag)
 
-let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
+let run_pluto_scop_with_phase_dumps flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
@@ -224,9 +259,9 @@ let run_pluto_scop_with_midpoint_and_posttile_dump flags inscop =
         safe_remove outscop_file;
         Err
           (coqstring_of_camlstring
-             (Printf.sprintf "diamond scheduler failed with exit code %d" exc))
+             (Printf.sprintf "post-tiling affine scheduler failed with exit code %d" exc))
       ) else
-        Err (coqstring_of_camlstring "diamond scheduler failed")
+        Err (coqstring_of_camlstring "post-tiling affine scheduler failed")
 
 let trim_nonempty_lines lines =
   List.filter_map
@@ -574,20 +609,19 @@ let affine_only_flags =
     "--rar";
   ]
 
-let tile_only_flags =
+let tile_only_flags () =
   [
     "--identity";
     "--tile";
-    "--nointratileopt";
     "--nodiamond-tile";
     "--noprevector";
     "--nounrolljam";
     "--noparallel";
     "--rar";
-  ]
+  ] @ intra_tile_flags ()
 
-let tile_only_second_level_flags =
-  tile_only_flags @ ["--second-level-tile"]
+let tile_only_second_level_flags () =
+  tile_only_flags () @ ["--second-level-tile"]
 
 let affine_with_iss_flags =
   ["--iss"] @ affine_only_flags
@@ -616,104 +650,108 @@ let affine_only_vector_flags =
     "--rar";
   ]
 
-let tile_only_parallel_flags =
+let tile_only_parallel_flags () =
   [
     "--identity";
     "--tile";
-    (* Keep the tiled schedule canonical so the verified tiling witness
-       stays phase-aligned. Pluto's default tiled --parallel path may
-       skew tiles for wavefront parallelism. *)
+    (* Keep parallelization inside the chosen tile.  The post-tiling affine
+       route separately validates any requested intra-tile rescheduling. *)
     "--innerpar";
-    "--nointratileopt";
     "--nodiamond-tile";
     "--noprevector";
     "--nounrolljam";
     "--parallel";
     "--rar";
-  ]
+  ] @ intra_tile_flags ()
 
-let tile_only_vector_flags =
+let tile_only_vector_flags () =
   [
     "--identity";
     "--tile";
-    "--nointratileopt";
     "--nodiamond-tile";
     "--prevector";
     "--nounrolljam";
     "--noparallel";
     "--rar";
-  ]
+  ] @ intra_tile_flags ()
 
-let tile_only_parallel_second_level_flags =
-  tile_only_parallel_flags @ ["--second-level-tile"]
+let tile_only_parallel_second_level_flags () =
+  tile_only_parallel_flags () @ ["--second-level-tile"]
 
-let tile_only_vector_second_level_flags =
-  tile_only_vector_flags @ ["--second-level-tile"]
+let tile_only_vector_second_level_flags () =
+  tile_only_vector_flags () @ ["--second-level-tile"]
 
 let second_level_tiling_flags () =
   if second_level_tiling_enabled ()
   then ["--second-level-tile"]
   else []
 
-let diamond_phase_flags () =
-  [
+let diamond_tiling_flags () =
+  match !current_diamond_mode with
+  | NoDiamondTiling -> ["--nodiamond-tile"]
+  | DiamondTiling -> ["--diamond-tile"]
+  | FullDiamondTiling -> ["--diamond-tile"; "--full-diamond-tile"]
+
+let post_tiling_affine_flags () =
+  identity_schedule_flags () @ [
     "--tile";
-    "--nointratileopt";
     "--noprevector";
     "--smartfuse";
     "--nounrolljam";
     "--noparallel";
     "--rar";
   ]
+  @ intra_tile_flags ()
   @
-  (if full_diamond_tiling_enabled ()
-   then ["--diamond-tile"; "--full-diamond-tile"]
-   else ["--diamond-tile"])
+  diamond_tiling_flags ()
   @
   second_level_tiling_flags ()
 
-let diamond_phase_parallel_flags () =
-  [
+let post_tiling_affine_parallel_flags () =
+  identity_schedule_flags () @ [
     "--tile";
-    "--nointratileopt";
     "--noprevector";
     "--smartfuse";
     "--nounrolljam";
     "--parallel";
     "--rar";
   ]
+  @ intra_tile_flags ()
   @
-  (if full_diamond_tiling_enabled ()
-   then ["--diamond-tile"; "--full-diamond-tile"]
-   else ["--diamond-tile"])
+  diamond_tiling_flags ()
   @
   second_level_tiling_flags ()
 
-let diamond_phase_parallel_with_iss_flags () =
-  "--iss" :: diamond_phase_parallel_flags ()
+let post_tiling_affine_parallel_with_iss_flags () =
+  "--iss" :: post_tiling_affine_parallel_flags ()
 
-let diamond_phase_vector_flags () =
-  [
+let post_tiling_affine_vector_flags () =
+  identity_schedule_flags () @ [
     "--tile";
-    "--nointratileopt";
     "--prevector";
     "--smartfuse";
     "--nounrolljam";
     "--noparallel";
     "--rar";
   ]
+  @ intra_tile_flags ()
   @
-  (if full_diamond_tiling_enabled ()
-   then ["--diamond-tile"; "--full-diamond-tile"]
-   else ["--diamond-tile"])
+  diamond_tiling_flags ()
   @
   second_level_tiling_flags ()
 
-let diamond_phase_vector_with_iss_flags () =
-  "--iss" :: diamond_phase_vector_flags ()
+let post_tiling_affine_vector_with_iss_flags () =
+  "--iss" :: post_tiling_affine_vector_flags ()
 
-let diamond_phase_with_iss_flags () =
-  "--iss" :: diamond_phase_flags ()
+let post_tiling_affine_with_iss_flags () =
+  "--iss" :: post_tiling_affine_flags ()
+
+(* These aliases retain the names inspected by older tooling.  The recipe is
+   shape-independent: it emits affine, post-tiling, and final schedule dumps
+   for rectangular intratile optimization as well as diamond tiling. *)
+let diamond_phase_flags = post_tiling_affine_flags
+
+let diamond_phase_with_iss_flags = post_tiling_affine_with_iss_flags
 
 let affine_with_iss_parallel_flags =
   ["--iss"] @ affine_only_parallel_flags
@@ -735,8 +773,8 @@ let affine_only_scop_scheduler inscop =
 let tile_only_scop_scheduler inscop =
   let flags =
     if second_level_tiling_enabled ()
-    then tile_only_second_level_flags
-    else tile_only_flags
+    then tile_only_second_level_flags ()
+    else tile_only_flags ()
   in
   run_pluto_scop (with_pluto_extra_flags flags) inscop
 
@@ -753,16 +791,16 @@ let affine_only_scop_scheduler_with_vector_hint inscop =
 let tile_only_scop_scheduler_with_parallel_hint inscop =
   let flags =
     if second_level_tiling_enabled ()
-    then tile_only_parallel_second_level_flags
-    else tile_only_parallel_flags
+    then tile_only_parallel_second_level_flags ()
+    else tile_only_parallel_flags ()
   in
   run_pluto_scop_with_parallel_hint (with_pluto_extra_flags flags) inscop
 
 let tile_only_scop_scheduler_with_vector_hint inscop =
   let flags =
     if second_level_tiling_enabled ()
-    then tile_only_vector_second_level_flags
-    else tile_only_vector_flags
+    then tile_only_vector_second_level_flags ()
+    else tile_only_vector_flags ()
   in
   run_pluto_scop_with_vector_hint (with_pluto_extra_flags flags) inscop
 
@@ -837,27 +875,35 @@ let run_pluto_identity_tiling_pipeline inscop =
       else
         Okk (inscop, outscop)
 
-let run_pluto_diamond_phase_pipeline inscop =
-  run_pluto_scop_with_midpoint_and_posttile_dump
-    (with_pluto_extra_flags (diamond_phase_flags ()))
+let run_pluto_post_tiling_affine_pipeline inscop =
+  run_pluto_scop_with_phase_dumps
+    (with_pluto_extra_flags (post_tiling_affine_flags ()))
     inscop
 
-let run_pluto_diamond_phase_pipeline_nested inscop =
-  match run_pluto_diamond_phase_pipeline inscop with
+let run_pluto_post_tiling_affine_pipeline_nested inscop =
+  match run_pluto_post_tiling_affine_pipeline inscop with
   | Err msg -> Err msg
   | Okk (midscop, posttile_scop, after_scop) ->
       Okk (midscop, (posttile_scop, after_scop))
 
-let run_pluto_diamond_phase_pipeline_with_iss inscop =
-  run_pluto_scop_with_midpoint_and_posttile_dump
-    (with_pluto_extra_flags (diamond_phase_with_iss_flags ()))
+let run_pluto_post_tiling_affine_pipeline_with_iss inscop =
+  run_pluto_scop_with_phase_dumps
+    (with_pluto_extra_flags (post_tiling_affine_with_iss_flags ()))
     inscop
 
-let run_pluto_diamond_phase_pipeline_with_iss_nested inscop =
-  match run_pluto_diamond_phase_pipeline_with_iss inscop with
+let run_pluto_post_tiling_affine_pipeline_with_iss_nested inscop =
+  match run_pluto_post_tiling_affine_pipeline_with_iss inscop with
   | Err msg -> Err msg
   | Okk (midscop, posttile_scop, after_scop) ->
       Okk (midscop, (posttile_scop, after_scop))
+
+(* Extracted Coq constants still use the historical [diamond] names.  Their
+   proofs validate the generic affine -> tiling -> affine composition. *)
+let run_pluto_diamond_phase_pipeline_nested =
+  run_pluto_post_tiling_affine_pipeline_nested
+
+let run_pluto_diamond_phase_pipeline_with_iss_nested =
+  run_pluto_post_tiling_affine_pipeline_with_iss_nested
 
 let run_pluto_phase_pipeline_with_parallel_hint inscop =
   match affine_only_scop_scheduler inscop with
@@ -879,33 +925,25 @@ let run_pluto_phase_pipeline_with_vector_hint inscop =
         | Okk (outscop, hint) -> Okk (midscop, outscop, hint)
       end
 
-let run_pluto_diamond_parallel_hint inscop =
-  match run_pluto_scop_with_parallel_hint
-          (with_pluto_extra_flags (diamond_phase_parallel_flags ()))
-          inscop with
-  | Err msg -> Err msg
-  | Okk (_outscop, hint) -> Okk hint
+let post_tiling_affine_scop_scheduler_with_parallel_hint inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags (post_tiling_affine_parallel_flags ()))
+    inscop
 
-let run_pluto_diamond_parallel_hint_with_iss inscop =
-  match run_pluto_scop_with_parallel_hint
-          (with_pluto_extra_flags (diamond_phase_parallel_with_iss_flags ()))
-          inscop with
-  | Err msg -> Err msg
-  | Okk (_outscop, hint) -> Okk hint
+let post_tiling_affine_scop_scheduler_with_parallel_hint_with_iss inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags (post_tiling_affine_parallel_with_iss_flags ()))
+    inscop
 
-let run_pluto_diamond_vector_hint inscop =
-  match run_pluto_scop_with_vector_hint
-          (with_pluto_extra_flags (diamond_phase_vector_flags ()))
-          inscop with
-  | Err msg -> Err msg
-  | Okk (_outscop, hint) -> Okk hint
+let post_tiling_affine_scop_scheduler_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags (post_tiling_affine_vector_flags ()))
+    inscop
 
-let run_pluto_diamond_vector_hint_with_iss inscop =
-  match run_pluto_scop_with_vector_hint
-          (with_pluto_extra_flags (diamond_phase_vector_with_iss_flags ()))
-          inscop with
-  | Err msg -> Err msg
-  | Okk (_outscop, hint) -> Okk hint
+let post_tiling_affine_scop_scheduler_with_vector_hint_with_iss inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags (post_tiling_affine_vector_with_iss_flags ()))
+    inscop
 
 let run_pluto_phase_pipeline_with_iss inscop =
   match affine_only_scop_scheduler_with_iss inscop with

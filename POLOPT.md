@@ -100,6 +100,9 @@ outside these proved recognizers are rejected rather than sent to another
 tiling validator. The
 diamond route has a separate final affine leg after tiling; that leg is checked
 by `validate_general` even when the tiling leg reported `permutable-band`.
+`--intratileopt` uses the same proved affine, tiling, affine composition for
+rectangular tiling: Pluto's tile-internal loop reordering is the final affine
+leg, not part of the permutable-band judgment.
 
 ## Pluto configuration used by `polopt`
 
@@ -130,7 +133,7 @@ itself cover transformations such as:
   validator than the current checked affine+tiling path
 - storage-changing transformations such as scalar privatization or array contraction
 
-Three important extensions now sit beside that default path:
+Four important extensions now sit beside that default path:
 
 - `--iss`
   - switches to the separate theorem-aligned ISS+affine+tiling route
@@ -141,6 +144,9 @@ Three important extensions now sit beside that default path:
 - `--parallel`, `--parallel-strict`, `--parallel --multipar`
   - expose Pluto-hinted checked parallel certification / code generation routes
   - dispatch through the unified `Loop -> ParallelLoop` compiler wrapper
+- `--intratileopt`
+  - selects a post-tiling affine phase on any tiled route
+  - validates affine scheduling, tiling, and intra-tile rescheduling separately
 
 ## Native Pluto-style filtered mode
 

@@ -1,540 +1,257 @@
-# `polopt` Flag Guide
+# `polopt` Driver and Flag Guide
 
-This note explains the user-facing flag model implemented by the `polopt` CLI.
-Today that surface is split across:
+This guide describes the artifact-facing `polopt` command. Its intended reader
+is someone running the compiler or reviewing how command-line choices reach the
+verified pipeline.
 
-- [syntax/SLoopCli.ml](../syntax/SLoopCli.ml): argument parsing and usage text
-- [syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml): route normalization and
-  rejected-combination checks
-- [syntax/SLoopDispatch.ml](../syntax/SLoopDispatch.ml): dispatch over the
-  normalized route families
-- [syntax/SLoopMain.ml](../syntax/SLoopMain.ml): thin executable shell over the
-  shared helpers above
+Four files define the driver:
 
-The short version is:
+- [syntax/SLoopCli.ml](../syntax/SLoopCli.ml) parses flags and reports errors.
+- [syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml) normalizes flags into one typed
+  route.
+- [syntax/SLoopDispatch.ml](../syntax/SLoopDispatch.ml) dispatches standalone
+  validation actions.
+- [syntax/SLoopMain.ml](../syntax/SLoopMain.ml) maps a normalized optimization
+  route to an extracted verified compiler configuration.
 
-- some flags choose which verified pipeline family to run
-- some flags refine one family
-- some flags bypass optimization entirely and run standalone validation actions
-- some flags only control printing, profiling, or extraction
+The driver never chooses the final compiler by re-reading route-selection
+booleans. It validates the complete flag set once, retains the normalized
+route, configures Pluto from that route, and dispatches on the route's execution
+family.
 
-Many rejected combinations are not arbitrary. They are blocked because the
-selected flags would ask `polopt` to combine two different pipeline families,
-or would request a feature at a point in the pipeline where the necessary
-artifact does not exist.
+## Route Model
 
-## 1. Pipeline layers
+A normal compilation route has five independent axes.
 
-`polopt` is easiest to understand if its flags are grouped by layer.
+| Axis | Choices | Default |
+| --- | --- | --- |
+| Schedule | affine, identity | affine |
+| Structural stage | plain, ISS | plain |
+| Tiling | none, one-level, two-level | one-level |
+| Tile shape and order | rectangular or diamond; fixed or intra-tile optimized | rectangular with fixed intra-tile order |
+| Execution | sequential, Pluto-hinted parallel, explicit-coordinate parallel, Pluto-hinted vector, explicit-coordinate vector | sequential |
 
-### 1.1 Base route shape
+Observation flags such as `--dump-input` do not create a sixth route axis.
+Post-codegen transformations such as `--const-unroll` run only after a
+sequential verified compilation succeeds.
 
-Exactly one of these route shapes is active for a normal optimization run:
+### Schedule
 
-- default full tiled route
-  - extracted, strengthened, affine-scheduled, then tiling is attempted
-- `--notile`
-  - stops after the affine scheduling stage
-- `--identity`
-  - skips Pluto scheduling entirely and runs extract/strengthen/codegen only
+The default route asks Pluto for an affine schedule. `--identity` preserves the
+source schedule and skips Pluto scheduling. Because an identity schedule alone
+has no tiling phase, use `--identity-tiled` (equivalent to `--identity --tile`)
+when the source schedule should be tiled.
 
-These flags answer: how far through the optimizer pipeline should we go?
+`--notile` keeps affine scheduling but stops before tiling. A sequential ISS
+route must continue through tiling; `--iss --notile` and bare `--iss --identity`
+are therefore rejected. Checked parallel or vector consumers have additional
+theorem-facing ISS routes and may use no-tiling schedules where documented by
+the test suites.
 
-### 1.2 Structural extension
+### Structural Stage
 
-- `--iss`
-  - switches from the default route family to the ISS-aware family
+`--iss` inserts index-set splitting before scheduling. ISS changes program
+structure, so it selects an ISS-aware verified compiler configuration rather
+than changing a printer or Pluto tuning parameter.
 
-This is not just a printer option. It changes the pipeline family itself by
-inserting the checked ISS structural stage before later scheduling.
+### Tiling
 
-### 1.3 Tiling family selection
+The default affine route performs one-level rectangular tiling.
+`--second-level-tile` selects hierarchical two-level tiling. The level choice
+is independent of the tile shape: second-level rectangular, diamond, and full
+diamond routes are supported when their produced candidates validate.
 
-These flags only matter on full tiled routes.
+`--diamond-tile` selects diamond tiling. `--full-diamond-tile` implies
+`--diamond-tile` and requests Pluto's stronger diamond producer mode. Diamond
+tiling cannot be combined with `--identity` or `--notile`, because it needs an
+affine/skew schedule followed by tiling.
 
-- no tiling-family flag
-  - default ordinary tiling route through the complete direct semantic
-    permutable-band checker
-- `--legacy-generic-tiling`
-  - deprecated compatibility alias for the same default direct-first ordinary
-    tiling route; it does not bypass the permutable-band checker
-- `--band-tiling-experiment`
-  - compatibility alias for the current default band-aware ordinary tiling
-    route
-- `--second-level-tile`
-  - switch the producer/checker pair to the hierarchical second-level tiling
-    family
-- `--diamond-tile`
-  - switch the producer/checker pair to the sequential diamond phase family
-- `--full-diamond-tile`
-  - same checked route as `--diamond-tile`, but with the stronger Pluto
-    producer mode
+`--band-tiling-experiment` and `--legacy-generic-tiling` remain compatibility
+aliases for the default, plain, one-level rectangular route. They do not select
+a different validator and cannot modify ISS, identity, second-level, diamond,
+parallel, or vector routes.
 
-These flags answer: if a tiling phase exists, which tiling family should
-produce and validate it?
+### Intra-Tile Optimization
 
-### 1.4 Parallel and vector family selection
+`--intratileopt` lets Pluto reorder loops inside each tile. This is a supported
+checked route, not a raw oracle flag. It requires a tiling phase and changes the
+validated pipeline from two transformations to three:
 
-- no parallel flag
-  - stay sequential
-- `--parallel`
-  - use the Pluto-hinted parallel route
-- `--parallel-strict`
-  - refine `--parallel`: require the certified loop to match Pluto's hinted
-    dimension
-- `--multipar`
-  - refine `--parallel`: use Pluto's multi-parallel hints and certify a list of
-    schedule coordinates through the checked multi-coordinate route; every dimension
-    in the finite candidate list constructed for that route is considered, and
-    no two-element truncation remains
-- `--parallel-current d`
-  - use the theorem-aligned explicit schedule-coordinate parallel route; the
-    option name is retained for compatibility
-- `--vector`, `--prevector`
-  - use Pluto's vector loop hint when possible, then certify a doall current
-    dimension and emit `vector for`; only innermost hints are considered
-- `--vector-strict`
-  - refine `--vector`: require the certified loop to match Pluto's vector hint
-- `--vector-current d`
-  - use the theorem-aligned explicit schedule-coordinate vector route; reject `d` unless
-    it is certifiable and structurally innermost
+```text
+source
+  -> affine or identity schedule        checked by affine validation
+  -> rectangular or diamond tiling      checked by the permutable-band validator
+  -> intra-tile affine rescheduling      checked by validate_general
+  -> verified code generation
+```
 
-These flags answer: do we stay sequential, follow Pluto's hint, or certify a
-user-selected padded schedule coordinate? Vector routes reuse the same parallel/doall
-checker because Pluto's prevector marker is derived from parallel-loop analysis.
-They deliberately do not search or annotate non-innermost loops.
+Without `--intratileopt`, the tile-only Pluto recipe passes
+`--nointratileopt`, and the validated tiled program proceeds directly to code
+generation. Diamond routes also use the three-stage form because their producer
+has a post-tiling affine schedule.
 
-### 1.5 Standalone validation actions
+The extracted configuration names this three-stage theorem `RawDiamond` for
+historical reasons. The theorem checks the generic affine, tiling, affine
+composition; it does not assume diamond geometry. The OCaml driver therefore
+calls the route `post_tiling_affine` and uses it for both diamond tiling and
+rectangular intratile optimization.
 
-These do not optimize a `.loop` program. They bypass the normal loop-to-loop
-route and instead validate external artifacts directly.
+Support is fail-closed. The driver accepts an option combination, invokes the
+external Pluto producer, and compiles only if every phase validator accepts the
+produced candidate. A particular input may still be rejected when Pluto emits a
+candidate outside the proved recognizers.
 
-- `--validate-affine-openscop before.scop after.scop`
-- `--extract-tiling-witness-openscop before.scop after.scop`
-- `--validate-tiling-openscop before.scop after.scop`
-- `--validate-iss-debug-dumps before.txt after.txt`
-- `--validate-iss-bridge bridge.txt`
-- `--validate-iss-pluto-suite`
-- `--validate-iss-pluto-live-suite`
+### Parallel and Vector Execution
 
-### 1.6 Observation and debugging flags
+`--parallel` follows Pluto's loop hints and emits `parallel for` only after the
+checked doall/parallel validator certifies a dimension. `--parallel-strict`
+requires a certifiable hinted dimension. `--multipar` asks the same route to
+certify all selected hinted coordinates.
 
-These do not choose a different proof object. They only change what gets
-printed or profiled.
+`--parallel-current d` bypasses hint selection and asks the extracted compiler
+to certify padded schedule coordinate `d`. The word `current` is retained for
+command-line compatibility.
 
-- `--dump-input`
-- `--dump-extracted-openscop`
-- `--dump-scheduled-openscop`
-- `--debug-scheduler`
-- `--profile-stages`
-- `--extract-only`
+`--vector` and Pluto-compatible `--prevector` use the same dependence check as
+parallelization, then impose an additional structural condition: the annotated
+loop must be innermost. PolCert currently emits a checked `vector for` marker;
+vector execution is a restricted parallel route rather than a separate SIMD
+instruction semantics. `--vector-current d` selects an explicit coordinate.
 
-`--extract-only` is the one exceptional flag here: it short-circuits the run
-after extraction. Most route-selection flags therefore become irrelevant when
-it is used, and `--parallel-current` is rejected explicitly because there is no
-parallel-current extraction-only route.
+Parallel and vector selection occurs after scheduling and tiling validation.
+It therefore composes with accepted rectangular, second-level, intratile,
+diamond, and ISS producer routes.
 
-## 2. Main optimization families
+## Common Commands
 
-The practically important user-visible route shapes are:
-
-| Command shape | Meaning |
+| Command | Normalized route |
 | --- | --- |
-| `./polopt file.loop` | Default sequential affine+ordinary-tiling route |
-| `./polopt --notile file.loop` | Sequential affine-only route |
-| `./polopt --identity file.loop` | Identity/no-Pluto route |
-| `./polopt --iss file.loop` | ISS + affine + ordinary tiling |
-| `./polopt --iss --notile file.loop` | ISS + affine-only |
-| `./polopt --iss --identity file.loop` | ISS-only checked split path |
-| `./polopt --second-level-tile file.loop` | Sequential second-level tiling route |
-| `./polopt --diamond-tile file.loop` | Sequential diamond phase route |
-| `./polopt --full-diamond-tile file.loop` | Diamond route with stronger producer mode |
-| `./polopt --parallel file.loop` | Pluto-hinted parallel route |
-| `./polopt --parallel --parallel-strict file.loop` | Pluto-hinted route with strict hinted-dimension requirement |
-| `./polopt --parallel --multipar file.loop` | Pluto-hinted multi-current checked parallel route |
-| `./polopt --parallel-current d file.loop` | Explicit-dimension theorem-aligned parallel route |
-| `./polopt --iss --parallel-current d file.loop` | ISS + explicit-dimension parallel route |
-| `./polopt --vector file.loop` | Pluto-hinted checked vector route |
-| `./polopt --vector-current d file.loop` | Explicit-dimension theorem-aligned vector route |
-
-Two important details:
-
-- `--full-diamond-tile` implies `--diamond-tile`
-- `--parallel-strict` only makes sense as a refinement of `--parallel`
-- `--multipar` only makes sense as a refinement of `--parallel`
-- `--vector-strict` only makes sense as a refinement of `--vector`
-
-The table above lists the important shapes, not every legal combination. In
-particular:
-
-- `--parallel` supports the checked Pluto-hinted one-current route on the
-  normal affine/tiling, ISS, identity-tiling, second-level, and diamond-family
-  compositions covered by the current wrapper
-- `--parallel --multipar` follows the same hinted family but certifies a list of
-  padded schedule coordinates through `RawParallelCurrentMany*` configs. The driver
-  passes every dimension in the finite candidate list constructed for that
-  route; no two-element truncation remains
-- `--parallel-current d` supports:
-  - default full tiled
-  - `--notile`
-  - `--identity`
-  - `--iss`
-  - `--iss --notile`
-  - `--iss --identity`
-- `--vector-current d` follows the same explicit-coordinate support shape as
-  `--parallel-current d`, but emits `vector for` only for a certified innermost
-  loop
-- `--second-level-tile` is also valid with:
-  - `--extract-tiling-witness-openscop`
-  - `--validate-tiling-openscop`
-
-## 3. Why some combinations are rejected
-
-### 3.1 Standalone validation actions cannot be mixed with pipeline selectors
-
-Rejected combinations:
-
-- any standalone validation action together with:
-  - `--identity`
-  - `--notile`
-  - `--iss`
-  - `--parallel`
-  - `--parallel-strict`
-  - `--diamond-tile`
-  - `--band-tiling-experiment`
-  - `--legacy-generic-tiling`
-- any standalone validation action together with `--parallel-current`
-
-Reason:
-
-- standalone actions consume external artifacts directly
-- pipeline selectors choose how to optimize a `.loop` program
-- mixing them would ask the frontend to do two different jobs at once
-
-One deliberate exception exists:
-
-- `--second-level-tile` is allowed with tiling witness extraction and tiling
-  validation
-
-Reason:
-
-- second-level tiling changes the tiling-family parser/importer for those
-  actions
-- it does not ask for a second pipeline family
-
-### 3.2 `--identity` and `--notile` reject tiling-family flags
-
-Rejected combinations:
-
-- `--second-level-tile --identity`
-- `--second-level-tile --notile`
-- `--diamond-tile --identity`
-- `--diamond-tile --notile`
-
-Reason:
-
-- second-level and diamond are tiling-family selectors
-- `--identity` creates no Pluto scheduling artifact at all
-- `--notile` stops before any tiling phase exists
-
-### 3.3 `--diamond-tile` chooses a distinct phase family
-
-Rejected combinations:
-
-- `--diamond-tile --second-level-tile`
-- `--diamond-tile --band-tiling-experiment`
-- `--diamond-tile --legacy-generic-tiling`
-
-Reason:
-
-- diamond means a dedicated phase family:
-  - `affine(before, mid)`
-  - `tiling(mid, posttile)`
-  - optional `affine(posttile, after)`
-- the current route map includes checked sequential, ISS-aware, and parallel
-  diamond compositions, but diamond remains mutually exclusive with other
-  tiling-family selectors
-
-### 3.4 `--parallel` and `--parallel-current` choose different parallel families
-
-Rejected combinations:
-
-- `--parallel --parallel-current d`
-- `--parallel-strict` without `--parallel`
-- `--multipar` without `--parallel`
-
-Reason:
-
-- `--parallel` means "follow Pluto's hinted dimension if certification/codegen
-  can make that work"
-- `--multipar` refines that same family by asking for a checked list of hinted
-  schedule coordinates
-- `--parallel-current d` means "use the proved explicit-dimension route for
-  padded schedule coordinate `d`"; `current` is a compatibility name
-- hinted and explicit-coordinate selection are different route families, so the
-  frontend forces the user to pick one
-
-### 3.5 Ordinary-Tiling Compatibility Selectors Are Intentionally Narrow
-
-Rejected combinations:
-
-- `--legacy-generic-tiling` with:
-  - `--identity`
-  - `--notile`
-  - `--iss`
-  - `--parallel`
-  - `--parallel-current`
-- `--band-tiling-experiment` with the same families above
-
-Reason:
-
-- both deprecated flags select the default ordinary full-tiled route
-- both use the same direct-first tiling dispatcher as the unflagged route
-- they are not general modifiers for every pipeline family
-
-## 4. How route selection actually works
-
-The frontend makes the route choice in roughly this order:
-
-1. If a standalone validation action is selected, run it and stop.
-2. Otherwise, if `--vector-current d` is present, use the explicit-dimension
-   vector family.
-3. Otherwise, if `--parallel-current d` is present, use the explicit-dimension
-   parallel family.
-4. Otherwise, if `--vector` or `--prevector` is present, use the Pluto-hinted
-   vector family.
-5. Otherwise, if `--parallel` is present, use the Pluto-hinted parallel family; `--multipar` selects the multi-current variant inside that family.
-6. Otherwise, if `--diamond-tile` is present, use the sequential diamond route.
-7. Otherwise, choose among:
-   - default route
-   - `--iss`
-   - `--notile`
-   - `--identity`
-   - deprecated ordinary-tiling aliases such as `--legacy-generic-tiling`
-
-This explains why some flags feel "stronger" than others: some choose the whole
-route family, while others only refine a family that is already selected.
-
-Within every tiling-bearing family, a direct-only dispatcher classifies the
-tiling boundary. It checks the source/witness relation and then tries the proved
-common-band, program-wide semantic reconstruction, and phase-aware mixed
-second-level bridges. A run prints exactly one of these labels:
-
-- `permutable-band`: the direct band property and its tiling-specific structural
-  bridge established the boundary;
-- `rejected`: the direct checker did not establish the property.
-
-The direct checker reuses access-conflict construction and certified
-polyhedral-emptiness queries. It does not invoke the complete affine-schedule
-validator and does not reproduce Pluto's detector or schedule search. Ordinary,
-diamond, full-diamond, identity, mixed-depth, and recognized second-level
-candidates can take the direct route. A candidate outside the proved
-recognizers is rejected rather than passed to another tiling validator. In a diamond route, the
-post-tiling affine leg is checked separately by `validate_general`.
-
-## 5. Current support boundary in one page
-
-The current support boundary is:
-
-- ordinary sequential route
-  - default and stable
-- ISS route
-  - supported and theorem-aligned
-- explicit-dimension parallel route
-  - theorem-aligned
-- Pluto-hinted parallel route
-  - checked and user-facing, including the `--multipar` multi-current variant
-- second-level tiling
-  - supported as a checked tiling family
-- diamond tiling
-  - supported as a theorem-backed opt-in route, with current ISS/parallel
-    compositions documented in `doc/pluto-polopt-compatibility.md`
-
-When in doubt, treat `--iss`, `--second-level-tile`, `--diamond-tile`,
-`--parallel`, and `--parallel-current` as selectors for distinct pipeline
-families rather than as independent booleans that should freely stack.
-
-## 6. Assessment of the current flag model
-
-The current flag model is partly principled and partly transitional.
-
-### 6.1 What is already reasonable
-
-Several current rejections are conceptually correct and should remain even
-after a cleanup:
-
-- standalone validation actions should stay separate from loop-to-loop
-  optimization routes
-- `--identity` and `--notile` should reject tiling-family flags, because those
-  flags require a tiling artifact that does not exist on those routes
-- `--parallel` and `--parallel-current` should remain distinct, because they
-  choose different mechanisms for selecting the loop to parallelize
-- storage-changing or overlap/reuse-style requests should remain rejected until
-  the proof uses a state relation broader than `State.eq`
-
-These are semantic constraints, not parser accidents.
-
-### 6.2 What is still awkward
-
-The main awkwardness is no longer route normalization itself. That part already
-exists in [syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml): the parser state is
-collapsed into an explicit selection over:
-
-- optimize vs standalone validation
-- base route
-- structural extension
-- tiling family
-- parallel family
-
-The remaining awkwardness is around how the CLI gets there:
-
-- the parser still starts from many flat booleans before normalization
-- producer-family choices and checker-family choices still share one top-level
-  command surface
-- new families such as diamond or second-level still need help-text and
-  rejection-message updates in several places
-
-So the current status is:
-
-- the supported combinations themselves are mostly reasonable
-- the normalized route model is in place
-- the remaining cleanup is about parser shape, command structure, and
-  user-facing messaging
-
-### 6.3 The biggest conceptual rough edge
-
-The largest remaining design mismatch is that `polopt` currently exposes both:
-
-- loop-to-loop optimizer routes
-- standalone validation actions over external files
-
-in the same top-level command.
-
-That is historically convenient, but conceptually it mixes two tools:
-
-- optimizer family selection
-- validator-only artifact checking
-
-The current exclusions keep this workable, but they also make the flag space
-look more irregular than the underlying framework really is.
-
-## 7. TODO plan for flag cleanup
-
-The following cleanup plan would make the current model easier to maintain.
-
-### 7.1 Keep route normalization as the single source of truth
-
-That refactor is already mostly done. The current route-spec style selection in
-[syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml) already owns legality checking
-and normalized family selection, while CLI-side setup still performs some
-downstream mode wiring. The cleanup goal is to keep normalized selection in
-`SLoopRoute` as the single source of truth for:
-
-- optimize vs standalone validation
-- base route / structural extension
-- tiling family
-- parallel family
-
-The next cleanup step is not "invent a route-spec", but rather:
-
-- keep parser/help text synchronized with the normalized selection
-- drive scheduler/setup helpers from the normalized selection instead of raw
-  booleans where practical
-- avoid duplicating legality rules in ad hoc command handlers
-- continue making rejection messages describe route-family conflicts directly
-
-### 7.2 Separate optimizer mode from standalone validation mode
-
-The cleanest user model would be:
-
-- `polopt ...` for loop-to-loop optimization
-- `polcert ...` for external artifact validation
-
-or, if `polopt` keeps these actions:
-
-- explicit subcommands such as `polopt optimize ...` and `polopt validate ...`
-
-This would eliminate the current need to explain why route flags and
-validation-only actions cannot be mixed.
-
-### 7.3 Retire compatibility-only tiling flags
-
-`--band-tiling-experiment` and `--legacy-generic-tiling` are implemented as
-compatibility aliases for the default ordinary direct-first tiling route.
-
-The likely next step is:
-
-- keep them temporarily for backward compatibility
-- keep them marked as deprecated in help text
-- eventually remove them
-
-At that point the ordinary route becomes simpler:
-
-- default ordinary direct-first tiling
-
-### 7.4 Unify tiling-family selection more explicitly
-
-Second-level and diamond are both tiling families, but they are currently
-expressed through different flag relationships:
-
-- second-level refines the ordinary family and is also allowed on tiling-only
-  standalone actions
-- diamond selects a narrower sequential route family with an optional stronger
-  producer mode
-
-That is defensible, but the documentation and implementation would become
-clearer if the frontend treated tiling-family choice as one explicit layer with
-sub-options, instead of several unrelated booleans.
-
-### 7.5 Decide which future compositions are worth supporting
-
-Not every currently rejected combination should become legal. The right next
-questions are:
-
-- which additional multi-current fixtures are useful now that the checked
-  route can annotate every certified candidate dimension?
-- should standalone tiling witness/validation actions grow a diamond-aware
-  mode, or should diamond remain a loop-to-loop optimizer family only?
-- which storage-changing families should move first to a generalized state
-  relation?
-
-These are proof-architecture questions, not just CLI questions. The flag model
-should follow the supported proof combinations, not lead them.
-
-### 7.6 Keep the error messages route-oriented
-
-Even before a larger refactor, the rejection messages can improve by explaining
-the route family conflict directly. For example:
-
-- "diamond is currently a sequential non-ISS full-tiled family"
-- "parallel-current selects a different parallel family than --parallel"
-- "second-level only refines tiled routes and tiling-only validation actions"
-
-This would make the current flat flag model much easier to understand in
-practice.
-
-## 8. Practical reading
-
-The safest way to read `polopt` today is:
-
-- accepted `file.loop` routes dispatch through the unified
-  `Loop -> ParallelLoop` compiler wrapper
-- `--iss`, `--parallel-current d`, `--parallel`, `--parallel-strict`, and
-  `--parallel --multipar` are theorem-facing checked routes when accepted
-- `--second-level-tile` and diamond flags are checked extensions of the tiled
-  pipeline, with the current supported compositions documented in
-  `doc/pluto-polopt-compatibility.md`
-- standalone validation actions are artifact checkers, not optimization routes
-
-When in doubt, first decide:
-
-1. am I optimizing a `.loop`, or validating an external artifact?
-2. if I am optimizing, which route family do I want:
-   - default
-   - ISS
-   - explicit parallel-current
-   - Pluto-hinted parallel
-   - special tiling family
-
-That mental model matches the route normalization now implemented in
-[syntax/SLoopRoute.ml](../syntax/SLoopRoute.ml).
+| `./polopt file.loop` | affine, plain, rectangular one-level tiling, sequential |
+| `./polopt --notile file.loop` | affine, plain, no tiling, sequential |
+| `./polopt --identity file.loop` | identity, plain, no tiling, sequential |
+| `./polopt --identity-tiled file.loop` | identity, plain, rectangular one-level tiling, sequential |
+| `./polopt --iss file.loop` | ISS, affine, rectangular one-level tiling, sequential |
+| `./polopt --second-level-tile file.loop` | affine, plain, rectangular two-level tiling, sequential |
+| `./polopt --diamond-tile file.loop` | affine, plain, diamond one-level tiling, sequential |
+| `./polopt --full-diamond-tile --iss file.loop` | ISS, affine, full-diamond one-level tiling, sequential |
+| `./polopt --intratileopt file.loop` | affine, plain, rectangular tiling plus checked intra-tile rescheduling |
+| `./polopt --identity-tiled --intratileopt file.loop` | identity tiling plus checked intra-tile rescheduling |
+| `./polopt --second-level-tile --intratileopt file.loop` | two-level tiling plus checked intra-tile rescheduling |
+| `./polopt --parallel file.loop` | default producer followed by Pluto-hinted checked parallel execution |
+| `./polopt --parallel --multipar file.loop` | default producer followed by checked multi-coordinate parallel execution |
+| `./polopt --vector file.loop` | default producer followed by innermost-only checked vector execution |
+
+These rows describe route selection. Success still depends on the validators
+accepting Pluto's output for the input program.
+
+## Rejected Combinations
+
+Normalization rejects contradictory choices regardless of argument order:
+
+- `--tile` with `--notile`
+- `--diamond-tile` with `--nodiamond-tile`
+- `--parallel` with `--noparallel`
+- `--intratileopt` with `--nointratileopt`
+- `--prevector` with `--noprevector`
+- `--unrolljam` with `--nounrolljam`
+
+It also rejects routes with no matching verified composition:
+
+| Combination | Reason |
+| --- | --- |
+| sequential `--iss --notile` | no sequential ISS affine-only compiler configuration |
+| sequential bare `--iss --identity` | ISS identity needs tiling or a checked parallel/vector consumer |
+| `--identity --parallel` without `--tile` | Pluto has no tiling phase from which to obtain the requested hint |
+| `--identity --vector` without `--tile` | the vector-hint route likewise needs identity tiling |
+| `--second-level-tile --notile` | two-level tiling requires a tiling phase |
+| `--second-level-tile --identity` without `--tile` | identity does not imply tiling |
+| diamond with `--identity` or `--notile` | diamond needs affine/skew scheduling and tiling |
+| `--parallel-strict` without `--parallel` | strictness refines the hinted parallel route |
+| `--vector-strict` without `--vector` | strictness refines the hinted vector route |
+| `--multipar` without `--parallel` | multipar refines the hinted parallel route |
+| hinted and explicit parallel/vector options together | they select different execution families |
+| `--intratileopt --notile` | intra-tile rescheduling requires tiles |
+| `--const-unroll` with parallel or vector output | the post pass consumes sequential Loop IR |
+
+Standalone validation actions cannot be mixed with optimization-route flags.
+The driver also rejects more than one standalone action in one invocation.
+
+## Pluto-Compatible Mode
+
+Use `--pluto-compat` to pass the supported Pluto-like flag subset through the
+same typed route normalizer:
+
+```sh
+./polopt --pluto-compat --explain \
+  --tile --smartfuse --intratileopt --noprevector --nounrolljam \
+  --rar --nodiamond-tile --noparallel \
+  tests/polopt-generated/inputs/matmul.loop
+```
+
+Compatibility mode requires explicit choices for Pluto features that are on by
+default in the pinned producer. For example, callers must choose
+`--intratileopt` or `--nointratileopt`, `--parallel` or `--noparallel`, and a
+diamond or no-diamond mode. `--explain` prints the normalized PolCert route,
+oracle-only tuning flags, and compatibility notes.
+
+Oracle tuning flags may change the candidate that Pluto proposes. They never
+bypass affine, tiling, parallel, vector, or code-generation checks. See
+[pluto-polopt-compatibility.md](pluto-polopt-compatibility.md) for the complete
+compatibility table and pinned-producer details.
+
+## Standalone Validators
+
+The following commands validate external artifacts instead of compiling a
+`.loop` file:
+
+```text
+--validate-affine-openscop before.scop after.scop
+--extract-tiling-witness-openscop before.scop after.scop
+--validate-tiling-openscop before.scop after.scop
+--validate-iss-debug-dumps before.txt after.txt
+--validate-iss-bridge bridge.txt
+--validate-iss-pluto-suite
+--validate-iss-pluto-live-suite
+```
+
+`--second-level-tile` may refine tiling witness extraction or tiling
+validation. Other optimization-route flags are rejected with standalone
+actions.
+
+## Observation and Profiling
+
+`--dump-input`, `--dump-extracted-openscop`, `--dump-scheduled-openscop`, and
+`--debug-scheduler` expose intermediate state without changing the normalized
+route. Scheduled OpenScop dumps use the same two-stage or three-stage producer
+as final compilation, including the post-tiling affine stage for intratile and
+diamond routes.
+
+`--profile-stages` measures supported sequential, non-ISS routes and then runs
+the extracted compiler again as the acceptance check. It currently rejects
+parallel, vector, ISS, and second-level routes. `--extract-only` stops after
+OpenScop extraction. It explicitly rejects coordinate-selected parallel/vector
+execution and sequential post passes; other later route choices have no effect
+on the extracted OpenScop.
+
+## Regression Coverage
+
+`tools/polopt_flag_suites/run_pluto_compat_suite.py` checks route bindings,
+rejections, output effects, and tiling-validation reports. Its intratile matrix
+covers:
+
+- plain and ISS scheduling
+- one-level and two-level tiling
+- affine and identity schedules
+- sequential, parallel, and vector execution
+- rectangular and diamond shapes
+- native option parsing and order-independent contradiction rejection
+- route-aligned scheduled OpenScop dumps for affine-only, identity, ISS,
+  intratile, parallel, and vector execution
+
+Run the complete suite with:
+
+```sh
+python3 tools/polopt_flag_suites/run_pluto_compat_suite.py --timeout 30
+```
+
+For a focused rerun, pass comma-separated check names through `--only`.

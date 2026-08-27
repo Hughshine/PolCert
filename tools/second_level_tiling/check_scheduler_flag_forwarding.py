@@ -86,9 +86,9 @@ def main() -> None:
     scheduler = (ROOT / "driver" / "Scheduler.ml").read_text(encoding="utf-8")
 
     for route in (
-        "diamond_phase_flags",
-        "diamond_phase_parallel_flags",
-        "diamond_phase_vector_flags",
+        "post_tiling_affine_flags",
+        "post_tiling_affine_parallel_flags",
+        "post_tiling_affine_vector_flags",
     ):
         require(
             definition_body(scheduler, route),
@@ -97,12 +97,12 @@ def main() -> None:
         )
 
     for route, base in (
-        ("diamond_phase_with_iss_flags", "diamond_phase_flags ()"),
+        ("post_tiling_affine_with_iss_flags", "post_tiling_affine_flags ()"),
         (
-            "diamond_phase_parallel_with_iss_flags",
-            "diamond_phase_parallel_flags ()",
+            "post_tiling_affine_parallel_with_iss_flags",
+            "post_tiling_affine_parallel_flags ()",
         ),
-        ("diamond_phase_vector_with_iss_flags", "diamond_phase_vector_flags ()"),
+        ("post_tiling_affine_vector_with_iss_flags", "post_tiling_affine_vector_flags ()"),
     ):
         require(definition_body(scheduler, route), base, route)
 
@@ -666,7 +666,7 @@ def main() -> None:
             )
 
     sequential_config_body = definition_body(
-        main_source, "verified_sequential_config_of_cli"
+        main_source, "verified_sequential_config_of_route"
     )
     if "force_legacy_generic_tiling" in sequential_config_body:
         raise AssertionError("legacy compatibility flag must not bypass band-first dispatch")
@@ -956,7 +956,6 @@ def main() -> None:
                 f"fail-closed producer handling in candidate probe {route}",
             )
     for route in (
-        "run_selected_optimization",
         "run_selected_sequential_loop_optimization",
         "run_verified_hinted_parallel_optimization",
         "run_verified_hinted_multipar_parallel_optimization",
@@ -1030,7 +1029,7 @@ def main() -> None:
     for needle in (
         "| Some (pl, routes, _accepted_hint) ->",
         "(pl, true)",
-        "verified_sequential_after_parallel_skip cfg loop",
+        "verified_sequential_after_parallel_skip route loop",
     ):
         require(
             hinted_multipar_body,
@@ -1087,16 +1086,37 @@ def main() -> None:
     ):
         require(main_source, route, "identity-tiled ISS parallel/vector dispatch")
 
-    for route in (
-        "parallel_hint_dims_of_cli",
-        "vector_hint_dims_of_cli",
+    hinted_producer = definition_body(
+        main_source, "scheduled_scop_and_hints_of_route"
+    )
+    for needle in (
+        "route_uses_post_tiling_affine route",
+        "route_has_iss route",
+        "identity_schedule_input_scop route",
+        "post_tiling_affine_scop_scheduler_with_parallel_hint",
+        "post_tiling_affine_scop_scheduler_with_vector_hint",
+        "run_pluto_phase_pipeline_with_parallel_hint",
+        "run_pluto_phase_pipeline_with_vector_hint",
     ):
-        body = definition_body(main_source, route)
-        require(body, "if cfg.force_iss then", route)
-        require(body, "apply_iss_bridge_to_spol_or_fail", route)
+        require(
+            hinted_producer,
+            needle,
+            "normalized scheduled-OpenScop and hint producer",
+        )
+    for route in (
+        "parallel_scop_and_hint_dims_of_route",
+        "vector_hint_dims_of_route",
+        "dump_scheduled_openscop_with_parallel",
+        "dump_scheduled_openscop_with_vector",
+    ):
+        require(
+            definition_body(main_source, route),
+            "scheduled_scop_and_hints_of_route",
+            route,
+        )
 
     vector_config = definition_body(
-        main_source, "verified_vector_current_config_of_cli"
+        main_source, "verified_vector_current_config_of_route"
     )
     for constructor in (
         "RawVectorCurrentIdentityTiledISS",

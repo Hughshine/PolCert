@@ -55,7 +55,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--band-tiling-experiment] [--legacy-generic-tiling] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--intratileopt|--nointratileopt] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --pluto-compat [--explain] [--dry-run] <Pluto-like optimizer flags> <file.loop>\n"
@@ -90,6 +90,9 @@ let usage prog =
       "                      second-level tiling, and checked parallel/vector consumers\n";
       "  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n";
       "                        supported on non-ISS/ISS and ordinary/second-level tiled paths\n";
+      "  --intratileopt    : let Pluto reorder loops within each tile; validate tiling\n";
+      "                       and the final affine rescheduling separately; requires tiling\n";
+      "  --nointratileopt  : preserve the preselected intra-tile loop order (default)\n";
       "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
@@ -126,6 +129,7 @@ let usage prog =
       Printf.sprintf "  %s --diamond-tile file.loop         # sequential checked diamond midpoint + tiling route\n" prog;
       Printf.sprintf "  %s --iss --diamond-tile file.loop   # ISS split plus checked diamond route\n" prog;
       Printf.sprintf "  %s --full-diamond-tile file.loop    # stronger diamond producer mode over the same checked route\n" prog;
+      Printf.sprintf "  %s --intratileopt file.loop         # checked tiling plus intra-tile loop reordering\n" prog;
       Printf.sprintf "  %s --parallel file.loop             # Pluto-hinted verified parallel path\n" prog;
       Printf.sprintf "  %s --parallel --parallel-strict file.loop\n" prog;
       Printf.sprintf "  %s --parallel-current 0 file.loop   # theorem-aligned explicit schedule-coordinate parallel path\n" prog;
@@ -428,7 +432,10 @@ let pluto_polopt_args cfg =
 
 let print_pluto_explain cfg =
   let args = pluto_polopt_args cfg in
-  let scheduler_flags = pluto_scheduler_extra_flags cfg in
+  let scheduler_flags =
+    pluto_scheduler_extra_flags cfg
+    @ if cfg.pluto_intratileopt_seen then ["--intratileopt"] else []
+  in
   let post_flags =
     if cfg.force_const_unroll && not (pluto_extra_has "--determine-tile-size" cfg) then
       List.filter (fun flag -> starts_with flag pluto_ufactor_prefix) cfg.pluto_extra_flags
@@ -758,15 +765,12 @@ let parse_args () : config =
           | None -> assert false
           end
       | "--nointratileopt" ->
-          enable_pluto_compat cfg;
           cfg.pluto_no_intratileopt_seen <- true;
-          add_pluto_note cfg "--nointratileopt accepted because checked routes disable Pluto intra-tile rewriting";
+          add_pluto_note cfg "--nointratileopt selects the stable intra-tile loop order";
           go (i + 1)
       | "--intratileopt" ->
-          enable_pluto_compat cfg;
           cfg.pluto_intratileopt_seen <- true;
-          add_pluto_extra_flag cfg "--intratileopt";
-          add_pluto_note cfg "--intratileopt passed through to Pluto's checked scheduler oracle";
+          add_pluto_note cfg "--intratileopt selects checked intra-tile loop reordering";
           go (i + 1)
       | "--noprevector" ->
           enable_pluto_compat cfg;
@@ -959,21 +963,64 @@ let parse_args () : config =
 let validate_flag_model prog (cfg : config) =
   validate_pluto_compat prog cfg;
   match SLoopRoute.normalize cfg with
-  | Ok _ ->
+  | Ok selection ->
       if cfg.pluto_compat_mode && cfg.pluto_compat_explain then
-        print_pluto_explain cfg
+        print_pluto_explain cfg;
+      selection
   | Error msg -> usage_error prog msg
 
-let configure_scheduler_modes (cfg : config) =
+let configure_scheduler_modes selection (cfg : config) =
+  let schedule_mode, tiling_mode, diamond_mode, intra_tile_mode =
+    match selection with
+    | SLoopRoute.Standalone
+        (SLoopRoute.ExtractTilingWitness { second_level; _ }
+        | SLoopRoute.ValidateTiling { second_level; _ }) ->
+        ( Scheduler.AffineSchedule,
+          (if second_level then Scheduler.SecondLevelTiling else Scheduler.OrdinaryTiling),
+          Scheduler.NoDiamondTiling,
+          Scheduler.DisableIntraTile )
+    | SLoopRoute.Standalone _ ->
+        ( Scheduler.AffineSchedule,
+          Scheduler.OrdinaryTiling,
+          Scheduler.NoDiamondTiling,
+          Scheduler.DisableIntraTile )
+    | SLoopRoute.Optimize route ->
+        let schedule_mode =
+          match route.SLoopRoute.schedule_family with
+          | SLoopRoute.AffineSchedule -> Scheduler.AffineSchedule
+          | SLoopRoute.IdentitySchedule -> Scheduler.IdentitySchedule
+        in
+        let tiling_mode =
+          match route.SLoopRoute.tiling_family with
+          | SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
+              Scheduler.SecondLevelTiling
+          | SLoopRoute.NoTiling
+          | SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
+              Scheduler.OrdinaryTiling
+        in
+        let diamond_mode =
+          match route.SLoopRoute.tiling_family with
+          | SLoopRoute.Tiled {
+              shape = SLoopRoute.Diamond SLoopRoute.DiamondFull; _
+            } -> Scheduler.FullDiamondTiling
+          | SLoopRoute.Tiled {
+              shape = SLoopRoute.Diamond SLoopRoute.DiamondNormal; _
+            } -> Scheduler.DiamondTiling
+          | SLoopRoute.NoTiling
+          | SLoopRoute.Tiled { shape = SLoopRoute.Rectangular; _ } ->
+              Scheduler.NoDiamondTiling
+        in
+        let intra_tile_mode =
+          match route.SLoopRoute.intra_tile_policy with
+          | SLoopRoute.IntraTileDisabled -> Scheduler.DisableIntraTile
+          | SLoopRoute.IntraTileEnabled -> Scheduler.EnableIntraTile
+        in
+        (schedule_mode, tiling_mode, diamond_mode, intra_tile_mode)
+  in
+  Scheduler.set_schedule_mode schedule_mode;
   Scheduler.set_tiling_mode
-    (if cfg.force_second_level_tile
-     then Scheduler.SecondLevelTiling
-     else Scheduler.OrdinaryTiling);
-  Scheduler.set_diamond_mode
-    (if cfg.force_full_diamond_tile
-     then Scheduler.FullDiamondTiling
-     else if cfg.force_diamond_tile
-     then Scheduler.DiamondTiling
-     else Scheduler.NoDiamondTiling);
+    tiling_mode;
+  Scheduler.set_diamond_mode diamond_mode;
+  Scheduler.set_intra_tile_mode intra_tile_mode;
   Scheduler.set_pluto_extra_flags (pluto_scheduler_extra_flags cfg);
   Scheduler.set_pluto_control_files cfg.pluto_control_files

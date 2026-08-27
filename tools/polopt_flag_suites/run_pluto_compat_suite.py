@@ -25,6 +25,8 @@ class Check:
     normalized: str | None = None
     effect_needles: tuple[str, ...] = ()
     effect_absent: tuple[str, ...] = ()
+    scheduled_needles: tuple[str, ...] = ()
+    scheduled_absent: tuple[str, ...] = ()
     stderr_needles: tuple[str, ...] = ()
     stderr_absent: tuple[str, ...] = ()
     tiling_route: str | None = None
@@ -35,6 +37,8 @@ class Check:
     explicit_control_file_content: str = "16\n"
     env: dict[str, str] | None = None
     same_as_args: tuple[str, ...] | None = None
+    native: bool = False
+    second_level_markers: tuple[str, ...] | None = None
 
 
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
@@ -163,8 +167,220 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --intratileopt",
-        effect_needles=("for i1 in range(0, ((M + 31) / 32))",),
+        effect_needles=("for i0 in range(0, ((K + 31) / 32))",),
         differs_from_args=(tuple(MATMUL_TILED),),
+    ),
+    Check(
+        "intratileopt-iss",
+        [*MATMUL_TILED_INTRATILE, "--iss"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss",
+        effect_needles=("32 *", "/ 32"),
+    ),
+    Check(
+        "intratileopt-second-level",
+        [*MATMUL_TILED_INTRATILE, "--second-level-tile"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --second-level-tile",
+        tiling_route="permutable-band",
+        second_level_markers=("(i0 / 8)", "32 *"),
+    ),
+    Check(
+        "intratileopt-second-level-iss",
+        [*MATMUL_TILED_INTRATILE, "--second-level-tile", "--iss"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --second-level-tile",
+        tiling_route="permutable-band",
+        second_level_markers=("(i0 / 8)", "32 *"),
+    ),
+    Check(
+        "intratileopt-identity-tiled",
+        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+    ),
+    Check(
+        "intratileopt-identity-tiled-iss",
+        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--iss"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --identity --tile",
+        effect_needles=("32 *", "/ 32"),
+    ),
+    Check(
+        "intratileopt-parallel",
+        [*FLAGS_INTRATILE, "--nodiamond-tile", "--parallel", "--innerpar"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --parallel",
+        effect_needles=("parallel for", "32 *"),
+    ),
+    Check(
+        "intratileopt-vector",
+        ["--tile", "--smartfuse", "--intratileopt", "--prevector", "--nounrolljam", "--rar", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --vector",
+        effect_needles=("vector for", "32 *"),
+        stderr_needles=("[vector-validation] status=applied",),
+    ),
+    Check(
+        "intratileopt-diamond",
+        [*FLAGS_INTRATILE, "--diamond-tile", "--noparallel"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --diamond-tile",
+        effect_needles=("32 *",),
+    ),
+    Check(
+        "intratileopt-diamond-iss",
+        [*FLAGS_INTRATILE, "--diamond-tile", "--noparallel", "--iss"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss --diamond-tile",
+        effect_needles=("32 *",),
+    ),
+    Check(
+        "native-intratileopt",
+        ["--intratileopt"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        effect_needles=("32 *", "/ 32"),
+        native=True,
+    ),
+    Check(
+        "native-dump-affine-only",
+        ["--notile", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 9 1 3 0 3",),
+        scheduled_absent=("1 12 1 6 0 3",),
+        effect_absent=("32 *", "/ 32"),
+        native=True,
+    ),
+    Check(
+        "native-dump-intratileopt",
+        ["--intratileopt", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 12 1 6 0 3",),
+        scheduled_absent=("1 9 1 3 0 3",),
+        effect_needles=("32 *", "/ 32"),
+        native=True,
+    ),
+    Check(
+        "native-dump-identity-intratileopt",
+        ["--identity-tiled", "--intratileopt", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 12 1 6 0 3",),
+        effect_needles=("32 *", "/ 32"),
+        native=True,
+    ),
+    Check(
+        "native-dump-iss-intratileopt",
+        ["--iss", "--intratileopt", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 12 1 6 0 3",),
+        effect_needles=("32 *", "/ 32"),
+        native=True,
+    ),
+    Check(
+        "native-dump-parallel-intratileopt",
+        ["--parallel", "--intratileopt", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 12 1 6 0 3",),
+        effect_needles=("parallel for", "32 *"),
+        native=True,
+    ),
+    Check(
+        "native-dump-vector-intratileopt",
+        ["--vector", "--intratileopt", "--dump-scheduled-openscop"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        scheduled_needles=("1 12 1 6 0 3",),
+        effect_needles=("vector for", "32 *"),
+        stderr_needles=("[vector-validation] status=applied",),
+        native=True,
+    ),
+    Check(
+        "native-reject-tile-notile-forward",
+        ["--identity-tiled", "--notile"],
+        MATMUL,
+        False,
+        "--tile and --notile select contradictory tiling routes",
+        native=True,
+    ),
+    Check(
+        "native-reject-tile-notile-reverse",
+        ["--notile", "--identity-tiled"],
+        MATMUL,
+        False,
+        "--tile and --notile select contradictory tiling routes",
+        native=True,
+    ),
+    Check(
+        "native-reject-intratile-notile-forward",
+        ["--intratileopt", "--notile"],
+        MATMUL,
+        False,
+        "--intratileopt requires a tiling route",
+        native=True,
+    ),
+    Check(
+        "native-reject-intratile-notile-reverse",
+        ["--notile", "--intratileopt"],
+        MATMUL,
+        False,
+        "--intratileopt requires a tiling route",
+        native=True,
+    ),
+    Check(
+        "native-reject-intratile-identity-without-tile",
+        ["--identity", "--intratileopt"],
+        MATMUL,
+        False,
+        "--intratileopt requires a tiling route",
+        native=True,
+    ),
+    Check(
+        "native-reject-intratile-policy-forward",
+        ["--intratileopt", "--nointratileopt"],
+        MATMUL,
+        False,
+        "contradictory intra-tile policies",
+        native=True,
+    ),
+    Check(
+        "native-reject-intratile-policy-reverse",
+        ["--nointratileopt", "--intratileopt"],
+        MATMUL,
+        False,
+        "contradictory intra-tile policies",
+        native=True,
     ),
     Check(
         "optimizer-determine-tile-size",
@@ -1457,8 +1673,14 @@ ROUTE_BINDINGS = {
         "ISS second-level identity tiling must use the unified band-first entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop"):
         "ordinary ISS identity tiling must still use the extracted band-aware theorem-facing entry",
-    ("syntax/SLoopMain.ml", "try_verified_parallel_current_compile cfg loop dim"):
-        "Pluto-hinted parallel routes must execute through the unified verified compiler config",
+    ("syntax/SLoopMain.ml", "let selection = validate_flag_model Sys.argv.(0) cfg"):
+        "the driver must retain the normalized route selection",
+    ("syntax/SLoopMain.ml", "configure_scheduler_modes selection cfg"):
+        "scheduler modes must be configured from the normalized route selection",
+    ("syntax/SLoopMain.ml", "match route.SLoopRoute.execution_family with"):
+        "final execution dispatch must use the normalized route",
+    ("syntax/SLoopMain.ml", "route_uses_post_tiling_affine route"):
+        "intratile and diamond routes must select the proved post-tiling affine composition",
     ("syntax/SLoopMain.ml", "RawParallelCurrentIdentityTiled d"):
         "explicit-current identity tiling route must use the unified theorem-facing compiler config",
 }
@@ -1476,6 +1698,16 @@ FORBIDDEN_ROUTE_BINDINGS = {
         "second-level identity tiling must not bypass the unified band-first route",
     ("syntax/SVerifiedCompilerConfig.v", "| VDefault => SPolOpt.opt loop"):
         "the public RawDefault compatibility config must not bypass band-first validation",
+    ("syntax/SLoopMain.ml", "cfg.force_identity"):
+        "normalized schedule selection must not be bypassed by raw CLI booleans",
+    ("syntax/SLoopMain.ml", "cfg.force_notile"):
+        "normalized tiling selection must not be bypassed by raw CLI booleans",
+    ("syntax/SLoopMain.ml", "cfg.force_iss"):
+        "normalized ISS selection must not be bypassed by raw CLI booleans",
+    ("syntax/SLoopMain.ml", "cfg.force_diamond_tile"):
+        "normalized tiling shape must not be bypassed by raw CLI booleans",
+    ("syntax/SLoopMain.ml", "cfg.pluto_intratileopt_seen"):
+        "normalized intratile policy must not be bypassed by raw CLI booleans",
 }
 
 
@@ -1525,20 +1757,25 @@ def optimized_loop(output: str) -> str:
     return output[pos:]
 
 
+def scheduled_openscop(output: str) -> str:
+    marker = "== Scheduled OpenScop =="
+    start = output.find(marker)
+    if start < 0:
+        return ""
+    end = output.find("== Optimized Loop ==", start)
+    return output[start:] if end < 0 else output[start:end]
+
+
 def run_polopt_compat(
     args: list[str],
     fixture: Path,
     timeout: int,
     cwd: Path = ROOT,
     env_extra: dict[str, str] | None = None,
+    native: bool = False,
 ) -> subprocess.CompletedProcess[str]:
-    cmd = [
-        str(POLOPT),
-        "--pluto-compat",
-        "--explain",
-        *args,
-        str(fixture),
-    ]
+    mode_args = [] if native else ["--pluto-compat", "--explain"]
+    cmd = [str(POLOPT), *mode_args, *args, str(fixture)]
     env = os.environ.copy()
     env.setdefault("COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini"))
     if env_extra:
@@ -1570,6 +1807,7 @@ def run_check(check: Check, timeout: int) -> str | None:
                     check.fixture,
                     timeout,
                     env_extra=check.env,
+                    native=check.native,
                 )
             except subprocess.TimeoutExpired:
                 return f"{check.name}: native polopt compatibility mode timed out"
@@ -1578,16 +1816,17 @@ def run_check(check: Check, timeout: int) -> str | None:
             cwd = Path(tmp)
             (cwd / check.implicit_control_file).write_text(check.implicit_control_file_content)
             try:
-                proc = run_polopt_compat(check.args, check.fixture, timeout, cwd=cwd, env_extra=check.env)
+                proc = run_polopt_compat(check.args, check.fixture, timeout, cwd=cwd, env_extra=check.env, native=check.native)
             except subprocess.TimeoutExpired:
                 return f"{check.name}: native polopt compatibility mode timed out"
     else:
         try:
-            proc = run_polopt_compat(check.args, check.fixture, timeout, env_extra=check.env)
+            proc = run_polopt_compat(check.args, check.fixture, timeout, env_extra=check.env, native=check.native)
         except subprocess.TimeoutExpired:
             return f"{check.name}: native polopt compatibility mode timed out"
     output = proc.stdout + proc.stderr
     optimized = optimized_loop(proc.stdout)
+    scheduled = scheduled_openscop(proc.stdout)
     if control_target is not None and (ROOT / control_target).exists():
         return (
             f"{check.name}: explicit control file target {control_target!r} "
@@ -1606,6 +1845,12 @@ def run_check(check: Check, timeout: int) -> str | None:
         for needle in check.effect_absent:
             if needle in optimized:
                 return f"{check.name}: unexpected optimization marker {needle!r}\n{output}"
+        for needle in check.scheduled_needles:
+            if needle not in scheduled:
+                return f"{check.name}: missing scheduled OpenScop marker {needle!r}\n{output}"
+        for needle in check.scheduled_absent:
+            if needle in scheduled:
+                return f"{check.name}: unexpected scheduled OpenScop marker {needle!r}\n{output}"
         for needle in check.stderr_needles:
             if needle not in proc.stderr:
                 return f"{check.name}: missing stderr marker {needle!r}\n{output}"
@@ -1617,7 +1862,9 @@ def run_check(check: Check, timeout: int) -> str | None:
                 "--diamond-tile" in check.args
                 or "--full-diamond-tile" in check.args
             )
-            nested_markers = ("32 *",) if is_diamond else ("/ 256", "8 *", "32 *")
+            nested_markers = check.second_level_markers
+            if nested_markers is None:
+                nested_markers = ("32 *",) if is_diamond else ("/ 256", "8 *", "32 *")
             for marker in nested_markers:
                 if marker not in optimized:
                     return f"{check.name}: missing nested second-level tile marker {marker!r}\n{output}"
@@ -1637,7 +1884,7 @@ def run_check(check: Check, timeout: int) -> str | None:
                 return f"{check.name}: tiling reported an alarm\n{output}"
         for baseline_args in check.differs_from_args:
             try:
-                baseline = run_polopt_compat(list(baseline_args), check.fixture, timeout)
+                baseline = run_polopt_compat(list(baseline_args), check.fixture, timeout, native=check.native)
             except subprocess.TimeoutExpired:
                 return f"{check.name}: baseline comparison timed out for args {list(baseline_args)!r}"
             baseline_output = baseline.stdout + baseline.stderr
@@ -1650,7 +1897,7 @@ def run_check(check: Check, timeout: int) -> str | None:
                 return f"{check.name}: optimized loop did not differ from baseline args {list(baseline_args)!r}\n{output}"
         if check.same_as_args is not None:
             try:
-                baseline = run_polopt_compat(list(check.same_as_args), check.fixture, timeout)
+                baseline = run_polopt_compat(list(check.same_as_args), check.fixture, timeout, native=check.native)
             except subprocess.TimeoutExpired:
                 return f"{check.name}: baseline equality comparison timed out for args {list(check.same_as_args)!r}"
             baseline_output = baseline.stdout + baseline.stderr
@@ -1671,11 +1918,20 @@ def run_check(check: Check, timeout: int) -> str | None:
 
 def main(argv: list[str]) -> int:
     timeout = 30
-    if argv:
-        if len(argv) == 2 and argv[0] == "--timeout":
-            timeout = int(argv[1])
+    only: set[str] | None = None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--timeout" and i + 1 < len(argv):
+            timeout = int(argv[i + 1])
+            i += 2
+        elif argv[i] == "--only" and i + 1 < len(argv):
+            only = set(argv[i + 1].split(","))
+            i += 2
         else:
-            print("Usage: run_pluto_compat_suite.py [--timeout SECONDS]", file=sys.stderr)
+            print(
+                "Usage: run_pluto_compat_suite.py [--timeout SECONDS] [--only NAME,...]",
+                file=sys.stderr,
+            )
             return 2
 
     failures = check_route_bindings()
@@ -1683,6 +1939,15 @@ def main(argv: list[str]) -> int:
         print(f"[pluto-compat-suite] missing polopt: {POLOPT}", file=sys.stderr)
         return 2
     checks = active_checks()
+    if only is not None:
+        checks = [check for check in checks if check.name in only]
+        missing_names = sorted(only - {check.name for check in checks})
+        if missing_names:
+            print(
+                "[pluto-compat-suite] unknown checks: " + ", ".join(missing_names),
+                file=sys.stderr,
+            )
+            return 2
     missing = [check.fixture for check in checks if not check.fixture.exists()]
     if missing:
         print("[pluto-compat-suite] missing fixtures:", file=sys.stderr)
@@ -1691,7 +1956,10 @@ def main(argv: list[str]) -> int:
         return 2
     for check in checks:
         failure = run_check(check, timeout)
-        print(f"[pluto-compat-suite] {check.name}: {'PASS' if failure is None else 'FAIL'}")
+        print(
+            f"[pluto-compat-suite] {check.name}: {'PASS' if failure is None else 'FAIL'}",
+            flush=True,
+        )
         if failure is not None:
             failures.append(failure)
 

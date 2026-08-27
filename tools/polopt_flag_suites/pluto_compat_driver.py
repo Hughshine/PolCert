@@ -134,7 +134,7 @@ SUPPORTED_OPTIMIZER_OPTIONS = {
     "--isldepstmtwise": "Pluto ISL statement-wise dependence extraction is passed to the checked scheduler oracle",
     "--isldepcoalesce": "Pluto ISL dependence coalescing is passed to the checked scheduler oracle",
     "--pipsolve": "Pluto PIP solver selection is passed to the checked scheduler oracle",
-    "--intratileopt": "Pluto intra-tile schedule rewriting is passed to the checked scheduler oracle",
+    "--intratileopt": "Pluto intra-tile rewriting selects the checked post-tiling affine route",
     "--multipar": "Pluto multi-degree parallel extraction is passed to the checked scheduler oracle",
 }
 
@@ -407,8 +407,9 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nointratileopt accepted because checked routes disable Pluto intra-tile rewriting")
         elif flag == "--intratileopt":
             state.intratileopt_seen = True
-            state.add_oracle_flag(flag)
-            state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
+            state.add_note(
+                "--intratileopt selects tiling followed by checked post-tiling affine scheduling"
+            )
         elif flag == "--isldep":
             state.isldep_seen = True
             state.add_note("--isldep accepted as Pluto's default dependence tester for the checked polopt route")
@@ -630,8 +631,7 @@ def native_compat_args_for_state(state: PlutoFlagState) -> list[str]:
         args.append("--noparallel")
     args.append("--prevector" if state.vector else "--noprevector")
     args.append("--unrolljam" if state.unrolljam_seen else "--nounrolljam")
-    if state.no_intratileopt_seen:
-        args.append("--nointratileopt")
+    args.append("--intratileopt" if state.intratileopt_seen else "--nointratileopt")
     if state.oracle_flags:
         args.extend(state.oracle_flags)
     if state.control_files:

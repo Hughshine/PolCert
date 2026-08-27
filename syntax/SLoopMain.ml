@@ -27,6 +27,34 @@ let parse_args = SLoopCli.parse_args
 let validate_flag_model = SLoopCli.validate_flag_model
 let configure_scheduler_modes = SLoopCli.configure_scheduler_modes
 
+let route_has_tiling route = SLoopRoute.has_tiling route
+
+let route_is_identity route = SLoopRoute.identity_schedule route
+
+let route_has_iss route = SLoopRoute.iss_enabled route
+
+let route_is_second_level route =
+  match route.SLoopRoute.tiling_family with
+  | SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } -> true
+  | SLoopRoute.NoTiling
+  | SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } -> false
+
+let route_is_diamond route =
+  match route.SLoopRoute.tiling_family with
+  | SLoopRoute.Tiled { shape = SLoopRoute.Diamond _; _ } -> true
+  | SLoopRoute.NoTiling
+  | SLoopRoute.Tiled { shape = SLoopRoute.Rectangular; _ } -> false
+
+let route_has_intra_tile route =
+  route.SLoopRoute.intra_tile_policy = SLoopRoute.IntraTileEnabled
+
+let route_uses_post_tiling_affine route =
+  route_is_diamond route
+  || route_has_intra_tile route
+
+let route_tiling_explicitly_requested route =
+  SLoopRoute.tiling_explicitly_requested route
+
 let read_openscop_or_fail path =
   match OpenScopReader.read path with
   | Some scop -> scop
@@ -357,11 +385,6 @@ let schedule_poly pol =
   match SPolIRs.SPolIRs.scheduler pol with
   | Err msg -> frontend_failf "scheduler failed: %s" (string_of_coq_err msg)
   | Okk pol' -> pol'
-
-let dump_scheduled_openscop loop =
-  print_endline "== Scheduled OpenScop ==";
-  OpenScopPrinter.openscop_printer' stdout (poly_to_openscop (schedule_poly (extract_poly loop)));
-  print_newline ()
 
 let debug_scheduler loop =
   let pol0 = extract_poly loop in
@@ -854,27 +877,37 @@ type 'a phase_pipeline_artifacts = {
 let current_midpoint_label () =
   if Scheduler.diamond_tiling_enabled () then
     diamond_midpoint_label (Scheduler.full_diamond_tiling_enabled ())
+  else if Scheduler.identity_schedule_enabled () then
+    "mid_identity"
   else
     "mid_affine"
 
 let current_tiling_label () =
   if Scheduler.diamond_tiling_enabled () then
     "posttile_diamond"
+  else if Scheduler.intra_tile_enabled () then
+    "posttile_rectangular"
+  else if Scheduler.identity_schedule_enabled () then
+    "identity_tiled"
   else
     "after_tiled"
 
 let current_final_after_label () =
   if Scheduler.diamond_tiling_enabled () then
     "after_rescheduled"
+  else if Scheduler.intra_tile_enabled () then
+    "after_intratile"
+  else if Scheduler.identity_schedule_enabled () then
+    "identity_tiled"
   else
     "after_tiled"
 
 let phase_pipeline_artifacts_or_fail before_scop =
-  if Scheduler.diamond_tiling_enabled () then
-    match Scheduler.run_pluto_diamond_phase_pipeline before_scop with
+  if Scheduler.post_tiling_affine_enabled () then
+    match Scheduler.run_pluto_post_tiling_affine_pipeline before_scop with
     | Err msg ->
         frontend_failf
-          "diamond Pluto phase pipeline failed: %s"
+          "post-tiling affine Pluto pipeline failed: %s"
           (string_of_coq_err msg)
     | Okk (mid_scop, posttile_scop, after_scop) ->
         {
@@ -897,79 +930,17 @@ let phase_pipeline_artifacts_or_fail before_scop =
           phase_has_final_affine = false;
         }
 
-let pluto_phase_scops loop =
-  let pol0 = extract_poly loop in
-  let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
-  let before_scop = poly_to_openscop pol in
-  let artifacts = phase_pipeline_artifacts_or_fail before_scop in
-  (before_scop, artifacts.phase_mid_scop, artifacts.phase_after_scop)
-
-let pluto_phase_scops_with_iss_and_parallel_hint loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.run_pluto_phase_pipeline_with_iss_with_parallel_hint before_scop with
-  | Err _ -> None
-  | Okk (mid_scop, after_scop, hint) ->
-      Some (pol, before_scop, mid_scop, after_scop, hint)
-
-let pluto_phase_scops_with_iss_and_vector_hint loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.run_pluto_phase_pipeline_with_iss_with_vector_hint before_scop with
-  | Err _ -> None
-  | Okk (mid_scop, after_scop, hint) ->
-      Some (pol, before_scop, mid_scop, after_scop, hint)
-
-let pluto_phase_scops_with_parallel_hint loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.run_pluto_phase_pipeline_with_parallel_hint before_scop with
-  | Err _ -> None
-  | Okk (mid_scop, after_scop, hint) ->
-      Some (pol, before_scop, mid_scop, after_scop, hint)
-
-let pluto_phase_scops_with_vector_hint loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  match Scheduler.run_pluto_phase_pipeline_with_vector_hint before_scop with
-  | Err _ -> None
-  | Okk (mid_scop, after_scop, hint) ->
-      Some (pol, before_scop, mid_scop, after_scop, hint)
-
-let pluto_diamond_parallel_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let runner =
-    if cfg.force_iss then
-      Scheduler.run_pluto_diamond_parallel_hint_with_iss
-    else
-      Scheduler.run_pluto_diamond_parallel_hint
-  in
-  match runner before_scop with
-  | Err _ -> []
-  | Okk hint -> hint
-
-let pluto_diamond_vector_hint cfg loop =
-  let pol = extract_strengthened_poly loop in
-  let before_scop = poly_to_openscop pol in
-  let runner =
-    if cfg.force_iss then
-      Scheduler.run_pluto_diamond_vector_hint_with_iss
-    else
-      Scheduler.run_pluto_diamond_vector_hint
-  in
-  match runner before_scop with
-  | Err _ -> []
-  | Okk hint -> hint
-
-let debug_band_tiling_runtime cfg loop =
+let debug_band_tiling_runtime route loop =
   let pol0 = extract_poly loop in
   let pol = SPolOpt.CoreOpt.Strengthen.strengthen_pprog pol0 in
   let before_scop = poly_to_openscop pol in
   let identity_tiled =
-    cfg.force_identity
-    && cfg.pluto_tile_seen
+    route_is_identity route
+    && route_has_tiling route
     && not (Scheduler.diamond_tiling_enabled ())
+  in
+  let identity_pair_pipeline =
+    identity_tiled && not (Scheduler.post_tiling_affine_enabled ())
   in
   let midpoint_label =
     if identity_tiled then "identity_before" else current_midpoint_label ()
@@ -978,7 +949,7 @@ let debug_band_tiling_runtime cfg loop =
     if identity_tiled then "identity_tiled" else current_tiling_label ()
   in
   let artifacts =
-    if identity_tiled then
+    if identity_pair_pipeline then
       match Scheduler.run_pluto_identity_tiling_pipeline before_scop with
       | Err msg ->
           frontend_failf
@@ -1049,105 +1020,6 @@ let debug_band_tiling_runtime cfg loop =
     (Printf.sprintf "band-mid(%s)" midpoint_importer_label)
     pol_mid;
   dump_poly_payload "band-after(canonical-schedule-only)" pol_after
-
-let dump_scheduled_openscop loop =
-  let (_, _, after_scop) = pluto_phase_scops loop in
-  print_endline "== Scheduled OpenScop ==";
-  OpenScopPrinter.openscop_printer' stdout after_scop;
-  print_newline ()
-
-let dump_scheduled_openscop_with_parallel cfg loop =
-  if cfg.force_iss && cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin
-      match Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint before_scop with
-      | Err msg ->
-          frontend_failf
-            "parallel ISS affine Pluto scheduling failed: %s"
-            (string_of_coq_err msg)
-      | Okk (mid_scop, _hint) ->
-          print_endline "== Scheduled OpenScop ==";
-          OpenScopPrinter.openscop_printer' stdout mid_scop;
-          print_newline ()
-    end
-  else if cfg.force_iss then
-    match pluto_phase_scops_with_iss_and_parallel_hint loop with
-    | None ->
-        frontend_failf "parallel ISS Pluto phase pipeline failed"
-    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
-        print_endline "== Scheduled OpenScop ==";
-        OpenScopPrinter.openscop_printer' stdout after_scop;
-        print_newline ()
-
-  else if cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin
-      match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
-      | Err msg ->
-          frontend_failf
-            "parallel affine Pluto scheduling failed: %s"
-            (string_of_coq_err msg)
-      | Okk (mid_scop, _hint) ->
-          print_endline "== Scheduled OpenScop ==";
-          OpenScopPrinter.openscop_printer' stdout mid_scop;
-          print_newline ()
-    end
-  else
-    match pluto_phase_scops_with_parallel_hint loop with
-    | None ->
-        frontend_failf "parallel Pluto phase pipeline failed"
-    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
-        print_endline "== Scheduled OpenScop ==";
-        OpenScopPrinter.openscop_printer' stdout after_scop;
-        print_newline ()
-
-let dump_scheduled_openscop_with_vector cfg loop =
-  if cfg.force_iss && cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin
-      match Scheduler.affine_only_scop_scheduler_with_iss_with_vector_hint before_scop with
-      | Err msg ->
-          frontend_failf
-            "vector ISS affine Pluto scheduling failed: %s"
-            (string_of_coq_err msg)
-      | Okk (mid_scop, _hint) ->
-          print_endline "== Scheduled OpenScop ==";
-          OpenScopPrinter.openscop_printer' stdout mid_scop;
-          print_newline ()
-    end
-  else if cfg.force_iss then
-    match pluto_phase_scops_with_iss_and_vector_hint loop with
-    | None ->
-        frontend_failf "vector ISS Pluto phase pipeline failed"
-    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
-        print_endline "== Scheduled OpenScop ==";
-        OpenScopPrinter.openscop_printer' stdout after_scop;
-        print_newline ()
-  else if cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin
-      match Scheduler.affine_only_scop_scheduler_with_vector_hint before_scop with
-      | Err msg ->
-          frontend_failf
-            "vector affine Pluto scheduling failed: %s"
-            (string_of_coq_err msg)
-      | Okk (mid_scop, _hint) ->
-          print_endline "== Scheduled OpenScop ==";
-          OpenScopPrinter.openscop_printer' stdout mid_scop;
-          print_newline ()
-    end
-  else
-    match pluto_phase_scops_with_vector_hint loop with
-    | None ->
-        frontend_failf "vector Pluto phase pipeline failed"
-    | Some (_pol, _before_scop, _mid_scop, after_scop, _hint) ->
-        print_endline "== Scheduled OpenScop ==";
-        OpenScopPrinter.openscop_printer' stdout after_scop;
-        print_newline ()
 
 let run_tiling_validator ~second_level before_file after_file =
   let report =
@@ -1243,6 +1115,172 @@ let run_iss_bridge_validator = SLoopIss.run_iss_bridge_validator
 let run_iss_dump_validator = SLoopIss.run_iss_dump_validator
 let run_iss_pluto_suite = SLoopIss.run_iss_pluto_suite
 let run_iss_pluto_live_suite = SLoopIss.run_iss_pluto_live_suite
+
+let scheduler_value_or_fail label = function
+  | Okk value -> value
+  | Err msg ->
+      frontend_failf "%s failed: %s" label (string_of_coq_err msg)
+
+let identity_schedule_input_scop route pol before_scop =
+  if route_has_iss route then
+    match iss_bridge_from_scop_opt before_scop with
+    | None -> before_scop
+    | Some bridge ->
+        apply_iss_bridge_to_spol_or_fail
+          "iss-identity-schedule"
+          pol
+          bridge
+        |> poly_to_openscop
+  else
+    before_scop
+
+let scheduled_scop_of_route route loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  if route_uses_post_tiling_affine route then
+    let (_, _, after_scop) =
+      if route_has_iss route then
+        scheduler_value_or_fail
+          "ISS post-tiling affine Pluto pipeline"
+          (Scheduler.run_pluto_post_tiling_affine_pipeline_with_iss before_scop)
+      else
+        scheduler_value_or_fail
+          "post-tiling affine Pluto pipeline"
+          (Scheduler.run_pluto_post_tiling_affine_pipeline before_scop)
+    in
+    after_scop
+  else
+    match route.SLoopRoute.schedule_family,
+          route.SLoopRoute.structural_extension,
+          route.SLoopRoute.tiling_family with
+    | SLoopRoute.IdentitySchedule, _, SLoopRoute.NoTiling ->
+        identity_schedule_input_scop route pol before_scop
+    | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.NoTiling ->
+        scheduler_value_or_fail
+          "affine-only Pluto scheduling"
+          (Scheduler.affine_only_scop_scheduler before_scop)
+    | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.NoTiling ->
+        scheduler_value_or_fail
+          "ISS affine-only Pluto scheduling"
+          (Scheduler.affine_only_scop_scheduler_with_iss before_scop)
+    | SLoopRoute.IdentitySchedule, _, SLoopRoute.Tiled _ ->
+        let tiling_input = identity_schedule_input_scop route pol before_scop in
+        let (_, after_scop) =
+          scheduler_value_or_fail
+            "identity Pluto tiling pipeline"
+            (Scheduler.run_pluto_identity_tiling_pipeline tiling_input)
+        in
+        after_scop
+    | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.Tiled _ ->
+        let (_, after_scop) =
+          scheduler_value_or_fail
+            "phase-aligned Pluto pipeline"
+            (Scheduler.run_pluto_phase_pipeline before_scop)
+        in
+        after_scop
+    | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.Tiled _ ->
+        let (_, after_scop) =
+          scheduler_value_or_fail
+            "ISS phase-aligned Pluto pipeline"
+            (Scheduler.run_pluto_phase_pipeline_with_iss before_scop)
+        in
+        after_scop
+
+type hinted_schedule =
+  | ParallelSchedule
+  | VectorSchedule
+
+let hinted_schedule_name = function
+  | ParallelSchedule -> "parallel"
+  | VectorSchedule -> "vector"
+
+let scheduled_scop_and_hints_of_route kind route loop =
+  let pol = extract_strengthened_poly loop in
+  let before_scop = poly_to_openscop pol in
+  let result =
+    if route_uses_post_tiling_affine route then
+      match kind, route_has_iss route with
+      | ParallelSchedule, false ->
+          Scheduler.post_tiling_affine_scop_scheduler_with_parallel_hint before_scop
+      | ParallelSchedule, true ->
+          Scheduler.post_tiling_affine_scop_scheduler_with_parallel_hint_with_iss before_scop
+      | VectorSchedule, false ->
+          Scheduler.post_tiling_affine_scop_scheduler_with_vector_hint before_scop
+      | VectorSchedule, true ->
+          Scheduler.post_tiling_affine_scop_scheduler_with_vector_hint_with_iss before_scop
+    else
+      match route.SLoopRoute.schedule_family,
+            route.SLoopRoute.structural_extension,
+            route.SLoopRoute.tiling_family,
+            kind with
+      | SLoopRoute.IdentitySchedule, _, SLoopRoute.NoTiling, _ ->
+          frontend_failf
+            "internal error: hinted %s execution requires identity tiling"
+            (hinted_schedule_name kind)
+      | SLoopRoute.IdentitySchedule, _, SLoopRoute.Tiled _, ParallelSchedule ->
+          let input_scop = identity_schedule_input_scop route pol before_scop in
+          Scheduler.tile_only_scop_scheduler_with_parallel_hint input_scop
+      | SLoopRoute.IdentitySchedule, _, SLoopRoute.Tiled _, VectorSchedule ->
+          let input_scop = identity_schedule_input_scop route pol before_scop in
+          Scheduler.tile_only_scop_scheduler_with_vector_hint input_scop
+      | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.NoTiling,
+          ParallelSchedule ->
+          Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop
+      | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.NoTiling,
+          ParallelSchedule ->
+          Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint before_scop
+      | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.NoTiling,
+          VectorSchedule ->
+          Scheduler.affine_only_scop_scheduler_with_vector_hint before_scop
+      | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.NoTiling,
+          VectorSchedule ->
+          Scheduler.affine_only_scop_scheduler_with_iss_with_vector_hint before_scop
+      | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.Tiled _,
+          ParallelSchedule ->
+          begin match Scheduler.run_pluto_phase_pipeline_with_parallel_hint before_scop with
+          | Err msg -> Err msg
+          | Okk (_, after_scop, hints) -> Okk (after_scop, hints)
+          end
+      | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.Tiled _,
+          ParallelSchedule ->
+          begin match Scheduler.run_pluto_phase_pipeline_with_iss_with_parallel_hint before_scop with
+          | Err msg -> Err msg
+          | Okk (_, after_scop, hints) -> Okk (after_scop, hints)
+          end
+      | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.Tiled _,
+          VectorSchedule ->
+          begin match Scheduler.run_pluto_phase_pipeline_with_vector_hint before_scop with
+          | Err msg -> Err msg
+          | Okk (_, after_scop, hints) -> Okk (after_scop, hints)
+          end
+      | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.Tiled _,
+          VectorSchedule ->
+          begin match Scheduler.run_pluto_phase_pipeline_with_iss_with_vector_hint before_scop with
+          | Err msg -> Err msg
+          | Okk (_, after_scop, hints) -> Okk (after_scop, hints)
+          end
+  in
+  scheduler_value_or_fail
+    ((hinted_schedule_name kind) ^ " Pluto scheduling")
+    result
+
+let print_scheduled_scop scop =
+  print_endline "== Scheduled OpenScop ==";
+  OpenScopPrinter.openscop_printer' stdout scop;
+  print_newline ()
+
+let dump_scheduled_openscop route loop =
+  print_scheduled_scop (scheduled_scop_of_route route loop)
+
+let dump_scheduled_openscop_with_parallel route loop =
+  let (scop, _) =
+    scheduled_scop_and_hints_of_route ParallelSchedule route loop
+  in
+  print_scheduled_scop scop
+
+let dump_scheduled_openscop_with_vector route loop =
+  let (scop, _) = scheduled_scop_and_hints_of_route VectorSchedule route loop in
+  print_scheduled_scop scop
 
 let profile_codegen_pipeline timings metrics pol =
   let ((pis, varctxt), vars) = pol in
@@ -1472,22 +1510,24 @@ let source_loop_count loop =
   let ((stmt, _), _) = loop in
   (loop_stmt_stats stmt).loop_loops
 
-let profile_selected_optimization cfg loop =
-  if cfg.force_parallel || cfg.force_parallel_strict || Option.is_some cfg.parallel_current_dim then
-    frontend_failf "--profile-stages does not support parallel routes yet";
-  if cfg.force_vector || cfg.force_vector_strict || Option.is_some cfg.vector_current_dim then
-    frontend_failf "--profile-stages does not support vector routes yet";
-  if cfg.force_iss then
+let profile_selected_optimization route loop =
+  begin match route.SLoopRoute.execution_family with
+  | SLoopRoute.Sequential -> ()
+  | SLoopRoute.PlutoParallelHint _ | SLoopRoute.ParallelCurrent _ ->
+      frontend_failf "--profile-stages does not support parallel routes yet"
+  | SLoopRoute.PlutoVectorHint _ | SLoopRoute.VectorCurrent _ ->
+      frontend_failf "--profile-stages does not support vector routes yet"
+  end;
+  if route_has_iss route then
     frontend_failf "--profile-stages currently supports the default no-ISS routes only";
-  if cfg.force_second_level_tile then
+  if route_is_second_level route then
     frontend_failf "--profile-stages does not support --second-level-tile yet";
-  if cfg.force_identity then
+  if route_is_identity route && not (route_has_tiling route) then
     profile_identity_only loop
-  else if cfg.force_notile then
+  else if not (route_has_tiling route) then
     profile_affine_only loop
   else if
     source_loop_count loop = 0
-    && not cfg.pluto_tile_seen
   then
     profile_identity_only loop
   else
@@ -1503,57 +1543,55 @@ let standalone_handlers = {
   sa_run_iss_pluto_live_suite = run_iss_pluto_live_suite;
 }
 
-let verified_sequential_config_of_cli cfg =
+let verified_sequential_config_of_route route =
   let open VerifiedSequentialCompiler in
-  if cfg.force_diamond_tile then
-    if cfg.force_iss then RawDiamondISS else RawDiamond
-  else if cfg.force_iss then
-    if cfg.force_identity then
-      if cfg.pluto_tile_seen then
-        if cfg.force_second_level_tile
-        then RawIdentitySecondLevelISS
-        else RawIdentityBandISS
-      else
-        RawUnsupported
-    else if cfg.force_notile then
-      RawUnsupported
-    else if cfg.force_second_level_tile then
-      RawSecondLevelISS
-    else
-      RawISS
-  else if cfg.force_identity then
-    if cfg.pluto_tile_seen then
-      if cfg.force_second_level_tile
-      then RawIdentitySecondLevel
-      else RawIdentityBand
-    else
-      RawIdentity
-  else if cfg.force_notile then
-    RawAffine
-  else if cfg.force_second_level_tile then
-    RawSecondLevel
+  (* [RawDiamond] is the historical extracted name for the theorem that checks
+     affine scheduling, tiling, and a final affine schedule.  The theorem and
+     scheduler contract are tile-shape independent, so rectangular intratile
+     routes use the same proved composition. *)
+  if route_uses_post_tiling_affine route then
+    if route_has_iss route then RawDiamondISS else RawDiamond
   else
-    RawDefaultBand
+  match route.SLoopRoute.schedule_family,
+        route.SLoopRoute.structural_extension,
+        route.SLoopRoute.tiling_family with
+  | SLoopRoute.IdentitySchedule, SLoopRoute.Plain, SLoopRoute.NoTiling ->
+      RawIdentity
+  | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.NoTiling ->
+      RawAffine
+  | SLoopRoute.IdentitySchedule, SLoopRoute.Plain,
+      SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
+      RawIdentityBand
+  | SLoopRoute.IdentitySchedule, SLoopRoute.Plain,
+      SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
+      RawIdentitySecondLevel
+  | SLoopRoute.IdentitySchedule, SLoopRoute.ISS,
+      SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
+      RawIdentityBandISS
+  | SLoopRoute.IdentitySchedule, SLoopRoute.ISS,
+      SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
+      RawIdentitySecondLevelISS
+  | SLoopRoute.AffineSchedule, SLoopRoute.Plain,
+      SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
+      RawDefaultBand
+  | SLoopRoute.AffineSchedule, SLoopRoute.Plain,
+      SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
+      RawSecondLevel
+  | SLoopRoute.AffineSchedule, SLoopRoute.ISS,
+      SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
+      RawISS
+  | SLoopRoute.AffineSchedule, SLoopRoute.ISS,
+      SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
+      RawSecondLevelISS
+  | _, SLoopRoute.ISS, SLoopRoute.NoTiling ->
+      RawUnsupported
 
-let run_selected_optimization cfg loop =
-  let ((optimized, ok), route) =
-    TilingValidationRoute.capture (fun () ->
-      VerifiedParallelCompiler.compile
-        (VerifiedParallelCompiler.RawSeq (verified_sequential_config_of_cli cfg))
-        loop)
-  in
-  TilingValidationRoute.report route;
-  let tiling_ok =
-    not (List.exists (String.equal "rejected") route)
-  in
-  (optimized, ok && tiling_ok)
-
-let run_selected_sequential_loop_optimization cfg loop =
-  let selected = verified_sequential_config_of_cli cfg in
+let run_selected_sequential_loop_optimization route loop =
+  let selected = verified_sequential_config_of_route route in
   if
     source_loop_count loop = 0
     && selected = VerifiedSequentialCompiler.RawDefaultBand
-    && not cfg.pluto_tile_seen
+    && not (route_tiling_explicitly_requested route)
   then begin
     prerr_endline
       "[tiling-validation] status=not-applicable reason=no-loop";
@@ -1570,126 +1608,82 @@ let run_selected_sequential_loop_optimization cfg loop =
     in
     (optimized, ok && tiling_ok)
 
-let verified_parallel_current_config_of_cli cfg dim =
+let verified_parallel_current_config_of_route route dim =
   let d = nat_of_int dim in
   let open VerifiedParallelCompiler in
-  if cfg.force_diamond_tile then
-    if cfg.force_iss then RawParallelCurrentDiamondISS d
+  if route_uses_post_tiling_affine route then
+    if route_has_iss route then RawParallelCurrentDiamondISS d
     else RawParallelCurrentDiamond d
-  else if cfg.force_identity && cfg.pluto_tile_seen then
-    if cfg.force_iss then RawParallelCurrentIdentityTiledISS d
+  else if route_is_identity route && route_has_tiling route then
+    if route_has_iss route then RawParallelCurrentIdentityTiledISS d
     else RawParallelCurrentIdentityTiled d
-  else if cfg.force_iss then
-    if cfg.force_identity then
+  else if route_has_iss route then
+    if route_is_identity route then
       RawParallelCurrentIdentityISS d
-    else if cfg.force_notile then
+    else if not (route_has_tiling route) then
       RawParallelCurrentAffineISS d
     else
       RawParallelCurrentDefaultISS d
-  else if cfg.force_identity then
+  else if route_is_identity route then
     RawParallelCurrentIdentity d
-  else if cfg.force_notile then
+  else if not (route_has_tiling route) then
     RawParallelCurrentAffine d
   else
     RawParallelCurrentDefault d
 
-let verified_parallel_current_many_config_of_cli cfg dims =
+let verified_parallel_current_many_config_of_route route dims =
   let dims = List.map nat_of_int (unique_ints dims) in
   let open VerifiedParallelCompiler in
-  if cfg.force_diamond_tile then
-    if cfg.force_iss then RawParallelCurrentManyDiamondISS dims
+  if route_uses_post_tiling_affine route then
+    if route_has_iss route then RawParallelCurrentManyDiamondISS dims
     else RawParallelCurrentManyDiamond dims
-  else if cfg.force_identity && cfg.pluto_tile_seen then
-    if cfg.force_iss then RawParallelCurrentManyIdentityTiledISS dims
+  else if route_is_identity route && route_has_tiling route then
+    if route_has_iss route then RawParallelCurrentManyIdentityTiledISS dims
     else RawParallelCurrentManyIdentityTiled dims
-  else if cfg.force_iss then
-    if cfg.force_identity then
+  else if route_has_iss route then
+    if route_is_identity route then
       RawParallelCurrentManyIdentityISS dims
-    else if cfg.force_notile then
+    else if not (route_has_tiling route) then
       RawParallelCurrentManyAffineISS dims
     else
       RawParallelCurrentManyDefaultISS dims
-  else if cfg.force_identity then
+  else if route_is_identity route then
     RawParallelCurrentManyIdentity dims
-  else if cfg.force_notile then
+  else if not (route_has_tiling route) then
     RawParallelCurrentManyAffine dims
   else
     RawParallelCurrentManyDefault dims
 
-let verified_vector_current_config_of_cli cfg dim =
+let verified_vector_current_config_of_route route dim =
   let d = nat_of_int dim in
   let open VerifiedParallelCompiler in
-  if cfg.force_diamond_tile then
-    if cfg.force_iss then RawVectorCurrentDiamondISS d
+  if route_uses_post_tiling_affine route then
+    if route_has_iss route then RawVectorCurrentDiamondISS d
     else RawVectorCurrentDiamond d
-  else if cfg.force_identity && cfg.pluto_tile_seen then
-    if cfg.force_iss then RawVectorCurrentIdentityTiledISS d
+  else if route_is_identity route && route_has_tiling route then
+    if route_has_iss route then RawVectorCurrentIdentityTiledISS d
     else RawVectorCurrentIdentityTiled d
-  else if cfg.force_iss then
-    if cfg.force_identity then
+  else if route_has_iss route then
+    if route_is_identity route then
       RawVectorCurrentIdentityISS d
-    else if cfg.force_notile then
+    else if not (route_has_tiling route) then
       RawVectorCurrentAffineISS d
     else
       RawVectorCurrentDefaultISS d
-  else if cfg.force_identity then
+  else if route_is_identity route then
     RawVectorCurrentIdentity d
-  else if cfg.force_notile then
+  else if not (route_has_tiling route) then
     RawVectorCurrentAffine d
   else
     RawVectorCurrentDefault d
 
-let parallel_hint_dims_of_cli cfg loop =
-  if cfg.force_diamond_tile then
-    hint_dims (pluto_diamond_parallel_hint cfg loop)
-  else if cfg.force_identity && cfg.pluto_tile_seen then
-    let pol_source = extract_strengthened_poly loop in
-    let source_scop = poly_to_openscop pol_source in
-    let pol =
-      if cfg.force_iss then
-        match iss_bridge_from_scop_opt source_scop with
-        | None -> pol_source
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail
-              "iss-identity-tiled-parallel-hint"
-              pol_source
-              bridge
-      else
-        pol_source
+let parallel_scop_and_hint_dims_of_route route loop =
+  try
+    let (after_scop, hints) =
+      scheduled_scop_and_hints_of_route ParallelSchedule route loop
     in
-    let before_scop = poly_to_openscop pol in
-    begin match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
-    | Err _ -> []
-    | Okk (_, hint) -> hint_dims hint
-    end
-  else if cfg.force_iss then
-    if cfg.force_notile then
-      let pol = extract_strengthened_poly loop in
-      let before_scop = poly_to_openscop pol in
-      begin match
-        Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint
-          before_scop
-      with
-      | Err _ -> []
-      | Okk (_, hint) -> hint_dims hint
-      end
-    else
-      begin match pluto_phase_scops_with_iss_and_parallel_hint loop with
-      | None -> []
-      | Some (_, _, _, _, hint) -> hint_dims hint
-      end
-  else if cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
-    | Err _ -> []
-    | Okk (_, hint) -> hint_dims hint
-    end
-  else
-    begin match pluto_phase_scops_with_parallel_hint loop with
-    | None -> []
-    | Some (_, _, _, _, hint) -> hint_dims hint
-    end
+    (Some after_scop, hint_dims hints)
+  with _ -> (None, [])
 
 let max_hint_dim_exclusive dims =
   List.fold_left
@@ -1708,124 +1702,33 @@ let max_scop_scattering_out_dim scop =
     0
     (OpenScop.statements scop)
 
-let source_current_depth_of_loop loop =
-  let pol = extract_strengthened_poly loop in
-  max_current_depth_spol_pprog pol
-
-let parallel_candidate_hi_of_cli cfg loop hinted_dims =
+let parallel_candidate_hi_of_scop after_scop hinted_dims =
   let with_hints hi = max_int hi (max_hint_dim_exclusive hinted_dims) in
   let default_hi = with_hints 16 in
-  let with_route_hi hi = max_int default_hi (with_hints hi) in
-  try
-    if cfg.force_diamond_tile then
-      default_hi
-    else if cfg.force_identity && cfg.pluto_tile_seen && not cfg.force_iss then
-      let pol = extract_strengthened_poly loop in
-      let before_scop = poly_to_openscop pol in
-      begin match Scheduler.tile_only_scop_scheduler_with_parallel_hint before_scop with
-      | Err _ -> default_hi
-      | Okk (after_scop, _) ->
-          with_route_hi (max_scop_scattering_out_dim after_scop)
-      end
-    else if cfg.force_iss then
-      if cfg.force_notile then
-        let pol = extract_strengthened_poly loop in
-        let before_scop = poly_to_openscop pol in
-        begin match
-          Scheduler.affine_only_scop_scheduler_with_iss_with_parallel_hint
-            before_scop
-        with
-        | Err _ -> default_hi
-        | Okk (mid_scop, _) ->
-            with_route_hi (max_scop_scattering_out_dim mid_scop)
-        end
-      else
-        begin match pluto_phase_scops_with_iss_and_parallel_hint loop with
-        | None -> default_hi
-        | Some (_, _, _, after_scop, _) ->
-            with_route_hi (max_scop_scattering_out_dim after_scop)
-        end
-    else if cfg.force_notile then
-      let pol = extract_strengthened_poly loop in
-      let before_scop = poly_to_openscop pol in
-      begin match Scheduler.affine_only_scop_scheduler_with_parallel_hint before_scop with
-      | Err _ -> default_hi
-      | Okk (mid_scop, _) ->
-          with_route_hi (max_scop_scattering_out_dim mid_scop)
-      end
-    else if cfg.force_identity then
-      with_route_hi (source_current_depth_of_loop loop)
-    else
-      begin match pluto_phase_scops_with_parallel_hint loop with
-      | None -> default_hi
-      | Some (_, _, _, after_scop, _) ->
-          with_route_hi (max_scop_scattering_out_dim after_scop)
-      end
-  with _ -> default_hi
+  match after_scop with
+  | None -> default_hi
+  | Some scop -> max_int default_hi (with_hints (max_scop_scattering_out_dim scop))
 
-let parallel_candidate_dims_of_cli cfg loop hinted_dims =
+let parallel_candidate_dims_of_scop after_scop hinted_dims =
   unique_ints
-    (hinted_dims @ int_range 0 (parallel_candidate_hi_of_cli cfg loop hinted_dims))
+    (hinted_dims
+     @ int_range 0 (parallel_candidate_hi_of_scop after_scop hinted_dims))
 
-let vector_hint_dims_of_cli cfg loop =
-  if cfg.force_diamond_tile then
-    hint_dims (pluto_diamond_vector_hint cfg loop)
-  else if cfg.force_identity && cfg.pluto_tile_seen then
-    let pol_source = extract_strengthened_poly loop in
-    let source_scop = poly_to_openscop pol_source in
-    let pol =
-      if cfg.force_iss then
-        match iss_bridge_from_scop_opt source_scop with
-        | None -> pol_source
-        | Some bridge ->
-            apply_iss_bridge_to_spol_or_fail
-              "iss-identity-tiled-vector-hint"
-              pol_source
-              bridge
-      else
-        pol_source
+let vector_hint_dims_of_route route loop =
+  try
+    let (_, hints) =
+      scheduled_scop_and_hints_of_route VectorSchedule route loop
     in
-    let before_scop = poly_to_openscop pol in
-    begin match Scheduler.tile_only_scop_scheduler_with_vector_hint before_scop with
-    | Err _ -> []
-    | Okk (_, hint) -> hint_dims hint
-    end
-  else if cfg.force_iss then
-    if cfg.force_notile then
-      let pol = extract_strengthened_poly loop in
-      let before_scop = poly_to_openscop pol in
-      begin match
-        Scheduler.affine_only_scop_scheduler_with_iss_with_vector_hint
-          before_scop
-      with
-      | Err _ -> []
-      | Okk (_, hint) -> hint_dims hint
-      end
-    else
-      begin match pluto_phase_scops_with_iss_and_vector_hint loop with
-      | None -> []
-      | Some (_, _, _, _, hint) -> hint_dims hint
-      end
-  else if cfg.force_notile then
-    let pol = extract_strengthened_poly loop in
-    let before_scop = poly_to_openscop pol in
-    begin match Scheduler.affine_only_scop_scheduler_with_vector_hint before_scop with
-    | Err _ -> []
-    | Okk (_, hint) -> hint_dims hint
-    end
-  else
-    begin match pluto_phase_scops_with_vector_hint loop with
-    | None -> []
-      | Some (_, _, _, _, hint) -> hint_dims hint
-      end
+    hint_dims hints
+  with _ -> []
 
 let report_parallel_validation details =
   prerr_endline ("[parallel-validation] " ^ details)
 
-let verified_sequential_after_parallel_skip cfg loop =
+let verified_sequential_after_parallel_skip route loop =
   report_parallel_validation
     "status=skipped source=pluto-hint reason=no-certifiable-dimension";
-  let (optimized, ok) = run_selected_sequential_loop_optimization cfg loop in
+  let (optimized, ok) = run_selected_sequential_loop_optimization route loop in
   (tag_loop_for_parallel_pretty optimized, ok)
 
 let is_consumer_candidate_failure = function
@@ -1854,14 +1757,14 @@ let verified_candidate_or_raise = function
       end
   | Error (exn, _) -> raise exn
 
-let try_verified_parallel_current_compile cfg loop dim =
+let try_verified_parallel_current_compile route loop dim =
   verified_candidate_or_raise
     (TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
-          (verified_parallel_current_config_of_cli cfg dim)
+          (verified_parallel_current_config_of_route route dim)
           loop))
 
-let try_verified_parallel_current_many_compile cfg loop dims =
+let try_verified_parallel_current_many_compile route loop dims =
   let dims = unique_ints dims in
   if dims = [] then
     None
@@ -1869,34 +1772,42 @@ let try_verified_parallel_current_many_compile cfg loop dims =
     verified_candidate_or_raise
       (TilingValidationRoute.capture_result (fun () ->
           VerifiedParallelCompiler.compile
-            (verified_parallel_current_many_config_of_cli cfg dims)
+            (verified_parallel_current_many_config_of_route route dims)
             loop))
 
-let try_verified_vector_current_compile cfg loop dim =
+let try_verified_vector_current_compile route loop dim =
   verified_candidate_or_raise
     (TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
-          (verified_vector_current_config_of_cli cfg dim)
+          (verified_vector_current_config_of_route route dim)
           loop))
 
-let run_verified_hinted_parallel_optimization cfg loop =
-  let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
+let run_verified_hinted_parallel_optimization route loop =
+  let (after_scop, hinted_dims) =
+    parallel_scop_and_hint_dims_of_route route loop
+  in
+  let hinted_dims = unique_ints hinted_dims in
+  let strict =
+    match route.SLoopRoute.execution_family with
+    | SLoopRoute.PlutoParallelHint { strict; _ } -> strict
+    | _ -> false
+  in
   let candidates =
-    if cfg.force_parallel_strict then
+    if strict then
       hinted_dims
     else
-      parallel_candidate_dims_of_cli cfg loop hinted_dims
+      parallel_candidate_dims_of_scop after_scop hinted_dims
   in
   let rec go = function
     | [] ->
-        if cfg.force_parallel_strict then begin
+        if strict then begin
           report_parallel_validation
             "status=rejected source=pluto-hint reason=no-certifiable-dimension";
           (tag_loop_for_parallel_pretty loop, false)
         end else
-          verified_sequential_after_parallel_skip cfg loop
+          verified_sequential_after_parallel_skip route loop
     | dim :: rest ->
-        begin match try_verified_parallel_current_compile cfg loop dim with
+        begin match try_verified_parallel_current_compile route loop dim with
         | Some (pl, routes) ->
             TilingValidationRoute.report routes;
             (pl, true)
@@ -1905,18 +1816,26 @@ let run_verified_hinted_parallel_optimization cfg loop =
   in
   go candidates
 
-let run_verified_hinted_multipar_parallel_optimization cfg loop =
-  let hinted_dims = unique_ints (parallel_hint_dims_of_cli cfg loop) in
+let run_verified_hinted_multipar_parallel_optimization route loop =
+  let (after_scop, hinted_dims) =
+    parallel_scop_and_hint_dims_of_route route loop
+  in
+  let hinted_dims = unique_ints hinted_dims in
+  let strict =
+    match route.SLoopRoute.execution_family with
+    | SLoopRoute.PlutoParallelHint { strict; _ } -> strict
+    | _ -> false
+  in
   let candidates =
-    if cfg.force_parallel_strict then
+    if strict then
       hinted_dims
     else
-      parallel_candidate_dims_of_cli cfg loop hinted_dims
+      parallel_candidate_dims_of_scop after_scop hinted_dims
   in
   let hinted_result =
     match hinted_dims with
     | [] -> None
-    | _ -> try_verified_parallel_current_many_compile cfg loop hinted_dims
+    | _ -> try_verified_parallel_current_many_compile route loop hinted_dims
   in
   let hinted_accepted =
     match hinted_result with
@@ -1924,7 +1843,7 @@ let run_verified_hinted_multipar_parallel_optimization cfg loop =
     | None -> false
   in
   let selected =
-    match try_verified_parallel_current_many_compile cfg loop candidates with
+    match try_verified_parallel_current_many_compile route loop candidates with
     | Some (pl, routes) -> Some (pl, routes, hinted_accepted)
     | None ->
         begin match hinted_result with
@@ -1937,29 +1856,32 @@ let run_verified_hinted_multipar_parallel_optimization cfg loop =
       TilingValidationRoute.report routes;
       (pl, true)
   | None ->
-      if cfg.force_parallel_strict then begin
+      if strict then begin
         report_parallel_validation
           "status=rejected source=pluto-hint reason=no-certifiable-dimension";
         (tag_loop_for_parallel_pretty loop, false)
       end else
-        verified_sequential_after_parallel_skip cfg loop
+        verified_sequential_after_parallel_skip route loop
 
-let run_selected_parallel_optimization cfg loop =
-  if cfg.force_multipar then
-    run_verified_hinted_multipar_parallel_optimization cfg loop
-  else
-    run_verified_hinted_parallel_optimization cfg loop
+let run_selected_parallel_optimization route loop =
+  match route.SLoopRoute.execution_family with
+  | SLoopRoute.PlutoParallelHint { multiple = true; _ } ->
+      run_verified_hinted_multipar_parallel_optimization route loop
+  | SLoopRoute.PlutoParallelHint { multiple = false; _ } ->
+      run_verified_hinted_parallel_optimization route loop
+  | _ ->
+      frontend_failf "internal error: non-hinted route reached parallel hint dispatch"
 
 let report_vector_validation details =
   prerr_endline ("[vector-validation] " ^ details)
 
-let verified_sequential_after_vector_skip cfg loop reason =
+let verified_sequential_after_vector_skip route loop reason =
   report_vector_validation ("status=skipped reason=" ^ reason);
-  let (optimized, ok) = run_selected_sequential_loop_optimization cfg loop in
+  let (optimized, ok) = run_selected_sequential_loop_optimization route loop in
   (tag_loop_for_parallel_pretty optimized, ok)
 
-let run_selected_vector_optimization cfg loop =
-  let hinted_dims = unique_ints (vector_hint_dims_of_cli cfg loop) in
+let run_selected_vector_optimization route loop =
+  let hinted_dims = unique_ints (vector_hint_dims_of_route route loop) in
   (* Vectorization follows Pluto's innermost-loop hints.  The checked codegen
      independently rejects any annotation that is not structurally innermost. *)
   let candidates = hinted_dims in
@@ -1969,9 +1891,9 @@ let run_selected_vector_optimization cfg loop =
           if hinted_dims = [] then "no-hint"
           else "hint-not-certifiable-or-non-innermost"
         in
-        verified_sequential_after_vector_skip cfg loop reason
+        verified_sequential_after_vector_skip route loop reason
     | dim :: rest ->
-        begin match try_verified_vector_current_compile cfg loop dim with
+        begin match try_verified_vector_current_compile route loop dim with
         | Some (pl, routes) ->
             TilingValidationRoute.report routes;
             report_vector_validation
@@ -1988,11 +1910,11 @@ let report_explicit_current_failure exn routes report_consumer =
   else
     TilingValidationRoute.report routes
 
-let run_selected_parallel_current_optimization cfg loop dim =
+let run_selected_parallel_current_optimization route loop dim =
   match
     TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
-          (verified_parallel_current_config_of_cli cfg dim)
+          (verified_parallel_current_config_of_route route dim)
           loop)
   with
   | Ok ((optimized, ok), route) ->
@@ -2012,11 +1934,11 @@ let run_selected_parallel_current_optimization cfg loop dim =
       raise exn
   | Error (exn, _) -> raise exn
 
-let run_selected_vector_current_optimization cfg loop dim =
+let run_selected_vector_current_optimization route loop dim =
   match
     TilingValidationRoute.capture_result (fun () ->
         VerifiedParallelCompiler.compile
-          (verified_vector_current_config_of_cli cfg dim)
+          (verified_vector_current_config_of_route route dim)
           loop)
   with
   | Ok ((optimized, ok), routes) ->
@@ -2469,13 +2391,19 @@ let () =
                Gc.minor_heap_size = 524288;
                Gc.major_heap_increment = 4194304 };
     let cfg = parse_args () in
-    validate_flag_model Sys.argv.(0) cfg;
+    let selection = validate_flag_model Sys.argv.(0) cfg in
     if cfg.pluto_compat_dry_run then exit 0;
-    configure_scheduler_modes cfg;
-    match SLoopDispatch.run_standalone_action cfg standalone_handlers with
+    configure_scheduler_modes selection cfg;
+    match SLoopDispatch.run_standalone_action selection standalone_handlers with
     | ExitCode code ->
         exit code
     | ContinueToLoop ->
+      let route =
+        match selection with
+        | SLoopRoute.Optimize route -> route
+        | SLoopRoute.Standalone _ ->
+            frontend_failf "internal error: standalone route reached optimizer dispatch"
+      in
       begin match cfg.input with
       | None ->
         print_endline (usage Sys.argv.(0));
@@ -2484,16 +2412,16 @@ let () =
         let prog = SLoopParse.parse_file file in
         let loop = SLoopElab.elaborate prog in
         if cfg.dump_input then print_section "Input Loop" (SLoopPretty.string_of_loop loop);
-        if cfg.extract_only then begin
+        if route.SLoopRoute.extract_only then begin
           OpenScopPrinter.openscop_printer' stdout (extract_to_openscop loop);
           print_newline ();
           exit 0
         end;
-        if cfg.profile_stages then begin
-          let (_profiled, profile_ok) = profile_selected_optimization cfg loop in
+        if route.SLoopRoute.profile_stages then begin
+          let (_profiled, profile_ok) = profile_selected_optimization route loop in
           TilingValidationRoute.clear ();
           let (optimized, verified_ok) =
-            run_selected_sequential_loop_optimization cfg loop
+            run_selected_sequential_loop_optimization route loop
           in
           let ok = profile_ok && verified_ok in
           let optimized = apply_const_unroll_postpass cfg optimized in
@@ -2503,49 +2431,49 @@ let () =
         end;
         if cfg.dump_extracted_openscop then dump_extracted_openscop loop;
         if cfg.dump_scheduled_openscop then
-          if cfg.force_vector then
-            dump_scheduled_openscop_with_vector cfg loop
-          else if cfg.force_parallel then
-            dump_scheduled_openscop_with_parallel cfg loop
-          else
-            dump_scheduled_openscop loop;
+          begin match route.SLoopRoute.execution_family with
+          | SLoopRoute.PlutoVectorHint _ ->
+              dump_scheduled_openscop_with_vector route loop
+          | SLoopRoute.PlutoParallelHint _ ->
+              dump_scheduled_openscop_with_parallel route loop
+          | SLoopRoute.Sequential
+          | SLoopRoute.ParallelCurrent _
+          | SLoopRoute.VectorCurrent _ ->
+              dump_scheduled_openscop route loop
+          end;
         if cfg.debug_scheduler then debug_scheduler loop;
         if debug_env_enabled "POLCERT_DEBUG_BAND_TILING" then
-          debug_band_tiling_runtime cfg loop;
-        begin match cfg.vector_current_dim, cfg.parallel_current_dim with
-        | Some dim, _ ->
+          debug_band_tiling_runtime route loop;
+        begin match route.SLoopRoute.execution_family with
+        | SLoopRoute.VectorCurrent dim ->
             let (optimized, ok) =
-              run_selected_vector_current_optimization cfg loop dim
+              run_selected_vector_current_optimization route loop dim
             in
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
-        | None, Some dim ->
+        | SLoopRoute.ParallelCurrent dim ->
             let (optimized, ok) =
-              run_selected_parallel_current_optimization cfg loop dim
+              run_selected_parallel_current_optimization route loop dim
             in
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
-        | None, None ->
-            if cfg.force_vector then
-              let (optimized, ok) = run_selected_vector_optimization cfg loop in
-              require_checked_success ok;
-              print_section "Optimized Loop" (string_of_parallel_loop optimized)
-            else if cfg.force_parallel then
-              let (optimized, ok) = run_selected_parallel_optimization cfg loop in
-              require_checked_success ok;
-              print_section "Optimized Loop" (string_of_parallel_loop optimized)
-            else
-              let (optimized, ok) =
-                run_selected_sequential_loop_optimization cfg loop
-              in
-              let optimized = apply_const_unroll_postpass cfg optimized in
-              require_checked_success ok;
-              print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
+        | SLoopRoute.PlutoVectorHint _ ->
+            let (optimized, ok) = run_selected_vector_optimization route loop in
+            require_checked_success ok;
+            print_section "Optimized Loop" (string_of_parallel_loop optimized)
+        | SLoopRoute.PlutoParallelHint _ ->
+            let (optimized, ok) = run_selected_parallel_optimization route loop in
+            require_checked_success ok;
+            print_section "Optimized Loop" (string_of_parallel_loop optimized)
+        | SLoopRoute.Sequential ->
+            let (optimized, ok) =
+              run_selected_sequential_loop_optimization route loop
+            in
+            let optimized = apply_const_unroll_postpass cfg optimized in
+            require_checked_success ok;
+            print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
         end
       end
-    | InvalidStandaloneFlags ->
-        prerr_endline (usage Sys.argv.(0));
-        exit 2
   with
   | Sys_error msg -> error no_loc "%s" msg; exit 2
   | SLoopParse.Error (pos, msg) -> error no_loc "parse error at byte %d: %s" pos msg; exit 2

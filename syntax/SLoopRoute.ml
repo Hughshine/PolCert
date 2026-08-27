@@ -1,36 +1,51 @@
-type base_route =
-  | Identity
-  | AffineOnly
-  | FullTiled
+type schedule_family =
+  | IdentitySchedule
+  | AffineSchedule
 
 type structural_extension =
   | Plain
   | ISS
 
-type ordinary_tiling_family =
-  | BandAware
-  | Generic
-
 type diamond_strength =
   | DiamondNormal
   | DiamondFull
 
-type tiling_family =
-  | NoTiling
-  | Ordinary of ordinary_tiling_family
-  | SecondLevel
+type tiling_shape =
+  | Rectangular
   | Diamond of diamond_strength
 
-type parallel_family =
+type tiling_levels =
+  | OneLevel
+  | TwoLevels
+
+type tiling_family =
+  | NoTiling
+  | Tiled of {
+      shape : tiling_shape;
+      levels : tiling_levels;
+      explicitly_requested : bool;
+    }
+
+type execution_family =
   | Sequential
-  | PlutoHint of { strict : bool }
-  | ExplicitCurrent of int
+  | PlutoParallelHint of {
+      strict : bool;
+      multiple : bool;
+    }
+  | ParallelCurrent of int
+  | PlutoVectorHint of { strict : bool }
+  | VectorCurrent of int
+
+type intra_tile_policy =
+  | IntraTileDisabled
+  | IntraTileEnabled
 
 type optimize_route = {
-  base_route : base_route;
+  schedule_family : schedule_family;
   structural_extension : structural_extension;
   tiling_family : tiling_family;
-  parallel_family : parallel_family;
+  execution_family : execution_family;
+  intra_tile_policy : intra_tile_policy;
   extract_only : bool;
   profile_stages : bool;
 }
@@ -68,7 +83,23 @@ let has_parallel_or_vector_consumer (cfg : SLoopConfig.config) =
   || has_parallel_current cfg
   || has_vector_current cfg
 
-let explicit_phase_control_selected (cfg : SLoopConfig.config) =
+let has_tiling route =
+  match route.tiling_family with
+  | NoTiling -> false
+  | Tiled _ -> true
+
+let identity_schedule route =
+  route.schedule_family = IdentitySchedule
+
+let iss_enabled route =
+  route.structural_extension = ISS
+
+let tiling_explicitly_requested route =
+  match route.tiling_family with
+  | NoTiling -> false
+  | Tiled { explicitly_requested; _ } -> explicitly_requested
+
+let incompatible_standalone_route_flag_selected (cfg : SLoopConfig.config) =
   cfg.force_identity
   || cfg.force_notile
   || cfg.force_iss
@@ -113,54 +144,86 @@ let standalone_actions (cfg : SLoopConfig.config) =
     ]
 
 let optimize_route_of_config (cfg : SLoopConfig.config) =
-  let base_route =
-    if cfg.force_identity then Identity
-    else if cfg.force_notile then AffineOnly
-    else FullTiled
+  let schedule_family =
+    if cfg.force_identity then IdentitySchedule else AffineSchedule
   in
   let structural_extension =
     if cfg.force_iss then ISS else Plain
   in
   let tiling_family =
-    match base_route with
-    | Identity | AffineOnly -> NoTiling
-    | FullTiled ->
-        if cfg.force_diamond_tile then
-          Diamond
-            (if cfg.force_full_diamond_tile
-             then DiamondFull
-             else DiamondNormal)
-        else if cfg.force_second_level_tile then
-          SecondLevel
-        else
-          Ordinary BandAware
+    if cfg.force_notile || (cfg.force_identity && not cfg.pluto_tile_seen) then
+      NoTiling
+    else
+      Tiled {
+        shape =
+          (if cfg.force_diamond_tile then
+             Diamond
+               (if cfg.force_full_diamond_tile
+                then DiamondFull
+                else DiamondNormal)
+           else
+             Rectangular);
+        levels =
+          (if cfg.force_second_level_tile then TwoLevels else OneLevel);
+        explicitly_requested =
+          cfg.pluto_tile_seen
+          || cfg.force_second_level_tile
+          || cfg.force_diamond_tile;
+      }
   in
-  let parallel_family =
-    match cfg.parallel_current_dim with
-    | Some dim -> ExplicitCurrent dim
-    | None ->
-        if cfg.force_parallel then
-          PlutoHint { strict = cfg.force_parallel_strict }
+  let execution_family =
+    match cfg.vector_current_dim, cfg.parallel_current_dim with
+    | Some dim, None -> VectorCurrent dim
+    | None, Some dim -> ParallelCurrent dim
+    | None, None ->
+        if cfg.force_vector then
+          PlutoVectorHint { strict = cfg.force_vector_strict }
+        else if cfg.force_parallel then
+          PlutoParallelHint {
+            strict = cfg.force_parallel_strict;
+            multiple = cfg.force_multipar;
+          }
         else
           Sequential
+    | Some _, Some _ ->
+        (* [normalize] rejects this case before the route can be used. *)
+        Sequential
+  in
+  let intra_tile_policy =
+    if cfg.pluto_intratileopt_seen then IntraTileEnabled
+    else IntraTileDisabled
   in
   {
-    base_route;
+    schedule_family;
     structural_extension;
     tiling_family;
-    parallel_family;
+    execution_family;
+    intra_tile_policy;
     extract_only = cfg.extract_only;
     profile_stages = cfg.profile_stages;
   }
 
 let normalize (cfg : SLoopConfig.config) =
+  if cfg.pluto_tile_seen && cfg.pluto_notile_seen then
+    Error "--tile and --notile select contradictory tiling routes"
+  else if cfg.pluto_diamond_seen && cfg.pluto_nodiamond_seen then
+    Error "--diamond-tile and --nodiamond-tile select contradictory tiling shapes"
+  else if cfg.pluto_parallel_seen && cfg.pluto_no_parallel_seen then
+    Error "--parallel and --noparallel select contradictory execution modes"
+  else if cfg.pluto_intratileopt_seen && cfg.pluto_no_intratileopt_seen then
+    Error "--intratileopt and --nointratileopt select contradictory intra-tile policies"
+  else if cfg.pluto_prevector_seen && cfg.pluto_no_prevector_seen then
+    Error "--prevector and --noprevector select contradictory vector modes"
+  else if cfg.pluto_unrolljam_seen && cfg.pluto_no_unrolljam_seen then
+    Error "--unrolljam and --nounrolljam select contradictory post passes"
+  else
   match standalone_actions cfg with
   | _ :: _ :: _ ->
       Error "only one experimental validation action may be selected"
   | [action] ->
-      if explicit_phase_control_selected cfg then
+      if incompatible_standalone_route_flag_selected cfg then
         Error
-          "phase-control flags (--identity/--notile/--iss/--diamond-tile) cannot be combined with standalone validation actions"
+          "optimization-route flags (--identity, --notile, --iss, --diamond-tile, --parallel, and --vector) cannot be combined with standalone validation actions"
       else if cfg.force_parallel_strict then
         Error "--parallel-strict cannot be combined with standalone validation actions"
       else if has_parallel_current cfg then
@@ -177,6 +240,8 @@ let normalize (cfg : SLoopConfig.config) =
           "--legacy-generic-tiling only applies to the default non-ISS full tiled optimization route"
       else if cfg.force_const_unroll then
         Error "--const-unroll cannot be combined with standalone validation actions"
+      else if cfg.pluto_intratileopt_seen then
+        Error "--intratileopt applies to optimization routes, not standalone validation actions"
       else if cfg.force_second_level_tile
               && match action with
                  | ExtractTilingWitness _ | ValidateTiling _ -> false
@@ -223,6 +288,8 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--vector/--prevector cannot be combined with --vector-current"
       else if has_parallel_current cfg && has_vector_current cfg then
         Error "--parallel-current cannot be combined with --vector-current"
+      else if cfg.force_multipar && not cfg.force_parallel then
+        Error "--multipar requires the Pluto-hinted --parallel route"
       else if cfg.force_const_unroll
               && (cfg.force_parallel
                   || cfg.force_vector
@@ -282,4 +349,9 @@ let normalize (cfg : SLoopConfig.config) =
       then
         Error "--diamond-tile cannot be combined with --legacy-generic-tiling"
       else
-        Ok (Optimize (optimize_route_of_config cfg))
+        let route = optimize_route_of_config cfg in
+        if cfg.pluto_intratileopt_seen && not (has_tiling route) then
+          Error
+            "--intratileopt requires a tiling route (default, --identity-tiled, --second-level-tile, or --diamond-tile)"
+        else
+          Ok (Optimize route)

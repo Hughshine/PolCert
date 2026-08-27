@@ -39,6 +39,7 @@ SUPPORTED = [
     Capability(".precut / --precut-file FILE", "supported-legacy-and-explicit-control-file", "Pluto reads this old working-directory file as a partial transformation to complete; PolOpt can now install it explicitly for the oracle call and accepts produced schedules that pass checked affine and tiling validators", "pluto-compat optimizer-implicit-precut-file; optimizer-explicit-precut-file; optimizer-explicit-precut-file-fusion2; explicit-file cleanup check", "keep explicit option as preferred artifact interface"),
     Capability("--iss", "supported", "ISS split validation plus ordinary optimization route", "ISS suites", "add artifact-check summary"),
     Capability("--second-level-tile", "supported", "checked second-level tiling route, including ISS, explicit schedule-coordinate, and Pluto-hinted parallel compositions", "second-level suite; pluto-compat second-level-iss; pluto-compat second-level-parallel; pluto-compat second-level-parallel-matmul-init", "broaden fixtures"),
+    Capability("--intratileopt", "supported", "typed tiled route with a separately checked final affine rescheduling inside tiles; rectangular and diamond producers use the same affine, tiling, affine theorem composition", "pluto-compat intratile matrix and native scheduled-OpenScop route checks; RawDiamond/RawDiamondISS generic post-tiling affine composition", "keep fail-closed validation and broaden inputs whose Pluto candidates exercise distinct intra-tile orders"),
     Capability("--parallel", "supported-component-verified", "Pluto-hinted route uses extracted tiling/parallel validators and codegen, with Pluto used only to choose candidate generated schedule coordinates", "pluto-compat parallel; pluto-compat parallel-multipar; compile_verified_correct; Opt_parallel_current_many_correct", "broaden hint-selection fixtures"),
     Capability("--parallel-current d", "supported", "legacy-named explicit option selecting canonical padded schedule coordinate d; native --identity-tiled --parallel-current d exposes the corresponding identity-tiling theorem route", "parallel-current suite; identity-tiled-current-combined-effect; Opt_parallel_current_correct; Opt_parallel_current_identity_tiled_result_correct", "keep the legacy spelling for compatibility and document its schedule-coordinate meaning"),
     Capability("--prevector / --vector", "supported-component-verified", "Pluto vector hints are parsed from OpenScop loop directive bit 4; statement scope disambiguates the generated-nest depth, which is then checked globally with the parallel/doall certificate and annotated only when every vector loop is structurally innermost", "pluto-compat prevector and default-prevector; checked_vector_annotated_codegen_correct_general; vector-current suite", "add statement-selective annotation or specialized semantics only for future outer-loop SIMD, reductions, fixed-width lanes, or backend-specific pragmas"),
@@ -71,6 +72,8 @@ def table_rows() -> list[Capability]:
     rows.extend(SUPPORTED)
     rows.extend(DIAMOND_COMBINATIONS)
     for flag, reason in sorted(compat.SUPPORTED_OPTIMIZER_OPTIONS.items()):
+        if flag == "--intratileopt":
+            continue
         rows.append(Capability(flag, "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden fixtures for additional effect cases"))
     for flag, reason in sorted(compat.SUPPORTED_VALUE_OPTIONS.items()):
         rows.append(Capability(flag + " <n>", "supported-oracle-tuning", reason, "pluto-compat optimizer tuning checks; existing affine/tiling validators re-check the produced schedule", "broaden value/effect fixtures"))
@@ -107,6 +110,8 @@ def check_rows() -> list[dict[str, object]]:
                 "normalized": check.normalized,
                 "effect_needles": list(check.effect_needles),
                 "effect_absent": list(check.effect_absent),
+                "scheduled_needles": list(check.scheduled_needles),
+                "scheduled_absent": list(check.scheduled_absent),
                 "differs_from_args": [list(args) for args in check.differs_from_args],
                 "same_as_args": list(check.same_as_args) if check.same_as_args is not None else None,
                 "implicit_control_file": check.implicit_control_file,
@@ -178,6 +183,10 @@ def write_markdown(matrix: dict[str, object]) -> str:
             effect_parts.append("requires " + ", ".join(f"`{needle}`" for needle in row["effect_needles"]))
         if row["effect_absent"]:
             effect_parts.append("forbids " + ", ".join(f"`{needle}`" for needle in row["effect_absent"]))
+        if row["scheduled_needles"]:
+            effect_parts.append("scheduled OpenScop requires " + ", ".join(f"`{needle}`" for needle in row["scheduled_needles"]))
+        if row["scheduled_absent"]:
+            effect_parts.append("scheduled OpenScop forbids " + ", ".join(f"`{needle}`" for needle in row["scheduled_absent"]))
         if row["differs_from_args"]:
             effect_parts.append("differs from baseline")
         if row["same_as_args"] is not None:
