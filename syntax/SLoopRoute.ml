@@ -6,13 +6,13 @@ type structural_extension =
   | Plain
   | ISS
 
-type diamond_strength =
-  | DiamondNormal
-  | DiamondFull
+type diamond_concurrent_start =
+  | OneDimensionalStart
+  | FullDimensionalStart
 
 type tiling_shape =
   | Rectangular
-  | Diamond of diamond_strength
+  | Diamond of diamond_concurrent_start
 
 type tiling_levels =
   | OneLevel
@@ -159,8 +159,8 @@ let optimize_route_of_config (cfg : SLoopConfig.config) =
           (if cfg.force_diamond_tile then
              Diamond
                (if cfg.force_full_diamond_tile
-                then DiamondFull
-                else DiamondNormal)
+                then FullDimensionalStart
+                else OneDimensionalStart)
            else
              Rectangular);
         levels =

@@ -62,8 +62,8 @@ Inductive raw_config : Type :=
 | RawParallelCurrentIdentityTiledISS (d: nat)
 | RawParallelCurrentAffine (d: nat)
 | RawParallelCurrentDefault (d: nat)
-| RawParallelCurrentDiamond (d: nat)
-| RawParallelCurrentDiamondISS (d: nat)
+| RawParallelCurrentPostTilingAffine (d: nat)
+| RawParallelCurrentPostTilingAffineISS (d: nat)
 | RawParallelCurrentIdentityISS (d: nat)
 | RawParallelCurrentAffineISS (d: nat)
 | RawParallelCurrentDefaultISS (d: nat)
@@ -72,8 +72,8 @@ Inductive raw_config : Type :=
 | RawVectorCurrentIdentityTiledISS (d: nat)
 | RawVectorCurrentAffine (d: nat)
 | RawVectorCurrentDefault (d: nat)
-| RawVectorCurrentDiamond (d: nat)
-| RawVectorCurrentDiamondISS (d: nat)
+| RawVectorCurrentPostTilingAffine (d: nat)
+| RawVectorCurrentPostTilingAffineISS (d: nat)
 | RawVectorCurrentIdentityISS (d: nat)
 | RawVectorCurrentAffineISS (d: nat)
 | RawVectorCurrentDefaultISS (d: nat)
@@ -82,8 +82,8 @@ Inductive raw_config : Type :=
 | RawParallelCurrentManyIdentityTiledISS (dims: list nat)
 | RawParallelCurrentManyAffine (dims: list nat)
 | RawParallelCurrentManyDefault (dims: list nat)
-| RawParallelCurrentManyDiamond (dims: list nat)
-| RawParallelCurrentManyDiamondISS (dims: list nat)
+| RawParallelCurrentManyPostTilingAffine (dims: list nat)
+| RawParallelCurrentManyPostTilingAffineISS (dims: list nat)
 | RawParallelCurrentManyIdentityISS (dims: list nat)
 | RawParallelCurrentManyAffineISS (dims: list nat)
 | RawParallelCurrentManyDefaultISS (dims: list nat)
@@ -96,8 +96,8 @@ Inductive verified_config : Type :=
 | VParallelCurrentIdentityTiledISS (d: nat)
 | VParallelCurrentAffine (d: nat)
 | VParallelCurrentDefault (d: nat)
-| VParallelCurrentDiamond (d: nat)
-| VParallelCurrentDiamondISS (d: nat)
+| VParallelCurrentPostTilingAffine (d: nat)
+| VParallelCurrentPostTilingAffineISS (d: nat)
 | VParallelCurrentIdentityISS (d: nat)
 | VParallelCurrentAffineISS (d: nat)
 | VParallelCurrentDefaultISS (d: nat)
@@ -106,8 +106,8 @@ Inductive verified_config : Type :=
 | VVectorCurrentIdentityTiledISS (d: nat)
 | VVectorCurrentAffine (d: nat)
 | VVectorCurrentDefault (d: nat)
-| VVectorCurrentDiamond (d: nat)
-| VVectorCurrentDiamondISS (d: nat)
+| VVectorCurrentPostTilingAffine (d: nat)
+| VVectorCurrentPostTilingAffineISS (d: nat)
 | VVectorCurrentIdentityISS (d: nat)
 | VVectorCurrentAffineISS (d: nat)
 | VVectorCurrentDefaultISS (d: nat)
@@ -116,8 +116,8 @@ Inductive verified_config : Type :=
 | VParallelCurrentManyIdentityTiledISS (dims: list nat)
 | VParallelCurrentManyAffine (dims: list nat)
 | VParallelCurrentManyDefault (dims: list nat)
-| VParallelCurrentManyDiamond (dims: list nat)
-| VParallelCurrentManyDiamondISS (dims: list nat)
+| VParallelCurrentManyPostTilingAffine (dims: list nat)
+| VParallelCurrentManyPostTilingAffineISS (dims: list nat)
 | VParallelCurrentManyIdentityISS (dims: list nat)
 | VParallelCurrentManyAffineISS (dims: list nat)
 | VParallelCurrentManyDefaultISS (dims: list nat).
@@ -135,8 +135,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
       Okk (VParallelCurrentIdentityTiledISS d)
   | RawParallelCurrentAffine d => Okk (VParallelCurrentAffine d)
   | RawParallelCurrentDefault d => Okk (VParallelCurrentDefault d)
-  | RawParallelCurrentDiamond d => Okk (VParallelCurrentDiamond d)
-  | RawParallelCurrentDiamondISS d => Okk (VParallelCurrentDiamondISS d)
+  | RawParallelCurrentPostTilingAffine d => Okk (VParallelCurrentPostTilingAffine d)
+  | RawParallelCurrentPostTilingAffineISS d => Okk (VParallelCurrentPostTilingAffineISS d)
   | RawParallelCurrentIdentityISS d => Okk (VParallelCurrentIdentityISS d)
   | RawParallelCurrentAffineISS d => Okk (VParallelCurrentAffineISS d)
   | RawParallelCurrentDefaultISS d => Okk (VParallelCurrentDefaultISS d)
@@ -145,8 +145,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawVectorCurrentIdentityTiledISS d => Okk (VVectorCurrentIdentityTiledISS d)
   | RawVectorCurrentAffine d => Okk (VVectorCurrentAffine d)
   | RawVectorCurrentDefault d => Okk (VVectorCurrentDefault d)
-  | RawVectorCurrentDiamond d => Okk (VVectorCurrentDiamond d)
-  | RawVectorCurrentDiamondISS d => Okk (VVectorCurrentDiamondISS d)
+  | RawVectorCurrentPostTilingAffine d => Okk (VVectorCurrentPostTilingAffine d)
+  | RawVectorCurrentPostTilingAffineISS d => Okk (VVectorCurrentPostTilingAffineISS d)
   | RawVectorCurrentIdentityISS d => Okk (VVectorCurrentIdentityISS d)
   | RawVectorCurrentAffineISS d => Okk (VVectorCurrentAffineISS d)
   | RawVectorCurrentDefaultISS d => Okk (VVectorCurrentDefaultISS d)
@@ -156,8 +156,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
       Okk (VParallelCurrentManyIdentityTiledISS dims)
   | RawParallelCurrentManyAffine dims => Okk (VParallelCurrentManyAffine dims)
   | RawParallelCurrentManyDefault dims => Okk (VParallelCurrentManyDefault dims)
-  | RawParallelCurrentManyDiamond dims => Okk (VParallelCurrentManyDiamond dims)
-  | RawParallelCurrentManyDiamondISS dims => Okk (VParallelCurrentManyDiamondISS dims)
+  | RawParallelCurrentManyPostTilingAffine dims => Okk (VParallelCurrentManyPostTilingAffine dims)
+  | RawParallelCurrentManyPostTilingAffineISS dims => Okk (VParallelCurrentManyPostTilingAffineISS dims)
   | RawParallelCurrentManyIdentityISS dims => Okk (VParallelCurrentManyIdentityISS dims)
   | RawParallelCurrentManyAffineISS dims => Okk (VParallelCurrentManyAffineISS dims)
   | RawParallelCurrentManyDefaultISS dims => Okk (VParallelCurrentManyDefaultISS dims)
@@ -227,10 +227,10 @@ Definition compile_verified
       ParallelCore.Opt_parallel_current_affine loop d
   | VParallelCurrentDefault d =>
       ParallelCore.Opt_parallel_current loop d
-  | VParallelCurrentDiamond d =>
-      ParallelCore.Opt_parallel_current_diamond loop d
-  | VParallelCurrentDiamondISS d =>
-      ParallelCore.Opt_parallel_current_diamond_with_iss loop d
+  | VParallelCurrentPostTilingAffine d =>
+      ParallelCore.Opt_parallel_current_post_tiling_affine loop d
+  | VParallelCurrentPostTilingAffineISS d =>
+      ParallelCore.Opt_parallel_current_post_tiling_affine_with_iss loop d
   | VParallelCurrentIdentityISS d =>
       ParallelCore.Opt_parallel_current_identity_with_iss loop d
   | VParallelCurrentAffineISS d =>
@@ -248,10 +248,10 @@ Definition compile_verified
       ParallelCore.Opt_vector_current_affine loop d
   | VVectorCurrentDefault d =>
       ParallelCore.Opt_vector_current loop d
-  | VVectorCurrentDiamond d =>
-      ParallelCore.Opt_vector_current_diamond loop d
-  | VVectorCurrentDiamondISS d =>
-      ParallelCore.Opt_vector_current_diamond_with_iss loop d
+  | VVectorCurrentPostTilingAffine d =>
+      ParallelCore.Opt_vector_current_post_tiling_affine loop d
+  | VVectorCurrentPostTilingAffineISS d =>
+      ParallelCore.Opt_vector_current_post_tiling_affine_with_iss loop d
   | VVectorCurrentIdentityISS d =>
       ParallelCore.Opt_vector_current_identity_with_iss loop d
   | VVectorCurrentAffineISS d =>
@@ -269,10 +269,10 @@ Definition compile_verified
       ParallelCore.Opt_parallel_current_many_affine loop dims
   | VParallelCurrentManyDefault dims =>
       ParallelCore.Opt_parallel_current_many loop dims
-  | VParallelCurrentManyDiamond dims =>
-      ParallelCore.Opt_parallel_current_many_diamond loop dims
-  | VParallelCurrentManyDiamondISS dims =>
-      ParallelCore.Opt_parallel_current_many_diamond_with_iss loop dims
+  | VParallelCurrentManyPostTilingAffine dims =>
+      ParallelCore.Opt_parallel_current_many_post_tiling_affine loop dims
+  | VParallelCurrentManyPostTilingAffineISS dims =>
+      ParallelCore.Opt_parallel_current_many_post_tiling_affine_with_iss loop dims
   | VParallelCurrentManyIdentityISS dims =>
       ParallelCore.Opt_parallel_current_many_identity_with_iss loop dims
   | VParallelCurrentManyAffineISS dims =>
@@ -445,8 +445,8 @@ Proof.
       eauto.
   - eapply ParallelCorrect.Opt_parallel_current_affine_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_correct; eauto.
-  - eapply ParallelCorrect.Opt_parallel_current_diamond_correct; eauto.
-  - eapply ParallelCorrect.Opt_parallel_current_diamond_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_post_tiling_affine_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_post_tiling_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_with_iss_correct; eauto.
@@ -457,8 +457,8 @@ Proof.
       eauto.
   - eapply ParallelCorrect.Opt_vector_current_affine_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_correct; eauto.
-  - eapply ParallelCorrect.Opt_vector_current_diamond_correct; eauto.
-  - eapply ParallelCorrect.Opt_vector_current_diamond_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_post_tiling_affine_correct; eauto.
+  - eapply ParallelCorrect.Opt_vector_current_post_tiling_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_vector_current_with_iss_correct; eauto.
@@ -469,8 +469,8 @@ Proof.
       eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_affine_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_correct; eauto.
-  - eapply ParallelCorrect.Opt_parallel_current_many_diamond_correct; eauto.
-  - eapply ParallelCorrect.Opt_parallel_current_many_diamond_with_iss_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_correct; eauto.
+  - eapply ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_identity_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_affine_with_iss_correct; eauto.
   - eapply ParallelCorrect.Opt_parallel_current_many_with_iss_correct; eauto.

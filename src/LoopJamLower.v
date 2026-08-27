@@ -12,6 +12,14 @@ Require Import LoopJamNative.
 Require Import LoopJamValidator.
 Require Import PolIRs.
 
+(** This module provides syntax-directed unroll-jam candidate generation and
+    invokes the local pair validator before each fusion.  The validator proves
+    cross-body independence for each shared parameter/enclosing-iterator
+    environment over the loop's actual bounds.  The certificate-to-trace
+    bridge and contextual refinement theorem are provided by [LoopJamBridge],
+    and [VerifiedLoopPostpass] uses that theorem to include the checked lowering
+    in the verified postpass. *)
+
 Module LoopJamLower (PolIRs : POLIRS).
 
 Module Loop := PolIRs.Loop.
@@ -283,10 +291,10 @@ Qed.
 
 Definition checked_pair_accepts
     (varctxt : list Instr.ident) (vars : list (Instr.ident * Ty.t))
-    (depth : nat) (body1 body2 : Loop.stmt) : imp bool :=
+    (depth : nat) (lb ub : Loop.expr) (body1 body2 : Loop.stmt) : imp bool :=
   BIND cert_res <-
     Validator.checked_loop_jam_pair_at_depth
-      varctxt vars depth body1 body2 -;
+      varctxt vars depth lb ub body1 body2 -;
   match cert_res with
   | Okk _ => pure true
   | Err _ => pure false
@@ -299,7 +307,8 @@ Definition checked_try_jam_pair
   | Loop.Loop lb1 ub1 body1, Loop.Loop lb2 ub2 body2 =>
       if same_loop_boundsb lb1 ub1 lb2 ub2
       then
-        BIND ok <- checked_pair_accepts varctxt vars depth body1 body2 -;
+        BIND ok <-
+          checked_pair_accepts varctxt vars depth lb1 ub1 body1 body2 -;
         if ok
         then pure (Some (jammed_two_loop lb1 ub1 body1 body2))
         else pure None
@@ -308,7 +317,8 @@ Definition checked_try_jam_pair
     Loop.Guard tst2 (Loop.Loop lb2 ub2 body2) =>
       if same_testb tst1 tst2 && same_loop_boundsb lb1 ub1 lb2 ub2
       then
-        BIND ok <- checked_pair_accepts varctxt vars depth body1 body2 -;
+        BIND ok <-
+          checked_pair_accepts varctxt vars depth lb1 ub1 body1 body2 -;
         if ok
         then pure (Some (Loop.Guard tst1 (jammed_two_loop lb1 ub1 body1 body2)))
         else pure None

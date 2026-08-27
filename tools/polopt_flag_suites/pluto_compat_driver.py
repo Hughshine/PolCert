@@ -145,7 +145,7 @@ SUPPORTED_VALUE_OPTIONS = {
     "--forceparallel": "Pluto force-parallel bit-vector is passed through; this pinned Pluto source has no effective use site",
     "--ft": "Pluto first tiled hyperplane level is passed to the checked scheduler oracle",
     "--lt": "Pluto last tiled hyperplane level is passed to the checked scheduler oracle",
-    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; with checked --unrolljam it is used by the verified LoopUnroll post pass",
+    "--ufactor": "Pluto tile-size model unroll factor is passed through with --determine-tile-size; with --unrolljam it is used by proved block unrolling followed by local jam validation",
 }
 
 NONNEGATIVE_VALUE_OPTIONS = {"--forceparallel", "--ft", "--lt"}
@@ -436,7 +436,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
         elif flag == "--unrolljam":
             state.unrolljam_seen = True
-            state.add_note("--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused through a per-candidate local validator")
+            state.add_note("--unrolljam selects the extracted sequential unroll-jam endpoint: unrolling, actual-domain sibling-loop validation, recursive jam lowering, and cleanup are covered by its top-level theorem")
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
@@ -470,7 +470,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
         elif flag in ACCEPTED_NOOPS:
             state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
         elif flag == "--unroll":
-            raise Reject("--unroll: use explicit --unrolljam for polopt's checked constant-bound unroll subset")
+            raise Reject("--unroll: use explicit --unrolljam for PolOpt's Loop-level unroll-jam path")
         elif flag in VALUE_OPTIONS:
             if flag in ("--cloogf", "--cloogl", "--codegen-context", "-o"):
                 raise Reject(f"{flag}: output/codegen shaping is outside the polopt checked route")
@@ -544,7 +544,7 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling")
     if has_ufactor and not has_determine_tile_size and state.unrolljam_seen:
         state.add_note(
-            "--ufactor is not passed to Pluto's scheduler oracle here; checked --unrolljam uses the verified LoopUnroll post pass"
+            "--ufactor is not passed to Pluto's scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts"
         )
 
     ft_values = [flag.split("=", 1)[1] for flag in oracle_flags if flag.startswith("--ft=")]

@@ -26,8 +26,8 @@ type schedule_mode =
 
 type diamond_mode =
   | NoDiamondTiling
-  | DiamondTiling
-  | FullDiamondTiling
+  | DiamondOneDimensionalStart
+  | DiamondFullDimensionalStart
 
 type intra_tile_mode =
   | DisableIntraTile
@@ -74,8 +74,8 @@ let second_level_tiling_enabled () =
 let diamond_tiling_enabled () =
   !current_diamond_mode <> NoDiamondTiling
 
-let full_diamond_tiling_enabled () =
-  !current_diamond_mode = FullDiamondTiling
+let full_dimensional_diamond_start_enabled () =
+  !current_diamond_mode = DiamondFullDimensionalStart
 
 let identity_schedule_enabled () =
   !current_schedule_mode = IdentitySchedule
@@ -689,8 +689,9 @@ let second_level_tiling_flags () =
 let diamond_tiling_flags () =
   match !current_diamond_mode with
   | NoDiamondTiling -> ["--nodiamond-tile"]
-  | DiamondTiling -> ["--diamond-tile"]
-  | FullDiamondTiling -> ["--diamond-tile"; "--full-diamond-tile"]
+  | DiamondOneDimensionalStart -> ["--diamond-tile"]
+  | DiamondFullDimensionalStart ->
+      ["--diamond-tile"; "--full-diamond-tile"]
 
 let post_tiling_affine_flags () =
   identity_schedule_flags () @ [
@@ -897,12 +898,13 @@ let run_pluto_post_tiling_affine_pipeline_with_iss_nested inscop =
   | Okk (midscop, posttile_scop, after_scop) ->
       Okk (midscop, (posttile_scop, after_scop))
 
-(* Extracted Coq constants still use the historical [diamond] names.  Their
-   proofs validate the generic affine -> tiling -> affine composition. *)
-let run_pluto_diamond_phase_pipeline_nested =
+(* The extracted constants name the shape-independent phase composition:
+   affine scheduling, checked tiling, then checked post-tiling affine
+   rescheduling. *)
+let run_pluto_post_tiling_affine_phase_pipeline_nested =
   run_pluto_post_tiling_affine_pipeline_nested
 
-let run_pluto_diamond_phase_pipeline_with_iss_nested =
+let run_pluto_post_tiling_affine_phase_pipeline_with_iss_nested =
   run_pluto_post_tiling_affine_pipeline_with_iss_nested
 
 let run_pluto_phase_pipeline_with_parallel_hint inscop =

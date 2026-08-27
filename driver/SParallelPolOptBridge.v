@@ -121,17 +121,17 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma try_verified_diamond_after_phase_mid_poly_impeq :
+Lemma try_verified_post_tiling_affine_after_phase_mid_poly_impeq :
   forall pol_mid mid_scop posttile_scop after_scop,
     impeq
-      (SParallelPolOpt.try_verified_diamond_after_phase_mid_poly
+      (SParallelPolOpt.try_verified_post_tiling_affine_after_phase_mid_poly
          pol_mid mid_scop posttile_scop after_scop)
-      (FunctorCore.try_verified_diamond_after_phase_mid_poly
+      (FunctorCore.try_verified_post_tiling_affine_after_phase_mid_poly
          pol_mid mid_scop posttile_scop after_scop).
 Proof.
   intros pol_mid mid_scop posttile_scop after_scop.
-  unfold SParallelPolOpt.try_verified_diamond_after_phase_mid_poly,
-    FunctorCore.try_verified_diamond_after_phase_mid_poly.
+  unfold SParallelPolOpt.try_verified_post_tiling_affine_after_phase_mid_poly,
+    FunctorCore.try_verified_post_tiling_affine_after_phase_mid_poly.
   destruct
     (FunctorCore.CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop)
     as [ws|]; [|reflexivity].
@@ -158,49 +158,49 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_impeq :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq :
   forall pol_source before_scop,
     impeq
-      (SParallelPolOpt.try_diamond_phase_pipeline_from_source_pol_poly
+      (SParallelPolOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_poly
          pol_source before_scop)
-      (FunctorCore.try_diamond_phase_pipeline_from_source_pol_poly
+      (FunctorCore.try_post_tiling_affine_phase_pipeline_from_source_pol_poly
          pol_source before_scop).
 Proof.
   intros pol_source before_scop.
-  unfold SParallelPolOpt.try_diamond_phase_pipeline_from_source_pol_poly,
-    FunctorCore.try_diamond_phase_pipeline_from_source_pol_poly.
-  destruct (FunctorCore.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
+  unfold SParallelPolOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_poly,
+    FunctorCore.try_post_tiling_affine_phase_pipeline_from_source_pol_poly.
+  destruct (FunctorCore.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|]; [|reflexivity].
   destruct
     (SPolIRs.PolyLang.from_openscop_schedule_only pol_source mid_scop)
     as [pol_mid|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
-  - apply try_verified_diamond_after_phase_mid_poly_impeq.
+  - apply try_verified_post_tiling_affine_after_phase_mid_poly_impeq.
   - reflexivity.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_impeq :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_impeq :
   forall pol_source before_scop,
     impeq
-      (SParallelPolOpt.try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+      (SParallelPolOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
          pol_source before_scop)
-      (FunctorCore.try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+      (FunctorCore.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
          pol_source before_scop).
 Proof.
   intros pol_source before_scop.
   unfold
-    SParallelPolOpt.try_diamond_phase_pipeline_from_source_pol_poly_with_iss,
-    FunctorCore.try_diamond_phase_pipeline_from_source_pol_poly_with_iss.
+    SParallelPolOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss,
+    FunctorCore.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss.
   destruct
-    (FunctorCore.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
+    (FunctorCore.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|]; [|reflexivity].
   destruct
     (SPolIRs.PolyLang.from_openscop_schedule_only pol_source mid_scop)
     as [pol_mid|]; [|reflexivity].
   apply bind_eq_compat; [reflexivity|].
   intros affine_ok. destruct affine_ok.
-  - apply try_verified_diamond_after_phase_mid_poly_impeq.
+  - apply try_verified_post_tiling_affine_after_phase_mid_poly_impeq.
   - reflexivity.
 Qed.
 
@@ -229,17 +229,17 @@ Proof.
   - apply try_phase_pipeline_from_source_pol_poly_impeq.
 Qed.
 
-Lemma try_checked_iss_diamond_phase_pipeline_from_poly_poly_impeq :
+Lemma try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_impeq :
   forall pol before_scop,
     impeq
-      (SParallelPolOpt.try_checked_iss_diamond_phase_pipeline_from_poly_poly
+      (SParallelPolOpt.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
          pol before_scop)
-      (FunctorCore.try_checked_iss_diamond_phase_pipeline_from_poly_poly
+      (FunctorCore.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
          pol before_scop).
 Proof.
   intros pol before_scop.
-  unfold SParallelPolOpt.try_checked_iss_diamond_phase_pipeline_from_poly_poly,
-    FunctorCore.try_checked_iss_diamond_phase_pipeline_from_poly_poly.
+  unfold SParallelPolOpt.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly,
+    FunctorCore.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly.
   destruct (FunctorCore.CoreOpt.infer_iss_from_source_scop pol before_scop)
     as [iss_result|].
   - destruct iss_result as [[pol_iss w]|].
@@ -249,11 +249,11 @@ Proof.
       * apply bind_eq_compat; [reflexivity|].
         intros iss_wf. destruct iss_wf.
         -- apply
-             try_diamond_phase_pipeline_from_source_pol_poly_with_iss_impeq.
-        -- apply try_diamond_phase_pipeline_from_source_pol_poly_impeq.
-      * apply try_diamond_phase_pipeline_from_source_pol_poly_impeq.
-    + apply try_diamond_phase_pipeline_from_source_pol_poly_impeq.
-  - apply try_diamond_phase_pipeline_from_source_pol_poly_impeq.
+             try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_impeq.
+        -- apply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq.
+      * apply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq.
+    + apply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq.
+  - apply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq.
 Qed.
 
 Lemma phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq :
@@ -333,38 +333,38 @@ Proof.
   apply identity_tiling_opt_prepared_from_poly_no_iss_poly_impeq.
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq :
   forall pol,
     impeq
-      (SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
+      (SParallelPolOpt.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly
          pol)
-      (FunctorCore.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
+      (FunctorCore.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly
          pol).
 Proof.
   intros pol.
   unfold
-    SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly,
-    FunctorCore.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly.
+    SParallelPolOpt.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly,
+    FunctorCore.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly.
   destruct (FunctorCore.CoreOpt.has_nonscalar_stmt pol); [|reflexivity].
   destruct (FunctorCore.CoreOpt.export_for_phase_scheduler pol);
-    [apply try_diamond_phase_pipeline_from_source_pol_poly_impeq|reflexivity].
+    [apply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_impeq|reflexivity].
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq :
   forall pol,
     impeq
-      (SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
+      (SParallelPolOpt.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly
          pol)
-      (FunctorCore.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
+      (FunctorCore.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly
          pol).
 Proof.
   intros pol.
   unfold
-    SParallelPolOpt.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly,
-    FunctorCore.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly.
+    SParallelPolOpt.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly,
+    FunctorCore.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly.
   destruct (FunctorCore.CoreOpt.has_nonscalar_stmt pol); [|reflexivity].
   destruct (FunctorCore.CoreOpt.export_for_phase_scheduler pol).
-  - apply try_checked_iss_diamond_phase_pipeline_from_poly_poly_impeq.
+  - apply try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_impeq.
   - reflexivity.
 Qed.
 
@@ -423,27 +423,27 @@ Proof.
   prepared_bind identity_tiling_opt_prepared_from_poly_with_iss_poly_impeq.
 Qed.
 
-Lemma parallel_current_diamond_prepared_from_poly_impeq :
+Lemma parallel_current_post_tiling_affine_prepared_from_poly_impeq :
   forall pol d,
     impeq
-      (SParallelPolOpt.parallel_current_diamond_prepared_from_poly pol d)
-      (FunctorCore.parallel_current_diamond_prepared_from_poly pol d).
+      (SParallelPolOpt.parallel_current_post_tiling_affine_prepared_from_poly pol d)
+      (FunctorCore.parallel_current_post_tiling_affine_prepared_from_poly pol d).
 Proof.
-  intros pol d; unfold SParallelPolOpt.parallel_current_diamond_prepared_from_poly,
-    FunctorCore.parallel_current_diamond_prepared_from_poly.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
+  intros pol d; unfold SParallelPolOpt.parallel_current_post_tiling_affine_prepared_from_poly,
+    FunctorCore.parallel_current_post_tiling_affine_prepared_from_poly.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
 Qed.
 
-Lemma parallel_current_diamond_prepared_from_poly_with_iss_impeq :
+Lemma parallel_current_post_tiling_affine_prepared_from_poly_with_iss_impeq :
   forall pol d,
     impeq
-      (SParallelPolOpt.parallel_current_diamond_prepared_from_poly_with_iss pol d)
-      (FunctorCore.parallel_current_diamond_prepared_from_poly_with_iss pol d).
+      (SParallelPolOpt.parallel_current_post_tiling_affine_prepared_from_poly_with_iss pol d)
+      (FunctorCore.parallel_current_post_tiling_affine_prepared_from_poly_with_iss pol d).
 Proof.
   intros pol d;
-    unfold SParallelPolOpt.parallel_current_diamond_prepared_from_poly_with_iss,
-      FunctorCore.parallel_current_diamond_prepared_from_poly_with_iss.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
+    unfold SParallelPolOpt.parallel_current_post_tiling_affine_prepared_from_poly_with_iss,
+      FunctorCore.parallel_current_post_tiling_affine_prepared_from_poly_with_iss.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
 Qed.
 
 Lemma parallel_current_identity_prepared_from_poly_with_iss_impeq :
@@ -537,31 +537,31 @@ Proof.
   prepared_bind phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
 Qed.
 
-Lemma parallel_current_many_diamond_prepared_from_poly_impeq :
+Lemma parallel_current_many_post_tiling_affine_prepared_from_poly_impeq :
   forall pol dims,
     impeq
-      (SParallelPolOpt.parallel_current_many_diamond_prepared_from_poly pol dims)
-      (FunctorCore.parallel_current_many_diamond_prepared_from_poly pol dims).
+      (SParallelPolOpt.parallel_current_many_post_tiling_affine_prepared_from_poly pol dims)
+      (FunctorCore.parallel_current_many_post_tiling_affine_prepared_from_poly pol dims).
 Proof.
   intros pol dims;
-    unfold SParallelPolOpt.parallel_current_many_diamond_prepared_from_poly,
-      FunctorCore.parallel_current_many_diamond_prepared_from_poly.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
+    unfold SParallelPolOpt.parallel_current_many_post_tiling_affine_prepared_from_poly,
+      FunctorCore.parallel_current_many_post_tiling_affine_prepared_from_poly.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
 Qed.
 
-Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_impeq :
+Lemma parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss_impeq :
   forall pol dims,
     impeq
-      (SParallelPolOpt.parallel_current_many_diamond_prepared_from_poly_with_iss
+      (SParallelPolOpt.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss
          pol dims)
-      (FunctorCore.parallel_current_many_diamond_prepared_from_poly_with_iss
+      (FunctorCore.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss
          pol dims).
 Proof.
   intros pol dims;
     unfold
-      SParallelPolOpt.parallel_current_many_diamond_prepared_from_poly_with_iss,
-      FunctorCore.parallel_current_many_diamond_prepared_from_poly_with_iss.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
+      SParallelPolOpt.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss,
+      FunctorCore.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
 Qed.
 
 Lemma parallel_current_many_identity_prepared_from_poly_with_iss_impeq :
@@ -658,27 +658,27 @@ Proof.
   prepared_bind identity_tiling_opt_prepared_from_poly_with_iss_poly_impeq.
 Qed.
 
-Lemma vector_current_diamond_prepared_from_poly_impeq :
+Lemma vector_current_post_tiling_affine_prepared_from_poly_impeq :
   forall pol d,
     impeq
-      (SParallelPolOpt.vector_current_diamond_prepared_from_poly pol d)
-      (FunctorCore.vector_current_diamond_prepared_from_poly pol d).
+      (SParallelPolOpt.vector_current_post_tiling_affine_prepared_from_poly pol d)
+      (FunctorCore.vector_current_post_tiling_affine_prepared_from_poly pol d).
 Proof.
-  intros pol d; unfold SParallelPolOpt.vector_current_diamond_prepared_from_poly,
-    FunctorCore.vector_current_diamond_prepared_from_poly.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
+  intros pol d; unfold SParallelPolOpt.vector_current_post_tiling_affine_prepared_from_poly,
+    FunctorCore.vector_current_post_tiling_affine_prepared_from_poly.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_impeq.
 Qed.
 
-Lemma vector_current_diamond_prepared_from_poly_with_iss_impeq :
+Lemma vector_current_post_tiling_affine_prepared_from_poly_with_iss_impeq :
   forall pol d,
     impeq
-      (SParallelPolOpt.vector_current_diamond_prepared_from_poly_with_iss pol d)
-      (FunctorCore.vector_current_diamond_prepared_from_poly_with_iss pol d).
+      (SParallelPolOpt.vector_current_post_tiling_affine_prepared_from_poly_with_iss pol d)
+      (FunctorCore.vector_current_post_tiling_affine_prepared_from_poly_with_iss pol d).
 Proof.
   intros pol d;
-    unfold SParallelPolOpt.vector_current_diamond_prepared_from_poly_with_iss,
-      FunctorCore.vector_current_diamond_prepared_from_poly_with_iss.
-  prepared_bind diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
+    unfold SParallelPolOpt.vector_current_post_tiling_affine_prepared_from_poly_with_iss,
+      FunctorCore.vector_current_post_tiling_affine_prepared_from_poly_with_iss.
+  prepared_bind post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_impeq.
 Qed.
 
 Lemma vector_current_identity_prepared_from_poly_with_iss_impeq :
@@ -784,28 +784,28 @@ Proof.
     parallel_current_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_parallel_current_diamond_impeq :
+Lemma opt_parallel_current_post_tiling_affine_impeq :
   forall loop d,
     impeq
-      (SParallelPolOpt.opt_parallel_current_diamond loop d)
-      (FunctorCore.Opt_parallel_current_diamond loop d).
+      (SParallelPolOpt.opt_parallel_current_post_tiling_affine loop d)
+      (FunctorCore.Opt_parallel_current_post_tiling_affine loop d).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_parallel_current_diamond
-    FunctorCore.Opt_parallel_current_diamond
-    FunctorCore.Opt_parallel_current_diamond_result
-    parallel_current_diamond_prepared_from_poly_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_parallel_current_post_tiling_affine
+    FunctorCore.Opt_parallel_current_post_tiling_affine
+    FunctorCore.Opt_parallel_current_post_tiling_affine_result
+    parallel_current_post_tiling_affine_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_parallel_current_diamond_with_iss_impeq :
+Lemma opt_parallel_current_post_tiling_affine_with_iss_impeq :
   forall loop d,
     impeq
-      (SParallelPolOpt.opt_parallel_current_diamond_with_iss loop d)
-      (FunctorCore.Opt_parallel_current_diamond_with_iss loop d).
+      (SParallelPolOpt.opt_parallel_current_post_tiling_affine_with_iss loop d)
+      (FunctorCore.Opt_parallel_current_post_tiling_affine_with_iss loop d).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_parallel_current_diamond_with_iss
-    FunctorCore.Opt_parallel_current_diamond_with_iss
-    FunctorCore.Opt_parallel_current_diamond_with_iss_result
-    parallel_current_diamond_prepared_from_poly_with_iss_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_parallel_current_post_tiling_affine_with_iss
+    FunctorCore.Opt_parallel_current_post_tiling_affine_with_iss
+    FunctorCore.Opt_parallel_current_post_tiling_affine_with_iss_result
+    parallel_current_post_tiling_affine_prepared_from_poly_with_iss_impeq.
 Qed.
 
 Lemma opt_parallel_current_identity_with_iss_impeq :
@@ -904,28 +904,28 @@ Proof.
     vector_current_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_vector_current_diamond_impeq :
+Lemma opt_vector_current_post_tiling_affine_impeq :
   forall loop d,
     impeq
-      (SParallelPolOpt.opt_vector_current_diamond loop d)
-      (FunctorCore.Opt_vector_current_diamond loop d).
+      (SParallelPolOpt.opt_vector_current_post_tiling_affine loop d)
+      (FunctorCore.Opt_vector_current_post_tiling_affine loop d).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_vector_current_diamond
-    FunctorCore.Opt_vector_current_diamond
-    FunctorCore.Opt_vector_current_diamond_result
-    vector_current_diamond_prepared_from_poly_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_vector_current_post_tiling_affine
+    FunctorCore.Opt_vector_current_post_tiling_affine
+    FunctorCore.Opt_vector_current_post_tiling_affine_result
+    vector_current_post_tiling_affine_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_vector_current_diamond_with_iss_impeq :
+Lemma opt_vector_current_post_tiling_affine_with_iss_impeq :
   forall loop d,
     impeq
-      (SParallelPolOpt.opt_vector_current_diamond_with_iss loop d)
-      (FunctorCore.Opt_vector_current_diamond_with_iss loop d).
+      (SParallelPolOpt.opt_vector_current_post_tiling_affine_with_iss loop d)
+      (FunctorCore.Opt_vector_current_post_tiling_affine_with_iss loop d).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_vector_current_diamond_with_iss
-    FunctorCore.Opt_vector_current_diamond_with_iss
-    FunctorCore.Opt_vector_current_diamond_with_iss_result
-    vector_current_diamond_prepared_from_poly_with_iss_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_vector_current_post_tiling_affine_with_iss
+    FunctorCore.Opt_vector_current_post_tiling_affine_with_iss
+    FunctorCore.Opt_vector_current_post_tiling_affine_with_iss_result
+    vector_current_post_tiling_affine_prepared_from_poly_with_iss_impeq.
 Qed.
 
 Lemma opt_vector_current_identity_with_iss_impeq :
@@ -1026,28 +1026,28 @@ Proof.
     parallel_current_many_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_parallel_current_many_diamond_impeq :
+Lemma opt_parallel_current_many_post_tiling_affine_impeq :
   forall loop dims,
     impeq
-      (SParallelPolOpt.opt_parallel_current_many_diamond loop dims)
-      (FunctorCore.Opt_parallel_current_many_diamond loop dims).
+      (SParallelPolOpt.opt_parallel_current_many_post_tiling_affine loop dims)
+      (FunctorCore.Opt_parallel_current_many_post_tiling_affine loop dims).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_parallel_current_many_diamond
-    FunctorCore.Opt_parallel_current_many_diamond
-    FunctorCore.Opt_parallel_current_many_diamond_result
-    parallel_current_many_diamond_prepared_from_poly_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_parallel_current_many_post_tiling_affine
+    FunctorCore.Opt_parallel_current_many_post_tiling_affine
+    FunctorCore.Opt_parallel_current_many_post_tiling_affine_result
+    parallel_current_many_post_tiling_affine_prepared_from_poly_impeq.
 Qed.
 
-Lemma opt_parallel_current_many_diamond_with_iss_impeq :
+Lemma opt_parallel_current_many_post_tiling_affine_with_iss_impeq :
   forall loop dims,
     impeq
-      (SParallelPolOpt.opt_parallel_current_many_diamond_with_iss loop dims)
-      (FunctorCore.Opt_parallel_current_many_diamond_with_iss loop dims).
+      (SParallelPolOpt.opt_parallel_current_many_post_tiling_affine_with_iss loop dims)
+      (FunctorCore.Opt_parallel_current_many_post_tiling_affine_with_iss loop dims).
 Proof.
-  prove_entry_impeq SParallelPolOpt.opt_parallel_current_many_diamond_with_iss
-    FunctorCore.Opt_parallel_current_many_diamond_with_iss
-    FunctorCore.Opt_parallel_current_many_diamond_with_iss_result
-    parallel_current_many_diamond_prepared_from_poly_with_iss_impeq.
+  prove_entry_impeq SParallelPolOpt.opt_parallel_current_many_post_tiling_affine_with_iss
+    FunctorCore.Opt_parallel_current_many_post_tiling_affine_with_iss
+    FunctorCore.Opt_parallel_current_many_post_tiling_affine_with_iss_result
+    parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss_impeq.
 Qed.
 
 Lemma opt_parallel_current_many_identity_with_iss_impeq :

@@ -10,6 +10,7 @@ Require Import SParallelPolOptShared.
 Require Import SParallelPolOptBridge.
 Require Import SVerifiedCompilerConfig.
 Require Import SVerifiedParallelCompilerConfig.
+Require Import VerifiedLoopPostpass.
 Require Import Vpl.Impure.
 
 Local Open Scope impure_scope.
@@ -82,10 +83,10 @@ Proof.
     eapply BandCorrect.Opt_identity_tiled_band_with_iss_correct; eauto.
   - rewrite SBandTilingOptBridge.opt_with_iss_impeq_generic in Hcompile.
     eapply BandCorrect.Opt_band_with_iss_correct; eauto.
-  - rewrite SBandTilingOptBridge.opt_diamond_impeq_generic in Hcompile.
-    eapply BandCorrect.Opt_diamond_band_correct; eauto.
-  - rewrite SBandTilingOptBridge.opt_diamond_with_iss_impeq_generic in Hcompile.
-    eapply BandCorrect.Opt_diamond_band_with_iss_correct; eauto.
+  - rewrite SBandTilingOptBridge.opt_post_tiling_affine_impeq_generic in Hcompile.
+    eapply BandCorrect.Opt_post_tiling_affine_band_correct; eauto.
+  - rewrite SBandTilingOptBridge.opt_post_tiling_affine_with_iss_impeq_generic in Hcompile.
+    eapply BandCorrect.Opt_post_tiling_affine_band_with_iss_correct; eauto.
 Qed.
 
 (** Raw-config wrapper for the concrete sequential dispatcher.  Its only new
@@ -104,6 +105,70 @@ Proof.
   destruct (SVerifiedCompilerConfig.check_config cfg) as [vcfg|msg].
   - eapply extracted_sequential_compile_verified_correct; eauto.
   - apply mayReturn_alarm in Hcompile. tauto.
+Qed.
+
+(** The complete concrete sequential endpoint, including optional
+    constant-bound unrolling.
+    The untrusted CLI chooses a route and a postpass configuration, but every
+    returned target crosses both extracted checked boundaries. *)
+Theorem extracted_sequential_compile_with_postpass_correct :
+  forall cfg postpass loop st st',
+    WHEN loop' <-
+      SVerifiedCompilerConfig.compile_with_postpass cfg postpass loop THEN
+    SPolIRs.Loop.semantics loop' st st' ->
+    exists st'',
+      SPolIRs.Loop.semantics loop st st'' /\
+      SPolIRs.State.eq st' st''.
+Proof.
+  intros cfg postpass loop st st' loop' Hcompile Hsem.
+  unfold SVerifiedCompilerConfig.compile_with_postpass in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hproducer Hpostpass]].
+  destruct
+    (SVerifiedCompilerConfig.Postpass.apply_correct
+       postpass optimized loop' st st' Hpostpass Hsem)
+    as [st_mid [Hsem_mid Heq_mid]].
+  destruct
+    (extracted_sequential_compile_correct
+       cfg loop st st_mid optimized Hproducer Hsem_mid)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply SPolIRs.State.eq_trans; eauto.
+Qed.
+
+(** Concrete end-to-end endpoint for checked unroll-jam.  The extracted CLI
+    may compute [select] with any profitability heuristic; every selected
+    fusion still crosses the verified local validator. *)
+Theorem extracted_sequential_compile_with_unrolljam_correct :
+  forall cfg const_first select factor loop st st',
+    WHEN loop' <-
+      SVerifiedCompilerConfig.compile_with_unrolljam
+        cfg const_first select factor loop THEN
+    SPolIRs.Loop.semantics loop' st st' ->
+    exists st'',
+      SPolIRs.Loop.semantics loop st st'' /\
+      SPolIRs.State.eq st' st''.
+Proof.
+  intros cfg const_first select factor loop st st' loop' Hcompile Hsem.
+  unfold SVerifiedCompilerConfig.compile_with_unrolljam in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hproducer Hunrolljam]].
+  destruct
+    (SVerifiedCompilerConfig.Postpass.apply_checked_unrolljam_correct
+       const_first
+       (fun prepared =>
+          SVerifiedCompilerConfig.adapt_unrolljam_plan (select prepared))
+       factor optimized loop' st st'
+       Hunrolljam Hsem)
+    as [st_mid [Hsem_mid Heq_mid]].
+  destruct
+    (extracted_sequential_compile_correct
+       cfg loop st st_mid optimized Hproducer Hsem_mid)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply SPolIRs.State.eq_trans; eauto.
 Qed.
 
 (** ** Lifting a concrete sequential result into [ParallelLoop] *)
@@ -208,11 +273,11 @@ Proof.
     eapply ParallelCorrect.Opt_parallel_current_affine_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_parallel_current_impeq in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_correct; eauto.
-  - rewrite SParallelPolOptBridge.opt_parallel_current_diamond_impeq in Hcompile.
-    eapply ParallelCorrect.Opt_parallel_current_diamond_correct; eauto.
-  - rewrite SParallelPolOptBridge.opt_parallel_current_diamond_with_iss_impeq
+  - rewrite SParallelPolOptBridge.opt_parallel_current_post_tiling_affine_impeq in Hcompile.
+    eapply ParallelCorrect.Opt_parallel_current_post_tiling_affine_correct; eauto.
+  - rewrite SParallelPolOptBridge.opt_parallel_current_post_tiling_affine_with_iss_impeq
       in Hcompile.
-    eapply ParallelCorrect.Opt_parallel_current_diamond_with_iss_correct; eauto.
+    eapply ParallelCorrect.Opt_parallel_current_post_tiling_affine_with_iss_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_parallel_current_identity_with_iss_impeq
       in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_identity_with_iss_correct; eauto.
@@ -236,11 +301,11 @@ Proof.
     eapply ParallelCorrect.Opt_vector_current_affine_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_vector_current_impeq in Hcompile.
     eapply ParallelCorrect.Opt_vector_current_correct; eauto.
-  - rewrite SParallelPolOptBridge.opt_vector_current_diamond_impeq in Hcompile.
-    eapply ParallelCorrect.Opt_vector_current_diamond_correct; eauto.
-  - rewrite SParallelPolOptBridge.opt_vector_current_diamond_with_iss_impeq
+  - rewrite SParallelPolOptBridge.opt_vector_current_post_tiling_affine_impeq in Hcompile.
+    eapply ParallelCorrect.Opt_vector_current_post_tiling_affine_correct; eauto.
+  - rewrite SParallelPolOptBridge.opt_vector_current_post_tiling_affine_with_iss_impeq
       in Hcompile.
-    eapply ParallelCorrect.Opt_vector_current_diamond_with_iss_correct; eauto.
+    eapply ParallelCorrect.Opt_vector_current_post_tiling_affine_with_iss_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_vector_current_identity_with_iss_impeq
       in Hcompile.
     eapply ParallelCorrect.Opt_vector_current_identity_with_iss_correct; eauto.
@@ -268,13 +333,13 @@ Proof.
     eapply ParallelCorrect.Opt_parallel_current_many_affine_correct; eauto.
   - rewrite SParallelPolOptBridge.opt_parallel_current_many_impeq in Hcompile.
     eapply ParallelCorrect.Opt_parallel_current_many_correct; eauto.
-  - rewrite SParallelPolOptBridge.opt_parallel_current_many_diamond_impeq
+  - rewrite SParallelPolOptBridge.opt_parallel_current_many_post_tiling_affine_impeq
       in Hcompile.
-    eapply ParallelCorrect.Opt_parallel_current_many_diamond_correct; eauto.
+    eapply ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_correct; eauto.
   - rewrite
-      SParallelPolOptBridge.opt_parallel_current_many_diamond_with_iss_impeq
+      SParallelPolOptBridge.opt_parallel_current_many_post_tiling_affine_with_iss_impeq
       in Hcompile.
-    eapply ParallelCorrect.Opt_parallel_current_many_diamond_with_iss_correct;
+    eapply ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_with_iss_correct;
       eauto.
   - rewrite
       SParallelPolOptBridge.opt_parallel_current_many_identity_with_iss_impeq

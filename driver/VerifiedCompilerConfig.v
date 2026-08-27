@@ -5,6 +5,7 @@ Require Import PolIRs.
 Require Import PolOptCorrect.
 Require Import PolOptBandTiling.
 Require Import Result.
+Require Import VerifiedLoopPostpass.
 Require Import Vpl.Impure.
 
 Local Open Scope impure_scope.
@@ -15,6 +16,7 @@ Module VerifiedCompilerConfig (PolIRs: POLIRS).
 Module Core := PolOpt.PolOpt PolIRs.
 Module CoreCorrect := PolOptCorrect PolIRs Core.
 Module BandCorrect := PolOptBandTiling PolIRs.
+Module Postpass := VerifiedLoopPostpass PolIRs.
 Module LoopIR := PolIRs.Loop.
 Module State := PolIRs.State.
 
@@ -22,7 +24,7 @@ Module State := PolIRs.State.
 
     This functor is the small, sequential endpoint.  Both its source and target
     use [LoopIR]; it contains no [ParMode] or [VecMode].  The 13 constructors of
-    [verified_config] select identity, affine, tiling, ISS, and diamond routes.
+    [verified_config] select identity, affine, tiling, ISS, and post_tiling_affine routes.
 
     The similarly named [VerifiedParallelCompilerConfig] is the larger unified
     endpoint: it embeds this sequential compiler into [ParallelLoop] and adds
@@ -48,8 +50,8 @@ Inductive raw_config : Type :=
 | RawIdentityBand
 | RawIdentityBandISS
 | RawISS
-| RawDiamond
-| RawDiamondISS
+| RawPostTilingAffine
+| RawPostTilingAffineISS
 | RawUnsupported.
 
 Inductive verified_config : Type :=
@@ -64,8 +66,8 @@ Inductive verified_config : Type :=
 | VIdentityBand
 | VIdentityBandISS
 | VISS
-| VDiamond
-| VDiamondISS.
+| VPostTilingAffine
+| VPostTilingAffineISS.
 
 Definition check_config (cfg: raw_config) : result verified_config :=
   match cfg with
@@ -80,8 +82,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawIdentityBand => Okk VIdentityBand
   | RawIdentityBandISS => Okk VIdentityBandISS
   | RawISS => Okk VISS
-  | RawDiamond => Okk VDiamond
-  | RawDiamondISS => Okk VDiamondISS
+  | RawPostTilingAffine => Okk VPostTilingAffine
+  | RawPostTilingAffineISS => Okk VPostTilingAffineISS
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
 
@@ -114,8 +116,8 @@ Definition compile_verified (cfg: verified_config) (loop: LoopIR.t)
   | VIdentityBand => BandCorrect.Opt_identity_tiled_band loop
   | VIdentityBandISS => BandCorrect.Opt_identity_tiled_band_with_iss loop
   | VISS => BandCorrect.Opt_band_with_iss loop
-  | VDiamond => BandCorrect.Opt_diamond_band loop
-  | VDiamondISS => BandCorrect.Opt_diamond_band_with_iss loop
+  | VPostTilingAffine => BandCorrect.Opt_post_tiling_affine_band loop
+  | VPostTilingAffineISS => BandCorrect.Opt_post_tiling_affine_band_with_iss loop
   end.
 
 Definition compile (cfg: raw_config) (loop: LoopIR.t) : imp LoopIR.t :=
@@ -123,6 +125,25 @@ Definition compile (cfg: raw_config) (loop: LoopIR.t) : imp LoopIR.t :=
   | Okk vcfg => compile_verified vcfg loop
   | Err msg => res_to_alarm loop (Err msg)
   end.
+
+(** The postpass is orthogonal to the producer route.  Keeping it as a second
+    argument avoids duplicating every affine, tiling, and ISS constructor. *)
+Definition compile_with_postpass
+    (cfg : raw_config) (postpass : loop_postpass_config) (loop : LoopIR.t)
+    : imp LoopIR.t :=
+  BIND optimized <- compile cfg loop -;
+  Postpass.apply postpass optimized.
+
+(** End-to-end checked unroll-jam endpoint.  The selector is deliberately a
+    function of the producer result, so an untrusted profitability policy can
+    inspect the actual optimized Loop IR without escaping the theorem. *)
+Definition compile_with_unrolljam
+    (cfg : raw_config) (const_first : bool)
+    (select : LoopIR.t -> Postpass.JamLower.unrolljam_plan)
+    (factor : nat) (loop : LoopIR.t) : imp LoopIR.t :=
+  BIND optimized <- compile cfg loop -;
+  Postpass.apply_checked_unrolljam
+    const_first select factor optimized.
 
 (** ** Generic sequential correctness endpoints
 
@@ -153,8 +174,8 @@ Proof.
   - eapply BandCorrect.Opt_identity_tiled_band_correct; eauto.
   - eapply BandCorrect.Opt_identity_tiled_band_with_iss_correct; eauto.
   - eapply BandCorrect.Opt_band_with_iss_correct; eauto.
-  - eapply BandCorrect.Opt_diamond_band_correct; eauto.
-  - eapply BandCorrect.Opt_diamond_band_with_iss_correct; eauto.
+  - eapply BandCorrect.Opt_post_tiling_affine_band_correct; eauto.
+  - eapply BandCorrect.Opt_post_tiling_affine_band_with_iss_correct; eauto.
 Qed.
 
 (** Raw-config wrapper around [compile_verified_correct].  Rejection has no
@@ -176,6 +197,55 @@ Proof.
   - simpl in Hcompile.
     apply mayReturn_alarm in Hcompile.
     tauto.
+Qed.
+
+Theorem compile_with_postpass_correct :
+  forall cfg postpass loop st st',
+    WHEN loop' <- compile_with_postpass cfg postpass loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\
+      State.eq st' st''.
+Proof.
+  intros cfg postpass loop st st' loop' Hcompile Hsem.
+  unfold compile_with_postpass in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hproducer Hpostpass]].
+  destruct
+    (Postpass.apply_correct
+       postpass optimized loop' st st' Hpostpass Hsem)
+    as [st_mid [Hsem_mid Heq_mid]].
+  destruct
+    (compile_correct cfg loop st st_mid optimized Hproducer Hsem_mid)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply State.eq_trans; eauto.
+Qed.
+
+Theorem compile_with_unrolljam_correct :
+  forall cfg const_first select factor loop st st',
+    WHEN loop' <-
+      compile_with_unrolljam cfg const_first select factor loop THEN
+    LoopIR.semantics loop' st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros cfg const_first select factor loop st st' loop' Hcompile Hsem.
+  unfold compile_with_unrolljam in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hproducer Hunrolljam]].
+  destruct
+    (Postpass.apply_checked_unrolljam_correct
+       const_first select factor optimized loop' st st'
+       Hunrolljam Hsem)
+    as [st_mid [Hsem_mid Heq_mid]].
+  destruct
+    (compile_correct cfg loop st st_mid optimized Hproducer Hsem_mid)
+    as [st_src [Hsem_src Heq_src]].
+  exists st_src.
+  split; [exact Hsem_src|].
+  eapply State.eq_trans; eauto.
 Qed.
 
 Theorem compile_unsupported_no_result :

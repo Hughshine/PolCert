@@ -246,7 +246,7 @@ Definition try_identity_tiling_phase_pipeline_from_source_pol_poly
       end
   end.
 
-Definition try_verified_diamond_after_phase_mid_poly
+Definition try_verified_post_tiling_affine_after_phase_mid_poly
     (pol_mid : PolyLang.t)
     (mid_scop posttile_scop after_scop : OpenScop)
   : imp PolyLang.t :=
@@ -289,13 +289,13 @@ Definition try_verified_diamond_after_phase_mid_poly
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_poly
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_poly
     (pol_source : PolyLang.t)
     (before_scop : OpenScop)
   : imp PolyLang.t :=
   let rejected :=
     reject_tiling in
-  match CoreOpt.run_pluto_diamond_phase_pipeline before_scop with
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -305,20 +305,20 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_poly
+            try_verified_post_tiling_affine_after_phase_mid_poly
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
     (pol_source : PolyLang.t)
     (before_scop : OpenScop)
   : imp PolyLang.t :=
   let rejected :=
     reject_tiling in
-  match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -328,7 +328,7 @@ Definition try_diamond_phase_pipeline_from_source_pol_poly_with_iss
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_poly
+            try_verified_post_tiling_affine_after_phase_mid_poly
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
@@ -365,7 +365,7 @@ Definition try_checked_iss_phase_pipeline_from_poly_poly
         before_scop
   end.
 
-Definition try_checked_iss_diamond_phase_pipeline_from_poly_poly
+Definition try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
     (pol : PolyLang.t)
     (before_scop : OpenScop)
   : imp PolyLang.t :=
@@ -374,19 +374,19 @@ Definition try_checked_iss_diamond_phase_pipeline_from_poly_poly
       if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
         BIND iss_wf <- ValidatorCore.check_wf_polyprog pol_iss -;
         if iss_wf then
-          try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+          try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
             pol_iss
             before_scop
         else
-          try_diamond_phase_pipeline_from_source_pol_poly
+          try_post_tiling_affine_phase_pipeline_from_source_pol_poly
             pol
             before_scop
       else
-        try_diamond_phase_pipeline_from_source_pol_poly
+        try_post_tiling_affine_phase_pipeline_from_source_pol_poly
           pol
           before_scop
   | _ =>
-      try_diamond_phase_pipeline_from_source_pol_poly
+      try_post_tiling_affine_phase_pipeline_from_source_pol_poly
         pol
         before_scop
   end.
@@ -465,7 +465,7 @@ Definition identity_tiling_opt_prepared_from_poly_with_iss_poly
   BIND pol_iss <- iss_only_prepared_from_poly pol -;
   identity_tiling_opt_prepared_from_poly_no_iss_poly pol_iss.
 
-Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
+Definition post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly
     (pol : PolyLang.t)
   : imp PolyLang.t :=
   if CoreOpt.has_nonscalar_stmt pol then
@@ -473,12 +473,12 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly
     | None =>
         reject_tiling tt
     | Some before_scop =>
-        try_diamond_phase_pipeline_from_source_pol_poly pol before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_poly pol before_scop
     end
   else
     reject_tiling tt.
 
-Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
+Definition post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly
     (pol : PolyLang.t)
   : imp PolyLang.t :=
   if CoreOpt.has_nonscalar_stmt pol then
@@ -486,7 +486,7 @@ Definition diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly
     | None =>
         reject_tiling tt
     | Some before_scop =>
-        try_checked_iss_diamond_phase_pipeline_from_poly_poly pol before_scop
+        try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly pol before_scop
     end
   else
     reject_tiling tt.
@@ -512,32 +512,32 @@ Definition parallel_current_identity_tiled_prepared_from_poly_with_iss
   BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
-Definition parallel_current_diamond_prepared_from_poly
+Definition parallel_current_post_tiling_affine_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
-Definition parallel_current_diamond_prepared_from_poly_with_iss
+Definition parallel_current_post_tiling_affine_prepared_from_poly_with_iss
     (pol : PolyLang.t)
     (d : nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_annotated_codegen_at pol' d.
 
-Definition parallel_current_many_diamond_prepared_from_poly
+Definition parallel_current_many_post_tiling_affine_prepared_from_poly
     (pol : PolyLang.t)
     (dims : list nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
   checked_parallel_current_many_annotated_codegen_at pol' dims.
 
-Definition parallel_current_many_diamond_prepared_from_poly_with_iss
+Definition parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss
     (pol : PolyLang.t)
     (dims : list nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
   checked_parallel_current_many_annotated_codegen_at pol' dims.
 
 Definition parallel_current_identity_prepared_from_poly_with_iss
@@ -650,18 +650,18 @@ Definition vector_current_identity_tiled_prepared_from_poly_with_iss
   BIND pol' <- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
   checked_vector_current_annotated_codegen_at pol' d.
 
-Definition vector_current_diamond_prepared_from_poly
+Definition vector_current_post_tiling_affine_prepared_from_poly
     (pol : PolyLang.t)
     (d : nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
   checked_vector_current_annotated_codegen_at pol' d.
 
-Definition vector_current_diamond_prepared_from_poly_with_iss
+Definition vector_current_post_tiling_affine_prepared_from_poly_with_iss
     (pol : PolyLang.t)
     (d : nat)
   : imp (result ParallelLoop.t) :=
-  BIND pol' <- diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  BIND pol' <- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
   checked_vector_current_annotated_codegen_at pol' d.
 
 Definition vector_current_identity_prepared_from_poly_with_iss
@@ -732,40 +732,40 @@ Definition opt_parallel_current
   BIND res <- parallel_current_prepared_from_poly pol d -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_parallel_current_diamond
+Definition opt_parallel_current_post_tiling_affine
     (loop : LoopIR.t)
     (d : nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- parallel_current_diamond_prepared_from_poly pol d -;
+  BIND res <- parallel_current_post_tiling_affine_prepared_from_poly pol d -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_parallel_current_diamond_with_iss
+Definition opt_parallel_current_post_tiling_affine_with_iss
     (loop : LoopIR.t)
     (d : nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- parallel_current_diamond_prepared_from_poly_with_iss pol d -;
+  BIND res <- parallel_current_post_tiling_affine_prepared_from_poly_with_iss pol d -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_parallel_current_many_diamond
+Definition opt_parallel_current_many_post_tiling_affine
     (loop : LoopIR.t)
     (dims : list nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- parallel_current_many_diamond_prepared_from_poly pol dims -;
+  BIND res <- parallel_current_many_post_tiling_affine_prepared_from_poly pol dims -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_parallel_current_many_diamond_with_iss
+Definition opt_parallel_current_many_post_tiling_affine_with_iss
     (loop : LoopIR.t)
     (dims : list nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- parallel_current_many_diamond_prepared_from_poly_with_iss pol dims -;
+  BIND res <- parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss pol dims -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_parallel_current_many_identity
@@ -912,22 +912,22 @@ Definition opt_vector_current
   BIND res <- vector_current_prepared_from_poly pol d -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_vector_current_diamond
+Definition opt_vector_current_post_tiling_affine
     (loop : LoopIR.t)
     (d : nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- vector_current_diamond_prepared_from_poly pol d -;
+  BIND res <- vector_current_post_tiling_affine_prepared_from_poly pol d -;
   res_to_alarm parallel_dummy res.
 
-Definition opt_vector_current_diamond_with_iss
+Definition opt_vector_current_post_tiling_affine_with_iss
     (loop : LoopIR.t)
     (d : nat)
   : imp ParallelLoop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
-  BIND res <- vector_current_diamond_prepared_from_poly_with_iss pol d -;
+  BIND res <- vector_current_post_tiling_affine_prepared_from_poly_with_iss pol d -;
   res_to_alarm parallel_dummy res.
 
 Definition opt_vector_current_identity_with_iss

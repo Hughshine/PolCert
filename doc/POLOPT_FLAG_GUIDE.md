@@ -32,8 +32,8 @@ A normal compilation route has five independent axes.
 | Execution | sequential, Pluto-hinted parallel, explicit-coordinate parallel, Pluto-hinted vector, explicit-coordinate vector | sequential |
 
 Observation flags such as `--dump-input` do not create a sixth route axis.
-Post-codegen transformations such as `--const-unroll` run only after a
-sequential verified compilation succeeds.
+Post-codegen transformations such as `--const-unroll` and checked
+`--unrolljam` run only after a sequential verified compilation succeeds.
 
 ### Schedule
 
@@ -61,8 +61,17 @@ The default affine route performs one-level rectangular tiling.
 is independent of the tile shape: second-level rectangular, diamond, and full
 diamond routes are supported when their produced candidates validate.
 
-`--diamond-tile` selects diamond tiling. `--full-diamond-tile` implies
-`--diamond-tile` and requests Pluto's stronger diamond producer mode. Diamond
+There is one diamond-tiling phase with two concurrent-start search policies:
+
+| Public option | Internal value | Pluto search constraint |
+| --- | --- | --- |
+| `--diamond-tile` | `Diamond OneDimensionalStart` | use one existing band dimension in the cone-complement search |
+| `--full-diamond-tile` | `Diamond FullDimensionalStart` | use all eligible non-scalar band hyperplanes |
+
+`--full-diamond-tile` therefore implies `--diamond-tile`; it is not a second
+diamond pass and does not select another validator. The driver emits both Pluto
+flags for the full-dimensional mode because upstream Pluto stores the base
+enable bit and the full-dimensional modifier in separate option fields. Diamond
 tiling cannot be combined with `--identity` or `--notile`, because it needs an
 affine/skew schedule followed by tiling.
 
@@ -90,11 +99,10 @@ Without `--intratileopt`, the tile-only Pluto recipe passes
 generation. Diamond routes also use the three-stage form because their producer
 has a post-tiling affine schedule.
 
-The extracted configuration names this three-stage theorem `RawDiamond` for
-historical reasons. The theorem checks the generic affine, tiling, affine
-composition; it does not assume diamond geometry. The OCaml driver therefore
-calls the route `post_tiling_affine` and uses it for both diamond tiling and
-rectangular intratile optimization.
+The extracted configuration names this three-stage theorem
+`RawPostTilingAffine`. The name states the actual proof composition and does not
+imply diamond geometry. The OCaml driver uses the same route for diamond tiling
+and rectangular intra-tile optimization.
 
 Support is fail-closed. The driver accepts an option combination, invokes the
 external Pluto producer, and compiles only if every phase validator accepts the

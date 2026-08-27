@@ -217,8 +217,8 @@ opt_impeq_generic
 opt_with_iss_impeq_generic
 opt_identity_tiled_impeq_generic
 opt_identity_tiled_with_iss_impeq_generic
-opt_diamond_impeq_generic
-opt_diamond_with_iss_impeq_generic
+opt_post_tiling_affine_impeq_generic
+opt_post_tiling_affine_with_iss_impeq_generic
 ```
 
 All are consumed by `ExtractedPipelineCorrect`.  The internal chain mirrors

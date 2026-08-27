@@ -876,7 +876,8 @@ type 'a phase_pipeline_artifacts = {
 
 let current_midpoint_label () =
   if Scheduler.diamond_tiling_enabled () then
-    diamond_midpoint_label (Scheduler.full_diamond_tiling_enabled ())
+    diamond_midpoint_label
+      (Scheduler.full_dimensional_diamond_start_enabled ())
   else if Scheduler.identity_schedule_enabled () then
     "mid_identity"
   else
@@ -1545,12 +1546,11 @@ let standalone_handlers = {
 
 let verified_sequential_config_of_route route =
   let open VerifiedSequentialCompiler in
-  (* [RawDiamond] is the historical extracted name for the theorem that checks
-     affine scheduling, tiling, and a final affine schedule.  The theorem and
-     scheduler contract are tile-shape independent, so rectangular intratile
-     routes use the same proved composition. *)
+  (* This shape-independent route checks affine scheduling, tiling, and a final
+     affine schedule.  It covers both rectangular intra-tile rescheduling and
+     diamond rescheduling. *)
   if route_uses_post_tiling_affine route then
-    if route_has_iss route then RawDiamondISS else RawDiamond
+    if route_has_iss route then RawPostTilingAffineISS else RawPostTilingAffine
   else
   match route.SLoopRoute.schedule_family,
         route.SLoopRoute.structural_extension,
@@ -1586,7 +1586,7 @@ let verified_sequential_config_of_route route =
   | _, SLoopRoute.ISS, SLoopRoute.NoTiling ->
       RawUnsupported
 
-let run_selected_sequential_loop_optimization route loop =
+let run_selected_sequential_loop_compiler route compile loop =
   let selected = verified_sequential_config_of_route route in
   if
     source_loop_count loop = 0
@@ -1595,12 +1595,12 @@ let run_selected_sequential_loop_optimization route loop =
   then begin
     prerr_endline
       "[tiling-validation] status=not-applicable reason=no-loop";
-    VerifiedSequentialCompiler.compile VerifiedSequentialCompiler.RawIdentity loop
+    compile VerifiedSequentialCompiler.RawIdentity loop
   end
   else
     let ((optimized, ok), route) =
       TilingValidationRoute.capture (fun () ->
-        VerifiedSequentialCompiler.compile selected loop)
+        compile selected loop)
     in
     TilingValidationRoute.report route;
     let tiling_ok =
@@ -1608,12 +1608,19 @@ let run_selected_sequential_loop_optimization route loop =
     in
     (optimized, ok && tiling_ok)
 
+let run_selected_sequential_loop_optimization route postpass loop =
+  run_selected_sequential_loop_compiler route
+    (fun selected loop ->
+       VerifiedSequentialCompiler.compile_with_postpass
+         selected postpass loop)
+    loop
+
 let verified_parallel_current_config_of_route route dim =
   let d = nat_of_int dim in
   let open VerifiedParallelCompiler in
   if route_uses_post_tiling_affine route then
-    if route_has_iss route then RawParallelCurrentDiamondISS d
-    else RawParallelCurrentDiamond d
+    if route_has_iss route then RawParallelCurrentPostTilingAffineISS d
+    else RawParallelCurrentPostTilingAffine d
   else if route_is_identity route && route_has_tiling route then
     if route_has_iss route then RawParallelCurrentIdentityTiledISS d
     else RawParallelCurrentIdentityTiled d
@@ -1635,8 +1642,8 @@ let verified_parallel_current_many_config_of_route route dims =
   let dims = List.map nat_of_int (unique_ints dims) in
   let open VerifiedParallelCompiler in
   if route_uses_post_tiling_affine route then
-    if route_has_iss route then RawParallelCurrentManyDiamondISS dims
-    else RawParallelCurrentManyDiamond dims
+    if route_has_iss route then RawParallelCurrentManyPostTilingAffineISS dims
+    else RawParallelCurrentManyPostTilingAffine dims
   else if route_is_identity route && route_has_tiling route then
     if route_has_iss route then RawParallelCurrentManyIdentityTiledISS dims
     else RawParallelCurrentManyIdentityTiled dims
@@ -1658,8 +1665,8 @@ let verified_vector_current_config_of_route route dim =
   let d = nat_of_int dim in
   let open VerifiedParallelCompiler in
   if route_uses_post_tiling_affine route then
-    if route_has_iss route then RawVectorCurrentDiamondISS d
-    else RawVectorCurrentDiamond d
+    if route_has_iss route then RawVectorCurrentPostTilingAffineISS d
+    else RawVectorCurrentPostTilingAffine d
   else if route_is_identity route && route_has_tiling route then
     if route_has_iss route then RawVectorCurrentIdentityTiledISS d
     else RawVectorCurrentIdentityTiled d
@@ -1728,7 +1735,10 @@ let report_parallel_validation details =
 let verified_sequential_after_parallel_skip route loop =
   report_parallel_validation
     "status=skipped source=pluto-hint reason=no-certifiable-dimension";
-  let (optimized, ok) = run_selected_sequential_loop_optimization route loop in
+  let (optimized, ok) =
+    run_selected_sequential_loop_optimization
+      route VerifiedSequentialCompiler.no_postpass loop
+  in
   (tag_loop_for_parallel_pretty optimized, ok)
 
 let is_consumer_candidate_failure = function
@@ -1877,7 +1887,10 @@ let report_vector_validation details =
 
 let verified_sequential_after_vector_skip route loop reason =
   report_vector_validation ("status=skipped reason=" ^ reason);
-  let (optimized, ok) = run_selected_sequential_loop_optimization route loop in
+  let (optimized, ok) =
+    run_selected_sequential_loop_optimization
+      route VerifiedSequentialCompiler.no_postpass loop
+  in
   (tag_loop_for_parallel_pretty optimized, ok)
 
 let run_selected_vector_optimization route loop =
@@ -2331,53 +2344,23 @@ let select_unrolljam_plan cfg loop =
         (pluto_profitability_candidates (pluto_unroll_factor cfg) loop)
   | _ -> assert false
 
-let apply_const_unroll_postpass cfg loop =
-  if cfg.force_const_unroll then begin
-    let cleanup_loop loop =
-      SPolOpt.CoreOpt.Prepare.Cleanup.cleanup loop
+let run_requested_sequential_loop_optimization cfg route postpass loop =
+  if cfg.pluto_unrolljam_seen then
+    let const_first =
+      String.equal (unrolljam_policy_name ()) "checked-all-depths"
     in
-    let unrolljam_policy = unrolljam_policy_name () in
-    let apply_const_unroll_first =
-      (not cfg.pluto_unrolljam_seen)
-      || String.equal unrolljam_policy "checked-all-depths"
-    in
-    let const_changed = SLoopUnroll.const_unroll_changed loop in
-    let loop =
-      if apply_const_unroll_first && const_changed then
-        cleanup_loop (SLoopUnroll.const_unroll loop)
-      else
-        loop
-    in
-    if cfg.pluto_unrolljam_seen then begin
-      let fuel = nat_of_int (pluto_unroll_factor cfg) in
-      if SLoopUnroll.block_unroll_changed fuel loop then
-        let block_unrolled = cleanup_loop (SLoopUnroll.block_unroll fuel loop) in
-        let unrolljam_plan = select_unrolljam_plan cfg loop in
-        let (checked_unrolljammed, checked_ok) =
-          SLoopJamLower.checked_unrolljam_loop_with_plan
-            unrolljam_plan
-            fuel
-            loop
-        in
-        let checked_unrolljammed = cleanup_loop checked_unrolljammed in
-        if checked_ok && checked_unrolljammed <> block_unrolled then
-          checked_unrolljammed
-        else
-          block_unrolled
-      else if const_changed then
-        loop
-      else
-        frontend_failf
-          "--unrolljam could not find a sequential Loop IR loop to block-unroll";
-    end
-    else if const_changed then
+    let factor = nat_of_int (pluto_unroll_factor cfg) in
+    run_selected_sequential_loop_compiler route
+      (fun selected loop ->
+         VerifiedSequentialCompiler.compile_with_unrolljam
+           selected
+           const_first
+           (select_unrolljam_plan cfg)
+           factor
+           loop)
       loop
-    else
-      frontend_failf
-        "--const-unroll currently applies only when the final sequential Loop IR contains a statically constant-bounded loop"
-  end
   else
-    loop
+    run_selected_sequential_loop_optimization route postpass loop
 
 let require_checked_success ok =
   if not ok then begin
@@ -2411,6 +2394,12 @@ let () =
       | Some file ->
         let prog = SLoopParse.parse_file file in
         let loop = SLoopElab.elaborate prog in
+        let postpass =
+          if cfg.force_const_unroll && not cfg.pluto_unrolljam_seen then
+            VerifiedSequentialCompiler.const_unroll_postpass
+          else
+            VerifiedSequentialCompiler.no_postpass
+        in
         if cfg.dump_input then print_section "Input Loop" (SLoopPretty.string_of_loop loop);
         if route.SLoopRoute.extract_only then begin
           OpenScopPrinter.openscop_printer' stdout (extract_to_openscop loop);
@@ -2421,10 +2410,10 @@ let () =
           let (_profiled, profile_ok) = profile_selected_optimization route loop in
           TilingValidationRoute.clear ();
           let (optimized, verified_ok) =
-            run_selected_sequential_loop_optimization route loop
+            run_requested_sequential_loop_optimization
+              cfg route postpass loop
           in
           let ok = profile_ok && verified_ok in
-          let optimized = apply_const_unroll_postpass cfg optimized in
           require_checked_success ok;
           print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized);
           exit 0
@@ -2467,9 +2456,9 @@ let () =
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
         | SLoopRoute.Sequential ->
             let (optimized, ok) =
-              run_selected_sequential_loop_optimization route loop
+              run_requested_sequential_loop_optimization
+                cfg route postpass loop
             in
-            let optimized = apply_const_unroll_postpass cfg optimized in
             require_checked_success ok;
             print_section "Optimized Loop" (SLoopPretty.string_of_loop optimized)
         end

@@ -149,7 +149,7 @@ Definition try_identity_phase_pipeline_from_source_pol_band
       end
   end.
 
-Definition try_verified_diamond_after_phase_mid_band
+Definition try_verified_post_tiling_affine_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop posttile_scop after_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
@@ -201,12 +201,12 @@ Definition try_verified_diamond_after_phase_mid_band
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_band
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_band
     (pol_source: PolyLang.t)
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
     reject_tiling in
-  match CoreOpt.run_pluto_diamond_phase_pipeline before_scop with
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -216,19 +216,19 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
       | Okk pol_mid =>
           BIND affine_ok <- CoreOpt.ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_band
+            try_verified_post_tiling_affine_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
     (pol_source: PolyLang.t)
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   let rejected :=
     reject_tiling in
-  match CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -238,14 +238,14 @@ Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
       | Okk pol_mid =>
           BIND affine_ok <- CoreOpt.ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_band
+            try_verified_post_tiling_affine_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
       end
   end.
 
-Definition try_checked_iss_diamond_phase_pipeline_from_poly_band
+Definition try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
     (pol: PolyLang.t)
     (before_scop: OpenScop) : imp SPolIRs.Loop.t :=
   match CoreOpt.infer_iss_from_source_scop pol before_scop with
@@ -253,14 +253,14 @@ Definition try_checked_iss_diamond_phase_pipeline_from_poly_band
       if CoreOpt.ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
         BIND iss_wf <- CoreOpt.ValidatorCore.check_wf_polyprog pol_iss -;
         if iss_wf then
-          try_diamond_phase_pipeline_from_source_pol_band_with_iss
+          try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
             pol_iss before_scop
         else
-          try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+          try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
       else
-        try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
   | _ =>
-      try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+      try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
   end.
 
 Definition try_checked_iss_phase_pipeline_from_poly_band
@@ -380,26 +380,26 @@ Definition opt_identity_tiled_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loo
   else
     reject_tiling tt.
 
-Definition opt_diamond (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+Definition opt_post_tiling_affine (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
     | None =>
         reject_tiling tt
     end
   else
     reject_tiling tt.
 
-Definition opt_diamond_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+Definition opt_post_tiling_affine_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
   let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
   if CoreOpt.has_nonscalar_stmt pol then
     match CoreOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_checked_iss_diamond_phase_pipeline_from_poly_band pol before_scop
+        try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band pol before_scop
     | None =>
         reject_tiling tt
     end
@@ -409,11 +409,11 @@ Definition opt_diamond_with_iss (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
 Definition opt_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
   opt loop.
 
-Definition opt_diamond_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
-  opt_diamond loop.
+Definition opt_post_tiling_affine_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  opt_post_tiling_affine loop.
 
-Definition opt_diamond_with_iss_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
-  opt_diamond_with_iss loop.
+Definition opt_post_tiling_affine_with_iss_prepared (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  opt_post_tiling_affine_with_iss loop.
 
 Definition opt_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
   let pol' := CoreOpt.Strengthen.strengthen_pprog pol in
@@ -430,12 +430,12 @@ Definition opt_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
   else
     reject_tiling tt.
 
-Definition opt_diamond_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
+Definition opt_post_tiling_affine_poly (pol : PolyLang.t) : imp SPolIRs.Loop.t :=
   let pol' := CoreOpt.Strengthen.strengthen_pprog pol in
   if CoreOpt.has_nonscalar_stmt pol' then
     match CoreOpt.export_for_phase_scheduler pol' with
     | Some before_scop =>
-        try_diamond_phase_pipeline_from_source_pol_band pol' before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_band pol' before_scop
     | None =>
         reject_tiling tt
     end
@@ -448,8 +448,8 @@ Definition opt_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
   | Err msg => res_to_alarm SPolIRs.Loop.dummy (Err msg)
   end.
 
-Definition opt_diamond_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
+Definition opt_post_tiling_affine_scop (scop : OpenScop) : imp SPolIRs.Loop.t :=
   match PolyLang.from_openscop_complete scop with
-  | Okk pol => opt_diamond_poly pol
+  | Okk pol => opt_post_tiling_affine_poly pol
   | Err msg => res_to_alarm SPolIRs.Loop.dummy (Err msg)
   end.

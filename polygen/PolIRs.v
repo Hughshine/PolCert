@@ -47,21 +47,21 @@ Parameter phase_scop_scheduler_with_iss:
     affine scheduling and tiling stages. *)
 Definition run_pluto_phase_pipeline_with_iss := phase_scop_scheduler_with_iss.
 
-Parameter diamond_phase_scop_scheduler:
+Parameter post_tiling_affine_phase_scop_scheduler:
   OpenScop -> result (OpenScop * (OpenScop * OpenScop)).
-(** Variant of the external Pluto phase pipeline that exposes the diamond
+(** Variant of the external Pluto phase pipeline that exposes the post_tiling_affine
     midpoint, the post-tiling schedule, and the final rescheduled OpenScop.
     The nested product keeps the extraction ABI explicit. *)
-Definition run_pluto_diamond_phase_pipeline :=
-  diamond_phase_scop_scheduler.
+Definition run_pluto_post_tiling_affine_phase_pipeline :=
+  post_tiling_affine_phase_scop_scheduler.
 
-Parameter diamond_phase_scop_scheduler_with_iss:
+Parameter post_tiling_affine_phase_scop_scheduler_with_iss:
   OpenScop -> result (OpenScop * (OpenScop * OpenScop)).
-(** ISS-enabled variant of the diamond phase pipeline.  The verified route
+(** ISS-enabled variant of the post_tiling_affine phase pipeline.  The verified route
     still validates the ISS bridge and each affine/tiling boundary before using
     the oracle-produced OpenScop schedules. *)
-Definition run_pluto_diamond_phase_pipeline_with_iss :=
-  diamond_phase_scop_scheduler_with_iss.
+Definition run_pluto_post_tiling_affine_phase_pipeline_with_iss :=
+  post_tiling_affine_phase_scop_scheduler_with_iss.
 
 Parameter infer_iss_from_source_scop:
   PolyLang.t -> OpenScop -> result (option (PolyLang.t * iss_witness)).

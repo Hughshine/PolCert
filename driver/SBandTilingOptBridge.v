@@ -95,17 +95,17 @@ Proof.
   - apply reject_tiling_impeq_generic.
 Qed.
 
-Lemma try_verified_diamond_after_phase_mid_band_impeq_generic :
+Lemma try_verified_post_tiling_affine_after_phase_mid_band_impeq_generic :
   forall pol_mid mid_scop posttile_scop after_scop,
     impeq
-      (SBandTilingOpt.try_verified_diamond_after_phase_mid_band
+      (SBandTilingOpt.try_verified_post_tiling_affine_after_phase_mid_band
          pol_mid mid_scop posttile_scop after_scop)
-      (BandGeneric.try_verified_diamond_after_phase_mid_band
+      (BandGeneric.try_verified_post_tiling_affine_after_phase_mid_band
          pol_mid mid_scop posttile_scop after_scop).
 Proof.
   intros pol_mid mid_scop posttile_scop after_scop.
-  unfold SBandTilingOpt.try_verified_diamond_after_phase_mid_band,
-    BandGeneric.try_verified_diamond_after_phase_mid_band.
+  unfold SBandTilingOpt.try_verified_post_tiling_affine_after_phase_mid_band,
+    BandGeneric.try_verified_post_tiling_affine_after_phase_mid_band.
   destruct (BandGeneric.BaseOpt.infer_tiling_witness_scops
               mid_scop posttile_scop)
     as [ws|msg].
@@ -189,52 +189,52 @@ Proof.
   - apply reject_tiling_impeq_generic.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_band_impeq_generic :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic :
   forall pol_source before_scop,
     impeq
-      (SBandTilingOpt.try_diamond_phase_pipeline_from_source_pol_band
+      (SBandTilingOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_band
          pol_source before_scop)
-      (BandGeneric.try_diamond_phase_pipeline_from_source_pol_band
+      (BandGeneric.try_post_tiling_affine_phase_pipeline_from_source_pol_band
          pol_source before_scop).
 Proof.
   intros pol_source before_scop.
-  unfold SBandTilingOpt.try_diamond_phase_pipeline_from_source_pol_band,
-    BandGeneric.try_diamond_phase_pipeline_from_source_pol_band.
-  destruct (BandGeneric.BaseOpt.run_pluto_diamond_phase_pipeline before_scop)
+  unfold SBandTilingOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_band,
+    BandGeneric.try_post_tiling_affine_phase_pipeline_from_source_pol_band.
+  destruct (BandGeneric.BaseOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg].
   - destruct (BandGeneric.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid].
     + apply bind_eq_compat.
       * apply impeq_refl.
       * intro affine_ok. destruct affine_ok.
-        -- apply try_verified_diamond_after_phase_mid_band_impeq_generic.
+        -- apply try_verified_post_tiling_affine_after_phase_mid_band_impeq_generic.
         -- apply reject_tiling_impeq_generic.
     + apply reject_tiling_impeq_generic.
   - apply reject_tiling_impeq_generic.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_impeq_generic :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss_impeq_generic :
   forall pol_source before_scop,
     impeq
       (SBandTilingOpt
-         .try_diamond_phase_pipeline_from_source_pol_band_with_iss
+         .try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
          pol_source before_scop)
-      (BandGeneric.try_diamond_phase_pipeline_from_source_pol_band_with_iss
+      (BandGeneric.try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
          pol_source before_scop).
 Proof.
   intros pol_source before_scop.
   unfold
-    SBandTilingOpt.try_diamond_phase_pipeline_from_source_pol_band_with_iss,
-    BandGeneric.try_diamond_phase_pipeline_from_source_pol_band_with_iss.
+    SBandTilingOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss,
+    BandGeneric.try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss.
   destruct
-    (BandGeneric.BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
+    (BandGeneric.BaseOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg].
   - destruct (BandGeneric.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid].
     + apply bind_eq_compat.
       * apply impeq_refl.
       * intro affine_ok. destruct affine_ok.
-        -- apply try_verified_diamond_after_phase_mid_band_impeq_generic.
+        -- apply try_verified_post_tiling_affine_after_phase_mid_band_impeq_generic.
         -- apply reject_tiling_impeq_generic.
     + apply reject_tiling_impeq_generic.
   - apply reject_tiling_impeq_generic.
@@ -383,17 +383,17 @@ Proof.
   - apply reject_tiling_impeq_generic.
 Qed.
 
-Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_impeq_generic :
+Lemma try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band_impeq_generic :
   forall pol before_scop,
     impeq
-      (SBandTilingOpt.try_checked_iss_diamond_phase_pipeline_from_poly_band
+      (SBandTilingOpt.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
          pol before_scop)
-      (BandGeneric.try_checked_iss_diamond_phase_pipeline_from_poly_band
+      (BandGeneric.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
          pol before_scop).
 Proof.
   intros pol before_scop.
-  unfold SBandTilingOpt.try_checked_iss_diamond_phase_pipeline_from_poly_band,
-    BandGeneric.try_checked_iss_diamond_phase_pipeline_from_poly_band.
+  unfold SBandTilingOpt.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band,
+    BandGeneric.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band.
   destruct (BandGeneric.BaseOpt.infer_iss_from_source_scop pol before_scop)
     as [iss_opt|msg].
   - destruct iss_opt as [[pol_iss w]|].
@@ -404,55 +404,55 @@ Proof.
         -- apply impeq_refl.
         -- intro iss_wf. destruct iss_wf.
            ++ apply
-                try_diamond_phase_pipeline_from_source_pol_band_with_iss_impeq_generic.
-           ++ apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
-      * apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
-    + apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
-  - apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
+                try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss_impeq_generic.
+           ++ apply try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic.
+      * apply try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic.
+    + apply try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic.
+  - apply try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic.
 Qed.
 
-Lemma phase_diamond_opt_prepared_from_poly_no_iss_band_impeq_generic :
+Lemma phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band_impeq_generic :
   forall pol,
     impeq
       (if BandGeneric.BaseOpt.has_nonscalar_stmt pol then
          match BandGeneric.BaseOpt.export_for_phase_scheduler pol with
          | Some before_scop =>
-             SBandTilingOpt.try_diamond_phase_pipeline_from_source_pol_band
+             SBandTilingOpt.try_post_tiling_affine_phase_pipeline_from_source_pol_band
                pol before_scop
          | None => SBandTilingOpt.reject_tiling tt
          end
        else SBandTilingOpt.reject_tiling tt)
-      (BandGeneric.phase_diamond_opt_prepared_from_poly_no_iss_band pol).
+      (BandGeneric.phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band pol).
 Proof.
   intro pol.
-  unfold BandGeneric.phase_diamond_opt_prepared_from_poly_no_iss_band.
+  unfold BandGeneric.phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
-    + apply try_diamond_phase_pipeline_from_source_pol_band_impeq_generic.
+    + apply try_post_tiling_affine_phase_pipeline_from_source_pol_band_impeq_generic.
     + apply reject_tiling_impeq_generic.
   - apply reject_tiling_impeq_generic.
 Qed.
 
-Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_impeq_generic :
+Lemma phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band_impeq_generic :
   forall pol,
     impeq
       (if BandGeneric.BaseOpt.has_nonscalar_stmt pol then
          match BandGeneric.BaseOpt.export_for_phase_scheduler pol with
          | Some before_scop =>
              SBandTilingOpt
-               .try_checked_iss_diamond_phase_pipeline_from_poly_band
+               .try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
                pol before_scop
          | None => SBandTilingOpt.reject_tiling tt
          end
        else SBandTilingOpt.reject_tiling tt)
-      (BandGeneric.phase_diamond_opt_prepared_from_poly_with_iss_band pol).
+      (BandGeneric.phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band pol).
 Proof.
   intro pol.
-  unfold BandGeneric.phase_diamond_opt_prepared_from_poly_with_iss_band.
+  unfold BandGeneric.phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band.
   destruct (BandGeneric.BaseOpt.has_nonscalar_stmt pol).
   - destruct (BandGeneric.BaseOpt.export_for_phase_scheduler pol).
     + apply
-        try_checked_iss_diamond_phase_pipeline_from_poly_band_impeq_generic.
+        try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band_impeq_generic.
     + apply reject_tiling_impeq_generic.
   - apply reject_tiling_impeq_generic.
 Qed.
@@ -520,37 +520,37 @@ Proof.
       identity_tiling_opt_prepared_from_poly_with_iss_band_impeq_generic.
 Qed.
 
-Theorem opt_diamond_impeq_generic :
+Theorem opt_post_tiling_affine_impeq_generic :
   forall loop,
     impeq
-      (SBandTilingOpt.opt_diamond loop)
-      (BandGeneric.Opt_diamond_band loop).
+      (SBandTilingOpt.opt_post_tiling_affine loop)
+      (BandGeneric.Opt_post_tiling_affine_band loop).
 Proof.
   intro loop.
-  unfold SBandTilingOpt.opt_diamond, BandGeneric.Opt_diamond_band,
-    BandGeneric.Opt_prepared_diamond_band,
-    BandGeneric.phase_diamond_opt_prepared_band.
+  unfold SBandTilingOpt.opt_post_tiling_affine, BandGeneric.Opt_post_tiling_affine_band,
+    BandGeneric.Opt_prepared_post_tiling_affine_band,
+    BandGeneric.phase_post_tiling_affine_opt_prepared_band.
   apply bind_eq_compat.
   - apply impeq_refl.
   - intro pol0.
-    apply phase_diamond_opt_prepared_from_poly_no_iss_band_impeq_generic.
+    apply phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band_impeq_generic.
 Qed.
 
-Theorem opt_diamond_with_iss_impeq_generic :
+Theorem opt_post_tiling_affine_with_iss_impeq_generic :
   forall loop,
     impeq
-      (SBandTilingOpt.opt_diamond_with_iss loop)
-      (BandGeneric.Opt_diamond_band_with_iss loop).
+      (SBandTilingOpt.opt_post_tiling_affine_with_iss loop)
+      (BandGeneric.Opt_post_tiling_affine_band_with_iss loop).
 Proof.
   intro loop.
-  unfold SBandTilingOpt.opt_diamond_with_iss,
-    BandGeneric.Opt_diamond_band_with_iss,
-    BandGeneric.Opt_prepared_diamond_band_with_iss,
-    BandGeneric.phase_diamond_opt_prepared_with_iss_band.
+  unfold SBandTilingOpt.opt_post_tiling_affine_with_iss,
+    BandGeneric.Opt_post_tiling_affine_band_with_iss,
+    BandGeneric.Opt_prepared_post_tiling_affine_band_with_iss,
+    BandGeneric.phase_post_tiling_affine_opt_prepared_with_iss_band.
   apply bind_eq_compat.
   - apply impeq_refl.
   - intro pol0.
-    apply phase_diamond_opt_prepared_from_poly_with_iss_band_impeq_generic.
+    apply phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band_impeq_generic.
 Qed.
 
 Corollary opt_prepared_impeq_generic :
@@ -562,20 +562,20 @@ Proof.
   intro loop. exact (opt_impeq_generic loop).
 Qed.
 
-Corollary opt_diamond_prepared_impeq_generic :
+Corollary opt_post_tiling_affine_prepared_impeq_generic :
   forall loop,
     impeq
-      (SBandTilingOpt.opt_diamond_prepared loop)
-      (BandGeneric.Opt_prepared_diamond_band loop).
+      (SBandTilingOpt.opt_post_tiling_affine_prepared loop)
+      (BandGeneric.Opt_prepared_post_tiling_affine_band loop).
 Proof.
-  intro loop. exact (opt_diamond_impeq_generic loop).
+  intro loop. exact (opt_post_tiling_affine_impeq_generic loop).
 Qed.
 
-Corollary opt_diamond_with_iss_prepared_impeq_generic :
+Corollary opt_post_tiling_affine_with_iss_prepared_impeq_generic :
   forall loop,
     impeq
-      (SBandTilingOpt.opt_diamond_with_iss_prepared loop)
-      (BandGeneric.Opt_prepared_diamond_band_with_iss loop).
+      (SBandTilingOpt.opt_post_tiling_affine_with_iss_prepared loop)
+      (BandGeneric.Opt_prepared_post_tiling_affine_band_with_iss loop).
 Proof.
-  intro loop. exact (opt_diamond_with_iss_impeq_generic loop).
+  intro loop. exact (opt_post_tiling_affine_with_iss_impeq_generic loop).
 Qed.

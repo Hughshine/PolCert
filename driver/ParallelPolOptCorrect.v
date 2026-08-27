@@ -29,7 +29,7 @@ Module ParallelLoop := Core.ParallelCodegenCore.ParallelLoop.
 (** * Proof map
 
     The first half proves the polyhedral preprocessing routes: optional ISS,
-    affine scheduling, tiling, and diamond compositions.  The prepared-route
+    affine scheduling, tiling, and post_tiling_affine compositions.  The prepared-route
     lemmas then append checked parallel or vector annotation and codegen.  The
     final [Opt_*_correct] families add strengthening and extraction to recover
     source loop semantics.  Route variants instantiate this same composition;
@@ -333,11 +333,11 @@ Proof.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_verified_diamond_after_phase_mid_poly_correct :
+Lemma try_verified_post_tiling_affine_after_phase_mid_poly_correct :
   forall pol_mid mid_scop posttile_scop after_scop pol_out st st',
     PolyLang.wf_pprog_affine pol_mid ->
     mayReturn
-      (Core.try_verified_diamond_after_phase_mid_poly
+      (Core.try_verified_post_tiling_affine_after_phase_mid_poly
          pol_mid mid_scop posttile_scop after_scop)
       pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
@@ -346,7 +346,7 @@ Lemma try_verified_diamond_after_phase_mid_poly_correct :
 Proof.
   intros pol_mid mid_scop posttile_scop after_scop pol_out st st'
          Hwf_mid Hopt Hsem_out.
-  unfold Core.try_verified_diamond_after_phase_mid_poly in Hopt.
+  unfold Core.try_verified_post_tiling_affine_after_phase_mid_poly in Hopt.
   destruct (Core.CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop)
     as [ws|msg] eqn:Hws.
   - destruct
@@ -400,17 +400,17 @@ Proof.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_verified_diamond_after_phase_mid_poly_wf :
+Lemma try_verified_post_tiling_affine_after_phase_mid_poly_wf :
   forall pol_mid mid_scop posttile_scop after_scop pol_out,
     PolyLang.wf_pprog_affine pol_mid ->
     mayReturn
-      (Core.try_verified_diamond_after_phase_mid_poly
+      (Core.try_verified_post_tiling_affine_after_phase_mid_poly
          pol_mid mid_scop posttile_scop after_scop)
       pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol_mid mid_scop posttile_scop after_scop pol_out Hwf_mid Hopt.
-  unfold Core.try_verified_diamond_after_phase_mid_poly in Hopt.
+  unfold Core.try_verified_post_tiling_affine_after_phase_mid_poly in Hopt.
   destruct (Core.CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop)
     as [ws|msg] eqn:Hws.
   - destruct
@@ -447,11 +447,11 @@ Proof.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_correct :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct :
   forall pol_source before_scop pol_out st st',
     PolyLang.wf_pprog_affine pol_source ->
     mayReturn
-      (Core.try_diamond_phase_pipeline_from_source_pol_poly
+      (Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly
          pol_source before_scop)
       pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
@@ -460,8 +460,8 @@ Lemma try_diamond_phase_pipeline_from_source_pol_poly_correct :
 Proof.
   intros pol_source before_scop pol_out st st'
          Hwf_source Hopt Hsem_out.
-  unfold Core.try_diamond_phase_pipeline_from_source_pol_poly in Hopt.
-  destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
+  unfold Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly in Hopt.
+  destruct (Core.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -472,7 +472,7 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         pose proof
-          (try_verified_diamond_after_phase_mid_poly_correct
+          (try_verified_post_tiling_affine_after_phase_mid_poly_correct
              pol_mid mid_scop posttile_scop after_scop pol_out st st'
              Hwf_mid Hopt Hsem_out)
           as Hmid_corr.
@@ -490,18 +490,18 @@ Proof.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_wf :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf :
   forall pol_source before_scop pol_out,
     PolyLang.wf_pprog_affine pol_source ->
     mayReturn
-      (Core.try_diamond_phase_pipeline_from_source_pol_poly
+      (Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly
          pol_source before_scop)
       pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol_source before_scop pol_out Hwf_source Hopt.
-  unfold Core.try_diamond_phase_pipeline_from_source_pol_poly in Hopt.
-  destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline before_scop)
+  unfold Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly in Hopt.
+  destruct (Core.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -511,26 +511,26 @@ Proof.
           (Core.ValidatorCore.validate_preserve_wf_pprog
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
-        eapply try_verified_diamond_after_phase_mid_poly_wf; eauto.
+        eapply try_verified_post_tiling_affine_after_phase_mid_poly_wf; eauto.
       * reject_tiling_contradiction Hopt.
     + reject_tiling_contradiction Hopt.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct :
   forall pol pol_out st st',
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol) pol_out ->
+    mayReturn (Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol) pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol pol_out st st' Hwf Hopt Hsem_out.
-  unfold Core.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly in Hopt.
+  unfold Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly in Hopt.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_diamond_phase_pipeline_from_source_pol_poly_correct.
+      eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
@@ -538,29 +538,29 @@ Proof.
   { reject_tiling_contradiction Hopt. }
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf :
   forall pol pol_out,
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol) pol_out ->
+    mayReturn (Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol) pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol pol_out Hwf Hopt.
-  unfold Core.diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly in Hopt.
+  unfold Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly in Hopt.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_diamond_phase_pipeline_from_source_pol_poly_wf.
+      eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf.
       - exact Hwf.
       - exact Hopt. }
     { reject_tiling_contradiction Hopt. } }
   { reject_tiling_contradiction Hopt. }
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_correct :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_correct :
   forall pol_source before_scop pol_out st st',
     PolyLang.wf_pprog_affine pol_source ->
     mayReturn
-      (Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+      (Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
          pol_source before_scop)
       pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
@@ -569,8 +569,8 @@ Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_correct :
 Proof.
   intros pol_source before_scop pol_out st st'
          Hwf_source Hopt Hsem_out.
-  unfold Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
-  destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
+  unfold Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
+  destruct (Core.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -581,7 +581,7 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         pose proof
-          (try_verified_diamond_after_phase_mid_poly_correct
+          (try_verified_post_tiling_affine_after_phase_mid_poly_correct
              pol_mid mid_scop posttile_scop after_scop pol_out st st'
              Hwf_mid Hopt Hsem_out)
           as Hmid_corr.
@@ -599,18 +599,18 @@ Proof.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_poly_with_iss_wf :
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_wf :
   forall pol_source before_scop pol_out,
     PolyLang.wf_pprog_affine pol_source ->
     mayReturn
-      (Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss
+      (Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
          pol_source before_scop)
       pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol_source before_scop pol_out Hwf_source Hopt.
-  unfold Core.try_diamond_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
-  destruct (Core.CoreOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
+  unfold Core.try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss in Hopt.
+  destruct (Core.CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (Core.PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -620,17 +620,17 @@ Proof.
           (Core.ValidatorCore.validate_preserve_wf_pprog
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
-        eapply try_verified_diamond_after_phase_mid_poly_wf; eauto.
+        eapply try_verified_post_tiling_affine_after_phase_mid_poly_wf; eauto.
       * reject_tiling_contradiction Hopt.
     + reject_tiling_contradiction Hopt.
   - reject_tiling_contradiction Hopt.
 Qed.
 
-Lemma try_checked_iss_diamond_phase_pipeline_from_poly_poly_correct :
+Lemma try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_correct :
   forall pol before_scop pol_out st st',
     PolyLang.wf_pprog_affine pol ->
     mayReturn
-      (Core.try_checked_iss_diamond_phase_pipeline_from_poly_poly
+      (Core.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
          pol before_scop)
       pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
@@ -638,7 +638,7 @@ Lemma try_checked_iss_diamond_phase_pipeline_from_poly_poly_correct :
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol before_scop pol_out st st' Hwf Hopt Hsem_out.
-  unfold Core.try_checked_iss_diamond_phase_pipeline_from_poly_poly in Hopt.
+  unfold Core.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly in Hopt.
   destruct (Core.CoreOpt.infer_iss_from_source_scop pol before_scop) as [iss_opt|msg]
     eqn:Hiss_infer.
   - destruct iss_opt as [[pol_iss w]|].
@@ -650,7 +650,7 @@ Proof.
              (CoreOpt.check_wf_polyprog_affine_correct pol_iss _ Hiss_wf eq_refl)
              as Hwf_iss.
            pose proof
-             (try_diamond_phase_pipeline_from_source_pol_poly_with_iss_correct
+             (try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_correct
                 pol_iss before_scop pol_out st st' Hwf_iss Hopt Hsem_out)
              as Hiss_corr.
            destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
@@ -663,23 +663,23 @@ Proof.
            exists st_src.
            split; auto.
            eapply State.eq_trans; eauto.
-        -- eapply try_diamond_phase_pipeline_from_source_pol_poly_correct; eauto.
-      * eapply try_diamond_phase_pipeline_from_source_pol_poly_correct; eauto.
-    + eapply try_diamond_phase_pipeline_from_source_pol_poly_correct; eauto.
-  - eapply try_diamond_phase_pipeline_from_source_pol_poly_correct; eauto.
+        -- eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct; eauto.
+      * eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct; eauto.
+    + eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct; eauto.
+  - eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct; eauto.
 Qed.
 
-Lemma try_checked_iss_diamond_phase_pipeline_from_poly_poly_wf :
+Lemma try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_wf :
   forall pol before_scop pol_out,
     PolyLang.wf_pprog_affine pol ->
     mayReturn
-      (Core.try_checked_iss_diamond_phase_pipeline_from_poly_poly
+      (Core.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
          pol before_scop)
       pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol before_scop pol_out Hwf Hopt.
-  unfold Core.try_checked_iss_diamond_phase_pipeline_from_poly_poly in Hopt.
+  unfold Core.try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly in Hopt.
   destruct (Core.CoreOpt.infer_iss_from_source_scop pol before_scop) as [iss_opt|msg]
     eqn:Hiss_infer.
   - destruct iss_opt as [[pol_iss w]|].
@@ -690,27 +690,27 @@ Proof.
         -- pose proof
              (CoreOpt.check_wf_polyprog_affine_correct pol_iss _ Hiss_wf eq_refl)
              as Hwf_iss.
-           eapply try_diamond_phase_pipeline_from_source_pol_poly_with_iss_wf; eauto.
-        -- eapply try_diamond_phase_pipeline_from_source_pol_poly_wf; eauto.
-      * eapply try_diamond_phase_pipeline_from_source_pol_poly_wf; eauto.
-    + eapply try_diamond_phase_pipeline_from_source_pol_poly_wf; eauto.
-  - eapply try_diamond_phase_pipeline_from_source_pol_poly_wf; eauto.
+           eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_wf; eauto.
+        -- eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf; eauto.
+      * eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf; eauto.
+    + eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf; eauto.
+  - eapply try_post_tiling_affine_phase_pipeline_from_source_pol_poly_wf; eauto.
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct :
   forall pol pol_out st st',
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
+    mayReturn (Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
     PolyLang.instance_list_semantics pol_out st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol pol_out st st' Hwf Hopt Hsem_out.
-  unfold Core.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly in Hopt.
+  unfold Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly in Hopt.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_checked_iss_diamond_phase_pipeline_from_poly_poly_correct.
+      eapply try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_correct.
       - exact Hwf.
       - exact Hopt.
       - exact Hsem_out. }
@@ -718,18 +718,18 @@ Proof.
   { reject_tiling_contradiction Hopt. }
 Qed.
 
-Lemma diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf :
+Lemma post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf :
   forall pol pol_out,
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
+    mayReturn (Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol) pol_out ->
     PolyLang.wf_pprog_general pol_out.
 Proof.
   intros pol pol_out Hwf Hopt.
-  unfold Core.diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly in Hopt.
+  unfold Core.post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly in Hopt.
   destruct (Core.CoreOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   { destruct (Core.CoreOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hbefore.
     { simpl in Hopt.
-      eapply try_checked_iss_diamond_phase_pipeline_from_poly_poly_wf.
+      eapply try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_wf.
       - exact Hwf.
       - exact Hopt. }
     { reject_tiling_contradiction Hopt. } }
@@ -1258,37 +1258,37 @@ Proof.
             checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma parallel_current_diamond_prepared_from_poly_correct :
+Lemma parallel_current_post_tiling_affine_prepared_from_poly_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.parallel_current_diamond_prepared_from_poly pol d) (Okk pl) ->
+    mayReturn (Core.parallel_current_post_tiling_affine_prepared_from_poly pol d) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
-  unfold Core.parallel_current_diamond_prepared_from_poly in Hopt.
+  unfold Core.parallel_current_post_tiling_affine_prepared_from_poly in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
             checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma parallel_current_diamond_prepared_from_poly_with_iss_correct :
+Lemma parallel_current_post_tiling_affine_prepared_from_poly_with_iss_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
     mayReturn
-      (Core.parallel_current_diamond_prepared_from_poly_with_iss pol d)
+      (Core.parallel_current_post_tiling_affine_prepared_from_poly_with_iss pol d)
       (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
-  unfold Core.parallel_current_diamond_prepared_from_poly_with_iss in Hopt.
+  unfold Core.parallel_current_post_tiling_affine_prepared_from_poly_with_iss in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
             checked_parallel_current_annotated_codegen_at_correct); eauto.
 Qed.
 
@@ -1422,37 +1422,37 @@ Proof.
             checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma parallel_current_many_diamond_prepared_from_poly_correct :
+Lemma parallel_current_many_post_tiling_affine_prepared_from_poly_correct :
   forall pol dims pl st st',
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.parallel_current_many_diamond_prepared_from_poly pol dims) (Okk pl) ->
+    mayReturn (Core.parallel_current_many_post_tiling_affine_prepared_from_poly pol dims) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
-  unfold Core.parallel_current_many_diamond_prepared_from_poly in Hopt.
+  unfold Core.parallel_current_many_post_tiling_affine_prepared_from_poly in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
             checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma parallel_current_many_diamond_prepared_from_poly_with_iss_correct :
+Lemma parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss_correct :
   forall pol dims pl st st',
     PolyLang.wf_pprog_affine pol ->
     mayReturn
-      (Core.parallel_current_many_diamond_prepared_from_poly_with_iss pol dims)
+      (Core.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss pol dims)
       (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol dims pl st st' Hwf Hopt Hsem.
-  unfold Core.parallel_current_many_diamond_prepared_from_poly_with_iss in Hopt.
+  unfold Core.parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
             checked_parallel_current_many_annotated_codegen_at_correct); eauto.
 Qed.
 
@@ -1626,32 +1626,32 @@ Proof.
             parallel_current_prepared_from_poly_correct); eauto.
 Qed.
 
-Theorem Opt_parallel_current_diamond_result_correct :
+Theorem Opt_parallel_current_post_tiling_affine_result_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_parallel_current_diamond_result loop d) (Okk pl) ->
+    mayReturn (Core.Opt_parallel_current_post_tiling_affine_result loop d) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_parallel_current_diamond_result in Hopt.
+  unfold Core.Opt_parallel_current_post_tiling_affine_result in Hopt.
   eapply (extracted_result_from_prepared_correct
-            parallel_current_diamond_prepared_from_poly_correct); eauto.
+            parallel_current_post_tiling_affine_prepared_from_poly_correct); eauto.
 Qed.
 
-Theorem Opt_parallel_current_diamond_with_iss_result_correct :
+Theorem Opt_parallel_current_post_tiling_affine_with_iss_result_correct :
   forall loop d pl st st',
     mayReturn
-      (Core.Opt_parallel_current_diamond_with_iss_result loop d)
+      (Core.Opt_parallel_current_post_tiling_affine_with_iss_result loop d)
       (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_parallel_current_diamond_with_iss_result in Hopt.
+  unfold Core.Opt_parallel_current_post_tiling_affine_with_iss_result in Hopt.
   eapply (extracted_result_from_prepared_correct
-            parallel_current_diamond_prepared_from_poly_with_iss_correct); eauto.
+            parallel_current_post_tiling_affine_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_identity_with_iss_result_correct :
@@ -1760,30 +1760,30 @@ Proof.
             parallel_current_many_prepared_from_poly_correct); eauto.
 Qed.
 
-Theorem Opt_parallel_current_many_diamond_result_correct :
+Theorem Opt_parallel_current_many_post_tiling_affine_result_correct :
   forall loop dims pl st st',
-    mayReturn (Core.Opt_parallel_current_many_diamond_result loop dims) (Okk pl) ->
+    mayReturn (Core.Opt_parallel_current_many_post_tiling_affine_result loop dims) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop dims pl st st' Hopt Hsem.
-  unfold Core.Opt_parallel_current_many_diamond_result in Hopt.
+  unfold Core.Opt_parallel_current_many_post_tiling_affine_result in Hopt.
   eapply (extracted_result_from_prepared_correct
-            parallel_current_many_diamond_prepared_from_poly_correct); eauto.
+            parallel_current_many_post_tiling_affine_prepared_from_poly_correct); eauto.
 Qed.
 
-Theorem Opt_parallel_current_many_diamond_with_iss_result_correct :
+Theorem Opt_parallel_current_many_post_tiling_affine_with_iss_result_correct :
   forall loop dims pl st st',
-    mayReturn (Core.Opt_parallel_current_many_diamond_with_iss_result loop dims) (Okk pl) ->
+    mayReturn (Core.Opt_parallel_current_many_post_tiling_affine_with_iss_result loop dims) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop dims pl st st' Hopt Hsem.
-  unfold Core.Opt_parallel_current_many_diamond_with_iss_result in Hopt.
+  unfold Core.Opt_parallel_current_many_post_tiling_affine_with_iss_result in Hopt.
   eapply (extracted_result_from_prepared_correct
-            parallel_current_many_diamond_prepared_from_poly_with_iss_correct); eauto.
+            parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss_correct); eauto.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_with_iss_result_correct :
@@ -1916,30 +1916,30 @@ Proof.
   exact Opt_parallel_current_result_correct.
 Qed.
 
-Theorem Opt_parallel_current_diamond_correct :
+Theorem Opt_parallel_current_post_tiling_affine_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_parallel_current_diamond loop d) pl ->
+    mayReturn (Core.Opt_parallel_current_post_tiling_affine loop d) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop arg pl st st2 Hopt Hsem.
-  unfold Core.Opt_parallel_current_diamond in Hopt.
-  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_diamond_result); eauto.
-  exact Opt_parallel_current_diamond_result_correct.
+  unfold Core.Opt_parallel_current_post_tiling_affine in Hopt.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_post_tiling_affine_result); eauto.
+  exact Opt_parallel_current_post_tiling_affine_result_correct.
 Qed.
 
-Theorem Opt_parallel_current_diamond_with_iss_correct :
+Theorem Opt_parallel_current_post_tiling_affine_with_iss_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_parallel_current_diamond_with_iss loop d) pl ->
+    mayReturn (Core.Opt_parallel_current_post_tiling_affine_with_iss loop d) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop arg pl st st2 Hopt Hsem.
-  unfold Core.Opt_parallel_current_diamond_with_iss in Hopt.
-  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_diamond_with_iss_result); eauto.
-  exact Opt_parallel_current_diamond_with_iss_result_correct.
+  unfold Core.Opt_parallel_current_post_tiling_affine_with_iss in Hopt.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_post_tiling_affine_with_iss_result); eauto.
+  exact Opt_parallel_current_post_tiling_affine_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_identity_with_iss_correct :
@@ -2048,30 +2048,30 @@ Proof.
   exact Opt_parallel_current_many_result_correct.
 Qed.
 
-Theorem Opt_parallel_current_many_diamond_correct :
+Theorem Opt_parallel_current_many_post_tiling_affine_correct :
   forall loop dims pl st st',
-    mayReturn (Core.Opt_parallel_current_many_diamond loop dims) pl ->
+    mayReturn (Core.Opt_parallel_current_many_post_tiling_affine loop dims) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop arg pl st st2 Hopt Hsem.
-  unfold Core.Opt_parallel_current_many_diamond in Hopt.
-  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_diamond_result); eauto.
-  exact Opt_parallel_current_many_diamond_result_correct.
+  unfold Core.Opt_parallel_current_many_post_tiling_affine in Hopt.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_post_tiling_affine_result); eauto.
+  exact Opt_parallel_current_many_post_tiling_affine_result_correct.
 Qed.
 
-Theorem Opt_parallel_current_many_diamond_with_iss_correct :
+Theorem Opt_parallel_current_many_post_tiling_affine_with_iss_correct :
   forall loop dims pl st st',
-    mayReturn (Core.Opt_parallel_current_many_diamond_with_iss loop dims) pl ->
+    mayReturn (Core.Opt_parallel_current_many_post_tiling_affine_with_iss loop dims) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop arg pl st st2 Hopt Hsem.
-  unfold Core.Opt_parallel_current_many_diamond_with_iss in Hopt.
-  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_diamond_with_iss_result); eauto.
-  exact Opt_parallel_current_many_diamond_with_iss_result_correct.
+  unfold Core.Opt_parallel_current_many_post_tiling_affine_with_iss in Hopt.
+  eapply (alarm_free_from_result_correct Core.Opt_parallel_current_many_post_tiling_affine_with_iss_result); eauto.
+  exact Opt_parallel_current_many_post_tiling_affine_with_iss_result_correct.
 Qed.
 
 Theorem Opt_parallel_current_many_identity_with_iss_correct :
@@ -2197,37 +2197,37 @@ Proof.
             checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma vector_current_diamond_prepared_from_poly_correct :
+Lemma vector_current_post_tiling_affine_prepared_from_poly_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
-    mayReturn (Core.vector_current_diamond_prepared_from_poly pol d) (Okk pl) ->
+    mayReturn (Core.vector_current_post_tiling_affine_prepared_from_poly pol d) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
-  unfold Core.vector_current_diamond_prepared_from_poly in Hopt.
+  unfold Core.vector_current_post_tiling_affine_prepared_from_poly in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly_correct
             checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
-Lemma vector_current_diamond_prepared_from_poly_with_iss_correct :
+Lemma vector_current_post_tiling_affine_prepared_from_poly_with_iss_correct :
   forall pol d pl st st',
     PolyLang.wf_pprog_affine pol ->
     mayReturn
-      (Core.vector_current_diamond_prepared_from_poly_with_iss pol d)
+      (Core.vector_current_post_tiling_affine_prepared_from_poly_with_iss pol d)
       (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\ State.eq st' st''.
 Proof.
   intros pol d pl st st' Hwf Hopt Hsem.
-  unfold Core.vector_current_diamond_prepared_from_poly_with_iss in Hopt.
+  unfold Core.vector_current_post_tiling_affine_prepared_from_poly_with_iss in Hopt.
   eapply (checked_annotation_after_preparation_correct
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
-            diamond_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_wf
+            post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly_correct
             checked_vector_current_annotated_codegen_at_correct); eauto.
 Qed.
 
@@ -2369,30 +2369,30 @@ Proof.
   exact vector_current_prepared_from_poly_correct.
 Qed.
 
-Theorem Opt_vector_current_diamond_result_correct :
+Theorem Opt_vector_current_post_tiling_affine_result_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_vector_current_diamond_result loop d) (Okk pl) ->
+    mayReturn (Core.Opt_vector_current_post_tiling_affine_result loop d) (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_vector_current_diamond_result in Hopt.
+  unfold Core.Opt_vector_current_post_tiling_affine_result in Hopt.
   eapply opt_vector_current_result_from_prepared_correct; eauto.
-  exact vector_current_diamond_prepared_from_poly_correct.
+  exact vector_current_post_tiling_affine_prepared_from_poly_correct.
 Qed.
 
-Theorem Opt_vector_current_diamond_with_iss_result_correct :
+Theorem Opt_vector_current_post_tiling_affine_with_iss_result_correct :
   forall loop d pl st st',
     mayReturn
-      (Core.Opt_vector_current_diamond_with_iss_result loop d)
+      (Core.Opt_vector_current_post_tiling_affine_with_iss_result loop d)
       (Okk pl) ->
     ParallelLoop.semantics pl st st' ->
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_vector_current_diamond_with_iss_result in Hopt.
+  unfold Core.Opt_vector_current_post_tiling_affine_with_iss_result in Hopt.
   eapply opt_vector_current_result_from_prepared_correct; eauto.
-  exact vector_current_diamond_prepared_from_poly_with_iss_correct.
+  exact vector_current_post_tiling_affine_prepared_from_poly_with_iss_correct.
 Qed.
 
 Theorem Opt_vector_current_identity_with_iss_result_correct :
@@ -2511,28 +2511,28 @@ Proof.
   exact Opt_vector_current_result_correct.
 Qed.
 
-Theorem Opt_vector_current_diamond_correct :
+Theorem Opt_vector_current_post_tiling_affine_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_vector_current_diamond loop d) pl ->
+    mayReturn (Core.Opt_vector_current_post_tiling_affine loop d) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_vector_current_diamond in Hopt.
+  unfold Core.Opt_vector_current_post_tiling_affine in Hopt.
   eapply opt_vector_current_from_result_correct; eauto.
-  exact Opt_vector_current_diamond_result_correct.
+  exact Opt_vector_current_post_tiling_affine_result_correct.
 Qed.
 
-Theorem Opt_vector_current_diamond_with_iss_correct :
+Theorem Opt_vector_current_post_tiling_affine_with_iss_correct :
   forall loop d pl st st',
-    mayReturn (Core.Opt_vector_current_diamond_with_iss loop d) pl ->
+    mayReturn (Core.Opt_vector_current_post_tiling_affine_with_iss loop d) pl ->
     ParallelLoop.semantics pl st st' ->
     exists st'', LoopIR.semantics loop st st'' /\ State.eq st' st''.
 Proof.
   intros loop d pl st st' Hopt Hsem.
-  unfold Core.Opt_vector_current_diamond_with_iss in Hopt.
+  unfold Core.Opt_vector_current_post_tiling_affine_with_iss in Hopt.
   eapply opt_vector_current_from_result_correct; eauto.
-  exact Opt_vector_current_diamond_with_iss_result_correct.
+  exact Opt_vector_current_post_tiling_affine_with_iss_result_correct.
 Qed.
 
 Theorem Opt_vector_current_identity_with_iss_correct :

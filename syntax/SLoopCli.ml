@@ -552,7 +552,7 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling";
     if has_ufactor && not has_determine_tile_size && cfg.force_const_unroll then
       add_pluto_note cfg
-        "--ufactor is not passed to Pluto's scheduler oracle here; checked --unrolljam uses the verified LoopUnroll post pass";
+        "--ufactor is not passed to Pluto's scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts";
     if
       (pluto_extra_has_prefix "--ft=" cfg)
       <> (pluto_extra_has_prefix "--lt=" cfg)
@@ -792,7 +792,7 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_unrolljam_seen <- true;
           cfg.force_const_unroll <- true;
-          add_pluto_note cfg "--unrolljam selects polopt's checked unroll-jam post pass: constant-bound loops are fully unrolled, otherwise sequential Loop IR is block/remainder unrolled and same-bound sibling loops are jam-fused through a per-candidate local validator";
+          add_pluto_note cfg "--unrolljam selects the extracted sequential endpoint: proved unrolling, actual-domain sibling-loop validation, recursive jam lowering, and cleanup are covered by its top-level theorem";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"
@@ -1001,11 +1001,11 @@ let configure_scheduler_modes selection (cfg : config) =
         let diamond_mode =
           match route.SLoopRoute.tiling_family with
           | SLoopRoute.Tiled {
-              shape = SLoopRoute.Diamond SLoopRoute.DiamondFull; _
-            } -> Scheduler.FullDiamondTiling
+              shape = SLoopRoute.Diamond SLoopRoute.FullDimensionalStart; _
+            } -> Scheduler.DiamondFullDimensionalStart
           | SLoopRoute.Tiled {
-              shape = SLoopRoute.Diamond SLoopRoute.DiamondNormal; _
-            } -> Scheduler.DiamondTiling
+              shape = SLoopRoute.Diamond SLoopRoute.OneDimensionalStart; _
+            } -> Scheduler.DiamondOneDimensionalStart
           | SLoopRoute.NoTiling
           | SLoopRoute.Tiled { shape = SLoopRoute.Rectangular; _ } ->
               Scheduler.NoDiamondTiling

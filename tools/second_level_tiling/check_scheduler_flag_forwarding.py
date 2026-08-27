@@ -128,8 +128,8 @@ def main() -> None:
                 "| VISS => BandCorrect.Opt_band_with_iss loop",
                 "BandCorrect.Opt_identity_tiled_band loop",
                 "BandCorrect.Opt_identity_tiled_band_with_iss loop",
-                "| VDiamond => BandCorrect.Opt_diamond_band loop",
-                "| VDiamondISS => BandCorrect.Opt_diamond_band_with_iss loop",
+                "| VPostTilingAffine => BandCorrect.Opt_post_tiling_affine_band loop",
+                "| VPostTilingAffineISS => BandCorrect.Opt_post_tiling_affine_band_with_iss loop",
             ),
         ),
         (
@@ -141,8 +141,8 @@ def main() -> None:
                 "| VISS => SBandTilingOpt.opt_with_iss loop",
                 "SBandTilingOpt.opt_identity_tiled loop",
                 "SBandTilingOpt.opt_identity_tiled_with_iss loop",
-                "| VDiamond => SBandTilingOpt.opt_diamond loop",
-                "| VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop",
+                "| VPostTilingAffine => SBandTilingOpt.opt_post_tiling_affine loop",
+                "| VPostTilingAffineISS => SBandTilingOpt.opt_post_tiling_affine_with_iss loop",
             ),
         ),
     ):
@@ -640,21 +640,21 @@ def main() -> None:
             "parallel_current_identity_tiled_with_iss loop d",
             "parallel_current loop d",
             "parallel_current_with_iss loop d",
-            "parallel_current_diamond loop d",
-            "parallel_current_diamond_with_iss loop d",
+            "parallel_current_post_tiling_affine loop d",
+            "parallel_current_post_tiling_affine_with_iss loop d",
             "parallel_current_many_identity_tiled loop dims",
             "parallel_current_many_identity_tiled_with_iss loop dims",
             "parallel_current_many loop dims",
             "parallel_current_many_with_iss loop dims",
-            "parallel_current_many_diamond loop dims",
-            "parallel_current_many_diamond_with_iss loop dims",
+            "parallel_current_many_post_tiling_affine loop dims",
+            "parallel_current_many_post_tiling_affine_with_iss loop dims",
             "vector_current_identity loop d",
             "vector_current_identity_tiled loop d",
             "vector_current_identity_tiled_with_iss loop d",
             "vector_current_affine loop d",
             "vector_current loop d",
-            "vector_current_diamond loop d",
-            "vector_current_diamond_with_iss loop d",
+            "vector_current_post_tiling_affine loop d",
+            "vector_current_post_tiling_affine_with_iss loop d",
             "vector_current_identity_with_iss loop d",
             "vector_current_affine_with_iss loop d",
             "vector_current_with_iss loop d",
@@ -955,8 +955,13 @@ def main() -> None:
                 needle,
                 f"fail-closed producer handling in candidate probe {route}",
             )
+    require_count(
+        definition_body(main_source, "run_selected_sequential_loop_compiler"),
+        "TilingValidationRoute.report",
+        1,
+        "single report in the shared sequential compiler dispatcher",
+    )
     for route in (
-        "run_selected_sequential_loop_optimization",
         "run_verified_hinted_parallel_optimization",
         "run_verified_hinted_multipar_parallel_optimization",
         "run_selected_vector_optimization",
@@ -968,6 +973,34 @@ def main() -> None:
             "TilingValidationRoute.report",
             1,
             f"single final-candidate report {route}",
+        )
+    for route in (
+        "run_selected_sequential_loop_optimization",
+        "run_requested_sequential_loop_optimization",
+    ):
+        route_body = definition_body(main_source, route)
+        require_count(
+            route_body,
+            "TilingValidationRoute.report",
+            0,
+            f"no duplicate report in sequential wrapper {route}",
+        )
+    require(
+        definition_body(main_source, "run_selected_sequential_loop_optimization"),
+        "run_selected_sequential_loop_compiler",
+        "ordinary postpass uses the shared sequential compiler dispatcher",
+    )
+    requested_sequential = definition_body(
+        main_source, "run_requested_sequential_loop_optimization"
+    )
+    for needle in (
+        "run_selected_sequential_loop_compiler",
+        "run_selected_sequential_loop_optimization",
+    ):
+        require(
+            requested_sequential,
+            needle,
+            "checked unroll-jam and ordinary postpasses share final reporting",
         )
 
     consumer_failure_classifier = definition_body(
@@ -1120,7 +1153,7 @@ def main() -> None:
     )
     for constructor in (
         "RawVectorCurrentIdentityTiledISS",
-        "RawVectorCurrentDiamondISS",
+        "RawVectorCurrentPostTilingAffineISS",
         "RawVectorCurrentDefaultISS",
     ):
         require(vector_config, constructor, "proved vector config dispatch")

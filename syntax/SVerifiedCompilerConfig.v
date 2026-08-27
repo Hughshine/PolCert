@@ -1,10 +1,13 @@
 Require Import String.
 
 Require Import ImpureAlarmConfig.
+Require Import List.
 Require Import Result.
 Require Import SPolIRs.
+Require Import SLoopJamLower.
 Require Import SPolOpt.
 Require Import SBandTilingOpt.
+Require Import VerifiedLoopPostpass.
 
 Local Open Scope string_scope.
 
@@ -35,8 +38,8 @@ Inductive raw_config : Type :=
 | RawIdentityBand
 | RawIdentityBandISS
 | RawISS
-| RawDiamond
-| RawDiamondISS
+| RawPostTilingAffine
+| RawPostTilingAffineISS
 | RawUnsupported.
 
 Inductive verified_config : Type :=
@@ -51,8 +54,8 @@ Inductive verified_config : Type :=
 | VIdentityBand
 | VIdentityBandISS
 | VISS
-| VDiamond
-| VDiamondISS.
+| VPostTilingAffine
+| VPostTilingAffineISS.
 
 Definition check_config (cfg: raw_config) : result verified_config :=
   match cfg with
@@ -67,8 +70,8 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   | RawIdentityBand => Okk VIdentityBand
   | RawIdentityBandISS => Okk VIdentityBandISS
   | RawISS => Okk VISS
-  | RawDiamond => Okk VDiamond
-  | RawDiamondISS => Okk VDiamondISS
+  | RawPostTilingAffine => Okk VPostTilingAffine
+  | RawPostTilingAffineISS => Okk VPostTilingAffineISS
   | RawUnsupported => Err "unsupported verified compiler configuration"
   end.
 (** ** Concrete verified and raw dispatchers
@@ -92,8 +95,8 @@ Definition compile_verified
   | VIdentityBand => SBandTilingOpt.opt_identity_tiled loop
   | VIdentityBandISS => SBandTilingOpt.opt_identity_tiled_with_iss loop
   | VISS => SBandTilingOpt.opt_with_iss loop
-  | VDiamond => SBandTilingOpt.opt_diamond loop
-  | VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop
+  | VPostTilingAffine => SBandTilingOpt.opt_post_tiling_affine loop
+  | VPostTilingAffineISS => SBandTilingOpt.opt_post_tiling_affine_with_iss loop
   end.
 
 Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
@@ -102,3 +105,41 @@ Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
   | Okk vcfg => compile_verified vcfg loop
   | Err msg => res_to_alarm loop (Err msg)
   end.
+
+Module Postpass := VerifiedLoopPostpass SPolIRs.
+
+Definition no_postpass : loop_postpass_config := NoLoopPostpass.
+Definition const_unroll_postpass : loop_postpass_config := ConstUnrollPostpass.
+
+Definition compile_with_postpass
+    (cfg : raw_config) (postpass : loop_postpass_config)
+    (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND optimized <- compile cfg loop -;
+  Postpass.apply postpass optimized.
+
+(** [SLoopJamLower] is the concrete plan API consumed by the OCaml driver.
+    Rebuilding each candidate here keeps extraction on that single public
+    nominal type while the verified postpass retains its private functor
+    instance. *)
+Definition adapt_unrolljam_candidate
+    (candidate : SLoopJamLower.unrolljam_candidate)
+    : Postpass.JamLower.unrolljam_candidate :=
+  Postpass.JamLower.Build_unrolljam_candidate
+    (SLoopJamLower.unrolljam_candidate_depth candidate)
+    (SLoopJamLower.unrolljam_candidate_path candidate).
+
+Definition adapt_unrolljam_plan
+    (plan : SLoopJamLower.unrolljam_plan)
+    : Postpass.JamLower.unrolljam_plan :=
+  List.map adapt_unrolljam_candidate plan.
+
+Definition compile_with_unrolljam
+    (cfg : raw_config) (const_first : bool)
+    (select :
+       SPolIRs.Loop.t -> SLoopJamLower.unrolljam_plan)
+    (factor : nat) (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND optimized <- compile cfg loop -;
+  Postpass.apply_checked_unrolljam
+    const_first
+    (fun prepared => adapt_unrolljam_plan (select prepared))
+    factor optimized.

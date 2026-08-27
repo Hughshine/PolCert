@@ -123,21 +123,21 @@ utility refactor is justified.
 - **Refactor:** Derive this as a projection of the same diamond success-view/combined spec used by the correctness theorem.
 - **Risk/use:** `low`; callers 2; direct qualified external uses 0; config-reachable `yes`. Public name/type must remain unchanged.
 
-### `try_diamond_phase_pipeline_from_source_pol_poly_correct` (declaration 447; proof span 32, body 30)
+### `try_post_tiling_affine_phase_pipeline_from_source_pol_poly_correct` (declaration 447; proof span 32, body 30)
 
 - **Role:** Runs the no-ISS diamond phase producer, validates the affine midpoint, and invokes verified diamond correctness.
 - **Why long:** It duplicates the generic phase composition pattern and the with-ISS diamond theorem; only the phase runner differs.
 - **Refactor:** Introduce a runner-parameterized private diamond-phase composition lemma and keep no-ISS/with-ISS names as wrappers.
 - **Risk/use:** `low`; callers 2; direct qualified external uses 0; config-reachable `yes`. Public name/type must remain unchanged.
 
-### `try_diamond_phase_pipeline_from_source_pol_poly_with_iss_correct` (declaration 556; proof span 32, body 30)
+### `try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss_correct` (declaration 556; proof span 32, body 30)
 
 - **Role:** Runs the ISS-enabled diamond phase producer, validates the affine midpoint, and invokes the same verified diamond theorem.
 - **Why long:** The proof is structurally identical to the no-ISS variant apart from the runner constant.
 - **Refactor:** Use the same runner-parameterized private lemma as the no-ISS theorem; preserve this public name/type.
 - **Risk/use:** `low`; callers 1; direct qualified external uses 0; config-reachable `yes`. Public name/type must remain unchanged.
 
-### `try_checked_iss_diamond_phase_pipeline_from_poly_poly_correct` (declaration 626; proof span 32, body 30)
+### `try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly_correct` (declaration 626; proof span 32, body 30)
 
 - **Role:** Implements optional ISS: if inference, ISS validation, and wf checking succeed, compose ISS semantics with the with-ISS diamond route; otherwise prove the fallback diamond route.
 - **Why long:** Four fallback branches repeat the same downstream theorem; the accepted branch manually composes ISS and route state equivalences.

@@ -84,11 +84,23 @@ The important route families are:
 - Pluto-hinted multi-current parallel configs selected by `--parallel --multipar`
   and represented by the `RawParallelCurrentMany*` constructors.
 
-Vector and unroll/jam are checked adjacent routes, not constructors of
-`VerifiedParallelCompilerConfig.raw_config`. Vector routes reuse the doall
-certificate and the checked vector codegen lemmas. The supported unroll/jam
-route is a checked Loop-level postpass applied by the OCaml driver around the
-sequential Loop optimizer result before lifting/printing.
+Vector routes reuse the doall certificate and checked vector codegen lemmas.
+Constant-bound unrolling is an independent postpass dimension of the extracted
+sequential compiler rather than another copy of every producer constructor.
+`compile_with_postpass_correct` composes each producer theorem with
+`LoopUnroll.const_unroll_correct` and verified cleanup.
+
+The Pluto-compatible unroll-jam route is part of the sequential endpoint.
+`LoopJamValidator` retains the parameter and enclosing-iterator schedule
+prefix, then checks cross-body independence within each shared outer
+environment over the candidate's actual bounds.
+`LoopJamBridge.checked_pair_refines_sound` converts that certificate to the
+native trace premise, and `LoopJamContext` lifts each accepted pair through the
+recursive lowering. The extracted theorem
+`extracted_sequential_compile_with_unrolljam_correct` composes the selected
+producer, optional constant unrolling, checked block/remainder unroll-jam, and
+cleanup for the complete returned Loop program. The selector remains an
+untrusted profitability policy, but the theorem quantifies over every selector.
 
 ## Pluto-compatible CLI
 
@@ -97,8 +109,10 @@ unsupported combinations with explicit reasons, and dispatches the accepted
 combination to the relevant checked route. The unified wrapper covers ordinary
 tiling, second-level tiling, ISS combinations, diamond and full-diamond routes,
 checked parallelization, and `--multipar` up to the current multi-current
-certificate surface. Adjacent checked routes cover vector annotation and the
-supported unroll/jam subset.
+certificate surface. The extracted sequential postpass endpoint covers both
+constant-bound unrolling and checked unroll-jam. Parallel/vector output combined
+with unroll-jam remains an explicit rejection until an annotated-output
+postpass theorem is added.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
 parallel-loop hints, builds a list of candidate padded schedule coordinates, and calls a

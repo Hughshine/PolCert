@@ -369,7 +369,7 @@ def write_markdown(payload: dict[str, object]) -> str:
         "",
         "This report compares native Pluto `--unrolljam` against native Pluto `--nounrolljam` on extracted OpenScop, then checks whether the affine-validated `polopt --pluto-compat --notile --unrolljam` route produces a corresponding checked Loop-IR structure.",
         "",
-        "A case counts as a direct Pluto codegen effect only when the two native Pluto after-scheduling OpenScop files are identical, the generated C differs, and the unrolled native C contains the requested factor step. PolOpt coverage is structural: checked output must contain the same block factor and the final intra-block offset. The PolOpt side deliberately disables tiling, and any tiling-validation route report fails this check, so the result isolates the verified unroll-jam postpass from tiling acceptance.",
+        "A case counts as a direct Pluto codegen effect only when the two native Pluto after-scheduling OpenScop files are identical, the generated C differs, and the unrolled native C contains the requested factor step. PolOpt coverage is structural: its output must contain the same block factor and the final intra-block offset. The PolOpt side deliberately disables tiling, and any tiling-validation route report fails this check, so the result isolates the Loop-level unroll-jam implementation from tiling acceptance. The extracted sequential endpoint covers constant and block unrolling, locally validated jam, recursive composition, and cleanup.",
         "",
         "## Summary",
         "",

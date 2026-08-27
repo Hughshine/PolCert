@@ -27,7 +27,7 @@ Local Open Scope string_scope.
 
 (** * Proof map
 
-    The definitions first build verified affine, ISS, tiling, and diamond
+    The definitions first build verified affine, ISS, tiling, and post_tiling_affine
     routes over polyhedral programs.  Their [*_from_poly_*_correct] lemmas
     compose the corresponding validators with code generation.  The public
     loop-to-loop theorems finally undo strengthening and invoke the extractor
@@ -156,7 +156,7 @@ Definition try_identity_phase_pipeline_from_source_pol_band
       end
   end.
 
-Definition try_verified_diamond_after_phase_mid_band
+Definition try_verified_post_tiling_affine_after_phase_mid_band
     (pol_mid: PolyLang.t)
     (mid_scop posttile_scop after_scop: OpenScop): imp LoopIR.t :=
   let rejected := reject_tiling in
@@ -200,11 +200,11 @@ Definition try_verified_diamond_after_phase_mid_band
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_band
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_band
     (pol_source: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
   let rejected := reject_tiling in
-  match BaseOpt.run_pluto_diamond_phase_pipeline before_scop with
+  match BaseOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -214,18 +214,18 @@ Definition try_diamond_phase_pipeline_from_source_pol_band
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_band
+            try_verified_post_tiling_affine_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
       end
   end.
 
-Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
     (pol_source: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
   let rejected := reject_tiling in
-  match BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop with
+  match BaseOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop with
   | Err _ =>
       rejected tt
   | Okk (mid_scop, (posttile_scop, after_scop)) =>
@@ -235,14 +235,14 @@ Definition try_diamond_phase_pipeline_from_source_pol_band_with_iss
       | Okk pol_mid =>
           BIND affine_ok <- ValidatorCore.validate pol_source pol_mid -;
           if affine_ok then
-            try_verified_diamond_after_phase_mid_band
+            try_verified_post_tiling_affine_after_phase_mid_band
               pol_mid mid_scop posttile_scop after_scop
           else
             rejected tt
       end
   end.
 
-Definition try_checked_iss_diamond_phase_pipeline_from_poly_band
+Definition try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
     (pol: PolyLang.t)
     (before_scop: OpenScop): imp LoopIR.t :=
   match BaseOpt.infer_iss_from_source_scop pol before_scop with
@@ -250,14 +250,14 @@ Definition try_checked_iss_diamond_phase_pipeline_from_poly_band
       if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
         BIND iss_wf <- ValidatorCore.check_wf_polyprog pol_iss -;
         if iss_wf then
-          try_diamond_phase_pipeline_from_source_pol_band_with_iss
+          try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
             pol_iss before_scop
         else
-          try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+          try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
       else
-        try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
   | _ =>
-      try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+      try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
   end.
 
 Definition try_checked_iss_phase_pipeline_from_poly_band
@@ -369,24 +369,24 @@ Definition identity_tiling_opt_prepared_from_poly_with_iss_band
   else
     reject_tiling tt.
 
-Definition phase_diamond_opt_prepared_from_poly_no_iss_band
+Definition phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
   if BaseOpt.has_nonscalar_stmt pol then
     match BaseOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_diamond_phase_pipeline_from_source_pol_band pol before_scop
+        try_post_tiling_affine_phase_pipeline_from_source_pol_band pol before_scop
     | None =>
         reject_tiling tt
     end
   else
     reject_tiling tt.
 
-Definition phase_diamond_opt_prepared_from_poly_with_iss_band
+Definition phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band
     (pol: PolyLang.t): imp LoopIR.t :=
   if BaseOpt.has_nonscalar_stmt pol then
     match BaseOpt.export_for_phase_scheduler pol with
     | Some before_scop =>
-        try_checked_iss_diamond_phase_pipeline_from_poly_band pol before_scop
+        try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band pol before_scop
     | None =>
         reject_tiling tt
     end
@@ -417,17 +417,17 @@ Definition identity_tiling_opt_prepared_with_iss_band
   let pol := BaseOpt.Strengthen.strengthen_pprog pol0 in
   identity_tiling_opt_prepared_from_poly_with_iss_band pol.
 
-Definition phase_diamond_opt_prepared_band
+Definition phase_post_tiling_affine_opt_prepared_band
     (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (BaseOpt.Extractor.extractor loop) -;
   let pol := BaseOpt.Strengthen.strengthen_pprog pol0 in
-  phase_diamond_opt_prepared_from_poly_no_iss_band pol.
+  phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band pol.
 
-Definition phase_diamond_opt_prepared_with_iss_band
+Definition phase_post_tiling_affine_opt_prepared_with_iss_band
     (loop: LoopIR.t): imp LoopIR.t :=
   BIND pol0 <- res_to_alarm PolyLang.dummy (BaseOpt.Extractor.extractor loop) -;
   let pol := BaseOpt.Strengthen.strengthen_pprog pol0 in
-  phase_diamond_opt_prepared_from_poly_with_iss_band pol.
+  phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band pol.
 
 Lemma try_verified_tiling_after_phase_mid_band_correct:
   forall pol_mid mid_scop after_scop st st',
@@ -874,7 +874,7 @@ Proof.
   eapply Opt_prepared_identity_tiled_band_with_iss_correct; eauto.
 Qed.
 
-Local Lemma diamond_accepted_tail_correct:
+Local Lemma post_tiling_affine_accepted_tail_correct:
   forall pol_mid pol_posttile pol_after ws st st' loop',
     PolyLang.wf_pprog_affine pol_mid ->
     PolyLang.wf_pprog_general pol_posttile ->
@@ -920,11 +920,11 @@ Proof.
     + exact Heq_mid.
 Qed.
 
-Lemma try_verified_diamond_after_phase_mid_band_correct:
+Lemma try_verified_post_tiling_affine_after_phase_mid_band_correct:
   forall pol_mid mid_scop posttile_scop after_scop st st',
     PolyLang.wf_pprog_affine pol_mid ->
     WHEN loop' <-
-      try_verified_diamond_after_phase_mid_band
+      try_verified_post_tiling_affine_after_phase_mid_band
         pol_mid mid_scop posttile_scop after_scop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
@@ -933,7 +933,7 @@ Lemma try_verified_diamond_after_phase_mid_band_correct:
 Proof.
   intros pol_mid mid_scop posttile_scop after_scop st st'
          Hwf_mid loop' Hopt Hloop.
-  unfold try_verified_diamond_after_phase_mid_band in Hopt.
+  unfold try_verified_post_tiling_affine_after_phase_mid_band in Hopt.
   destruct (BaseOpt.infer_tiling_witness_scops mid_scop posttile_scop)
     as [ws|msg] eqn:Hws.
   - destruct
@@ -960,7 +960,7 @@ Proof.
                           pol_after true Hwf_check eq_refl)
                        as Hwf_after.
                      exact
-                       (diamond_accepted_tail_correct
+                       (post_tiling_affine_accepted_tail_correct
                           pol_mid pol_posttile pol_after ws st st' loop'
                           Hwf_mid Hwf_posttile Hwf_after
                           Hroute Hfinal Hopt Hloop).
@@ -980,11 +980,11 @@ Proof.
   - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_band_correct:
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct:
   forall pol_source before_scop st st',
     PolyLang.wf_pprog_affine pol_source ->
     WHEN loop' <-
-      try_diamond_phase_pipeline_from_source_pol_band
+      try_post_tiling_affine_phase_pipeline_from_source_pol_band
         pol_source before_scop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
@@ -992,8 +992,8 @@ Lemma try_diamond_phase_pipeline_from_source_pol_band_correct:
       State.eq st' st''.
 Proof.
   intros pol_source before_scop st st' Hwf_source loop' Hopt Hloop.
-  unfold try_diamond_phase_pipeline_from_source_pol_band in Hopt.
-  destruct (BaseOpt.run_pluto_diamond_phase_pipeline before_scop)
+  unfold try_post_tiling_affine_phase_pipeline_from_source_pol_band in Hopt.
+  destruct (BaseOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -1004,7 +1004,7 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         pose proof
-          (try_verified_diamond_after_phase_mid_band_correct
+          (try_verified_post_tiling_affine_after_phase_mid_band_correct
              pol_mid mid_scop posttile_scop after_scop
              st st' Hwf_mid loop' Hopt Hloop)
           as Hmid_corr.
@@ -1022,11 +1022,11 @@ Proof.
   - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_correct:
+Lemma try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss_correct:
   forall pol_source before_scop st st',
     PolyLang.wf_pprog_affine pol_source ->
     WHEN loop' <-
-      try_diamond_phase_pipeline_from_source_pol_band_with_iss
+      try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss
         pol_source before_scop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
@@ -1034,8 +1034,8 @@ Lemma try_diamond_phase_pipeline_from_source_pol_band_with_iss_correct:
       State.eq st' st''.
 Proof.
   intros pol_source before_scop st st' Hwf_source loop' Hopt Hloop.
-  unfold try_diamond_phase_pipeline_from_source_pol_band_with_iss in Hopt.
-  destruct (BaseOpt.run_pluto_diamond_phase_pipeline_with_iss before_scop)
+  unfold try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss in Hopt.
+  destruct (BaseOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop)
     as [[mid_scop [posttile_scop after_scop]]|msg] eqn:Hphase.
   - destruct (PolyLang.from_openscop_schedule_only pol_source mid_scop)
       as [pol_mid|msg_mid] eqn:Hmid.
@@ -1046,7 +1046,7 @@ Proof.
              pol_source pol_mid _ Haff eq_refl)
           as [_ Hwf_mid].
         pose proof
-          (try_verified_diamond_after_phase_mid_band_correct
+          (try_verified_post_tiling_affine_after_phase_mid_band_correct
              pol_mid mid_scop posttile_scop after_scop
              st st' Hwf_mid loop' Hopt Hloop)
           as Hmid_corr.
@@ -1064,11 +1064,11 @@ Proof.
   - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_correct:
+Lemma try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band_correct:
   forall pol before_scop st st',
     PolyLang.wf_pprog_affine pol ->
     WHEN loop' <-
-      try_checked_iss_diamond_phase_pipeline_from_poly_band
+      try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band
         pol before_scop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
@@ -1076,7 +1076,7 @@ Lemma try_checked_iss_diamond_phase_pipeline_from_poly_band_correct:
       State.eq st' st''.
 Proof.
   intros pol before_scop st st' Hwf loop' Hopt Hloop.
-  unfold try_checked_iss_diamond_phase_pipeline_from_poly_band in Hopt.
+  unfold try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band in Hopt.
   destruct (BaseOpt.infer_iss_from_source_scop pol before_scop) as [iss_opt|msg]
     eqn:Hiss_infer.
   - destruct iss_opt as [[pol_iss w]|].
@@ -1089,7 +1089,7 @@ Proof.
                 pol_iss _ Hiss_wf eq_refl)
              as Hwf_iss.
            pose proof
-             (try_diamond_phase_pipeline_from_source_pol_band_with_iss_correct
+             (try_post_tiling_affine_phase_pipeline_from_source_pol_band_with_iss_correct
                 pol_iss before_scop st st' Hwf_iss loop' Hopt Hloop)
              as Hiss_corr.
            destruct Hiss_corr as [st_iss [Hiss_sem Heq_iss]].
@@ -1102,111 +1102,111 @@ Proof.
            exists st_src.
            split; auto.
            eapply State.eq_trans; eauto.
-        -- eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
-      * eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
-    + eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
-  - eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
+        -- eapply try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct; eauto.
+      * eapply try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct; eauto.
+    + eapply try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct; eauto.
+  - eapply try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct; eauto.
 Qed.
 
-Lemma phase_diamond_opt_prepared_from_poly_no_iss_band_correct:
+Lemma phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band_correct:
   forall pol st st',
     PolyLang.wf_pprog_affine pol ->
-    WHEN loop' <- phase_diamond_opt_prepared_from_poly_no_iss_band pol THEN
+    WHEN loop' <- phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band pol THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\
       State.eq st' st''.
 Proof.
   intros pol st st' Hwf loop' Hopt Hloop.
-  unfold phase_diamond_opt_prepared_from_poly_no_iss_band in Hopt.
+  unfold phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band in Hopt.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
-    + eapply try_diamond_phase_pipeline_from_source_pol_band_correct; eauto.
+    + eapply try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct; eauto.
     + elim (reject_tiling_impossible loop' Hopt).
   - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Lemma phase_diamond_opt_prepared_from_poly_with_iss_band_correct:
+Lemma phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band_correct:
   forall pol st st',
     PolyLang.wf_pprog_affine pol ->
-    WHEN loop' <- phase_diamond_opt_prepared_from_poly_with_iss_band pol THEN
+    WHEN loop' <- phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band pol THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       PolyLang.instance_list_semantics pol st st'' /\
       State.eq st' st''.
 Proof.
   intros pol st st' Hwf loop' Hopt Hloop.
-  unfold phase_diamond_opt_prepared_from_poly_with_iss_band in Hopt.
+  unfold phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band in Hopt.
   destruct (BaseOpt.has_nonscalar_stmt pol) eqn:Hnonscalar.
   - destruct (BaseOpt.export_for_phase_scheduler pol) as [before_scop|] eqn:Hscop.
-    + eapply try_checked_iss_diamond_phase_pipeline_from_poly_band_correct; eauto.
+    + eapply try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band_correct; eauto.
     + elim (reject_tiling_impossible loop' Hopt).
   - elim (reject_tiling_impossible loop' Hopt).
 Qed.
 
-Definition Opt_prepared_diamond_band := phase_diamond_opt_prepared_band.
-Definition Opt_diamond_band := Opt_prepared_diamond_band.
-Definition Opt_prepared_diamond_band_with_iss :=
-  phase_diamond_opt_prepared_with_iss_band.
-Definition Opt_diamond_band_with_iss := Opt_prepared_diamond_band_with_iss.
+Definition Opt_prepared_post_tiling_affine_band := phase_post_tiling_affine_opt_prepared_band.
+Definition Opt_post_tiling_affine_band := Opt_prepared_post_tiling_affine_band.
+Definition Opt_prepared_post_tiling_affine_band_with_iss :=
+  phase_post_tiling_affine_opt_prepared_with_iss_band.
+Definition Opt_post_tiling_affine_band_with_iss := Opt_prepared_post_tiling_affine_band_with_iss.
 
-Theorem Opt_prepared_diamond_band_correct:
+Theorem Opt_prepared_post_tiling_affine_band_correct:
   forall loop st st',
-    WHEN loop' <- Opt_prepared_diamond_band loop THEN
+    WHEN loop' <- Opt_prepared_post_tiling_affine_band loop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\
       State.eq st' st''.
 Proof.
   intros loop st st' loop' Hopt Hloop.
-  unfold Opt_prepared_diamond_band, phase_diamond_opt_prepared_band in Hopt.
+  unfold Opt_prepared_post_tiling_affine_band, phase_post_tiling_affine_opt_prepared_band in Hopt.
   exact
     (lift_frontend_correct
-       phase_diamond_opt_prepared_from_poly_no_iss_band loop st st'
-       phase_diamond_opt_prepared_from_poly_no_iss_band_correct
+       phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band loop st st'
+       phase_post_tiling_affine_opt_prepared_from_poly_no_iss_band_correct
        loop' Hopt Hloop).
 Qed.
 
-Theorem Opt_diamond_band_correct:
+Theorem Opt_post_tiling_affine_band_correct:
   forall loop st st',
-    WHEN loop' <- Opt_diamond_band loop THEN
+    WHEN loop' <- Opt_post_tiling_affine_band loop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\
       State.eq st' st''.
 Proof.
   intros.
-  eapply Opt_prepared_diamond_band_correct; eauto.
+  eapply Opt_prepared_post_tiling_affine_band_correct; eauto.
 Qed.
 
-Theorem Opt_prepared_diamond_band_with_iss_correct:
+Theorem Opt_prepared_post_tiling_affine_band_with_iss_correct:
   forall loop st st',
-    WHEN loop' <- Opt_prepared_diamond_band_with_iss loop THEN
+    WHEN loop' <- Opt_prepared_post_tiling_affine_band_with_iss loop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\
       State.eq st' st''.
 Proof.
   intros loop st st' loop' Hopt Hloop.
-  unfold Opt_prepared_diamond_band_with_iss,
-    phase_diamond_opt_prepared_with_iss_band in Hopt.
+  unfold Opt_prepared_post_tiling_affine_band_with_iss,
+    phase_post_tiling_affine_opt_prepared_with_iss_band in Hopt.
   exact
     (lift_frontend_correct
-       phase_diamond_opt_prepared_from_poly_with_iss_band loop st st'
-       phase_diamond_opt_prepared_from_poly_with_iss_band_correct
+       phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band loop st st'
+       phase_post_tiling_affine_opt_prepared_from_poly_with_iss_band_correct
        loop' Hopt Hloop).
 Qed.
 
-Theorem Opt_diamond_band_with_iss_correct:
+Theorem Opt_post_tiling_affine_band_with_iss_correct:
   forall loop st st',
-    WHEN loop' <- Opt_diamond_band_with_iss loop THEN
+    WHEN loop' <- Opt_post_tiling_affine_band_with_iss loop THEN
     LoopIR.semantics loop' st st' ->
     exists st'',
       LoopIR.semantics loop st st'' /\
       State.eq st' st''.
 Proof.
   intros.
-  eapply Opt_prepared_diamond_band_with_iss_correct; eauto.
+  eapply Opt_prepared_post_tiling_affine_band_with_iss_correct; eauto.
 Qed.
 
 Theorem Opt_band_correct:

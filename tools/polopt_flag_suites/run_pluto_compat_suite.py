@@ -104,6 +104,7 @@ FUSION10 = ROOT / "tests" / "polopt-regression" / "inputs" / "fusion10.loop"
 SCALPRIV = ROOT / "tests" / "polopt-regression" / "inputs" / "scalpriv.loop"
 CONST_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "const_unroll.loop"
 MIXED_UNROLL = ROOT / "tests" / "polopt-regression" / "inputs" / "mixed_unroll.loop"
+UNROLLJAM_CONTEXT_BOUND_ESCAPE = ROOT / "tests" / "polopt-regression" / "inputs" / "unrolljam_context_bound_escape.loop"
 STRIDE_EVEN = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_even.loop"
 STRIDE_DOWN = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_down.loop"
 STRIDE_BAD_ZERO = ROOT / "tests" / "polopt-regression" / "inputs" / "stride_bad_zero.loop"
@@ -1094,6 +1095,23 @@ CHECKS = [
         env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
     ),
     Check(
+        "unrolljam-context-bound-escape-rejected",
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel"],
+        UNROLLJAM_CONTEXT_BOUND_ESCAPE,
+        True,
+        "for i0 in range(0, ((N + -1) / 2))",
+        "checked post flags: --ufactor=2",
+        effect_needles=(
+            "A[((2 * i0) + 1)][(2 * i1)] = (A[(2 * i0)][K] + 1);",
+            "A[((2 * i0) + 2)][(2 * i1)] = (A[((2 * i0) + 1)][K] + 1);",
+        ),
+        effect_absent=(
+            "A[((2 * i0) + 1)][(2 * i1)] = (A[(2 * i0)][K] + 1);\n"
+            "          A[((2 * i0) + 2)][(2 * i1)] = (A[((2 * i0) + 1)][K] + 1);",
+        ),
+        env={"POLCERT_UNROLLJAM_POLICY": "checked-all-depths"},
+    ),
+    Check(
         "unrolljam-empty-selector-policy",
         ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=4", "--nodiamond-tile", "--noparallel"],
         MATMUL,
@@ -1651,10 +1669,10 @@ ROUTE_BINDINGS = {
         "default sequential route must use the extracted band-aware optimizer",
     ("syntax/SVerifiedCompilerConfig.v", "| VDefault => SBandTilingOpt.opt loop"):
         "the public RawDefault compatibility config must also be band-first",
-    ("syntax/SVerifiedCompilerConfig.v", "| VDiamond => SBandTilingOpt.opt_diamond loop"):
-        "diamond route must use the extracted SBandTilingOpt.opt_diamond entry",
-    ("syntax/SVerifiedCompilerConfig.v", "| VDiamondISS => SBandTilingOpt.opt_diamond_with_iss loop"):
-        "diamond+ISS route must use the extracted SBandTilingOpt.opt_diamond_with_iss entry",
+    ("syntax/SVerifiedCompilerConfig.v", "| VPostTilingAffine => SBandTilingOpt.opt_post_tiling_affine loop"):
+        "diamond route must use the extracted SBandTilingOpt.opt_post_tiling_affine entry",
+    ("syntax/SVerifiedCompilerConfig.v", "| VPostTilingAffineISS => SBandTilingOpt.opt_post_tiling_affine_with_iss loop"):
+        "diamond+ISS route must use the extracted SBandTilingOpt.opt_post_tiling_affine_with_iss entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VIdentity => SPolOpt.opt_identity loop"):
         "identity route must use the extracted SPolOpt.opt_identity entry",
     ("syntax/SVerifiedCompilerConfig.v", "| VSecondLevel => SBandTilingOpt.opt loop"):

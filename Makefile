@@ -158,7 +158,7 @@ POLCERT_SRC = Base.v Convert.v \
   PrepareCodegen.v StrengthenDomain.v \
   OpenScop.v OpenScopAST.v PolyBase.v PolyLang.v \
   SelectionSort.v StablePermut.v CState.v AffineValidator.v \
-  ParallelValidator.v JamValidator.v LoopJamTrace.v LoopJamFusion.v LoopJamNative.v LoopJamLower.v LoopJamValidator.v RawCodegenOrigin.v \
+  ParallelValidator.v JamValidator.v LoopJamTrace.v LoopJamFusion.v LoopJamNative.v LoopJamValidator.v LoopJamLower.v LoopJamContext.v LoopJamBridge.v RawCodegenOrigin.v \
   ParallelCodegenCore.v ParallelCodegenCompatibility.v ParallelCodegenCorrect.v ParallelCodegen.v \
   PointWitness.v ISSWitness.v ISSRefinement.v \
   ISSBoolChecker.v ISSValidator.v ISSSemantics.v \
@@ -170,7 +170,7 @@ POLCERT_SRC = Base.v Convert.v \
 
 # Putting everything together (in driver/)
 
-DRIVER=PolOpt.v PolOptIdentityGenericISS.v PolOptCanonicalTiling.v PolOptBandTiling.v ParallelPolOpt.v ParallelPolOptCorrect.v PolOptCorrect.v VerifiedCompilerConfig.v VerifiedParallelCompilerConfig.v SBandTilingOptBridge.v SParallelPolOptBridge.v ExtractedPipelineCorrect.v PolOptPrepared.v CPolOpt.v TPolOpt.v TTilingCanonicalOpt.v TPolValidator.v
+DRIVER=PolOpt.v PolOptIdentityGenericISS.v PolOptCanonicalTiling.v PolOptBandTiling.v ParallelPolOpt.v ParallelPolOptCorrect.v PolOptCorrect.v VerifiedLoopPostpass.v VerifiedCompilerConfig.v VerifiedParallelCompilerConfig.v SBandTilingOptBridge.v SParallelPolOptBridge.v ExtractedPipelineCorrect.v PolOptPrepared.v CPolOpt.v TPolOpt.v TTilingCanonicalOpt.v TPolValidator.v
 
 SAMPLES=CSample1.v CSample2.v CSample3.v ExtractorSmoke.v
 
@@ -492,6 +492,7 @@ PROOF_DOC_FILES = \
   src/TilingBandDirectRuntime.v \
   polygen/ParallelLoop.v src/ParallelValidator.v src/RawCodegenOrigin.v \
   src/ParallelCodegenCore.v src/ParallelCodegenCompatibility.v src/ParallelCodegenCorrect.v \
+  polygen/LoopUnroll.v driver/VerifiedLoopPostpass.v \
   src/PrepareCodegen.v src/StrengthenDomain.v \
   driver/PolOptCorrect.v driver/PolOptBandTiling.v driver/ParallelPolOptCorrect.v \
   driver/VerifiedCompilerConfig.v driver/VerifiedParallelCompilerConfig.v \
