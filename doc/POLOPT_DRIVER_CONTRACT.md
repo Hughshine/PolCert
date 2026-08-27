@@ -165,12 +165,18 @@ native trace theorem, `LoopJamContext` covers recursive lowering, and
 `compile_with_unrolljam_correct` composes the complete returned Loop program
 with its selected producer, optional constant unrolling, and cleanup.
 
-Unroll-jam must compose with annotated output. The final implementation should
-generalize the verified Loop postpass to ParallelLoop, preserve certified
-parallel/vector modes, and restrict candidate rewriting to loop forms covered
-by its theorem. Until that composition exists, the driver must reject an
-explicit `--unrolljam` combined with parallel or vector output. It must not
-silently discard either request.
+Unroll-jam currently composes only with sequential output. Supporting annotated
+output requires generalizing the verified Loop postpass to ParallelLoop,
+preserving certified parallel/vector modes, and restricting candidate rewriting
+to loop forms covered by its theorem. Until that composition exists, the driver
+rejects an explicit `--unrolljam` combined with parallel or vector output. It
+does not silently discard either request. Re-running the identity parallel
+consumer on the returned Loop is not a valid shortcut: block/remainder
+lowering introduces `Div`, `Max`, and `Min` control expressions that are
+outside the current SCoP extractor, while the existing concurrency certificate
+describes the pre-codegen polyhedral program. Support therefore needs either a
+metadata-preserving annotated unroll-jam theorem or a proved piecewise-affine
+re-extraction path.
 
 ### 3.5 Oracle-Tuning Options
 

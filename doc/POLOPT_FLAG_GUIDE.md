@@ -180,6 +180,7 @@ It also rejects routes with no matching verified composition:
 | hinted and explicit parallel/vector options together | they select different execution families |
 | `--intratileopt --notile` | intra-tile rescheduling requires tiles |
 | `--const-unroll` with parallel or vector output | the post pass consumes sequential Loop IR |
+| `--unrolljam` with parallel or vector output | its checked Loop postpass runs after codegen, but concurrency certificates describe the pre-codegen polyhedral program |
 
 Standalone validation actions cannot be mixed with optimization-route flags.
 The driver also rejects more than one standalone action in one invocation.

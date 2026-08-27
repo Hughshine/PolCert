@@ -384,6 +384,22 @@ CHECKS = [
         native=True,
     ),
     Check(
+        "native-reject-const-unroll-parallel-current",
+        ["--identity", "--const-unroll", "--parallel-current", "0"],
+        MATMUL,
+        False,
+        "--const-unroll currently applies only to sequential Loop IR routes",
+        native=True,
+    ),
+    Check(
+        "native-reject-const-unroll-vector-current",
+        ["--identity", "--const-unroll", "--vector-current", "0"],
+        MATMUL,
+        False,
+        "--const-unroll currently applies only to sequential Loop IR routes",
+        native=True,
+    ),
+    Check(
         "optimizer-determine-tile-size",
         MATMUL_TILED_DETERMINE,
         MATMUL,
@@ -1127,6 +1143,20 @@ CHECKS = [
         MATMUL,
         False,
         "--prevector/--vector cannot be combined with --parallel",
+    ),
+    Check(
+        "reject-unrolljam-parallel",
+        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=3", "--rar", "--nodiamond-tile", "--parallel"],
+        MATMUL,
+        False,
+        "--unrolljam cannot currently be combined with parallel or vector execution",
+    ),
+    Check(
+        "reject-unrolljam-prevector",
+        ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--unrolljam", "--ufactor=3", "--rar", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        False,
+        "--unrolljam cannot currently be combined with parallel or vector execution",
     ),
     Check(
         "reject-prevector-conflict",

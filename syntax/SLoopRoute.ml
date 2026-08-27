@@ -296,7 +296,10 @@ let normalize (cfg : SLoopConfig.config) =
                   || has_parallel_current cfg
                   || has_vector_current cfg)
       then
-        Error "--const-unroll currently applies only to sequential Loop IR routes"
+        if cfg.pluto_unrolljam_seen then
+          Error "--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen"
+        else
+          Error "--const-unroll currently applies only to sequential Loop IR routes"
       else if cfg.force_band_tiling_experiment
               && cfg.force_legacy_generic_tiling
       then

@@ -436,7 +436,7 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
         elif flag == "--unrolljam":
             state.unrolljam_seen = True
-            state.add_note("--unrolljam selects the extracted sequential unroll-jam endpoint: unrolling, actual-domain sibling-loop validation, recursive jam lowering, and cleanup are covered by its top-level theorem")
+            state.add_note("--unrolljam selects the proved sequential Loop postpass: block unrolling, local jam validation, and cleanup")
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
@@ -514,7 +514,7 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if state.vector and state.parallel:
         raise Reject("--prevector/--vector cannot be combined with --parallel in the current checked annotation surface")
     if state.unrolljam_seen and (state.vector or state.parallel):
-        raise Reject("--unrolljam currently applies only to sequential Loop IR routes in polopt")
+        raise Reject("--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen")
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
     identity_tiled = state.identity and state.tile_seen and state.tile

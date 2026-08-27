@@ -507,8 +507,12 @@ let validate_pluto_compat prog cfg =
     if
       cfg.force_const_unroll
       && (cfg.force_parallel || cfg.force_vector || cfg.parallel_current_dim <> None || cfg.vector_current_dim <> None)
-    then
-      pluto_reject prog "--unrolljam currently applies only to sequential Loop IR routes in polopt";
+    then begin
+      if cfg.pluto_unrolljam_seen then
+        pluto_reject prog "--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen"
+      else
+        pluto_reject prog "--const-unroll currently applies only to sequential Loop IR routes"
+    end;
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then
@@ -792,7 +796,7 @@ let parse_args () : config =
           enable_pluto_compat cfg;
           cfg.pluto_unrolljam_seen <- true;
           cfg.force_const_unroll <- true;
-          add_pluto_note cfg "--unrolljam selects the extracted sequential endpoint: proved unrolling, actual-domain sibling-loop validation, recursive jam lowering, and cleanup are covered by its top-level theorem";
+          add_pluto_note cfg "--unrolljam selects the proved sequential Loop postpass: block unrolling, local jam validation, and cleanup";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"

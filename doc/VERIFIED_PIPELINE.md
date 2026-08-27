@@ -112,7 +112,10 @@ checked parallelization, and `--multipar` up to the current multi-current
 certificate surface. The extracted sequential postpass endpoint covers both
 constant-bound unrolling and checked unroll-jam. Parallel/vector output combined
 with unroll-jam remains an explicit rejection until an annotated-output
-postpass theorem is added.
+postpass theorem is added. The driver cannot soundly emulate that theorem by
+feeding the postpass result through an identity route: unroll-jam emits
+piecewise and quotient loop controls that the current SCoP extractor does not
+accept, and the original parallel certificate applies before that rewrite.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
 parallel-loop hints, builds a list of candidate padded schedule coordinates, and calls a
