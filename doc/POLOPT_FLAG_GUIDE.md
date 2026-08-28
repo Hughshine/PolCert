@@ -232,6 +232,13 @@ The following commands validate external artifacts instead of compiling a
 validation. Other optimization-route flags are rejected with standalone
 actions.
 
+The standalone affine action checks schedule refinement under the domains and
+access summaries supplied by the two OpenScop files. Those summaries are part
+of its trusted input: statement bodies are intentionally omitted by this
+importer, so this command is not a C-level equivalence checker. The complete
+`.loop` compiler route has a stronger boundary: it imports only Pluto's
+candidate scattering and retains the source instruction, domain, and accesses.
+
 ## Observation and Profiling
 
 `--dump-input`, `--dump-extracted-openscop`, `--dump-scheduled-openscop`, and

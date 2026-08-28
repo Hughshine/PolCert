@@ -535,13 +535,21 @@ At least one case should become a complete artifact-grade case study:
 
 ### Current status
 
-The artifact now contains three cases under `tests/pluto-bugs/`: the original
-unsafe matmul hint and two confirmed silent miscompilations. The vanished-loop
-case produces `10000` versus `2499` after incorrect OpenMP annotation. The
-no-tile unroll-jam case produces `15` versus `1` after an illegal jam. Both
-checked PolCert routes retain correct behavior. `make test-pluto-bugs` compiles
-and executes the witnesses in CI, so this track is no longer based only on
-source inspection or an imprecise hint.
+The artifact now contains six cases under `tests/pluto-bugs/`: the original
+unsafe matmul hint and five confirmed silent miscompilations, one of which is
+fixed in the current Pluto baseline. In addition to the vanished-loop parallel
+(`10000` versus `2499`) and no-tile unroll-jam (`15` versus `1`) cases, a forced
+affine statement reversal produces `100` versus `0`, and `--innerpar` after
+tiling corrupts a two-dimensional recurrence. The pure diamond/no-intratile
+case produced `20` versus `18` because a mandatory hyperplane restore was
+incorrectly gated; Pluto commit `56b6669` fixes it. Checked PolCert routes reject
+the illegal affine order, parallel overlay, and mixed-scalar diamond candidate,
+while retaining valid tiling and safe local unrolling boundaries. The typed
+`diamond-stencil` positive case separately exercises proved code generation for
+supported pure diamond tiling. `make test-pluto-bugs` executes the adversarial
+boundaries in CI. The
+separate ISS suite accepts a complete two-cut partition while rejecting both a
+three-cut/four-piece metadata mismatch and a missing sign region.
 
 ## 4. Diamond Tiling Track
 

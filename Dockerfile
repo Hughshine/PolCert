@@ -1,7 +1,7 @@
 # Keep these defaults aligned with tools/ci/pluto-baseline.env.
 ARG PLUTO_IMAGE=hughshine/pluto-verif@sha256:0e15a7614af280b02ab0dc31f110c3ee3f7a1fe3ee3d1b503cc3400d87b4f4ce
 ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
-ARG PLUTO_GIT_COMMIT=488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02
+ARG PLUTO_GIT_COMMIT=56b66690edeed1ef17ddc018bbf67666795a3fd4
 
 FROM ${PLUTO_IMAGE} AS development-base
 
@@ -9,30 +9,12 @@ ARG PLUTO_IMAGE
 ARG PLUTO_GIT_REMOTE
 ARG PLUTO_GIT_COMMIT
 
-LABEL com.polcert.version="0.9" \
-      com.polcert.pluto.image="${PLUTO_IMAGE}" \
-      com.polcert.pluto.remote="${PLUTO_GIT_REMOTE}" \
-      com.polcert.pluto.commit="${PLUTO_GIT_COMMIT}"
-
-ENV PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}" \
-    POLCERT_PLUTO_IMAGE="${PLUTO_IMAGE}" \
-    POLCERT_PLUTO_GIT_REMOTE="${PLUTO_GIT_REMOTE}" \
-    POLCERT_PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}"
-
 ENV TZ=Europe/Minsk
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN  apt-get update \
   && apt-get install -y wget make m4 build-essential patch unzip git libgmp3-dev libgmp-dev libglpk-dev libeigen3-dev \
   && rm -rf /var/lib/apt/lists/*
-
-RUN git -C /pluto fetch "${PLUTO_GIT_REMOTE}" "${PLUTO_GIT_COMMIT}" \
-  && git -C /pluto checkout "${PLUTO_GIT_COMMIT}" \
-  && cd /pluto \
-  && ./configure --enable-glpk --with-glpk-prefix=/usr \
-  && make clean \
-  && make -j"$(nproc)" \
-  && make install
 
 RUN wget https://github.com/ocaml/opam/releases/download/2.0.8/opam-2.0.8-x86_64-linux --no-check-certificate -O opam && \
     echo "95365a873d9e3ae6fb48e6109b5fc5df3b4e526c9d65d20652a78e263f745a35  opam" | sha256sum -c - && \
@@ -72,6 +54,28 @@ EXPOSE 80
 
 # prepare the editor, here we use vim
 RUN apt-get update && apt-get install -y vim cloc && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Keep the expensive, stable system and Rocq toolchain layers independent of
+# the pinned Pluto revision. Feature branches can then reuse the main-branch
+# BuildKit cache when only the candidate generator commit changes.
+RUN git -C /pluto fetch "${PLUTO_GIT_REMOTE}" "${PLUTO_GIT_COMMIT}" \
+  && git -C /pluto checkout "${PLUTO_GIT_COMMIT}" \
+  && cd /pluto \
+  && ./configure --enable-glpk --with-glpk-prefix=/usr \
+  && make clean \
+  && make -j"$(nproc)" \
+  && make install
+
+LABEL com.polcert.version="0.9" \
+      com.polcert.pluto.image="${PLUTO_IMAGE}" \
+      com.polcert.pluto.remote="${PLUTO_GIT_REMOTE}" \
+      com.polcert.pluto.commit="${PLUTO_GIT_COMMIT}"
+
+ENV PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}" \
+    POLCERT_PLUTO_IMAGE="${PLUTO_IMAGE}" \
+    POLCERT_PLUTO_GIT_REMOTE="${PLUTO_GIT_REMOTE}" \
+    POLCERT_PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}"
+
 COPY doc/index.html /var/www/html
 
 SHELL ["/bin/bash", "-c"]

@@ -40,8 +40,8 @@ The current assessment is based on these concrete checks.
   - `lib/iss.c`: ISS restrictions
   - `tool/pluto_codegen_if.c` and `tool/ast_transform.c`: OpenMP, vector, unroll-jam marking
 - Current Pluto baseline build:
-  - `/pluto` HEAD: `488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02`
-  - `pluto --version`: `PLUTO version 488ea2f`
+  - `/pluto` HEAD: `56b66690edeed1ef17ddc018bbf67666795a3fd4`
+  - `pluto --version`: `PLUTO version 56b6669`
   - configured with `./configure --enable-glpk --with-glpk-prefix=/usr`
   - `pluto --help` advertises `--glpk`, `--lp`, `--dfp`, and `--typedfuse`
   - PolCert's Dockerfile checks out this commit and rebuilds `/pluto` with GLPK before building PolCert

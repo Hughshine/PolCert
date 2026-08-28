@@ -251,7 +251,7 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-legacy-failure-gate test-legacy-failure-gate-unit test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-vector-current-suite test-extracted-zero-fallback test-typed-c-pipeline test-direct-only-tiling-routes test-non-second-level-tiling-routes test-scheduler-flag-forwarding test-second-level-tile-routes test-second-level-tile-rejection test-second-level-tile-manifest test-second-level-tile-suite test-pluto-compat-suite test-tiling-route-suites test-end-to-end-c-smoke test-end-to-end-c-correctness test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-pluto-miscompilation-vanished-outer test-pluto-miscompilation-notile-unrolljam test-pluto-bugs test-diamond-tiling-suite unrolljam-effect-corpus artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity check-admitted test-open-proof-gate
+.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-legacy-failure-gate test-legacy-failure-gate-unit test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-iss-multicut-adversarial test-parallel-current-suite test-vector-current-suite test-extracted-zero-fallback test-typed-c-pipeline test-direct-only-tiling-routes test-non-second-level-tiling-routes test-scheduler-flag-forwarding test-second-level-tile-routes test-second-level-tile-rejection test-second-level-tile-manifest test-second-level-tile-suite test-pluto-compat-suite test-tiling-route-suites test-end-to-end-c-smoke test-end-to-end-c-correctness test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-pluto-miscompilation-affine-fst test-pluto-miscompilation-tiling-innerpar test-pluto-diamond-nointratile-regression test-pluto-miscompilation-vanished-outer test-pluto-miscompilation-notile-unrolljam test-pluto-bugs test-diamond-tiling-suite unrolljam-effect-corpus artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity check-admitted test-open-proof-gate
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
@@ -274,8 +274,11 @@ test-polopt-loop-suite: materialize-polopt-loop-suite
 
 test-polopt-generated: test-polopt-loop-suite
 
-test-iss-pluto-suite: polopt polcert.ini
+test-iss-pluto-suite: polopt polcert.ini test-iss-multicut-adversarial
 	./polopt --validate-iss-pluto-suite
+
+test-iss-multicut-adversarial: polopt polcert.ini
+	python3 tools/iss/run_iss_multicut_adversarial.py
 
 test-iss-pluto-live-suite: polopt polcert.ini
 	./polopt --validate-iss-pluto-live-suite
@@ -477,13 +480,22 @@ test-end-to-end-all: test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-
 test-pluto-bug-matmul-parallel-hint: polopt polcert.ini
 	python3 tools/pluto_bugs/run_matmul_parallel_hint.py
 
+test-pluto-miscompilation-affine-fst: polopt polcert.ini
+	python3 tools/pluto_bugs/run_affine_fst_reversed.py
+
+test-pluto-miscompilation-tiling-innerpar: polopt polcert.ini
+	python3 tools/pluto_bugs/run_tiling_innerpar_satvec.py
+
+test-pluto-diamond-nointratile-regression: polopt polcert.ini
+	python3 tools/pluto_bugs/run_diamond_nointratile_reschedule.py
+
 test-pluto-miscompilation-vanished-outer: polopt polcert.ini
 	python3 tools/pluto_bugs/run_vanished_outer_parallel.py
 
 test-pluto-miscompilation-notile-unrolljam: polopt polcert.ini
 	python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
 
-test-pluto-bugs: test-pluto-bug-matmul-parallel-hint test-pluto-miscompilation-vanished-outer test-pluto-miscompilation-notile-unrolljam
+test-pluto-bugs: test-pluto-bug-matmul-parallel-hint test-pluto-miscompilation-affine-fst test-pluto-miscompilation-tiling-innerpar test-pluto-diamond-nointratile-regression test-pluto-miscompilation-vanished-outer test-pluto-miscompilation-notile-unrolljam
 
 test-diamond-tiling-suite: polopt polcert
 	python3 tools/diamond_tiling/run_pluto_diamond_suite.py

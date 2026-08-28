@@ -260,18 +260,23 @@ let run_tiling_pair ~second_level before_path after_path =
 let print_affine_relation before_path after_path =
   let (ok1, res1, ok2, res2) = affine_relation before_path after_path in
   if ok1 && res1 && ok2 && res2 then begin
-    Printf.printf "[EQ] The two polyhedral models (%s, %s) are equivalent.\n"
+    Printf.printf
+      "[EQ] The supplied schedules (%s, %s) refine each other under their trusted domain/access summaries; statement bodies are not checked.\n"
       before_path after_path;
     true
   end else if ok1 && res1 then begin
-    Printf.printf "[GT] Polyhedral model %s refines %s.\n" after_path before_path;
+    Printf.printf
+      "[GT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
+      after_path before_path;
     true
   end else if ok2 && res2 then begin
-    Printf.printf "[LT] Polyhedral model %s refines %s.\n" before_path after_path;
+    Printf.printf
+      "[LT] Schedule %s refines %s under the supplied trusted domain/access summaries.\n"
+      before_path after_path;
     true
   end else begin
     Printf.printf
-      "[NE] Cannot determine refinement relations between the two polyhedral models (%s, %s).\n"
+      "[NE] Cannot establish schedule refinement between %s and %s under the supplied domain/access summaries.\n"
       before_path after_path;
     false
   end

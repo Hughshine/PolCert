@@ -6,7 +6,7 @@ The outer `i` loop has exactly one iteration and is independent.  The inner
 `j` loop carries the recurrence `a[0][j - 1] -> a[0][j]` and must remain
 sequential.
 
-At pinned Pluto commit `488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02`,
+At pinned Pluto commit `56b66690edeed1ef17ddc018bbf67666795a3fd4`,
 the affine schedule is `(0, j)`.  CLooG therefore removes the constant outer
 schedule coordinate.  `tool/ast_transform.c:75-95` then searches inward for a
 loop on which to place the parallel annotation.  Its band-boundary test uses

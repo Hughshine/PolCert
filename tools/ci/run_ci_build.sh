@@ -60,8 +60,15 @@ ci_run_timed python-syntax \
     /polcert/tools/end_to_end_c/generated_harness.py \
     /polcert/tools/end_to_end_c/run_generated_case.py \
     /polcert/tools/end_to_end_c/run_generated_suite.py \
+    /polcert/tools/iss/run_iss_multicut_adversarial.py \
     /polcert/tools/iss/run_pluto_iss_suite.py \
     /polcert/tools/iss/run_pluto_iss_live_suite.py \
+    /polcert/tools/pluto_bugs/run_affine_fst_reversed.py \
+    /polcert/tools/pluto_bugs/run_diamond_nointratile_reschedule.py \
+    /polcert/tools/pluto_bugs/run_matmul_parallel_hint.py \
+    /polcert/tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py \
+    /polcert/tools/pluto_bugs/run_tiling_innerpar_satvec.py \
+    /polcert/tools/pluto_bugs/run_vanished_outer_parallel.py \
     /polcert/tools/diamond_tiling/run_pluto_diamond_suite.py \
     /polcert/tools/second_level_tiling/check_scheduler_flag_forwarding.py \
     /polcert/tools/second_level_tiling/check_standalone_formal_route.py \

@@ -1,0 +1,22 @@
+context();
+
+for t in range(0, 2) {
+  for j in range(0, 3) {
+    ey[0][j] = t;
+  }
+  for i in range(1, 2) {
+    for j in range(0, 3) {
+      ey[i][j] = (ey[i][j] - (hz[i][j] - hz[(i - 1)][j]));
+    }
+  }
+  for i in range(0, 2) {
+    for j in range(1, 3) {
+      ex[i][j] = (ex[i][j] - (hz[i][j] - hz[i][(j - 1)]));
+    }
+  }
+  for i in range(0, 2) {
+    for j in range(0, 3) {
+      hz[i][j] = (hz[i][j] - (((ex[i][(j + 1)] - ex[i][j]) + ey[(i + 1)][j]) - ey[i][j]));
+    }
+  }
+}

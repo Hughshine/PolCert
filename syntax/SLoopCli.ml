@@ -63,6 +63,8 @@ let usage prog =
       Printf.sprintf
         "       %s --validate-affine-openscop <before.scop> <after.scop>\n"
         prog;
+      "         checks schedule refinement under supplied domains and trusted access summaries;\n";
+      "         it does not check OpenScop statement bodies against those summaries\n";
       Printf.sprintf
         "       %s [--second-level-tile] --extract-tiling-witness-openscop <before.scop> <after.scop>\n"
         prog;

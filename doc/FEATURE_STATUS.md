@@ -227,6 +227,12 @@ Status:
 
 - these are validator-only / artifact-only actions, not loop-to-loop optimizer
   routes
+- the standalone affine action trusts the supplied OpenScop domain/access
+  summaries and ignores statement bodies; it establishes schedule refinement
+  under those summaries, not arbitrary OpenScop-body or C equivalence
+- complete `.loop` compilation imports only the candidate scattering and keeps
+  the source instruction/domain/access data, so it does not inherit that
+  standalone trust boundary
 - they cannot be mixed with route selectors or tiling-family selectors such as
   `--identity`, `--notile`, `--iss`, `--parallel`, `--parallel-strict`,
   `--diamond-tile`, `--parallel-current`, `--multipar`, `--band-tiling-experiment`, or

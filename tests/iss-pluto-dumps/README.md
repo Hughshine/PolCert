@@ -3,7 +3,7 @@
 This directory contains Pluto internal-program dumps used to test the
 experimental ISS-only validator path.
 
-These tests are intentionally **not** part of the default CI path yet.
+These tests run in the base CI shard.
 
 Current entry point:
 
@@ -30,6 +30,10 @@ The suite currently covers:
   - fixed bad dump: `iss_name_collision.txt`
   - runtime-mutated bad halfspace
   - runtime-mutated bad payload
+- adversarial complete-cut bridge examples
+  - valid two-cut/four-piece sign partition
+  - Pluto-style three-cut/four-piece metadata mismatch
+  - two-cut partition with one sign region missing
 
 Current proof/engineering boundary:
 
@@ -54,6 +58,12 @@ What the current suite checks:
 4. Coq checks each piece domain is `source_domain ++ selected_cut_constraints`
 5. Coq checks each parent family’s `piece_signs` are non-duplicated
 6. Coq checks each parent family covers the full expected `2^k` sign space
+
+The multi-cut fixtures isolate item 6. `multicut_native_mismatch.bridge`
+models the pinned Pluto `lib/iss.c` state in which three base cuts are recorded
+but only four regions are constructed. `multicut_missing_piece.bridge` removes
+one of the four regions for two cuts. Both must be rejected; the complete
+two-cut partition must be accepted.
 
 Current trusted-path status:
 

@@ -802,6 +802,8 @@ let run_affine_validator before_file after_file =
   in
   Printf.printf "before: %s\n" before_file;
   Printf.printf "after:  %s\n" after_file;
+  Printf.printf
+    "contract: schedule refinement under supplied domains and trusted access summaries; statement bodies are not checked\n";
   Printf.printf "overall: %s\n" (if ok && res then "PASS" else "FAIL");
   if ok && res then 0 else 2
 
