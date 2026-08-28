@@ -91,7 +91,7 @@ LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 EXECUTABLES=polcert polcert.byte polopt polopt.byte cchecklink cchecklink.byte clightgen clightgen.byte
 GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 
-.PHONY: test-extracted-zero-fallback
+.PHONY: test-extracted-zero-fallback test-typed-c-pipeline
 
 # Beginning of part that assumes .depend.extr already exists
 
@@ -122,6 +122,14 @@ EXTRACTED_ZERO_FALLBACK_OBJS:=$(shell $(MODORDER) \
   extraction/SParallelPolOpt.cmx \
   syntax/TilingValidationRoute.cmx)
 EXTRACTED_ZERO_FALLBACK_TEST=tests/extracted-zero-fallback/test.cmx
+TYPED_C_PIPELINE_OBJS:=$(shell $(MODORDER) \
+  extraction/CTypedLoopSamples.cmx \
+  extraction/PolOptBandTiling.cmx \
+  extraction/ParallelPolOpt.cmx \
+  driver/Scheduler.cmx)
+TYPED_C_PIPELINE_TEST=tests/typed-c-pipeline/test.cmx
+
+$(TYPED_C_PIPELINE_TEST): COMPFLAGS += -I tests/typed-c-pipeline
 
 ifeq ($(OCAML_NATIVE_COMP),true)
 polcert: $(CCOMP_OBJS)
@@ -164,6 +172,28 @@ test-extracted-zero-fallback: \
 	@$(OCAMLOPT) -o /tmp/polcert-extracted-zero-fallback-gate \
 	  $(LIBS) $(LINK_OPT) $+
 	@/tmp/polcert-extracted-zero-fallback-gate -conf polcert.ini
+
+$(TYPED_C_PIPELINE_TEST): \
+    tests/typed-c-pipeline/test.cmi \
+    extraction/Datatypes.cmi \
+    extraction/Result.cmi \
+    extraction/ISSWitness.cmi \
+    extraction/CPolIRs.cmi \
+    extraction/CTypedLoopSamples.cmi \
+    extraction/PolOptBandTiling.cmi \
+    extraction/ParallelPolOpt.cmi \
+    driver/PhaseISS.cmi \
+    driver/Scheduler.cmi \
+    lib/Camlcoq.cmi \
+    VPL/ocaml/src/coq_ml/CertcheckerConfig.cmi
+
+test-typed-c-pipeline: \
+    $(TYPED_C_PIPELINE_OBJS) \
+    $(TYPED_C_PIPELINE_TEST)
+	@echo "Linking /tmp/polcert-typed-c-pipeline-test"
+	@$(OCAMLOPT) -o /tmp/polcert-typed-c-pipeline-test \
+	  $(LIBS) $(LINK_OPT) $+
+	@/tmp/polcert-typed-c-pipeline-test -conf polcert.ini
 
 CLIGHTGEN_OBJS:=$(shell $(MODORDER) export/ExportDriver.cmx)
 
@@ -239,6 +269,7 @@ NO_MLI_MODULES := \
 	extraction/SBandTilingOptShared \
 	extraction/SParallelPolOptShared \
 	extraction/SBandTilingOpt \
+	driver/PhaseISS \
 	driver/Scheduler \
 	syntax/PlutoTilingValidator \
 	syntax/SLoopCli \
@@ -278,6 +309,9 @@ endif
 
 clean:
 	rm -f $(EXECUTABLES)
+	rm -f tests/typed-c-pipeline/*.cm[iotx] \
+	      tests/typed-c-pipeline/*cmti \
+	      tests/typed-c-pipeline/*.o
 	rm -f $(GENERATED)
 	for d in $(DIRS); do rm -f $$d/*.cm[iotx] $$d/*cmti $$d/*.o; done
 	rm -f tests/extracted-zero-fallback/*.cm[iotx] \

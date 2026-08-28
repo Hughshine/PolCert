@@ -17,11 +17,11 @@ TESTS=tests/readscop tests/writescop
 
 include Makefile.menhir
 
-test: scopreader-test cpol2copenscop-test pluto-test csample1-test csample2-test csample3-test pluto-all-test
+test: scopreader-test cpol2copenscop-test pluto-test csample1-test csample2-test csample3-test pluto-all-test typed-c-pipeline-test
 	@echo "All tests finished."
 
 # clean: scopreader-clean
-clean: scopreader-clean cpol2copenscop-clean pluto-clean csample1-clean csample2-clean csample3-clean pluto-all-clean
+clean: scopreader-clean cpol2copenscop-clean pluto-clean csample1-clean csample2-clean csample3-clean pluto-all-clean typed-c-pipeline-clean
 	@echo "All tests cleaned."
 
 scopreader-test: 
@@ -79,3 +79,13 @@ pluto-all-test:
 
 pluto-all-clean:
 	cd tests/pluto-all/ && $(MAKE) -f Makefile clean
+
+typed-c-pipeline-test:
+	@echo "@@@@Testing typed C-loop verified pipelines."
+	@$(MAKE) -f Makefile.extr test-typed-c-pipeline --no-print-directory
+	@echo "@@@@Testing typed C-loop verified pipelines finished."
+
+typed-c-pipeline-clean:
+	rm -f tests/typed-c-pipeline/*.cm[iotx] \
+	      tests/typed-c-pipeline/*cmti \
+	      tests/typed-c-pipeline/*.o
