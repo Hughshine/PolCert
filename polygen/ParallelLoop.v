@@ -1980,6 +1980,84 @@ with subst_stmts_at
       SCons (subst_stmt_at k rep s) (subst_stmts_at k rep ss')
   end.
 
+(** * Constant unrolling for annotated loops
+
+    Constant unrolling is deliberately restricted to [SeqMode].  Parallel and
+    vector loops retain their execution mode, origin tag, and bounds; the pass
+    only recurses into their bodies, where nested sequential loops may still be
+    unfolded.  This makes the postpass compositional with an already validated
+    parallel route without transporting or reconstructing its annotations. *)
+
+Definition constant_bounds
+    (lb ub : BaseLoop.expr) : option (Z * Z) :=
+  match lb, ub with
+  | BaseLoop.Constant l, BaseLoop.Constant u => Some (l, u)
+  | _, _ => None
+  end.
+
+Fixpoint const_unroll_values
+    (vals : list Z) (body : stmt) : stmt_list :=
+  match vals with
+  | [] => SNil
+  | z :: vals' =>
+      SCons
+        (subst_stmt_at 0 (BaseLoop.Constant z) body)
+        (const_unroll_values vals' body)
+  end.
+
+Fixpoint const_unroll_stmt (s : stmt) : stmt :=
+  match s with
+  | Loop mode od lb ub body =>
+      let body' := const_unroll_stmt body in
+      match mode with
+      | SeqMode =>
+          match constant_bounds lb ub with
+          | Some (l, u) => Seq (const_unroll_values (Zrange l u) body')
+          | None => Loop SeqMode od lb ub body'
+          end
+      | ParMode => Loop ParMode od lb ub body'
+      | VecMode => Loop VecMode od lb ub body'
+      end
+  | Instr i es => Instr i es
+  | Seq ss => Seq (const_unroll_stmts ss)
+  | Guard tst body => Guard tst (const_unroll_stmt body)
+  end
+with const_unroll_stmts (ss : stmt_list) : stmt_list :=
+  match ss with
+  | SNil => SNil
+  | SCons s ss' =>
+      SCons (const_unroll_stmt s) (const_unroll_stmts ss')
+  end.
+
+Fixpoint const_unroll_stmt_changed (s : stmt) : bool :=
+  match s with
+  | Loop mode _ lb ub body =>
+      match mode with
+      | SeqMode =>
+          match constant_bounds lb ub with
+          | Some _ => true
+          | None => const_unroll_stmt_changed body
+          end
+      | ParMode | VecMode => const_unroll_stmt_changed body
+      end
+  | Instr _ _ => false
+  | Seq ss => const_unroll_stmts_changed ss
+  | Guard _ body => const_unroll_stmt_changed body
+  end
+with const_unroll_stmts_changed (ss : stmt_list) : bool :=
+  match ss with
+  | SNil => false
+  | SCons s ss' =>
+      const_unroll_stmt_changed s || const_unroll_stmts_changed ss'
+  end.
+
+Definition const_unroll (p : t) : t :=
+  let '((s, ctxt), vars) := p in
+  ((const_unroll_stmt s, ctxt), vars).
+
+Definition const_unroll_changed (p : t) : bool :=
+  let '(s, _, _) := p in const_unroll_stmt_changed s.
+
 (** * Metadata-preserving cleanup
 
     Sequential singleton loops may be substituted away.  Parallel and vector
@@ -2474,6 +2552,265 @@ Lemma subst_par_trace_refine :
       Forall2 point_sema_equiv tr tr0.
 Proof.
   exact (proj1 subst_par_trace_refine_mutual).
+Qed.
+
+Lemma constant_bounds_some :
+  forall lb ub l u,
+    constant_bounds lb ub = Some (l, u) ->
+    lb = BaseLoop.Constant l /\ ub = BaseLoop.Constant u.
+Proof.
+  intros lb ub l u Hbounds.
+  destruct lb; try discriminate.
+  destruct ub; try discriminate.
+  inversion Hbounds; subst. auto.
+Qed.
+
+(** Each generated statement first reflects through capture-avoiding
+    substitution, then through the recursively transformed body.  The result
+    is collected in the original [Zrange] order required by [PTLoopSeq]. *)
+Lemma const_unroll_values_par_traces_refine :
+  forall vals body body' env tr,
+    (forall env' tr',
+      trace_safe_stmt body ->
+      trace_safe_stmt body' ->
+      par_trace body' env' tr' ->
+      exists tr0,
+        par_trace body env' tr0 /\
+        Forall2 point_sema_equiv tr' tr0) ->
+    trace_safe_stmt body ->
+    trace_safe_stmts (const_unroll_values vals body') ->
+    par_traces (const_unroll_values vals body') env tr ->
+    exists trs0,
+      Forall2 (fun z tri => par_trace body (z :: env) tri) vals trs0 /\
+      Forall2 point_sema_equiv tr (concat trs0).
+Proof.
+  induction vals as [|z vals IH];
+    intros body body' env tr Hbody Hsafe Hsafe_values Htraces.
+  - simpl in Htraces. inversion Htraces; subst.
+    exists (nil : list (list InstrPoint)). split; constructor.
+  - simpl in Hsafe_values.
+    destruct Hsafe_values as [Hsafe_head Hsafe_tail].
+    simpl in Htraces.
+    inversion Htraces as
+        [|env0 st0 sts0 tr1 tr2 Htrace_head Htrace_tail]; subst.
+    pose proof
+      (subst_trace_safe_stmt_inv
+         body' 0 (BaseLoop.Constant z) Hsafe_head)
+      as Hsafe_body'.
+    destruct
+      (subst_par_trace_refine
+         body' [] env (BaseLoop.Constant z) tr1
+         Hsafe_body' Hsafe_head Htrace_head)
+      as [tr1' [Htrace1' Hrel_subst]].
+    simpl in Htrace1'.
+    destruct
+      (Hbody (z :: env) tr1' Hsafe Hsafe_body' Htrace1')
+      as [tr1'' [Htrace1'' Hrel_body]].
+    destruct
+      (IH body body' env tr2 Hbody Hsafe Hsafe_tail Htrace_tail)
+      as [trs0 [Htraces0 Hrel_tail]].
+    exists (tr1'' :: trs0). split.
+    + constructor; assumption.
+    + simpl.
+      apply Forall2_app.
+      * eapply Forall2_point_sema_equiv_trans; eauto.
+      * exact Hrel_tail.
+Qed.
+
+Definition const_unroll_trace_stmt_goal (s : stmt) : Prop :=
+  forall env tr,
+    trace_safe_stmt s ->
+    trace_safe_stmt (const_unroll_stmt s) ->
+    par_trace (const_unroll_stmt s) env tr ->
+    exists tr0,
+      par_trace s env tr0 /\
+      Forall2 point_sema_equiv tr tr0.
+
+Definition const_unroll_trace_stmts_goal (ss : stmt_list) : Prop :=
+  forall env tr,
+    trace_safe_stmts ss ->
+    trace_safe_stmts (const_unroll_stmts ss) ->
+    par_traces (const_unroll_stmts ss) env tr ->
+    exists tr0,
+      par_traces ss env tr0 /\
+      Forall2 point_sema_equiv tr tr0.
+
+Lemma const_unroll_par_trace_refine_mutual :
+  (forall s, const_unroll_trace_stmt_goal s) /\
+  (forall ss, const_unroll_trace_stmts_goal ss).
+Proof.
+  apply p_stmt_stmts_mutind;
+    unfold const_unroll_trace_stmt_goal, const_unroll_trace_stmts_goal.
+  (** Loop case: constant [SeqMode] becomes an explicit ordered statement
+      list.  Every other sequential loop, and every parallel/vector loop,
+      retains its constructor and recursively reflects its iteration traces. *)
+  - intros mode od lb ub body IH env tr Hsafe Hsafe_unroll Htrace.
+    simpl in Hsafe.
+    destruct mode.
+    + simpl in Hsafe_unroll, Htrace.
+      destruct (constant_bounds lb ub) as [[l u]|] eqn:Hbounds.
+      * destruct (constant_bounds_some _ _ _ _ Hbounds) as [Hlb Hub].
+        subst lb ub.
+        inversion Htrace as [|env0 sts0 tr0 Htraces| | | | |]; subst.
+        destruct
+          (const_unroll_values_par_traces_refine
+             (Zrange l u) body (const_unroll_stmt body) env tr
+             IH Hsafe Hsafe_unroll Htraces)
+          as [trs0 [Htraces0 Hrel]].
+        exists (concat trs0). split.
+        -- eapply PTLoopSeq with (zs := Zrange l u) (trs := trs0).
+           ++ reflexivity.
+           ++ exact Htraces0.
+           ++ reflexivity.
+        -- exact Hrel.
+      * inversion Htrace as
+            [| | | |
+             od0 lb0 ub0 body0 env0 zs trs' tr'
+               Hrange Htraces Hconcat
+             | |]; subst.
+        destruct
+          (par_trace_families_refine
+             (const_unroll_stmt body) body
+             (fun z => z :: env) (fun z => z :: env)
+             _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_unroll Hz)
+             Htraces)
+          as [trs0 [Htraces0 Hrels]].
+        exists (concat trs0). split.
+        -- eapply PTLoopSeq with
+              (zs := Zrange
+                (BaseLoop.eval_expr env lb)
+                (BaseLoop.eval_expr env ub))
+              (trs := trs0); eauto.
+        -- eapply Forall2_concat_point_sema_equiv. exact Hrels.
+    + simpl in Hsafe_unroll, Htrace.
+      inversion Htrace as
+          [| | | | | |
+           d0 lb0 ub0 body0 env0 zs trs' tr'
+             Hrange Htraces Hinter]; subst.
+      destruct
+        (par_trace_families_refine
+           (const_unroll_stmt body) body
+           (fun z => z :: env) (fun z => z :: env)
+           _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_unroll Hz)
+           Htraces)
+        as [trs0 [Htraces0 Hrels]].
+      destruct (interleave_family_point_equiv _ _ _ Hinter Hrels)
+        as [tr0 [Hinter0 Hrel0]].
+      exists tr0. split.
+      * eapply PTLoopPar with
+            (zs := Zrange
+              (BaseLoop.eval_expr env lb)
+              (BaseLoop.eval_expr env ub))
+            (trs := trs0); eauto.
+      * exact Hrel0.
+    + simpl in Hsafe_unroll, Htrace.
+      inversion Htrace as
+          [| | | | |
+           od0 lb0 ub0 body0 env0 zs trs' tr'
+             Hrange Htraces Hconcat
+           |]; subst.
+      destruct
+        (par_trace_families_refine
+           (const_unroll_stmt body) body
+           (fun z => z :: env) (fun z => z :: env)
+           _ _ (fun z tri Hz => IH (z :: env) tri Hsafe Hsafe_unroll Hz)
+           Htraces)
+        as [trs0 [Htraces0 Hrels]].
+      exists (concat trs0). split.
+      * eapply PTLoopVec with
+            (zs := Zrange
+              (BaseLoop.eval_expr env lb)
+              (BaseLoop.eval_expr env ub))
+            (trs := trs0); eauto.
+      * eapply Forall2_concat_point_sema_equiv. exact Hrels.
+  - intros i es env tr Hsafe Hsafe_unroll Htrace.
+    simpl in Htrace. exists tr. split; [exact Htrace|].
+    clear Htrace Hsafe Hsafe_unroll.
+    induction tr as [|ip tr IHtr].
+    + constructor.
+    + constructor; [apply point_sema_equiv_refl|exact IHtr].
+  - intros ss IH env tr Hsafe Hsafe_unroll Htrace.
+    simpl in Hsafe, Hsafe_unroll, Htrace.
+    inversion Htrace as [|env0 sts0 tr0 Htraces| | | | |]; subst.
+    destruct (IH env tr Hsafe Hsafe_unroll Htraces) as [tr0 [Ht Hr]].
+    exists tr0. split; [constructor; exact Ht|exact Hr].
+  - intros tst body IH env tr Hsafe Hsafe_unroll Htrace.
+    simpl in Hsafe, Hsafe_unroll, Htrace.
+    inversion Htrace as
+        [| |
+         env0 tst0 body0 tr0 Htest Hbody
+         | env0 tst0 body0 Htest
+         | | |]; subst.
+    + destruct (IH env tr Hsafe Hsafe_unroll Hbody) as [tr0 [Ht Hr]].
+      exists tr0. split.
+      * eapply PTGuardTrue; [exact Htest|exact Ht].
+      * exact Hr.
+    + exists (nil : list InstrPoint). split.
+      * eapply PTGuardFalse. exact Htest.
+      * constructor.
+  - intros env tr Hsafe Hsafe_unroll Htrace.
+    inversion Htrace; subst.
+    exists (nil : list InstrPoint). split; constructor.
+  - intros s IHs ss IHss env tr Hsafe Hsafe_unroll Htrace.
+    simpl in Hsafe, Hsafe_unroll.
+    destruct Hsafe as [Hsafe_s Hsafe_ss].
+    destruct Hsafe_unroll as [Hsafe_unroll_s Hsafe_unroll_ss].
+    inversion Htrace as
+        [|env0 st0 sts0 tr1 tr2 Htr1 Htr2]; subst.
+    destruct (IHs env tr1 Hsafe_s Hsafe_unroll_s Htr1)
+      as [tr1' [Ht1 Hr1]].
+    destruct (IHss env tr2 Hsafe_ss Hsafe_unroll_ss Htr2)
+      as [tr2' [Ht2 Hr2]].
+    exists (tr1' ++ tr2'). split.
+    + econstructor; eauto.
+    + apply Forall2_app; assumption.
+Qed.
+
+Lemma const_unroll_par_trace_refine :
+  forall s env tr,
+    trace_safe_stmt s ->
+    trace_safe_stmt (const_unroll_stmt s) ->
+    par_trace (const_unroll_stmt s) env tr ->
+    exists tr0,
+      par_trace s env tr0 /\
+      Forall2 point_sema_equiv tr tr0.
+Proof.
+  exact (proj1 const_unroll_par_trace_refine_mutual).
+Qed.
+
+Lemma const_unroll_loop_semantics_refine :
+  forall s env mem1 mem2,
+    trace_safe_stmt s ->
+    trace_safe_stmt (const_unroll_stmt s) ->
+    loop_semantics (const_unroll_stmt s) env mem1 mem2 ->
+    loop_semantics s env mem1 mem2.
+Proof.
+  intros s env mem1 mem2 Hsafe Hsafe_unroll [tr [Htrace Hsem]].
+  destruct
+    (const_unroll_par_trace_refine s env tr Hsafe Hsafe_unroll Htrace)
+    as [tr0 [Htrace0 Hrel]].
+  exists tr0. split; [exact Htrace0|].
+  eapply instr_point_list_semantics_equiv; eauto.
+Qed.
+
+Theorem const_unroll_semantics_refine :
+  forall p mem1 mem2,
+    trace_safe p ->
+    trace_safe (const_unroll p) ->
+    semantics (const_unroll p) mem1 mem2 ->
+    semantics p mem1 mem2.
+Proof.
+  intros [[s ctxt] vars] mem1 mem2 Hsafe Hsafe_unroll Hsem.
+  inversion Hsem as
+      [loop_ext loop ctxt' vars' env mem1' mem2'
+       Heq Hcompat Hna Hinit Hloop]; subst.
+  inversion Heq; subst.
+  econstructor.
+  - reflexivity.
+  - exact Hcompat.
+  - exact Hna.
+  - exact Hinit.
+  - eapply const_unroll_loop_semantics_refine; eauto.
 Qed.
 
 Definition cleanup_trace_stmt_goal (s : stmt) : Prop :=

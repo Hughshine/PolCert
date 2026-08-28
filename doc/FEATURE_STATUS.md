@@ -135,8 +135,12 @@ Status:
 
 `--unrolljam` runs verified block/remainder unrolling, validates each proposed
 jam, and applies verified cleanup after the selected sequential producer.
-`--const-unroll` is a different sequential-only postpass that completely
-expands loops with integer-constant lower and upper bounds.
+`--const-unroll` is a separate postpass that completely expands loops with
+integer-constant lower and upper bounds. Sequential output applies it to every
+loop. Parallel output applies the annotated version only to `SeqMode` loops,
+preserving `ParMode`/`VecMode` annotations and their origin tags. The checked
+composition is covered by
+`extracted_parallel_compile_with_const_unroll_correct`.
 
 `--unrolljam --parallel` is supported when the transformed Loop can be
 re-extracted: PolOpt obtains a fresh parallel certificate after unroll-jam.

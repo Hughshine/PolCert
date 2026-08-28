@@ -2441,6 +2441,15 @@ let require_checked_success ok =
     exit 1
   end
 
+let run_requested_parallel_const_unroll cfg (optimized, ok) =
+  if ok && cfg.force_const_unroll then
+    let (unrolled, unroll_ok) =
+      VerifiedParallelCompiler.checked_const_unroll optimized
+    in
+    (unrolled, unroll_ok)
+  else
+    (optimized, ok)
+
 let () =
   try
     Gc.set { (Gc.get()) with
@@ -2516,6 +2525,7 @@ let () =
         | SLoopRoute.ParallelCurrent dim ->
             let (optimized, ok) =
               run_selected_parallel_current_optimization route loop dim
+              |> run_requested_parallel_const_unroll cfg
             in
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
@@ -2525,10 +2535,11 @@ let () =
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
         | SLoopRoute.PlutoParallelHint _ ->
             let (optimized, ok) =
-              if cfg.pluto_unrolljam_seen then
-                run_requested_hinted_parallel_unrolljam_optimization cfg route loop
-              else
-                run_selected_parallel_optimization route loop
+              (if cfg.pluto_unrolljam_seen then
+                 run_requested_hinted_parallel_unrolljam_optimization cfg route loop
+               else
+                 run_selected_parallel_optimization route loop)
+              |> run_requested_parallel_const_unroll cfg
             in
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)

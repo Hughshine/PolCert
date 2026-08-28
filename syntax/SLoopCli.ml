@@ -99,7 +99,7 @@ let usage prog =
       "  --legacy-generic-tiling : deprecated compatibility alias; tiled routes still use\n";
       "                            the direct permutable-band checker and otherwise reject\n";
       "  --const-unroll    : checked post pass that fully unrolls statically constant\n";
-      "                       loop bounds in the final sequential Loop IR\n";
+      "                       sequential loops; parallel annotations are preserved\n";
       "  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n";
       "                       loop hints; supported on both the default and `--iss` pipelines,\n";
       "                       with or without `--notile`\n";
@@ -516,11 +516,10 @@ let validate_pluto_compat prog cfg =
         "--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass";
     if cfg.force_const_unroll
        && not cfg.pluto_unrolljam_seen
-       && (cfg.force_parallel || cfg.force_vector
-           || cfg.parallel_current_dim <> None || cfg.vector_current_dim <> None)
+       && (cfg.force_vector || cfg.vector_current_dim <> None)
     then
       pluto_reject prog
-        "--const-unroll currently applies only to sequential Loop IR routes";
+        "--const-unroll cannot currently be combined with vector execution; parallel output preserves its annotations and unfolds only sequential loops";
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then

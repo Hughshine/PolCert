@@ -294,12 +294,9 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass"
       else if cfg.force_const_unroll
               && not cfg.pluto_unrolljam_seen
-              && (cfg.force_parallel
-                  || cfg.force_vector
-                  || has_parallel_current cfg
-                  || has_vector_current cfg)
+              && (cfg.force_vector || has_vector_current cfg)
       then
-        Error "--const-unroll currently applies only to sequential Loop IR routes"
+        Error "--const-unroll cannot currently be combined with vector execution; parallel output preserves its annotations and unfolds only sequential loops"
       else if cfg.force_band_tiling_experiment
               && cfg.force_legacy_generic_tiling
       then

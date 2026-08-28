@@ -288,6 +288,36 @@ Definition compile (cfg: raw_config) (loop: LoopIR.t)
   | Err msg => res_to_alarm ParallelCore.parallel_dummy (Err msg)
   end.
 
+(** ** Constant unrolling after annotated code generation
+
+    The postpass unfolds only constant-bound [SeqMode] loops.  Existing
+    parallel and vector annotations are retained, including their origin tags.
+    Both sides are checked for affine trace construction because the semantic
+    reflection theorem for substitution uses that invariant explicitly. *)
+Definition checked_const_unroll (pl : ParallelLoop.t) : imp ParallelLoop.t :=
+  if ParallelLoop.const_unroll_changed pl then
+    if ParallelCodegenCore.all_es_safeb pl then
+      let pl' := ParallelLoop.const_unroll pl in
+      if ParallelCodegenCore.all_es_safeb pl' then
+        pure pl'
+      else
+        res_to_alarm
+          ParallelCore.parallel_dummy
+          (Err "constant unroll produced a non-affine ParallelLoop trace"%string)
+    else
+      res_to_alarm
+        ParallelCore.parallel_dummy
+        (Err "constant unroll received a non-affine ParallelLoop trace"%string)
+  else
+    res_to_alarm
+      ParallelCore.parallel_dummy
+      (Err "constant unroll requested, but no constant-bound sequential loop exists"%string).
+
+Definition compile_with_const_unroll
+    (cfg : raw_config) (loop : LoopIR.t) : imp ParallelLoop.t :=
+  BIND pl <- compile cfg loop -;
+  checked_const_unroll pl.
+
 (** Checked unroll-jam is performed on the ordinary Loop result, after the
     selected polyhedral producer.  The transformed loop is then re-extracted
     and annotated through the identity parallel route.  Revalidation avoids
@@ -518,6 +548,44 @@ Proof.
   - simpl in Hcompile.
     apply mayReturn_alarm in Hcompile.
     tauto.
+Qed.
+
+Lemma checked_const_unroll_correct :
+  forall pl pl' st st',
+    mayReturn (checked_const_unroll pl) pl' ->
+    ParallelLoop.semantics pl' st st' ->
+    ParallelLoop.semantics pl st st'.
+Proof.
+  intros pl pl' st st' Hunroll Hsem.
+  unfold checked_const_unroll in Hunroll.
+  destruct (ParallelLoop.const_unroll_changed pl) eqn:Hchanged.
+  - destruct (ParallelCodegenCore.all_es_safeb pl) eqn:Hsafe.
+    + destruct
+        (ParallelCodegenCore.all_es_safeb
+           (ParallelLoop.const_unroll pl)) eqn:Hsafe_unroll.
+      * apply mayReturn_pure in Hunroll. subst pl'.
+        eapply ParallelLoop.const_unroll_semantics_refine; eauto using
+          ParallelCodegenCore.all_es_safeb_sound.
+      * apply mayReturn_alarm in Hunroll. tauto.
+    + apply mayReturn_alarm in Hunroll. tauto.
+  - apply mayReturn_alarm in Hunroll. tauto.
+Qed.
+
+Theorem compile_with_const_unroll_correct :
+  forall cfg loop pl st st',
+    mayReturn (compile_with_const_unroll cfg loop) pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros cfg loop pl st st' Hcompile Hsem.
+  unfold compile_with_const_unroll in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [annotated [Hproducer Hunroll]].
+  pose proof
+    (checked_const_unroll_correct annotated pl st st' Hunroll Hsem)
+    as Hannotated.
+  eapply compile_correct; eauto.
 Qed.
 
 Theorem compile_parallel_after_unrolljam_correct :

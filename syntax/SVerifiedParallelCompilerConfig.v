@@ -250,6 +250,33 @@ Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
   | Err msg => res_to_alarm SParallelPolOpt.parallel_dummy (Err msg)
   end.
 
+(** The extraction-facing mirror of the verified annotated constant-unroll
+    postpass.  Only [SeqMode] loops are eligible; parallel/vector annotations
+    and their origin tags remain in the returned tree. *)
+Definition checked_const_unroll (pl : ParallelLoop.t) : imp ParallelLoop.t :=
+  if ParallelLoop.const_unroll_changed pl then
+    if ParallelCodegenCore.all_es_safeb pl then
+      let pl' := ParallelLoop.const_unroll pl in
+      if ParallelCodegenCore.all_es_safeb pl' then
+        pure pl'
+      else
+        res_to_alarm
+          SParallelPolOpt.parallel_dummy
+          (Err "constant unroll produced a non-affine ParallelLoop trace"%string)
+    else
+      res_to_alarm
+        SParallelPolOpt.parallel_dummy
+        (Err "constant unroll received a non-affine ParallelLoop trace"%string)
+  else
+    res_to_alarm
+      SParallelPolOpt.parallel_dummy
+      (Err "constant unroll requested, but no constant-bound sequential loop exists"%string).
+
+Definition compile_with_const_unroll
+    (cfg : raw_config) (loop : SPolIRs.Loop.t) : imp ParallelLoop.t :=
+  BIND pl <- compile cfg loop -;
+  checked_const_unroll pl.
+
 (** The concrete driver-facing composition for checked unroll-jam followed by
     fresh parallel validation on the transformed Loop IR. *)
 Definition compile_parallel_after_unrolljam

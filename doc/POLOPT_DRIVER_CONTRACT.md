@@ -153,11 +153,15 @@ changed before the interface is final.
 
 ### 3.4 Post Passes
 
-`--const-unroll` is an independent verified sequential compiler postpass, not a
-Pluto scheduler oracle flag and not another spelling of unroll-jam. It fully
-expands every loop whose lower and upper bounds are integer constants, then
-runs verified cleanup. The extracted `compile_with_postpass` endpoint composes
-that rewrite with every verified sequential producer.
+`--const-unroll` is an independent verified postpass, not a Pluto scheduler
+oracle flag and not another spelling of unroll-jam. On ordinary `Loop` output,
+it fully expands every loop whose lower and upper bounds are integer constants.
+On annotated `ParallelLoop` output, it expands only constant-bound `SeqMode`
+loops: `ParMode` and `VecMode` loops retain their mode, origin tag, and bounds,
+while nested sequential loops remain eligible. The extracted sequential and
+annotated composition endpoints connect the corresponding rewrite to every
+verified producer. An explicit request is rejected if the selected output has
+no eligible sequential loop.
 
 `--unrolljam` is also a post-code-generation transformation, and `--ufactor n`
 supplies its factor unless automatic tile-size selection owns that option. The

@@ -32,9 +32,11 @@ A normal compilation route has five independent axes.
 | Execution | sequential, Pluto-hinted parallel, explicit-coordinate parallel, Pluto-hinted vector, explicit-coordinate vector | sequential |
 
 Observation flags such as `--dump-input` do not create a sixth route axis.
-Post-codegen transformations such as `--const-unroll` and checked
-`--unrolljam` begin from a verified sequential compilation result. The latter
-may then be re-extracted and freshly certified for parallel output on the
+Post-codegen transformations begin after a verified producer. `--const-unroll`
+can operate directly on sequential output or on annotated parallel output; in
+the latter case it unfolds only `SeqMode` loops and preserves all existing
+execution annotations. Checked `--unrolljam` begins from sequential `Loop` IR
+and may then be re-extracted and freshly certified for parallel output on the
 currently supported affine subset.
 
 ### Schedule
@@ -181,7 +183,7 @@ It also rejects routes with no matching verified composition:
 | `--multipar` without `--parallel` | multipar refines the hinted parallel route |
 | hinted and explicit parallel/vector options together | they select different execution families |
 | `--intratileopt --notile` | intra-tile rescheduling requires tiles |
-| `--const-unroll` with parallel or vector output | the post pass consumes sequential Loop IR |
+| `--const-unroll` with vector output | the annotated postpass is currently exposed only for parallel routes; vector combinations remain outside the CLI surface |
 | `--unrolljam` with vector output | no checked composition currently rebuilds an innermost vector annotation after the postpass |
 | `--unrolljam --parallel` when the result is not affine-extractable | fresh parallel certification cannot consume symbolic `Div`, `Max`, or `Min` loop controls |
 

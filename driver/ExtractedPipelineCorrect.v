@@ -375,6 +375,51 @@ Proof.
   - apply mayReturn_alarm in Hcompile. tauto.
 Qed.
 
+(** The concrete annotated postpass preserves every existing [ParMode] and
+    [VecMode] loop and unfolds only constant-bound [SeqMode] loops. *)
+Lemma extracted_checked_parallel_const_unroll_correct :
+  forall pl pl' st st',
+    mayReturn (SVerifiedParallelCompilerConfig.checked_const_unroll pl) pl' ->
+    ParallelLoop.semantics pl' st st' ->
+    ParallelLoop.semantics pl st st'.
+Proof.
+  intros pl pl' st st' Hunroll Hsem.
+  unfold SVerifiedParallelCompilerConfig.checked_const_unroll in Hunroll.
+  destruct (ParallelLoop.const_unroll_changed pl) eqn:Hchanged.
+  - destruct (ParallelCodegenCore.all_es_safeb pl) eqn:Hsafe.
+    + destruct
+        (ParallelCodegenCore.all_es_safeb
+           (ParallelLoop.const_unroll pl)) eqn:Hsafe_unroll.
+      * apply mayReturn_pure in Hunroll. subst pl'.
+        eapply ParallelLoop.const_unroll_semantics_refine; eauto using
+          ParallelCodegenCore.all_es_safeb_sound.
+      * apply mayReturn_alarm in Hunroll. tauto.
+    + apply mayReturn_alarm in Hunroll. tauto.
+  - apply mayReturn_alarm in Hunroll. tauto.
+Qed.
+
+(** Concrete end-to-end endpoint for a verified annotated compilation followed
+    by sequential-only constant unrolling. *)
+Theorem extracted_parallel_compile_with_const_unroll_correct :
+  forall cfg loop pl st st',
+    mayReturn
+      (SVerifiedParallelCompilerConfig.compile_with_const_unroll cfg loop)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      SPolIRs.Loop.semantics loop st st'' /\ SPolIRs.State.eq st' st''.
+Proof.
+  intros cfg loop pl st st' Hcompile Hsem.
+  unfold SVerifiedParallelCompilerConfig.compile_with_const_unroll in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [annotated [Hproducer Hunroll]].
+  pose proof
+    (extracted_checked_parallel_const_unroll_correct
+       annotated pl st st' Hunroll Hsem)
+    as Hannotated.
+  eapply extracted_parallel_compile_correct; eauto.
+Qed.
+
 (** The Pluto-compatible parallel/unroll-jam composition deliberately obtains
     a fresh certificate after the checked postpass.  It therefore demonstrates
     the combination without claiming certificate transport through arbitrary
