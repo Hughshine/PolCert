@@ -110,12 +110,14 @@ combination to the relevant checked route. The unified wrapper covers ordinary
 tiling, second-level tiling, ISS combinations, diamond and full-diamond routes,
 checked parallelization, and `--multipar` up to the current multi-current
 certificate surface. The extracted sequential postpass endpoint covers both
-constant-bound unrolling and checked unroll-jam. Parallel/vector output combined
-with unroll-jam remains an explicit rejection until an annotated-output
-postpass theorem is added. The driver cannot soundly emulate that theorem by
-feeding the postpass result through an identity route: unroll-jam emits
-piecewise and quotient loop controls that the current SCoP extractor does not
-accept, and the original parallel certificate applies before that rewrite.
+constant-bound unrolling and checked unroll-jam. For parallel output,
+`extracted_parallel_after_unrolljam_correct` and its multi-coordinate variant
+compose that endpoint with fresh identity-route extraction and parallel
+validation. Constant-range block unrolling demonstrates the combination.
+Symbolic block/remainder controls may contain `Div`, `Max`, or `Min`, which the
+current SCoP extractor rejects; vector output also remains unsupported. This
+narrow route does not claim certificate transport through arbitrary annotated
+loop nests.
 
 `--multipar` is no longer a side printer path. The driver parses Pluto's
 parallel-loop hints, builds a list of candidate padded schedule coordinates, and calls a
@@ -130,7 +132,7 @@ innermost-only: hinted mode does not search other dimensions, and explicit
 The direct-band integration is not represented by the older May 2026 artifact
 record. The release procedure must run the full claim suite on the final v3 tag
 and record its commit, image digest, route summary, and raw result bundle. A
-pre-freeze integration run passed the 138-case Pluto compatibility suite; it is
+pre-freeze integration run passed the 169-case Pluto compatibility suite; it is
 not a substitute for the final image review.
 
 ## Boundary

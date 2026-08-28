@@ -175,7 +175,7 @@ Definition compile_verified
     (cfg: verified_config) (loop: SPolIRs.Loop.t)
   : imp ParallelLoop.t :=
   match cfg with
-  (** One wrapper for all 13 concrete sequential configurations. *)
+  (** One wrapper for all 14 concrete sequential configurations. *)
   | VSeq seq_cfg =>
       compile_seq_verified seq_cfg loop
   (** Ten single-coordinate parallel routes. *)
@@ -249,3 +249,24 @@ Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
   | Okk vcfg => compile_verified vcfg loop
   | Err msg => res_to_alarm SParallelPolOpt.parallel_dummy (Err msg)
   end.
+
+(** The concrete driver-facing composition for checked unroll-jam followed by
+    fresh parallel validation on the transformed Loop IR. *)
+Definition compile_parallel_after_unrolljam
+    (seq_cfg : SVerifiedCompilerConfig.raw_config) (const_first : bool)
+    (select : SPolIRs.Loop.t -> SLoopJamLower.unrolljam_plan)
+    (factor d : nat) (loop : SPolIRs.Loop.t) : imp ParallelLoop.t :=
+  BIND optimized <-
+    SVerifiedCompilerConfig.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentIdentity d) optimized.
+
+Definition compile_parallel_many_after_unrolljam
+    (seq_cfg : SVerifiedCompilerConfig.raw_config) (const_first : bool)
+    (select : SPolIRs.Loop.t -> SLoopJamLower.unrolljam_plan)
+    (factor : nat) (dims : list nat) (loop : SPolIRs.Loop.t)
+    : imp ParallelLoop.t :=
+  BIND optimized <-
+    SVerifiedCompilerConfig.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentManyIdentity dims) optimized.

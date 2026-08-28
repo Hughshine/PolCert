@@ -53,6 +53,10 @@ Proof object:
 - optimizer: `Opt_with_iss`
 - theorem: `Opt_with_iss_correct`
 
+The no-tiling form `./polopt --iss --notile file.loop` uses the new
+`RawAffineISS` sequential configuration: checked ISS, checked affine
+scheduling, and verified code generation without a tiling phase.
+
 ### ISS-only split checking
 
 Command:
@@ -126,6 +130,19 @@ Status:
 - also exposed through Pluto compatibility as `--prevector`
 - accepts only a certified innermost loop; non-innermost explicit selections
   are rejected
+
+### Checked unroll-jam postpass
+
+`--unrolljam` runs verified block/remainder unrolling, validates each proposed
+jam, and applies verified cleanup after the selected sequential producer.
+`--const-unroll` is a different sequential-only postpass that completely
+expands loops with integer-constant lower and upper bounds.
+
+`--unrolljam --parallel` is supported when the transformed Loop can be
+re-extracted: PolOpt obtains a fresh parallel certificate after unroll-jam.
+The constant-range regression case exercises this composition. Symbolic
+`Div`/`Max`/`Min` bounds and all vector combinations are rejected at the
+current boundary.
 
 Proof objects:
 

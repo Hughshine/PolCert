@@ -177,6 +177,16 @@ TOP_LEVEL_ROUTES = [
         "note": "The theorem composes the selected producer with optional constant unrolling, checked block/remainder unroll-jam, and cleanup. The candidate selector is universally quantified.",
     },
     {
+        "route": "checked unroll-jam followed by fresh parallel validation",
+        "cli": "polopt --pluto-compat --unrolljam --parallel [--multipar] <file.loop>",
+        "theorem_file": "driver/ExtractedPipelineCorrect.v",
+        "theorem_names": [
+            "extracted_parallel_after_unrolljam_correct",
+            "extracted_parallel_many_after_unrolljam_correct",
+        ],
+        "note": "These theorems compose the checked sequential postpass with fresh identity-route extraction and parallel certification. They do not transport annotations through arbitrary transformed Loop nests.",
+    },
+    {
         "route": "loop-native same-bound sibling jam theorem",
         "cli": "internal building block used by locally validated --unrolljam fusion",
         "theorem_file": "src/LoopJamNative.v",

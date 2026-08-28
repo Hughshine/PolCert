@@ -65,11 +65,11 @@ The complete endpoint matrix is:
 
 | Correctness theorem | Executable it specifies | Target semantics | Use |
 | --- | --- | --- | --- |
-| `VerifiedCompilerConfig.compile_verified_correct` | generic `VerifiedCompilerConfig.compile_verified` | `Loop.semantics` | Generic 13-route sequential dispatcher, after config checking |
+| `VerifiedCompilerConfig.compile_verified_correct` | generic `VerifiedCompilerConfig.compile_verified` | `Loop.semantics` | Generic 14-route sequential dispatcher, after config checking |
 | `VerifiedCompilerConfig.compile_correct` | generic `VerifiedCompilerConfig.compile` | `Loop.semantics` | Generic sequential dispatcher from `raw_config` |
 | `VerifiedParallelCompilerConfig.compile_verified_correct` | generic `VerifiedParallelCompilerConfig.compile_verified` | `ParallelLoop.semantics` | Generic 31-constructor unified dispatcher, after config checking |
 | `VerifiedParallelCompilerConfig.compile_correct` | generic `VerifiedParallelCompilerConfig.compile` | `ParallelLoop.semantics` | Paper-facing generic theorem from `raw_config` |
-| `ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct` | `SVerifiedCompilerConfig.compile_verified` | concrete `SPolIRs.Loop.semantics` | Extracted 13-route sequential dispatcher, after config checking |
+| `ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct` | `SVerifiedCompilerConfig.compile_verified` | concrete `SPolIRs.Loop.semantics` | Extracted 14-route sequential dispatcher, after config checking |
 | `ExtractedPipelineCorrect.extracted_sequential_compile_correct` | `SVerifiedCompilerConfig.compile` | concrete `SPolIRs.Loop.semantics` | Extracted sequential dispatcher from `raw_config` |
 | `ExtractedPipelineCorrect.extracted_parallel_compile_verified_correct` | `SVerifiedParallelCompilerConfig.compile_verified` | concrete `ParallelLoop.semantics` | Extracted 31-constructor unified dispatcher, after config checking |
 | `ExtractedPipelineCorrect.extracted_parallel_compile_correct` | `SVerifiedParallelCompilerConfig.compile` | concrete `ParallelLoop.semantics` | Closest theorem to the extracted CLI pipeline |
@@ -85,7 +85,7 @@ different proof ideas:
 
 | Constructor prefix | Payload | Meaning |
 | --- | --- | --- |
-| `VSeq` | one of 13 sequential configs | Run the Loop-to-Loop dispatcher, then checked-lift the result |
+| `VSeq` | one of 14 sequential configs | Run the Loop-to-Loop dispatcher, then checked-lift the result |
 | `VParallelCurrent*` | one schedule coordinate `d` | Produce one certified `ParMode` loop |
 | `VVectorCurrent*` | one schedule coordinate `d` | Produce one checked innermost `VecMode` loop; its formal semantics is sequential |
 | `VParallelCurrentMany*` | coordinate list `dims` | Certify and annotate every accepted coordinate |

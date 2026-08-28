@@ -385,7 +385,9 @@ let pluto_extra_has_any_prefix prefixes cfg =
 let pluto_ufactor_prefix = "--ufactor="
 
 let pluto_scheduler_extra_flags cfg =
-  if cfg.force_const_unroll && not (pluto_extra_has "--determine-tile-size" cfg) then
+  if cfg.pluto_unrolljam_seen
+     && not (pluto_extra_has "--determine-tile-size" cfg)
+  then
     List.filter
       (fun flag -> not (starts_with flag pluto_ufactor_prefix))
       cfg.pluto_extra_flags
@@ -428,6 +430,7 @@ let pluto_polopt_args cfg =
   if cfg.force_vector then args := !args @ ["--vector"];
   if cfg.force_vector_strict then args := !args @ ["--vector-strict"];
   if cfg.force_const_unroll then args := !args @ ["--const-unroll"];
+  if cfg.pluto_unrolljam_seen then args := !args @ ["--unrolljam"];
   !args
 
 let print_pluto_explain cfg =
@@ -437,7 +440,9 @@ let print_pluto_explain cfg =
     @ if cfg.pluto_intratileopt_seen then ["--intratileopt"] else []
   in
   let post_flags =
-    if cfg.force_const_unroll && not (pluto_extra_has "--determine-tile-size" cfg) then
+    if cfg.pluto_unrolljam_seen
+       && not (pluto_extra_has "--determine-tile-size" cfg)
+    then
       List.filter (fun flag -> starts_with flag pluto_ufactor_prefix) cfg.pluto_extra_flags
     else
       []
@@ -504,15 +509,18 @@ let validate_pluto_compat prog cfg =
       pluto_reject prog "Pluto enables --parallel by default; pass --noparallel or --parallel explicitly";
     if cfg.force_vector && cfg.force_parallel then
       pluto_reject prog "--prevector/--vector cannot be combined with --parallel in the current checked annotation surface";
-    if
-      cfg.force_const_unroll
-      && (cfg.force_parallel || cfg.force_vector || cfg.parallel_current_dim <> None || cfg.vector_current_dim <> None)
-    then begin
-      if cfg.pluto_unrolljam_seen then
-        pluto_reject prog "--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen"
-      else
-        pluto_reject prog "--const-unroll currently applies only to sequential Loop IR routes"
-    end;
+    if cfg.pluto_unrolljam_seen
+       && (cfg.force_vector || cfg.vector_current_dim <> None)
+    then
+      pluto_reject prog
+        "--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass";
+    if cfg.force_const_unroll
+       && not cfg.pluto_unrolljam_seen
+       && (cfg.force_parallel || cfg.force_vector
+           || cfg.parallel_current_dim <> None || cfg.vector_current_dim <> None)
+    then
+      pluto_reject prog
+        "--const-unroll currently applies only to sequential Loop IR routes";
     if (not cfg.force_diamond_tile) && not cfg.pluto_nodiamond_seen then
       pluto_reject prog "Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly";
     if cfg.force_identity && cfg.force_parallel && not cfg.pluto_tile_seen then
@@ -547,14 +555,16 @@ let validate_pluto_compat prog cfg =
     let has_determine_tile_size = pluto_extra_has "--determine-tile-size" cfg in
     if has_cache_or_data_size && not has_determine_tile_size then
       pluto_reject prog "--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset";
-    if has_ufactor && not has_determine_tile_size && not cfg.force_const_unroll then
+    if has_ufactor && not has_determine_tile_size
+       && not cfg.pluto_unrolljam_seen
+    then
       pluto_reject prog "--ufactor without --determine-tile-size requires --unrolljam in the checked polopt subset";
     if
       (has_cache_or_data_size || (has_ufactor && has_determine_tile_size))
       && (cfg.force_notile || cfg.force_identity)
     then
       pluto_reject prog "--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling";
-    if has_ufactor && not has_determine_tile_size && cfg.force_const_unroll then
+    if has_ufactor && not has_determine_tile_size && cfg.pluto_unrolljam_seen then
       add_pluto_note cfg
         "--ufactor is not passed to Pluto's scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts";
     if
@@ -795,8 +805,7 @@ let parse_args () : config =
       | "--unrolljam" ->
           enable_pluto_compat cfg;
           cfg.pluto_unrolljam_seen <- true;
-          cfg.force_const_unroll <- true;
-          add_pluto_note cfg "--unrolljam selects the proved sequential Loop postpass: block unrolling, local jam validation, and cleanup";
+          add_pluto_note cfg "--unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward";
           go (i + 1)
       | (("--smartfuse" | "--nofuse" | "--maxfuse" | "--nodepbound"
          | "--per-cc-obj" | "--flic" | "--fast-lin-ind-check"

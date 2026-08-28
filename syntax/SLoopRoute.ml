@@ -238,8 +238,9 @@ let normalize (cfg : SLoopConfig.config) =
       else if cfg.force_legacy_generic_tiling then
         Error
           "--legacy-generic-tiling only applies to the default non-ISS full tiled optimization route"
-      else if cfg.force_const_unroll then
-        Error "--const-unroll cannot be combined with standalone validation actions"
+      else if cfg.force_const_unroll || cfg.pluto_unrolljam_seen then
+        Error
+          "--const-unroll/--unrolljam cannot be combined with standalone validation actions"
       else if cfg.pluto_intratileopt_seen then
         Error "--intratileopt applies to optimization routes, not standalone validation actions"
       else if cfg.force_second_level_tile
@@ -256,18 +257,15 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--parallel-current cannot be combined with --extract-only"
       else if has_vector_current cfg && cfg.extract_only then
         Error "--vector-current cannot be combined with --extract-only"
-      else if cfg.force_const_unroll && cfg.extract_only then
-        Error "--const-unroll cannot be combined with --extract-only"
+      else if (cfg.force_const_unroll || cfg.pluto_unrolljam_seen)
+              && cfg.extract_only
+      then
+        Error "--const-unroll/--unrolljam cannot be combined with --extract-only"
       else if cfg.force_iss && cfg.force_identity && not cfg.pluto_tile_seen
               && not (has_parallel_or_vector_consumer cfg)
       then
         Error
           "sequential --iss --identity is not a verified compiler route; add --tile or a checked parallel/vector consumer"
-      else if cfg.force_iss && cfg.force_notile
-              && not (has_parallel_or_vector_consumer cfg)
-      then
-        Error
-          "sequential --iss --notile is not a verified compiler route; use --iss or add a checked parallel/vector consumer"
       else if cfg.force_parallel_strict && not cfg.force_parallel then
         Error "--parallel-strict requires --parallel"
       else if cfg.force_vector_strict && not cfg.force_vector then
@@ -290,16 +288,18 @@ let normalize (cfg : SLoopConfig.config) =
         Error "--parallel-current cannot be combined with --vector-current"
       else if cfg.force_multipar && not cfg.force_parallel then
         Error "--multipar requires the Pluto-hinted --parallel route"
+      else if cfg.pluto_unrolljam_seen
+              && (cfg.force_vector || has_vector_current cfg)
+      then
+        Error "--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass"
       else if cfg.force_const_unroll
+              && not cfg.pluto_unrolljam_seen
               && (cfg.force_parallel
                   || cfg.force_vector
                   || has_parallel_current cfg
                   || has_vector_current cfg)
       then
-        if cfg.pluto_unrolljam_seen then
-          Error "--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen"
-        else
-          Error "--const-unroll currently applies only to sequential Loop IR routes"
+        Error "--const-unroll currently applies only to sequential Loop IR routes"
       else if cfg.force_band_tiling_experiment
               && cfg.force_legacy_generic_tiling
       then

@@ -436,7 +436,11 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.add_note("--nounrolljam accepted; no checked unroll post pass is requested")
         elif flag == "--unrolljam":
             state.unrolljam_seen = True
-            state.add_note("--unrolljam selects the proved sequential Loop postpass: block unrolling, local jam validation, and cleanup")
+            state.add_note(
+                "--unrolljam selects the proved Loop postpass: block unrolling, "
+                "local jam validation, and cleanup; parallel output obtains a "
+                "fresh annotation certificate afterward"
+            )
         elif flag in SUPPORTED_OPTIMIZER_OPTIONS:
             state.add_oracle_flag(flag)
             state.add_note(f"{flag} passed through to Pluto's checked scheduler oracle")
@@ -513,8 +517,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
         raise Reject("Pluto enables --parallel by default; pass --noparallel or --parallel explicitly")
     if state.vector and state.parallel:
         raise Reject("--prevector/--vector cannot be combined with --parallel in the current checked annotation surface")
-    if state.unrolljam_seen and (state.vector or state.parallel):
-        raise Reject("--unrolljam cannot currently be combined with parallel or vector execution; its checked Loop postpass runs after polyhedral codegen")
+    if state.unrolljam_seen and state.vector:
+        raise Reject("--unrolljam cannot currently be combined with vector execution")
     if not state.diamond_tile and not state.nodiamond_seen:
         raise Reject("Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly")
     identity_tiled = state.identity and state.tile_seen and state.tile
@@ -577,6 +581,8 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
             args.append("--iss")
         args.append("--identity")
     elif not state.tile:
+        if state.iss:
+            args.append("--iss")
         args.append("--notile")
     else:
         if state.iss:
@@ -592,7 +598,7 @@ def polopt_args_for_state(state: PlutoFlagState) -> list[str]:
     if state.vector:
         args.append("--vector")
     if state.unrolljam_seen:
-        args.append("--const-unroll")
+        args.append("--unrolljam")
     return args
 
 

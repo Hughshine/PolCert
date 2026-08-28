@@ -23,7 +23,7 @@ Module State := PolIRs.State.
 (** * Generic sequential compiler endpoint
 
     This functor is the small, sequential endpoint.  Both its source and target
-    use [LoopIR]; it contains no [ParMode] or [VecMode].  The 13 constructors of
+    use [LoopIR]; it contains no [ParMode] or [VecMode].  The 14 constructors of
     [verified_config] select identity, affine, tiling, ISS, and post_tiling_affine routes.
 
     The similarly named [VerifiedParallelCompilerConfig] is the larger unified
@@ -41,6 +41,7 @@ Module State := PolIRs.State.
 Inductive raw_config : Type :=
 | RawIdentity
 | RawAffine
+| RawAffineISS
 | RawDefault
 | RawDefaultBand
 | RawSecondLevel
@@ -57,6 +58,7 @@ Inductive raw_config : Type :=
 Inductive verified_config : Type :=
 | VIdentity
 | VAffine
+| VAffineISS
 | VDefault
 | VDefaultBand
 | VSecondLevel
@@ -73,6 +75,7 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   match cfg with
   | RawIdentity => Okk VIdentity
   | RawAffine => Okk VAffine
+  | RawAffineISS => Okk VAffineISS
   | RawDefault => Okk VDefault
   | RawDefaultBand => Okk VDefaultBand
   | RawSecondLevel => Okk VSecondLevel
@@ -105,6 +108,7 @@ Definition compile_verified (cfg: verified_config) (loop: LoopIR.t)
   match cfg with
   | VIdentity => CoreCorrect.Core.identity_opt_prepared loop
   | VAffine => CoreCorrect.Core.affine_opt_prepared loop
+  | VAffineISS => CoreCorrect.Core.Opt_with_iss loop
   | VDefault => BandCorrect.Opt_band loop
   | VDefaultBand => BandCorrect.Opt_band loop
   | VSecondLevel => BandCorrect.Opt_band loop
@@ -165,6 +169,7 @@ Proof.
   destruct cfg; simpl in Hcompile.
   - eapply CoreCorrect.Identity_opt_prepared_correct; eauto.
   - eapply CoreCorrect.Affine_opt_prepared_correct; eauto.
+  - eapply CoreCorrect.Opt_with_iss_correct; eauto.
   - eapply BandCorrect.Opt_band_correct; eauto.
   - eapply BandCorrect.Opt_band_correct; eauto.
   - eapply BandCorrect.Opt_band_correct; eauto.

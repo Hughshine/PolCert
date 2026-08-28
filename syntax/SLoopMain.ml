@@ -1559,6 +1559,8 @@ let verified_sequential_config_of_route route =
       RawIdentity
   | SLoopRoute.AffineSchedule, SLoopRoute.Plain, SLoopRoute.NoTiling ->
       RawAffine
+  | SLoopRoute.AffineSchedule, SLoopRoute.ISS, SLoopRoute.NoTiling ->
+      RawAffineISS
   | SLoopRoute.IdentitySchedule, SLoopRoute.Plain,
       SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } ->
       RawIdentityBand
@@ -1583,7 +1585,7 @@ let verified_sequential_config_of_route route =
   | SLoopRoute.AffineSchedule, SLoopRoute.ISS,
       SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } ->
       RawSecondLevelISS
-  | _, SLoopRoute.ISS, SLoopRoute.NoTiling ->
+  | SLoopRoute.IdentitySchedule, SLoopRoute.ISS, SLoopRoute.NoTiling ->
       RawUnsupported
 
 let run_selected_sequential_loop_compiler route compile loop =
@@ -1792,7 +1794,8 @@ let try_verified_vector_current_compile route loop dim =
           (verified_vector_current_config_of_route route dim)
           loop))
 
-let run_verified_hinted_parallel_optimization route loop =
+let run_verified_hinted_parallel_optimization_with
+    try_compile sequential_fallback route loop =
   let (after_scop, hinted_dims) =
     parallel_scop_and_hint_dims_of_route route loop
   in
@@ -1815,9 +1818,9 @@ let run_verified_hinted_parallel_optimization route loop =
             "status=rejected source=pluto-hint reason=no-certifiable-dimension";
           (tag_loop_for_parallel_pretty loop, false)
         end else
-          verified_sequential_after_parallel_skip route loop
+          sequential_fallback route loop
     | dim :: rest ->
-        begin match try_verified_parallel_current_compile route loop dim with
+        begin match try_compile route loop dim with
         | Some (pl, routes) ->
             TilingValidationRoute.report routes;
             (pl, true)
@@ -1826,7 +1829,14 @@ let run_verified_hinted_parallel_optimization route loop =
   in
   go candidates
 
-let run_verified_hinted_multipar_parallel_optimization route loop =
+let run_verified_hinted_parallel_optimization route loop =
+  run_verified_hinted_parallel_optimization_with
+    try_verified_parallel_current_compile
+    verified_sequential_after_parallel_skip
+    route loop
+
+let run_verified_hinted_multipar_parallel_optimization_with
+    try_compile sequential_fallback route loop =
   let (after_scop, hinted_dims) =
     parallel_scop_and_hint_dims_of_route route loop
   in
@@ -1845,7 +1855,7 @@ let run_verified_hinted_multipar_parallel_optimization route loop =
   let hinted_result =
     match hinted_dims with
     | [] -> None
-    | _ -> try_verified_parallel_current_many_compile route loop hinted_dims
+    | _ -> try_compile route loop hinted_dims
   in
   let hinted_accepted =
     match hinted_result with
@@ -1853,7 +1863,7 @@ let run_verified_hinted_multipar_parallel_optimization route loop =
     | None -> false
   in
   let selected =
-    match try_verified_parallel_current_many_compile route loop candidates with
+    match try_compile route loop candidates with
     | Some (pl, routes) -> Some (pl, routes, hinted_accepted)
     | None ->
         begin match hinted_result with
@@ -1871,7 +1881,13 @@ let run_verified_hinted_multipar_parallel_optimization route loop =
           "status=rejected source=pluto-hint reason=no-certifiable-dimension";
         (tag_loop_for_parallel_pretty loop, false)
       end else
-        verified_sequential_after_parallel_skip route loop
+        sequential_fallback route loop
+
+let run_verified_hinted_multipar_parallel_optimization route loop =
+  run_verified_hinted_multipar_parallel_optimization_with
+    try_verified_parallel_current_many_compile
+    verified_sequential_after_parallel_skip
+    route loop
 
 let run_selected_parallel_optimization route loop =
   match route.SLoopRoute.execution_family with
@@ -2362,6 +2378,63 @@ let run_requested_sequential_loop_optimization cfg route postpass loop =
   else
     run_selected_sequential_loop_optimization route postpass loop
 
+let parallel_unrolljam_const_first () =
+  (* Full constant unrolling can remove every loop before the fresh parallel
+     validation.  Parallel combinations retain block loops and let the checked
+     unroll-jam pass transform them instead. *)
+  false
+
+let try_verified_parallel_current_unrolljam_compile cfg route loop dim =
+  verified_candidate_or_raise
+    (TilingValidationRoute.capture_result (fun () ->
+       VerifiedParallelCompiler.compile_parallel_after_unrolljam
+         (verified_sequential_config_of_route route)
+         (parallel_unrolljam_const_first ())
+         (select_unrolljam_plan cfg)
+         (nat_of_int (pluto_unroll_factor cfg))
+         (nat_of_int dim)
+         loop))
+
+let try_verified_parallel_current_many_unrolljam_compile cfg route loop dims =
+  let dims = unique_ints dims in
+  if dims = [] then
+    None
+  else
+    verified_candidate_or_raise
+      (TilingValidationRoute.capture_result (fun () ->
+         VerifiedParallelCompiler.compile_parallel_many_after_unrolljam
+           (verified_sequential_config_of_route route)
+           (parallel_unrolljam_const_first ())
+           (select_unrolljam_plan cfg)
+           (nat_of_int (pluto_unroll_factor cfg))
+           (List.map nat_of_int dims)
+           loop))
+
+let verified_sequential_after_parallel_unrolljam_skip cfg route loop =
+  report_parallel_validation
+    "status=skipped source=pluto-hint reason=no-certifiable-dimension-after-unrolljam";
+  let (optimized, ok) =
+    run_requested_sequential_loop_optimization
+      cfg route VerifiedSequentialCompiler.no_postpass loop
+  in
+  (tag_loop_for_parallel_pretty optimized, ok)
+
+let run_requested_hinted_parallel_unrolljam_optimization cfg route loop =
+  match route.SLoopRoute.execution_family with
+  | SLoopRoute.PlutoParallelHint { multiple = true; _ } ->
+      run_verified_hinted_multipar_parallel_optimization_with
+        (try_verified_parallel_current_many_unrolljam_compile cfg)
+        (verified_sequential_after_parallel_unrolljam_skip cfg)
+        route loop
+  | SLoopRoute.PlutoParallelHint { multiple = false; _ } ->
+      run_verified_hinted_parallel_optimization_with
+        (try_verified_parallel_current_unrolljam_compile cfg)
+        (verified_sequential_after_parallel_unrolljam_skip cfg)
+        route loop
+  | _ ->
+      frontend_failf
+        "internal error: non-hinted route reached parallel unroll-jam dispatch"
+
 let require_checked_success ok =
   if not ok then begin
     prerr_endline "[alarm] requested checked optimization was rejected";
@@ -2451,7 +2524,12 @@ let () =
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
         | SLoopRoute.PlutoParallelHint _ ->
-            let (optimized, ok) = run_selected_parallel_optimization route loop in
+            let (optimized, ok) =
+              if cfg.pluto_unrolljam_seen then
+                run_requested_hinted_parallel_unrolljam_optimization cfg route loop
+              else
+                run_selected_parallel_optimization route loop
+            in
             require_checked_success ok;
             print_section "Optimized Loop" (string_of_parallel_loop optimized)
         | SLoopRoute.Sequential ->

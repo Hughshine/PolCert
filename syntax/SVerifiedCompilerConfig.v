@@ -29,6 +29,7 @@ Local Open Scope string_scope.
 Inductive raw_config : Type :=
 | RawIdentity
 | RawAffine
+| RawAffineISS
 | RawDefault
 | RawDefaultBand
 | RawSecondLevel
@@ -45,6 +46,7 @@ Inductive raw_config : Type :=
 Inductive verified_config : Type :=
 | VIdentity
 | VAffine
+| VAffineISS
 | VDefault
 | VDefaultBand
 | VSecondLevel
@@ -61,6 +63,7 @@ Definition check_config (cfg: raw_config) : result verified_config :=
   match cfg with
   | RawIdentity => Okk VIdentity
   | RawAffine => Okk VAffine
+  | RawAffineISS => Okk VAffineISS
   | RawDefault => Okk VDefault
   | RawDefaultBand => Okk VDefaultBand
   | RawSecondLevel => Okk VSecondLevel
@@ -85,6 +88,7 @@ Definition compile_verified
   match cfg with
   | VIdentity => SPolOpt.opt_identity loop
   | VAffine => SPolOpt.opt_affine loop
+  | VAffineISS => SPolOpt.opt_with_iss loop
   | VDefault => SBandTilingOpt.opt loop
   | VDefaultBand => SBandTilingOpt.opt loop
   | VSecondLevel => SBandTilingOpt.opt loop

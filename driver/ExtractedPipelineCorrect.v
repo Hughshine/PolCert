@@ -47,7 +47,7 @@ Module ParallelLoop := SVerifiedParallelCompilerConfig.ParallelLoop.
 (** ** Concrete sequential endpoints *)
 
 (** This theorem is the concrete counterpart of
-    [VerifiedCompilerConfig.compile_verified_correct].  Its 13 cases do not
+    [VerifiedCompilerConfig.compile_verified_correct].  Its 14 cases do not
     reprove the transformations: they rewrite the hand-instantiated executable
     route to the corresponding generic module and invoke its existing theorem. *)
 
@@ -63,6 +63,7 @@ Proof.
   destruct cfg; simpl in Hcompile.
   - eapply CoreCorrect.Identity_opt_prepared_correct; eauto.
   - eapply CoreCorrect.Affine_opt_prepared_correct; eauto.
+  - eapply CoreCorrect.Opt_with_iss_correct; eauto.
   - rewrite SBandTilingOptBridge.opt_impeq_generic in Hcompile.
     eapply BandCorrect.Opt_band_correct; eauto.
   - rewrite SBandTilingOptBridge.opt_impeq_generic in Hcompile.
@@ -176,7 +177,7 @@ Qed.
 (** The next two lemmas serve only the [VSeq] branch of the concrete unified
     dispatcher.  They turn the concrete sequential target into a trace-safe,
     sequentially tagged [ParallelLoop] target, then compose its state relation
-    with the 13-route sequential theorem above. *)
+    with the 14-route sequential theorem above. *)
 
 Lemma extracted_checked_lift_sequential_loop_correct :
   forall loop pl st st',
@@ -211,7 +212,7 @@ Proof.
     tauto.
 Qed.
 
-(** Compose the concrete 13-route sequential theorem with the checked lift into
+(** Compose the concrete 14-route sequential theorem with the checked lift into
     the common [ParallelLoop] target. *)
 Lemma extracted_parallel_compile_seq_verified_correct :
   forall cfg loop pl st st',
@@ -256,7 +257,7 @@ Theorem extracted_parallel_compile_verified_correct :
 Proof.
   intros cfg loop pl st st' Hcompile Hsem.
   destruct cfg; simpl in Hcompile.
-  (** [VSeq]: bridge the concrete 13-route sequential dispatcher. *)
+  (** [VSeq]: bridge the concrete 14-route sequential dispatcher. *)
   - eapply extracted_parallel_compile_seq_verified_correct; eauto.
   (** Ten concrete [VParallelCurrent] constructors. *)
   - rewrite SParallelPolOptBridge.opt_parallel_current_identity_impeq in Hcompile.
@@ -372,6 +373,68 @@ Proof.
   destruct (SVerifiedParallelCompilerConfig.check_config cfg) as [vcfg|msg].
   - eapply extracted_parallel_compile_verified_correct; eauto.
   - apply mayReturn_alarm in Hcompile. tauto.
+Qed.
+
+(** The Pluto-compatible parallel/unroll-jam composition deliberately obtains
+    a fresh certificate after the checked postpass.  It therefore demonstrates
+    the combination without claiming certificate transport through arbitrary
+    annotated loop nests. *)
+Theorem extracted_parallel_after_unrolljam_correct :
+  forall seq_cfg const_first select factor d loop pl st st',
+    mayReturn
+      (SVerifiedParallelCompilerConfig.compile_parallel_after_unrolljam
+         seq_cfg const_first select factor d loop)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      SPolIRs.Loop.semantics loop st st'' /\ SPolIRs.State.eq st' st''.
+Proof.
+  intros seq_cfg const_first select factor d loop pl st st' Hcompile Hsem.
+  unfold SVerifiedParallelCompilerConfig.compile_parallel_after_unrolljam
+    in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hunrolljam Hparallel]].
+  destruct
+    (extracted_parallel_compile_correct
+       (SVerifiedParallelCompilerConfig.RawParallelCurrentIdentity d)
+       optimized pl st st' Hparallel Hsem)
+    as [st_mid [Hmid Heq_mid]].
+  destruct
+    (extracted_sequential_compile_with_unrolljam_correct
+       seq_cfg const_first select factor loop st st_mid optimized
+       Hunrolljam Hmid)
+    as [st_src [Hsrc Heq_src]].
+  exists st_src. split; [exact Hsrc|].
+  eapply SPolIRs.State.eq_trans; eauto.
+Qed.
+
+Theorem extracted_parallel_many_after_unrolljam_correct :
+  forall seq_cfg const_first select factor dims loop pl st st',
+    mayReturn
+      (SVerifiedParallelCompilerConfig.compile_parallel_many_after_unrolljam
+         seq_cfg const_first select factor dims loop)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      SPolIRs.Loop.semantics loop st st'' /\ SPolIRs.State.eq st' st''.
+Proof.
+  intros seq_cfg const_first select factor dims loop pl st st' Hcompile Hsem.
+  unfold SVerifiedParallelCompilerConfig.compile_parallel_many_after_unrolljam
+    in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hunrolljam Hparallel]].
+  destruct
+    (extracted_parallel_compile_correct
+       (SVerifiedParallelCompilerConfig.RawParallelCurrentManyIdentity dims)
+       optimized pl st st' Hparallel Hsem)
+    as [st_mid [Hmid Heq_mid]].
+  destruct
+    (extracted_sequential_compile_with_unrolljam_correct
+       seq_cfg const_first select factor loop st st_mid optimized
+       Hunrolljam Hmid)
+    as [st_src [Hsrc Heq_src]].
+  exists st_src. split; [exact Hsrc|].
+  eapply SPolIRs.State.eq_trans; eauto.
 Qed.
 
 (** ** Explicit rejection endpoints *)

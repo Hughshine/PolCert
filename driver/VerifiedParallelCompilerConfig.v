@@ -44,7 +44,7 @@ Module ParallelCodegenCore := ParallelCore.ParallelCodegenCore.
 
 (** ** Unified configuration naming
 
-    - [VSeq] wraps one of the 13 sequential configurations.
+    - [VSeq] wraps one of the 14 sequential configurations.
     - [VParallelCurrent* d] requests one certified parallel schedule coordinate.
     - [VVectorCurrent* d] requests one certified innermost vector coordinate.
     - [VParallelCurrentMany* dims] requests every accepted coordinate in [dims].
@@ -213,7 +213,7 @@ Definition compile_verified
     (cfg: verified_config) (loop: LoopIR.t)
   : imp ParallelLoop.t :=
   match cfg with
-  (** One wrapper for all 13 sequential configurations. *)
+  (** One wrapper for all 14 sequential configurations. *)
   | VSeq seq_cfg =>
       compile_seq_verified seq_cfg loop
   (** Ten single-coordinate parallel routes. *)
@@ -287,6 +287,30 @@ Definition compile (cfg: raw_config) (loop: LoopIR.t)
   | Okk vcfg => compile_verified vcfg loop
   | Err msg => res_to_alarm ParallelCore.parallel_dummy (Err msg)
   end.
+
+(** Checked unroll-jam is performed on the ordinary Loop result, after the
+    selected polyhedral producer.  The transformed loop is then re-extracted
+    and annotated through the identity parallel route.  Revalidation avoids
+    transporting a pre-unroll parallel certificate across the changed loop
+    structure. *)
+Definition compile_parallel_after_unrolljam
+    (seq_cfg : SeqCompiler.raw_config) (const_first : bool)
+    (select : LoopIR.t -> SeqCompiler.Postpass.JamLower.unrolljam_plan)
+    (factor d : nat) (loop : LoopIR.t) : imp ParallelLoop.t :=
+  BIND optimized <-
+    SeqCompiler.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentIdentity d) optimized.
+
+Definition compile_parallel_many_after_unrolljam
+    (seq_cfg : SeqCompiler.raw_config) (const_first : bool)
+    (select : LoopIR.t -> SeqCompiler.Postpass.JamLower.unrolljam_plan)
+    (factor : nat) (dims : list nat) (loop : LoopIR.t)
+    : imp ParallelLoop.t :=
+  BIND optimized <-
+    SeqCompiler.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentManyIdentity dims) optimized.
 
 (** ** Correctness support for sequential lifting *)
 
@@ -436,7 +460,7 @@ Theorem compile_verified_correct :
 Proof.
   intros cfg loop pl st st' Hcompile Hsem.
   destruct cfg; simpl in Hcompile.
-  (** [VSeq]: reuse the complete 13-route sequential dispatcher. *)
+  (** [VSeq]: reuse the complete 14-route sequential dispatcher. *)
   - eapply compile_seq_verified_correct; eauto.
   (** Ten [VParallelCurrent] constructors. *)
   - eapply ParallelCorrect.Opt_parallel_current_identity_correct; eauto.
@@ -494,6 +518,62 @@ Proof.
   - simpl in Hcompile.
     apply mayReturn_alarm in Hcompile.
     tauto.
+Qed.
+
+Theorem compile_parallel_after_unrolljam_correct :
+  forall seq_cfg const_first select factor d loop pl st st',
+    mayReturn
+      (compile_parallel_after_unrolljam
+         seq_cfg const_first select factor d loop)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros seq_cfg const_first select factor d loop pl st st' Hcompile Hsem.
+  unfold compile_parallel_after_unrolljam in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hunrolljam Hparallel]].
+  destruct
+    (compile_correct
+       (RawParallelCurrentIdentity d) optimized pl st st'
+       Hparallel Hsem)
+    as [st_mid [Hmid Heq_mid]].
+  destruct
+    (SeqCompiler.compile_with_unrolljam_correct
+       seq_cfg const_first select factor loop st st_mid optimized
+       Hunrolljam Hmid)
+    as [st_src [Hsrc Heq_src]].
+  exists st_src. split; [exact Hsrc|].
+  eapply State.eq_trans; eauto.
+Qed.
+
+Theorem compile_parallel_many_after_unrolljam_correct :
+  forall seq_cfg const_first select factor dims loop pl st st',
+    mayReturn
+      (compile_parallel_many_after_unrolljam
+         seq_cfg const_first select factor dims loop)
+      pl ->
+    ParallelLoop.semantics pl st st' ->
+    exists st'',
+      LoopIR.semantics loop st st'' /\ State.eq st' st''.
+Proof.
+  intros seq_cfg const_first select factor dims loop pl st st' Hcompile Hsem.
+  unfold compile_parallel_many_after_unrolljam in Hcompile.
+  apply mayReturn_bind in Hcompile.
+  destruct Hcompile as [optimized [Hunrolljam Hparallel]].
+  destruct
+    (compile_correct
+       (RawParallelCurrentManyIdentity dims) optimized pl st st'
+       Hparallel Hsem)
+    as [st_mid [Hmid Heq_mid]].
+  destruct
+    (SeqCompiler.compile_with_unrolljam_correct
+       seq_cfg const_first select factor loop st st_mid optimized
+       Hunrolljam Hmid)
+    as [st_src [Hsrc Heq_src]].
+  exists st_src. split; [exact Hsrc|].
+  eapply State.eq_trans; eauto.
 Qed.
 
 Theorem compile_unsupported_no_result :

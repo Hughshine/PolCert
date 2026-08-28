@@ -33,7 +33,9 @@ A normal compilation route has five independent axes.
 
 Observation flags such as `--dump-input` do not create a sixth route axis.
 Post-codegen transformations such as `--const-unroll` and checked
-`--unrolljam` run only after a sequential verified compilation succeeds.
+`--unrolljam` begin from a verified sequential compilation result. The latter
+may then be re-extracted and freshly certified for parallel output on the
+currently supported affine subset.
 
 ### Schedule
 
@@ -42,11 +44,11 @@ source schedule and skips Pluto scheduling. Because an identity schedule alone
 has no tiling phase, use `--identity-tiled` (equivalent to `--identity --tile`)
 when the source schedule should be tiled.
 
-`--notile` keeps affine scheduling but stops before tiling. A sequential ISS
-route must continue through tiling; `--iss --notile` and bare `--iss --identity`
-are therefore rejected. Checked parallel or vector consumers have additional
-theorem-facing ISS routes and may use no-tiling schedules where documented by
-the test suites.
+`--notile` keeps affine scheduling but stops before tiling. `--iss --notile`
+uses the checked ISS transformation followed by affine scheduling and verified
+code generation. Bare `--iss --identity` remains a separate unsupported route;
+the checked identity-plus-ISS composition currently starts at identity tiling
+or at a documented parallel/vector consumer.
 
 ### Structural Stage
 
@@ -139,6 +141,7 @@ diamond, and ISS producer routes.
 | `./polopt --identity file.loop` | identity, plain, no tiling, sequential |
 | `./polopt --identity-tiled file.loop` | identity, plain, rectangular one-level tiling, sequential |
 | `./polopt --iss file.loop` | ISS, affine, rectangular one-level tiling, sequential |
+| `./polopt --iss --notile file.loop` | ISS, affine, no tiling, sequential |
 | `./polopt --second-level-tile file.loop` | affine, plain, rectangular two-level tiling, sequential |
 | `./polopt --diamond-tile file.loop` | affine, plain, diamond one-level tiling, sequential |
 | `./polopt --full-diamond-tile --iss file.loop` | ISS, affine, full-diamond one-level tiling, sequential |
@@ -167,7 +170,6 @@ It also rejects routes with no matching verified composition:
 
 | Combination | Reason |
 | --- | --- |
-| sequential `--iss --notile` | no sequential ISS affine-only compiler configuration |
 | sequential bare `--iss --identity` | ISS identity needs tiling or a checked parallel/vector consumer |
 | `--identity --parallel` without `--tile` | Pluto has no tiling phase from which to obtain the requested hint |
 | `--identity --vector` without `--tile` | the vector-hint route likewise needs identity tiling |
@@ -180,7 +182,8 @@ It also rejects routes with no matching verified composition:
 | hinted and explicit parallel/vector options together | they select different execution families |
 | `--intratileopt --notile` | intra-tile rescheduling requires tiles |
 | `--const-unroll` with parallel or vector output | the post pass consumes sequential Loop IR |
-| `--unrolljam` with parallel or vector output | its checked Loop postpass runs after codegen, but concurrency certificates describe the pre-codegen polyhedral program |
+| `--unrolljam` with vector output | no checked composition currently rebuilds an innermost vector annotation after the postpass |
+| `--unrolljam --parallel` when the result is not affine-extractable | fresh parallel certification cannot consume symbolic `Div`, `Max`, or `Min` loop controls |
 
 Standalone validation actions cannot be mixed with optimization-route flags.
 The driver also rejects more than one standalone action in one invocation.

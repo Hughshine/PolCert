@@ -153,9 +153,11 @@ changed before the interface is final.
 
 ### 3.4 Post Passes
 
-`--const-unroll` is a verified sequential compiler postpass, not a Pluto
-scheduler oracle flag. The extracted `compile_with_postpass` endpoint composes
-constant-bound unrolling and cleanup with every verified sequential producer.
+`--const-unroll` is an independent verified sequential compiler postpass, not a
+Pluto scheduler oracle flag and not another spelling of unroll-jam. It fully
+expands every loop whose lower and upper bounds are integer constants, then
+runs verified cleanup. The extracted `compile_with_postpass` endpoint composes
+that rewrite with every verified sequential producer.
 
 `--unrolljam` is also a post-code-generation transformation, and `--ufactor n`
 supplies its factor unless automatic tile-size selection owns that option. The
@@ -165,16 +167,15 @@ native trace theorem, `LoopJamContext` covers recursive lowering, and
 `compile_with_unrolljam_correct` composes the complete returned Loop program
 with its selected producer, optional constant unrolling, and cleanup.
 
-Unroll-jam currently composes only with sequential output. Supporting annotated
-output requires generalizing the verified Loop postpass to ParallelLoop,
-preserving certified parallel/vector modes, and restricting candidate rewriting
-to loop forms covered by its theorem. Until that composition exists, the driver
-rejects an explicit `--unrolljam` combined with parallel or vector output. It
-does not silently discard either request. Re-running the identity parallel
-consumer on the returned Loop is not a valid shortcut: block/remainder
-lowering introduces `Div`, `Max`, and `Min` control expressions that are
-outside the current SCoP extractor, while the existing concurrency certificate
-describes the pre-codegen polyhedral program. Support therefore needs either a
+Sequential output accepts the complete checked postpass. A narrow parallel
+composition is also exposed: run checked unroll-jam on the sequential Loop
+result, re-extract the transformed result, and obtain a fresh identity-codegen
+parallel certificate. This is a composition of two verified endpoints; it does
+not transport an old annotation through the rewrite. It succeeds when the
+rewritten bounds remain in the current affine extractor, as demonstrated by
+constant-range block unrolling. Symbolic block/remainder bounds commonly
+introduce `Div`, `Max`, or `Min`, so those combinations are rejected during
+fresh extraction. Vector output remains rejected. Broader support requires a
 metadata-preserving annotated unroll-jam theorem or a proved piecewise-affine
 re-extraction path.
 
