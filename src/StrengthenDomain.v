@@ -22,10 +22,14 @@ Module PolyLang := PolIRs.PolyLang.
 
 (** * Proof map
 
-    Strengthening infers constraints that mention only an already fixed loop
-    prefix.  Soundness shows they hold for every original instance; the
-    semantic endpoint therefore permits drivers to strengthen before
-    validation and erase the strengthening before invoking extraction. *)
+    This pass makes domains produced by PolCert's verified Loop extractor
+    closer to the domains normally produced by Pluto's frontend/extractor.
+    In particular, it materializes implied parameter and outer-loop-prefix
+    feasibility guards by cancelling the current iterator between pairs of
+    opposite bounds.  These guards are redundant: soundness shows they hold
+    for every original instance.  The semantic endpoint therefore permits
+    drivers to strengthen before validation and erase the strengthening
+    before invoking extraction. *)
 
 (** * Executable prefix-guard inference *)
 
