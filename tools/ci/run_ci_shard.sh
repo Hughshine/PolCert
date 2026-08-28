@@ -38,6 +38,7 @@ case "$shard" in
       opam exec --switch=polcert -- make test-end-to-end-c-correctness
     ci_run_timed iss-suite opam exec --switch=polcert -- make test-iss-pluto-suite
     ci_run_timed iss-live-suite opam exec --switch=polcert -- make test-iss-pluto-live-suite
+    ci_run_timed pluto-bug-oracle opam exec --switch=polcert -- make test-pluto-bugs
     ;;
   tiling-core)
     ci_run_timed direct-routes opam exec --switch=polcert -- make test-direct-only-tiling-routes

@@ -500,15 +500,9 @@ exact `polopt --profile-stages` invocation by hand.
 Make the artifact explicitly useful as a checker for external optimizer bugs or
 unsafe heuristics in Pluto.
 
-Current best candidate already in-repo:
-
-- `doc/possible-bugs/pluto-parallel-hint-matmul-readscop.md`
-
-That case already has the right shape:
-
-- Pluto proposes a parallel dimension
-- the PolCert checked route rejects it or prefers a safer dimension
-- this demonstrates practical value beyond theorem self-containment
+The initial parallel-hint candidate has now been superseded by two minimized,
+executable silent-miscompilation witnesses. See
+`doc/pluto-whitebox-correctness-audit.md`.
 
 ### Concrete tasks
 
@@ -525,7 +519,7 @@ That case already has the right shape:
    - exact Pluto invocation
    - expected bad Pluto artifact or behavior
    - expected PolCert behavior
-4. Start with the current parallel-hint case, then search for more in:
+4. Keep searching beyond the current parallel and unroll-jam cases in:
    - ISS outputs
    - `--readscop` paths
    - second-level / diamond / parallel interactions
@@ -541,20 +535,13 @@ At least one case should become a complete artifact-grade case study:
 
 ### Current status
 
-The first artifact-grade bug reproducer now exists as:
-
-- `tools/pluto_bugs/run_matmul_parallel_hint.py`
-- `make test-pluto-bug-matmul-parallel-hint`
-
-This case reproduces the current behavior where:
-
-- Pluto hints current dimension `0` for `matmul`
-- PolCert's checked parallel validator rejects that hinted dimension
-- the non-strict frontend falls back to certified current dimension `1`
-- the strict frontend keeps the optimized loop sequential
-
-That is enough to keep the bug track inside the artifact itself rather than as
-just a prose note.
+The artifact now contains three cases under `tests/pluto-bugs/`: the original
+unsafe matmul hint and two confirmed silent miscompilations. The vanished-loop
+case produces `10000` versus `2499` after incorrect OpenMP annotation. The
+no-tile unroll-jam case produces `15` versus `1` after an illegal jam. Both
+checked PolCert routes retain correct behavior. `make test-pluto-bugs` compiles
+and executes the witnesses in CI, so this track is no longer based only on
+source inspection or an imprecise hint.
 
 ## 4. Diamond Tiling Track
 
