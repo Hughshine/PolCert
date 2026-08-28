@@ -24,6 +24,25 @@ that component.  The executable check uses the proved guarded dependence
 emptiness kernel `BandAffine.validate_two_instrs_under_guards`; it does not call
 the whole affine-schedule validator.
 
+This is the exact producer-side legality contract for the class of bands that
+Pluto passes to tiling: Pluto first selects fully permutable bands and then
+tiles them.  PolCert re-establishes that untrusted producer claim; it is not
+arbitrarily imposing full permutability on a producer that intentionally tiles
+non-permutable bands.  If `R` is the set of pairs actually reversed by the
+imported target layout, `N` the set of source-ordered pairs that decrease in a
+selected band component, and `D` the non-permutable dependence pairs, the
+layout proof establishes `R` as a subset of `N`, while the executable checker
+establishes that `N` and `D` are disjoint.  Although `R` and `N` need not be
+equal, a Pluto-conforming fully permutable band already has no dependent pair
+in the extra part of `N`.
+
+Full permutability is stronger than the minimum condition for one fixed tile
+size and target timestamp, which would only require `R` and `D` to be
+disjoint.  This distinction does not reduce coverage of producer-conforming
+Pluto bands when the producer and validator use the same dependence semantics;
+model mismatch, conservative access information, or an unsupported layout can
+still cause fail-closed rejection.
+
 The formal result is soundness, not completeness: checker acceptance implies
 the componentwise band property and the property implies reordering safety for
 the recognized layout.  The implementation does not claim to accept every

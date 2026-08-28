@@ -49,6 +49,24 @@ Module BandAffine := Base.TilingVal.
     bridges.  The final correctness lemmas merely compose those two halves
     with [TilingValidator]. *)
 
+(** Why the direct checker uses full band permutability.
+
+    Pluto selects the bands passed to its tiler with its fully-permutable-band
+    detector.  Componentwise nonnegative dependence distances are therefore
+    the producer's exact legality contract for this class of tiling inputs,
+    not an unrelated strengthening imposed only by the validator.  The
+    executable checker re-establishes that untrusted producer claim from the
+    imported program's memory effects.
+
+    For a fixed tile size and a fixed target layout, full permutability is
+    stronger than the minimum result-specific obligation: some source pairs
+    can decrease in a band row without actually being reversed by that one
+    target timestamp.  This causes no loss for a producer-conforming Pluto
+    band under the same dependence semantics, because full permutability
+    already rules out a non-permutable dependence on every such decreasing
+    pair.  The layout lemmas only need the one-way inclusion from actual
+    target reversals to checked component decreases. *)
+
 (** * Reader map
 
     The main direct route is organized as follows:
