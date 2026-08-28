@@ -251,10 +251,16 @@ GENERATED_SLOW_CASES=adi dct dsyr2k fdtd-1d fdtd-2d jacobi-1d-imper jacobi-2d-im
 
 FORCE:
 
-.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-vector-current-suite test-extracted-zero-fallback test-direct-only-tiling-routes test-non-second-level-tiling-routes test-scheduler-flag-forwarding test-second-level-tile-routes test-second-level-tile-rejection test-second-level-tile-manifest test-second-level-tile-suite test-pluto-compat-suite test-tiling-route-suites test-end-to-end-c-smoke test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite unrolljam-effect-corpus artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity
+.PHONY: proof extraction FORCE materialize-polopt-loop-suite test test-legacy-failure-gate test-legacy-failure-gate-unit test-polopt-loop-suite test-polopt-generated test-iss-pluto-suite test-parallel-current-suite test-vector-current-suite test-extracted-zero-fallback test-direct-only-tiling-routes test-non-second-level-tiling-routes test-scheduler-flag-forwarding test-second-level-tile-routes test-second-level-tile-rejection test-second-level-tile-manifest test-second-level-tile-suite test-pluto-compat-suite test-tiling-route-suites test-end-to-end-c-smoke test-end-to-end-c-correctness test-end-to-end-c-perf test-end-to-end-c-matmul-parallel test-end-to-end-c-matmul-vector test-end-to-end-generated-smoke test-end-to-end-generated-perf-default test-end-to-end-generated-perf test-end-to-end-generated-heavy test-end-to-end-generated test-end-to-end-generated-perf-parallel test-end-to-end-generated-slow-perf-parallel search-end-to-end-generated-best report-end-to-end-generated-best test-end-to-end-generated-perf-refresh tune-end-to-end-generated test-end-to-end-all test-pluto-bug-matmul-parallel-hint test-diamond-tiling-suite unrolljam-effect-corpus artifact-check artifact-check-full artifact-capability-matrix proof-report profile-advect3d-codegen profile-advect3d-codegen-identity check-admitted test-open-proof-gate
 
 test: .depend.extr polcert.ini driver/Version.ml FORCE
 	$(MAKE) -f Makefile.test test --no-print-directory
+
+test-legacy-failure-gate:
+	bash tools/ci/check_legacy_failure_exit.sh
+
+test-legacy-failure-gate-unit:
+	bash tools/ci/check_legacy_failure_exit.sh --self-test
 
 materialize-polopt-loop-suite: polopt
 	rm -rf tests/polopt-generated/cases
@@ -328,7 +334,32 @@ test-tiling-route-suites: test-direct-only-tiling-routes \
 test-end-to-end-c-smoke: polopt
 	python3 tools/end_to_end_c/run_suite.py \
 		--polopt ./polopt \
-		--exclude-suffix _perf
+		--exclude-suffix _perf \
+		--benchmark-repeats 1
+
+test-end-to-end-c-correctness: polopt
+	python3 tools/end_to_end_c/run_suite.py \
+		--polopt ./polopt \
+		--exclude-suffix _perf \
+		--benchmark-repeats 1 \
+		--omp-threads 4
+	python3 tools/end_to_end_c/run_case.py \
+		tests/end-to-end-c/cases/matmul \
+		--polopt ./polopt \
+		--output-root tests/end-to-end-c/out-matmul-parallel \
+		--polopt-arg=--parallel \
+		--require-parallelized \
+		--omp-threads 4 \
+		--execution-repeats 3 \
+		--benchmark-repeats 1
+	python3 tools/end_to_end_c/run_case.py \
+		tests/end-to-end-c/cases/matmul \
+		--polopt ./polopt \
+		--output-root tests/end-to-end-c/out-matmul-vector \
+		--polopt-arg=--vector-current \
+		--polopt-arg=5 \
+		--require-vectorized \
+		--benchmark-repeats 1
 
 test-end-to-end-c-perf: polopt
 	python3 tools/end_to_end_c/run_suite.py \
@@ -341,16 +372,20 @@ test-end-to-end-c-matmul-parallel: polopt
 	python3 tools/end_to_end_c/run_case.py \
 		tests/end-to-end-c/cases/matmul \
 		--polopt ./polopt \
+		--output-root tests/end-to-end-c/out-matmul-parallel \
 		--polopt-arg=--parallel \
 		--require-parallelized \
+		--omp-threads 4 \
+		--execution-repeats 3 \
 		--benchmark-repeats 1
 
 test-end-to-end-c-matmul-vector: polopt
 	python3 tools/end_to_end_c/run_case.py \
 		tests/end-to-end-c/cases/matmul \
 		--polopt ./polopt \
+		--output-root tests/end-to-end-c/out-matmul-vector \
 		--polopt-arg=--vector-current \
-		--polopt-arg=1 \
+		--polopt-arg=5 \
 		--require-vectorized \
 		--benchmark-repeats 1
 
@@ -388,7 +423,7 @@ test-end-to-end-generated-perf-parallel: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \
-		--polopt-arg --parallel \
+		--polopt-arg=--parallel \
 		--output-root tests/end-to-end-generated/out-perf-parallel \
 		--tier perf \
 		--omp-threads 4 \
@@ -398,7 +433,7 @@ test-end-to-end-generated-slow-perf-parallel: materialize-polopt-loop-suite
 	python3 tools/end_to_end_c/run_generated_suite.py \
 		--cases-root tests/polopt-generated/cases \
 		--polopt ./polopt \
-		--polopt-arg --parallel \
+		--polopt-arg=--parallel \
 		--output-root tests/end-to-end-generated/out-perf-parallel-slow \
 		--tier perf \
 		--omp-threads 4 \
@@ -632,7 +667,10 @@ distclean:
 	rm -f Makefile.config
 
 check-admitted: $(FILES)
-	@grep -w 'admit\|Admitted\|ADMITTED' $^ || echo "Nothing admitted."
+	@python3 tools/ci/check_open_proofs.py $^
+
+test-open-proof-gate:
+	@python3 tools/ci/test_check_open_proofs.py
 
 print-includes:
 	@echo $(COQINCLUDES)

@@ -10,8 +10,30 @@
     }
   },
   "require_tiled": [
+    "advect3d",
+    "fdtd-2d",
+    "jacobi-2d-imper",
     "matmul",
     "matmul-init",
+    "seidel",
+    "tce",
     "wavefront"
+  ],
+  "require_nontrivial_changed": [
+    "advect3d",
+    "fdtd-2d",
+    "fusion2",
+    "jacobi-2d-imper",
+    "matmul",
+    "matmul-init",
+    "multi-loop-param",
+    "seidel",
+    "tce",
+    "wavefront"
+  ],
+  "require_unchanged": [
+    "1dloop-invar",
+    "noloop",
+    "tricky4"
   ]
 }

@@ -371,8 +371,11 @@ def check_unsupported_case(case_name: str, out_root: Path, timeout: int) -> tupl
     failures: list[str] = []
     diamond = run_pluto_case(case_name, case_root, diamond=True, timeout=timeout)
     status, reason = classify_pluto_rejection(diamond)
-    if diamond["returncode"] == 0:
-        failures.append(f"{case_name}: expected unsupported Pluto input, but command succeeded")
+    if status != "pluto_frontend_rejected" or diamond["returncode"] != 8:
+        failures.append(
+            f"{case_name}: expected Pluto frontend rejection with exit=8, "
+            f"observed status={status},exit={diamond['returncode']}"
+        )
     result = {
         "case": case_name,
         "status": status,
@@ -426,10 +429,19 @@ def main() -> int:
             )
             results.append(result)
             failures.extend(case_failures)
+            expected_kind = str(expectation["kind"])
+            expected_route = str(expectation.get("route", "permutable-band"))
             print(
-                f"[diamond-suite] {case_name}: status={result['status']} "
-                f"affine={result.get('affine_ok')} tiling={result.get('tiling_ok')} "
-                f"phase={result.get('phase_ok')}"
+                f"[diamond-suite] {'PASS' if not case_failures else 'FAIL'} case={case_name} "
+                f"expected=effect:{expected_kind},route:{expected_route},phase:{str(expectation['phase_ok']).lower()} "
+                f"actual=effect:{result['status']},affine:{str(result.get('affine_ok')).lower()},"
+                f"tiling:{str(result.get('tiling_ok')).lower()},phase:{str(result.get('phase_ok')).lower()} "
+                "interpretation="
+                + (
+                    "diamond-effect-and-three-phase-contract-matched"
+                    if not case_failures
+                    else "diamond-effect-or-validation-phase-did-not-match"
+                )
             )
 
         for case_name in UNSUPPORTED_CASES:
@@ -441,8 +453,15 @@ def main() -> int:
             results.append(result)
             failures.extend(case_failures)
             print(
-                f"[diamond-suite] {case_name}: status={result['status']} "
-                f"exit={result.get('returncode')} reason={result.get('reason')}"
+                f"[diamond-suite] {'PASS' if not case_failures else 'FAIL'} case={case_name} "
+                "expected=status:pluto_frontend_rejected,exit:8 "
+                f"actual=status:{result['status']},exit:{result.get('returncode')} "
+                "interpretation="
+                + (
+                    "unsupported-input-was-rejected"
+                    if not case_failures
+                    else "unsupported-input-did-not-produce-declared-frontend-rejection"
+                )
             )
 
         summary = {
@@ -461,8 +480,10 @@ def main() -> int:
             cleanup_root = False
             return 1
 
-        print("[diamond-suite] OK")
-        print(f"[diamond-suite] artifacts: {out_root}")
+        print(
+            f"[diamond-suite] PASS expected={len(results)} actual={len(results)} "
+            "interpretation=all-supported-effects-and-unsupported-rejections-matched"
+        )
         return 0
     finally:
         if cleanup_root:

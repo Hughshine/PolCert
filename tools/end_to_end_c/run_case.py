@@ -27,6 +27,13 @@ from runner_common import (
 KERNEL_MARKER = "/* POLCERT_KERNEL */"
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
 def render_source(template: str, kernel_c: str) -> str:
     if KERNEL_MARKER not in template:
         raise ValueError(f"missing kernel marker {KERNEL_MARKER!r}")
@@ -99,7 +106,9 @@ def main() -> int:
     ap.add_argument("--polopt-arg", action="append", default=[])
     ap.add_argument("--output-root", default="tests/end-to-end-c/out")
     ap.add_argument("--timeout-seconds", type=int, default=300)
-    ap.add_argument("--benchmark-repeats", type=int, default=3)
+    ap.add_argument("--benchmark-repeats", type=positive_int, default=3)
+    ap.add_argument("--execution-repeats", type=positive_int)
+    ap.add_argument("--omp-threads", type=positive_int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
     ap.add_argument("--require-vectorized", action="store_true")
     ap.add_argument("--keep-going", action="store_true")
@@ -118,8 +127,24 @@ def main() -> int:
     benchmark = bool_from_meta(meta, "benchmark", default=True)
     openmp = bool_from_meta(meta, "openmp", default=False)
     require_unrolled = bool_from_meta(meta, "require_unrolled", default=False)
+    require_parallelized = args.require_parallelized or bool_from_meta(
+        meta, "require_parallelized", default=False
+    )
+    require_vectorized = args.require_vectorized or bool_from_meta(
+        meta, "require_vectorized", default=False
+    )
     abs_tolerance = float_from_meta(meta, "abs_tolerance", default=0.0)
     rel_tolerance = float_from_meta(meta, "rel_tolerance", default=0.0)
+    meta_execution_repeats = meta.get("execution_repeats")
+    if meta_execution_repeats is not None and (
+        not isinstance(meta_execution_repeats, int) or meta_execution_repeats <= 0
+    ):
+        raise ValueError("execution_repeats must be a positive integer")
+    execution_repeats = (
+        args.execution_repeats
+        or meta_execution_repeats
+        or (args.benchmark_repeats if benchmark else 1)
+    )
 
     template = template_path.read_text()
     input_loop = loop_path.read_text()
@@ -132,6 +157,9 @@ def main() -> int:
 
     polopt_cmd = [str(polopt), *polopt_args, *args.polopt_arg, str(loop_path)]
     polopt_env = os.environ.copy()
+    polopt_env.setdefault(
+        "COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini")
+    )
     polopt_env.update(str_dict_from_meta(meta, "polopt_env"))
     try:
         proc = run(polopt_cmd, cwd=ROOT, timeout=args.timeout_seconds, env=polopt_env)
@@ -178,7 +206,7 @@ def main() -> int:
         if args.keep_going:
             return 1
         raise SystemExit(f"[{case_name}] {marker_error}")
-    if args.require_parallelized and not parallelized_loop:
+    if require_parallelized and not parallelized_loop:
         write_text(
             out_dir / "status.txt",
             "result=fail\nstage=parallelize\nparallelized_loop=false\n",
@@ -186,7 +214,7 @@ def main() -> int:
         if args.keep_going:
             return 1
         raise SystemExit(f"[{case_name}] no parallel for emitted")
-    if args.require_vectorized and not vectorized_loop:
+    if require_vectorized and not vectorized_loop:
         write_text(
             out_dir / "status.txt",
             "result=fail\nstage=vectorize\nvectorized_loop=false\n",
@@ -209,9 +237,17 @@ def main() -> int:
 
     baseline_exe = out_dir / "baseline.exe"
     optimized_exe = out_dir / "optimized.exe"
-    compile_with_openmp = openmp or loop_requires_openmp(input_loop) or loop_requires_openmp(optimized_loop)
-    baseline_build = compile_c(out_dir / "baseline.c", baseline_exe, openmp=compile_with_openmp)
-    optimized_build = compile_c(out_dir / "optimized.c", optimized_exe, openmp=compile_with_openmp)
+    compile_with_openmp = (
+        openmp
+        or loop_requires_openmp(input_loop)
+        or loop_requires_openmp(optimized_loop)
+    )
+    baseline_build = compile_c(
+        out_dir / "baseline.c", baseline_exe, openmp=compile_with_openmp
+    )
+    optimized_build = compile_c(
+        out_dir / "optimized.c", optimized_exe, openmp=compile_with_openmp
+    )
     write_text(out_dir / "baseline.build.stderr.txt", baseline_build.stderr)
     write_text(out_dir / "optimized.build.stderr.txt", optimized_build.stderr)
     if baseline_build.returncode != 0 or optimized_build.returncode != 0:
@@ -226,12 +262,13 @@ def main() -> int:
         raise SystemExit(f"[{case_name}] compile failed")
 
     env = os.environ.copy()
-    env.setdefault("OMP_NUM_THREADS", "1")
+    env["OMP_NUM_THREADS"] = str(args.omp_threads)
+    env["OMP_DYNAMIC"] = "FALSE"
 
     try:
         baseline_stdout, baseline_best = timed_run(
             baseline_exe,
-            repeats=args.benchmark_repeats if benchmark else 1,
+            repeats=execution_repeats,
             env=env,
             timeout_seconds=args.timeout_seconds,
         )
@@ -258,7 +295,7 @@ def main() -> int:
     try:
         optimized_stdout, optimized_best = timed_run(
             optimized_exe,
-            repeats=args.benchmark_repeats if benchmark else 1,
+            repeats=execution_repeats,
             env=env,
             timeout_seconds=args.timeout_seconds,
         )
@@ -301,6 +338,8 @@ def main() -> int:
         "parallelized_loop": parallelized_loop,
         "vectorized_loop": vectorized_loop,
         "openmp": compile_with_openmp,
+        "omp_threads_requested": args.omp_threads,
+        "execution_repeats": execution_repeats,
         "numeric_comparable": comparison["numeric_comparable"],
         "value_count_match": comparison["value_count_match"],
         "max_abs_diff": comparison["max_abs_diff"],
@@ -316,13 +355,15 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nvectorized_loop={}\nopenmp={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nvectorized_loop={}\nopenmp={}\nomp_threads_requested={}\nexecution_repeats={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             str(outputs_match).lower(),
             str(exact_match).lower(),
             str(parallelized_loop).lower(),
             str(vectorized_loop).lower(),
             str(compile_with_openmp).lower(),
+            args.omp_threads,
+            execution_repeats,
             str(bool(comparison["numeric_comparable"])).lower(),
             str(bool(comparison["value_count_match"])).lower(),
             comparison["max_abs_diff"],
@@ -340,14 +381,38 @@ def main() -> int:
             return 1
         raise SystemExit(f"[{case_name}] output mismatch")
 
+    expected_effects = list_from_meta(meta, "optimized_loop_needles")
+    forbidden_effects = list_from_meta(meta, "optimized_loop_absent")
+    unrolled_loop = not has_loop_header(optimized_loop)
+    has_effect_contract = bool(
+        expected_effects
+        or forbidden_effects
+        or require_unrolled
+        or require_parallelized
+        or require_vectorized
+    )
+    effect_match = "true" if has_effect_contract else "not-applicable"
     print(
-        f"[E2E] {case_name}: ok "
-        f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s speedup={speedup:.3f}x "
-        f"parallelized_loop={str(parallelized_loop).lower()} "
-        f"vectorized_loop={str(vectorized_loop).lower()} "
-        f"exact_match={str(exact_match).lower()} "
-        f"max_abs_diff={comparison['max_abs_diff']} "
-        f"max_rel_diff={comparison['max_rel_diff']}"
+        f"[E2E] PASS case={case_name} "
+        "expected=outputs-match"
+        f",parallel={str(require_parallelized).lower()}"
+        f",vector={str(require_vectorized).lower()}"
+        f",unrolled={str(require_unrolled).lower()}"
+        f",required-effects={len(expected_effects)}"
+        f",forbidden-effects={len(forbidden_effects)} "
+        f"coverage={'effect-and-executable-semantics' if has_effect_contract else 'executable-semantics'} "
+        f"actual=outputs-match:{str(outputs_match).lower()}"
+        f",parallel:{str(parallelized_loop).lower()}"
+        f",vector:{str(vectorized_loop).lower()}"
+        f",unrolled:{str(unrolled_loop).lower()}"
+        f",effects-matched:{effect_match},omp-threads-requested:{args.omp_threads} "
+        f"executions={execution_repeats} "
+        "interpretation="
+        + (
+            "required-optimization-effects-occurred-and-optimized-execution-agrees-with-baseline"
+            if has_effect_contract
+            else "route-succeeded-and-optimized-execution-agrees-with-baseline-no-specific-effect-asserted"
+        )
     )
     return 0
 

@@ -143,13 +143,15 @@ def build_tiling_route_summary(results: list[CheckResult]) -> dict[str, object]:
             return ""
 
     direct_match = re.search(
-        r"\[direct-route\] OK \((\d+) cases, zero fallbacks\)",
+        r"\[direct-route\] PASS expected=(\d+),fallbacks:0 "
+        r"actual=\1,fallbacks:0",
         stdout("direct-only-tiling-route-smoke"),
     )
     one_level_match = re.search(
-        r"\[non-second-level-routes\] OK \((\d+) permutable-band "
-        r"compositions, (\d+) validation fallbacks, (\d+) explicit "
-        r"vector rejections\)",
+        r"\[non-second-level-routes\] PASS "
+        r"expected=permutable-band:84,fallbacks:0,vector-rejections:6 "
+        r"actual=permutable-band:(\d+),fallbacks:(\d+),"
+        r"vector-rejections:(\d+)",
         stdout("non-second-level-tiling-routes"),
     )
     strict_loop_match = re.search(
@@ -330,6 +332,7 @@ def base_checks(
                 "tools/artifact/explore_identity_compositions.py",
                 "tools/artifact/explore_unrolljam_effect_corpus.py",
                 "tools/artifact/test_artifact_runner_timeout.py",
+                "tools/artifact/test_tiling_route_summary.py",
                 "tools/artifact/test_release_provenance.py",
                 "tools/artifact/test_unrolljam_route_guard.py",
                 "tools/artifact/generate_capability_matrix.py",
@@ -361,6 +364,14 @@ def base_checks(
             [
                 sys.executable,
                 "tools/artifact/test_artifact_runner_timeout.py",
+            ],
+            60,
+        ),
+        (
+            "tiling-route-summary-unit",
+            [
+                sys.executable,
+                "tools/artifact/test_tiling_route_summary.py",
             ],
             60,
         ),

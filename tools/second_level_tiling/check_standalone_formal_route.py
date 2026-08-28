@@ -132,6 +132,13 @@ def validate_expected_route(
             f"{label} reported an alarm\n"
             f"stdout:\n{validated.stdout}\nstderr:\n{validated.stderr}"
         )
+    print(
+        f"[second-level-routes] PASS case={label.replace(' ', '-')} "
+        "expected=structural:PASS,formal:PASS,route:permutable-band,alarm:false "
+        "actual=structural:PASS,formal:PASS,route:permutable-band,alarm:false "
+        "interpretation=standalone-tiling-candidate-was-formally-accepted",
+        flush=True,
+    )
 
 
 def check_standalone_formal_route(

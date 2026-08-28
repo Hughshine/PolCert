@@ -27,6 +27,17 @@ DEFAULT_ABS_TOLERANCE = 1e-9
 DEFAULT_REL_TOLERANCE = 1e-9
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def normalized_loop_text(text: str) -> str:
+    return "\n".join(line.rstrip() for line in text.strip().splitlines())
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -35,11 +46,15 @@ def main() -> int:
     ap.add_argument("--pipeline-name", default="")
     ap.add_argument("--use-input-loop-as-optimized", action="store_true")
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
-    ap.add_argument("--benchmark-repeats", type=int, default=1)
+    ap.add_argument("--benchmark-repeats", type=positive_int, default=1)
     ap.add_argument("--timeout-seconds", type=int, default=300)
-    ap.add_argument("--omp-threads", type=int, default=1)
+    ap.add_argument("--omp-threads", type=positive_int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
     ap.add_argument("--require-vectorized", action="store_true")
+    ap.add_argument("--optimized-loop-needle", action="append", default=[])
+    ap.add_argument(
+        "--require-optimized-loop-differs-from-cached", action="store_true"
+    )
     ap.add_argument("--abs-tolerance", type=float, default=DEFAULT_ABS_TOLERANCE)
     ap.add_argument("--rel-tolerance", type=float, default=DEFAULT_REL_TOLERANCE)
     ap.add_argument("--tier", default=DEFAULT_TIER)
@@ -59,11 +74,16 @@ def main() -> int:
         optimized_loop = input_loop
     elif args.polopt:
         polopt = pathlib.Path(args.polopt).resolve()
+        polopt_env = os.environ.copy()
+        polopt_env.setdefault(
+            "COMPCERT_CONFIG", str(ROOT / "tests" / "pluto" / "polcert.ini")
+        )
         try:
             proc = run(
                 [str(polopt), *args.polopt_arg, str(case_dir / "input.loop")],
-                cwd=polopt.parent,
+                cwd=ROOT,
                 timeout=args.timeout_seconds,
+                env=polopt_env,
             )
         except subprocess.TimeoutExpired:
             write_text(
@@ -86,6 +106,31 @@ def main() -> int:
         optimized_loop = extract_optimized_loop(proc.stdout)
     else:
         optimized_loop = (case_dir / "optimized.loop").read_text()
+    for needle in args.optimized_loop_needle:
+        if needle not in optimized_loop:
+            write_text(
+                out_dir / "status.txt",
+                "result=fail\nstage=optimized-loop-effect\n"
+                f"reason=missing marker: {needle}\n",
+            )
+            print(
+                f"[E2E-GEN] FAIL case={case_name} expected=marker:{needle!r} "
+                "actual=missing interpretation=requested-optimization-effect-was-not-observed"
+            )
+            return 1
+    if args.require_optimized_loop_differs_from_cached:
+        cached_loop = (case_dir / "optimized.loop").read_text()
+        if normalized_loop_text(optimized_loop) == normalized_loop_text(cached_loop):
+            write_text(
+                out_dir / "status.txt",
+                "result=fail\nstage=optimized-loop-effect\n"
+                "reason=live output equals cached default output\n",
+            )
+            print(
+                f"[E2E-GEN] FAIL case={case_name} expected=differs-from-cached-default "
+                "actual=equal interpretation=requested-route-had-no-observable-effect"
+            )
+            return 1
     tier_overrides = load_param_tiers((ROOT / args.param_config).resolve())
     info = build_harness(
         case_name,
@@ -136,6 +181,7 @@ def main() -> int:
 
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(args.omp_threads)
+    env["OMP_DYNAMIC"] = "FALSE"
     try:
         baseline_stdout, baseline_best = timed_run(
             baseline_exe,
@@ -217,7 +263,8 @@ def main() -> int:
         "speedup": speedup,
         "params": info.params,
         "openmp": info.openmp,
-        "omp_threads": args.omp_threads,
+        "omp_threads_requested": args.omp_threads,
+        "execution_repeats": args.benchmark_repeats,
         "parallelized_loop": parallelized_loop,
         "vectorized_loop": vectorized_loop,
         "optimized_loop_source": (
@@ -231,7 +278,7 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nvectorized_loop={}\nomp_threads={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nvectorized_loop={}\nomp_threads_requested={}\nexecution_repeats={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             args.pipeline_name,
             (
@@ -246,6 +293,7 @@ def main() -> int:
             str(parallelized_loop).lower(),
             str(vectorized_loop).lower(),
             args.omp_threads,
+            args.benchmark_repeats,
             comparison["max_abs_diff"],
             comparison["max_rel_diff"],
             args.abs_tolerance,
@@ -264,16 +312,31 @@ def main() -> int:
         )
         return 1
 
+    effect_contracts = (
+        len(args.optimized_loop_needle)
+        + int(args.require_optimized_loop_differs_from_cached)
+        + int(args.require_parallelized)
+        + int(args.require_vectorized)
+    )
     print(
-        f"[E2E-GEN] {case_name}: ok "
-        f"baseline={baseline_best:.4f}s optimized={optimized_best:.4f}s "
-        f"speedup={speedup:.3f}x pipeline={args.pipeline_name or 'adhoc'} "
-        f"parallelized_loop={str(parallelized_loop).lower()} "
-        f"vectorized_loop={str(vectorized_loop).lower()} "
-        f"exact_match={str(exact_match).lower()} "
-        f"numeric_within_tolerance={str(numeric_within_tolerance).lower()} "
-        f"max_abs_diff={comparison['max_abs_diff']} "
-        f"max_rel_diff={comparison['max_rel_diff']}"
+        f"[E2E-GEN] PASS case={case_name} "
+        "expected=outputs-match"
+        f",parallel={str(args.require_parallelized).lower()}"
+        f",vector={str(args.require_vectorized).lower()}"
+        f",effect-contracts={effect_contracts} "
+        f"actual=outputs-match:{str(outputs_match).lower()}"
+        f",parallel:{str(parallelized_loop).lower()}"
+        f",vector:{str(vectorized_loop).lower()}"
+        f",effects-matched:{'true' if effect_contracts else 'not-applicable'}"
+        f",omp-threads-requested:{args.omp_threads} "
+        f"executions={args.benchmark_repeats} "
+        f"coverage={'effect-and-executable-semantics' if effect_contracts else 'executable-semantics'} "
+        "interpretation="
+        + (
+            "requested-effects-occurred-and-generated-executions-agree"
+            if effect_contracts
+            else "generated-baseline-and-optimized-execution-agree"
+        )
     )
     return 0
 

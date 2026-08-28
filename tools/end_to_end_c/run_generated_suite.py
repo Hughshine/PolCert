@@ -13,6 +13,13 @@ from generated_harness import DEFAULT_TIER
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
 def load_pipeline_config(path: pathlib.Path) -> dict:
     data = json.loads(path.read_text())
     pipelines = {entry["name"]: entry for entry in data.get("pipelines", [])}
@@ -63,10 +70,14 @@ def main() -> int:
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
     ap.add_argument("--pipeline-config")
     ap.add_argument("--default-pipeline")
-    ap.add_argument("--benchmark-repeats", type=int, default=1)
+    ap.add_argument("--benchmark-repeats", type=positive_int, default=1)
     ap.add_argument("--timeout-seconds", type=int, default=300)
-    ap.add_argument("--omp-threads", type=int, default=1)
+    ap.add_argument("--omp-threads", type=positive_int, default=1)
     ap.add_argument("--require-parallelized", action="store_true")
+    ap.add_argument("--optimized-loop-needle", action="append", default=[])
+    ap.add_argument(
+        "--require-optimized-loop-differs-from-cached", action="store_true"
+    )
     ap.add_argument("--abs-tolerance", type=float)
     ap.add_argument("--rel-tolerance", type=float)
     ap.add_argument("--tier", default=DEFAULT_TIER)
@@ -108,6 +119,10 @@ def main() -> int:
             cmd.extend(["--abs-tolerance", str(args.abs_tolerance)])
         if args.rel_tolerance is not None:
             cmd.extend(["--rel-tolerance", str(args.rel_tolerance)])
+        for needle in args.optimized_loop_needle:
+            cmd.extend(["--optimized-loop-needle", needle])
+        if args.require_optimized_loop_differs_from_cached:
+            cmd.append("--require-optimized-loop-differs-from-cached")
         pipeline_name = resolve_pipeline_name(case_dir.name, pipeline_cfg, args.default_pipeline)
         if pipeline_name:
             spec = pipeline_cfg["pipelines"][pipeline_name]
@@ -135,7 +150,16 @@ def main() -> int:
             print(f"  - {name}")
         return 1
 
-    print(f"[E2E-GEN-SUITE] OK cases={len(case_dirs)}")
+    has_effect_contract = bool(
+        args.optimized_loop_needle
+        or args.require_optimized_loop_differs_from_cached
+        or args.require_parallelized
+    )
+    print(
+        f"[E2E-GEN-SUITE] PASS expected={len(case_dirs)} actual={len(case_dirs)} "
+        f"coverage={'effect-and-executable-semantics' if has_effect_contract else 'executable-semantics'} "
+        "interpretation=all-generated-optimized-programs-matched-their-baselines"
+    )
     return 0
 
 

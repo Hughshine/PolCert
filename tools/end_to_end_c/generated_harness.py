@@ -9,7 +9,7 @@ import pathlib
 import re
 from typing import Iterable
 
-from loop_to_c import split_top_level_comma, transpile_loop_text
+from loop_to_c import split_top_level_commas, transpile_loop_text
 from runner_common import loop_requires_openmp
 
 
@@ -145,7 +145,7 @@ def div_candidates(lo1: int, hi1: int, lo2: int, hi2: int) -> tuple[int, int]:
         for b in (lo2, hi2):
             if b == 0:
                 continue
-            vals.append(int(a / b))
+            vals.append(a // b)
     if not vals:
         raise ValueError("division by zero while estimating bounds")
     return min(vals), max(vals)
@@ -211,10 +211,29 @@ def collect_var_ranges(loop_texts: Iterable[str], params: dict[str, int]) -> dic
             if not match:
                 continue
             var = match.group(1)
-            lb, ub = split_top_level_comma(match.group(2))
+            bounds = split_top_level_commas(match.group(2))
+            if len(bounds) not in (2, 3):
+                raise ValueError(
+                    f"unsupported range arity while estimating bounds: {line!r}"
+                )
+            lb, ub = bounds[:2]
             lb_lo, lb_hi = eval_interval(lb, env)
             ub_lo, ub_hi = eval_interval(ub, env)
-            loop_range = (lb_lo, max(lb_hi, ub_hi - 1))
+            if len(bounds) == 3:
+                step_lo, step_hi = eval_interval(bounds[2], env)
+                if step_lo <= 0 <= step_hi:
+                    raise ValueError(
+                        f"zero or sign-ambiguous range step while estimating bounds: {line!r}"
+                    )
+            else:
+                step_lo = step_hi = 1
+            if step_hi < 0:
+                loop_range = (
+                    min(lb_lo, ub_lo + 1),
+                    max(lb_hi, ub_hi + 1),
+                )
+            else:
+                loop_range = (lb_lo, max(lb_hi, ub_hi - 1))
             if var in env:
                 env[var] = interval_union(env[var], loop_range)
             else:
@@ -395,7 +414,11 @@ def render_checksum_function(arrays: dict[str, tuple[ArrayDim, ...]], scalars: t
     for seed, (name, dims) in enumerate(sorted(arrays.items()), start=1):
         def body(indent: str, indices: list[str]) -> list[str]:
             index = "".join(f"[{idx}]" for idx in indices)
-            return [f"{indent}acc += {name}{index} * {1.0 + seed / 32.0:.6f};"]
+            linear = indices[0] if indices else "0"
+            for dimension, idx in zip(dims[1:], indices[1:]):
+                linear = f"(({linear}) * {dimension.extent} + {idx})"
+            weight = f"(1.0 + ((double)(({linear}) + {seed}) / 1024.0))"
+            return [f"{indent}acc += {name}{index} * {weight};"]
 
         lines.extend(f"  {line}" for line in render_array_loops(name, dims, body))
     lines.extend(["  return acc;", "}"])

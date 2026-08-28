@@ -53,6 +53,8 @@ opam exec -- make test-vector-current-suite
 opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
 opam exec -- make test-diamond-tiling-suite
+opam exec -- make test-end-to-end-c-correctness
+opam exec -- make test-extracted-zero-fallback
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -155,7 +157,7 @@ gate; otherwise the same route returns its checked standard-raw form.
   - changed: `59`
   - unchanged: `3`
   - nontrivially changed: `59`
-  - automatically detected tiled outputs: `39`
+  - automatically detected tiled outputs: `46`
 
 ## CI
 
@@ -167,23 +169,31 @@ GitHub Actions currently has two Docker-based workflows:
 - `full-tiling-suite`
   - manually dispatched stricter `polopt` loop-suite workflow
 
-The main CI script is [tools/ci/run_ci.sh](./tools/ci/run_ci.sh). It executes:
+The CI image build is driven by
+[tools/ci/run_ci_build.sh](./tools/ci/run_ci_build.sh), then
+[tools/ci/run_ci_shards.sh](./tools/ci/run_ci_shards.sh) runs isolated test
+shards. Together they execute:
 
 - the full Coq proof build
 - `check-admitted`
 - extraction
 - `polcert` / `polopt` builds
 - `make test`
+- representative failure-exit checks for the legacy binaries
+- the extracted zero-fallback test
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
 - `make test-parallel-current-suite`
 - `make test-vector-current-suite`
 - `make test-second-level-tile-suite`
+- `make test-diamond-tiling-suite`
 - the strict `polopt` benchmark suite
+- executable baseline-versus-optimized checks for every generated corpus case
+- handwritten executable checks for tiling, ISS, strides, unroll-jam,
+  constant unrolling, parallel constant unrolling, and vector/parallel matmul
 
-Notably, `test-diamond-tiling-suite` is a separate Pluto-backed regression
-script. It is part of the documented local regression surface, but it is not in
-the default `ci` workflow today.
+Performance searches and repeated timing campaigns remain outside default CI;
+the executable CI checks use one repeat and make no speedup claim.
 
 ## Documentation map
 

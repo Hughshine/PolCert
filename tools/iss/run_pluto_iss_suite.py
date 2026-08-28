@@ -11,6 +11,11 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "tests" / "iss-pluto-dumps"
 POLOPT = ROOT / "polopt"
+VALIDATION_REJECTION = "validation: FAIL"
+
+
+def is_validation_rejection(code: int, output: str) -> bool:
+    return code == 1 and VALIDATION_REJECTION in output
 
 
 def run_checker(before: Path, after: Path) -> tuple[int, str]:
@@ -58,17 +63,37 @@ def main() -> int:
         before = DATA / before_name
         after = DATA / after_name
         code, output = run_checker(before, after)
-        print(f"[ISS-POS] {before_name} -> {after_name}: exit={code}")
-        print(output)
+        print(
+            f"[ISS] {'PASS' if code == 0 else 'FAIL'} case={before_name}-to-{after_name} "
+            f"expected=accept actual={'accept' if code == 0 else 'reject'},exit:{code} "
+            "interpretation="
+            + (
+                "valid-ISS-split-was-accepted"
+                if code == 0
+                else "valid-ISS-split-was-unexpectedly-rejected"
+            )
+        )
         if code != 0:
-            failures.append(f"positive case failed: {before_name} -> {after_name}")
+            failures.append(
+                f"positive case failed: {before_name} -> {after_name}\n{output}"
+            )
 
     negative_fixed = DATA / "iss_name_collision.txt"
     code, output = run_checker(DATA / "reverse_before.txt", negative_fixed)
-    print(f"[ISS-NEG] reverse_before.txt -> iss_name_collision.txt: exit={code}")
-    print(output)
-    if code == 0:
-        failures.append("negative fixed fixture unexpectedly validated")
+    rejected = is_validation_rejection(code, output)
+    print(
+        f"[ISS] {'PASS' if rejected else 'FAIL'} case=iss-name-collision "
+        "expected=reject,exit:1,validation-fail:true "
+        f"actual=exit:{code},validation-fail:{str(VALIDATION_REJECTION in output).lower()} "
+        "interpretation="
+        + (
+            "invalid-ISS-witness-was-rejected"
+            if rejected
+            else "invalid-ISS-witness-did-not-produce-the-declared-rejection"
+        )
+    )
+    if not rejected:
+        failures.append("negative fixed fixture was not cleanly rejected\n" + output)
 
     with tempfile.TemporaryDirectory(prefix="iss-suite-") as tmpdir:
         tmp = Path(tmpdir)
@@ -82,10 +107,22 @@ def main() -> int:
             ("reverse_bad_payload", bad_payload),
         ]:
             code, output = run_checker(DATA / "reverse_before.txt", after)
-            print(f"[ISS-NEG] reverse_before.txt -> {label}: exit={code}")
-            print(output)
-            if code == 0:
-                failures.append(f"negative mutated fixture unexpectedly validated: {label}")
+            rejected = is_validation_rejection(code, output)
+            print(
+                f"[ISS] {'PASS' if rejected else 'FAIL'} case={label} "
+                "expected=reject,exit:1,validation-fail:true "
+                f"actual=exit:{code},validation-fail:{str(VALIDATION_REJECTION in output).lower()} "
+                "interpretation="
+                + (
+                    "mutated-ISS-witness-was-rejected"
+                    if rejected
+                    else "mutated-ISS-witness-did-not-produce-the-declared-rejection"
+                )
+            )
+            if not rejected:
+                failures.append(
+                    f"negative mutated fixture was not cleanly rejected: {label}\n{output}"
+                )
 
     if failures:
         print("[ISS-SUITE] FAIL")
@@ -93,7 +130,10 @@ def main() -> int:
             print(f"  - {failure}")
         return 1
 
-    print("[ISS-SUITE] OK")
+    print(
+        "[ISS-SUITE] PASS expected=accepted:4,rejected:3 actual=accepted:4,rejected:3 "
+        "interpretation=positive-and-mutated-negative-ISS-contracts-matched"
+    )
     return 0
 
 

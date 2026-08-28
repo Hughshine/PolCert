@@ -267,6 +267,36 @@ def evaluate_check(
     raise SystemExit(f"{spec['name']}: unsupported expect value {expected!r}")
 
 
+def expectation_summary(spec: dict[str, object]) -> str:
+    expected = str(spec.get("expect", "invalid"))
+    marker_count = (
+        (1 if "needle" in spec else 0)
+        + len(string_list_field(spec, "needles"))
+        + len(string_list_field(spec, "absent_needles"))
+        + len(string_count_field(spec, "stdout_min_counts"))
+        + len(string_list_field(spec, "stderr_needles"))
+        + len(string_list_field(spec, "stderr_absent_needles"))
+        + len(string_count_field(spec, "stderr_counts"))
+    )
+    differs = args_list_field(spec, "differs_from_args") is not None
+    return (
+        f"result={expected},markers={marker_count},"
+        f"baseline-difference={str(differs).lower()}"
+    )
+
+
+def effect_assertion_count(spec: dict[str, object]) -> int:
+    if spec.get("expect") != "success":
+        return 0
+    return (
+        (1 if "needle" in spec else 0)
+        + len(string_list_field(spec, "needles"))
+        + len(string_list_field(spec, "absent_needles"))
+        + len(string_count_field(spec, "stdout_min_counts"))
+        + (1 if args_list_field(spec, "differs_from_args") is not None else 0)
+    )
+
+
 def run_manifest_suite(*, manifest_path: pathlib.Path, polopt: pathlib.Path) -> int:
     data = load_manifest(manifest_path)
     suite_name = data.get("suite_name", "POLOPT-FLAG-SUITE")
@@ -294,6 +324,30 @@ def run_manifest_suite(*, manifest_path: pathlib.Path, polopt: pathlib.Path) -> 
         )
         if failure is not None:
             failures.append(failure)
+        effect_assertions = effect_assertion_count(spec)
+        coverage = (
+            "effect"
+            if effect_assertions > 0
+            else "rejection-contract"
+            if spec.get("expect") == "failure"
+            else "acceptance-only"
+        )
+        if failure is not None:
+            interpretation = "requested-result-or-effect-was-not-observed"
+        elif coverage == "effect":
+            interpretation = "requested-result-and-effects-observed"
+        elif coverage == "rejection-contract":
+            interpretation = "unsupported-route-rejected-as-declared"
+        else:
+            interpretation = "route-accepted-no-specific-effect-asserted"
+        print(
+            f"[{suite_name}] {'PASS' if failure is None else 'FAIL'} "
+            f"case={spec.get('name', '<unnamed>')} "
+            f"expected={expectation_summary(spec)} "
+            f"coverage={coverage} "
+            f"actual={'all-declared-assertions-matched' if failure is None else 'assertion-mismatch'} "
+            f"interpretation={interpretation}"
+        )
 
     if failures:
         print(f"[{suite_name}] FAIL")
@@ -301,5 +355,8 @@ def run_manifest_suite(*, manifest_path: pathlib.Path, polopt: pathlib.Path) -> 
             print(failure)
         return 1
 
-    print(f"[{suite_name}] OK")
+    print(
+        f"[{suite_name}] PASS expected={len(raw_checks)} actual={len(raw_checks)} "
+        "interpretation=all-manifest-contracts-matched"
+    )
     return 0

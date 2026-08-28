@@ -1,20 +1,13 @@
 {
   "loop": "const_unroll.loop",
   "polopt_args": [
-    "--pluto-compat",
-    "--notile",
-    "--nointratileopt",
-    "--noprevector",
-    "--unrolljam",
-    "--ufactor=3",
-    "--nodiamond-tile",
-    "--noparallel",
-    "--rar"
+    "--identity",
+    "--const-unroll"
   ],
   "benchmark": false,
   "openmp": false,
-  "polopt_env": {
-    "POLCERT_UNROLLJAM_POLICY": "checked-all-depths"
-  },
+  "optimized_loop_needles": [
+    "A[3]"
+  ],
   "require_unrolled": true
 }

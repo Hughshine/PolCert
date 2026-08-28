@@ -12,7 +12,8 @@ let () =
   match CPolIRs.scheduler cpol_orig with
   | Okk cpol_opt -> 
       cpol_printer "./opt.cpol" cpol_opt;
-      printf "\027[32mSUCCEED\027[0m: Invoke pluto.\n"
+      printf "[legacy/pluto] PASS expected=scheduler-success actual=scheduler-success interpretation=Pluto-returned-a-convertible-schedule\n"
   | Err msg -> 
-      printf "\027[31mFAIL\027[0m: Invoke pluto, %s\n" (camlstring_of_coqstring msg)
+      eprintf "[legacy/pluto] FAIL expected=scheduler-success actual=scheduler-rejection interpretation=%s\n" (camlstring_of_coqstring msg);
+      exit 1
 ;;

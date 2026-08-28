@@ -317,7 +317,18 @@ def main() -> int:
             )
     for case in cases:
         failure = run_case(polopt, case, args.timeout)
-        print(f"[non-second-level-routes] {case.name}: {'PASS' if failure is None else 'FAIL'}")
+        print(
+            f"[non-second-level-routes] {'PASS' if failure is None else 'FAIL'} "
+            f"case={case.name} expected=success:{str(case.expect_success).lower()},"
+            f"route:{case.expected_route},alarm:{str(case.expect_alarm).lower()} "
+            f"actual={'all-route-assertions-matched' if failure is None else 'route-assertion-mismatch'} "
+            "interpretation="
+            + (
+                "one-level-route-composition-matched"
+                if failure is None
+                else "route-rejection-or-vector-status-did-not-match"
+            )
+        )
         if failure is not None:
             failures.append(failure)
 
@@ -341,9 +352,10 @@ def main() -> int:
         )
         return 1
     print(
-        f"[non-second-level-routes] OK "
-        f"({accepted} permutable-band compositions, {validation_fallback} "
-        f"validation fallbacks, {rejected} explicit vector rejections)"
+        "[non-second-level-routes] PASS "
+        "expected=permutable-band:84,fallbacks:0,vector-rejections:6 "
+        f"actual=permutable-band:{accepted},fallbacks:{validation_fallback},"
+        f"vector-rejections:{rejected} interpretation=all-one-level-route-contracts-matched"
     )
     return 0
 

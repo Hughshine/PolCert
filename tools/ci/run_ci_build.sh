@@ -26,12 +26,58 @@ ci_run_timed pluto-baseline \
   bash /polcert/tools/ci/check_pluto_baseline.sh
 ci_run_timed route-telemetry \
   python3 /polcert/tools/tiling_routes/test_route_telemetry.py
+ci_run_timed open-proof-gate-unit \
+  python3 /polcert/tools/ci/test_check_open_proofs.py
+ci_run_timed proof-report-unit \
+  python3 /polcert/tools/artifact/test_proof_report.py
+ci_run_timed artifact-runner-unit \
+  python3 /polcert/tools/artifact/test_artifact_runner_timeout.py
+ci_run_timed tiling-route-summary-unit \
+  python3 /polcert/tools/artifact/test_tiling_route_summary.py
+ci_run_timed release-provenance-unit \
+  python3 /polcert/tools/artifact/test_release_provenance.py
+ci_run_timed unrolljam-route-unit \
+  python3 /polcert/tools/artifact/test_unrolljam_route_guard.py
+ci_run_timed flag-manifest-unit \
+  python3 /polcert/tools/polopt_flag_suites/test_manifest_runner.py
+ci_run_timed strict-effect-unit \
+  python3 /polcert/tests/polopt-generated/tools/test_check_polopt_cases.py
+ci_run_timed generated-harness-unit \
+  python3 /polcert/tools/end_to_end_c/test_generated_harness.py
+ci_run_timed legacy-failure-gate-unit \
+  bash /polcert/tools/ci/check_legacy_failure_exit.sh --self-test
+ci_run_timed python-syntax \
+  python3 -m py_compile \
+    /polcert/tools/ci/check_open_proofs.py \
+    /polcert/tools/artifact/proof_report.py \
+    /polcert/tools/artifact/run_artifact_check.py \
+    /polcert/tools/artifact/test_tiling_route_summary.py \
+    /polcert/tools/polopt_flag_suites/manifest_runner.py \
+    /polcert/tools/polopt_flag_suites/run_pluto_compat_suite.py \
+    /polcert/tests/polopt-generated/tools/check_polopt_cases.py \
+    /polcert/tools/end_to_end_c/run_case.py \
+    /polcert/tools/end_to_end_c/run_suite.py \
+    /polcert/tools/end_to_end_c/generated_harness.py \
+    /polcert/tools/end_to_end_c/run_generated_case.py \
+    /polcert/tools/end_to_end_c/run_generated_suite.py \
+    /polcert/tools/iss/run_pluto_iss_suite.py \
+    /polcert/tools/iss/run_pluto_iss_live_suite.py \
+    /polcert/tools/diamond_tiling/run_pluto_diamond_suite.py \
+    /polcert/tools/second_level_tiling/check_scheduler_flag_forwarding.py \
+    /polcert/tools/second_level_tiling/check_standalone_formal_route.py \
+    /polcert/tools/second_level_tiling/check_second_level_diamond_routes.py \
+    /polcert/tools/second_level_tiling/check_rejected_tiling_route.py
+ci_run_timed check-admitted \
+  opam exec --switch=polcert -- make -s check-admitted
 ci_run_timed clean make clean
 ci_run_timed depend opam exec --switch=polcert -- make depend
 ci_run_timed proof opam exec --switch=polcert -- make -j"$proof_jobs" proof
-ci_run_timed check-admitted opam exec --switch=polcert -- make -s check-admitted
 ci_run_timed extraction \
   opam exec --switch=polcert -- make -j"$proof_jobs" extraction
+ci_run_timed proof-report \
+  python3 /polcert/tools/artifact/proof_report.py \
+    --json-out /tmp/polcert-proof-report.json \
+    --markdown-out /tmp/polcert-proof-report.md
 ci_run_timed polcert-ini opam exec --switch=polcert -- make polcert.ini
 ci_run_timed extraction-depend \
   opam exec --switch=polcert -- make .depend.extr

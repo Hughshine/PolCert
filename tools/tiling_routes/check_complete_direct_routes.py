@@ -373,14 +373,28 @@ def main() -> int:
             expect_optimized_output=expect_optimized_output,
             expect_rejection_alarm=expect_rejection_alarm,
         )
-        print(f"[direct-route] {name}: {'PASS' if failure is None else 'FAIL'}")
+        print(
+            f"[direct-route] {'PASS' if failure is None else 'FAIL'} case={name} "
+            f"expected=route:{expected_route},optimized-output:{str(expect_optimized_output).lower()},"
+            f"rejection-alarm:{str(expect_rejection_alarm).lower()},fallbacks:0 "
+            f"actual={'all-route-assertions-matched' if failure is None else 'route-assertion-mismatch'} "
+            "interpretation="
+            + (
+                "direct-only-route-contract-matched"
+                if failure is None
+                else "route-output-or-alarm-did-not-match"
+            )
+        )
         if failure is not None:
             failures.append(f"{name}: {failure}")
     if failures:
         print("[direct-route] FAIL")
         print("\n".join(failures))
         return 1
-    print(f"[direct-route] OK ({len(cases)} cases, zero fallbacks)")
+    print(
+        f"[direct-route] PASS expected={len(cases)},fallbacks:0 "
+        f"actual={len(cases)},fallbacks:0 interpretation=all-direct-route-contracts-matched"
+    )
     return 0
 
 

@@ -156,6 +156,45 @@ def require_tiled(case_dir: pathlib.Path) -> None:
         )
 
 
+def required_effect_failures(
+    case_name: str,
+    *,
+    changed: bool,
+    nontrivial_changed: bool,
+    tiled: bool,
+    require_nontrivial_changed: set[str],
+    require_unchanged: set[str],
+    require_tiled_cases: set[str],
+) -> list[str]:
+    failures: list[str] = []
+    if case_name in require_nontrivial_changed and not nontrivial_changed:
+        failures.append("expected a nontrivial optimized-loop change")
+    if case_name in require_unchanged and changed:
+        failures.append("expected the optimized loop to remain unchanged")
+    if case_name in require_tiled_cases and not tiled:
+        failures.append("expected explicit tiled bounds")
+    return failures
+
+
+def effect_expectation(
+    case_name: str,
+    *,
+    require_nontrivial_changed: set[str],
+    require_unchanged: set[str],
+    require_tiled_cases: set[str],
+) -> str:
+    parts: list[str] = []
+    if case_name in require_nontrivial_changed:
+        parts.append("nontrivial-change")
+    elif case_name in require_unchanged:
+        parts.append("unchanged")
+    else:
+        parts.append("successful-materialization")
+    if case_name in require_tiled_cases:
+        parts.append("tiled")
+    return "+".join(parts)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -219,6 +258,27 @@ def main() -> None:
         isinstance(case, str) for case in require_tiled_cases
     ):
         raise SystemExit("require_tiled must be a list of case names")
+    require_nontrivial_changed_cases = manifest.get(
+        "require_nontrivial_changed", []
+    )
+    require_unchanged_cases = manifest.get("require_unchanged", [])
+    for key, value in (
+        ("require_nontrivial_changed", require_nontrivial_changed_cases),
+        ("require_unchanged", require_unchanged_cases),
+    ):
+        if not isinstance(value, list) or not all(
+            isinstance(case, str) for case in value
+        ):
+            raise SystemExit(f"{key} must be a list of case names")
+    require_nontrivial_changed_set = set(require_nontrivial_changed_cases)
+    require_unchanged_set = set(require_unchanged_cases)
+    require_tiled_set = set(require_tiled_cases)
+    overlap = require_nontrivial_changed_set & require_unchanged_set
+    if overlap:
+        raise SystemExit(
+            "cases cannot require both nontrivial change and unchanged output: "
+            + ", ".join(sorted(overlap))
+        )
     if expect_total is not None:
         expect_total = int(expect_total)
     tiling_validation = manifest.get("tiling_validation", None)
@@ -255,6 +315,16 @@ def main() -> None:
         "permutable-band": 0,
         "not-applicable:no-loop": 0,
     }
+    effect_failures: list[str] = []
+    case_names = {case_dir.name for case_dir in case_dirs}
+    required_names = (
+        require_nontrivial_changed_set | require_unchanged_set | require_tiled_set
+    )
+    unknown_required = sorted(required_names - case_names)
+    if unknown_required:
+        raise SystemExit(
+            "effect constraints name unknown cases: " + ", ".join(unknown_required)
+        )
 
     for case_dir in case_dirs:
         case_ok, case_changed = check_case_dir(case_dir)
@@ -272,12 +342,47 @@ def main() -> None:
                 tiling_validation_counts[expected_tiling_validation] = (
                     tiling_validation_counts.get(expected_tiling_validation, 0) + 1
                 )
+            case_nontrivial_changed = False
             if case_changed:
                 changed += 1
-                if is_nontrivially_changed(case_dir):
+                case_nontrivial_changed = is_nontrivially_changed(case_dir)
+                if case_nontrivial_changed:
                     nontrivial_changed += 1
-            if detect_tiled(case_dir):
+            case_tiled = detect_tiled(case_dir)
+            if case_tiled:
                 detected_tiled.append(case_dir.name)
+            case_effect_failures = required_effect_failures(
+                case_dir.name,
+                changed=case_changed,
+                nontrivial_changed=case_nontrivial_changed,
+                tiled=case_tiled,
+                require_nontrivial_changed=require_nontrivial_changed_set,
+                require_unchanged=require_unchanged_set,
+                require_tiled_cases=require_tiled_set,
+            )
+            has_case_effect_contract = case_dir.name in required_names
+            outcome = "PASS" if not case_effect_failures else "FAIL"
+            print(
+                f"[strict-effect] {outcome} case={case_dir.name} "
+                f"expected={effect_expectation(case_dir.name, require_nontrivial_changed=require_nontrivial_changed_set, require_unchanged=require_unchanged_set, require_tiled_cases=require_tiled_set)} "
+                f"coverage={'effect' if has_case_effect_contract else 'acceptance-only'} "
+                f"actual=changed:{str(case_changed).lower()},"
+                f"nontrivial:{str(case_nontrivial_changed).lower()},"
+                f"tiled:{str(case_tiled).lower()} "
+                "interpretation="
+                + (
+                    (
+                        "declared-optimization-effect-matched"
+                        if has_case_effect_contract
+                        else "no-case-specific-effect-contract"
+                    )
+                    if not case_effect_failures
+                    else ";".join(case_effect_failures).replace(" ", "-")
+                )
+            )
+            effect_failures.extend(
+                f"{case_dir.name}: {failure}" for failure in case_effect_failures
+            )
         else:
             failed.append(case_dir.name)
 
@@ -285,6 +390,8 @@ def main() -> None:
         raise SystemExit(f"expected {expect_total} cases, saw {total}")
     if failed:
         raise SystemExit(f"failed cases: {', '.join(failed)}")
+    if effect_failures:
+        raise SystemExit("effect assertion failures: " + "; ".join(effect_failures))
     if changed < min_changed:
         raise SystemExit(f"expected at least {min_changed} changed cases, saw {changed}")
     if nontrivial_changed < min_nontrivial_changed:
@@ -293,9 +400,6 @@ def main() -> None:
             f"{min_nontrivial_changed} nontrivially changed cases, "
             f"saw {nontrivial_changed}"
         )
-
-    for case in require_tiled_cases:
-        require_tiled(cases_root / case)
 
     print(f"total={total}")
     print(f"ok={ok}")
@@ -307,6 +411,13 @@ def main() -> None:
         print(f"detected_tiled_cases={','.join(detected_tiled)}")
     if require_tiled_cases:
         print(f"required_tiled_cases={','.join(require_tiled_cases)}")
+    if require_nontrivial_changed_cases:
+        print(
+            "required_nontrivial_changed_cases="
+            + ",".join(require_nontrivial_changed_cases)
+        )
+    if require_unchanged_cases:
+        print("required_unchanged_cases=" + ",".join(require_unchanged_cases))
     if default_tiling_validation is not None:
         print("tiling_validation=direct-only")
         print(

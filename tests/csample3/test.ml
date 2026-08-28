@@ -6,20 +6,32 @@ open CPolIRs
 open CPolOpt
 open CSample3
 
+let failed = ref false
+let passed = ref 0
+
+let check name res ok =
+  if ok && res then begin
+    passed := !passed + 1;
+    printf "[legacy/csample3] PASS check=%s expected=ok:true,res:true actual=ok:%B,res:%B interpretation=refinement-established\n" name ok res
+  end
+  else begin
+    failed := true;
+    eprintf "[legacy/csample3] FAIL check=%s expected=ok:true,res:true actual=ok:%B,res:%B interpretation=refinement-not-established\n" name ok res
+  end
+
 let () =
   let cpol_orig = CSample3.sample_cpol in
   cpol_printer "./orig.cpol" cpol_orig;
-  match CPolIRs.scheduler cpol_orig with
+  (match CPolIRs.scheduler cpol_orig with
   | Okk cpol_opt -> 
       cpol_printer "./opt.cpol" cpol_opt;
       let (res, ok) = CPolOpt.validate cpol_orig cpol_opt in
-      (* printf "%b\n" res; *)
-      (if ok && res then printf "\027[32mSUCCEED\027[0m: (orig -> opt).\n"
-      else printf "\027[31mFAIL\027[0m: (orig -> opt).\n");
+      check "orig-to-opt" res ok;
       let (res, ok) = CPolOpt.validate cpol_opt cpol_orig  in
-      (* printf "%b\n" res; *)
-      (if ok && res then printf "\027[32mSUCCEED\027[0m: (opt -> orig).\n"
-      else printf "\027[31mFAIL\027[0m: (opt -> orig).\n");
+      check "opt-to-orig" res ok
   | Err msg -> 
-      printf "\027[31mFAIL\027[0m: %s\n" (camlstring_of_coqstring msg)
+      failed := true;
+      eprintf "[legacy/csample3] FAIL check=scheduler expected=success actual=rejection interpretation=%s\n" (camlstring_of_coqstring msg));
+  if !failed then exit 1
+  else printf "[legacy/csample3] PASS expected=2 actual=%d interpretation=both-refinement-directions-established\n" !passed
 ;;

@@ -14,7 +14,7 @@ static void init_data(void) {
 static double checksum(void) {
   double sum = 0.0;
   for (int i = 0; i < N; ++i) {
-    sum += A[i];
+    sum += A[i] * (i + 1);
   }
   return sum;
 }

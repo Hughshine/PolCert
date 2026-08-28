@@ -2,5 +2,11 @@
   "loop": "matmul.loop",
   "polopt_args": [],
   "benchmark": true,
-  "openmp": false
+  "openmp": false,
+  "optimized_loop_needles": [
+    "/ 32",
+    "32 *",
+    "min(",
+    "max("
+  ]
 }

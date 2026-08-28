@@ -14,14 +14,24 @@ C wrapper
 -> compile and run
 ```
 
-The current first slice is intentionally small:
+The correctness slice covers ordinary tiling, an ISS route, positive and
+negative literal strides, native constant unrolling, checked unroll-jam, and
+constant unrolling inside a parallel loop. Targeted matmul runs additionally
+exercise explicit parallel and innermost vector output. Heavier `*_perf`
+siblings remain performance-only.
 
-- one ordinary tiled case: `matmul`
-- one ISS-positive case: `reverse_iss`
-- heavier perf-oriented siblings: `matmul_perf`, `reverse_iss_perf`
+The one-repeat correctness target is part of default CI. It checks both the
+declared structural effects and executable equality against the source loop;
+it does not make a performance claim.
 
-These cases are not yet in default CI. They are a strengthening track for the
-artifact rather than part of the minimal regression gate.
+Effect coverage is deliberately explicit. The handwritten cases require
+observable markers for ordinary tiling, parallel/vector annotations,
+constant unrolling, checked block unroll-jam, and stride normalization. The
+ISS case checks route acceptance plus executable equality; the dedicated ISS
+suites separately check that valid split witnesses are accepted and mutated
+witnesses are rejected. Diamond effects and validation phases are checked by
+the dedicated diamond suite because the auxiliary C lowering does not yet
+implement the verified integer division semantics for negative operands.
 
 For the broader generated whole-C campaign over the 62-case regression corpus,
 see [../end-to-end-generated](../end-to-end-generated). That path synthesizes a
@@ -46,6 +56,13 @@ Build `polopt`, then run:
 
 ```bash
 opam exec -- make test-end-to-end-c-smoke
+```
+
+The CI-equivalent correctness target uses four requested OpenMP threads for
+parallel cases and adds targeted parallel/vector matmul checks:
+
+```bash
+opam exec -- make test-end-to-end-c-correctness
 ```
 
 For the heavier perf-oriented pair, run:
@@ -79,6 +96,10 @@ This harness currently compares:
 
 - baseline wrapper + transpiled input `.loop`
 - optimized wrapper + transpiled `polopt` output
+
+Both sides share the same auxiliary `.loop`-to-C lowering. The executable
+comparison therefore detects optimizer regressions; it is not an independent
+verification of that lowering.
 
 It does not yet compare against a Pluto-generated full C output. That is the
 next natural extension once the basic splice workflow is stable.
@@ -114,4 +135,7 @@ the suite instead:
 
 This makes it possible to cover the full generated corpus with a uniform
 end-to-end benchmark path, at the cost of using generated wrappers rather than
-the original benchmark driver code.
+the original benchmark driver code. The generated summary uses index-weighted
+checksums to expose value permutations, but a checksum is not a proof of
+element-wise memory equality. CI uses fixed deterministic parameters and does
+not currently add randomized dimensions or sanitizer instrumentation.

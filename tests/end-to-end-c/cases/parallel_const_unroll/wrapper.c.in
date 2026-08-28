@@ -1,0 +1,20 @@
+#include <stdio.h>
+
+static long long A[400];
+
+static long long checksum(void) {
+  long long sum = 0;
+  for (int i = 0; i < 400; ++i) {
+    sum += A[i] * (i + 1);
+  }
+  return sum;
+}
+
+int main(void) {
+  for (int i = 0; i < 400; ++i) {
+    A[i] = (i % 17) - 8;
+  }
+  /* POLCERT_KERNEL */
+  printf("%lld\n", checksum());
+  return 0;
+}

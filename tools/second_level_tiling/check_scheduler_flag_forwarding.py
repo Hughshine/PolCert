@@ -673,6 +673,41 @@ def main() -> None:
     if re.search(r"\bRawDefault\b", sequential_config_body):
         raise AssertionError("the generic-primary RawDefault route must not be CLI-selectable")
     require(sequential_config_body, "RawDefaultBand", "normal default band route")
+    syntax_compile_body = coq_definition_body(
+        (ROOT / "syntax" / "SVerifiedCompilerConfig.v").read_text(
+            encoding="utf-8"
+        ),
+        "compile_verified",
+    )
+    affine_iss_route = "VAffineISS => SPolOpt.opt_with_iss loop"
+    require(
+        syntax_compile_body,
+        affine_iss_route,
+        "affine-with-ISS route in syntax verified compiler",
+    )
+    if syntax_compile_body.count("SPolOpt.opt_with_iss") != 1:
+        raise AssertionError(
+            "SPolOpt.opt_with_iss must be used only by the no-tiling VAffineISS route"
+        )
+    proof_compile_body = coq_definition_body(
+        (ROOT / "driver" / "VerifiedCompilerConfig.v").read_text(
+            encoding="utf-8"
+        ),
+        "compile_verified",
+    )
+    proof_affine_iss_route = (
+        "VAffineISS => CoreCorrect.Core.Opt_with_iss loop"
+    )
+    require(
+        proof_compile_body,
+        proof_affine_iss_route,
+        "affine-with-ISS route in proved verified compiler",
+    )
+    if proof_compile_body.count("CoreCorrect.Core.Opt_with_iss") != 1:
+        raise AssertionError(
+            "CoreCorrect.Core.Opt_with_iss must be used only by the "
+            "no-tiling VAffineISS route"
+        )
     for path, old_route, band_route in (
         (
             ROOT / "driver" / "VerifiedCompilerConfig.v",
@@ -706,7 +741,6 @@ def main() -> None:
         source = path.read_text(encoding="utf-8")
         for pattern, label in (
             (r"\bSPolOpt\.opt\b", "legacy syntax tiling optimizer"),
-            (r"\bSPolOpt\.opt_with_iss\b", "legacy syntax ISS tiling optimizer"),
             (r"\bSPolOpt\.opt_poly\b", "legacy syntax PolyLang tiling optimizer"),
             (r"\bSPolOpt\.opt_scop\b", "legacy syntax OpenScop tiling optimizer"),
             (r"\bPolOpt\.Opt\b", "legacy generic tiling optimizer"),
@@ -717,6 +751,13 @@ def main() -> None:
                 raise AssertionError(
                     f"product entrypoint {path.relative_to(ROOT)} reaches {label}"
                 )
+        if path != ROOT / "syntax" / "SVerifiedCompilerConfig.v" and re.search(
+            r"\bSPolOpt\.opt_with_iss\b", source
+        ):
+            raise AssertionError(
+                f"product entrypoint {path.relative_to(ROOT)} reaches "
+                "legacy syntax ISS tiling optimizer"
+            )
     for path in (
         ROOT / "src" / "TilingBandDirectRuntime.v",
         ROOT / "driver" / "PolOptBandTiling.v",
@@ -962,8 +1003,8 @@ def main() -> None:
         "single report in the shared sequential compiler dispatcher",
     )
     for route in (
-        "run_verified_hinted_parallel_optimization",
-        "run_verified_hinted_multipar_parallel_optimization",
+        "run_verified_hinted_parallel_optimization_with",
+        "run_verified_hinted_multipar_parallel_optimization_with",
         "run_selected_vector_optimization",
         "run_selected_parallel_current_optimization",
         "run_selected_vector_current_optimization",
@@ -973,6 +1014,28 @@ def main() -> None:
             "TilingValidationRoute.report",
             1,
             f"single final-candidate report {route}",
+        )
+    for wrapper, implementation in (
+        (
+            "run_verified_hinted_parallel_optimization",
+            "run_verified_hinted_parallel_optimization_with",
+        ),
+        (
+            "run_verified_hinted_multipar_parallel_optimization",
+            "run_verified_hinted_multipar_parallel_optimization_with",
+        ),
+    ):
+        wrapper_body = definition_body(main_source, wrapper)
+        require_count(
+            wrapper_body,
+            "TilingValidationRoute.report",
+            0,
+            f"no duplicate final-candidate report in wrapper {wrapper}",
+        )
+        require(
+            wrapper_body,
+            implementation,
+            f"thin wrapper {wrapper} reaches reporting implementation",
         )
     for route in (
         "run_selected_sequential_loop_optimization",
@@ -1057,12 +1120,12 @@ def main() -> None:
         )
 
     hinted_multipar_body = definition_body(
-        main_source, "run_verified_hinted_multipar_parallel_optimization"
+        main_source, "run_verified_hinted_multipar_parallel_optimization_with"
     )
     for needle in (
         "| Some (pl, routes, _accepted_hint) ->",
         "(pl, true)",
-        "verified_sequential_after_parallel_skip route loop",
+        "sequential_fallback route loop",
     ):
         require(
             hinted_multipar_body,
@@ -1176,7 +1239,13 @@ def main() -> None:
         "fail-closed explicit vector-current execution",
     )
 
-    print("second-level scheduler flag forwarding: PASS")
+    print(
+        "[second-level-route-static] PASS "
+        "expected=flags-forwarded,band-first-dispatch,unique-final-report,"
+        "affine-ISS-no-tiling-route "
+        "actual=all-static-route-contracts-matched coverage=static-route-contract "
+        "interpretation=source-and-extracted-entrypoints-follow-the-declared-routes"
+    )
 
 
 if __name__ == "__main__":

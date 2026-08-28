@@ -4,11 +4,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from tools.ci.check_open_proofs import find_open_proofs
 
 SCAN_DIRS = [
     "src",
@@ -329,18 +333,23 @@ def iter_coq_files() -> list[Path]:
     return files
 
 
-def scan_pattern(pattern: re.Pattern[str], files: list[Path]) -> list[Finding]:
-    findings: list[Finding] = []
+def scan_open_proofs(files: list[Path]) -> tuple[list[Finding], list[Finding]]:
+    admitted: list[Finding] = []
+    aborted: list[Finding] = []
     for path in files:
-        rel = path.relative_to(ROOT)
         try:
             lines = path.read_text(errors="replace").splitlines()
+            markers = find_open_proofs(path)
         except OSError:
             continue
-        for idx, line in enumerate(lines, start=1):
-            if pattern.search(line):
-                findings.append(Finding(str(rel), idx, line.strip()))
-    return findings
+        rel = str(path.relative_to(ROOT))
+        for line, marker in markers:
+            finding = Finding(rel, line, lines[line - 1].strip())
+            if marker.startswith("Abort"):
+                aborted.append(finding)
+            else:
+                admitted.append(finding)
+    return admitted, aborted
 
 
 def theorem_index(files: list[Path]) -> dict[str, list[str]]:
@@ -364,8 +373,7 @@ def theorem_index(files: list[Path]) -> dict[str, list[str]]:
 
 def build_report() -> dict[str, object]:
     files = iter_coq_files()
-    admitted = scan_pattern(re.compile(r"\b(admit|Admitted|ADMITTED)\b"), files)
-    aborted = scan_pattern(re.compile(r"\bAbort\."), files)
+    admitted, aborted = scan_open_proofs(files)
     extraction_axioms = []
     extraction_dir = ROOT / "extraction"
     if extraction_dir.exists():
@@ -449,6 +457,15 @@ def write_markdown(report: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def report_has_errors(report: dict[str, object]) -> bool:
+    return bool(
+        report["admitted_count"]
+        or report["abort_count"]
+        or report["extraction_axiom_count"]
+        or report["missing_route_theorem_count"]
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json-out")
@@ -466,7 +483,18 @@ def main() -> int:
         out.write_text(write_markdown(report))
     if not args.json_out and not args.markdown_out:
         print(write_markdown(report), end="")
-    if report["missing_route_theorem_count"] != 0:
+    else:
+        result = "FAIL" if report_has_errors(report) else "PASS"
+        print(
+            f"[proof-report] {result} "
+            "expected=admitted:0,aborted:0,extraction-axioms:0,missing-routes:0 "
+            f"actual=admitted:{report['admitted_count']},"
+            f"aborted:{report['abort_count']},"
+            f"extraction-axioms:{report['extraction_axiom_count']},"
+            f"missing-routes:{report['missing_route_theorem_count']} "
+            "interpretation=proof sources and extracted routes are closed"
+        )
+    if report_has_errors(report):
         return 2
     return 0
 

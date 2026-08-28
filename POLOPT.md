@@ -589,7 +589,7 @@ Current strict proved-path status:
 - changed: `59`
 - unchanged: `3`
 - nontrivially changed: `59`
-- automatically detected tiled outputs: `39`
+- automatically detected tiled outputs: `46`
 
 These numbers are the current observed snapshot on the manifest-owned corpus.
 The default CI gate does not assert those exact counts. It enforces the
@@ -672,8 +672,11 @@ Guidelines:
 
 ## How to test
 
-The default regression gate is already wired into CI through
-[tools/ci/run_ci.sh](./tools/ci/run_ci.sh).
+The remote regression gate builds once with
+[tools/ci/run_ci_build.sh](./tools/ci/run_ci_build.sh) and runs isolated shards
+through [tools/ci/run_ci_shards.sh](./tools/ci/run_ci_shards.sh).
+[tools/ci/run_ci.sh](./tools/ci/run_ci.sh) remains the sequential in-container
+entry point.
 Locally, the main commands are:
 
 ```sh
@@ -693,6 +696,8 @@ opam exec -- make test-parallel-current-suite
 opam exec -- make test-second-level-tile-suite
 opam exec -- make test-polopt-loop-suite
 opam exec -- make test-diamond-tiling-suite
+opam exec -- make test-end-to-end-c-correctness
+opam exec -- make test-extracted-zero-fallback
 ```
 
 If you only want to refresh the generated strict-suite corpus for downstream
@@ -703,14 +708,13 @@ opam exec -- make materialize-polopt-loop-suite
 ```
 
 Heavier end-to-end performance checks are intentionally **not** part of default
-CI, and neither is the dedicated Pluto-backed diamond live suite. The default
-gate asserts the main proof/build/test path plus the strict loop manifest
-thresholds; it does not assert the exact current `59` / `39` snapshot shown
-above. The current non-default strengthening workflows are:
+CI. The default gate includes the diamond suite, per-case strict-loop effect
+contracts, handwritten executable correctness checks, and executable checks for
+all 62 generated cases; it does not assert the exact current `59` / `46`
+snapshot shown above. The current non-default performance workflows are:
 
-- `make test-diamond-tiling-suite`
-- handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
-- generated whole-C cases in
+- repeated handwritten cases in [tests/end-to-end-c](./tests/end-to-end-c)
+- generated whole-C performance campaigns in
   [tests/end-to-end-generated](./tests/end-to-end-generated)
 
 The one-command local perf refresh is:

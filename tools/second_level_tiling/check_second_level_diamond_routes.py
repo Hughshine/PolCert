@@ -26,6 +26,10 @@ def optimized_loop(stdout: str) -> str:
     return stdout[pos:] if pos >= 0 else stdout
 
 
+def case_id(label: str) -> str:
+    return "-".join(label.replace("--", "").split())
+
+
 def check_second_level_diamond_route_matrix(
     *,
     polopt: Path,
@@ -130,6 +134,18 @@ def check_second_level_diamond_route_matrix(
             raise AssertionError(
                 f"{label} did not differ after removing --second-level-tile"
             )
+        consumer_effect = (
+            "vector-skipped" if consumer == "vector-strict" else "parallelized"
+        )
+        print(
+            f"[second-level-routes] PASS case={case_id(label)} "
+            "expected=route:permutable-band,tile-marker:true,"
+            f"consumer:{consumer_effect},differs-from-one-level:true "
+            "actual=route:permutable-band,tile-marker:true,"
+            f"consumer:{consumer_effect},differs-from-one-level:true "
+            "interpretation=second-level-diamond-producer-and-consumer-contracts-matched",
+            flush=True,
+        )
 
     vector_rejection = (
         "[vector-validation] status=rejected source=explicit-current "
@@ -157,10 +173,21 @@ def check_second_level_diamond_route_matrix(
             raise AssertionError(f"{label} emitted a fallback after explicit rejection")
         if proc.stderr.count("[alarm] requested checked optimization was rejected") != 1:
             raise AssertionError(f"{label} omitted unique fail-closed alarm")
+        print(
+            f"[second-level-routes] PASS case={case_id(label)} "
+            "expected=result:reject,reason:non-innermost-vector,"
+            "tiling-route:none,optimized-output:false "
+            "actual=result:reject,reason:non-innermost-vector,"
+            "tiling-route:none,optimized-output:false "
+            "interpretation=explicit-invalid-vector-consumer-failed-closed",
+            flush=True,
+        )
 
     print(
-        "second-level diamond route matrix: PASS "
-        "(16 accepted parallel/hinted variants, 4 explicit vector rejections)"
+        "[second-level-routes] PASS expected=accepted:16,rejected:4 "
+        "actual=accepted:16,rejected:4 "
+        "interpretation=diamond-consumer-route-matrix-matched",
+        flush=True,
     )
 
 

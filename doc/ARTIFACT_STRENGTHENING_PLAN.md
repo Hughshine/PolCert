@@ -131,14 +131,15 @@ This workstream is now partially complete:
 - the one-command local refresh is:
   - `opam exec -- make test-end-to-end-generated-perf-refresh`
 
-This harness is intentionally not part of default CI.
+The one-repeat correctness tier is now part of default CI. Repeated timing,
+pipeline search, and tuning remain outside the default gate.
 
 ### Closed review follow-ups (2026-07-19)
 
 The April harness gaps are now implemented: strict generated-corpus invariants
 are CI gates, subprocess timeouts cover compiled benchmarks, numeric summaries
-use documented tolerances, and the aggregate tiling-route target in
-`tools/ci/run_ci.sh` covers one-level route discipline, Pluto compatibility,
+use documented tolerances, and the isolated CI shards cover one-level route
+discipline, Pluto compatibility,
 parallel-current, vector-current, second-level tiling, and the Pluto-backed
 diamond matrix.
 

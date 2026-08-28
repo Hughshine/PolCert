@@ -51,7 +51,18 @@ The `parallel_4` and `iss_parallel_4` candidates are only eligible when the
 generated route emits a real verified `parallel for`. A sequential fallback on
 those command lines is not allowed to win the "parallel" slots.
 
-The generated end-to-end perf flow is intentionally **not** part of default CI.
+Default CI runs the one-repeat smoke tier over all 62 materialized cases and
+compares each optimized executable with its baseline. Repeated performance
+runs, pipeline search, and tuning are intentionally **not** part of default CI.
+
+The current textual `.loop` to C lowering uses C integer `/` and `%`. That
+agrees with the checked loop semantics for the positive operands exercised by
+the default corpus, but not for every negative intermediate bound. In
+particular, diamond schedules can contain negative division numerators, so
+diamond correctness remains gated by the verified route/effect suites rather
+than this auxiliary C harness. Such cases must not be admitted here by widening
+numeric tolerances; the lowering needs semantics-correct integer expression
+translation first.
 It is heavier than the normal regression suite and is meant for local artifact
 evaluation.
 

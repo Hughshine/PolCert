@@ -46,7 +46,7 @@ pluto-test:
 	@echo "@@@@Testing pluto finished."
 
 pluto-clean: 
-	cd tests/cpol2copenscop/ && $(MAKE) -f Makefile clean
+	cd tests/pluto/ && $(MAKE) -f Makefile clean
 
 csample1-test: 
 	@echo "@@@@Csample-1."

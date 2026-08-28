@@ -764,17 +764,17 @@ def check_rejected_tiling_route(
     )
 
     print(
-        "rejected tiling route: PASS "
-        f"({malformed_count} malformed tilings fail closed, scalar-only fails "
-        "closed, one integrated nonpermutable candidate reaches the direct "
-        "checker and is rejected once, four vector skips preserve verified tilings, "
-        f"{consumer_failure_count} consumer failures do not alter the tiling "
-        f"outcome, {malformed_consumer_count} malformed producer/consumer "
-        "combinations preserve the producer rejection, "
-        f"{malformed_hinted_consumer_count} malformed producer/hinted-consumer "
-        f"combinations preserve the producer rejection, and {final_affine_count} "
-        "final-affine failures preserve "
-        "the successful tiling-leg route and fail closed)"
+        "[second-level-rejection] PASS "
+        "expected=malformed:16,scalar-only:1,nonpermutable:1,vector-skips:4,"
+        "consumer-failures:12,malformed-explicit:16,malformed-hinted:18,"
+        "final-affine:48 "
+        f"actual=malformed:{malformed_count},scalar-only:1,nonpermutable:1,"
+        f"vector-skips:4,consumer-failures:{consumer_failure_count},"
+        f"malformed-explicit:{malformed_consumer_count},"
+        f"malformed-hinted:{malformed_hinted_consumer_count},"
+        f"final-affine:{final_affine_count} "
+        "interpretation=producer-consumer-and-final-affine-failures-preserved-the-declared-route",
+        flush=True,
     )
 
 

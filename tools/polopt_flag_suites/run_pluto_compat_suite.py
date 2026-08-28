@@ -645,6 +645,7 @@ CHECKS = [
         True,
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --ft=0 --lt=1",
+        effect_needles=("32 *", "/ 32"),
     ),
     Check(
         "second-level",
@@ -2016,6 +2017,26 @@ def run_check(check: Check, timeout: int) -> str | None:
     return None
 
 
+def effect_contract_count(check: Check) -> int:
+    contracts = (
+        len(check.effect_needles)
+        + len(check.effect_absent)
+        + len(check.scheduled_needles)
+        + len(check.scheduled_absent)
+        + len(check.differs_from_args)
+        + (1 if check.same_as_args is not None else 0)
+    )
+    if "--second-level-tile" in check.args:
+        contracts += len(check.second_level_markers or ("auto-second-level-shape",))
+    return contracts
+
+
+def effect_contract_summary(check: Check) -> str:
+    contracts = effect_contract_count(check)
+    route = check.tiling_route or ("permutable-band" if has_tiling_phase(check) else "none")
+    return f"effects={contracts},tiling-route={route}"
+
+
 def main(argv: list[str]) -> int:
     timeout = 30
     only: set[str] | None = None
@@ -2056,8 +2077,38 @@ def main(argv: list[str]) -> int:
         return 2
     for check in checks:
         failure = run_check(check, timeout)
+        expected_result = "success" if check.success else "rejection"
+        actual_result = expected_result if failure is None else "contract-mismatch"
+        effect_contracts = effect_contract_count(check)
+        coverage = (
+            "effect"
+            if check.success and effect_contracts > 0
+            else "rejection-contract"
+            if not check.success
+            else "acceptance-only"
+        )
+        if failure is not None:
+            interpretation = "declared-route-or-effect-did-not-match"
+        elif coverage == "effect":
+            interpretation = "route-and-optimization-contract-matched"
+        elif coverage == "rejection-contract":
+            interpretation = "unsupported-route-rejected-as-declared"
+        else:
+            interpretation = "route-accepted-no-specific-effect-asserted"
+        if failure is not None:
+            actual_summary = "contract-mismatch"
+        elif coverage == "effect":
+            actual_summary = f"{actual_result},effect-contracts-matched"
+        elif coverage == "rejection-contract":
+            actual_summary = "rejection,reason-matched"
+        else:
+            actual_summary = "route-accepted,effect-contracts=none"
         print(
-            f"[pluto-compat-suite] {check.name}: {'PASS' if failure is None else 'FAIL'}",
+            f"[pluto-compat-suite] {'PASS' if failure is None else 'FAIL'} "
+            f"case={check.name} expected={expected_result},{effect_contract_summary(check)} "
+            f"coverage={coverage} "
+            f"actual={actual_summary} "
+            f"interpretation={interpretation}",
             flush=True,
         )
         if failure is not None:
@@ -2068,7 +2119,10 @@ def main(argv: list[str]) -> int:
         for failure in failures:
             print(failure)
         return 1
-    print(f"[pluto-compat-suite] OK ({len(checks)} checks)")
+    print(
+        f"[pluto-compat-suite] PASS expected={len(checks)} actual={len(checks)} "
+        "interpretation=all-driver-route-and-effect-contracts-matched"
+    )
     return 0
 
 

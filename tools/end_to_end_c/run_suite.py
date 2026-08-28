@@ -10,13 +10,21 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cases-root", default="tests/end-to-end-c/cases")
     ap.add_argument("--output-root", default="tests/end-to-end-c/out")
     ap.add_argument("--polopt", default="./polopt")
     ap.add_argument("--timeout-seconds", type=int, default=300)
-    ap.add_argument("--benchmark-repeats", type=int, default=3)
+    ap.add_argument("--benchmark-repeats", type=positive_int, default=3)
+    ap.add_argument("--omp-threads", type=positive_int, default=1)
     ap.add_argument("--name-suffix", default=None)
     ap.add_argument("--exclude-suffix", default=None)
     ap.add_argument("cases", nargs="*")
@@ -48,6 +56,8 @@ def main() -> int:
                 str(args.timeout_seconds),
                 "--benchmark-repeats",
                 str(args.benchmark_repeats),
+                "--omp-threads",
+                str(args.omp_threads),
             ],
             cwd=str(ROOT),
             text=True,
@@ -61,7 +71,10 @@ def main() -> int:
             print(f"  - {name}")
         return 1
 
-    print("[E2E-SUITE] OK")
+    print(
+        f"[E2E-SUITE] PASS expected={len(case_dirs)} actual={len(case_dirs)} "
+        "interpretation=all selected optimized programs matched their baselines"
+    )
     return 0
 
 

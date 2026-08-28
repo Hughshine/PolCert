@@ -274,9 +274,10 @@ Main workflow:
 
 - `.github/workflows/ci.yml`
 - builds the repository Docker image
-- runs `tools/ci/run_ci.sh`
+- builds once with `tools/ci/run_ci_build.sh`
+- runs isolated shards with `tools/ci/run_ci_shards.sh`
 
-`run_ci.sh` currently includes:
+The build and shard scripts currently include:
 
 - Pluto baseline verification (`tools/ci/check_pluto_baseline.sh`)
 - proof build
@@ -284,18 +285,22 @@ Main workflow:
 - extraction
 - `polcert` / `polopt` builds
 - `make test`
+- legacy failure-exit contracts
+- `make test-extracted-zero-fallback`
 - `make test-iss-pluto-suite`
 - `make test-iss-pluto-live-suite`
 - `make test-parallel-current-suite`
 - `make test-vector-current-suite`
 - `make test-second-level-tile-suite`
 - `make test-polopt-loop-suite`
+- `make test-diamond-tiling-suite`
+- handwritten whole-C correctness checks
+- generated whole-C correctness checks over all 62 materialized cases
 
 Not in default `ci` today:
 
-- `make test-diamond-tiling-suite`
-- handwritten whole-C perf harness: `tests/end-to-end-c`
-- generated whole-C perf harness: `tests/end-to-end-generated`
+- repeated handwritten whole-C performance runs
+- generated whole-C performance search and tuning
 - one-command local refresh:
   - `opam exec -- make test-end-to-end-generated-perf-refresh`
 
@@ -305,17 +310,18 @@ Additional workflow:
 - runs the strict `polopt` loop suite, both ISS suites, and the
   `parallel-current` / `second-level-tile` suite targets
 
-The strict `.loop -> .loop` gate is CI-enforced. The whole-C harnesses are
-artifact-strengthening workflows and local perf campaigns, not default
-correctness gates.
+The strict `.loop -> .loop` effect gate and the one-repeat whole-C semantic
+comparisons are CI-enforced. Repeated performance campaigns remain local
+artifact workflows.
 
 ## Interface summary
 
 - affine / tiling validation: OpenScop
 - ISS validation: Pluto bridge / debug-dump inputs
 - parallel route: `polopt` CLI only, not `polcert`
-- generated whole-C perf harness:
-  - wrapper-based C benchmarking, not part of the default regression gate
+- generated whole-C harness:
+  - one-repeat semantic comparison is part of the default regression gate
+  - repeated timing and pipeline search are not part of default CI
   - best-pipeline search currently chooses among:
     - default no-ISS affine+tiling pipeline
     - affine-only

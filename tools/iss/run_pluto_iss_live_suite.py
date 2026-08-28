@@ -12,6 +12,11 @@ ROOT = Path(__file__).resolve().parents[2]
 POLOPT = ROOT / "polopt"
 PLUTO = Path("/pluto/tool/pluto")
 ISS_TOOL = ROOT / "tools" / "iss" / "pluto_iss_check.py"
+VALIDATION_REJECTION = "validation: FAIL"
+
+
+def is_validation_rejection(code: int, output: str) -> bool:
+    return code == 1 and VALIDATION_REJECTION in output
 
 
 def run_bridge_checker(bridge: Path) -> tuple[int, str]:
@@ -94,26 +99,53 @@ def main() -> int:
         for src in positives:
             bridge = tmp / f"{src.stem}.bridge.txt"
             code, output = emit_pluto_bridge(src, bridge)
-            print(f"[ISS-LIVE-EMIT] {src.name}: exit={code}")
-            print(output)
-            if code != 0 or "VAR_ORDER" not in bridge.read_text():
-                failures.append(f"bridge emission failed: {src.name}")
+            emitted_ok = code == 0 and "VAR_ORDER" in bridge.read_text()
+            print(
+                f"[ISS-LIVE] {'PASS' if emitted_ok else 'FAIL'} case={src.name}-emit "
+                f"expected=bridge-with-var-order actual={'bridge-emitted' if emitted_ok else 'emit-failure'},exit:{code} "
+                "interpretation="
+                + (
+                    "Pluto-live-ISS-bridge-was-emitted"
+                    if emitted_ok
+                    else "Pluto-live-ISS-bridge-emission-failed"
+                )
+            )
+            if not emitted_ok:
+                failures.append(f"bridge emission failed: {src.name}\n{output}")
                 continue
             emitted.append(bridge)
             code, output = run_bridge_checker(bridge)
-            print(f"[ISS-LIVE-POS] {src.name}: exit={code}")
-            print(output)
+            print(
+                f"[ISS-LIVE] {'PASS' if code == 0 else 'FAIL'} case={src.name}-validate "
+                f"expected=accept actual={'accept' if code == 0 else 'reject'},exit:{code} "
+                "interpretation="
+                + (
+                    "live-Pluto-ISS-witness-was-accepted"
+                    if code == 0
+                    else "live-Pluto-ISS-witness-was-unexpectedly-rejected"
+                )
+            )
             if code != 0:
-                failures.append(f"live positive case failed: {src.name}")
+                failures.append(f"live positive case failed: {src.name}\n{output}")
 
         if emitted:
             bad_bridge = tmp / "bad_cut.bridge.txt"
             mutate_bad_cut(emitted[0], bad_bridge)
             code, output = run_bridge_checker(bad_bridge)
-            print(f"[ISS-LIVE-NEG] {bad_bridge.name}: exit={code}")
-            print(output)
-            if code == 0:
-                failures.append("live negative bridge unexpectedly validated")
+            rejected = is_validation_rejection(code, output)
+            print(
+                f"[ISS-LIVE] {'PASS' if rejected else 'FAIL'} case=mutated-cut "
+                "expected=reject,exit:1,validation-fail:true "
+                f"actual=exit:{code},validation-fail:{str(VALIDATION_REJECTION in output).lower()} "
+                "interpretation="
+                + (
+                    "mutated-live-ISS-witness-was-rejected"
+                    if rejected
+                    else "mutated-live-ISS-witness-did-not-produce-the-declared-rejection"
+                )
+            )
+            if not rejected:
+                failures.append("live negative bridge was not cleanly rejected\n" + output)
 
     if failures:
         print("[ISS-LIVE-SUITE] FAIL")
@@ -121,7 +153,10 @@ def main() -> int:
             print(f"  - {failure}")
         return 1
 
-    print("[ISS-LIVE-SUITE] OK")
+    print(
+        "[ISS-LIVE-SUITE] PASS expected=emitted:3,accepted:3,rejected:1 "
+        "actual=emitted:3,accepted:3,rejected:1 interpretation=live-ISS-contracts-matched"
+    )
     return 0
 
 
