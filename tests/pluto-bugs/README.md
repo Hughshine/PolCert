@@ -4,6 +4,13 @@ This directory is for artifact-grade Pluto bug or unsafe-hint reproducers.
 
 Current cases:
 
+- `auto-affine-lp-cc-scaling` (confirmed automatic-scheduler miscompilation)
+  - Pluto's GLPK LP scheduler computes the schedule without a supplied control
+    file or schedule
+  - incorrect DDG component relabeling lets LP integerization scale the two
+    ends of a dependence independently
+  - the source and Pluto output print different checksums
+  - PolCert's affine validator rejects the exact bad before/after schedule
 - `diamond-nointratile-reschedule` (fixed pure-tiling miscompilation)
   - a phase-dump patch incorrectly made a mandatory diamond hyperplane restore
     conditional on the optional intra-tile locality pass
@@ -13,11 +20,13 @@ Current cases:
     mixed-scalar candidate and emits no optimized loop
   - the independent typed `diamond-stencil` positive case confirms supported
     pure diamond tiling and post-affine code generation are accepted
-- `affine-fst-reversed` (confirmed silent miscompilation)
+- `affine-fst-reversed` (confirmed control-interface miscompilation)
   - a forced scalar schedule places the consumer before its producer
   - the original prints `100`, while Pluto's output prints `0`
   - with the honest Pluto domain/access summaries, the standalone schedule
     validator and complete compatibility route reject it
+  - this deliberately inconsistent `.fst` file does not demonstrate that
+    Pluto's automatic affine scheduler discovers an illegal schedule
 - `matmul_parallel_hint` (unsafe hint, not a demonstrated raw-Pluto miscompile)
   - Pluto's `--parallel` hint selects current dimension `0`
   - the checked PolCert parallel route rejects that dimension

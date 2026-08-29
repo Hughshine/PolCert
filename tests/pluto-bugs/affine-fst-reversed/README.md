@@ -1,6 +1,10 @@
 # Reversed Affine Statement Order
 
-Status: reproduced, minimized, validator-catches.
+Status: reproduced, minimized, validator-catches, control-interface case.
+
+This fixture deliberately supplies an inconsistent `.fst` statement grouping.
+It tests validation of a Pluto control interface; it is not evidence that
+Pluto's automatic affine scheduler independently discovers the illegal order.
 
 The source loop writes `a[i]` and then copies that value to `b[i]`. The
 `reversed.fst` control file assigns the consumer statement to scalar group `0`

@@ -1,4 +1,4 @@
-# Draft: Silent Miscompilations in Pluto
+# Draft: Silent Miscompilations and an Unsafe Pluto Control Interface
 
 Status: draft for upstream issue reports
 
@@ -6,12 +6,15 @@ Last checked: 2026-08-28
 
 Audience: Pluto maintainers
 
-This document describes four independent Pluto transformations that silently
-produce wrong C programs. Each issue has a minimized executable witness. The
-four defects still reproduce on the latest official `bondhugula/pluto`
-`master` checked on 2026-08-28. A fifth issue affected the `verif-scop/pluto`
-fork used during PolCert development; official Pluto did not contain that
-regression. The fix is on the fork's
+This document describes four ordinary Pluto optimization paths that silently
+produce wrong C programs and one optional `.fst` control interface that accepts
+an illegal user-supplied statement order. Each issue has a minimized executable
+witness, and all five still reproduce on the latest official
+`bondhugula/pluto` `master` checked on 2026-08-28. The first ordinary case is a
+failure in Pluto's own LP-based affine schedule construction; it does not use a
+control file or a supplied schedule. A sixth issue affected the
+`verif-scop/pluto` fork used during PolCert development; official
+Pluto did not contain that regression. The fix is on the fork's
 `fix/diamond-reschedule-with-nointratileopt` branch and has not been merged into
 the fork's `master` branch.
 
@@ -22,9 +25,9 @@ different transformations and require independent fixes and regression tests.
 
 | Repository | Revision | Evidence | Result |
 |---|---|---|---|
-| `bondhugula/pluto` | `dc462163c8b4fc97d378a4d245d1a64741cb4111` (`master`, 2026-05-06) | Built and executed on 2026-08-28 | The forced affine order, vanished parallel coordinate, no-tile unroll-jam, and inner-parallel tiling cases still miscompile. Pure diamond and full-diamond variants produce the expected result. |
-| `verif-scop/pluto` | `6f43860b6c4cddeeca09189bf3073f05b78b14a5` (`master`, 2026-05-05) | Source re-audit on 2026-08-28 | The four unresolved code paths are present. This fork also contains the conditional diamond-restore regression described below. |
-| `verif-scop/pluto` | `56b66690edeed1ef17ddc018bbf67666795a3fd4` (`fix/diamond-reschedule-with-nointratileopt`) | Built and executed on 2026-08-28 | The diamond regression is fixed on this branch. The other four witnesses remain active PolCert regression tests. |
+| `bondhugula/pluto` | `dc462163c8b4fc97d378a4d245d1a64741cb4111` (`master`, 2026-05-06) | Built and executed on 2026-08-28 | Automatic affine LP scaling, the vanished parallel coordinate, no-tile unroll-jam, and inner-parallel tiling still miscompile. The optional `.fst` interface still accepts an illegal supplied order. Pure diamond and full-diamond variants produce the expected result. |
+| `verif-scop/pluto` | `6f43860b6c4cddeeca09189bf3073f05b78b14a5` (`master`, 2026-05-05) | Source re-audit on 2026-08-28 | The five unresolved code paths are present. This fork also contains the conditional diamond-restore regression described below. |
+| `verif-scop/pluto` | `56b66690edeed1ef17ddc018bbf67666795a3fd4` (`fix/diamond-reschedule-with-nointratileopt`) | Built and executed on 2026-08-28 | The diamond regression is fixed on this branch. The other five witnesses remain active PolCert regression tests. |
 
 The official checkout does not support the fork's `--dumpscop` option. The
 latest-version recheck therefore used raw `polycc` output for executable
@@ -35,7 +38,8 @@ needed.
 
 | ID | Transformation | Source result | Pluto result | Latest official status | PolCert outcome |
 |---|---|---:|---:|---|---|
-| P1 | User-forced affine statement grouping through `.fst` | `100` | `0` | Reproduced at `dc462163` | Affine validation rejects the schedule; the complete route emits no optimized loop. |
+| P1 | Automatic affine LP schedule integerization | `802469374803681347` | `11412027514774867379` | Reproduced at `dc462163` without a control file | The affine validator rejects the exact bad before/after schedule. |
+| C1 | Optional `.fst` statement-order control | `100` | `0` | Reproduced at `dc462163`; not an automatic-scheduler witness | Affine validation rejects the schedule; the complete route emits no optimized loop. |
 | P2 | Parallel annotation after a one-trip schedule coordinate vanishes | `10000` | `2499` in repeated four-thread runs | Reproduced at `dc462163` | Strict hint mapping and a direct check of the actual inner dimension both reject. |
 | P3 | Unroll-jam under `--notile` | `15` | `1` | Reproduced at `dc462163` | Proved block unrolling is retained, but the unsafe local jam is rejected. |
 | P4 | `--tile --parallel --innerpar` satisfaction metadata | `310235039` | `928116`, `7631020`, and `23122525` in three four-thread runs | Reproduced at `dc462163` | Rectangular tiling is accepted; the unsafe parallel overlay is removed or rejected in strict mode. |
@@ -44,7 +48,101 @@ needed.
 Parallel wrong-code results can vary across executions. The values above are
 observations from the 2026-08-28 recheck, not invariants of the defects.
 
-## P1: `.fst` Can Force an Illegal Affine Statement Order
+## P1: LP Integerization Can Make an Automatic Affine Schedule Illegal
+
+### Suggested issue title
+
+`Connected-component relabeling breaks affine LP schedule integerization`
+
+### Minimal witness
+
+- C source:
+  `tests/pluto-bugs/auto-affine-lp-cc-scaling/auto_affine_lp_cc_scaling.c`
+
+Run in a directory containing no Pluto control files:
+
+```sh
+polycc --maxfuse --lp --notile --noparallel --noprevector \
+  --nounrolljam --nointratileopt --nodiamond-tile \
+  auto_affine_lp_cc_scaling.c
+gcc -std=c11 -O2 auto_affine_lp_cc_scaling.c -o baseline
+gcc -std=c11 -O2 auto_affine_lp_cc_scaling.pluto.c -o optimized
+./baseline
+./optimized
+```
+
+This is Pluto's automatic affine scheduler. The test supplies no `.fst`,
+`.precut`, `skipdeps.txt`, or candidate schedule, and it disables all later
+transformations relevant to this example.
+
+Expected behavior: both programs print `802469374803681347`.
+
+Observed behavior: Pluto exits successfully and prints the schedules
+
+```text
+T(S1): (2i+j, i, 1)
+T(S2): (9i+3j, i, 1)
+T(S3): (8i+4j+4, i, 0)
+T(S4): (9i+3j+6, i, 0)
+```
+
+The generated program prints `11412027514774867379`. The violation is visible
+without relying on the checksum. `S3(i,j-1)` produces the value read by
+`S1(i,j)`, but their first schedule coordinates are respectively `8i+4j` and
+`2i+j`. At `i=1,j=3`, Pluto schedules the producer at `20` and the consumer at
+`5`.
+
+### Root cause
+
+The four statements form two dependence components with interleaved statement
+identifiers: `{S1,S3}` and `{S2,S4}`. `ddg_compute_cc` in
+`lib/pluto.c:1983-2015` first assigns a component during DFS, but each later
+outer-loop iteration writes its current `cc_id` into the vertex even when that
+vertex was already visited. When the loop reaches `S3`, it overwrites the label
+assigned while visiting `S1`, so the two ends of the real `S3 -> S1`
+dependence appear to belong to different components.
+
+`populate_scaling_csr_matrices_for_pluto_program` in
+`lib/framework.cpp:1374-1413` copies those component identifiers into the LP
+scaling problem. Pluto then converts rational schedules to integers using a
+different positive factor per supposed component. Scaling both ends of a
+dependence by the same factor would preserve legality; scaling `S3` and `S1`
+independently does not.
+
+### Suggested fix and regression
+
+Assign a vertex's component exactly when DFS discovers it, and never overwrite
+an already visited vertex in the outer loop. Before LP integerization, perform
+an unconditional runtime check that both endpoints of every current
+unsatisfied DDG edge have the same connected-component identifier; on failure,
+abort scheduling or fall back to a single global scale or ILP. After
+integerization, independently validate the complete lexicographic schedule
+before any later transformation or code generation. The executable regression
+must keep the two real components interleaved in statement order.
+
+As a causal check, deleting only the unconditional component overwrite in a
+clean official checkout made this input produce compatible `S1`/`S3`
+schedules and restored the source checksum. A final legality gate is still
+needed so that future bookkeeping errors cannot silently escape.
+
+### PolCert cross-check
+
+The fork's `--dumpscop` path records the exact automatic before/after OpenScop
+pair. PolCert's standalone affine validator returns exit code `2` and
+`overall: FAIL` for that pair.
+
+The complete PolCert driver always adds Pluto's `--rar` option. On this source,
+the additional read-after-read constraints change the scheduling problem and
+Pluto returns a different, legal `i,j` candidate; both executables then agree.
+Accordingly, the executable evidence here is an exact rejection at PolCert's
+affine validation boundary, not a claim that the complete driver receives the
+same illegal candidate.
+
+## C1: `.fst` Accepts an Illegal Supplied Statement Order
+
+This is a control-interface validation defect, not a demonstrated failure of
+Pluto's automatic affine schedule search. The test deliberately supplies an
+inconsistent `.fst` file and checks that Pluto fails to reject it.
 
 ### Suggested issue title
 
@@ -295,7 +393,7 @@ asserts the expected mismatch, then checks the corresponding PolCert behavior.
 The fork-specific diamond regression asserts equality after the fix.
 
 Official-latest confirmation used a separate build of
-`bondhugula/pluto@dc462163c8b4fc97d378a4d245d1a64741cb4111`. The four raw producer
+`bondhugula/pluto@dc462163c8b4fc97d378a4d245d1a64741cb4111`. The five raw producer
 commands above omit the fork-only `--dumpscop` flag. The code paths identified
 in the root-cause sections remain unchanged in that revision.
 
@@ -316,9 +414,10 @@ checks each semantic boundary independently:
 6. unroll-jam uses proved unrolling and validates the local jam permutation;
 7. final Loop code is produced by PolCert's proved code generator.
 
-These boundaries reject or remove the unsafe transformation in P1-P4. This is
-evidence that the validation architecture blocks these concrete Pluto
-failures. It is not a claim that PolCert can validate arbitrary Pluto-generated
-C. SIMD instructions, scalar privatization, storage expansion, state-changing
+These boundaries reject or remove the unsafe transformation in P1-P4 and C1.
+This is evidence that the validation architecture blocks these concrete Pluto
+failures. C1 must not be presented as a failure of automatic affine scheduling.
+It is also not a claim that PolCert can validate arbitrary Pluto-generated C.
+SIMD instructions, scalar privatization, storage expansion, state-changing
 transformations, and inputs outside PolCert's modeled IR remain outside this
 claim.

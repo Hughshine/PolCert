@@ -535,19 +535,22 @@ At least one case should become a complete artifact-grade case study:
 
 ### Current status
 
-The artifact now contains six cases under `tests/pluto-bugs/`: the original
-unsafe matmul hint and five confirmed silent miscompilations, one of which is
-fixed in the current Pluto baseline. In addition to the vanished-loop parallel
-(`10000` versus `2499`) and no-tile unroll-jam (`15` versus `1`) cases, a forced
-affine statement reversal produces `100` versus `0`, and `--innerpar` after
-tiling corrupts a two-dimensional recurrence. The pure diamond/no-intratile
-case produced `20` versus `18` because a mandatory hyperplane restore was
-incorrectly gated; Pluto commit `56b6669` fixes it. Checked PolCert routes reject
-the illegal affine order, parallel overlay, and mixed-scalar diamond candidate,
-while retaining valid tiling and safe local unrolling boundaries. The typed
-`diamond-stencil` positive case separately exercises proved code generation for
-supported pure diamond tiling. `make test-pluto-bugs` executes the adversarial
-boundaries in CI. The
+The artifact now contains seven cases under `tests/pluto-bugs/`: the original
+unsafe matmul hint and six confirmed silent miscompilations, one of which is
+fixed in the current Pluto baseline. The automatic GLPK LP scheduler case
+produces incompatible component scales and changes
+`802469374803681347` to `11412027514774867379` without a supplied schedule or
+control file. In addition, the vanished-loop parallel case produces `10000`
+versus `2499`, no-tile unroll-jam produces `15` versus `1`, the optional `.fst`
+interface accepts a statement reversal that produces `100` versus `0`, and
+`--innerpar` after tiling corrupts a two-dimensional recurrence. The pure
+diamond/no-intratile case produced `20` versus `18` because a mandatory
+hyperplane restore was incorrectly gated; Pluto commit `56b6669` fixes it.
+Checked PolCert boundaries reject the automatic and supplied illegal affine
+schedules, parallel overlay, and mixed-scalar diamond candidate while retaining
+valid tiling and safe local unrolling. The typed `diamond-stencil` positive case
+separately exercises proved code generation for supported pure diamond tiling.
+`make test-pluto-bugs` executes the adversarial boundaries in CI. The
 separate ISS suite accepts a complete two-cut partition while rejecting both a
 three-cut/four-piece metadata mismatch and a missing sign region.
 

@@ -30,7 +30,41 @@ bits, parallel metadata, or post-codegen rewrites as certificates.
 
 ## Reproduced Silent Miscompilations
 
-### A Forced Affine Group Order Places a Consumer Before Its Producer
+### Automatic LP Schedule Integerization Reverses a Dependence
+
+The case in `tests/pluto-bugs/auto-affine-lp-cc-scaling/` gives Pluto no
+`.fst`, `.precut`, `skipdeps.txt`, or candidate schedule. With later
+transformations disabled, the GLPK LP scheduler computes
+
+```text
+T(S1): (2i+j, i, 1)
+T(S3): (8i+4j+4, i, 0)
+```
+
+for a real dependence `S3(i,j-1) -> S1(i,j)`. At `i=1,j=3`, the producer's
+first coordinate is `20` and the consumer's is `5`. Pluto exits successfully;
+the source prints `802469374803681347`, while its generated program prints
+`11412027514774867379`.
+
+The statements have interleaved dependence components `{S1,S3}` and
+`{S2,S4}`. `ddg_compute_cc` at `lib/pluto.c:1983-2015` labels each component by
+DFS, then overwrites the component identifier of already visited vertices on
+later outer-loop iterations. `lib/framework.cpp:1374-1413` uses those incorrect
+identifiers to integerize the rational LP schedule with independent component
+scales. The two ends of `S3 -> S1` consequently receive different factors.
+
+Deleting the unconditional overwrite in a clean official checkout makes the
+same input produce a legal schedule and restores the source checksum. PolCert's
+standalone affine validator rejects the exact bad before/after OpenScop pair
+with `overall: FAIL`. The complete driver adds `--rar`; on this input that makes
+Pluto return a different legal candidate, so the test does not claim a dynamic
+complete-route rejection of the same candidate.
+
+### An Invalid `.fst` Order Is Accepted by the Control Interface
+
+This case deliberately supplies an inconsistent statement order. It is a
+confirmed wrong-code path and a missing final affine legality check, but it is
+not a demonstrated failure of Pluto's automatic affine schedule search.
 
 `lib/pluto.c:891-940` reads `.fst` and installs scalar statement groups
 directly. Dependence satisfaction is then updated incrementally without an
@@ -138,7 +172,7 @@ opam exec -- make test-pluto-bugs
 
 | File | Reliability assessment | Defensive conclusion |
 |---|---|---|
-| `lib/pluto.c` | **High risk.** `.fst` and `.precut` are read implicitly at `891-1020` and directly install statement ordering or scattering with weak parsing and no final independent lexicographic legality check. `ddg_compute_cc` at `1983-2015` overwrites component identifiers for previously visited vertices; LP/DFP scaling can then scale the two ends of a real dependence independently. `pluto_auto_transform` restores identity on scheduling failure, but the CLI ignores its nonzero return. | Never trust its `dep->satisfied` state or final schedule. PolCert supports `.fst/.precut` only because it checks the resulting schedule and tiling witness independently. |
+| `lib/pluto.c` | **High risk, with a reproduced automatic affine failure.** `.fst` and `.precut` are read implicitly at `891-1020` and directly install statement ordering or scattering with weak parsing and no final independent lexicographic legality check. `ddg_compute_cc` at `1983-2015` overwrites component identifiers for previously visited vertices; the reproduced LP path then scales the two ends of a real dependence independently. `pluto_auto_transform` restores identity on scheduling failure, but the CLI ignores its nonzero return. | Never trust its `dep->satisfied` state or final schedule. PolCert supports `.fst/.precut` only because it checks the resulting schedule and tiling witness independently. |
 | `lib/framework.cpp` | **High risk.** `skipdeps.txt` at `361-418` silently removes legality constraints and has unchecked indices. A growing per-CC constraint width at `398-409` changes `ncols` without resizing storage. `get_feautrier_schedule_constraints` reads freed memory at `638-652`. `--typedfuse --nodepbound` can dereference a null `bounding_cst` at `1562-1586`. The per-CC objective index at `740-758` uses the wrong stride. ISL errors can be interpreted as empty constraints through `lib/constraints.c`. | Reject implicit `skipdeps.txt`; validate every returned affine schedule. Crashes are oracle failures, never permission to retain a partial candidate. |
 | `lib/tile.c` | **Mixed, with two reproduced failures and one fixed in the current baseline.** Ordinary and two-level tiling consistently extend domains, schedules, accesses, original dependences, and transformed dependences, then recompute directions/satisfaction. `--innerpar` at `446-478` moves satisfaction bits even when it does not create the wavefront schedule, producing the reproduced wrong OpenMP program. The phase-dump patch also made a correctness-required diamond restore conditional on `intratileopt`; current commit `56b6669` fixes that defect. Diamond rescheduling at `93-107` still computes an evicted row offset from added domain dimensions and may miss inserted scalar schedule rows. `--ft/--lt` changes tile-size input count but does not restrict the actual tiled band. At `52-74`, the first-level tile-size parser skips scalar rows, while the second-level ratio parser consumes an integer for every band position and ignores `fscanf` failure; scalar-interleaved schedules therefore receive different second-level sizes from those requested. | Keep ordinary/two-level candidates behind the tiling theorem. Preserve the mandatory diamond restore, and independently validate parallel metadata, diamond mappings, and partial-level claims. Parse tile sizes against loop rows with checked input counts. |
 | `lib/iss.c` | **High risk for multi-cut cases.** The dimension loop and cut-product loop reuse `i` at `654-684`, skipping dimensions after a second cut. More than two base cuts continue growing the bridge description while the actual partition stops at four regions. Late library use can also leave `transdeps` stale. | Accept ISS only when the emitted split and bridge witness agree and the extracted ISS checker proves the mapping. Do not infer correctness from Pluto's `base_cuts` alone. |
@@ -164,9 +198,7 @@ reproduced miscompilations:
 2. `skipdeps.txt` and `.precut` can bypass the invariant that every
    earlier schedule component is nonnegative before a later component satisfies
    a dependence.
-3. incorrect DDG connected components can invalidate independent LP/DFP
-   rational-schedule scaling.
-4. ISL errors can be misclassified as proofs of emptiness.
+3. ISL errors can be misclassified as proofs of emptiness.
 
 Separate confirmed robustness defects include the per-CC storage overrun, the
 Feautrier UAF, the `--typedfuse --nodepbound` null dereference, unchecked legacy
@@ -190,7 +222,7 @@ boundary:
 7. final Loop code is generated by PolCert, not copied from Pluto's CLooG/AST
    backend.
 
-This separation rejects or removes the unsafe transformation in the four
+This separation rejects or removes the unsafe transformation in the five
 unfixed witnesses. For the fixed pure-diamond witness, the corresponding
 mixed-scalar PolCert route rejects and emits no optimized loop; supported typed
 diamond candidates use PolCert's proved generator rather than Pluto's backend.
@@ -203,7 +235,7 @@ states.
 
 ## Defensive Actions in This Artifact
 
-- CI executes the four remaining producer miscompilation witnesses, the fixed
+- CI executes the five remaining producer miscompilation witnesses, the fixed
   pure-diamond regression, and the corresponding PolCert outcomes. The legacy
   shard also runs the accepted typed pure-diamond positive case.
 - `driver/Scheduler.ml` rejects ambient `skipdeps.txt`, `codegen.context`,
@@ -228,7 +260,7 @@ arbitrary C text. The complete `.loop` route does not inherit this assumption:
 it imports only Pluto's scattering and retains the source instruction, domain,
 and access data.
 
-The remaining Pluto-side priority is to fix the four reproduced defects, then
+The remaining Pluto-side priority is to fix the five reproduced defects, then
 add an independent final lexicographic legality gate inside Pluto itself. On the
 PolCert side, scalar-band diamond, LP/DFP, and implicit legacy-control
 combinations should gain the same explicit adversarial coverage now used for
