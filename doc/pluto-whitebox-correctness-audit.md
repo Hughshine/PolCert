@@ -72,6 +72,30 @@ optimized Loop program. Explicit `--rar` changes Pluto's dependence-distance
 objective and produces a different legal candidate that the checked route
 accepts.
 
+#### Coverage boundary and follow-up
+
+This witness closes a structural gap in the existing tests; it does not
+establish a frequency estimate for real programs. Pluto's ordinary scheduling
+tests do not exercise the classic per-component `--lp` integerization path,
+and the previous PolCert compatibility check for that option used a
+single-statement matrix multiplication input. A bounded 2026-08-29 scan forced
+the historical Pluto revision through the witness's classic-LP option set on
+the 143 C files under Pluto's `test/` directory. Of the 87 inputs that
+completed and exposed a parseable dependence graph under that uniform command,
+none had a noncontiguous dependence-component labeling in statement order.
+The remaining 56 required a different frontend or environment, failed that
+uniform command, or timed out; they were not classified. This is evidence
+about a coverage gap, not evidence that component interleaving is absent from
+the complete corpus.
+
+A future Pluto-wide audit can instrument the DDG builder directly and enumerate
+component layouts across the supported frontend, solver, fusion, and RAR
+policies. It should distinguish three events: a noncontiguous true component,
+an incorrect stored component identifier, and an integerized schedule that
+actually violates a dependence. That broader source audit is useful follow-up
+work but is not part of PolCert's artifact claim; the artifact relies on the
+independent affine legality check for every returned candidate.
+
 ### An Invalid `.fst` Order Is Accepted by the Control Interface
 
 This case deliberately supplies an inconsistent statement order. It is a
