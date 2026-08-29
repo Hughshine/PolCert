@@ -52,6 +52,7 @@ Background note:
 
 - `doc/possible-bugs/pluto-parallel-hint-matmul-readscop.md`
 - `doc/pluto-whitebox-correctness-audit.md`
+- `doc/pluto-upstream-miscompilation-report-draft.md`
 
 ISS adversarial bridge fixtures live in `tests/iss-pluto-dumps/`. Pluto's
 multi-cut bookkeeping mismatch is not labeled a numerical miscompilation: the

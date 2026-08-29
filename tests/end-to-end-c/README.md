@@ -90,6 +90,34 @@ Or run a single case manually:
 python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/matmul --polopt ./polopt
 ```
 
+## Performance evidence
+
+Correctness CI and performance measurement are deliberately separate. The
+default correctness suite uses one benchmark repetition and makes no speedup
+claim. Case-local `execution_repeats` can request additional executions for
+concurrency stability: `parallel_const_unroll` and the targeted parallel matmul
+check each run three times for wrong-result detection. `test-end-to-end-c-perf`
+runs the two handwritten `*_perf` cases three times and reports:
+
+```text
+speedup = best baseline time / best optimized time
+```
+
+The broader generated campaign searches several checked pipelines for each of
+62 cases. Its current per-case results and short interpretations are recorded
+in [BEST_PIPELINES.md](../end-to-end-generated/BEST_PIPELINES.md). The table
+contains concrete wins for affine-only, affine-plus-tiling, and verified
+parallel pipelines, as well as cases where `polopt --identity` remains fastest.
+
+These numbers demonstrate performance potential in the artifact; they are not
+yet publication-grade performance evidence. The generated campaign uses
+synthesized wrappers, one timed execution per pipeline candidate during the
+current search, cached machine-specific results, and best-time ratios. A paper
+evaluation should rerun on a fixed machine with warmup, multiple independent
+samples, dispersion reporting, and benchmark-native drivers where available.
+Very short synthetic cases, especially unusually large ratios, require
+separate investigation before they are highlighted.
+
 ## Current boundary
 
 This harness currently compares:

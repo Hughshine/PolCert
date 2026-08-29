@@ -8,6 +8,7 @@ This audit covers the Pluto optimizer pinned by PolCert:
 
 - repository: `https://github.com/verif-scop/pluto.git`
 - current fixed baseline: `56b66690edeed1ef17ddc018bbf67666795a3fd4`
+  on `fix/diamond-reschedule-with-nointratileopt`
 - audited predecessor: `488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02`
 - local audit tree: `/tmp/pluto-pinned-audit`
 
@@ -94,11 +95,12 @@ not a demonstrated failure of ordinary sequential strip-mining.
 
 ### Diamond Tiling Without Intra-Tile Optimization Skips a Required Restore
 
-The phase-dump patch at predecessor commit `488ea2f` changed the diamond-only
-call to `pluto_diamond_tile_reschedule` from unconditional to conditional on
-`options->intratileopt`. That call restores a hyperplane temporarily evicted
-while constructing the concurrent-start schedule. It is required before
-Pluto's final CLooG/AST path and is distinct from the later optional intra-tile
+The phase-dump patch at commit `7d6fae8` changed the diamond-only call to
+`pluto_diamond_tile_reschedule` from unconditional to conditional on
+`options->intratileopt`; the regression remained present at audited predecessor
+`488ea2f`. That call restores a hyperplane temporarily evicted while
+constructing the concurrent-start schedule. It is required before Pluto's
+final CLooG/AST path and is distinct from the later optional intra-tile
 locality pass.
 
 The minimized FDTD-style case in
