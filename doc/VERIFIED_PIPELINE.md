@@ -134,10 +134,12 @@ innermost-only: hinted mode does not search other dimensions, and explicit
 ## Proof and artifact evidence
 
 The direct-band integration is not represented by the older May 2026 artifact
-record. The release procedure must run the full claim suite on the final v3 tag
-and record its commit, image digest, route summary, and raw result bundle. A
-pre-freeze integration run passed the 171-case Pluto compatibility suite; it is
-not a substitute for the final image review.
+record. The release procedure must run all seven CI shards for the exact final
+release commit and run `artifact-check-full` without a bind mount in the tagged
+release image. It records the commit, image digest, route summary, complete raw
+artifact output directory, CI run URL, and CI logs. Neither gate substitutes
+for the other. A pre-freeze integration run passed the 171-case Pluto
+compatibility suite; it is not a substitute for the final image review.
 
 ## Boundary
 

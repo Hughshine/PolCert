@@ -65,7 +65,8 @@ docker build --target artifact \
   -t "$IMAGE" - < "$SOURCE_ARCHIVE"
 ```
 
-Run the full claim suite without mounting the source tree:
+Run the release-image claim and evidence suite without mounting the source
+tree:
 
 ```sh
 IMAGE_DIGEST=$(docker image inspect "$IMAGE" --format '{{.Id}}')
@@ -79,8 +80,8 @@ docker run --name polcert-artifact-check \
      --output-root /tmp/polcert-artifact-check'
 
 docker cp \
-  polcert-artifact-check:/tmp/polcert-artifact-check/artifact-results.json \
-  ./artifact-results.json
+  polcert-artifact-check:/tmp/polcert-artifact-check \
+  ./polcert-artifact-check
 ```
 
 The same tagged archive supplies both the recorded source hash and the Docker
@@ -90,6 +91,15 @@ runtime PolCert and Pluto revisions. Release-mode checks also require the
 externally observed image ID (or, after publication, its registry digest),
 which is recorded in `artifact-results.json`.
 
+This runner is not a substitute for the complete CI matrix. A release requires
+both a passing `artifact-check-full` run from the tagged image and all seven CI
+shards passing for the exact tagged commit. Retain the entire artifact output
+directory, including its raw per-check logs, together with the CI run URL and
+downloaded logs. The CI matrix covers the legacy/failure gates, live ISS,
+generated and handwritten C execution, checked parallel/second-level/intratile
+routes, and the Pluto bug witnesses that are not all repeated by the artifact
+runner.
+
 ## CI relationship
 
 GitHub Actions builds the Dockerfile's `ci` target, which runs
@@ -98,3 +108,7 @@ isolated containers through
 [tools/ci/run_ci_shards.sh](./tools/ci/run_ci_shards.sh). The Docker
 environment and this two-phase schedule are the canonical environment used for
 regression and proof validation; `run_ci.sh` is the sequential local equivalent.
+
+The release source archive excludes `tests/polopt-generated/cases`: those are
+runtime outputs regenerated from the tracked inputs and manifests by the
+strict generated suite. They are not frozen source evidence.
