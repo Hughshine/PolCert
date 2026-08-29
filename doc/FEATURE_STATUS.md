@@ -88,7 +88,8 @@ Status:
 - CLI-exposed checked routes through the unified compiler wrapper
 - validates pairwise commutativity at the selected padded schedule coordinate,
   then connects that certificate to the actual generated loop traces
-- `ParallelLoop.semantics` admits arbitrary order-preserving interleavings;
+- `ParMode` in `ParallelLoop.semantics` admits arbitrary order-preserving
+  interleavings;
   the code-generation proof derives an ordered proof companion for each actual
   execution and uses the certificate to justify every cross-iteration move
 - `--parallel-strict` requires the certified loop to match Pluto's hint

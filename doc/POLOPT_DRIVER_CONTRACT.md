@@ -1,8 +1,12 @@
-# PolOpt Driver Contract
+# PolOpt Future Driver Design
 
-Status: design target for the artifact-facing driver. This document separates
-the intended interface from the current v10 implementation. A feature is not
-part of the final contract until the acceptance tests in this document pass.
+Status: non-normative design target for a future artifact-facing driver. This
+is not the interface contract of the frozen v10 artifact. The current
+implemented and tested surface is documented in
+[`FEATURE_STATUS.md`](./FEATURE_STATUS.md),
+[`pluto-polopt-compatibility.md`](./pluto-polopt-compatibility.md), and the
+generated proof and capability reports. A feature described here is not part
+of the current artifact unless those sources and their acceptance tests say so.
 
 ## 1. Product Boundary
 
@@ -464,6 +468,8 @@ implement this contract:
 - scheduler globals and an unscoped extra-flag list still affect execution;
 - some accepted options do not deliver their complete user-visible effect.
 
-These are driver and composition tasks. They do not invalidate the existing
-phase validators or end-to-end theorems, but they must be resolved before the
-artifact presents `polopt` as a coherent compiler interface.
+These are future driver and composition tasks. They do not invalidate the
+existing phase validators or end-to-end theorems, and they are not release
+blockers for the explicitly narrower v10 surface. They must be resolved before
+a later artifact presents this proposed unified `polopt` interface as its
+contract.

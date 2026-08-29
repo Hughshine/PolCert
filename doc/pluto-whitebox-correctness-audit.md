@@ -78,15 +78,9 @@ This witness closes a structural gap in the existing tests; it does not
 establish a frequency estimate for real programs. Pluto's ordinary scheduling
 tests do not exercise the classic per-component `--lp` integerization path,
 and the previous PolCert compatibility check for that option used a
-single-statement matrix multiplication input. A bounded 2026-08-29 scan forced
-the historical Pluto revision through the witness's classic-LP option set on
-the 143 C files under Pluto's `test/` directory. Of the 87 inputs that
-completed and exposed a parseable dependence graph under that uniform command,
-none had a noncontiguous dependence-component labeling in statement order.
-The remaining 56 required a different frontend or environment, failed that
-uniform command, or timed out; they were not classified. This is evidence
-about a coverage gap, not evidence that component interleaving is absent from
-the complete corpus.
+single-statement matrix multiplication input. We have not established how
+often a true dependence component whose statement identifiers are
+noncontiguous occurs across Pluto's complete supported input and option space.
 
 A future Pluto-wide audit can instrument the DDG builder directly and enumerate
 component layouts across the supported frontend, solver, fusion, and RAR
