@@ -34,6 +34,9 @@ jobs:
             PLUTO_IMAGE=${{ env.PLUTO_IMAGE }}
             PLUTO_GIT_REMOTE=${{ env.PLUTO_GIT_REMOTE }}
             PLUTO_GIT_COMMIT=${{ env.PLUTO_GIT_COMMIT }}
+            PLUTO_BUGGY_GIT_REMOTE=${{ env.PLUTO_BUGGY_GIT_REMOTE }}
+            PLUTO_BUGGY_GIT_COMMIT=${{ env.PLUTO_BUGGY_GIT_COMMIT }}
+            PLUTO_BUGGY_ROOT=${{ env.PLUTO_BUGGY_ROOT }}
             POLCERT_GIT_COMMIT=${{ github.sha }}
           cache-from: |
             type=gha,scope=${{ env.CI_CACHE_SCOPE }}

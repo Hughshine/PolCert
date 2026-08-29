@@ -119,6 +119,7 @@ CODEGEN_OPTIONS = {
 UNSUPPORTED_OPTIMIZER_OPTIONS = {}
 
 SUPPORTED_OPTIMIZER_OPTIONS = {
+    "--rar": "Pluto read-after-read locality relations are passed to the checked scheduler oracle",
     "--smartfuse": "Pluto smart fusion policy is passed to the checked scheduler oracle",
     "--nofuse": "Pluto no-fusion policy is passed to the checked scheduler oracle",
     "--maxfuse": "Pluto maximal-fusion policy is passed to the checked scheduler oracle",
@@ -252,15 +253,14 @@ STALE_OR_NON_PLUTO_OPTIONS = {
 }
 
 ACCEPTED_NOOPS = {
-    "--debug",
-    "--islsolve",
-    "--moredebug",
-    "--nocloogbacktrack",
-    "--nointratileopt",
-    "--noprevector",
-    "--nounrolljam",
-    "--rar",
-    "--silent",
+    "--debug": "logging-only control",
+    "--islsolve": "Pluto's default scheduler solver; --pipsolve or an LP solver still takes precedence",
+    "--moredebug": "logging-only control",
+    "--nocloogbacktrack": "Pluto CLooG codegen control; PolOpt uses its own checked code generator",
+    "--nointratileopt": "explicitly disables the separate checked intra-tile affine route",
+    "--noprevector": "explicitly disables checked vector annotation",
+    "--nounrolljam": "explicitly disables the checked Loop postpass",
+    "--silent": "logging-only control",
 }
 
 
@@ -392,7 +392,11 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             state.no_parallel_seen = True
         elif flag == "--innerpar":
             state.innerpar_seen = True
-            state.add_note("--innerpar is implicit in polopt's current --parallel route")
+            state.add_oracle_flag("--innerpar")
+            state.add_note(
+                "--innerpar is passed to Pluto's checked tile-schedule oracle; "
+                "the resulting parallel hint is independently certified"
+            )
         elif flag == "--tile-sizes-file":
             assert value is not None
             state.add_control_file(flag, "tile.sizes", value)
@@ -472,7 +476,10 @@ def normalize_pluto_flags(flags: list[tuple[str, str | None]], input_path: Path)
             else:
                 state.add_note(f"{flag}={value} passed through to Pluto's checked scheduler oracle")
         elif flag in ACCEPTED_NOOPS:
-            state.add_note(f"{flag} accepted as a no-op for the checked polopt route")
+            state.add_note(
+                f"{flag} accepted as a no-op for the checked polopt route: "
+                f"{ACCEPTED_NOOPS[flag]}"
+            )
         elif flag == "--unroll":
             raise Reject("--unroll: use explicit --unrolljam for PolOpt's Loop-level unroll-jam path")
         elif flag in VALUE_OPTIONS:

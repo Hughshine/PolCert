@@ -18,11 +18,12 @@ Pluto's generated program prints `11412027514774867379`. PolCert's standalone
 affine checker rejects the exact before/after OpenScop pair with `overall:
 FAIL`.
 
-The complete PolCert driver adds read-after-read dependences with `--rar`.
-For this source shape, that changes Pluto's optimization problem and it returns
-a different, legal candidate. Therefore this fixture claims rejection of the
-exact bad phase-dump pair at the affine validation boundary; it does not claim
-that the complete driver receives the same candidate.
+The complete PolCert driver follows Pluto's default and does not add `--rar`.
+On the corresponding `.loop` fixture, Pluto returns an illegal candidate and
+the checked route rejects it without emitting optimized Loop code. Adding
+`--rar` explicitly changes Pluto's dependence-distance objective; it returns a
+different, legal candidate that the checked route accepts. RAR therefore
+remains an explicit oracle policy rather than a hidden compiler default.
 
 Run:
 

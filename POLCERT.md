@@ -71,11 +71,12 @@ for (j1 = 1; j1 <= M; j1++) {
 #pragma endscop
 ```
 
-Run Pluto with the repository's standard affine-scheduling flags:
+Run Pluto with the repository's phase-isolated affine-scheduling flags. As in
+Pluto itself, RAR relations are disabled unless `--rar` is supplied explicitly:
 
 ```sh
 pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
-      --smartfuse --nounrolljam --noparallel --notile --rar test.c
+      --smartfuse --nounrolljam --noparallel --notile test.c
 ```
 
 This produces:

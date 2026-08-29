@@ -44,6 +44,9 @@ class Check:
 FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam", "--rar"]
 FLAGS_PREVECTOR = ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--nounrolljam", "--rar"]
 FLAGS_INTRATILE = ["--tile", "--smartfuse", "--intratileopt", "--noprevector", "--nounrolljam", "--rar"]
+DEFAULT_NO_RAR_FLAGS = ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--nounrolljam"]
+DEFAULT_NO_RAR_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel"]
+DEFAULT_NO_RAR_IDENTITY_NOTILE = ["--identity", "--notile", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel"]
 MATMUL_NOTILE = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 MATMUL_TILED = [*FLAGS, "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_PREVECTOR = [*FLAGS_PREVECTOR, "--nodiamond-tile", "--noparallel"]
@@ -54,11 +57,11 @@ MATMUL_TILED_DETERMINE_CACHE = [*FLAGS, "--determine-tile-size", "--cache-size=3
 MATMUL_TILED_DETERMINE_DATA = [*FLAGS, "--determine-tile-size", "--data-element-size=16", "--nodiamond-tile", "--noparallel"]
 MATMUL_TILED_DETERMINE_UFACTOR = [*FLAGS, "--determine-tile-size", "--cache-size=32768", "--data-element-size=8", "--ufactor=3", "--nodiamond-tile", "--noparallel"]
 CONST_UNROLL_UFACTOR = ["--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=3", "--nodiamond-tile", "--noparallel", "--rar"]
-IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
-IDENTITY_TILED_SECOND_LEVEL = ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
-IDENTITY_TILED_SECOND_LEVEL_ISS = ["--identity", "--tile", "--iss", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]
-IDENTITY_TILED_PARALLEL = ["--identity", "--tile", "--parallel", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
-IDENTITY_TILED_MULTIPAR = ["--identity", "--tile", "--parallel", "--multipar", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile"]
+IDENTITY_TILED = ["--identity", "--tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"]
+IDENTITY_TILED_SECOND_LEVEL = ["--identity", "--tile", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"]
+IDENTITY_TILED_SECOND_LEVEL_ISS = ["--identity", "--tile", "--iss", "--second-level-tile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"]
+IDENTITY_TILED_PARALLEL = ["--identity", "--tile", "--parallel", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--rar"]
+IDENTITY_TILED_MULTIPAR = ["--identity", "--tile", "--parallel", "--multipar", "--innerpar", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--rar"]
 FUSION_NOTILE_SMART = ["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_NOFUSE = ["--notile", "--nofuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
 FUSION_NOTILE_MAXFUSE = ["--notile", "--maxfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--noparallel", "--rar"]
@@ -123,6 +126,135 @@ JACOBI_BATCH = ROOT / "tools" / "parallel_current" / "fixtures" / "jacobi-batch.
 
 
 CHECKS = [
+    # The original compatibility corpus was calibrated with RAR enabled, either
+    # explicitly here or implicitly by the old Scheduler recipes.  These cases
+    # independently calibrate the user-facing policy in which omitting --rar
+    # follows Pluto's default.  Do not obtain them by mutating the RAR corpus:
+    # the two policies may legitimately select different schedules.
+    Check(
+        "default-no-rar-affine",
+        DEFAULT_NO_RAR_NOTILE,
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("for i0 in range",),
+        stderr_absent=("[alarm]",),
+        differs_from_args=(tuple(DEFAULT_NO_RAR_IDENTITY_NOTILE),),
+    ),
+    Check(
+        "default-no-rar-tiled",
+        [*DEFAULT_NO_RAR_FLAGS, "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("32 *", "/ 32"),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-tiled-iss",
+        [*DEFAULT_NO_RAR_FLAGS, "--nodiamond-tile", "--noparallel", "--iss"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "polopt args: --iss",
+        effect_needles=("32 *", "/ 32"),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-parallel",
+        [*DEFAULT_NO_RAR_FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"],
+        NODEP,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("parallel for", "32 *"),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-vector",
+        ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("vector for i3", "32 *", "/ 32"),
+        stderr_needles=("[vector-validation] status=applied",),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-vector-matmul-no-hint",
+        ["--tile", "--smartfuse", "--nointratileopt", "--prevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        MATMUL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("32 *", "/ 32"),
+        effect_absent=("vector for",),
+        stderr_needles=("[vector-validation] status=skipped reason=no-hint",),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-diamond",
+        [*DEFAULT_NO_RAR_FLAGS, "--diamond-tile", "--noparallel"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("32 *", "i4 + (-1 * i5)"),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-second-level",
+        [*DEFAULT_NO_RAR_FLAGS, "--nodiamond-tile", "--noparallel", "--second-level-tile"],
+        SYMBOLIC_SECOND_LEVEL,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse",
+        effect_needles=("/ 256", "8 *", "32 *"),
+        stderr_absent=("[alarm]",),
+        tiling_route="permutable-band",
+    ),
+    Check(
+        "default-no-rar-islsolve-default",
+        [*DEFAULT_NO_RAR_NOTILE, "--islsolve"],
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "--islsolve accepted as Pluto's default scheduler solver",
+        effect_needles=("for i0 in range",),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple(DEFAULT_NO_RAR_NOTILE),
+    ),
+    Check(
+        "default-no-rar-diagnostic-noops",
+        [*DEFAULT_NO_RAR_NOTILE, "--debug", "--moredebug", "--silent"],
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "--debug accepted as a logging-only no-op",
+        effect_needles=("for i0 in range",),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple(DEFAULT_NO_RAR_NOTILE),
+    ),
+    Check(
+        "default-no-rar-codegen-noop",
+        [*DEFAULT_NO_RAR_NOTILE, "--nocloogbacktrack"],
+        FUSION2,
+        True,
+        "== Optimized Loop ==",
+        "--nocloogbacktrack accepted as a no-op because PolOpt does not use Pluto's CLooG code generator",
+        effect_needles=("for i0 in range",),
+        stderr_absent=("[alarm]",),
+        same_as_args=tuple(DEFAULT_NO_RAR_NOTILE),
+    ),
     Check(
         "ordinary-tiled",
         MATMUL_TILED,
@@ -167,7 +299,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --intratileopt",
+        "pluto oracle flags: --smartfuse --rar --intratileopt",
         effect_needles=("for i0 in range(0, ((K + 31) / 32))",),
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
@@ -202,7 +334,7 @@ CHECKS = [
     ),
     Check(
         "intratileopt-identity-tiled",
-        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         MATMUL,
         True,
         "== Optimized Loop ==",
@@ -211,7 +343,7 @@ CHECKS = [
     ),
     Check(
         "intratileopt-identity-tiled-iss",
-        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--iss"],
+        ["--identity", "--tile", "--intratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar", "--iss"],
         MATMUL,
         True,
         "== Optimized Loop ==",
@@ -444,7 +576,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --determine-tile-size",
+        "pluto oracle flags: --smartfuse --rar --determine-tile-size",
         effect_needles=("2048 *",),
         differs_from_args=(tuple(MATMUL_TILED),),
     ),
@@ -454,7 +586,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --determine-tile-size --cache-size=32768",
+        "pluto oracle flags: --smartfuse --rar --determine-tile-size --cache-size=32768",
         effect_needles=("64 *",),
         differs_from_args=(tuple(MATMUL_TILED_DETERMINE),),
     ),
@@ -464,7 +596,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --determine-tile-size --data-element-size=16",
+        "pluto oracle flags: --smartfuse --rar --determine-tile-size --data-element-size=16",
         effect_needles=("1024 *",),
         differs_from_args=(tuple(MATMUL_TILED_DETERMINE),),
     ),
@@ -474,7 +606,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --determine-tile-size --cache-size=32768 --data-element-size=8 --ufactor=3",
+        "pluto oracle flags: --smartfuse --rar --determine-tile-size --cache-size=32768 --data-element-size=8 --ufactor=3",
         effect_needles=("63 *",),
         differs_from_args=(tuple(MATMUL_TILED_DETERMINE_CACHE),),
     ),
@@ -621,7 +753,7 @@ CHECKS = [
         "== Optimized Loop ==",
         "pluto oracle flags: --smartfuse --forceparallel=1",
     ),
-    Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
+    Check("identity-notile", ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"], MATMUL, True, "== Optimized Loop ==", "polopt args: --identity"),
     Check(
         "reject-sequential-iss-identity",
         ["--identity", "--notile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
@@ -644,7 +776,7 @@ CHECKS = [
         MATMUL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --ft=0 --lt=1",
+        "pluto oracle flags: --smartfuse --rar --ft=0 --lt=1",
         effect_needles=("32 *", "/ 32"),
     ),
     Check(
@@ -694,7 +826,7 @@ CHECKS = [
         NODEP,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i2"),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar"]),),
     ),
@@ -704,7 +836,7 @@ CHECKS = [
         NODEP,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0",),
         effect_absent=("parallel for i2",),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--multipar", "--innerpar"]),),
@@ -715,7 +847,7 @@ CHECKS = [
         TRIPLE_NODEP,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i1", "parallel for i2"),
         differs_from_args=(tuple(["--notile", "--smartfuse", "--nointratileopt", "--nodiamond-tile", "--noprevector", "--nounrolljam", "--rar", "--parallel", "--innerpar"]),),
     ),
@@ -746,7 +878,7 @@ CHECKS = [
         SYMBOLIC_SECOND_LEVEL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i1", "/ 256", "8 *", "32 *"),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile"]),),
     ),
@@ -766,7 +898,7 @@ CHECKS = [
         SYMBOLIC_SECOND_LEVEL,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i1", "/ 256", "8 *", "32 *"),
         differs_from_args=(tuple([*FLAGS, "--nodiamond-tile", "--parallel", "--innerpar", "--second-level-tile", "--iss"]),),
     ),
@@ -799,6 +931,16 @@ CHECKS = [
         differs_from_args=(tuple(JACOBI_DIAMOND),),
     ),
     Check(
+        "diamond-parallel-innerpar",
+        [*FLAGS, "--diamond-tile", "--parallel", "--innerpar"],
+        DIAMOND_PARALLEL_BATCH,
+        True,
+        "== Optimized Loop ==",
+        "pluto oracle flags: --smartfuse --rar --innerpar",
+        effect_needles=("parallel for", "32 *", "i4 + (-1 * i5)"),
+        stderr_absent=("[alarm]",),
+    ),
+    Check(
         "diamond-parallel-strict-hint-only",
         [*FLAGS, "--diamond-tile", "--parallel", "--parallel-strict"],
         DIAMOND_PARALLEL_BATCH,
@@ -814,7 +956,7 @@ CHECKS = [
         DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i5", "i4 + (-1 * i5)"),
         differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--parallel", "--innerpar"]),),
     ),
@@ -824,7 +966,7 @@ CHECKS = [
         DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "i4 + (-1 * i5)"),
         effect_absent=("parallel for i5",),
         differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--parallel", "--multipar", "--innerpar"]),),
@@ -875,7 +1017,7 @@ CHECKS = [
         DIAMOND_PARALLEL_BATCH,
         True,
         "== Optimized Loop ==",
-        "pluto oracle flags: --smartfuse --multipar",
+        "pluto oracle flags: --smartfuse --rar --multipar",
         effect_needles=("parallel for i0", "parallel for i5", "i4 + (-1 * i5)"),
         differs_from_args=(tuple([*FLAGS, "--diamond-tile", "--parallel", "--iss"]),),
     ),
@@ -1092,7 +1234,7 @@ CHECKS = [
     ),
     Check(
         "stride-loop-positive-literal",
-        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         STRIDE_EVEN,
         True,
         "== Optimized Loop ==",
@@ -1101,7 +1243,7 @@ CHECKS = [
     ),
     Check(
         "stride-loop-negative-literal",
-        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         STRIDE_DOWN,
         True,
         "== Optimized Loop ==",
@@ -1144,7 +1286,7 @@ CHECKS = [
     ),
     Check(
         "mixed-const-and-block-unrolljam",
-        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel", "--rar"],
         MIXED_UNROLL,
         True,
         "for i0 in range(0, (N / 2))",
@@ -1154,7 +1296,7 @@ CHECKS = [
     ),
     Check(
         "unrolljam-context-bound-escape-rejected",
-        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--notile", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=2", "--nodiamond-tile", "--noparallel", "--rar"],
         UNROLLJAM_CONTEXT_BOUND_ESCAPE,
         True,
         "for i0 in range(0, ((N + -1) / 2))",
@@ -1171,7 +1313,7 @@ CHECKS = [
     ),
     Check(
         "unrolljam-empty-selector-policy",
-        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=4", "--nodiamond-tile", "--noparallel"],
+        ["--tile", "--smartfuse", "--nointratileopt", "--noprevector", "--unrolljam", "--ufactor=4", "--nodiamond-tile", "--noparallel", "--rar"],
         MATMUL,
         True,
         "== Optimized Loop ==",
@@ -1485,7 +1627,7 @@ CHECKS = [
     ),
     Check(
         "identity-tiled-vector-strict-hint-only",
-        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         MATMUL_INIT,
         True,
         "== Optimized Loop ==",
@@ -1501,7 +1643,7 @@ CHECKS = [
     ),
     Check(
         "identity-tiled-vector-strict-valid-hint",
-        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--tile", "--vector", "--vector-strict", "--nointratileopt", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         SYMBOLIC_SECOND_LEVEL,
         True,
         "== Optimized Loop ==",
@@ -1538,13 +1680,13 @@ CHECKS = [
     ),
     Check(
         "identity-tiled-iss",
-        ["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"],
+        ["--identity", "--tile", "--iss", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"],
         FUSION7,
         True,
         "== Optimized Loop ==",
         "polopt args: --iss --identity --tile",
         effect_needles=("32 *", "/ 32"),
-        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel"]),),
+        differs_from_args=(tuple(["--identity", "--notile", "--nointratileopt", "--noprevector", "--nounrolljam", "--nodiamond-tile", "--noparallel", "--rar"]),),
     ),
     Check("reject-tile-notile", [*FLAGS, "--tile", "--notile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--tile and --notile are both present"),
     Check("reject-diamond-nodiamond", [*FLAGS, "--diamond-tile", "--nodiamond-tile", "--noparallel"], MATMUL, False, "--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present"),
@@ -1897,6 +2039,20 @@ def check_route_bindings() -> list[str]:
             failures.append(
                 f"non-tiling check {check.name!r} declares route {check.tiling_route!r}"
             )
+        if check.name.startswith("default-no-rar-") and oracle_policy(check) != "default-no-rar":
+            failures.append(
+                f"default-policy check {check.name!r} must omit --rar"
+            )
+    for check in CHECKS:
+        if (
+            check.success
+            and not check.native
+            and not check.name.startswith("default-no-rar-")
+            and oracle_policy(check) != "explicit-rar"
+        ):
+            failures.append(
+                f"historical success check {check.name!r} must retain explicit --rar"
+            )
     return failures
 
 
@@ -1915,6 +2071,15 @@ def scheduled_openscop(output: str) -> str:
         return ""
     end = output.find("== Optimized Loop ==", start)
     return output[start:] if end < 0 else output[start:end]
+
+
+def reported_oracle_flags(output: str) -> list[list[str]]:
+    marker = "pluto oracle flags:"
+    return [
+        line.partition(marker)[2].strip().split()
+        for line in output.splitlines()
+        if marker in line
+    ]
 
 
 def run_polopt_compat(
@@ -1986,6 +2151,25 @@ def run_check(check: Check, timeout: int) -> str | None:
     if check.success:
         if proc.returncode != 0:
             return f"{check.name}: expected success, got exit {proc.returncode}\n{output}"
+        if not check.native:
+            actual_oracle_flags = reported_oracle_flags(output)
+            if not actual_oracle_flags:
+                return f"{check.name}: missing reported Pluto oracle flags\n{output}"
+            policy = oracle_policy(check)
+            if policy == "default-no-rar" and any(
+                "--rar" in flags for flags in actual_oracle_flags
+            ):
+                return (
+                    f"{check.name}: default policy unexpectedly invoked Pluto with --rar: "
+                    f"{actual_oracle_flags!r}\n{output}"
+                )
+            if policy == "explicit-rar" and any(
+                "--rar" not in flags for flags in actual_oracle_flags
+            ):
+                return (
+                    f"{check.name}: explicit policy omitted --rar from a Pluto invocation: "
+                    f"{actual_oracle_flags!r}\n{output}"
+                )
         if check.needle not in output:
             return f"{check.name}: missing {check.needle!r}\n{output}"
         if check.normalized is not None and check.normalized not in output:
@@ -2087,6 +2271,16 @@ def effect_contract_summary(check: Check) -> str:
     return f"effects={contracts},tiling-route={route}"
 
 
+def oracle_policy(check: Check) -> str:
+    if not check.success:
+        return "not-applicable"
+    if check.native:
+        return "native"
+    if "--rar" in check.args:
+        return "explicit-rar"
+    return "default-no-rar"
+
+
 def main(argv: list[str]) -> int:
     timeout = 30
     only: set[str] | None = None
@@ -2156,6 +2350,7 @@ def main(argv: list[str]) -> int:
         print(
             f"[pluto-compat-suite] {'PASS' if failure is None else 'FAIL'} "
             f"case={check.name} expected={expected_result},{effect_contract_summary(check)} "
+            f"oracle-policy={oracle_policy(check)} "
             f"coverage={coverage} "
             f"actual={actual_summary} "
             f"interpretation={interpretation}",
@@ -2169,8 +2364,16 @@ def main(argv: list[str]) -> int:
         for failure in failures:
             print(failure)
         return 1
+    policy_counts = {
+        policy: sum(oracle_policy(check) == policy for check in checks)
+        for policy in ("explicit-rar", "default-no-rar", "native", "not-applicable")
+    }
     print(
         f"[pluto-compat-suite] PASS expected={len(checks)} actual={len(checks)} "
+        f"explicit-rar={policy_counts['explicit-rar']} "
+        f"default-no-rar={policy_counts['default-no-rar']} "
+        f"native={policy_counts['native']} "
+        f"not-applicable={policy_counts['not-applicable']} "
         "interpretation=all-driver-route-and-effect-contracts-matched"
     )
     return 0

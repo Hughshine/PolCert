@@ -99,6 +99,19 @@ def has_loop_header(loop_text: str) -> bool:
     return False
 
 
+def select_failure_diagnostic(*texts: str) -> str:
+    lines = [line.strip() for text in texts for line in text.splitlines() if line.strip()]
+    for predicate in (
+        lambda line: "status=rejected" in line,
+        lambda line: line.startswith("[alarm]"),
+        lambda line: "error" in line.lower() or "fail" in line.lower(),
+    ):
+        for line in reversed(lines):
+            if predicate(line):
+                return line
+    return lines[-1] if lines else "none"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("case_dir")
@@ -178,6 +191,13 @@ def main() -> int:
         write_text(
             out_dir / "status.txt",
             f"result=fail\nstage=polopt\nexit_code={proc.returncode}\n",
+        )
+        diagnostic = select_failure_diagnostic(proc.stdout, proc.stderr)
+        print(
+            f"[E2E] FAIL case={case_name} stage=polopt expected=exit:0 "
+            f"actual=exit:{proc.returncode} diagnostic={diagnostic!r} "
+            "interpretation=scheduler-or-validation-rejected-route",
+            file=sys.stderr,
         )
         if args.keep_going:
             return 1

@@ -7,6 +7,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from pluto_versions import locate_buggy_pluto_and_polycc
+
 
 PLUTO_FLAGS = [
     "--maxfuse",
@@ -23,10 +25,11 @@ BASELINE_RESULT = 802469374803681347
 MISCOMPILED_RESULT = 11412027514774867379
 
 
-def run(cmd, *, cwd=None, timeout=30):
+def run(cmd, *, cwd=None, env=None, timeout=30):
     return subprocess.run(
         [str(arg) for arg in cmd],
         cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -38,26 +41,6 @@ def run(cmd, *, cwd=None, timeout=30):
 def require(condition, message):
     if not condition:
         raise AssertionError(message)
-
-
-def locate_polycc():
-    configured = os.environ.get("POLCERT_POLYCC")
-    if configured:
-        return Path(configured).resolve()
-
-    configured_pluto = os.environ.get("POLCERT_PLUTO")
-    if configured_pluto:
-        pluto = Path(configured_pluto).resolve()
-        if pluto.parent.name == "tool" and (pluto.parent.parent / "polycc").exists():
-            return pluto.parent.parent / "polycc"
-
-    if Path("/pluto/polycc").exists():
-        return Path("/pluto/polycc")
-
-    found = shutil.which("polycc")
-    if found is None:
-        raise AssertionError("cannot locate polycc; set POLCERT_POLYCC")
-    return Path(found).resolve()
 
 
 def parse_uint64_output(label, proc):
@@ -74,12 +57,13 @@ def main():
     repo = Path(__file__).resolve().parents[2]
     fixture_dir = repo / "tests" / "pluto-bugs" / "auto-affine-lp-cc-scaling"
     source = fixture_dir / "auto_affine_lp_cc_scaling.c"
+    loop = fixture_dir / "auto_affine_lp_cc_scaling.loop"
     polopt = repo / "polopt"
-    polycc = locate_polycc()
+    pluto, polycc = locate_buggy_pluto_and_polycc()
     compiler = os.environ.get("CC", "gcc")
 
     require(polopt.exists(), f"missing PolCert executable: {polopt}")
-    require(source.exists(), f"missing automatic affine fixture: {source}")
+    require(source.exists() and loop.exists(), "missing automatic affine fixtures")
 
     with tempfile.TemporaryDirectory(prefix="polcert-pluto-auto-affine-bug-") as tmp:
         work = Path(tmp)
@@ -141,6 +125,46 @@ def main():
             f"[pluto-auto-affine-lp] affine-validator: expected=rejected "
             f"actual=exit-{affine.returncode},overall-FAIL "
             "interpretation=automatic-schedule-dependence-violation"
+        )
+
+        polcert_env = os.environ.copy()
+        polcert_env["POLCERT_PLUTO"] = str(pluto)
+        polcert_env.setdefault("COMPCERT_CONFIG", str(repo / "polcert.ini"))
+        compat_flags = [
+            "--pluto-compat",
+            "--notile",
+            "--maxfuse",
+            "--lp",
+            "--nointratileopt",
+            "--nodiamond-tile",
+            "--noprevector",
+            "--nounrolljam",
+            "--noparallel",
+        ]
+        checked = run([polopt, *compat_flags, loop], cwd=repo, env=polcert_env)
+        require(
+            checked.returncode != 0
+            and "[alarm] requested checked optimization was rejected" in checked.stdout
+            and "== Optimized Loop ==" not in checked.stdout,
+            f"PolCert's default no-RAR route did not reject the bad candidate:\n{checked.stdout}",
+        )
+        print(
+            f"[pluto-auto-affine-lp] checked-default: expected=no-rar,rejected,no-output "
+            f"actual=exit-{checked.returncode},alarm interpretation=pluto-default-aligned-fail-closed"
+        )
+
+        checked_rar = run(
+            [polopt, *compat_flags, "--rar", loop], cwd=repo, env=polcert_env
+        )
+        require(
+            checked_rar.returncode == 0
+            and "== Optimized Loop ==" in checked_rar.stdout
+            and "[alarm]" not in checked_rar.stdout,
+            f"PolCert did not forward explicit --rar to obtain the legal candidate:\n{checked_rar.stdout}",
+        )
+        print(
+            "[pluto-auto-affine-lp] checked-explicit-rar: expected=rar-forwarded,accepted "
+            "actual=exit-0,optimized-loop interpretation=explicit-oracle-policy-effective"
         )
 
     print("[pluto-auto-affine-lp] OK")

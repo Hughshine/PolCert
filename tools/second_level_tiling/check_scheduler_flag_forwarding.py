@@ -85,6 +85,40 @@ def require_count(body: str, needle: str, count: int, route: str) -> None:
 def main() -> None:
     scheduler = (ROOT / "driver" / "Scheduler.ml").read_text(encoding="utf-8")
 
+    user_facing_recipes = (
+        "affine_only_flags",
+        "tile_only_flags",
+        "affine_only_parallel_flags",
+        "affine_only_vector_flags",
+        "tile_only_parallel_flags",
+        "tile_only_vector_flags",
+        "post_tiling_affine_flags",
+        "post_tiling_affine_parallel_flags",
+        "post_tiling_affine_vector_flags",
+    )
+    for route in user_facing_recipes:
+        if '"--rar"' in definition_body(scheduler, route):
+            raise AssertionError(f"{route} enables non-default Pluto RAR relations")
+    require(
+        definition_body(scheduler, "invoke_pluto"),
+        '"--rar"',
+        "legacy 62-case evaluation recipe",
+    )
+
+    cli = (ROOT / "syntax" / "SLoopCli.ml").read_text(encoding="utf-8")
+    require(cli, '| "--rar" ->', "explicit RAR CLI branch")
+    require(cli, 'add_pluto_extra_flag cfg "--rar"', "explicit RAR forwarding")
+    rar_branch = re.search(
+        r'\| "--rar" ->(?P<body>[\s\S]*?)go \(i \+ 1\)',
+        cli,
+    )
+    if rar_branch is None:
+        raise AssertionError("could not isolate explicit RAR CLI branch")
+    if "enable_pluto_compat cfg" in rar_branch.group("body"):
+        raise AssertionError("--rar must remain composable with native checked routes")
+    require(cli, '| "--innerpar" ->', "explicit innerpar CLI branch")
+    require(cli, 'add_pluto_extra_flag cfg "--innerpar"', "explicit innerpar forwarding")
+
     for route in (
         "post_tiling_affine_flags",
         "post_tiling_affine_parallel_flags",
@@ -1242,7 +1276,7 @@ def main() -> None:
     print(
         "[second-level-route-static] PASS "
         "expected=flags-forwarded,band-first-dispatch,unique-final-report,"
-        "affine-ISS-no-tiling-route "
+        "affine-ISS-no-tiling-route,pluto-default-no-rar "
         "actual=all-static-route-contracts-matched coverage=static-route-contract "
         "interpretation=source-and-extracted-entrypoints-follow-the-declared-routes"
     )

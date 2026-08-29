@@ -1,14 +1,16 @@
 # Pluto White-Box Correctness Audit
 
-Date: 2026-08-28
+Date: 2026-08-29
 
 ## Scope and Standard
 
 This audit covers the Pluto optimizer pinned by PolCert:
 
 - repository: `https://github.com/verif-scop/pluto.git`
-- current fixed baseline: `56b66690edeed1ef17ddc018bbf67666795a3fd4`
-  on `fix/diamond-reschedule-with-nointratileopt`
+- current fixed baseline: `8c43c210c9c08c5958198f22db4b54000380925e`
+  on `fix/polcert-known-miscompilations`
+- pinned bug-reproduction baseline:
+  `6f43860b6c4cddeeca09189bf3073f05b78b14a5`
 - audited predecessor: `488ea2f0c3b7d5e7f6b849809f312aa4a6bcad02`
 - local audit tree: `/tmp/pluto-pinned-audit`
 
@@ -27,6 +29,14 @@ finding is classified as:
 Pluto is suitable for PolCert only as an untrusted candidate generator. This
 audit does not support treating Pluto's generated C, dependence-satisfaction
 bits, parallel metadata, or post-codegen rewrites as certificates.
+
+The reproduced-failure sections below describe the pinned historical and
+official revisions. The fixed fork removes the connected-component overwrite,
+adds a final precise lexicographic legality gate, corrects the vanished-loop
+band boundary and no-tile unroll-jam depth, preserves `--innerpar`
+satisfaction metadata, and retains the earlier mandatory diamond restore. Its
+six minimized probes and complete upstream `make check` pass. This does not
+turn Pluto output into a certificate; PolCert continues to validate it.
 
 ## Reproduced Silent Miscompilations
 
@@ -56,9 +66,11 @@ scales. The two ends of `S3 -> S1` consequently receive different factors.
 Deleting the unconditional overwrite in a clean official checkout makes the
 same input produce a legal schedule and restores the source checksum. PolCert's
 standalone affine validator rejects the exact bad before/after OpenScop pair
-with `overall: FAIL`. The complete driver adds `--rar`; on this input that makes
-Pluto return a different legal candidate, so the test does not claim a dynamic
-complete-route rejection of the same candidate.
+with `overall: FAIL`. The complete driver now follows Pluto's default no-RAR
+policy; the analogous typed route rejects Pluto's candidate and emits no
+optimized Loop program. Explicit `--rar` changes Pluto's dependence-distance
+objective and produces a different legal candidate that the checked route
+accepts.
 
 ### An Invalid `.fst` Order Is Accepted by the Control Interface
 
@@ -174,7 +186,7 @@ opam exec -- make test-pluto-bugs
 |---|---|---|
 | `lib/pluto.c` | **High risk, with a reproduced automatic affine failure.** `.fst` and `.precut` are read implicitly at `891-1020` and directly install statement ordering or scattering with weak parsing and no final independent lexicographic legality check. `ddg_compute_cc` at `1983-2015` overwrites component identifiers for previously visited vertices; the reproduced LP path then scales the two ends of a real dependence independently. `pluto_auto_transform` restores identity on scheduling failure, but the CLI ignores its nonzero return. | Never trust its `dep->satisfied` state or final schedule. PolCert supports `.fst/.precut` only because it checks the resulting schedule and tiling witness independently. |
 | `lib/framework.cpp` | **High risk.** `skipdeps.txt` at `361-418` silently removes legality constraints and has unchecked indices. A growing per-CC constraint width at `398-409` changes `ncols` without resizing storage. `get_feautrier_schedule_constraints` reads freed memory at `638-652`. `--typedfuse --nodepbound` can dereference a null `bounding_cst` at `1562-1586`. The per-CC objective index at `740-758` uses the wrong stride. ISL errors can be interpreted as empty constraints through `lib/constraints.c`. | Reject implicit `skipdeps.txt`; validate every returned affine schedule. Crashes are oracle failures, never permission to retain a partial candidate. |
-| `lib/tile.c` | **Mixed, with two reproduced failures and one fixed in the current baseline.** Ordinary and two-level tiling consistently extend domains, schedules, accesses, original dependences, and transformed dependences, then recompute directions/satisfaction. `--innerpar` at `446-478` moves satisfaction bits even when it does not create the wavefront schedule, producing the reproduced wrong OpenMP program. The phase-dump patch also made a correctness-required diamond restore conditional on `intratileopt`; current commit `56b6669` fixes that defect. Diamond rescheduling at `93-107` still computes an evicted row offset from added domain dimensions and may miss inserted scalar schedule rows. `--ft/--lt` changes tile-size input count but does not restrict the actual tiled band. At `52-74`, the first-level tile-size parser skips scalar rows, while the second-level ratio parser consumes an integer for every band position and ignores `fscanf` failure; scalar-interleaved schedules therefore receive different second-level sizes from those requested. | Keep ordinary/two-level candidates behind the tiling theorem. Preserve the mandatory diamond restore, and independently validate parallel metadata, diamond mappings, and partial-level claims. Parse tile sizes against loop rows with checked input counts. |
+| `lib/tile.c` | **Mixed, with two reproduced failures and one fixed in the current baseline.** Ordinary and two-level tiling consistently extend domains, schedules, accesses, original dependences, and transformed dependences, then recompute directions/satisfaction. `--innerpar` at `446-478` moves satisfaction bits even when it does not create the wavefront schedule, producing the reproduced wrong OpenMP program. The phase-dump patch also made a correctness-required diamond restore conditional on `intratileopt`; the earlier `56b6669` fix for that defect is included in the current `8c43c21` baseline. Diamond rescheduling at `93-107` still computes an evicted row offset from added domain dimensions and may miss inserted scalar schedule rows. `--ft/--lt` changes tile-size input count but does not restrict the actual tiled band. At `52-74`, the first-level tile-size parser skips scalar rows, while the second-level ratio parser consumes an integer for every band position and ignores `fscanf` failure; scalar-interleaved schedules therefore receive different second-level sizes from those requested. | Keep ordinary/two-level candidates behind the tiling theorem. Preserve the mandatory diamond restore, and independently validate parallel metadata, diamond mappings, and partial-level claims. Parse tile sizes against loop rows with checked input counts. |
 | `lib/iss.c` | **High risk for multi-cut cases.** The dimension loop and cut-product loop reuse `i` at `654-684`, skipping dimensions after a second cut. More than two base cuts continue growing the bridge description while the actual partition stops at four regions. Late library use can also leave `transdeps` stale. | Accept ISS only when the emitted split and bridge witness agree and the extracted ISS checker proves the mapping. Do not infer correctness from Pluto's `base_cuts` alone. |
 | `lib/post_transform.c` | **Conditionally reliable.** The standard schedule-only passes recompute dependence directions and satisfaction. Intratile interchange can cross scalar hyperplanes, but its callee swaps transformation rows without synchronizing hyperplane type metadata; several early returns also leak temporary loop arrays. | Revalidate the final post-tile affine schedule and reconstruct codegen metadata from the checked result. Memory leaks affect robustness, not semantics. |
 | `lib/transforms.c` | **Unsafe as a general library surface.** `pluto_interchange` at `125-143` swaps schedule rows but not `hyp_types` or `hProps`, breaking metadata when crossing scalar rows. Exported `pluto_stripmine` writes column `ncols` and omits the usual `factor-1` upper-bound term; it currently has no caller in the pinned tree. | Do not expose these routines directly as trusted transformations. Validate the resulting schedule or keep the unused strip-mine API unreachable. |

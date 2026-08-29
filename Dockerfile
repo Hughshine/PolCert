@@ -1,13 +1,36 @@
 # Keep these defaults aligned with tools/ci/pluto-baseline.env.
 ARG PLUTO_IMAGE=hughshine/pluto-verif@sha256:0e15a7614af280b02ab0dc31f110c3ee3f7a1fe3ee3d1b503cc3400d87b4f4ce
 ARG PLUTO_GIT_REMOTE=https://github.com/verif-scop/pluto.git
-ARG PLUTO_GIT_COMMIT=56b66690edeed1ef17ddc018bbf67666795a3fd4
+ARG PLUTO_GIT_COMMIT=8c43c210c9c08c5958198f22db4b54000380925e
+ARG PLUTO_BUGGY_GIT_REMOTE=https://github.com/verif-scop/pluto.git
+ARG PLUTO_BUGGY_GIT_COMMIT=6f43860b6c4cddeeca09189bf3073f05b78b14a5
+ARG PLUTO_BUGGY_ROOT=/opt/polcert/pluto-buggy
+
+FROM ${PLUTO_IMAGE} AS buggy-pluto-builder
+
+ARG PLUTO_BUGGY_GIT_REMOTE
+ARG PLUTO_BUGGY_GIT_COMMIT
+
+RUN apt-get update \
+  && apt-get install -y libglpk-dev \
+  && rm -rf /var/lib/apt/lists/* \
+  && git -C /pluto remote set-url origin "${PLUTO_BUGGY_GIT_REMOTE}" \
+  && git -C /pluto fetch origin "${PLUTO_BUGGY_GIT_COMMIT}" \
+  && git -C /pluto checkout "${PLUTO_BUGGY_GIT_COMMIT}" \
+  && cd /pluto \
+  && ./configure --enable-glpk --with-glpk-prefix=/usr \
+  && make clean \
+  && make -j"$(nproc)"
+
+# Export a clean checkout plus only the runtime artifacts.  Copying the build
+# tree would retain hundreds of megabytes of object files in the final image.
+RUN git clone --no-hardlinks /pluto /polcert-pluto-buggy \
+  && git -C /polcert-pluto-buggy remote set-url origin "${PLUTO_BUGGY_GIT_REMOTE}" \
+  && cp /pluto/tool/pluto /polcert-pluto-buggy/tool/pluto \
+  && cp /pluto/polycc /polcert-pluto-buggy/polycc \
+  && cp /pluto/inscop /polcert-pluto-buggy/inscop
 
 FROM ${PLUTO_IMAGE} AS development-base
-
-ARG PLUTO_IMAGE
-ARG PLUTO_GIT_REMOTE
-ARG PLUTO_GIT_COMMIT
 
 ENV TZ=Europe/Minsk
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -58,7 +81,11 @@ RUN apt-get update && apt-get install -y vim cloc && apt-get clean && rm -rf /va
 # Keep the expensive, stable system and Rocq toolchain layers independent of
 # the pinned Pluto revision. Feature branches can then reuse the main-branch
 # BuildKit cache when only the candidate generator commit changes.
-RUN git -C /pluto fetch "${PLUTO_GIT_REMOTE}" "${PLUTO_GIT_COMMIT}" \
+ARG PLUTO_GIT_REMOTE
+ARG PLUTO_GIT_COMMIT
+
+RUN git -C /pluto remote set-url origin "${PLUTO_GIT_REMOTE}" \
+  && git -C /pluto fetch origin "${PLUTO_GIT_COMMIT}" \
   && git -C /pluto checkout "${PLUTO_GIT_COMMIT}" \
   && cd /pluto \
   && ./configure --enable-glpk --with-glpk-prefix=/usr \
@@ -66,15 +93,33 @@ RUN git -C /pluto fetch "${PLUTO_GIT_REMOTE}" "${PLUTO_GIT_COMMIT}" \
   && make -j"$(nproc)" \
   && make install
 
+# BuildKit can compile this historical bug-reproduction baseline in parallel
+# with the main image. It is never used by ordinary PolOpt routes.
+ARG PLUTO_IMAGE
+ARG PLUTO_BUGGY_GIT_REMOTE
+ARG PLUTO_BUGGY_GIT_COMMIT
+ARG PLUTO_BUGGY_ROOT
+
+COPY --from=buggy-pluto-builder /polcert-pluto-buggy ${PLUTO_BUGGY_ROOT}
+RUN sed -i "s|^pluto=/pluto|pluto=${PLUTO_BUGGY_ROOT}|" "${PLUTO_BUGGY_ROOT}/polycc" \
+  && sed -i "s|^inscop=/pluto|inscop=${PLUTO_BUGGY_ROOT}|" "${PLUTO_BUGGY_ROOT}/polycc"
+
 LABEL com.polcert.version="0.9" \
       com.polcert.pluto.image="${PLUTO_IMAGE}" \
       com.polcert.pluto.remote="${PLUTO_GIT_REMOTE}" \
-      com.polcert.pluto.commit="${PLUTO_GIT_COMMIT}"
+      com.polcert.pluto.commit="${PLUTO_GIT_COMMIT}" \
+      com.polcert.pluto.buggy-remote="${PLUTO_BUGGY_GIT_REMOTE}" \
+      com.polcert.pluto.buggy-commit="${PLUTO_BUGGY_GIT_COMMIT}"
 
 ENV PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}" \
     POLCERT_PLUTO_IMAGE="${PLUTO_IMAGE}" \
     POLCERT_PLUTO_GIT_REMOTE="${PLUTO_GIT_REMOTE}" \
-    POLCERT_PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}"
+    POLCERT_PLUTO_GIT_COMMIT="${PLUTO_GIT_COMMIT}" \
+    POLCERT_BUGGY_PLUTO_GIT_REMOTE="${PLUTO_BUGGY_GIT_REMOTE}" \
+    POLCERT_BUGGY_PLUTO_GIT_COMMIT="${PLUTO_BUGGY_GIT_COMMIT}" \
+    POLCERT_BUGGY_ROOT="${PLUTO_BUGGY_ROOT}" \
+    POLCERT_BUGGY_PLUTO="${PLUTO_BUGGY_ROOT}/tool/pluto" \
+    POLCERT_BUGGY_POLYCC="${PLUTO_BUGGY_ROOT}/polycc"
 
 COPY doc/index.html /var/www/html
 
@@ -121,11 +166,12 @@ RUN printf '%s' "${POLCERT_GIT_COMMIT}" \
     && printf '%s' "${POLCERT_SOURCE_ARCHIVE_SHA256}" \
       | grep -Eq '^[0-9a-f]{64}$'
 
-RUN printf '{\n  "polcert_git_commit": "%s",\n  "polcert_release_tag": "%s",\n  "polcert_source_archive_sha256": "%s",\n  "pluto_git_commit": "%s"\n}\n' \
+RUN printf '{\n  "polcert_git_commit": "%s",\n  "polcert_release_tag": "%s",\n  "polcert_source_archive_sha256": "%s",\n  "pluto_git_commit": "%s",\n  "pluto_buggy_git_commit": "%s"\n}\n' \
       "${POLCERT_GIT_COMMIT}" \
       "${POLCERT_RELEASE_TAG}" \
       "${POLCERT_SOURCE_ARCHIVE_SHA256}" \
       "$(git -C /pluto rev-parse HEAD)" \
+      "$(git -C "$POLCERT_BUGGY_ROOT" rev-parse HEAD)" \
       > /polcert/BUILD_PROVENANCE.json
 
 LABEL org.opencontainers.image.revision="${POLCERT_GIT_COMMIT}" \

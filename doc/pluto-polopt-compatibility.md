@@ -39,12 +39,14 @@ The current assessment is based on these concrete checks.
   - `lib/tile.c`: tiling, second-level tiling, tile scheduling, intra-tile optimization
   - `lib/iss.c`: ISS restrictions
   - `tool/pluto_codegen_if.c` and `tool/ast_transform.c`: OpenMP, vector, unroll-jam marking
-- Current Pluto baseline build:
-  - `/pluto` HEAD: `56b66690edeed1ef17ddc018bbf67666795a3fd4`
-  - `pluto --version`: `PLUTO version 56b6669`
+- Current Pluto baseline builds:
+  - ordinary `/pluto` HEAD: `8c43c210c9c08c5958198f22db4b54000380925e`
+  - bug-only `/opt/polcert/pluto-buggy` HEAD:
+    `6f43860b6c4cddeeca09189bf3073f05b78b14a5`
   - configured with `./configure --enable-glpk --with-glpk-prefix=/usr`
   - `pluto --help` advertises `--glpk`, `--lp`, `--dfp`, and `--typedfuse`
-  - PolCert's Dockerfile checks out this commit and rebuilds `/pluto` with GLPK before building PolCert
+  - ordinary driver and compatibility tests use only the fixed checkout;
+    executable bug witnesses explicitly select the historical checkout
 - Candl probe:
   - original `/pluto/tool/pluto --candldep` aborted on `matmul.c`, `fusion1.c`, and Candl's `scalpriv.c`
   - root cause: `tool/osl_pluto.c:deps_read` converted Candl dependence types with fall-through, so recognized Candl dependences became `PLUTO_DEP_UNDEFINED`
@@ -74,7 +76,11 @@ The current assessment is based on these concrete checks.
   - implementation: `syntax/SLoopCli.ml` and `syntax/SLoopRoute.ml`
   - `tools/polopt_flag_suites/run_pluto_compat_suite.py`
   - integrated GLPK-enabled Pluto baseline result after direct-band routing,
-    multipar, and broader effect coverage: `138 / 138` checks passed
+    multipar, default no-RAR coverage, and broader effect coverage:
+    `189 / 189` active checks passed (`172` base declarations, with one
+    solver-rejection case replaced and `18` GLPK/Candl capability cases added
+    for the pinned artifact: `126` explicit-RAR, `11` default-no-RAR, `10`
+    native, and `42` rejection/not-applicable checks)
   - the suite also checks Pluto's default-on `--prevector` mapping, stale-current-Pluto flag rejections, missing explicit control-file rejection, non-matmul explicit control-file effects, and cleanup of temporary `tile.sizes`, `.fst`, and `.precut` files after explicit control-file runs
 - Flag-effect exploration:
   - `tools/artifact/explore_flag_effects.py` compares `polopt --pluto-compat --explain` optimized loops for paired Pluto-style flag sets and writes JSON or Markdown evidence
@@ -82,7 +88,9 @@ The current assessment is based on these concrete checks.
   - `--group dependence-solver --max-fixtures 30` found no stdout optimized-loop effect for `--pipsolve`, `--candldep`, `--isldepaccesswise`, `--isldepstmtwise`, or `--isldepcoalesce`
 - Executed diamond validation suite:
   - `make test-diamond-tiling-suite`
-  - result: 6 diamond-effect cases validated, 2 no-effect cases validated, 11 unsupported Pluto inputs rejected as expected
+  - result: 5 diamond-effect cases validated, 2 no-effect cases validated,
+    1 fixed-Pluto final-schedule rejection matched exactly, and 11 unsupported
+    Pluto frontend inputs rejected as expected
 - Identity composition exploration:
   - `tools/artifact/explore_identity_compositions.py` now records identity second-level, identity diamond, and identity+ISS-sensitive searches
   - `--identity --tile --second-level-tile` and `--identity --tile --iss --second-level-tile` are now accepted through checked generic identity-tiling routes; the focused `fusion7` probe shows a PolOpt 256/32 second-level tile shape that differs from ordinary identity tiling
@@ -164,10 +172,79 @@ pipeline emits no optimized result.
 | `--ft <n>`, `--lt <n>` | Passed through together as non-negative oracle controls, but PolOpt does not rely on them to restrict transformation scope. The pinned Pluto implementation uses them to change how many tile sizes it reads while still tiling the selected bands. PolOpt validates the actual output rather than claiming exact partial-level behavior. | native compat `partial-tiling-levels`; source audit of `lib/tile.c` |
 | `--forceparallel <bitvec>` | Passed through as a non-negative value. The pinned Pluto source accepts it but has no effective use site. | native compat `optimizer-forceparallel-pass-through`; Pluto source grep |
 | `--glpk`, `--lp`, `--dfp`, `--ilp`, `--lpcolor`, `--clusterscc`, `--typedfuse`, `--hybridfuse`, `--delayedcut` | Passed through on the pinned GLPK-enabled Pluto baseline, with a runtime rejection if an alternate Pluto binary lacks LP/DFP support. | native compat GLPK-family affine checks; DFP/typed/hybrid/delayedcut effect checks on non-matmul fixtures where available |
-| `--rar` | Compatible with current scheduler recipes. | scheduler flags |
+| `--rar` | Explicitly passed through to Pluto's checked scheduler oracle. Omission matches Pluto's default and leaves RAR relations disabled. | default/no-RAR and explicit-RAR automatic-affine regression |
 | `--nointratileopt`, `--noprevector`, `--nounrolljam`, `--noparallel`, `--nodiamond-tile` | Accepted when they match the checked route's disabled Pluto-side effects. `--noprevector` disables vector annotation; omitting it keeps Pluto's default `--prevector` and selects the checked vector route. | native compat suite |
 
 The current default `polopt` route is not "Pluto default". It intentionally uses phase-aligned recipes. For ordinary sequential optimization, it runs an affine-only Pluto phase with tiling and codegen effects disabled, then a tile-only Pluto phase with `--identity --tile`. With `--intratileopt`, PolOpt instead records Pluto's affine, post-tiling, and final schedule artifacts. It validates the first schedule with the affine validator, the second transformation with the permutable-band tiling validator, and the final intra-tile rescheduling with `validate_general`.
+
+Within those phase-aligned recipes, options unrelated to phase isolation retain
+Pluto's defaults. In particular, PolOpt does not add `--rar`; the flag affects
+the oracle only when the user supplies it explicitly.
+
+### RAR Regression Policy
+
+Most scheduler-bearing tests predate this default change. They were originally
+calibrated with RAR enabled: the legacy Pluto corpus supplies `--rar`
+explicitly, while the old PolOpt scheduler recipes inserted it internally.
+Those expectations are not silently reinterpreted as no-RAR expectations.
+
+The test system now separates the two oracle policies:
+
+- `test-polopt-loop-suite` exercises the current default no-RAR pipeline over
+  all 62 generated Loop inputs. Its structural-change and tiling thresholds
+  were rerun after the default changed.
+- `test-pluto-compat-suite` retains the historical option/effect cases with
+  explicit `--rar`. A suite-wide invariant rejects any historical successful
+  non-native case that loses this flag. Its log labels them
+  `oracle-policy=explicit-rar`.
+- The same compatibility suite contains separately calibrated
+  `default-no-rar-*` cases for affine scheduling, tiling, ISS, parallel and
+  vector annotations, diamond tiling, and two-level tiling. Its log labels
+  them `oracle-policy=default-no-rar`.
+
+The two policies are not required to produce identical candidates. For
+example, the no-RAR matmul vector route currently receives no vector hint and
+therefore records a checked skip, while another no-RAR independent-loop case
+does receive and apply a certified innermost hint. Both behaviors have explicit
+effect contracts. Correctness never depends on RAR: every candidate is checked
+after Pluto returns it.
+
+Parser and unsupported-route rejection cases do not establish a scheduler
+oracle policy, so the summary labels them `oracle-policy=not-applicable` rather
+than inflating the no-RAR count.
+
+For a corpus-level A/B comparison, run `make compare-rar-policy`. The script
+runs identical checked sequential routes over all generated Loop inputs, with
+`--rar` as the only changed oracle flag. It reports acceptance, final Loop
+equality, tiling and annotation changes, per-side driver time, and optional
+scheduled-OpenScop differences. Parallel and vector routes can be added with
+repeated `--mode` arguments, and `--pipeline` selects affine-only or tiled
+comparison. The source audit, literature correspondence, full-corpus result,
+and executable spot checks are in
+[the RAR policy study](pluto-rar-policy-study.md).
+
+### Pluto Default Audit
+
+The RAR change was checked against the other Pluto defaults at the pinned
+source's `pluto_options_alloc` and command-line normalization. The resulting
+policy is:
+
+| Pluto setting | Pinned default | PolOpt treatment |
+|---|---:|---|
+| fusion | `smartfuse` | Same default; explicit fusion alternatives are forwarded. |
+| RAR | disabled | Same default after this change; explicit `--rar` is forwarded. |
+| inner parallelism | disabled | Same default; explicit `--innerpar` is forwarded to each applicable checked Pluto oracle phase. |
+| dependence analysis | ISL, access-wise, no coalescing, no last-writer reduction | Same defaults; alternatives are forwarded and conflicting combinations are rejected. |
+| schedule solver | ISL | `--islsolve` is an explicit no-op because it is already the default; `--pipsolve` and LP/DFP solver choices are forwarded. |
+| tiling, intra-tile optimization, prevector, unroll-jam, parallelization, diamond tiling | enabled in various Pluto defaults | Deliberately not inherited wholesale. Compatibility mode requires the caller to select the corresponding checked phase or explicitly disable it. |
+| debug, more-debug, silent | diagnostic only | Accepted as logging-only no-ops. |
+| CLooG backtracking | enabled | `--nocloogbacktrack` is a no-op because PolOpt does not use Pluto's code generator. |
+
+No other optimizer option that changes Pluto's scheduling candidate remains in
+the compatibility driver's generic no-op set. Phase-changing defaults are
+handled explicitly because they select different proved validators and
+code-generation routes; this is separate from oracle-policy defaults such as
+RAR, fusion, dependence analysis, and solver selection.
 
 The bare Pluto flag `--identity` needs special care. In the current Pluto
 source, tiling is enabled by default, so `--identity` can still reach the tiling
@@ -348,7 +425,7 @@ Tile size control is likely easy from a proof perspective if the validator alrea
 |---|---|---|---|---|
 | `--parallel`, `--parallelize` | Supported for one Pluto-hinted parallel loop by default | Current route validates one loop and emits checked parallel code. | Already supported. | Keep. |
 | `--noparallel` | Supported as route control/no-op | Sequential routes use it. | Already supported. | Keep. |
-| `--innerpar` | Compatible no-op | Current checked `--parallel` tiled recipe already keeps a canonical inner-parallel style. | Already acceptable. | Keep explanatory note. |
+| `--innerpar` | Supported oracle control on checked tiled parallel routes | Pluto changes wavefront schedule construction when it is enabled. PolOpt forwards it to the phase-aligned Pluto calls, then independently validates the returned tiling and parallel hint. | Supported. | The static forwarding gate, the compatibility-route telemetry, and the executable `tiling-innerpar-satvec` producer regression jointly prevent silent no-op treatment. |
 | `--multipar` | Supported on checked `--parallel` routes for every certified schedule coordinate in the candidate list | The driver passes the flag to Pluto, parses OpenScop parallel loop hints, builds a route-specific candidate list from Pluto hints and canonical scattering depth, and calls the extracted verified `RawParallelCurrentMany*` compiler config. The Coq route filters certifiable coordinates before checked multi-cert parallel codegen, so this means "all accepted coordinates" rather than "all requested coordinates". | Supported for ordinary, second-level, identity-tiled, diamond, and ISS-aware parallel routes through `compile_verified_correct` plus the `Opt_parallel_current_many*` route theorems. The regression suite includes a three-dimensional independent loop that emits `parallel for i0`, `parallel for i1`, and `parallel for i2`. | Broaden fixtures; strict-mode positive behavior is covered by hint-only multipar checks, and an all-hints-rejected strict fixture would further tighten the regression suite. |
 | `--forceparallel` | Supported pass-through/no-effect compatibility flag | Current Pluto source accepts the value but has no effective use site. | Already accepted as surface compatibility. | Keep explaining that no optimization effect is expected in the pinned Pluto source. |
 | `--parallel-current d` | Supported as `polopt` extension, not a Pluto flag | Explicit checked padded schedule coordinate; `current` is retained in the option name for compatibility. | Already supported. | Keep separate from Pluto compatibility mode. |

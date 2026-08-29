@@ -92,5 +92,9 @@ which is recorded in `artifact-results.json`.
 
 ## CI relationship
 
-GitHub Actions builds from [Dockerfile](./Dockerfile) and runs [tools/ci/run_ci.sh](./tools/ci/run_ci.sh).
-So the Docker environment is not only a convenience; it is the canonical environment used for regression and proof validation.
+GitHub Actions builds the Dockerfile's `ci` target, which runs
+[tools/ci/run_ci_build.sh](./tools/ci/run_ci_build.sh), and then executes
+isolated containers through
+[tools/ci/run_ci_shards.sh](./tools/ci/run_ci_shards.sh). The Docker
+environment and this two-phase schedule are the canonical environment used for
+regression and proof validation; `run_ci.sh` is the sequential local equivalent.

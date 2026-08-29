@@ -22,6 +22,7 @@ PLUTO_TEST_DIR = Path(os.environ.get("PLUTO_TEST_DIR", "/pluto/test"))
 COMMON_PLUTO_FLAGS = [
     "--silent",
     "--dumpscop",
+    "--rar",
     "--tile",
     "--noparallel",
     "--nointratileopt",
@@ -33,11 +34,17 @@ SUPPORTED_CASES: dict[str, dict[str, object]] = {
     "diamond-tile-example.c": {"kind": "diamond", "phase_ok": True},
     "fdtd-2d.c": {"kind": "diamond", "phase_ok": True},
     "heat-3d-imperfect.c": {"kind": "diamond", "phase_ok": True},
-    "jacobi-1d-imper.c": {"kind": "diamond", "phase_ok": True},
     "jacobi-2d-imper.c": {"kind": "diamond", "phase_ok": True},
     "jacobi-2d.c": {"kind": "diamond", "phase_ok": True},
     "multi-stmt-stencil-seq.c": {"kind": "no_effect", "phase_ok": True},
     "seidel.c": {"kind": "no_effect", "phase_ok": True},
+}
+
+PRODUCER_REJECTED_CASES = {
+    "jacobi-1d-imper.c": {
+        "returncode": 1,
+        "diagnostic": "final schedule violates a dependence; refusing code generation",
+    },
 }
 
 UNSUPPORTED_CASES = [
@@ -237,10 +244,22 @@ def check_supported_case(case_name: str, expectation: dict[str, object], out_roo
     diamond = run_pluto_case(case_name, case_root, diamond=True, timeout=timeout)
 
     if nodiamond["returncode"] != 0:
-        failures.append(f"{case_name}: nodiamond Pluto failed with exit={nodiamond['returncode']}")
+        diagnostic = first_nonempty_line(str(nodiamond["stderr"])) or first_nonempty_line(
+            str(nodiamond["stdout"])
+        )
+        failures.append(
+            f"{case_name}: nodiamond Pluto failed with exit={nodiamond['returncode']}, "
+            f"diagnostic={diagnostic or 'none'}"
+        )
         return ({"case": case_name, "status": "error"}, failures)
     if diamond["returncode"] != 0:
-        failures.append(f"{case_name}: diamond Pluto failed with exit={diamond['returncode']}")
+        diagnostic = first_nonempty_line(str(diamond["stderr"])) or first_nonempty_line(
+            str(diamond["stdout"])
+        )
+        failures.append(
+            f"{case_name}: diamond Pluto failed with exit={diamond['returncode']}, "
+            f"diagnostic={diagnostic or 'none'}"
+        )
         return ({"case": case_name, "status": "error"}, failures)
 
     for key in ["before", "mid", "posttile", "after"]:
@@ -386,6 +405,68 @@ def check_unsupported_case(case_name: str, out_root: Path, timeout: int) -> tupl
     return (result, failures)
 
 
+def check_producer_rejected_case(
+    case_name: str,
+    expectation: dict[str, object],
+    out_root: Path,
+    timeout: int,
+) -> tuple[dict[str, object], list[str]]:
+    case_root = out_root / Path(case_name).stem
+    failures: list[str] = []
+    nodiamond = run_pluto_case(case_name, case_root, diamond=False, timeout=timeout)
+    diamond = run_pluto_case(case_name, case_root, diamond=True, timeout=timeout)
+    expected_returncode = int(expectation["returncode"])
+    expected_diagnostic = str(expectation["diagnostic"])
+    combined = str(diamond["stderr"]) + "\n" + str(diamond["stdout"])
+    diagnostic_lines = [line.strip() for line in combined.splitlines() if line.strip()]
+    actual_diagnostic = next(
+        (line for line in diagnostic_lines if "ERROR:" in line),
+        diagnostic_lines[0] if diagnostic_lines else "none",
+    )
+    generated_c = Path(diamond["root"]) / f"{Path(case_name).stem}.pluto.c"
+    afterschedule = Path(diamond["after"])
+
+    if nodiamond["returncode"] != 0:
+        failures.append(
+            f"{case_name}: no-diamond control failed with exit={nodiamond['returncode']}"
+        )
+    if diamond["returncode"] != expected_returncode:
+        failures.append(
+            f"{case_name}: expected diamond exit={expected_returncode}, "
+            f"observed exit={diamond['returncode']}"
+        )
+    if expected_diagnostic not in combined:
+        failures.append(
+            f"{case_name}: missing producer diagnostic: {expected_diagnostic}"
+        )
+    if generated_c.exists():
+        failures.append(f"{case_name}: rejected producer emitted {generated_c.name}")
+    if afterschedule.exists():
+        failures.append(f"{case_name}: rejected producer emitted {afterschedule.name}")
+
+    matched_rejection = (
+        diamond["returncode"] == expected_returncode
+        and expected_diagnostic in combined
+        and not generated_c.exists()
+        and not afterschedule.exists()
+    )
+
+    result = {
+        "case": case_name,
+        "status": (
+            "pluto_final_schedule_rejected"
+            if matched_rejection
+            else "unexpected_producer_result"
+        ),
+        "returncode": diamond["returncode"],
+        "diagnostic": actual_diagnostic,
+        "nodiamond_ok": nodiamond["returncode"] == 0,
+        "generated_c": generated_c.exists(),
+        "afterscheduling_scop": afterschedule.exists(),
+    }
+    return (result, failures)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--timeout-seconds", type=int, default=180)
@@ -444,6 +525,27 @@ def main() -> int:
                 )
             )
 
+        for case_name, expectation in PRODUCER_REJECTED_CASES.items():
+            result, case_failures = check_producer_rejected_case(
+                case_name,
+                expectation,
+                out_root,
+                args.timeout_seconds,
+            )
+            results.append(result)
+            failures.extend(case_failures)
+            print(
+                f"[diamond-suite] {'PASS' if not case_failures else 'FAIL'} case={case_name} "
+                f"expected=status:pluto_final_schedule_rejected,exit:{expectation['returncode']} "
+                f"actual=status:{result['status']},exit:{result['returncode']} "
+                "interpretation="
+                + (
+                    "fixed-producer-refused-an-illegal-final-schedule"
+                    if not case_failures
+                    else "producer-rejection-did-not-match-the-fixed-baseline"
+                )
+            )
+
         for case_name in UNSUPPORTED_CASES:
             result, case_failures = check_unsupported_case(
                 case_name,
@@ -482,7 +584,7 @@ def main() -> int:
 
         print(
             f"[diamond-suite] PASS expected={len(results)} actual={len(results)} "
-            "interpretation=all-supported-effects-and-unsupported-rejections-matched"
+            "interpretation=all-declared-diamond-effects-and-rejections-matched"
         )
         return 0
     finally:

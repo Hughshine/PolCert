@@ -21,7 +21,7 @@ opam exec -- make test-polopt-loop-suite
 
 That target:
 1. builds the final `polopt`
-2. runs it on all `62` generated inputs
+2. runs the current default no-RAR pipeline on all `62` generated inputs
 3. materializes `tests/polopt-generated/cases`
 4. loads `tests/polopt-generated/strict_suite_manifest.json` and checks:
    - all `62` cases succeed
@@ -34,6 +34,12 @@ That target:
    - the checker reports the automatically detected tiled cases
    - representative cases such as `matmul`, `matmul-init`, and `wavefront`
      are required to satisfy the tiling heuristic
+
+The corpus and its original thresholds were first established when scheduler
+recipes implicitly enabled `--rar`. The full suite has been rerun after the
+default changed to Pluto's no-RAR policy, without weakening those thresholds.
+Historical explicit-RAR route and effect expectations remain in
+`test-pluto-compat-suite`; they are not treated as no-RAR expectations.
 
 If you only need the materialized `cases/<name>/` outputs for downstream
 generated whole-C harnesses, without rerunning the strict checker gate, use:

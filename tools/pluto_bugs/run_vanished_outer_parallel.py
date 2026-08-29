@@ -7,6 +7,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from pluto_versions import locate_buggy_pluto_and_polycc
+
 
 PLUTO_FLAGS = [
     "--notile",
@@ -36,31 +38,6 @@ def require(condition, message):
         raise AssertionError(message)
 
 
-def locate_pluto():
-    configured = os.environ.get("POLCERT_PLUTO")
-    if configured:
-        pluto = Path(configured).resolve()
-    elif Path("/pluto/tool/pluto").exists():
-        pluto = Path("/pluto/tool/pluto")
-    else:
-        found = shutil.which("pluto")
-        if found is None:
-            raise AssertionError("cannot locate Pluto; set POLCERT_PLUTO")
-        pluto = Path(found).resolve()
-
-    configured_polycc = os.environ.get("POLCERT_POLYCC")
-    if configured_polycc:
-        polycc = Path(configured_polycc).resolve()
-    elif pluto.parent.name == "tool" and (pluto.parent.parent / "polycc").exists():
-        polycc = pluto.parent.parent / "polycc"
-    else:
-        found = shutil.which("polycc")
-        if found is None:
-            raise AssertionError("cannot locate polycc; set POLCERT_POLYCC")
-        polycc = Path(found).resolve()
-    return pluto, polycc
-
-
 def parse_int_output(label, proc):
     require(proc.returncode == 0, f"{label} failed with exit {proc.returncode}:\n{proc.stdout}")
     try:
@@ -75,7 +52,7 @@ def main():
     source = fixture_dir / "vanished_outer_parallel.c"
     loop = fixture_dir / "vanished_outer_parallel.loop"
     polopt = repo / "polopt"
-    pluto, polycc = locate_pluto()
+    pluto, polycc = locate_buggy_pluto_and_polycc()
     compiler = os.environ.get("CC", "gcc")
 
     require(polopt.exists(), f"missing PolCert executable: {polopt}")

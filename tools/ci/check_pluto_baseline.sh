@@ -28,6 +28,13 @@ baked_values=(
   "${POLCERT_PLUTO_GIT_COMMIT:-}"
 )
 
+buggy_baked_values=(
+  "${POLCERT_BUGGY_PLUTO_GIT_REMOTE:-}"
+  "${POLCERT_BUGGY_PLUTO_GIT_COMMIT:-}"
+  "${POLCERT_BUGGY_PLUTO:-}"
+  "${POLCERT_BUGGY_POLYCC:-}"
+)
+
 baked_count=0
 for value in "${baked_values[@]}"; do
   if [[ -n "$value" ]]; then
@@ -47,6 +54,17 @@ if [[ "$baked_count" -eq 3 ]]; then
 else
   echo "[ci] No baked Pluto metadata found; validating live /pluto checkout only"
 fi
+
+for value in "${buggy_baked_values[@]}"; do
+  if [[ -z "$value" ]]; then
+    echo "[ci] Incomplete baked buggy-Pluto metadata in image environment" >&2
+    exit 1
+  fi
+done
+require_match "POLCERT_BUGGY_PLUTO_GIT_REMOTE" "$PLUTO_BUGGY_GIT_REMOTE" "${POLCERT_BUGGY_PLUTO_GIT_REMOTE}"
+require_match "POLCERT_BUGGY_PLUTO_GIT_COMMIT" "$PLUTO_BUGGY_GIT_COMMIT" "${POLCERT_BUGGY_PLUTO_GIT_COMMIT}"
+require_match "POLCERT_BUGGY_PLUTO" "$PLUTO_BUGGY_ROOT/tool/pluto" "${POLCERT_BUGGY_PLUTO}"
+require_match "POLCERT_BUGGY_POLYCC" "$PLUTO_BUGGY_ROOT/polycc" "${POLCERT_BUGGY_POLYCC}"
 
 actual_remote="$(git -C /pluto remote get-url origin)"
 require_match "/pluto origin" "$PLUTO_GIT_REMOTE" "$actual_remote"
@@ -70,15 +88,35 @@ if ! git -C /pluto diff --quiet --ignore-submodules=dirty HEAD -- . ':(exclude)D
   exit 1
 fi
 
-pluto_version_line="$(pluto --version 2>&1 | sed -n '1p' || true)"
-short_commit="${PLUTO_GIT_COMMIT:0:7}"
-version_marker="${PLUTO_BASELINE_TAG:-$short_commit}"
-if [[ "$pluto_version_line" != *"$short_commit"* ]] &&
-   [[ "$pluto_version_line" != *"$version_marker"* ]]; then
-  echo "[ci] Pluto binary version does not mention pinned commit $short_commit or tag $version_marker" >&2
-  echo "[ci]   pluto --version: $pluto_version_line" >&2
+buggy_remote="$(git -C "$PLUTO_BUGGY_ROOT" remote get-url origin)"
+require_match "$PLUTO_BUGGY_ROOT origin" "$PLUTO_BUGGY_GIT_REMOTE" "$buggy_remote"
+
+buggy_head="$(git -C "$PLUTO_BUGGY_ROOT" rev-parse HEAD)"
+require_match "$PLUTO_BUGGY_ROOT HEAD" "$PLUTO_BUGGY_GIT_COMMIT" "$buggy_head"
+if ! git -C "$PLUTO_BUGGY_ROOT" diff --quiet --ignore-submodules=dirty HEAD -- . ':(exclude)Dockerfile'; then
+  echo "[ci] Bug-reproduction Pluto sources differ from the pinned baseline" >&2
+  git -C "$PLUTO_BUGGY_ROOT" status --short --branch >&2
   exit 1
 fi
+
+short_commit="${PLUTO_GIT_COMMIT:0:7}"
+buggy_short_commit="${PLUTO_BUGGY_GIT_COMMIT:0:7}"
+
+require_binary_version() {
+  local binary="$1"
+  local expected_short_commit="$2"
+  local version_line
+  version_line="$("$binary" --version 2>&1 | sed -n '1p' || true)"
+  if [[ "$version_line" != *"$expected_short_commit"* ]]; then
+    echo "[ci] Pluto binary $binary does not mention pinned commit $expected_short_commit" >&2
+    echo "[ci]   $binary --version: $version_line" >&2
+    exit 1
+  fi
+}
+
+require_binary_version pluto "$short_commit"
+require_binary_version /pluto/tool/pluto "$short_commit"
+require_binary_version "$POLCERT_BUGGY_PLUTO" "$buggy_short_commit"
 
 require_glpk_family_flags() {
   local binary="$1"
@@ -94,5 +132,6 @@ require_glpk_family_flags() {
 
 require_glpk_family_flags pluto
 require_glpk_family_flags /pluto/tool/pluto
+require_glpk_family_flags "$POLCERT_BUGGY_PLUTO"
 
-echo "[ci] Pluto baseline OK: $short_commit from $PLUTO_GIT_REMOTE"
+echo "[ci] Pluto baselines OK: fixed=$short_commit buggy=$buggy_short_commit remote=$PLUTO_GIT_REMOTE"

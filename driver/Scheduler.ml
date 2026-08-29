@@ -610,7 +610,6 @@ let affine_only_flags =
     "--nounrolljam";
     "--noparallel";
     "--notile";
-    "--rar";
   ]
 
 let tile_only_flags () =
@@ -621,7 +620,6 @@ let tile_only_flags () =
     "--noprevector";
     "--nounrolljam";
     "--noparallel";
-    "--rar";
   ] @ intra_tile_flags ()
 
 let tile_only_second_level_flags () =
@@ -639,7 +637,6 @@ let affine_only_parallel_flags =
     "--nounrolljam";
     "--parallel";
     "--notile";
-    "--rar";
   ]
 
 let affine_only_vector_flags =
@@ -651,7 +648,6 @@ let affine_only_vector_flags =
     "--nounrolljam";
     "--noparallel";
     "--notile";
-    "--rar";
   ]
 
 let tile_only_parallel_flags () =
@@ -665,7 +661,6 @@ let tile_only_parallel_flags () =
     "--noprevector";
     "--nounrolljam";
     "--parallel";
-    "--rar";
   ] @ intra_tile_flags ()
 
 let tile_only_vector_flags () =
@@ -676,7 +671,6 @@ let tile_only_vector_flags () =
     "--prevector";
     "--nounrolljam";
     "--noparallel";
-    "--rar";
   ] @ intra_tile_flags ()
 
 let tile_only_parallel_second_level_flags () =
@@ -704,7 +698,6 @@ let post_tiling_affine_flags () =
     "--smartfuse";
     "--nounrolljam";
     "--noparallel";
-    "--rar";
   ]
   @ intra_tile_flags ()
   @
@@ -719,7 +712,6 @@ let post_tiling_affine_parallel_flags () =
     "--smartfuse";
     "--nounrolljam";
     "--parallel";
-    "--rar";
   ]
   @ intra_tile_flags ()
   @
@@ -737,7 +729,6 @@ let post_tiling_affine_vector_flags () =
     "--smartfuse";
     "--nounrolljam";
     "--noparallel";
-    "--rar";
   ]
   @ intra_tile_flags ()
   @
@@ -1061,6 +1052,8 @@ let invoke_pluto testname =
     "--nounrolljam";
     "--noparallel";
     "--notile";
+    (* Preserve the original 62-case evaluation recipe explicitly.  User-facing
+       scheduler recipes follow Pluto's default and add RAR only on request. *)
     "--rar"];
     [testname ^ ".c"]
   ] in

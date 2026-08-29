@@ -39,12 +39,23 @@ def main() -> int:
     env = os.environ.copy()
     env["POLCERT_DEBUG_PARALLEL_HINT"] = "1"
 
-    debug_cmd = [str(polopt), "--parallel", str(input_loop)]
-    strict_cmd = [str(polopt), "--parallel", "--parallel-strict", str(input_loop)]
+    compat_flags = [
+        "--pluto-compat",
+        "--tile",
+        "--smartfuse",
+        "--nointratileopt",
+        "--noprevector",
+        "--nounrolljam",
+        "--rar",
+        "--nodiamond-tile",
+        "--parallel",
+    ]
+    debug_cmd = [str(polopt), *compat_flags, str(input_loop)]
+    strict_cmd = [str(polopt), *compat_flags, "--parallel-strict", str(input_loop)]
 
     rc_debug, out_debug = run(debug_cmd, env=env)
     if rc_debug != 0:
-        print("[pluto-bug] polopt --parallel failed", file=sys.stderr)
+        print("[pluto-bug] explicit-RAR parallel route failed", file=sys.stderr)
         print(out_debug, end="", file=sys.stderr)
         return rc_debug
 
@@ -70,7 +81,7 @@ def main() -> int:
     require_absent("strict run", out_strict, "parallel for ")
     require_absent("strict run", out_strict, "== Optimized Loop ==")
 
-    print("[pluto-bug] matmul parallel-hint case reproduced")
+    print("[pluto-bug] explicit-RAR matmul parallel-hint case reproduced")
     return 0
 
 

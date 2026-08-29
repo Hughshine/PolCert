@@ -55,6 +55,7 @@ def check_build_provenance(
         "polcert_release_tag": r"\S+",
         "polcert_source_archive_sha256": r"[0-9a-f]{64}",
         "pluto_git_commit": r"[0-9a-f]{40}",
+        "pluto_buggy_git_commit": r"[0-9a-f]{40}",
     }
     for field, pattern in required_fields.items():
         value = provenance.get(field)
@@ -70,6 +71,7 @@ def check_build_provenance(
         "POLCERT_RELEASE_TAG": r"\S+",
         "POLCERT_SOURCE_ARCHIVE_SHA256": r"[0-9a-f]{64}",
         "PLUTO_GIT_COMMIT": r"[0-9a-f]{40}",
+        "PLUTO_BUGGY_GIT_COMMIT": r"[0-9a-f]{40}",
         "POLCERT_IMAGE_DIGEST": r"(?:[^@\s]+@)?sha256:[0-9a-f]{64}",
     }
     for field, pattern in environment_patterns.items():
@@ -84,6 +86,7 @@ def check_build_provenance(
         ("polcert_release_tag", "POLCERT_RELEASE_TAG"),
         ("polcert_source_archive_sha256", "POLCERT_SOURCE_ARCHIVE_SHA256"),
         ("pluto_git_commit", "PLUTO_GIT_COMMIT"),
+        ("pluto_buggy_git_commit", "PLUTO_BUGGY_GIT_COMMIT"),
     )
     for field, environment_key in comparisons:
         if provenance.get(field) != environment[environment_key]:
@@ -92,6 +95,9 @@ def check_build_provenance(
 
 
 def collect_environment() -> dict[str, str]:
+    buggy_root = os.environ.get(
+        "POLCERT_BUGGY_ROOT", "/opt/polcert/pluto-buggy"
+    )
     return {
         "POLCERT_PLUTO": os.environ.get("POLCERT_PLUTO", "/pluto/tool/pluto"),
         "PLUTO_TEST_DIR": os.environ.get("PLUTO_TEST_DIR", "/pluto/test"),
@@ -106,6 +112,9 @@ def collect_environment() -> dict[str, str]:
         ),
         "PLUTO_GIT_COMMIT": capture_version(
             ["git", "-C", "/pluto", "rev-parse", "HEAD"]
+        ),
+        "PLUTO_BUGGY_GIT_COMMIT": capture_version(
+            ["git", "-C", buggy_root, "rev-parse", "HEAD"]
         ),
         "coq_version": capture_version(["coqc", "--version"]),
         "ocaml_version": capture_version(["ocamlc", "-version"]),

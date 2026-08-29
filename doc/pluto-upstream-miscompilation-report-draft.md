@@ -2,7 +2,7 @@
 
 Status: draft for upstream issue reports
 
-Last checked: 2026-08-28
+Last checked: 2026-08-29
 
 Audience: Pluto maintainers
 
@@ -13,10 +13,10 @@ witness, and all five still reproduce on the latest official
 `bondhugula/pluto` `master` checked on 2026-08-28. The first ordinary case is a
 failure in Pluto's own LP-based affine schedule construction; it does not use a
 control file or a supplied schedule. A sixth issue affected the
-`verif-scop/pluto` fork used during PolCert development; official
-Pluto did not contain that regression. The fix is on the fork's
-`fix/diamond-reschedule-with-nointratileopt` branch and has not been merged into
-the fork's `master` branch.
+`verif-scop/pluto` fork used during PolCert development; official Pluto did not
+contain that regression. The PolCert artifact preserves an unfixed fork
+revision for these witnesses and uses a separate fixed fork revision for all
+ordinary compilation.
 
 The reports should be filed as separate upstream issues. They exercise
 different transformations and require independent fixes and regression tests.
@@ -28,6 +28,7 @@ different transformations and require independent fixes and regression tests.
 | `bondhugula/pluto` | `dc462163c8b4fc97d378a4d245d1a64741cb4111` (`master`, 2026-05-06) | Built and executed on 2026-08-28 | Automatic affine LP scaling, the vanished parallel coordinate, no-tile unroll-jam, and inner-parallel tiling still miscompile. The optional `.fst` interface still accepts an illegal supplied order. Pure diamond and full-diamond variants produce the expected result. |
 | `verif-scop/pluto` | `6f43860b6c4cddeeca09189bf3073f05b78b14a5` (`master`, 2026-05-05) | Source re-audit on 2026-08-28 | The five unresolved code paths are present. This fork also contains the conditional diamond-restore regression described below. |
 | `verif-scop/pluto` | `56b66690edeed1ef17ddc018bbf67666795a3fd4` (`fix/diamond-reschedule-with-nointratileopt`) | Built and executed on 2026-08-28 | The diamond regression is fixed on this branch. The other five witnesses remain active PolCert regression tests. |
+| `verif-scop/pluto` | `8c43c210c9c08c5958198f22db4b54000380925e` (`fix/polcert-known-miscompilations`) | Built and executed on 2026-08-29; upstream `make check` passed | All six minimized probes now produce the source result or reject the illegal candidate before code generation. This is the ordinary artifact baseline. |
 
 The official checkout does not support the fork's `--dumpscop` option. The
 latest-version recheck therefore used raw `polycc` output for executable
@@ -131,12 +132,13 @@ The fork's `--dumpscop` path records the exact automatic before/after OpenScop
 pair. PolCert's standalone affine validator returns exit code `2` and
 `overall: FAIL` for that pair.
 
-The complete PolCert driver always adds Pluto's `--rar` option. On this source,
-the additional read-after-read constraints change the scheduling problem and
-Pluto returns a different, legal `i,j` candidate; both executables then agree.
-Accordingly, the executable evidence here is an exact rejection at PolCert's
-affine validation boundary, not a claim that the complete driver receives the
-same illegal candidate.
+The complete PolCert driver follows Pluto's default and does not add `--rar`.
+On the corresponding typed `.loop` fixture, the no-RAR checked route rejects
+Pluto's candidate with an alarm and emits no optimized Loop program. When the
+user explicitly requests `--rar`, the additional read-after-read relations
+change Pluto's dependence-distance objective and it returns a different, legal `i,j`
+candidate that the checked route accepts. This pair confirms both fail-closed
+validation and explicit oracle-policy forwarding.
 
 ## C1: `.fst` Accepts an Illegal Supplied Statement Order
 
@@ -387,10 +389,13 @@ The pinned-fork producers and their checked PolCert outcomes run with:
 opam exec -- make test-pluto-bugs
 ```
 
-The target checks more than process exit status. For every reproduced
+The target selects `verif-scop/pluto@6f43860` explicitly and checks more than
+process exit status. For every reproduced
 miscompilation it compiles and executes the original and Pluto-generated C,
 asserts the expected mismatch, then checks the corresponding PolCert behavior.
-The fork-specific diamond regression asserts equality after the fix.
+The fork-specific diamond regression instead runs the normal fixed checkout
+and asserts equality after the fix. Ordinary compiler tests never use the
+historical checkout.
 
 Official-latest confirmation used a separate build of
 `bondhugula/pluto@dc462163c8b4fc97d378a4d245d1a64741cb4111`. The five raw producer

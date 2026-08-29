@@ -55,7 +55,7 @@ let usage prog =
   String.concat ""
     [
       Printf.sprintf
-        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--intratileopt|--nointratileopt] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
+        "Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--intratileopt|--nointratileopt] [--rar] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current <dim>] [--vector] [--vector-strict] [--vector-current <dim>] <file.loop>\n"
         prog;
       Printf.sprintf
         "       %s --pluto-compat [--explain] [--dry-run] <Pluto-like optimizer flags> <file.loop>\n"
@@ -95,6 +95,9 @@ let usage prog =
       "  --intratileopt    : let Pluto reorder loops within each tile; validate tiling\n";
       "                       and the final affine rescheduling separately; requires tiling\n";
       "  --nointratileopt  : preserve the preselected intra-tile loop order (default)\n";
+      "  --rar             : include Pluto read-after-read relations in the scheduling\n";
+      "                      objective (disabled by default); valid on native and\n";
+      "                      Pluto-compatible checked routes\n";
       "  --band-tiling-experiment : compatibility alias for the default band-aware\n";
       "                             ordinary tiling route; only valid on the default\n";
       "                             non-ISS full tiled path\n";
@@ -729,7 +732,8 @@ let parse_args () : config =
           go (i + 1)
       | "--innerpar" ->
           enable_pluto_compat cfg;
-          add_pluto_note cfg "--innerpar is implicit in polopt's current --parallel route";
+          add_pluto_extra_flag cfg "--innerpar";
+          add_pluto_note cfg "--innerpar passed to Pluto's checked tile-schedule oracle; the resulting parallel hint is independently certified";
           go (i + 1)
       | "--parallel-strict" -> cfg.force_parallel_strict <- true; go (i + 1)
       | "--vector" | "--vectorize" ->
@@ -842,10 +846,21 @@ let parse_args () : config =
           cfg.pluto_isldep_seen <- true;
           add_pluto_note cfg "--isldep accepted as Pluto's default dependence tester for the checked polopt route";
           go (i + 1)
-      | (("--debug" | "--islsolve" | "--moredebug"
-         | "--nocloogbacktrack" | "--rar" | "--silent") as flag) ->
+      | "--rar" ->
+          add_pluto_extra_flag cfg "--rar";
+          add_pluto_note cfg "--rar passed through to Pluto's checked scheduler oracle";
+          go (i + 1)
+      | (("--debug" | "--moredebug" | "--silent") as flag) ->
           enable_pluto_compat cfg;
-          add_pluto_note cfg (flag ^ " accepted as a no-op for the checked polopt route");
+          add_pluto_note cfg (flag ^ " accepted as a logging-only no-op for the checked polopt route");
+          go (i + 1)
+      | "--nocloogbacktrack" ->
+          enable_pluto_compat cfg;
+          add_pluto_note cfg "--nocloogbacktrack accepted as a no-op because PolOpt does not use Pluto's CLooG code generator";
+          go (i + 1)
+      | "--islsolve" ->
+          enable_pluto_compat cfg;
+          add_pluto_note cfg "--islsolve accepted as Pluto's default scheduler solver; --pipsolve or an LP solver still overrides it as in Pluto";
           go (i + 1)
       | "--unroll" ->
           pluto_reject Sys.argv.(0) "--unroll: use explicit --unrolljam for polopt's checked constant-bound unroll subset"

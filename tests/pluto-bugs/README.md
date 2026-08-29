@@ -11,6 +11,8 @@ Current cases:
     ends of a dependence independently
   - the source and Pluto output print different checksums
   - PolCert's affine validator rejects the exact bad before/after schedule
+  - the default no-RAR complete route rejects the corresponding `.loop`
+    candidate, while explicit `--rar` obtains and accepts a different legal one
 - `diamond-nointratile-reschedule` (fixed pure-tiling miscompilation)
   - a phase-dump patch incorrectly made a mandatory diamond hyperplane restore
     conditional on the optional intra-tile locality pass
@@ -28,7 +30,8 @@ Current cases:
   - this deliberately inconsistent `.fst` file does not demonstrate that
     Pluto's automatic affine scheduler discovers an illegal schedule
 - `matmul_parallel_hint` (unsafe hint, not a demonstrated raw-Pluto miscompile)
-  - Pluto's `--parallel` hint selects current dimension `0`
+  - with explicitly requested `--rar`, Pluto's `--parallel` hint selects
+    current dimension `0`
   - the checked PolCert parallel route rejects that dimension
   - the non-strict frontend falls back to certified current dimension `1`
   - the strict frontend keeps the loop sequential
@@ -56,6 +59,19 @@ Run all cases:
 ```sh
 opam exec -- make test-pluto-bugs
 ```
+
+Artifact version policy:
+
+- ordinary PolOpt and Pluto compatibility tests use the fixed Pluto checkout
+  at `/pluto`;
+- the five active producer miscompilations use only the pinned historical
+  checkout at `/opt/polcert/pluto-buggy`;
+- the fixed diamond regression and the matmul unsafe-hint check use the normal
+  fixed checkout;
+- a missing historical checkout is an error, not a fallback to `/pluto`.
+
+The two Pluto revisions are checked by `tools/ci/check_pluto_baseline.sh` and
+recorded separately in `BUILD_PROVENANCE.json`.
 
 Background note:
 

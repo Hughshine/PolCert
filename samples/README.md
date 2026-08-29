@@ -1,8 +1,11 @@
-You can generate openscop file for samples with:
+You can reproduce the original RAR-enabled sample dumps with:
 
 ```
 pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector --smartfuse --nounrolljam --noparallel --notile --rar CSample[123].c
 ```
+
+The current `polopt` default follows Pluto and omits `--rar`; pass it explicitly
+only when comparing with this historical sample recipe.
 
 They should carry semantically equivalent information (except the typing information of instructions) with the polyhedral model in CSample[123].v.  
 

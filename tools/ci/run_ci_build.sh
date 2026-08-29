@@ -50,6 +50,7 @@ ci_run_timed python-syntax \
   python3 -m py_compile \
     /polcert/tools/ci/check_open_proofs.py \
     /polcert/tools/artifact/proof_report.py \
+    /polcert/tools/artifact/compare_rar_policy.py \
     /polcert/tools/artifact/run_artifact_check.py \
     /polcert/tools/artifact/test_tiling_route_summary.py \
     /polcert/tools/polopt_flag_suites/manifest_runner.py \
@@ -63,6 +64,8 @@ ci_run_timed python-syntax \
     /polcert/tools/iss/run_iss_multicut_adversarial.py \
     /polcert/tools/iss/run_pluto_iss_suite.py \
     /polcert/tools/iss/run_pluto_iss_live_suite.py \
+    /polcert/tools/pluto_bugs/pluto_versions.py \
+    /polcert/tools/pluto_bugs/run_auto_affine_lp_cc_scaling.py \
     /polcert/tools/pluto_bugs/run_affine_fst_reversed.py \
     /polcert/tools/pluto_bugs/run_diamond_nointratile_reschedule.py \
     /polcert/tools/pluto_bugs/run_matmul_parallel_hint.py \

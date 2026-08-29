@@ -106,23 +106,30 @@ leg, not part of the permutable-band judgment.
 
 ## Pluto configuration used by `polopt`
 
-`polopt` intentionally tracks the scheduling capability of Pluto under the same flag set used throughout this repository:
+`polopt` uses phase-aligned Pluto recipes while preserving Pluto's default of
+not computing read-after-read relations:
 
 ```sh
 pluto --dumpscop --nointratileopt --nodiamond-tile --noprevector \
-      --smartfuse --nounrolljam --noparallel --notile --rar
+      --smartfuse --nounrolljam --noparallel --notile
 ```
 
 This matters because the default verified path is aimed at **checked
 schedule/domain transformation and schedule-driven code generation**, not at
 the full Pluto transformation space. In particular, the default `polopt` path
 should be read as supporting the optimization capability that Pluto exposes
-**under exactly this flag set**:
+**under this phase-isolated flag set**. Users can add `--rar` explicitly as an
+oracle scheduling policy; it changes only the candidate and never bypasses
+validation:
 
 - affine scheduling / loop reordering
 - skewing / wavefront-style rescheduling
 - statement reordering, fission, and related schedule effects
 - schedule changes that stay within the validated affine-scheduling story
+
+See [the Pluto RAR policy study](doc/pluto-rar-policy-study.md) for its source
+semantics, its treatment in the 2008 Pluto papers, and checked no-RAR/RAR
+comparisons.
 
 The default path does **not** claim support for the full Pluto transformation
 space. It includes the checked phase-aligned tiling route, but it does not by

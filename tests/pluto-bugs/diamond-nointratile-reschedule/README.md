@@ -25,3 +25,7 @@ declines the degenerate scalar tile link. The separate typed `diamond-stencil`
 positive test demonstrates that a supported pure diamond candidate is accepted
 through checked tiling, post-tiling affine validation, and proved code
 generation.
+
+The ordinary artifact baseline `8c43c21` contains this earlier fix. The
+historical `6f43860` checkout is retained separately for the old failing
+producer and is never used by ordinary PolOpt tests.

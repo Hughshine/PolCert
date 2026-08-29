@@ -1,0 +1,362 @@
+{
+  "cases": [
+    {
+      "mode": "parallel",
+      "name": "corcol",
+      "no_rar": {
+        "diagnostic": "  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 2.6815755600109696,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N);\n\nif (2 <= M) {\n  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif ((1 <= N && 2 <= M)) {\n  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(0, ((N + 32) / 32)) {\n        for i3 in range(max((32 * i0), 1), min(min(((32 * i1) + 31), M), ((32 * i0) + 32))) {\n          for i4 in range(max((32 * i1), (i3 + 1)), min(((32 * i1) + 32), (M + 1))) {\n            for i5 in range(max(1, (32 * i2)), min((N + 1), ((32 * i2) + 32))) {\n              symmat[i3][i4] = (symmat[i3][i4] + (data[i5][i3] * data[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i3][i2] = symmat[i2][i3];\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}\n\n[parallel-validation] status=skipped source=pluto-hint reason=no-certifiable-dimension\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 17.248045066022314,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N);\n\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif ((1 <= N && 2 <= M)) {\n  for i0 in range(0, ((N + 32) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (((32 * i1) + 1) / 32)), ((M + 32) / 32)) {\n        for i3 in range(max((32 * i0), 1), min(((32 * i0) + 32), (N + 1))) {\n          for i4 in range(max((32 * i1), 1), min(min(M, ((32 * i2) + 31)), ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), (i4 + 1)), min((M + 1), ((32 * i2) + 32))) {\n              symmat[i4][i5] = (symmat[i4][i5] + (data[i3][i4] * data[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i3][i2] = symmat[i2][i3];\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "parallel",
+      "name": "dct",
+      "no_rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[parallel-validation] status=skipped source=pluto-hint reason=no-certifiable-dimension\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 50.660795147996396,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M);\n\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          sum2[i2][i3] = 0.0;\n          temp2d[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              temp2d[i4][i3] = (temp2d[i4][i3] + (block[i4][i5] * cos1[i3][i5]));\n            }\n          }\n        }\n      }\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              sum2[i5][i3] = (sum2[i5][i3] + (cos1[i5][i4] * temp2d[i4][i3]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          block[i2][i3] = sum2[i2][i3];\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[parallel-validation] status=skipped source=pluto-hint reason=no-certifiable-dimension\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 51.3296990749659,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M);\n\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          sum2[i2][i3] = 0.0;\n          temp2d[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              temp2d[i3][i4] = (temp2d[i3][i4] + (block[i3][i5] * cos1[i4][i5]));\n            }\n          }\n        }\n      }\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              sum2[i5][i4] = (sum2[i5][i4] + (cos1[i5][i3] * temp2d[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          block[i2][i3] = sum2[i2][i3];\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "parallel",
+      "name": "dsyrk",
+      "no_rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 0.6336571729625575,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (1 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {\n      for i2 in range(0, ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32))) {\n          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), NMAX)) {\n              c[i3][i4] = (c[i3][i4] + (a[i5][i3] * a[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 1.1601180030265823,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (1 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    parallel for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(((32 * i1) / 32), 0), ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max((32 * i1), 0), min(min(NMAX, ((32 * i2) + 32)), ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), i4), min(((32 * i2) + 32), NMAX)) {\n              c[i4][i5] = (c[i4][i5] + (a[i3][i4] * a[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "parallel",
+      "name": "matmul",
+      "no_rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 0.7461988819995895,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N, K);\n\nif ((1 <= M && (1 <= N && 1 <= K))) {\n  parallel for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((N + 31) / 32)) {\n      for i2 in range(0, ((K + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), M)) {\n          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), K)) {\n              C[i3][i4] = ((beta * C[i3][i4]) + ((alpha * A[i3][i5]) * B[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 1.4609693849924952,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N, K);\n\nif ((1 <= M && (1 <= N && 1 <= K))) {\n  for i0 in range(0, ((K + 31) / 32)) {\n    parallel for i1 in range(0, ((N + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), K)) {\n          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              C[i5][i4] = ((beta * C[i5][i4]) + ((alpha * A[i5][i3]) * B[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "parallel",
+      "name": "ssymm",
+      "no_rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 4.862599352025427,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (3 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i4] = (c[i3][i4] + (a[i4][i4] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {\n          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));\n        }\n      }\n    }\n  }\n}\nif (3 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 29) / 32)) {\n      for i2 in range(max(0, (((32 * i1) + 2) / 32)), ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max((32 * i1), 0), min(min(((32 * i2) + 30), (NMAX + -2)), ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), (i4 + 2)), min(((32 * i2) + 32), NMAX)) {\n              c[i3][i4] = (c[i3][i4] + (a[i5][i4] * b[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "          }\n        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 5.037084802985191,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (3 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i4] = (c[i3][i4] + (a[i4][i4] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {\n          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));\n        }\n      }\n    }\n  }\n}\nif (3 <= NMAX) {\n  parallel for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i5] = (c[i3][i5] + (a[i4][i5] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": true,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "vector",
+      "name": "corcol",
+      "no_rar": {
+        "diagnostic": "    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 5.074163468030747,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N);\n\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif ((1 <= N && 2 <= M)) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(0, ((N + 32) / 32)) {\n        for i3 in range(max((32 * i0), 1), min(min(((32 * i1) + 31), M), ((32 * i0) + 32))) {\n          for i4 in range(max((32 * i1), (i3 + 1)), min(((32 * i1) + 32), (M + 1))) {\n            for i5 in range(max(1, (32 * i2)), min((N + 1), ((32 * i2) + 32))) {\n              symmat[i3][i4] = (symmat[i3][i4] + (data[i5][i3] * data[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i3][i2] = symmat[i2][i3];\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 5.101697286998387,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N);\n\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif ((1 <= N && 2 <= M)) {\n  for i0 in range(0, ((N + 32) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (((32 * i1) + 1) / 32)), ((M + 32) / 32)) {\n        for i3 in range(max((32 * i0), 1), min(((32 * i0) + 32), (N + 1))) {\n          for i4 in range(max((32 * i1), 1), min(min(M, ((32 * i2) + 31)), ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), (i4 + 1)), min((M + 1), ((32 * i2) + 32))) {\n              symmat[i4][i5] = (symmat[i4][i5] + (data[i3][i4] * data[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max(0, (((32 * i0) + 1) / 32)), ((M + 32) / 32)) {\n      for i2 in range(max(1, (32 * i0)), min(min(M, ((32 * i1) + 31)), ((32 * i0) + 32))) {\n        for i3 in range(max((i2 + 1), (32 * i1)), min((M + 1), ((32 * i1) + 32))) {\n          symmat[i3][i2] = symmat[i2][i3];\n        }\n      }\n    }\n  }\n}\nif (2 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), M)) {\n      symmat[i1][i1] = 1.0;\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "vector",
+      "name": "dct",
+      "no_rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 9.858307490998413,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M);\n\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          sum2[i2][i3] = 0.0;\n          temp2d[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              temp2d[i4][i3] = (temp2d[i4][i3] + (block[i4][i5] * cos1[i3][i5]));\n            }\n          }\n        }\n      }\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              sum2[i5][i3] = (sum2[i5][i3] + (cos1[i5][i4] * temp2d[i4][i3]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          block[i2][i3] = sum2[i2][i3];\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 9.188578417000826,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M);\n\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          sum2[i2][i3] = 0.0;\n          temp2d[i2][i3] = 0.0;\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              temp2d[i3][i4] = (temp2d[i3][i4] + (block[i3][i5] * cos1[i4][i5]));\n            }\n          }\n        }\n      }\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n          for i4 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              sum2[i5][i4] = (sum2[i5][i4] + (cos1[i5][i3] * temp2d[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((M + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {\n          block[i2][i3] = sum2[i2][i3];\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "vector",
+      "name": "dsyrk",
+      "no_rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=no-hint\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 0.550615017011296,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (1 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {\n      for i2 in range(0, ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32))) {\n          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), NMAX)) {\n              c[i3][i4] = (c[i3][i4] + (a[i5][i3] * a[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band\n[vector-validation] status=applied source=pluto-hint scope=innermost",
+        "elapsed_seconds": 0.7247073539765552,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (1 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(((32 * i1) / 32), 0), ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max((32 * i1), 0), min(min(NMAX, ((32 * i2) + 32)), ((32 * i1) + 32))) {\n            vector for i5 in range(max((32 * i2), i4), min(((32 * i2) + 32), NMAX)) {\n              c[i4][i5] = (c[i4][i5] + (a[i3][i4] * a[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": true
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "vector",
+      "name": "matmul",
+      "no_rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=no-hint\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 0.7876275220187381,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N, K);\n\nif ((1 <= M && (1 <= N && 1 <= K))) {\n  for i0 in range(0, ((M + 31) / 32)) {\n    for i1 in range(0, ((N + 31) / 32)) {\n      for i2 in range(0, ((K + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), M)) {\n          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), K)) {\n              C[i3][i4] = ((beta * C[i3][i4]) + ((alpha * A[i3][i5]) * B[i5][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[tiling-validation] route=permutable-band\n[vector-validation] status=applied source=pluto-hint scope=innermost",
+        "elapsed_seconds": 0.9183313159737736,
+        "optimized_loop": "== Optimized Loop ==\ncontext(M, N, K);\n\nif ((1 <= M && (1 <= N && 1 <= K))) {\n  for i0 in range(0, ((K + 31) / 32)) {\n    for i1 in range(0, ((N + 31) / 32)) {\n      for i2 in range(0, ((M + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), K)) {\n          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n            vector for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {\n              C[i5][i4] = ((beta * C[i5][i4]) + ((alpha * A[i5][i3]) * B[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": true
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    },
+    {
+      "mode": "vector",
+      "name": "ssymm",
+      "no_rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 4.28166911797598,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (3 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i4] = (c[i3][i4] + (a[i4][i4] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {\n          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));\n        }\n      }\n    }\n  }\n}\nif (3 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 29) / 32)) {\n      for i2 in range(max(0, (((32 * i1) + 2) / 32)), ((NMAX + 31) / 32)) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max((32 * i1), 0), min(min(((32 * i2) + 30), (NMAX + -2)), ((32 * i1) + 32))) {\n            for i5 in range(max((32 * i2), (i4 + 2)), min(((32 * i2) + 32), NMAX)) {\n              c[i3][i4] = (c[i3][i4] + (a[i5][i4] * b[i3][i5]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "optimized_loop_equal": false,
+      "pair_class": "both-accepted",
+      "pipeline": "tiled",
+      "rar": {
+        "diagnostic": "        }\n      }\n    }\n  }\n}\n\n[vector-validation] status=skipped reason=hint-not-certifiable-or-non-innermost\n[tiling-validation] route=permutable-band",
+        "elapsed_seconds": 7.007482893997803,
+        "optimized_loop": "== Optimized Loop ==\ncontext(NMAX);\n\nif (3 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i4] = (c[i3][i4] + (a[i4][i4] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}\nif (1 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {\n        for i3 in range(max(0, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {\n          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));\n        }\n      }\n    }\n  }\n}\nif (3 <= NMAX) {\n  for i0 in range(0, ((NMAX + 31) / 32)) {\n    for i1 in range(0, ((NMAX + 31) / 32)) {\n      for i2 in range(0, min(((NMAX + 29) / 32), (((32 * i1) + 61) / 32))) {\n        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {\n          for i4 in range(max(max(((32 * i2) + 2), 2), (32 * i1)), min(((32 * i1) + 32), NMAX)) {\n            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), (i4 + -1))) {\n              c[i3][i5] = (c[i3][i5] + (a[i4][i5] * b[i3][i4]));\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "parallel": false,
+        "returncode": 0,
+        "scheduled_openscop": "",
+        "status": "accepted",
+        "tiled": true,
+        "vector": false
+      },
+      "schedule_compared": false,
+      "scheduled_openscop_equal": false
+    }
+  ],
+  "modes": [
+    "parallel",
+    "vector"
+  ],
+  "pipeline": "tiled",
+  "rar_interpretation": "RAR adds read-read reuse relations to Pluto's dependence-distance bounding objective. Pluto excludes them from legality and permutability constraints; PolCert validates either returned candidate independently.",
+  "schema": 2,
+  "summaries": {
+    "parallel": {
+      "both-accepted": 5,
+      "both-rejected": 0,
+      "both_accepted_loop_different": 5,
+      "both_accepted_loop_equal": 0,
+      "checked_driver_aggregate_rar_over_no_rar": 1.2794518554918999,
+      "checked_driver_mean_case_rar_over_no_rar": 2.4539708463246703,
+      "checked_driver_median_case_rar_over_no_rar": 1.830829117900845,
+      "checked_driver_no_rar_seconds": 59.58482611499494,
+      "checked_driver_rar_seconds": 76.23591633199248,
+      "no-rar-only": 0,
+      "parallel_effect_changed": 1,
+      "rar-only": 0,
+      "schedule_compared": 0,
+      "schedule_different": 0,
+      "timeout": 0,
+      "total": 5,
+      "vector_effect_changed": 0
+    },
+    "vector": {
+      "both-accepted": 5,
+      "both-rejected": 0,
+      "both_accepted_loop_different": 5,
+      "both_accepted_loop_equal": 0,
+      "checked_driver_aggregate_rar_over_no_rar": 1.1162110834803507,
+      "checked_driver_mean_case_rar_over_no_rar": 1.2112478096731791,
+      "checked_driver_median_case_rar_over_no_rar": 1.1659461995690978,
+      "checked_driver_no_rar_seconds": 20.552382616035175,
+      "checked_driver_rar_seconds": 22.940797267947346,
+      "no-rar-only": 0,
+      "parallel_effect_changed": 0,
+      "rar-only": 0,
+      "schedule_compared": 0,
+      "schedule_different": 0,
+      "timeout": 0,
+      "total": 5,
+      "vector_effect_changed": 2
+    }
+  },
+  "timing_interpretation": "Elapsed times cover the complete checked PolOpt invocation, not Pluto alone, and are descriptive rather than a stable benchmark."
+}
