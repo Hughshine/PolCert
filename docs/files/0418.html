@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test_manifest_runner.py</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>source/tools/polopt_flag_suites/test_manifest_runner.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
+
+import pathlib
+import subprocess
+import tempfile
+from unittest import mock
+
+import manifest_runner
+
+
+def evaluate_failure(stdout: str) -&gt; str | None:
+    with tempfile.TemporaryDirectory(prefix=&quot;polcert-manifest-runner-&quot;) as tmp:
+        fixture = pathlib.Path(tmp) / &quot;input.loop&quot;
+        fixture.write_text(&quot;dummy\n&quot;)
+        completed = subprocess.CompletedProcess(
+            args=[&quot;polopt&quot;],
+            returncode=1,
+            stdout=stdout,
+            stderr=&quot;Parallel validation failed\n&quot;,
+        )
+        with mock.patch.object(
+            manifest_runner,
+            &quot;run_polopt&quot;,
+            return_value=completed,
+        ):
+            return manifest_runner.evaluate_check(
+                {&quot;input&quot;: fixture},
+                pathlib.Path(&quot;./polopt&quot;),
+                {
+                    &quot;name&quot;: &quot;synthetic-rejection&quot;,
+                    &quot;fixture&quot;: &quot;input&quot;,
+                    &quot;expect&quot;: &quot;failure&quot;,
+                    &quot;needle&quot;: &quot;Parallel validation failed&quot;,
+                },
+                stderr_needles_exactly_once=False,
+                timeout=1,
+            )
+
+
+def main() -&gt; int:
+    ordinary_failure = evaluate_failure(&quot;&quot;)
+    if ordinary_failure is not None:
+        raise AssertionError(
+            f&quot;ordinary rejection was not accepted: {ordinary_failure}&quot;
+        )
+
+    leaked_result = evaluate_failure(
+        &quot;== Optimized Loop ==\nfor (int i = 0; i &lt; 1; i++) {}\n&quot;
+    )
+    if leaked_result is None or &quot;emitted an optimized-loop section&quot; not in leaked_result:
+        raise AssertionError(
+            &quot;failure manifest accepted a rejected command that emitted an old result&quot;
+        )
+
+    print(&quot;[manifest-runner] OK (failed commands cannot emit optimized results)&quot;)
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre>
+</main>
+</body>
+</html>

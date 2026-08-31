@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>diff.patch</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/pca/diff.patch</code></h1>
+  <pre>--- input.pretty.loop
++++ optimized.loop
+@@ -1,36 +1,108 @@
+ context(m, n);
+
+-for i0 in range(1, (m + 1)) {
+-  mean[i0] = 0.0;
+-  for i1 in range(1, (n + 1)) {
+-    mean[i0] = (mean[i0] + data[i1][i0]);
+-  }
+-  mean[i0] = (mean[i0] / float_n);
+-}
+-for i0 in range(1, (m + 1)) {
+-  stddev[i0] = 0.0;
+-  for i1 in range(1, (n + 1)) {
+-    stddev[i0] = (stddev[i0] + ((data[i1][i0] - mean[i0]) * (data[i1][i0] - mean[i0])));
+-  }
+-  stddev[i0] = (stddev[i0] / float_n);
+-  stddev[i0] = sqrt(stddev[i0]);
+-  stddev[i0] = ((stddev[i0] &lt;= eps) ? 1.0 : stddev[i0]);
+-}
+-for i0 in range(1, (n + 1)) {
+-  for i1 in range(1, (m + 1)) {
+-    data[i0][i1] = (data[i0][i1] - mean[i1]);
+-    x = sqrt(float_n);
+-    x = (x * stddev[i1]);
+-    data[i0][i1] = (data[i0][i1] / x);
++if (2 &lt;= m) {
++  for i0 in range(0, ((m + 31) / 32)) {
++    for i1 in range(max((((32 * i0) + 1) / 32), 0), ((m + 32) / 32)) {
++      for i2 in range(max((32 * i0), 1), min(min(((32 * i1) + 31), m), ((32 * i0) + 32))) {
++        for i3 in range(max((32 * i1), (i2 + 1)), min(((32 * i1) + 32), (m + 1))) {
++          symmat[i2][i3] = 0.0;
++        }
++      }
++    }
+   }
+ }
+-for i0 in range(1, ((m + -1) + 1)) {
+-  symmat[i0][i0] = 1.0;
+-  for i1 in range((i0 + 1), (m + 1)) {
+-    symmat[i0][i1] = 0.0;
+-    for i2 in range(1, (n + 1)) {
+-      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
++if (2 &lt;= m) {
++  for i0 in range(0, ((m + 31) / 32)) {
++    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), m)) {
++      symmat[i1][i1] = 1.0;
++      stddev[i1] = 0.0;
++      mean[i1] = 0.0;
+     }
+-    symmat[i1][i0] = symmat[i0][i1];
++    if ((m + (-32 * i0)) &lt;= 31) {
++      stddev[m] = 0.0;
++      mean[m] = 0.0;
++    }
++  }
++  if ((m % 32) == 0) {
++    stddev[(32 * (m / 32))] = 0.0;
++    mean[(32 * (m / 32))] = 0.0;
+   }
+ }
++if ((m &lt;= 1 &amp;&amp; 1 &lt;= m)) {
++  stddev[1] = 0.0;
++  mean[1] = 0.0;
++}
++if ((1 &lt;= m &amp;&amp; 1 &lt;= n)) {
++  for i0 in range(0, ((m + 32) / 32)) {
++    for i1 in range(0, ((n + 32) / 32)) {
++      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
++        for i3 in range(max((32 * i1), 1), min(((32 * i1) + 32), (n + 1))) {
++          mean[i2] = (mean[i2] + data[i3][i2]);
++        }
++      }
++    }
++  }
++}
++if (1 &lt;= m) {
++  for i0 in range(0, ((m + 32) / 32)) {
++    for i1 in range(max(1, (32 * i0)), min((m + 1), ((32 * i0) + 32))) {
++      mean[i1] = (mean[i1] / float_n);
++    }
++  }
++}
++if ((1 &lt;= m &amp;&amp; 1 &lt;= n)) {
++  for i0 in range(0, ((m + 32) / 32)) {
++    for i1 in range(0, ((n + 32) / 32)) {
++      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
++        for i3 in range(max(1, (32 * i1)), min((n + 1), ((32 * i1) + 32))) {
++          stddev[i2] = (stddev[i2] + ((data[i3][i2] - mean[i2]) * (data[i3][i2] - mean[i2])));
++          data[i3][i2] = (data[i3][i2] - mean[i2]);
++        }
++      }
++    }
++  }
++}
++if (1 &lt;= m) {
++  for i0 in range(0, ((m + 32) / 32)) {
++    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
++      stddev[i1] = (stddev[i1] / float_n);
++      stddev[i1] = sqrt(stddev[i1]);
++      stddev[i1] = ((stddev[i1] &lt;= eps) ? 1.0 : stddev[i1]);
++    }
++  }
++}
++if ((1 &lt;= n &amp;&amp; 1 &lt;= m)) {
++  for i0 in range(1, (n + 1)) {
++    for i1 in range(1, (m + 1)) {
++      x = sqrt(float_n);
++      x = (x * stddev[i1]);
++      data[i0][i1] = (data[i0][i1] / x);
++    }
++  }
++}
++if ((1 &lt;= n &amp;&amp; 2 &lt;= m)) {
++  for i0 in range(0, ((m + 31) / 32)) {
++    for i1 in range(max((((32 * i0) + 1) / 32), 0), ((m + 32) / 32)) {
++      for i2 in range(0, ((n + 32) / 32)) {
++        for i3 in range(max(1, (32 * i0)), min(min(m, ((32 * i1) + 31)), ((32 * i0) + 32))) {
++          for i4 in range(max((i3 + 1), (32 * i1)), min((m + 1), ((32 * i1) + 32))) {
++            for i5 in range(max(1, (32 * i2)), min((n + 1), ((32 * i2) + 32))) {
++              symmat[i3][i4] = (symmat[i3][i4] + (data[i5][i3] * data[i5][i4]));
++            }
++          }
++        }
++      }
++    }
++  }
++}
++if (2 &lt;= m) {
++  for i0 in range(0, ((m + 31) / 32)) {
++    for i1 in range(max((((32 * i0) + 1) / 32), 0), ((m + 32) / 32)) {
++      for i2 in range(max((32 * i0), 1), min(min(((32 * i1) + 31), m), ((32 * i0) + 32))) {
++        for i3 in range(max((32 * i1), (i2 + 1)), min(((32 * i1) + 32), (m + 1))) {
++          symmat[i3][i2] = symmat[i2][i3];
++        }
++      }
++    }
++  }
++}
+</pre>
+</main>
+</body>
+</html>

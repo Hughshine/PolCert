@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tmm.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/tmm.loop</code></h1>
+  <pre>context(NMAX);
+
+for i in range(0, NMAX) {
+  for j in range(i, NMAX) {
+    for k in range(i, NMAX) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

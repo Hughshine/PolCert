@@ -1,8 +1,7 @@
 {
   "formal_source": {
-    "file_hash_manifest": "FORMAL_SOURCE_SHA256SUMS",
-    "file_hash_manifest_sha256": "1060fb30487d0f3e67ca7c1aa738d48eeb9abaaafa5a981a97fd806f4a4e2852",
-    "files": 252
+    "files": 252,
+    "packaging_check": "byte-identical-to-validated-snapshot"
   },
   "pluto_sources": {
     "fixed": {
@@ -19,7 +18,7 @@
   "proof_documentation": {
     "generated_pages": 40
   },
-  "snapshot": "cpp-supplement-r1",
+  "snapshot": "cpp-supplement-r2",
   "validation": {
     "execution_comparisons": {
       "baseline_vs_optimized": {

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>optimized.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/matmul-seq3/optimized.loop</code></h1>
+  <pre>context(N);
+
+if ((-2 * N) &lt;= -2) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          for i4 in range(0, N) {
+            C[i2][i3] = (C[i2][i3] + (A[i2][i4] * B[i4][i3]));
+            F[i2][i3] = (F[i2][i3] + (D[i2][i4] * E[i4][i3]));
+          }
+          for i4 in range(0, min((i2 + 1), (i3 + 1))) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              for i6 in range((i3 + (-1 * i4)), (i3 + ((-1 * i4) + 1))) {
+                G[i5][i6] = (G[i5][i6] + (C[i5][i4] * F[i4][i6]));
+              }
+            }
+          }
+        }
+        for i3 in range(N, min(((32 * i1) + 32), (N + i2))) {
+          for i4 in range(((-1 * N) + (i3 + 1)), (i2 + 1)) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              for i6 in range((i3 + (-1 * i4)), (i3 + ((-1 * i4) + 1))) {
+                G[i5][i6] = (G[i5][i6] + (C[i5][i4] * F[i4][i6]));
+              }
+            }
+          }
+        }
+      }
+      for i2 in range(N, min(((2 * N) + -1), ((32 * i0) + 32))) {
+        for i3 in range(max((32 * i1), ((-1 * N) + (i2 + 1))), min(((32 * i1) + 32), ((2 * N) + -1))) {
+          for i4 in range(max(((-1 * N) + (i2 + 1)), ((-1 * N) + (i3 + 1))), min(N, (i3 + 1))) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              for i6 in range((i3 + (-1 * i4)), (i3 + ((-1 * i4) + 1))) {
+                G[i5][i6] = (G[i5][i6] + (C[i5][i4] * F[i4][i6]));
+              }
+            }
+          }
+        }
+      }
+    }
+    for i1 in range(((N + 31) / 32), min(((N + ((32 * i0) + 62)) / 32), ((N + 15) / 16))) {
+      for i2 in range(max(((-1 * N) + ((32 * i1) + 1)), (32 * i0)), min(((2 * N) + -1), ((32 * i0) + 32))) {
+        for i3 in range((32 * i1), min(min(((32 * i1) + 32), ((2 * N) + -1)), (N + i2))) {
+          for i4 in range(max(((-1 * N) + (i2 + 1)), ((-1 * N) + (i3 + 1))), min((i2 + 1), N)) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              for i6 in range((i3 + (-1 * i4)), (i3 + ((-1 * i4) + 1))) {
+                G[i5][i6] = (G[i5][i6] + (C[i5][i4] * F[i4][i6]));
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+for i0 in range(((N + 31) / 32), ((N + 15) / 16)) {
+  for i1 in range((((-1 * N) + ((32 * i0) + 1)) / 32), (((2 * N) + 30) / 32)) {
+    for i2 in range((32 * i0), min(min((N + ((32 * i1) + 31)), ((2 * N) + -1)), ((32 * i0) + 32))) {
+      for i3 in range(max((32 * i1), ((-1 * N) + (i2 + 1))), min(((32 * i1) + 32), ((2 * N) + -1))) {
+        for i4 in range(max(((-1 * N) + (i2 + 1)), ((-1 * N) + (i3 + 1))), min(N, (i3 + 1))) {
+          for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+            for i6 in range((i3 + (-1 * i4)), (i3 + ((-1 * i4) + 1))) {
+              G[i5][i6] = (G[i5][i6] + (C[i5][i4] * F[i4][i6]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

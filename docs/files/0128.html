@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>input.pretty.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/lu/input.pretty.loop</code></h1>
+  <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range((i0 + 1), N) {
+    a[i0][i1] = (a[i0][i1] / a[i0][i0]);
+  }
+  for i1 in range((i0 + 1), N) {
+    for i2 in range((i0 + 1), N) {
+      a[i1][i2] = (a[i1][i2] - (a[i1][i0] * a[i0][i2]));
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>
