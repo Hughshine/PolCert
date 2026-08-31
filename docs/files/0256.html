@@ -3,33 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diamond-suite.stdout.txt</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/proof-and-test-results/raw-output/diamond-suite.stdout.txt</code></h1>
-  <pre>[diamond-suite] PASS case=diamond-tile-example.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=fdtd-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=heat-3d-imperfect.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d-imper.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=multi-stmt-stencil-seq.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=seidel.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-1d-imper.c expected=status:pluto_final_schedule_rejected,exit:1 actual=status:pluto_final_schedule_rejected,exit:1 interpretation=fixed-producer-refused-an-illegal-final-schedule
-[diamond-suite] PASS case=heat-2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-2dp.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-3d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-mod.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic-even.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-17pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-imper.par2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-25pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS expected=19 actual=19 interpretation=all-declared-diamond-effects-and-rejections-matched
+  <h1><code>evidence/rejected-optimizer-outputs/notile-unrolljam-nonpermutable/README.md</code></h1>
+  <pre># No-tile unroll-jam crosses a non-permutable loop
+
+Status: reproduced, minimized, validator-catches.
+
+The outer `i,h` loops form a permutable band. The `j` loop carries a
+dependence: iteration `j + 1` reads element `a[...,j,3]`, which iteration `j`
+writes only when the inner `k` loop reaches `3`.
+
+At the pinned bug-reproduction commit
+`historical-bug-witness-pluto-snapshot`,
+the unroll-jam candidate search unconditionally treats the program as having
+one tiled level. With `--notile`, that skips the real band boundary and admits
+the non-permutable `j` loop. Pluto then emits adjacent `j` and `j + 1`
+statements inside the `k` loop. At `k = 0`, the second statement reads
+`a[...,j,3]` before it has been written.
+
+The original program prints `15`; Pluto&#x27;s generated program prints `1`.
+PolCert&#x27;s checked unroll-jam route does not emit the unsafe adjacent pair.
+The ordinary fixed Pluto baseline `ordinary-fixed-pluto-snapshot` also corrects the tiled-level
+count used for candidate discovery.
+
+Run the complete producer and validator check with:
+
+```sh
+python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
+```
 </pre>
 </main>
 </body>

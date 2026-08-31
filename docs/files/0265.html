@@ -3,31 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>iss-suite.stdout.txt</title>
+  <title>direct-only-tiling-route-smoke.stdout.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/proof-and-test-results/raw-output/iss-suite.stdout.txt</code></h1>
-  <pre>make -f Makefile.extr polopt
-make[1]: Entering directory &#x27;/polcert&#x27;
-make[1]: &#x27;polopt&#x27; is up to date.
-make[1]: Leaving directory &#x27;/polcert&#x27;
-python3 tools/iss/run_iss_multicut_adversarial.py
-[ISS-MULTICUT] PASS case=multicut-complete expected=accept,exit:0 actual=accept,exit:0 interpretation=all-four-sign-regions-proved
-[ISS-MULTICUT] PASS case=pluto-three-cut-four-piece-mismatch expected=reject,exit:1 actual=reject,exit:1 interpretation=incomplete-three-cut-sign-space-rejected
-[ISS-MULTICUT] PASS case=two-cut-missing-piece expected=reject,exit:1 actual=reject,exit:1 interpretation=missing-sign-region-rejected
-[ISS-MULTICUT] PASS expected=accepted:1,rejected:2 actual=accepted:1,rejected:2 interpretation=complete-cut-boundary-matched
-./polopt --validate-iss-pluto-suite
-[ISS] PASS case=reverse_before.txt-to-reverse_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=multi_stmt_periodic_before.txt-to-multi_stmt_periodic_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=jacobi_2d_periodic_before.txt-to-jacobi_2d_periodic_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=heat_2dp_before.txt-to-heat_2dp_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=iss-name-collision expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=invalid-ISS-witness-was-rejected
-[ISS] PASS case=reverse_bad_halfspace expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=mutated-ISS-witness-was-rejected
-[ISS] PASS case=reverse_bad_payload expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=mutated-ISS-witness-was-rejected
-[ISS-SUITE] PASS expected=accepted:4,rejected:3 actual=accepted:4,rejected:3 interpretation=positive-and-mutated-negative-ISS-contracts-matched
+  <h1><code>evidence/results/raw/direct-only-tiling-route-smoke.stdout.txt</code></h1>
+  <pre>[direct-route] PASS case=ordinary-common-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=second-level-zero-row-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=second-level-zero-row-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=ordinary-phase-separated-mixed-depth expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=ordinary-phase-separated-mixed-depth-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=mixed-depth-semantic-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=mixed-depth-semantic-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=second-level-mixed-depth-semantic-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=second-level-mixed-depth-semantic-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=dependent-one-dimensional-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=frozen-diamond-phase-pair expected=route:permutable-band,optimized-output:false,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=frozen-nonpermutable-band expected=route:rejected,optimized-output:false,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-ordinary-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-ordinary-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-identity-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-identity-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-diamond-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-diamond-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-second-level-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS case=explicit-second-level-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
+[direct-route] PASS expected=20,fallbacks:0 actual=20,fallbacks:0 interpretation=all-direct-route-contracts-matched
 </pre>
 </main>
 </body>

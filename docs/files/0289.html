@@ -3,39 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>unrolljam-effect-corpus.stdout.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/rejected-optimizer-outputs/notile-unrolljam-nonpermutable/README.md</code></h1>
-  <pre># No-tile unroll-jam crosses a non-permutable loop
-
-Status: reproduced, minimized, validator-catches.
-
-The outer `i,h` loops form a permutable band. The `j` loop carries a
-dependence: iteration `j + 1` reads element `a[...,j,3]`, which iteration `j`
-writes only when the inner `k` loop reaches `3`.
-
-At the pinned bug-reproduction commit
-`historical-bug-witness-pluto-snapshot`,
-the unroll-jam candidate search unconditionally treats the program as having
-one tiled level. With `--notile`, that skips the real band boundary and admits
-the non-permutable `j` loop. Pluto then emits adjacent `j` and `j + 1`
-statements inside the `k` loop. At `k = 0`, the second statement reads
-`a[...,j,3]` before it has been written.
-
-The original program prints `15`; Pluto&#x27;s generated program prints `1`.
-PolCert&#x27;s checked unroll-jam route does not emit the unsafe adjacent pair.
-The ordinary fixed Pluto baseline `ordinary-fixed-pluto-snapshot` also corrects the tiled-level
-count used for candidate discovery.
-
-Run the complete producer and validator check with:
-
-```sh
-python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
-```
+  <h1><code>evidence/results/raw/unrolljam-effect-corpus.stdout.txt</code></h1>
+  <pre>{
+  &quot;cases&quot;: 11,
+  &quot;extract_failures&quot;: 0,
+  &quot;factor&quot;: 4,
+  &quot;native_codegen_effects&quot;: 6,
+  &quot;native_effects_covered&quot;: 6,
+  &quot;native_effects_uncovered&quot;: 0,
+  &quot;native_no_effect&quot;: 5,
+  &quot;output_root&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus&quot;,
+  &quot;pluto_failures&quot;: 0,
+  &quot;polopt_extra_checked_effects_without_native&quot;: 0,
+  &quot;polopt_extra_effect_fixtures&quot;: [],
+  &quot;polopt_tiling_route_fixtures&quot;: [],
+  &quot;polopt_tiling_route_reports&quot;: 0,
+  &quot;uncovered_fixtures&quot;: []
+}
 </pre>
 </main>
 </body>

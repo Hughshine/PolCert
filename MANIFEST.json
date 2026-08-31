@@ -5,11 +5,13 @@
   },
   "pluto_sources": {
     "fixed": {
+      "archive": "third_party/pluto/fixed.tar.xz",
       "files": 7575,
       "packaging_archive_sha256": "5d04579f13add5ba6838fd8a8e617eec63d46186a8756e2946abbf471e6e3eb0",
       "tree_sha256": "9f8306d2b137f83f1e7ba369dc3e3576b47c9b9d670d3d65b43f858ef1b67ea0"
     },
     "historical": {
+      "archive": "third_party/pluto/historical.tar.xz",
       "files": 7574,
       "packaging_archive_sha256": "76f78f578e37aa4d2c229b268f7888522fb0414d66c7c7151908e3fbc485167b",
       "tree_sha256": "44275f9e6157366c1468dff418cadd0a0c7b3e1db64620117b36af498614ae7b"
@@ -18,7 +20,7 @@
   "proof_documentation": {
     "generated_pages": 40
   },
-  "snapshot": "cpp-supplement-r2",
+  "snapshot": "cpp-supplement-r3",
   "validation": {
     "execution_comparisons": {
       "baseline_vs_optimized": {

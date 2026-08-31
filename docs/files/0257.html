@@ -3,34 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>direct-only-tiling-route-smoke.stdout.txt</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/proof-and-test-results/raw-output/direct-only-tiling-route-smoke.stdout.txt</code></h1>
-  <pre>[direct-route] PASS case=ordinary-common-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=second-level-zero-row-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=second-level-zero-row-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=ordinary-phase-separated-mixed-depth expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=ordinary-phase-separated-mixed-depth-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=mixed-depth-semantic-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=mixed-depth-semantic-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=second-level-mixed-depth-semantic-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=second-level-mixed-depth-semantic-band-iss expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=dependent-one-dimensional-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=frozen-diamond-phase-pair expected=route:permutable-band,optimized-output:false,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=frozen-nonpermutable-band expected=route:rejected,optimized-output:false,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-ordinary-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-ordinary-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-identity-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-identity-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-diamond-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-diamond-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-second-level-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS case=explicit-second-level-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
-[direct-route] PASS expected=20,fallbacks:0 actual=20,fallbacks:0 interpretation=all-direct-route-contracts-matched
+  <h1><code>evidence/rejected-optimizer-outputs/tiling-innerpar-satvec/README.md</code></h1>
+  <pre># Inner-Parallel Tiling Metadata Corrupts Dependence Satisfaction
+
+Status: reproduced, minimized, validator-catches.
+
+The two-dimensional recurrence reads both `a[i-1][j]` and `a[i][j-1]`.
+The rectangular tiling transformation is legal, but neither original schedule
+dimension is parallel.
+
+With `--identity --tile --parallel --innerpar`, pinned Pluto leaves the tile
+schedule unchanged in `lib/tile.c:446-456`. It nevertheless moves inner
+dependence-satisfaction bits to the outer tile dimension and clears the inner
+bits at `lib/tile.c:461-478`. Later parallel-loop discovery trusts those bits
+and emits an OpenMP pragma for tile loop `t4`.
+
+The fixture uses tile size `2`, so the 16-by-16 recurrence contains several
+tiles while all source values remain within signed 32-bit range. The original
+program prints `310235039`. Four-thread executions of Pluto&#x27;s output produce
+different values. PolCert separates the two claims:
+
+- the checked permutable-band validator accepts the rectangular tiling itself;
+- the parallel validator finds no certifiable nontrivial dimension and refuses
+  Pluto&#x27;s unsafe OpenMP annotation;
+- non-strict mode emits the safe tiled loop with only a one-iteration parallel
+  loop, which is semantically sequential, while strict mode rejects the
+  requested parallel optimization without output.
+
+Run the executable comparison and the phase-specific checks with:
+
+```sh
+opam exec -- make test-pluto-miscompilation-tiling-innerpar
+```
 </pre>
 </main>
 </body>

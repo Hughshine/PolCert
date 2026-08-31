@@ -3,58 +3,441 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>proof-report.md</title>
+  <title>BUG_REPORT_DRAFT.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/proof-and-test-results/proof-report.md</code></h1>
-  <pre># PolCert Proof Report
+  <h1><code>evidence/rejected-optimizer-outputs/BUG_REPORT_DRAFT.md</code></h1>
+  <pre># Draft: Silent Miscompilations and an Unsafe Pluto Control Interface
 
-- Coq files scanned: `197`
-- Local admitted markers: `0`
-- Local abort markers: `0`
-- Extracted OCaml unrealized axioms: `0`
-- Missing listed route theorems: `0`
+Status: draft for upstream issue reports
 
-## Route Map
+Last checked: 2026-08-29
 
-| Route | CLI | Theorem file | Theorem names | Note |
-|---|---|---|---|---|
-| default band-aware sequential optimizer | `polopt &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_band_correct, Opt_prepared_band_correct |  |
-| unified direct-only permutable-band tiling dispatcher | `every ordinary, second-level, identity-tiled, ISS, diamond, parallel, vector, and multipar tiling boundary` | `src/TilingBandDirectRuntime.v` | checked_second_level_direct_band_check_correct, checked_tiling_sourceb_first_direct_band_check_correct, checked_tiling_sourceb_complete_direct_band_check_sourceb_true, checked_tiling_sourceb_complete_direct_band_check_correct, checked_tiling_sourceb_complete_direct_band_check_outer_correct, checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct | The executable dispatcher accepts supported ordinary, identity, mixed-depth, diamond, and second-level tilings only through proved semantic permutable-band checks; malformed or unsupported layouts are rejected rather than passed to another tiling validator. |
-| direct semantic permutable-band checker | `internal primary tiling validator for recognized common-band and componentwise second-level layouts` | `src/TilingBandScheduleValidator.v` | validate_two_instrs_pluto_band_component_direct_sound, check_pinstr_list_pluto_permutable_band_direct_sound, check_pprog_pluto_permutable_tiling_bands_direct_sound_with_env_len, check_pinstr_list_pluto_componentwise_permutable_bands_direct_sound, ordinary_semantic_band_shape_reversal_bridge, second_level_semantic_band_shape_reversal_bridge, checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt | This is a sound semantic analogue of Pluto&#x27;s fully permutable-band condition. It does not claim to verify Pluto&#x27;s dependence-graph construction, band search, or detector implementation. |
-| phase-separated ordinary direct checker | `internal direct branch for ordinary strip mining with statement-specific band widths after unique constant phase rows` | `src/TilingBandMixedSecondValidator.v` | phase_separated_ordinary_reversal_same_class, phase_class_ordinary_local_reversal_bridge_wf_with_env_len, check_pprog_phase_separated_ordinary_direct_true_inv, check_pprog_phase_separated_ordinary_direct_correct_same_ctxt | The branch preserves each leading phase row, uses phase uniqueness to exclude cross-statement reversals, and checks each statement&#x27;s inferred band with the direct componentwise permutable-band checker. |
-| phase-aware mixed second-level direct checker | `internal direct branch for the recognized grouped mixed-depth second-level layout` | `src/TilingBandMixedSecondValidator.v` | mixed_second_level_local_reversal_bridge_wf_with_env_len, check_pprog_mixed_second_level_direct_true_inv, check_pprog_mixed_second_level_direct_correct_same_ctxt | This fail-closed branch requires grouped schedules, band start one, and globally unique constant phase rows. It proves soundness for the recognized class, not completeness for every mixed second-level tiling. |
-| identity extraction/codegen route | `polopt --identity --notile &lt;file.loop&gt;` | `driver/PolOptCorrect.v` | Identity_opt_prepared_correct |  |
-| band-first identity second-level tiling route | `polopt --identity-tiled --second-level-tile &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_prepared_identity_tiled_band_correct, Opt_identity_tiled_band_correct |  |
-| checked ISS plus band-first identity second-level tiling route | `polopt --iss --identity-tiled --second-level-tile &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_prepared_identity_tiled_band_with_iss_correct, Opt_identity_tiled_band_with_iss_correct |  |
-| affine-only route | `polopt --notile &lt;file.loop&gt;` | `driver/PolOptCorrect.v` | Affine_opt_prepared_correct |  |
-| legacy CLI alias for band-first sequential optimizer | `polopt --legacy-generic-tiling &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_band_correct, Opt_prepared_band_correct |  |
-| band-first ISS optimizer | `polopt --iss &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_band_with_iss_correct, Opt_prepared_band_with_iss_correct |  |
-| checked parallel current | `polopt --parallel-current &lt;dim&gt; &lt;file.loop&gt;` | `driver/ParallelPolOptCorrect.v` | Opt_parallel_current_correct |  |
-| checked raw parallel codegen form | `internal checked alternative used by parallel-current routes` | `src/ParallelCodegenCorrect.v` | checked_annotated_codegen_correct_general | The selector returns metadata-preserving cleaned output only when every proof-relevant cleanup stage passes the executable trace-safety gate; otherwise it retains the checked standard-raw singleton-loop output. |
-| raw parallel codegen compatibility endpoint | `internal generic endpoint retained for compatibility consumers` | `src/ParallelCodegenCompatibility.v` | annotated_codegen_raw_correct_general | This compatibility theorem exposes the raw generated-program endpoint; certificate-backed compiler routes use the checked theorem above. |
-| raw prepared codegen | `internal codegen before singleton cleanup` | `src/PrepareCodegen.v` | prepared_codegen_raw_correct, prepared_codegen_raw_correct_general |  |
-| checked post-tiling affine plus parallel current | `polopt --diamond-tile --parallel-current &lt;dim&gt; &lt;file.loop&gt;` | `driver/ParallelPolOptCorrect.v` | Opt_parallel_current_post_tiling_affine_correct, Opt_parallel_current_post_tiling_affine_result_correct, parallel_current_post_tiling_affine_prepared_from_poly_correct |  |
-| verified constant-unroll compiler postpass | `polopt --const-unroll &lt;file.loop&gt;` | `driver/ExtractedPipelineCorrect.v` | extracted_sequential_compile_with_postpass_correct | The extracted endpoint composes the selected sequential producer theorem with constant-bound unrolling and cleanup. |
-| verified sequential unroll-jam compiler endpoint | `polopt --pluto-compat --unrolljam [--ufactor N] &lt;file.loop&gt;` | `driver/ExtractedPipelineCorrect.v` | extracted_sequential_compile_with_unrolljam_correct | The theorem composes the selected producer with optional constant unrolling, checked block/remainder unroll-jam, and cleanup. The candidate selector is universally quantified. |
-| checked unroll-jam followed by fresh parallel validation | `polopt --pluto-compat --unrolljam --parallel [--multipar] &lt;file.loop&gt;` | `driver/ExtractedPipelineCorrect.v` | extracted_parallel_after_unrolljam_correct, extracted_parallel_many_after_unrolljam_correct | These theorems compose the checked sequential postpass with fresh identity-route extraction and parallel certification. They do not transport annotations through arbitrary transformed Loop nests. |
-| loop-native same-bound sibling jam theorem | `internal building block used by locally validated --unrolljam fusion` | `src/LoopJamNative.v` | jammed_two_loop_instance_refines_unjammed | The theorem proves that a jammed same-range sibling-loop instance list refines the original unjammed sibling loops under the trace cross-permutability certificate. |
-| single same-bound sibling-loop jam refinement | `semantic building block for the extracted jam lowerer` | `src/LoopJamLower.v` | try_jam_pair_exact_sound | This theorem is the native single-pair semantic component. LoopJamBridge supplies its trace premise from the extracted affine certificate, and LoopJamContext lifts accepted pairs through recursive lowering contexts. |
-| per-candidate sibling-loop jam validator | `internal validator called by extracted --unrolljam lowerer for each same-bound sibling-loop candidate` | `src/LoopJamValidator.v` | checked_loop_jam_pair_at_depth_pointwise_sound | The validator retains equal parameter/enclosing-iterator schedule coordinates and reverses the body-group row to certify cross-body independence inside each shared outer environment over the candidate&#x27;s actual bounds. |
-| checked sibling-loop jam certificate bridge | `proof component used by the extracted --unrolljam lowerer` | `src/LoopJamBridge.v` | checked_pair_refines_sound | The bridge transports the pointwise affine certificate to native trace permutability and closes both ordinary and guarded checked-pair refinement. |
-| verified Loop cleanup post pass | `internal post pass used after checked unroll` | `polygen/LoopSingletonCleanup.v` | cleanup_correct |  |
-| positive-literal stride range lowering | `front-end lowering for .loop syntax range(lb, ub, step) where step is a positive integer literal` | `polygen/LoopStride.v` | stride_loop_stmt_semantics | The extracted front end lowers stride loops to an affine over-approximation plus affine guard, so the verified extractor still sees an affine SCoP and codegen can recover the compact ceil-divided loop bound. |
-| negative-literal stride range lowering | `front-end lowering for .loop syntax range(lb, ub, step) where step is a negative integer literal` | `polygen/LoopStride.v` | down_stride_loop_stmt_semantics | The extracted front end mirrors the positive-stride route by using a unit candidate loop, the affine iterator lb - step*k, and the affine guard ub + 1 &lt;= iterator. |
-| verified symbolic expression display simplification | `internal post-output simplifier used by .loop pretty printing` | `syntax/SLoopSymbolicSimpl.v` | display_affine_expr_correct, display_instr_expr_correct | The extracted pretty path lowers pure integer instruction expressions through the current Loop slots, simplifies the resulting Loop expression, and prints that theorem-backed expression instead of the raw slot-expanded syntax. |
-| enumerated verified compiler config wrapper | `internal compiler wrapper: check_config followed by compile_verified` | `driver/VerifiedCompilerConfig.v` | compile_correct, compile_verified_correct, compile_unsupported_no_result | This proof-side wrapper states correctness for the abstract route definitions used by the extracted configuration. |
-| exact extracted compiler dispatcher bridge | `all sequential, parallel-current, vector-current, and multipar configurations selected by polopt` | `driver/ExtractedPipelineCorrect.v` | extracted_sequential_compile_verified_correct, extracted_sequential_compile_correct, extracted_parallel_compile_verified_correct, extracted_parallel_compile_correct | These theorems prove the concrete syntax/SVerified* configurations used by extraction, branch by branch, via explicit equality bridges to the proof-side optimizer modules. |
-| unified Loop-to-ParallelLoop compiler config wrapper | `normal polopt sequential route, explicit --parallel-current route, and Pluto-hinted --parallel/--multipar routes` | `driver/VerifiedParallelCompilerConfig.v` | compile_correct, compile_verified_correct, compile_seq_verified_correct, checked_sequential_current_annotated_codegen_correct, compile_unsupported_no_result | This wrapper gives a single Loop -&gt; ParallelLoop end-to-end theorem. Sequential routes use checked all-SeqMode ParallelLoop codegen. Parallel routes certify padded schedule coordinates, derive ordering for each actual target execution, and use cleaned output only when every proof-relevant cleanup stage is trace-safe; otherwise they retain the checked standard-raw form. Pluto-hinted --parallel and --multipar are candidate-selection layers over the same checked compiler; --multipar dispatches through RawParallelCurrentMany* configs and the extracted Coq route filters the candidate list to all certifiable coordinates before checked multi-cert codegen. The underlying route theorems live in driver/ParallelPolOptCorrect.v, including Opt_parallel_current_many_correct, Opt_parallel_current_many_identity_tiled_correct, and Opt_parallel_current_many_post_tiling_affine_correct. |
-| checked ISS plus post-tiling affine plus parallel current | `polopt --iss --diamond-tile --parallel-current &lt;dim&gt; &lt;file.loop&gt;` | `driver/ParallelPolOptCorrect.v` | Opt_parallel_current_post_tiling_affine_with_iss_correct, Opt_parallel_current_post_tiling_affine_with_iss_result_correct, parallel_current_post_tiling_affine_prepared_from_poly_with_iss_correct |  |
-| post-tiling affine optimizer | `polopt --diamond-tile &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_post_tiling_affine_band_correct, Opt_prepared_post_tiling_affine_band_correct, try_post_tiling_affine_phase_pipeline_from_source_pol_band_correct | Also covers --full-diamond-tile and --second-level-tile through the same extracted route. |
-| ISS plus post-tiling affine optimizer | `polopt --iss --diamond-tile &lt;file.loop&gt;` | `driver/PolOptBandTiling.v` | Opt_post_tiling_affine_band_with_iss_correct, Opt_prepared_post_tiling_affine_band_with_iss_correct, try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_band_correct | Also covers --iss --full-diamond-tile and --iss --second-level-tile through the same extracted route. |
+Audience: Pluto maintainers
+
+This document describes four ordinary Pluto optimization paths that silently
+produce wrong C programs and one optional `.fst` control interface that accepts
+an illegal user-supplied statement order. Each issue has a minimized executable
+witness, and all five still reproduce on the latest official
+`bondhugula/pluto` `master` checked on 2026-08-28. The first ordinary case is a
+failure in Pluto&#x27;s own LP-based affine schedule construction; it does not use a
+control file or a supplied schedule. A sixth issue affected the
+`phase-dump-pluto-fork` fork used during PolCert development; official Pluto did not
+contain that regression. The PolCert artifact preserves an unfixed fork
+revision for these witnesses and uses a separate fixed fork revision for all
+ordinary compilation.
+
+The reports should be filed as separate upstream issues. They exercise
+different transformations and require independent fixes and regression tests.
+
+## Version Matrix
+
+| Repository | Revision | Evidence | Result |
+|---|---|---|---|
+| `bondhugula/pluto` | `dc462163c8b4fc97d378a4d245d1a64741cb4111` (`master`, 2026-05-06) | Built and executed on 2026-08-28 | Automatic affine LP scaling, the vanished parallel coordinate, no-tile unroll-jam, and inner-parallel tiling still miscompile. The optional `.fst` interface still accepts an illegal supplied order. Pure diamond and full-diamond variants produce the expected result. |
+| `phase-dump-pluto-fork` | `historical-bug-witness-pluto-snapshot` (`master`, 2026-05-05) | Source re-audit on 2026-08-28 | The five unresolved code paths are present. This fork also contains the conditional diamond-restore regression described below. |
+| `phase-dump-pluto-fork` | `diamond-fix-snapshot` (`diamond-fix-branch`) | Built and executed on 2026-08-28 | The diamond regression is fixed on this branch. The other five witnesses remain active PolCert regression tests. |
+| `phase-dump-pluto-fork` | `ordinary-fixed-pluto-snapshot` (`fixed-regression-branch`) | Built and executed on 2026-08-29; upstream `make check` passed | All six minimized probes now produce the source result or reject the illegal candidate before code generation. This is the ordinary artifact baseline. |
+
+The official checkout does not support the fork&#x27;s `--dumpscop` option. The
+latest-version recheck therefore used raw `polycc` output for executable
+comparisons and the fork only where a PolCert before/after phase dump was
+needed.
+
+## Result Summary
+
+| ID | Transformation | Source result | Pluto result | Latest official status | PolCert outcome |
+|---|---|---:|---:|---|---|
+| P1 | Automatic affine LP schedule integerization | `802469374803681347` | `11412027514774867379` | Reproduced at `dc462163` without a control file | The affine validator rejects the exact bad before/after schedule. |
+| C1 | Optional `.fst` statement-order control | `100` | `0` | Reproduced at `dc462163`; not an automatic-scheduler witness | Affine validation rejects the schedule; the complete route emits no optimized loop. |
+| P2 | Parallel annotation after a one-trip schedule coordinate vanishes | `10000` | `2499` in repeated four-thread runs | Reproduced at `dc462163` | Strict hint mapping and a direct check of the actual inner dimension both reject. |
+| P3 | Unroll-jam under `--notile` | `15` | `1` | Reproduced at `dc462163` | Proved block unrolling is retained, but the unsafe local jam is rejected. |
+| P4 | `--tile --parallel --innerpar` satisfaction metadata | `310235039` | `928116`, `7631020`, and `23122525` in three four-thread runs | Reproduced at `dc462163` | Rectangular tiling is accepted; the unsafe parallel overlay is removed or rejected in strict mode. |
+| F1 | Diamond tiling without intra-tile optimization in the `phase-dump-fork` phase-dump patch | `20` | `18`; full-diamond: `15` | Not present in official `dc462163`; fixed in fork commit `diamond-fix-snapshot` | The mixed-scalar candidate is conservatively rejected; a separate supported pure-diamond case is accepted. |
+
+Parallel wrong-code results can vary across executions. The values above are
+observations from the 2026-08-28 recheck, not invariants of the defects.
+
+## P1: LP Integerization Can Make an Automatic Affine Schedule Illegal
+
+### Suggested issue title
+
+`Connected-component relabeling breaks affine LP schedule integerization`
+
+### Minimal witness
+
+- C source:
+  `tests/pluto-bugs/auto-affine-lp-cc-scaling/auto_affine_lp_cc_scaling.c`
+
+Run in a directory containing no Pluto control files:
+
+```sh
+polycc --maxfuse --lp --notile --noparallel --noprevector \
+  --nounrolljam --nointratileopt --nodiamond-tile \
+  auto_affine_lp_cc_scaling.c
+gcc -std=c11 -O2 auto_affine_lp_cc_scaling.c -o baseline
+gcc -std=c11 -O2 auto_affine_lp_cc_scaling.pluto.c -o optimized
+./baseline
+./optimized
+```
+
+This is Pluto&#x27;s automatic affine scheduler. The test supplies no `.fst`,
+`.precut`, `skipdeps.txt`, or candidate schedule, and it disables all later
+transformations relevant to this example.
+
+Expected behavior: both programs print `802469374803681347`.
+
+Observed behavior: Pluto exits successfully and prints the schedules
+
+```text
+T(S1): (2i+j, i, 1)
+T(S2): (9i+3j, i, 1)
+T(S3): (8i+4j+4, i, 0)
+T(S4): (9i+3j+6, i, 0)
+```
+
+The generated program prints `11412027514774867379`. The violation is visible
+without relying on the checksum. `S3(i,j-1)` produces the value read by
+`S1(i,j)`, but their first schedule coordinates are respectively `8i+4j` and
+`2i+j`. At `i=1,j=3`, Pluto schedules the producer at `20` and the consumer at
+`5`.
+
+### Root cause
+
+The four statements form two dependence components with interleaved statement
+identifiers: `{S1,S3}` and `{S2,S4}`. `ddg_compute_cc` in
+`lib/pluto.c:1983-2015` first assigns a component during DFS, but each later
+outer-loop iteration writes its current `cc_id` into the vertex even when that
+vertex was already visited. When the loop reaches `S3`, it overwrites the label
+assigned while visiting `S1`, so the two ends of the real `S3 -&gt; S1`
+dependence appear to belong to different components.
+
+`populate_scaling_csr_matrices_for_pluto_program` in
+`lib/framework.cpp:1374-1413` copies those component identifiers into the LP
+scaling problem. Pluto then converts rational schedules to integers using a
+different positive factor per supposed component. Scaling both ends of a
+dependence by the same factor would preserve legality; scaling `S3` and `S1`
+independently does not.
+
+### Suggested fix and regression
+
+Assign a vertex&#x27;s component exactly when DFS discovers it, and never overwrite
+an already visited vertex in the outer loop. Before LP integerization, perform
+an unconditional runtime check that both endpoints of every current
+unsatisfied DDG edge have the same connected-component identifier; on failure,
+abort scheduling or fall back to a single global scale or ILP. After
+integerization, independently validate the complete lexicographic schedule
+before any later transformation or code generation. The executable regression
+must keep the two real components interleaved in statement order.
+
+As a causal check, deleting only the unconditional component overwrite in a
+clean official checkout made this input produce compatible `S1`/`S3`
+schedules and restored the source checksum. A final legality gate is still
+needed so that future bookkeeping errors cannot silently escape.
+
+### PolCert cross-check
+
+The fork&#x27;s `--dumpscop` path records the exact automatic before/after OpenScop
+pair. PolCert&#x27;s standalone affine validator returns exit code `2` and
+`overall: FAIL` for that pair.
+
+The complete PolCert driver follows Pluto&#x27;s default and does not add `--rar`.
+On the corresponding typed `.loop` fixture, the no-RAR checked route rejects
+Pluto&#x27;s candidate with an alarm and emits no optimized Loop program. When the
+user explicitly requests `--rar`, the additional read-after-read relations
+change Pluto&#x27;s dependence-distance objective and it returns a different, legal `i,j`
+candidate that the checked route accepts. This pair confirms both fail-closed
+validation and explicit oracle-policy forwarding.
+
+## C1: `.fst` Accepts an Illegal Supplied Statement Order
+
+This is a control-interface validation defect, not a demonstrated failure of
+Pluto&#x27;s automatic affine schedule search. The test deliberately supplies an
+inconsistent `.fst` file and checks that Pluto fails to reject it.
+
+### Suggested issue title
+
+`.fst` statement grouping can place a consumer before its producer
+
+### Minimal witness
+
+- C source: `tests/pluto-bugs/affine-fst-reversed/affine_fst_reversed.c`
+- control file: `tests/pluto-bugs/affine-fst-reversed/reversed.fst`
+
+Copy `reversed.fst` to `.fst` in the working directory, then run:
+
+```sh
+polycc --notile --nodiamond-tile --nointratileopt --noprevector \
+  --nounrolljam --noparallel affine_fst_reversed.c
+gcc -O2 affine_fst_reversed.c -o baseline
+gcc -O2 affine_fst_reversed.pluto.c -o optimized
+./baseline
+./optimized
+```
+
+Expected behavior: Pluto should either reject the inconsistent grouping or
+emit a program that prints `100`.
+
+Observed behavior: Pluto exits successfully, emits the complete consumer loop
+before the producer loop, and the generated program prints `0`.
+
+### Root cause
+
+`lib/pluto.c:873-940` reads `.fst` and installs scalar statement groups
+directly. Dependence satisfaction is then updated incrementally. There is no
+independent final check that the complete lexicographic schedule preserves all
+dependences. A later positive loop coordinate can therefore mark a dependence
+satisfied even though an earlier scalar coordinate is negative.
+
+### Suggested fix and regression
+
+Validate the final schedule against every dependence after applying `.fst` or
+`.precut`. The validation must inspect the complete lexicographic schedule,
+not only the dimension currently being constructed. Parser failures, missing
+statement identifiers, duplicate identifiers, and an inconsistent grouping
+should be fatal. The minimized source and `.fst` file should become an
+executable negative regression.
+
+### PolCert cross-check
+
+PolCert&#x27;s standalone affine checker rejects the Pluto before/after schedule.
+The complete route keeps the source domains, accesses, and instructions,
+imports only the candidate scattering, reports the failed validation, and
+emits no optimized Loop program.
+
+## P2: A Vanished Coordinate Can Transfer Parallelism to a Dependent Loop
+
+### Suggested issue title
+
+`Parallel AST fallback crosses the selected band when a loop vanishes`
+
+### Minimal witness
+
+- C source: `tests/pluto-bugs/vanished-outer-parallel/vanished_outer_parallel.c`
+
+```sh
+polycc --notile --nodiamond-tile --nointratileopt --noprevector \
+  --nounrolljam --parallel vanished_outer_parallel.c
+gcc -O2 vanished_outer_parallel.c -o baseline
+gcc -O2 -fopenmp vanished_outer_parallel.pluto.c -o optimized
+./baseline
+OMP_NUM_THREADS=4 ./optimized
+```
+
+Expected behavior: the dependent inner recurrence remains sequential and both
+programs print `10000`.
+
+Observed behavior: CLooG removes the one-trip outer coordinate, Pluto emits an
+OpenMP pragma on the inner recurrence, and four-thread executions produce an
+incorrect value. The latest-version recheck produced `2499` in three runs.
+
+### Root cause
+
+`tool/ast_transform.c:75-95` searches inward when the selected parallel loop
+does not survive CLooG. Its boundary condition is:
+
+```c
+inloops[0]-&gt;depth &gt; band-&gt;loop-&gt;depth + band-&gt;width
+```
+
+The band occupies the half-open depth interval
+`[band-&gt;loop-&gt;depth, band-&gt;loop-&gt;depth + band-&gt;width)`. The condition therefore
+allows the fallback to cross the boundary at equality and annotate a loop that
+was not part of the selected parallel band.
+
+### Suggested fix and regression
+
+Changing `&gt;` to `&gt;=` closes the immediate off-by-one defect. A stronger fix is
+to carry an exact mapping from the selected polyhedral schedule dimension to
+the surviving CLAST loop and to decline the annotation when that dimension was
+eliminated. The regression should use a one-trip independent outer loop and a
+dependence-carrying inner loop, then execute the generated OpenMP program.
+
+### PolCert cross-check
+
+PolCert&#x27;s strict route rejects the parallel hint because the selected
+coordinate has no surviving certifiable loop. A separate test asks PolCert to
+check the concrete inner coordinate chosen by Pluto&#x27;s fallback; its dependence
+check also rejects that loop.
+
+## P3: No-Tile Unroll-Jam Can Cross a Non-Permutable Loop
+
+### Suggested issue title
+
+`--notile --unrolljam assumes one tiled level and jams across a dependence`
+
+### Minimal witness
+
+- C source: `tests/pluto-bugs/notile-unrolljam-nonpermutable/notile_unrolljam_nonpermutable.c`
+
+```sh
+polycc --identity --notile --nodiamond-tile --nointratileopt \
+  --noprevector --unrolljam --ufactor=2 --noparallel \
+  notile_unrolljam_nonpermutable.c
+gcc -O2 notile_unrolljam_nonpermutable.c -o baseline
+gcc -O2 notile_unrolljam_nonpermutable.pluto.c -o optimized
+./baseline
+./optimized
+```
+
+Expected behavior: both programs print `15`.
+
+Observed behavior: Pluto places the statements for `j` and `j+1` adjacent
+inside the `k` loop. The second statement reads the value for `k=3` before the
+first statement has produced it. The generated program prints `1`.
+
+### Root cause
+
+`lib/polyloop.c:575-605` calls:
+
+```c
+pluto_get_innermost_permutable_bands(prog, 1, &amp;num_ibands)
+```
+
+The hard-coded second argument assumes that one tiled loop level exists. Under
+`--notile`, candidate discovery skips the actual permutable-band boundary and
+admits the dependence-carrying `j` loop. The later AST rewrite applies the jam
+without independently validating that local permutation.
+
+### Suggested fix and regression
+
+Pass the number of tiled levels actually introduced by the selected pipeline;
+it is zero under `--notile`. Independently validate each proposed jam
+permutation immediately before the AST rewrite. The executable regression
+should retain the dependence that becomes visible only after the unsafe jam.
+
+### PolCert cross-check
+
+PolCert implements the transformation as proved block unrolling followed by a
+local trace-permutability check. It emits the unrolled blocks but preserves
+separate `k` loops when the jam proof fails, so the generated program remains
+equivalent to the source.
+
+## P4: `--innerpar` Moves Satisfaction Bits Without the Matching Schedule
+
+### Suggested issue title
+
+`--tile --parallel --innerpar can mark a dependence-carrying tile loop parallel`
+
+### Minimal witness
+
+- C source: `tests/pluto-bugs/tiling-innerpar-satvec/tiling_innerpar_satvec.c`
+- tile sizes: `tests/pluto-bugs/tiling-innerpar-satvec/tile.sizes`
+
+Copy `tile.sizes` into the working directory, then run:
+
+```sh
+polycc --identity --tile --parallel --innerpar --nodiamond-tile \
+  --nointratileopt --noprevector --nounrolljam tiling_innerpar_satvec.c
+gcc -O2 tiling_innerpar_satvec.c -o baseline
+gcc -O2 -fopenmp tiling_innerpar_satvec.pluto.c -o optimized
+./baseline
+OMP_NUM_THREADS=4 ./optimized
+```
+
+Expected behavior: the two-dimensional recurrence remains sequential and both
+programs print `310235039`.
+
+Observed behavior: Pluto emits `#pragma omp parallel for` on tile loop `t4`.
+Three executions of the official latest revision printed `928116`, `7631020`,
+and `23122525`.
+
+### Root cause
+
+`lib/tile.c:433-478` skips the wavefront schedule construction under
+`--innerpar`, but still moves dependence-satisfaction bits from inner
+dimensions to the outer tile-space dimension. Later parallel-loop discovery
+trusts this metadata even though the actual schedule does not satisfy those
+dependences at the tile-space dimension.
+
+### Suggested fix and regression
+
+Do not transfer satisfaction bits unless the transformation constructs the
+schedule that justifies the transfer. Recompute directions and satisfaction
+from the final schedule, and validate the exact loop selected for the OpenMP
+annotation. The regression should execute a multi-tile two-dimensional
+recurrence with several OpenMP threads.
+
+### PolCert cross-check
+
+PolCert validates rectangular tiling and parallelization as separate claims.
+It accepts the legal permutable-band tiling, finds no parallel dimension, and
+emits a sequential tiled program in non-strict mode. Strict parallel mode
+rejects the candidate and emits no optimized program.
+
+## F1: Fork-Specific Diamond Restore Regression
+
+This issue should not be filed against official `bondhugula/pluto`. Official
+revision `dc462163` calls `pluto_diamond_tile_reschedule` unconditionally and
+produces `20` for both the partial- and full-diamond variants.
+
+The phase-dump patch in `phase-dump-pluto-fork` commit `diamond-regression-introduction-snapshot` made that call
+conditional on `options-&gt;intratileopt`; the regression remained present at the
+audited predecessor `diamond-regression-snapshot`. The call restores a hyperplane temporarily
+evicted during concurrent-start diamond schedule construction; it is required
+for correct code generation and is distinct from the optional intra-tile
+locality pass. With `--nointratileopt`, the affected partial-diamond program
+printed `18` and the full-diamond program printed `15`, rather than `20`.
+
+Fork commit `diamond-fix-snapshot` on
+`diamond-fix-branch` restores the unconditional call
+and adds an executable regression. The fixed branch and official latest both
+print `20`; `historical-phase-dump-branch` does not yet contain this fix.
+
+PolCert conservatively rejects the corresponding mixed-scalar candidate, but
+that rejection does not diagnose the missing Pluto restore. A separate typed
+`diamond-stencil` positive test demonstrates that PolCert accepts a supported
+pure-diamond mapping through checked tiling, post-tiling affine validation, and
+proved Loop code generation.
+
+## Reproduction in the PolCert Artifact
+
+The pinned-fork producers and their checked PolCert outcomes run with:
+
+```sh
+opam exec -- make test-pluto-bugs
+```
+
+The target selects `phase-dump-pluto-fork@historical-bug-witness-pluto-snapshot` explicitly and checks more than
+process exit status. For every reproduced
+miscompilation it compiles and executes the original and Pluto-generated C,
+asserts the expected mismatch, then checks the corresponding PolCert behavior.
+The fork-specific diamond regression instead runs the normal fixed checkout
+and asserts equality after the fix. Ordinary compiler tests never use the
+historical checkout.
+
+Official-latest confirmation used a separate build of
+`bondhugula/pluto@dc462163c8b4fc97d378a4d245d1a64741cb4111`. The five raw producer
+commands above omit the fork-only `--dumpscop` flag. The code paths identified
+in the root-cause sections remain unchanged in that revision.
+
+## What the PolCert Result Establishes
+
+PolCert treats Pluto as an untrusted candidate generator. It does not prove
+that Pluto is correct, and it does not accept Pluto&#x27;s dependence-satisfaction
+bits, parallel annotations, or generated C as certificates. Instead, it
+checks each semantic boundary independently:
+
+1. affine schedules must pass dependence-legality validation;
+2. ISS candidates must carry a checked source-to-split witness;
+3. ordinary, two-level, and diamond tiling must satisfy the corresponding
+   checked tiling relation;
+4. post-tiling affine schedules are revalidated;
+5. parallel annotations require a fresh check of the
+   concrete loop dimension;
+6. unroll-jam uses proved unrolling and validates the local jam permutation;
+7. final Loop code is produced by PolCert&#x27;s proved code generator.
+
+These boundaries reject or remove the unsafe transformation in P1-P4 and C1.
+This is evidence that the validation architecture blocks these concrete Pluto
+failures. C1 must not be presented as a failure of automatic affine scheduling.
+It is also not a claim that PolCert can validate arbitrary Pluto-generated C.
+Machine-level vector lowering, scalar privatization, storage expansion, state-changing
+transformations, and inputs outside PolCert&#x27;s modeled IR remain outside this
+claim.
 </pre>
 </main>
 </body>

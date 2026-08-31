@@ -1,8 +1,0 @@
-[submodule "osl"]
-	path = osl
-	url = https://github.com/periscop/openscop.git
-	ignore = untracked
-[submodule "piplib"]
-	path = piplib
-	url = https://github.com/periscop/piplib.git
-	ignore = untracked

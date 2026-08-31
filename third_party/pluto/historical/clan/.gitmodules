@@ -1,4 +1,0 @@
-[submodule "osl"]
-	path = osl
-	url = https://github.com/periscop/openscop.git
-	ignore = untracked
