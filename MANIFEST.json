@@ -1,0 +1,79 @@
+{
+  "formal_source": {
+    "file_hash_manifest": "FORMAL_SOURCE_SHA256SUMS",
+    "file_hash_manifest_sha256": "1060fb30487d0f3e67ca7c1aa738d48eeb9abaaafa5a981a97fd806f4a4e2852",
+    "files": 252
+  },
+  "pluto_sources": {
+    "fixed": {
+      "files": 7575,
+      "packaging_archive_sha256": "5d04579f13add5ba6838fd8a8e617eec63d46186a8756e2946abbf471e6e3eb0",
+      "tree_sha256": "9f8306d2b137f83f1e7ba369dc3e3576b47c9b9d670d3d65b43f858ef1b67ea0"
+    },
+    "historical": {
+      "files": 7574,
+      "packaging_archive_sha256": "76f78f578e37aa4d2c229b268f7888522fb0414d66c7c7151908e3fbc485167b",
+      "tree_sha256": "44275f9e6157366c1468dff418cadd0a0c7b3e1db64620117b36af498614ae7b"
+    }
+  },
+  "proof_documentation": {
+    "generated_pages": 40
+  },
+  "snapshot": "cpp-supplement-r1",
+  "validation": {
+    "execution_comparisons": {
+      "baseline_vs_optimized": {
+        "passed": 62,
+        "total": 62
+      },
+      "effect_focused_additional_runs": {
+        "passed": 5,
+        "total": 5
+      }
+    },
+    "optimized_loop_examples": {
+      "changed": 59,
+      "observed_transformations": {
+        "Domain guard insertion": 1,
+        "Inner-loop fusion; Domain splitting": 1,
+        "Loop fusion": 3,
+        "Loop fusion; Domain splitting": 1,
+        "Loop fusion; Ordinary tiling": 8,
+        "None; output loop is identical": 3,
+        "Ordinary tiling": 45
+      },
+      "total": 62,
+      "unchanged": 3
+    },
+    "proof_and_test_run": {
+      "elapsed_seconds": 2169.037730657903,
+      "mode": "full",
+      "passed": 30,
+      "total": 30
+    },
+    "proof_inventory": {
+      "aborted": 0,
+      "admitted": 0,
+      "extraction_axioms": 0,
+      "missing_route_theorems": 0,
+      "scanned_rocq_files": 197
+    },
+    "rejected_optimizer_outputs": {
+      "passed": 7,
+      "total": 7
+    },
+    "test_catalog": {
+      "categories": 5,
+      "families": 17,
+      "listed_test_configurations": 1003,
+      "local_artifact_commands": 30,
+      "recorded_test_case_results": 1508,
+      "remote_ci_phases": 45,
+      "suites": 35
+    },
+    "toolchain": {
+      "ocaml": "4.13.1",
+      "rocq_coq": "8.13.2"
+    }
+  }
+}

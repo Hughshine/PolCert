@@ -1,0 +1,56 @@
+{
+  "execution_comparisons": {
+    "baseline_vs_optimized": {
+      "passed": 62,
+      "total": 62
+    },
+    "effect_focused_additional_runs": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "optimized_loop_examples": {
+    "changed": 59,
+    "observed_transformations": {
+      "Domain guard insertion": 1,
+      "Inner-loop fusion; Domain splitting": 1,
+      "Loop fusion": 3,
+      "Loop fusion; Domain splitting": 1,
+      "Loop fusion; Ordinary tiling": 8,
+      "None; output loop is identical": 3,
+      "Ordinary tiling": 45
+    },
+    "total": 62,
+    "unchanged": 3
+  },
+  "proof_and_test_run": {
+    "elapsed_seconds": 2169.037730657903,
+    "mode": "full",
+    "passed": 30,
+    "total": 30
+  },
+  "proof_inventory": {
+    "aborted": 0,
+    "admitted": 0,
+    "extraction_axioms": 0,
+    "missing_route_theorems": 0,
+    "scanned_rocq_files": 197
+  },
+  "rejected_optimizer_outputs": {
+    "passed": 7,
+    "total": 7
+  },
+  "test_catalog": {
+    "categories": 5,
+    "families": 17,
+    "listed_test_configurations": 1003,
+    "local_artifact_commands": 30,
+    "recorded_test_case_results": 1508,
+    "remote_ci_phases": 45,
+    "suites": 35
+  },
+  "toolchain": {
+    "ocaml": "4.13.1",
+    "rocq_coq": "8.13.2"
+  }
+}

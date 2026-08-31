@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>input.pretty.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/fdtd-2d/input.pretty.loop</code></h1>
+  <pre>context(tmax, ny, nx);
+
+for i0 in range(0, tmax) {
+  for i1 in range(0, ny) {
+    ey[0][i1] = i0;
+  }
+  for i1 in range(1, nx) {
+    for i2 in range(0, ny) {
+      ey[i1][i2] = (ey[i1][i2] - (0.5 * (hz[i1][i2] - hz[(i1 + -1)][i2])));
+    }
+  }
+  for i1 in range(0, nx) {
+    for i2 in range(1, ny) {
+      ex[i1][i2] = (ex[i1][i2] - (0.5 * (hz[i1][i2] - hz[i1][(i2 + -1)])));
+    }
+  }
+  for i1 in range(0, nx) {
+    for i2 in range(0, ny) {
+      hz[i1][i2] = (hz[i1][i2] - (0.7 * (((ex[i1][(i2 + 1)] - ex[i1][i2]) + ey[(i1 + 1)][i2]) - ey[i1][i2])));
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

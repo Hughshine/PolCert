@@ -1,0 +1,651 @@
+{
+  "baseline_vs_optimized": {
+    "passed": 62,
+    "total": 62
+  },
+  "effect_focused_additional_runs": {
+    "passed": 5,
+    "total": 5
+  },
+  "suites": [
+    {
+      "cases": [
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "1dloop-invar",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "adi",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "advect3d",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "corcol",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "corcol3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "costfunc",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "covcol",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "dct",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "doitgen",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "dsyr2k",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "dsyrk",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fdtd-1d",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fdtd-2d",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "floyd",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion1",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion10",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion2",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion4",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion5",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion6",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion7",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion8",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "fusion9",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "gemver",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "intratileopt1",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "intratileopt2",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "intratileopt3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "intratileopt4",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "jacobi-1d-imper",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "jacobi-2d-imper",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "lu",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "matmul",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "matmul-init",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "matmul-seq",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "matmul-seq3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "multi-loop-param",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "multi-stmt-stencil-seq",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "mvt",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "mxv",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "mxv-seq",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "mxv-seq3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "negparam",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "nodep",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "noloop",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "pca",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "polynomial",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "seidel",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "seq",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "shift",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "spatial",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "ssymm",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "strmm",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "strsm",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tce",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tmm",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tricky1",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tricky2",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tricky3",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "tricky4",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "trisolv",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
+          "case": "wavefront",
+          "coverage": "executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
+          "interpretation": "generated-baseline-and-optimized-execution-agree",
+          "status": "PASS"
+        }
+      ],
+      "coverage": "executable-semantics",
+      "expected": 62,
+      "name": "default-corpus",
+      "passed": 62,
+      "status": "PASS"
+    },
+    {
+      "cases": [
+        {
+          "actual": "outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4",
+          "case": "matmul",
+          "coverage": "effect-and-executable-semantics",
+          "executions": 3,
+          "expected": "outputs-match,parallel=true,vector=false,effect-contracts=1",
+          "interpretation": "requested-effects-occurred-and-generated-executions-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4",
+          "case": "corcol3",
+          "coverage": "effect-and-executable-semantics",
+          "executions": 3,
+          "expected": "outputs-match,parallel=true,vector=false,effect-contracts=1",
+          "interpretation": "requested-effects-occurred-and-generated-executions-agree",
+          "status": "PASS"
+        },
+        {
+          "actual": "outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4",
+          "case": "doitgen",
+          "coverage": "effect-and-executable-semantics",
+          "executions": 3,
+          "expected": "outputs-match,parallel=true,vector=false,effect-contracts=1",
+          "interpretation": "requested-effects-occurred-and-generated-executions-agree",
+          "status": "PASS"
+        }
+      ],
+      "coverage": "effect-and-executable-semantics",
+      "expected": 3,
+      "name": "parallel-effect",
+      "passed": 3,
+      "status": "PASS"
+    },
+    {
+      "cases": [
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1",
+          "case": "matmul-init",
+          "coverage": "effect-and-executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=3",
+          "interpretation": "requested-effects-occurred-and-generated-executions-agree",
+          "status": "PASS"
+        }
+      ],
+      "coverage": "effect-and-executable-semantics",
+      "expected": 1,
+      "name": "second-level-effect",
+      "passed": 1,
+      "status": "PASS"
+    },
+    {
+      "cases": [
+        {
+          "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1",
+          "case": "matmul",
+          "coverage": "effect-and-executable-semantics",
+          "executions": 1,
+          "expected": "outputs-match,parallel=false,vector=false,effect-contracts=1",
+          "interpretation": "requested-effects-occurred-and-generated-executions-agree",
+          "status": "PASS"
+        }
+      ],
+      "coverage": "effect-and-executable-semantics",
+      "expected": 1,
+      "name": "intratile-effect",
+      "passed": 1,
+      "status": "PASS"
+    }
+  ]
+}

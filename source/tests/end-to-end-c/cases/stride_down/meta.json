@@ -1,0 +1,20 @@
+{
+  "loop": "stride_down.loop",
+  "polopt_args": [
+    "--pluto-compat",
+    "--identity",
+    "--notile",
+    "--nointratileopt",
+    "--noprevector",
+    "--nounrolljam",
+    "--nodiamond-tile",
+    "--noparallel"
+  ],
+  "benchmark": false,
+  "openmp": false,
+  "optimized_loop_needles": [
+    "-2 * i0",
+    "A[(N + ((-2 * i0) + -1))]",
+    "(N + ((-2 * i0) + 6))"
+  ]
+}

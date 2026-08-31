@@ -1,0 +1,17 @@
+before: /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.posttile.scop
+overall: PASS
+params: T,N
+
+statement 1: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: t i
+  tiled iterators:    fk0 fk1 t i
+  added iterators:    fk0 fk1
+  tile link: fk0 = floor((t + i) / 32)
+  tile link: fk1 = floor((t - i) / 32)
+
+limitations:
+  - prototype only targets Pluto-style affine floor-link tiling constraints
+  - schedule checking is only a structural sanity check, not a dependence proof
+  - bounded coverage, ISS, and parallel codegen are not checked here
+formal: PASS

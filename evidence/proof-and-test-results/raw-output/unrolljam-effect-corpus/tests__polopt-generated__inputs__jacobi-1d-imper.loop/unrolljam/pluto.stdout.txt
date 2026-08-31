@@ -1,0 +1,38 @@
+[pluto] inscop dumped.
+[pluto] compute_deps (isl)
+[pluto] Number of statements: 2
+[pluto] Total number of loops: 4
+[pluto] Number of deps: 10
+[pluto] Maximum domain dimensionality: 2
+[pluto] Number of parameters: 2
+[pluto] Affine transformations [<iter coeff's> <param> <const>]
+
+T(S1): ($i0, 2$i0+$i1, 0)
+loop types (loop, loop, scalar)
+
+T(S2): ($i0, 2$i0+$i1+1, 1)
+loop types (loop, loop, scalar)
+
+[pluto] mid-scop dumped.
+[Pluto] After tiling:
+T(S1): ($i0/32, (2$i0+$i1)/32, $i0, 2$i0+$i1, 0)
+loop types (loop, loop, loop, loop, scalar)
+
+T(S2): ($i0/32, zT3, $i0, 2$i0+$i1+1, 1)
+loop types (loop, loop, loop, loop, scalar)
+
+[pluto] post-tile-scop dumped.
+[pluto] opt-scop dumped.
+[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), 
+[pluto-unroll-jam] No unroll jam loop candidates found
+[Pluto] Output written to jacobi-1d-imper.scop.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.000068s
+[pluto] Auto-transformation time: 0.002685s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000471s
+[pluto] Code generation time: 0.026841s
+[pluto] Other/Misc time: 0.035318s
+[pluto] Total time: 0.064912s
+[pluto] All times: 0.000068 0.002685 0.026841 0.035318

@@ -1,0 +1,16 @@
+make -f Makefile.extr polopt
+make[1]: Entering directory '/polcert'
+make[1]: 'polopt' is up to date.
+make[1]: Leaving directory '/polcert'
+python3 tools/parallel_current/run_parallel_current_suite.py \
+	--polopt ./polopt
+[PARALLEL-CURRENT] PASS case=parallel-current-positive expected=result=success,markers=5,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=diamond-route-then-parallel-current-positive expected=result=success,markers=5,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=diamond-current-combined-effect expected=result=success,markers=8,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=diamond-iss-current-combined-effect expected=result=success,markers=8,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=diamond-current-jacobi-batch-positive expected=result=success,markers=9,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=parallel-current-positive-iss expected=result=success,markers=5,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=identity-tiled-current-combined-effect expected=result=success,markers=7,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
+[PARALLEL-CURRENT] PASS case=parallel-current-out-of-bounds expected=result=failure,markers=1,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
+[PARALLEL-CURRENT] PASS case=parallel-current-dependent expected=result=failure,markers=1,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
+[PARALLEL-CURRENT] PASS expected=9 actual=9 interpretation=all-manifest-contracts-matched

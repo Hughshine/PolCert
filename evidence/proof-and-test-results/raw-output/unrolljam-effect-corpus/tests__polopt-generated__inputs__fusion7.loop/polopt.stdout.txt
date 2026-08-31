@@ -1,0 +1,24 @@
+[pluto-compat] accepted
+[pluto-compat] polopt args: --notile --unrolljam
+[pluto-compat] pluto oracle flags: --smartfuse
+[pluto-compat] checked post flags: --ufactor=4
+[pluto-compat] note: --smartfuse passed through to Pluto's checked scheduler oracle
+[pluto-compat] note: --nointratileopt selects the stable intra-tile loop order
+[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested
+[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward
+[pluto-compat] note: --ufactor=4 accepted as Pluto's unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size
+[pluto-compat] note: --ufactor is not passed to Pluto's scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts
+== Optimized Loop ==
+context(N, M);
+
+for i0 in range(0, min(M, N)) {
+  a[i0] = b[i0];
+  a[i0] = b[i0];
+}
+for i0 in range(max(0, N), M) {
+  a[i0] = b[i0];
+}
+for i0 in range(max(M, 0), N) {
+  a[i0] = b[i0];
+}
+

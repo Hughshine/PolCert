@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test_generated_harness.py</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tools/end_to_end_c/test_generated_harness.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
+
+from generated_harness import (
+    ArrayDim,
+    collect_var_ranges,
+    div_candidates,
+    render_checksum_function,
+)
+
+
+def main() -&gt; int:
+    ranges = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range(0, min(n, 8), 2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert ranges[&quot;i&quot;] == (0, 5), ranges
+    descending = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range((n + -1), -1, -2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert descending[&quot;i&quot;] == (0, 5), descending
+    assert div_candidates(-5, -5, 2, 2) == (-3, -3)
+    checksum = render_checksum_function(
+        {&quot;A&quot;: (ArrayDim(0, 1, 0, 2), ArrayDim(0, 2, 0, 3))}, ()
+    )
+    assert &quot;((__i0) * 3 + __i1)&quot; in checksum, checksum
+    print(
+        &quot;[generated-harness-unit] PASS expected=import-and-parse-positive-and-negative-ranges &quot;
+        &quot;actual=parsed-and-index-weighted interpretation=generated-C-harness-can-start-infer-loop-bounds-and-detect-value-permutations&quot;
+    )
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre>
+</main>
+</body>
+</html>

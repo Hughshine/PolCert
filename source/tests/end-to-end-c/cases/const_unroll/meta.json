@@ -1,0 +1,13 @@
+{
+  "loop": "const_unroll.loop",
+  "polopt_args": [
+    "--identity",
+    "--const-unroll"
+  ],
+  "benchmark": false,
+  "openmp": false,
+  "optimized_loop_needles": [
+    "A[3]"
+  ],
+  "require_unrolled": true
+}

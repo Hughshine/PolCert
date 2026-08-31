@@ -1,0 +1,4 @@
+before: /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.beforescheduling.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.midtransform.scop
+contract: schedule refinement under supplied domains and trusted access summaries; statement bodies are not checked
+overall: PASS

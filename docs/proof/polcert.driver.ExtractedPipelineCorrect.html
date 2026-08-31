@@ -1,0 +1,669 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>polcert.driver.ExtractedPipelineCorrect</title>
+</head>
+
+<body>
+<div id="artifact-handbook-link" style="padding:8px 12px;border-bottom:1px solid #cbd3d8;background:#f4f6f7;font:14px system-ui,sans-serif"><a href="../index.html">Plain-language guide</a> &middot; <a href="toc.html">Modules</a> &middot; <a href="declarations.html">Declarations</a></div>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">polcert.driver.ExtractedPipelineCorrect</h1>
+
+<div class="code">
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">ImpureAlarmConfig</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SPolIRs</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SPolOpt</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SPolOptShared</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">PolOptCorrect</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SBandTilingOptShared</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SBandTilingOptBridge</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">ParallelPolOptCorrect</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SParallelPolOptShared</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SParallelPolOptBridge</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">SVerifiedCompilerConfig</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">SVerifiedParallelCompilerConfig</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">VerifiedLoopPostpass</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Vpl.Impure</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Local Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">impure_scope</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="BandCorrect" class="idref" href="#BandCorrect"><span class="id" title="module">BandCorrect</span></a> := <span class="id" title="module">SBandTilingOptShared.BandGeneric</span>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ParallelCorrect" class="idref" href="#ParallelCorrect"><span class="id" title="module">ParallelCorrect</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect"><span class="id" title="module">ParallelPolOptCorrect</span></a> <span class="id" title="module">SPolIRs</span> <span class="id" title="module">SParallelPolOptShared.Core</span>.<br/>
+<span class="id" title="keyword">Module</span> <a id="CoreCorrect" class="idref" href="#CoreCorrect"><span class="id" title="module">CoreCorrect</span></a> := <a class="idref" href="polcert.driver.PolOptCorrect.html#PolOptCorrect"><span class="id" title="module">PolOptCorrect</span></a> <span class="id" title="module">SPolIRs</span> <span class="id" title="module">SPolOptShared.Core</span>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ParallelCodegenCore" class="idref" href="#ParallelCodegenCore"><span class="id" title="module">ParallelCodegenCore</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#ParallelCodegenCore"><span class="id" title="module">SVerifiedParallelCompilerConfig.ParallelCodegenCore</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ParallelLoop" class="idref" href="#ParallelLoop"><span class="id" title="module">ParallelLoop</span></a> := <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#ParallelLoop"><span class="id" title="module">SVerifiedParallelCompilerConfig.ParallelLoop</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab107"></a><h1 class="section">Concrete extracted compiler endpoints</h1>
+
+
+<div class="paragraph"> </div>
+
+    Generic functor instances carry the semantic proofs, while the extracted
+    compiler uses hand-instantiated concrete modules with stable OCaml names.
+    The bridge lemmas rewrite concrete executions to their proved generic
+    counterparts.  The two <span class="inlinecode">×<span class="id" title="var">_compile_verified_correct</span></span> theorems then perform
+    an explicit constructor-by-constructor coverage audit; the raw <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a></span>
+    theorems add only configuration checking.
+
+<div class="paragraph"> </div>
+
+    There are four public endpoints, determined by two independent choices:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> <span class="inlinecode"><span class="id" title="var">sequential</span></span> returns <span class="inlinecode"><span class="id" title="var">SPolIRs.Loop.t</span></span>; <span class="inlinecode"><span class="id" title="var">parallel</span></span> returns the unified
+      annotated <span class="inlinecode"><span class="id" title="var">ParallelLoop.t</span></span>, including sequential, parallel, and vector
+      routes;
+
+</li>
+<li> <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><span class="id" title="definition">compile_verified</span></a></span> starts after outer configuration checking; <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a></span>
+      starts from <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a></span> and includes that check.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+    Thus <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct"><span class="id" title="lemma">extracted_parallel_compile_correct</span></a></span> is the concrete theorem closest
+    to the extracted CLI pipeline.  The sequential pair is useful when studying
+    the older Loop-to-Loop dispatcher in isolation. 
+<div class="paragraph"> </div>
+
+<a id="lab108"></a><h2 class="section">Concrete sequential endpoints</h2>
+
+<div class="paragraph"> </div>
+
+ This theorem is the concrete counterpart of
+    <span class="inlinecode"><span class="id" title="var">VerifiedCompilerConfig.compile_verified_correct</span></span>.  Its 14 cases do not
+    reprove the transformations: they rewrite the hand-instantiated executable
+    route to the corresponding generic module and invoke its existing theorem. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="extracted_sequential_compile_verified_correct" class="idref" href="#extracted_sequential_compile_verified_correct"><span class="id" title="lemma">extracted_sequential_compile_verified_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:1" class="idref" href="#cfg:1"><span class="id" title="binder">cfg</span></a> <a id="loop:2" class="idref" href="#loop:2"><span class="id" title="binder">loop</span></a> <a id="st:3" class="idref" href="#st:3"><span class="id" title="binder">st</span></a> <a id="st':4" class="idref" href="#st':4"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':5" class="idref" href="#loop':5"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_verified"><span class="id" title="definition">SVerifiedCompilerConfig.compile_verified</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:1"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:2"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop':5"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:3"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':4"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':6" class="idref" href="#st'':6"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:2"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:3"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':6"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':4"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':6"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">cfg</span>; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptCorrect.html#PolOptCorrect.Identity_opt_prepared_correct"><span class="id" title="lemma">CoreCorrect.Identity_opt_prepared_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptCorrect.html#PolOptCorrect.Affine_opt_prepared_correct"><span class="id" title="lemma">CoreCorrect.Affine_opt_prepared_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptCorrect.html#PolOptCorrect.Opt_with_iss_correct"><span class="id" title="lemma">CoreCorrect.Opt_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band_correct"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band_correct"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band_correct"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_with_iss_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band_with_iss_correct"><span class="id" title="lemma">BandCorrect.Opt_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_identity_tiled_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_identity_tiled_band_correct"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_identity_tiled_with_iss_impeq_generic</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_identity_tiled_band_with_iss_correct"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_identity_tiled_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_identity_tiled_band_correct"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_identity_tiled_with_iss_impeq_generic</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_identity_tiled_band_with_iss_correct"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_with_iss_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band_with_iss_correct"><span class="id" title="lemma">BandCorrect.Opt_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_post_tiling_affine_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_post_tiling_affine_band_correct"><span class="id" title="lemma">BandCorrect.Opt_post_tiling_affine_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SBandTilingOptBridge.opt_post_tiling_affine_with_iss_impeq_generic</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_post_tiling_affine_band_with_iss_correct"><span class="id" title="lemma">BandCorrect.Opt_post_tiling_affine_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Raw-config wrapper for the concrete sequential dispatcher.  Its only new
+    step is <span class="inlinecode"><span class="id" title="var">SVerifiedCompilerConfig.check_config</span></span>; the successful branch calls
+    <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_verified_correct"><span class="id" title="lemma">extracted_sequential_compile_verified_correct</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_sequential_compile_correct" class="idref" href="#extracted_sequential_compile_correct"><span class="id" title="lemma">extracted_sequential_compile_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:7" class="idref" href="#cfg:7"><span class="id" title="binder">cfg</span></a> <a id="loop:8" class="idref" href="#loop:8"><span class="id" title="binder">loop</span></a> <a id="st:9" class="idref" href="#st:9"><span class="id" title="binder">st</span></a> <a id="st':10" class="idref" href="#st':10"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':11" class="idref" href="#loop':11"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedCompilerConfig.compile</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:7"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:8"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop':11"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:9"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':10"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':12" class="idref" href="#st'':12"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:8"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:9"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':12"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':10"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':12"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedCompilerConfig.compile</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#check_config"><span class="id" title="definition">SVerifiedCompilerConfig.check_config</span></a> <span class="id" title="var">cfg</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">vcfg</span>|<span class="id" title="var">msg</span>].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_verified_correct"><span class="id" title="lemma">extracted_sequential_compile_verified_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>. <span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The complete concrete sequential endpoint, including optional
+    constant-bound unrolling.
+    The untrusted CLI chooses a route and a postpass configuration, but every
+    returned target crosses both extracted checked boundaries. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_sequential_compile_with_postpass_correct" class="idref" href="#extracted_sequential_compile_with_postpass_correct"><span class="id" title="lemma">extracted_sequential_compile_with_postpass_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:13" class="idref" href="#cfg:13"><span class="id" title="binder">cfg</span></a> <a id="postpass:14" class="idref" href="#postpass:14"><span class="id" title="binder">postpass</span></a> <a id="loop:15" class="idref" href="#loop:15"><span class="id" title="binder">loop</span></a> <a id="st:16" class="idref" href="#st:16"><span class="id" title="binder">st</span></a> <a id="st':17" class="idref" href="#st':17"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':18" class="idref" href="#loop':18"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_with_postpass"><span class="id" title="definition">SVerifiedCompilerConfig.compile_with_postpass</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:13"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#postpass:14"><span class="id" title="variable">postpass</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:15"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop':18"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:16"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':17"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':19" class="idref" href="#st'':19"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:15"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:16"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':19"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':17"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':19"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">postpass</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_with_postpass"><span class="id" title="definition">SVerifiedCompilerConfig.compile_with_postpass</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hproducer</span> <span class="id" title="var">Hpostpass</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref"><span class="id" title="lemma">SVerifiedCompilerConfig.Postpass.apply_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">postpass</span> <span class="id" title="var">optimized</span> <span class="id" title="var">loop'</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hpostpass</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hsem_mid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_correct"><span class="id" title="lemma">extracted_sequential_compile_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span> <span class="id" title="var">Hproducer</span> <span class="id" title="var">Hsem_mid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsem_src</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsem_src</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="axiom">SPolIRs.State.eq_trans</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Concrete end-to-end endpoint for checked unroll-jam.  The extracted CLI
+    may compute <span class="inlinecode"><span class="id" title="definition">select</span></span> with any profitability heuristic; every selected
+    fusion still crosses the verified local validator. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_sequential_compile_with_unrolljam_correct" class="idref" href="#extracted_sequential_compile_with_unrolljam_correct"><span class="id" title="lemma">extracted_sequential_compile_with_unrolljam_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:20" class="idref" href="#cfg:20"><span class="id" title="binder">cfg</span></a> <a id="const_first:21" class="idref" href="#const_first:21"><span class="id" title="binder">const_first</span></a> <a id="select:22" class="idref" href="#select:22"><span class="id" title="binder">select</span></a> <a id="factor:23" class="idref" href="#factor:23"><span class="id" title="binder">factor</span></a> <a id="loop:24" class="idref" href="#loop:24"><span class="id" title="binder">loop</span></a> <a id="st:25" class="idref" href="#st:25"><span class="id" title="binder">st</span></a> <a id="st':26" class="idref" href="#st':26"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':27" class="idref" href="#loop':27"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_with_unrolljam"><span class="id" title="definition">SVerifiedCompilerConfig.compile_with_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:20"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#const_first:21"><span class="id" title="variable">const_first</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#select:22"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#factor:23"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:24"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop':27"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:25"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':26"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':28" class="idref" href="#st'':28"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:24"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:25"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':28"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':26"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':28"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_with_unrolljam"><span class="id" title="definition">SVerifiedCompilerConfig.compile_with_unrolljam</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hproducer</span> <span class="id" title="var">Hunrolljam</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref"><span class="id" title="lemma">SVerifiedCompilerConfig.Postpass.apply_checked_unrolljam_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">const_first</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">fun</span> <a id="prepared:30" class="idref" href="#prepared:30"><span class="id" title="binder">prepared</span></a> ⇒<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#adapt_unrolljam_plan"><span class="id" title="definition">SVerifiedCompilerConfig.adapt_unrolljam_plan</span></a> (<span class="id" title="var">select</span> <a class="idref"><span class="id" title="variable">prepared</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">factor</span> <span class="id" title="var">optimized</span> <span class="id" title="var">loop'</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hsem_mid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_correct"><span class="id" title="lemma">extracted_sequential_compile_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span> <span class="id" title="var">Hproducer</span> <span class="id" title="var">Hsem_mid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsem_src</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsem_src</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="axiom">SPolIRs.State.eq_trans</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab109"></a><h2 class="section">Lifting a concrete sequential result into <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#ParallelLoop"><span class="id" title="module">ParallelLoop</span></a></span></h2>
+
+<div class="paragraph"> </div>
+
+ The next two lemmas serve only the <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#VSeq"><span class="id" title="constructor">VSeq</span></a></span> branch of the concrete unified
+    dispatcher.  They turn the concrete sequential target into a trace-safe,
+    sequentially tagged <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#ParallelLoop"><span class="id" title="module">ParallelLoop</span></a></span> target, then compose its state relation
+    with the 14-route sequential theorem above. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="extracted_checked_lift_sequential_loop_correct" class="idref" href="#extracted_checked_lift_sequential_loop_correct"><span class="id" title="lemma">extracted_checked_lift_sequential_loop_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="loop:31" class="idref" href="#loop:31"><span class="id" title="binder">loop</span></a> <a id="pl:32" class="idref" href="#pl:32"><span class="id" title="binder">pl</span></a> <a id="st:33" class="idref" href="#st:33"><span class="id" title="binder">st</span></a> <a id="st':34" class="idref" href="#st':34"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#checked_lift_sequential_loop"><span class="id" title="definition">SVerifiedParallelCompilerConfig.checked_lift_sequential_loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:31"><span class="id" title="variable">loop</span></a>) <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:32"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics"><span class="id" title="inductive">SVerifiedParallelCompilerConfig.ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:32"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:33"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':34"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':35" class="idref" href="#st'':35"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:31"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:33"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':35"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':34"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':35"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hlift</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#checked_lift_sequential_loop"><span class="id" title="definition">SVerifiedParallelCompilerConfig.checked_lift_sequential_loop</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hlift</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.all_es_safeb"><span class="id" title="definition">ParallelCodegenCore.all_es_safeb</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.tag_loop"><span class="id" title="definition">ParallelCodegenCore.tag_loop</span></a> <span class="id" title="var">loop</span>)) <span class="id" title="var">eqn</span>:<span class="id" title="var">Hsafe</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_pure</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hlift</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">subst</span> <span class="id" title="var">pl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.all_es_safeb_sound"><span class="id" title="lemma">ParallelCodegenCore.all_es_safeb_sound</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.tag_loop"><span class="id" title="definition">ParallelCodegenCore.tag_loop</span></a> <span class="id" title="var">loop</span>) <span class="id" title="var">Hsafe</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> <span class="id" title="var">Htrace_safe</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics_refines_erased_global"><span class="id" title="lemma">ParallelLoop.semantics_refines_erased_global</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.tag_loop"><span class="id" title="definition">ParallelCodegenCore.tag_loop</span></a> <span class="id" title="var">loop</span>) <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Htrace_safe</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.tag_loop_ordered"><span class="id" title="lemma">ParallelCodegenCore.tag_loop_ordered</span></a> <span class="id" title="var">loop</span>) <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st''</span> [<span class="id" title="var">Herased</span> <span class="id" title="var">Heq</span>]].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st''</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.erase_to_loop_semantics"><span class="id" title="lemma">ParallelCodegenCore.erase_to_loop_semantics</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Herased</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.erase_tag_loop_eq"><span class="id" title="lemma">ParallelCodegenCore.erase_tag_loop_eq</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Herased</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exact</span> <span class="id" title="var">Herased</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">exact</span> <span class="id" title="var">Heq</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hlift</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Compose the concrete 14-route sequential theorem with the checked lift into
+    the common <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#ParallelLoop"><span class="id" title="module">ParallelLoop</span></a></span> target. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="extracted_parallel_compile_seq_verified_correct" class="idref" href="#extracted_parallel_compile_seq_verified_correct"><span class="id" title="lemma">extracted_parallel_compile_seq_verified_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:36" class="idref" href="#cfg:36"><span class="id" title="binder">cfg</span></a> <a id="loop:37" class="idref" href="#loop:37"><span class="id" title="binder">loop</span></a> <a id="pl:38" class="idref" href="#pl:38"><span class="id" title="binder">pl</span></a> <a id="st:39" class="idref" href="#st:39"><span class="id" title="binder">st</span></a> <a id="st':40" class="idref" href="#st':40"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_seq_verified"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_seq_verified</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:36"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:37"><span class="id" title="variable">loop</span></a>) <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:38"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics"><span class="id" title="inductive">SVerifiedParallelCompilerConfig.ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:38"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:39"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':40"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':41" class="idref" href="#st'':41"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:37"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:39"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':41"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':40"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':41"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_seq_verified"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_seq_verified</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#lift_sequential_compile"><span class="id" title="definition">SVerifiedParallelCompilerConfig.lift_sequential_compile</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">bind_imp_destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hseq</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_checked_lift_sequential_loop_correct"><span class="id" title="lemma">extracted_checked_lift_sequential_loop_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">loop'</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hmid_sem</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_verified_correct"><span class="id" title="lemma">extracted_sequential_compile_verified_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hseq</span> <span class="id" title="var">Hmid_sem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsrc_sem</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsrc_sem</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="axiom">SPolIRs.State.eq_trans</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab110"></a><h2 class="section">Concrete unified annotated endpoints</h2>
+
+<div class="paragraph"> </div>
+
+ This is the concrete 31-constructor coverage theorem.  Each branch first
+    uses an <span class="inlinecode"><span class="id" title="library">SParallelPolOptBridge</span></span> equality to identify the extracted route
+    with the generic route, then invokes the corresponding
+    <span class="inlinecode"><a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect"><span class="id" title="module">ParallelPolOptCorrect</span></a></span> theorem.  The proof is intentionally exhaustive so
+    adding an executable constructor without a theorem cannot be silent. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_compile_verified_correct" class="idref" href="#extracted_parallel_compile_verified_correct"><span class="id" title="lemma">extracted_parallel_compile_verified_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:42" class="idref" href="#cfg:42"><span class="id" title="binder">cfg</span></a> <a id="loop:43" class="idref" href="#loop:43"><span class="id" title="binder">loop</span></a> <a id="pl:44" class="idref" href="#pl:44"><span class="id" title="binder">pl</span></a> <a id="st:45" class="idref" href="#st:45"><span class="id" title="binder">st</span></a> <a id="st':46" class="idref" href="#st':46"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_verified</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:42"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:43"><span class="id" title="variable">loop</span></a>) <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:44"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics"><span class="id" title="inductive">SVerifiedParallelCompilerConfig.ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:44"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:45"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':46"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':47" class="idref" href="#st'':47"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:43"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:45"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':47"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':46"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':47"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">cfg</span>; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#VSeq"><span class="id" title="constructor">VSeq</span></a></span>: bridge the concrete 14-route sequential dispatcher. 
+</div>
+<div class="code">
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_seq_verified_correct"><span class="id" title="lemma">extracted_parallel_compile_seq_verified_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+</div>
+
+<div class="doc">
+Ten concrete <span class="inlinecode"><span class="id" title="var">VParallelCurrent</span></span> constructors. 
+</div>
+<div class="code">
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_identity_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_identity_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_identity_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_identity_tiled_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_identity_tiled_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_identity_tiled_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_identity_tiled_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_identity_tiled_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_identity_tiled_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_affine_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_post_tiling_affine_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_post_tiling_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_post_tiling_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_post_tiling_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_post_tiling_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_post_tiling_affine_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_identity_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_identity_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_identity_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_affine_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_with_iss_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+</div>
+
+<div class="doc">
+Ten concrete <span class="inlinecode"><span class="id" title="var">VVectorCurrent</span></span> constructors. 
+</div>
+<div class="code">
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_identity_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_identity_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_identity_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_identity_tiled_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_identity_tiled_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_identity_tiled_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_identity_tiled_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_identity_tiled_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_identity_tiled_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_affine_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_post_tiling_affine_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_post_tiling_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_post_tiling_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_post_tiling_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_post_tiling_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_post_tiling_affine_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_identity_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_identity_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_identity_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_affine_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_vector_current_with_iss_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_vector_current_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_vector_current_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+</div>
+
+<div class="doc">
+Ten concrete <span class="inlinecode"><span class="id" title="var">VParallelCurrentMany</span></span> constructors. 
+</div>
+<div class="code">
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_identity_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_identity_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_identity_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_identity_tiled_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_identity_tiled_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_identity_tiled_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_identity_tiled_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_identity_tiled_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_identity_tiled_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_affine_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_impeq</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_post_tiling_affine_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_post_tiling_affine_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_post_tiling_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_post_tiling_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_post_tiling_affine_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_identity_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_identity_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_identity_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_affine_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_affine_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_affine_with_iss_correct</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <span class="id" title="lemma">SParallelPolOptBridge.opt_parallel_current_many_with_iss_impeq</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ParallelPolOptCorrect.html#ParallelPolOptCorrect.Opt_parallel_current_many_with_iss_correct"><span class="id" title="lemma">ParallelCorrect.Opt_parallel_current_many_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Raw-config wrapper for the concrete unified dispatcher.  This is the
+    theorem to use when relating the extracted CLI-facing compiler to source
+    <span class="inlinecode"><span class="id" title="var">SPolIRs.Loop.semantics</span></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_compile_correct" class="idref" href="#extracted_parallel_compile_correct"><span class="id" title="lemma">extracted_parallel_compile_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:48" class="idref" href="#cfg:48"><span class="id" title="binder">cfg</span></a> <a id="loop:49" class="idref" href="#loop:49"><span class="id" title="binder">loop</span></a> <a id="pl:50" class="idref" href="#pl:50"><span class="id" title="binder">pl</span></a> <a id="st:51" class="idref" href="#st:51"><span class="id" title="binder">st</span></a> <a id="st':52" class="idref" href="#st':52"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:48"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:49"><span class="id" title="variable">loop</span></a>) <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:50"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.semantics"><span class="id" title="inductive">SVerifiedParallelCompilerConfig.ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:50"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:51"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':52"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':53" class="idref" href="#st'':53"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:49"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:51"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':53"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':52"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':53"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#check_config"><span class="id" title="definition">SVerifiedParallelCompilerConfig.check_config</span></a> <span class="id" title="var">cfg</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">vcfg</span>|<span class="id" title="var">msg</span>].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_verified_correct"><span class="id" title="lemma">extracted_parallel_compile_verified_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>. <span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The concrete annotated postpass preserves every existing <span class="inlinecode"><a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.ParMode"><span class="id" title="constructor">ParMode</span></a></span> and
+    <span class="inlinecode"><a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.VecMode"><span class="id" title="constructor">VecMode</span></a></span> loop and unfolds only constant-bound <span class="inlinecode"><a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.SeqMode"><span class="id" title="constructor">SeqMode</span></a></span> loops. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="extracted_checked_parallel_const_unroll_correct" class="idref" href="#extracted_checked_parallel_const_unroll_correct"><span class="id" title="lemma">extracted_checked_parallel_const_unroll_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="pl:54" class="idref" href="#pl:54"><span class="id" title="binder">pl</span></a> <a id="pl':55" class="idref" href="#pl':55"><span class="id" title="binder">pl'</span></a> <a id="st:56" class="idref" href="#st:56"><span class="id" title="binder">st</span></a> <a id="st':57" class="idref" href="#st':57"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#checked_const_unroll"><span class="id" title="definition">SVerifiedParallelCompilerConfig.checked_const_unroll</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:54"><span class="id" title="variable">pl</span></a>) <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl':55"><span class="id" title="variable">pl'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl':55"><span class="id" title="variable">pl'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:56"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':57"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:54"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:56"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':57"><span class="id" title="variable">st'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">pl</span> <span class="id" title="var">pl'</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hunroll</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#checked_const_unroll"><span class="id" title="definition">SVerifiedParallelCompilerConfig.checked_const_unroll</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hunroll</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref"><span class="id" title="definition">ParallelLoop.const_unroll_changed</span></a> <span class="id" title="var">pl</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">Hchanged</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> (<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.all_es_safeb"><span class="id" title="definition">ParallelCodegenCore.all_es_safeb</span></a> <span class="id" title="var">pl</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">Hsafe</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.all_es_safeb"><span class="id" title="definition">ParallelCodegenCore.all_es_safeb</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref"><span class="id" title="definition">ParallelLoop.const_unroll</span></a> <span class="id" title="var">pl</span>)) <span class="id" title="var">eqn</span>:<span class="id" title="var">Hsafe_unroll</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_pure</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hunroll</span>. <span class="id" title="tactic">subst</span> <span class="id" title="var">pl'</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.const_unroll_semantics_refine"><span class="id" title="lemma">ParallelLoop.const_unroll_semantics_refine</span></a>; <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.src.ParallelCodegenCore.html#ParallelCodegenCore.all_es_safeb_sound"><span class="id" title="lemma">ParallelCodegenCore.all_es_safeb_sound</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;× <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hunroll</span>. <span class="id" title="tactic">tauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hunroll</span>. <span class="id" title="tactic">tauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hunroll</span>. <span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Concrete end-to-end endpoint for a verified annotated compilation followed
+    by sequential-only constant unrolling. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_compile_with_const_unroll_correct" class="idref" href="#extracted_parallel_compile_with_const_unroll_correct"><span class="id" title="lemma">extracted_parallel_compile_with_const_unroll_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:58" class="idref" href="#cfg:58"><span class="id" title="binder">cfg</span></a> <a id="loop:59" class="idref" href="#loop:59"><span class="id" title="binder">loop</span></a> <a id="pl:60" class="idref" href="#pl:60"><span class="id" title="binder">pl</span></a> <a id="st:61" class="idref" href="#st:61"><span class="id" title="binder">st</span></a> <a id="st':62" class="idref" href="#st':62"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_with_const_unroll"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_with_const_unroll</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#cfg:58"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:59"><span class="id" title="variable">loop</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:60"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:60"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:61"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':62"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':63" class="idref" href="#st'':63"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:59"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:61"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':63"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a> <span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':62"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':63"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_with_const_unroll"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_with_const_unroll</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">annotated</span> [<span class="id" title="var">Hproducer</span> <span class="id" title="var">Hunroll</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_checked_parallel_const_unroll_correct"><span class="id" title="lemma">extracted_checked_parallel_const_unroll_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">annotated</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hunroll</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> <span class="id" title="var">Hannotated</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct"><span class="id" title="lemma">extracted_parallel_compile_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The Pluto-compatible parallel/unroll-jam composition deliberately obtains
+    a fresh certificate after the checked postpass.  It therefore demonstrates
+    the combination without claiming certificate transport through arbitrary
+    annotated loop nests. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_after_unrolljam_correct" class="idref" href="#extracted_parallel_after_unrolljam_correct"><span class="id" title="lemma">extracted_parallel_after_unrolljam_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="seq_cfg:64" class="idref" href="#seq_cfg:64"><span class="id" title="binder">seq_cfg</span></a> <a id="const_first:65" class="idref" href="#const_first:65"><span class="id" title="binder">const_first</span></a> <a id="select:66" class="idref" href="#select:66"><span class="id" title="binder">select</span></a> <a id="factor:67" class="idref" href="#factor:67"><span class="id" title="binder">factor</span></a> <a id="d:68" class="idref" href="#d:68"><span class="id" title="binder">d</span></a> <a id="loop:69" class="idref" href="#loop:69"><span class="id" title="binder">loop</span></a> <a id="pl:70" class="idref" href="#pl:70"><span class="id" title="binder">pl</span></a> <a id="st:71" class="idref" href="#st:71"><span class="id" title="binder">st</span></a> <a id="st':72" class="idref" href="#st':72"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_parallel_after_unrolljam"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_parallel_after_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#seq_cfg:64"><span class="id" title="variable">seq_cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#const_first:65"><span class="id" title="variable">const_first</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#select:66"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#factor:67"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#d:68"><span class="id" title="variable">d</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:69"><span class="id" title="variable">loop</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:70"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:70"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:71"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':72"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':73" class="idref" href="#st'':73"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:69"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:71"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':73"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a> <span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':72"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':73"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">seq_cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">d</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_parallel_after_unrolljam"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_parallel_after_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hparallel</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct"><span class="id" title="lemma">extracted_parallel_compile_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#RawParallelCurrentIdentity"><span class="id" title="constructor">SVerifiedParallelCompilerConfig.RawParallelCurrentIdentity</span></a> <span class="id" title="var">d</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">optimized</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hparallel</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hmid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_with_unrolljam_correct"><span class="id" title="lemma">extracted_sequential_compile_with_unrolljam_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">seq_cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hmid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsrc</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>. <span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsrc</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="axiom">SPolIRs.State.eq_trans</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_many_after_unrolljam_correct" class="idref" href="#extracted_parallel_many_after_unrolljam_correct"><span class="id" title="lemma">extracted_parallel_many_after_unrolljam_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="seq_cfg:74" class="idref" href="#seq_cfg:74"><span class="id" title="binder">seq_cfg</span></a> <a id="const_first:75" class="idref" href="#const_first:75"><span class="id" title="binder">const_first</span></a> <a id="select:76" class="idref" href="#select:76"><span class="id" title="binder">select</span></a> <a id="factor:77" class="idref" href="#factor:77"><span class="id" title="binder">factor</span></a> <a id="dims:78" class="idref" href="#dims:78"><span class="id" title="binder">dims</span></a> <a id="loop:79" class="idref" href="#loop:79"><span class="id" title="binder">loop</span></a> <a id="pl:80" class="idref" href="#pl:80"><span class="id" title="binder">pl</span></a> <a id="st:81" class="idref" href="#st:81"><span class="id" title="binder">st</span></a> <a id="st':82" class="idref" href="#st':82"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">mayReturn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_parallel_many_after_unrolljam"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_parallel_many_after_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#seq_cfg:74"><span class="id" title="variable">seq_cfg</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#const_first:75"><span class="id" title="variable">const_first</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#select:76"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#factor:77"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#dims:78"><span class="id" title="variable">dims</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:79"><span class="id" title="variable">loop</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:80"><span class="id" title="variable">pl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">ParallelLoop.semantics</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#pl:80"><span class="id" title="variable">pl</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:81"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':82"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':83" class="idref" href="#st'':83"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="inductive">SPolIRs.Loop.semantics</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:79"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st:81"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':83"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a> <span class="id" title="axiom">SPolIRs.State.eq</span> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st':82"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#st'':83"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">seq_cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">dims</span> <span class="id" title="var">loop</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_parallel_many_after_unrolljam"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile_parallel_many_after_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hparallel</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct"><span class="id" title="lemma">extracted_parallel_compile_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#RawParallelCurrentManyIdentity"><span class="id" title="constructor">SVerifiedParallelCompilerConfig.RawParallelCurrentManyIdentity</span></a> <span class="id" title="var">dims</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">optimized</span> <span class="id" title="var">pl</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hparallel</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hmid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#extracted_sequential_compile_with_unrolljam_correct"><span class="id" title="lemma">extracted_sequential_compile_with_unrolljam_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">seq_cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hmid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsrc</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>. <span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsrc</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="axiom">SPolIRs.State.eq_trans</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab111"></a><h2 class="section">Explicit rejection endpoints</h2>
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="extracted_sequential_unsupported_no_result" class="idref" href="#extracted_sequential_unsupported_no_result"><span class="id" title="lemma">extracted_sequential_unsupported_no_result</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="loop:84" class="idref" href="#loop:84"><span class="id" title="binder">loop</span></a> <a id="out:85" class="idref" href="#out:85"><span class="id" title="binder">out</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#63a68285c81db8f9bc456233bb9ed181"><span class="id" title="notation">¬</span></a> <span class="id" title="definition">mayReturn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedCompilerConfig.compile</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawUnsupported"><span class="id" title="constructor">SVerifiedCompilerConfig.RawUnsupported</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:84"><span class="id" title="variable">loop</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#out:85"><span class="id" title="variable">out</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">loop</span> <span class="id" title="var">out</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedCompilerConfig.compile</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#check_config"><span class="id" title="definition">SVerifiedCompilerConfig.check_config</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>. <span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="extracted_parallel_unsupported_no_result" class="idref" href="#extracted_parallel_unsupported_no_result"><span class="id" title="lemma">extracted_parallel_unsupported_no_result</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="loop:86" class="idref" href="#loop:86"><span class="id" title="binder">loop</span></a> <a id="out:87" class="idref" href="#out:87"><span class="id" title="binder">out</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#63a68285c81db8f9bc456233bb9ed181"><span class="id" title="notation">¬</span></a> <span class="id" title="definition">mayReturn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#RawUnsupported"><span class="id" title="constructor">SVerifiedParallelCompilerConfig.RawUnsupported</span></a> <a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#loop:86"><span class="id" title="variable">loop</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#out:87"><span class="id" title="variable">out</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">loop</span> <span class="id" title="var">out</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">SVerifiedParallelCompilerConfig.compile</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#check_config"><span class="id" title="definition">SVerifiedParallelCompilerConfig.check_config</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>. <span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+</div>
+</div>
+
+<div id="footer">
+<hr/><a href="declarations.html">Index</a><hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

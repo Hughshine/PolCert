@@ -1,0 +1,21 @@
+before: /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.posttile.scop
+params: T,N
+
+statement 1:
+  original iterators: t i j k
+  tiled iterators:    fk0 fk1 fk2 fk3 t i j k
+  added iterators:    fk0 fk1 fk2 fk3
+  tile link: fk0 = floor((2*t - i) / 32)
+  tile link: fk1 = floor((2*t + i) / 32)
+  tile link: fk2 = floor((2*t + j) / 32)
+  tile link: fk3 = floor((2*t + k) / 32)
+
+statement 2:
+  original iterators: t i j k
+  tiled iterators:    fk0 fk1 fk2 fk3 t i j k
+  added iterators:    fk0 fk1 fk2 fk3
+  tile link: fk0 = floor((2*t - i + 1) / 32)
+  tile link: fk1 = floor((2*t + i + 1) / 32)
+  tile link: fk2 = floor((2*t + j + 1) / 32)
+  tile link: fk3 = floor((2*t + k + 1) / 32)

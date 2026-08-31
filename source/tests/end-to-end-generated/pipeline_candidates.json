@@ -1,0 +1,53 @@
+{
+  "default_pipeline": "default_no_iss_affine_tiling",
+  "pipelines": [
+    {
+      "name": "identity",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--identity"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "default_no_iss_affine_tiling",
+      "omp_threads": 1,
+      "source": "cached_default_no_iss_affine_tiling"
+    },
+    {
+      "name": "affine_only",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--affine-only"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "iss",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--iss"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "parallel_4",
+      "omp_threads": 4,
+      "polopt_args": [
+        "--parallel"
+      ],
+      "require_parallelized": true,
+      "source": "polopt"
+    },
+    {
+      "name": "iss_parallel_4",
+      "omp_threads": 4,
+      "polopt_args": [
+        "--iss",
+        "--parallel"
+      ],
+      "require_parallelized": true,
+      "source": "polopt"
+    }
+  ]
+}

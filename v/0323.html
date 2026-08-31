@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVerifiedParallelCompilerConfig.v</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/syntax/SVerifiedParallelCompilerConfig.v</code></h1>
+  <pre>Require Import String.
+Require Import List.
+
+Require Import ImpureAlarmConfig.
+Require Import Result.
+Require Import SPolIRs.
+Require Import SVerifiedCompilerConfig.
+Require Import SParallelPolOpt.
+
+Local Open Scope impure_scope.
+Local Open Scope string_scope.
+
+Module ParallelLoop := SParallelPolOpt.ParallelLoop.
+Module ParallelCodegenCore := SParallelPolOpt.ParallelCodegenCore.
+
+(** * Concrete extracted unified dispatcher
+
+    This is the extraction-facing mirror of
+    [VerifiedParallelCompilerConfig].  It returns [ParallelLoop.t] for every
+    route: sequential results are checked-lifted, while parallel and vector
+    routes keep their annotations.  The file intentionally carries no duplicate
+    correctness proof.  The concrete endpoints are
+    [ExtractedPipelineCorrect.extracted_parallel_compile_verified_correct] and
+    [ExtractedPipelineCorrect.extracted_parallel_compile_correct]. *)
+
+(** ** Concrete unified configurations *)
+
+Inductive raw_config : Type :=
+| RawSeq (cfg: SVerifiedCompilerConfig.raw_config)
+| RawParallelCurrentIdentity (d: nat)
+| RawParallelCurrentIdentityTiled (d: nat)
+| RawParallelCurrentIdentityTiledISS (d: nat)
+| RawParallelCurrentAffine (d: nat)
+| RawParallelCurrentDefault (d: nat)
+| RawParallelCurrentPostTilingAffine (d: nat)
+| RawParallelCurrentPostTilingAffineISS (d: nat)
+| RawParallelCurrentIdentityISS (d: nat)
+| RawParallelCurrentAffineISS (d: nat)
+| RawParallelCurrentDefaultISS (d: nat)
+| RawVectorCurrentIdentity (d: nat)
+| RawVectorCurrentIdentityTiled (d: nat)
+| RawVectorCurrentIdentityTiledISS (d: nat)
+| RawVectorCurrentAffine (d: nat)
+| RawVectorCurrentDefault (d: nat)
+| RawVectorCurrentPostTilingAffine (d: nat)
+| RawVectorCurrentPostTilingAffineISS (d: nat)
+| RawVectorCurrentIdentityISS (d: nat)
+| RawVectorCurrentAffineISS (d: nat)
+| RawVectorCurrentDefaultISS (d: nat)
+| RawParallelCurrentManyIdentity (dims: list nat)
+| RawParallelCurrentManyIdentityTiled (dims: list nat)
+| RawParallelCurrentManyIdentityTiledISS (dims: list nat)
+| RawParallelCurrentManyAffine (dims: list nat)
+| RawParallelCurrentManyDefault (dims: list nat)
+| RawParallelCurrentManyPostTilingAffine (dims: list nat)
+| RawParallelCurrentManyPostTilingAffineISS (dims: list nat)
+| RawParallelCurrentManyIdentityISS (dims: list nat)
+| RawParallelCurrentManyAffineISS (dims: list nat)
+| RawParallelCurrentManyDefaultISS (dims: list nat)
+| RawUnsupported.
+
+Inductive verified_config : Type :=
+| VSeq (cfg: SVerifiedCompilerConfig.verified_config)
+| VParallelCurrentIdentity (d: nat)
+| VParallelCurrentIdentityTiled (d: nat)
+| VParallelCurrentIdentityTiledISS (d: nat)
+| VParallelCurrentAffine (d: nat)
+| VParallelCurrentDefault (d: nat)
+| VParallelCurrentPostTilingAffine (d: nat)
+| VParallelCurrentPostTilingAffineISS (d: nat)
+| VParallelCurrentIdentityISS (d: nat)
+| VParallelCurrentAffineISS (d: nat)
+| VParallelCurrentDefaultISS (d: nat)
+| VVectorCurrentIdentity (d: nat)
+| VVectorCurrentIdentityTiled (d: nat)
+| VVectorCurrentIdentityTiledISS (d: nat)
+| VVectorCurrentAffine (d: nat)
+| VVectorCurrentDefault (d: nat)
+| VVectorCurrentPostTilingAffine (d: nat)
+| VVectorCurrentPostTilingAffineISS (d: nat)
+| VVectorCurrentIdentityISS (d: nat)
+| VVectorCurrentAffineISS (d: nat)
+| VVectorCurrentDefaultISS (d: nat)
+| VParallelCurrentManyIdentity (dims: list nat)
+| VParallelCurrentManyIdentityTiled (dims: list nat)
+| VParallelCurrentManyIdentityTiledISS (dims: list nat)
+| VParallelCurrentManyAffine (dims: list nat)
+| VParallelCurrentManyDefault (dims: list nat)
+| VParallelCurrentManyPostTilingAffine (dims: list nat)
+| VParallelCurrentManyPostTilingAffineISS (dims: list nat)
+| VParallelCurrentManyIdentityISS (dims: list nat)
+| VParallelCurrentManyAffineISS (dims: list nat)
+| VParallelCurrentManyDefaultISS (dims: list nat).
+
+Definition check_config (cfg: raw_config) : result verified_config :=
+  match cfg with
+  | RawSeq seq_cfg =&gt;
+      match SVerifiedCompilerConfig.check_config seq_cfg with
+      | Okk vcfg =&gt; Okk (VSeq vcfg)
+      | Err msg =&gt; Err msg
+      end
+  | RawParallelCurrentIdentity d =&gt; Okk (VParallelCurrentIdentity d)
+  | RawParallelCurrentIdentityTiled d =&gt; Okk (VParallelCurrentIdentityTiled d)
+  | RawParallelCurrentIdentityTiledISS d =&gt;
+      Okk (VParallelCurrentIdentityTiledISS d)
+  | RawParallelCurrentAffine d =&gt; Okk (VParallelCurrentAffine d)
+  | RawParallelCurrentDefault d =&gt; Okk (VParallelCurrentDefault d)
+  | RawParallelCurrentPostTilingAffine d =&gt; Okk (VParallelCurrentPostTilingAffine d)
+  | RawParallelCurrentPostTilingAffineISS d =&gt; Okk (VParallelCurrentPostTilingAffineISS d)
+  | RawParallelCurrentIdentityISS d =&gt; Okk (VParallelCurrentIdentityISS d)
+  | RawParallelCurrentAffineISS d =&gt; Okk (VParallelCurrentAffineISS d)
+  | RawParallelCurrentDefaultISS d =&gt; Okk (VParallelCurrentDefaultISS d)
+  | RawVectorCurrentIdentity d =&gt; Okk (VVectorCurrentIdentity d)
+  | RawVectorCurrentIdentityTiled d =&gt; Okk (VVectorCurrentIdentityTiled d)
+  | RawVectorCurrentIdentityTiledISS d =&gt; Okk (VVectorCurrentIdentityTiledISS d)
+  | RawVectorCurrentAffine d =&gt; Okk (VVectorCurrentAffine d)
+  | RawVectorCurrentDefault d =&gt; Okk (VVectorCurrentDefault d)
+  | RawVectorCurrentPostTilingAffine d =&gt; Okk (VVectorCurrentPostTilingAffine d)
+  | RawVectorCurrentPostTilingAffineISS d =&gt; Okk (VVectorCurrentPostTilingAffineISS d)
+  | RawVectorCurrentIdentityISS d =&gt; Okk (VVectorCurrentIdentityISS d)
+  | RawVectorCurrentAffineISS d =&gt; Okk (VVectorCurrentAffineISS d)
+  | RawVectorCurrentDefaultISS d =&gt; Okk (VVectorCurrentDefaultISS d)
+  | RawParallelCurrentManyIdentity dims =&gt; Okk (VParallelCurrentManyIdentity dims)
+  | RawParallelCurrentManyIdentityTiled dims =&gt; Okk (VParallelCurrentManyIdentityTiled dims)
+  | RawParallelCurrentManyIdentityTiledISS dims =&gt;
+      Okk (VParallelCurrentManyIdentityTiledISS dims)
+  | RawParallelCurrentManyAffine dims =&gt; Okk (VParallelCurrentManyAffine dims)
+  | RawParallelCurrentManyDefault dims =&gt; Okk (VParallelCurrentManyDefault dims)
+  | RawParallelCurrentManyPostTilingAffine dims =&gt; Okk (VParallelCurrentManyPostTilingAffine dims)
+  | RawParallelCurrentManyPostTilingAffineISS dims =&gt; Okk (VParallelCurrentManyPostTilingAffineISS dims)
+  | RawParallelCurrentManyIdentityISS dims =&gt; Okk (VParallelCurrentManyIdentityISS dims)
+  | RawParallelCurrentManyAffineISS dims =&gt; Okk (VParallelCurrentManyAffineISS dims)
+  | RawParallelCurrentManyDefaultISS dims =&gt; Okk (VParallelCurrentManyDefaultISS dims)
+  | RawUnsupported =&gt; Err &quot;unsupported verified compiler configuration&quot;
+  end.
+Definition checked_lift_sequential_loop
+    (loop: SPolIRs.Loop.t)
+  : imp ParallelLoop.t :=
+  let pl := ParallelCodegenCore.tag_loop loop in
+  if ParallelCodegenCore.all_es_safeb pl then
+    pure pl
+  else
+    res_to_alarm
+      SParallelPolOpt.parallel_dummy
+      (Err &quot;sequential route produced a non-affine ParallelLoop trace&quot;%string).
+
+Definition lift_sequential_compile
+    (compile: imp SPolIRs.Loop.t)
+  : imp ParallelLoop.t :=
+  BIND loop &lt;- compile -;
+  checked_lift_sequential_loop loop.
+
+Definition checked_sequential_current_annotated_codegen
+    (pol: SPolIRs.PolyLang.t)
+  : imp ParallelLoop.t :=
+  BIND res &lt;-
+    ParallelCodegenCore.checked_annotated_codegen_many
+      (SPolIRs.PolyLang.current_view_pprog pol)
+      nil -;
+  res_to_alarm SParallelPolOpt.parallel_dummy res.
+
+Definition compile_seq_verified
+    (cfg: SVerifiedCompilerConfig.verified_config)
+    (loop: SPolIRs.Loop.t)
+  : imp ParallelLoop.t :=
+  lift_sequential_compile (SVerifiedCompilerConfig.compile_verified cfg loop).
+
+(** ** Concrete verified and raw dispatchers
+
+    The 31 constructors have the same grouping as the generic module: one
+    wrapped sequential family, ten single-parallel, ten vector, and ten
+    multi-parallel routes.  [compile_verified] assumes only that [check_config]
+    accepted the outer configuration; route validators still run. *)
+Definition compile_verified
+    (cfg: verified_config) (loop: SPolIRs.Loop.t)
+  : imp ParallelLoop.t :=
+  match cfg with
+  (** One wrapper for all 14 concrete sequential configurations. *)
+  | VSeq seq_cfg =&gt;
+      compile_seq_verified seq_cfg loop
+  (** Ten single-coordinate parallel routes. *)
+  | VParallelCurrentIdentity d =&gt;
+      SParallelPolOpt.opt_parallel_current_identity loop d
+  | VParallelCurrentIdentityTiled d =&gt;
+      SParallelPolOpt.opt_parallel_current_identity_tiled loop d
+  | VParallelCurrentIdentityTiledISS d =&gt;
+      SParallelPolOpt.opt_parallel_current_identity_tiled_with_iss loop d
+  | VParallelCurrentAffine d =&gt;
+      SParallelPolOpt.opt_parallel_current_affine loop d
+  | VParallelCurrentDefault d =&gt;
+      SParallelPolOpt.opt_parallel_current loop d
+  | VParallelCurrentPostTilingAffine d =&gt;
+      SParallelPolOpt.opt_parallel_current_post_tiling_affine loop d
+  | VParallelCurrentPostTilingAffineISS d =&gt;
+      SParallelPolOpt.opt_parallel_current_post_tiling_affine_with_iss loop d
+  | VParallelCurrentIdentityISS d =&gt;
+      SParallelPolOpt.opt_parallel_current_identity_with_iss loop d
+  | VParallelCurrentAffineISS d =&gt;
+      SParallelPolOpt.opt_parallel_current_affine_with_iss loop d
+  | VParallelCurrentDefaultISS d =&gt;
+      SParallelPolOpt.opt_parallel_current_with_iss loop d
+  (** Ten single-coordinate vector routes. *)
+  | VVectorCurrentIdentity d =&gt;
+      SParallelPolOpt.opt_vector_current_identity loop d
+  | VVectorCurrentIdentityTiled d =&gt;
+      SParallelPolOpt.opt_vector_current_identity_tiled loop d
+  | VVectorCurrentIdentityTiledISS d =&gt;
+      SParallelPolOpt.opt_vector_current_identity_tiled_with_iss loop d
+  | VVectorCurrentAffine d =&gt;
+      SParallelPolOpt.opt_vector_current_affine loop d
+  | VVectorCurrentDefault d =&gt;
+      SParallelPolOpt.opt_vector_current loop d
+  | VVectorCurrentPostTilingAffine d =&gt;
+      SParallelPolOpt.opt_vector_current_post_tiling_affine loop d
+  | VVectorCurrentPostTilingAffineISS d =&gt;
+      SParallelPolOpt.opt_vector_current_post_tiling_affine_with_iss loop d
+  | VVectorCurrentIdentityISS d =&gt;
+      SParallelPolOpt.opt_vector_current_identity_with_iss loop d
+  | VVectorCurrentAffineISS d =&gt;
+      SParallelPolOpt.opt_vector_current_affine_with_iss loop d
+  | VVectorCurrentDefaultISS d =&gt;
+      SParallelPolOpt.opt_vector_current_with_iss loop d
+  (** Ten multi-coordinate parallel routes. *)
+  | VParallelCurrentManyIdentity dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_identity loop dims
+  | VParallelCurrentManyIdentityTiled dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_identity_tiled loop dims
+  | VParallelCurrentManyIdentityTiledISS dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_identity_tiled_with_iss loop dims
+  | VParallelCurrentManyAffine dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_affine loop dims
+  | VParallelCurrentManyDefault dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many loop dims
+  | VParallelCurrentManyPostTilingAffine dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_post_tiling_affine loop dims
+  | VParallelCurrentManyPostTilingAffineISS dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_post_tiling_affine_with_iss loop dims
+  | VParallelCurrentManyIdentityISS dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_identity_with_iss loop dims
+  | VParallelCurrentManyAffineISS dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_affine_with_iss loop dims
+  | VParallelCurrentManyDefaultISS dims =&gt;
+      SParallelPolOpt.opt_parallel_current_many_with_iss loop dims
+  end.
+
+Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
+  : imp ParallelLoop.t :=
+  match check_config cfg with
+  | Okk vcfg =&gt; compile_verified vcfg loop
+  | Err msg =&gt; res_to_alarm SParallelPolOpt.parallel_dummy (Err msg)
+  end.
+
+(** The extraction-facing mirror of the verified annotated constant-unroll
+    postpass.  Only [SeqMode] loops are eligible; parallel/vector annotations
+    and their origin tags remain in the returned tree. *)
+Definition checked_const_unroll (pl : ParallelLoop.t) : imp ParallelLoop.t :=
+  if ParallelLoop.const_unroll_changed pl then
+    if ParallelCodegenCore.all_es_safeb pl then
+      let pl&#x27; := ParallelLoop.const_unroll pl in
+      if ParallelCodegenCore.all_es_safeb pl&#x27; then
+        pure pl&#x27;
+      else
+        res_to_alarm
+          SParallelPolOpt.parallel_dummy
+          (Err &quot;constant unroll produced a non-affine ParallelLoop trace&quot;%string)
+    else
+      res_to_alarm
+        SParallelPolOpt.parallel_dummy
+        (Err &quot;constant unroll received a non-affine ParallelLoop trace&quot;%string)
+  else
+    res_to_alarm
+      SParallelPolOpt.parallel_dummy
+      (Err &quot;constant unroll requested, but no constant-bound sequential loop exists&quot;%string).
+
+Definition compile_with_const_unroll
+    (cfg : raw_config) (loop : SPolIRs.Loop.t) : imp ParallelLoop.t :=
+  BIND pl &lt;- compile cfg loop -;
+  checked_const_unroll pl.
+
+(** The concrete driver-facing composition for checked unroll-jam followed by
+    fresh parallel validation on the transformed Loop IR. *)
+Definition compile_parallel_after_unrolljam
+    (seq_cfg : SVerifiedCompilerConfig.raw_config) (const_first : bool)
+    (select : SPolIRs.Loop.t -&gt; SLoopJamLower.unrolljam_plan)
+    (factor d : nat) (loop : SPolIRs.Loop.t) : imp ParallelLoop.t :=
+  BIND optimized &lt;-
+    SVerifiedCompilerConfig.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentIdentity d) optimized.
+
+Definition compile_parallel_many_after_unrolljam
+    (seq_cfg : SVerifiedCompilerConfig.raw_config) (const_first : bool)
+    (select : SPolIRs.Loop.t -&gt; SLoopJamLower.unrolljam_plan)
+    (factor : nat) (dims : list nat) (loop : SPolIRs.Loop.t)
+    : imp ParallelLoop.t :=
+  BIND optimized &lt;-
+    SVerifiedCompilerConfig.compile_with_unrolljam
+      seq_cfg const_first select factor loop -;
+  compile (RawParallelCurrentManyIdentity dims) optimized.
+</pre>
+</main>
+</body>
+</html>

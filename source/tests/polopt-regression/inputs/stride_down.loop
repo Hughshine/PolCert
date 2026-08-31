@@ -1,0 +1,5 @@
+context(N);
+
+for i in range(N - 1, -1, -2) {
+  a[i] = (i + 7);
+}

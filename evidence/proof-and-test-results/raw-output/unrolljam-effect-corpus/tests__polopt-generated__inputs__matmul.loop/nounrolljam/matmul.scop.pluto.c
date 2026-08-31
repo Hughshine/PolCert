@@ -1,0 +1,23 @@
+#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = beta * C[$i0][$i1] + alpha * A[$i0][$i2] * B[$i2][$i1];
+
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((K >= 1) && (M >= 1) && (N >= 1)) {
+  for (t1=0;t1<=floord(M-1,32);t1++) {
+    for (t2=0;t2<=floord(N-1,32);t2++) {
+      for (t3=0;t3<=floord(K-1,32);t3++) {
+        for (t4=32*t1;t4<=min(M-1,32*t1+31);t4++) {
+          for (t5=32*t2;t5<=min(N-1,32*t2+31);t5++) {
+            for (t6=32*t3;t6<=min(K-1,32*t3+31);t6++) {
+              S1(t1,t2,t3,t4,t5,t6);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */

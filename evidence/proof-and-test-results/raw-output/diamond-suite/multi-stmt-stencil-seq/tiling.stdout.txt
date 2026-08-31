@@ -1,0 +1,30 @@
+before: /tmp/polcert-artifact-check/diamond-suite/multi-stmt-stencil-seq/diamond/multi-stmt-stencil-seq.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/multi-stmt-stencil-seq/diamond/multi-stmt-stencil-seq.posttile.scop
+overall: PASS
+params: n
+
+statement 1: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: i
+  tiled iterators:    i
+
+statement 2: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: i
+  tiled iterators:    i
+
+statement 3: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: i
+  tiled iterators:    i
+
+statement 4: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: i
+  tiled iterators:    i
+
+statement 5: witness=true transformation_contract=true base_domain=true links=true access=true compiled_relation=true schedule_sanity=true
+  original iterators: i
+  tiled iterators:    i
+
+limitations:
+  - prototype only targets Pluto-style affine floor-link tiling constraints
+  - schedule checking is only a structural sanity check, not a dependence proof
+  - bounded coverage, ISS, and parallel codegen are not checked here
+formal: PASS

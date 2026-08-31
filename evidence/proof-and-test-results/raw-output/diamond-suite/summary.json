@@ -1,0 +1,163 @@
+{
+  "failures": [],
+  "pluto": "/pluto/tool/pluto",
+  "pluto_test_dir": "/pluto/test",
+  "results": [
+    {
+      "affine_ok": true,
+      "case": "diamond-tile-example.c",
+      "midpoint_changed": true,
+      "phase_ok": true,
+      "status": "diamond",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "affine_ok": true,
+      "case": "fdtd-2d.c",
+      "midpoint_changed": true,
+      "phase_ok": true,
+      "status": "diamond",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "affine_ok": true,
+      "case": "heat-3d-imperfect.c",
+      "midpoint_changed": true,
+      "phase_ok": true,
+      "status": "diamond",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "affine_ok": true,
+      "case": "jacobi-2d-imper.c",
+      "midpoint_changed": true,
+      "phase_ok": true,
+      "status": "diamond",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "affine_ok": true,
+      "case": "jacobi-2d.c",
+      "midpoint_changed": true,
+      "phase_ok": true,
+      "status": "diamond",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "affine_ok": true,
+      "case": "multi-stmt-stencil-seq.c",
+      "midpoint_changed": false,
+      "phase_ok": true,
+      "status": "no_effect",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": false
+    },
+    {
+      "affine_ok": true,
+      "case": "seidel.c",
+      "midpoint_changed": false,
+      "phase_ok": true,
+      "status": "no_effect",
+      "tiling_ok": true,
+      "tiling_route": "permutable-band",
+      "witness_mixed_affine": true
+    },
+    {
+      "afterscheduling_scop": false,
+      "case": "jacobi-1d-imper.c",
+      "diagnostic": "[pluto] ERROR: final schedule violates a dependence; refusing code generation",
+      "generated_c": false,
+      "nodiamond_ok": true,
+      "returncode": 1,
+      "status": "pluto_final_schedule_rejected"
+    },
+    {
+      "case": "heat-2d.c",
+      "reason": "[Clan] Error: syntax error at line 14, column 19.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "heat-2dp.c",
+      "reason": "[Clan] Error: syntax error at line 25, column 19.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "heat-3d.c",
+      "reason": "[Clan] Error: syntax error at line 91, column 21.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-1d-mod.c",
+      "reason": "[Clan] Error: syntax error at line 11, column 11.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-1d-periodic-even.c",
+      "reason": "[Clan] Error: syntax error at line 13, column 11.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-1d-periodic.c",
+      "reason": "[Clan] Error: syntax error at line 11, column 11.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-2d-17pt.c",
+      "reason": "[Clan] Error: syntax error at line 14, column 13.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-2d-imper.par2d.c",
+      "reason": "Error extracting polyhedra from source file: 'jacobi-2d-imper.par2d.c'",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-2d-periodic.c",
+      "reason": "[Clan] Error: syntax error at line 17, column 13.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-3d-25pt.c",
+      "reason": "[Clan] Error: syntax error at line 17, column 15.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    },
+    {
+      "case": "jacobi-3d-periodic.c",
+      "reason": "[Clan] Error: syntax error at line 14, column 15.",
+      "returncode": 8,
+      "status": "pluto_frontend_rejected",
+      "timed_out": false
+    }
+  ]
+}

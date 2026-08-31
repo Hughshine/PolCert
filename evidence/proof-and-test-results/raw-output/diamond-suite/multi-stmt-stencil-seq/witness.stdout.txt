@@ -1,0 +1,23 @@
+before: /tmp/polcert-artifact-check/diamond-suite/multi-stmt-stencil-seq/diamond/multi-stmt-stencil-seq.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/multi-stmt-stencil-seq/diamond/multi-stmt-stencil-seq.posttile.scop
+params: n
+
+statement 1:
+  original iterators: i
+  tiled iterators:    i
+
+statement 2:
+  original iterators: i
+  tiled iterators:    i
+
+statement 3:
+  original iterators: i
+  tiled iterators:    i
+
+statement 4:
+  original iterators: i
+  tiled iterators:    i
+
+statement 5:
+  original iterators: i
+  tiled iterators:    i

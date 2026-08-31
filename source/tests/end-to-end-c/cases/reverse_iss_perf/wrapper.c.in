@@ -1,0 +1,29 @@
+#include <stdio.h>
+
+#define N 4194304
+#define REPEAT 1024
+
+static double A[N];
+
+static void init_data(void) {
+  for (int i = 0; i < N; ++i) {
+    A[i] = ((double)((i * 7 + 3) % 29) / 29.0);
+  }
+}
+
+static double checksum(void) {
+  double sum = 0.0;
+  for (int i = 0; i < N; ++i) {
+    sum += A[i] * (i + 1);
+  }
+  return sum;
+}
+
+int main(void) {
+  init_data();
+  for (int rep = 0; rep < REPEAT; ++rep) {
+    /* POLCERT_KERNEL */
+  }
+  printf("%.17g\n", checksum());
+  return 0;
+}

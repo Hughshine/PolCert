@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test_route_telemetry.py</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tools/tiling_routes/test_route_telemetry.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
+
+import pathlib
+import sys
+import tempfile
+import unittest
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / &quot;tests&quot; / &quot;polopt-generated&quot; / &quot;tools&quot;))
+sys.path.insert(0, str(ROOT / &quot;tools&quot; / &quot;diamond_tiling&quot;))
+
+import check_polopt_cases
+import run_pluto_diamond_suite
+
+
+class StrictCorpusTelemetryTests(unittest.TestCase):
+    def check_stderr(self, stderr: str, expected: str) -&gt; None:
+        with tempfile.TemporaryDirectory(prefix=&quot;polcert-route-telemetry-&quot;) as tmp:
+            case_dir = pathlib.Path(tmp) / &quot;synthetic&quot;
+            case_dir.mkdir()
+            (case_dir / &quot;stderr.txt&quot;).write_text(stderr, encoding=&quot;utf-8&quot;)
+            check_polopt_cases.check_tiling_validation(case_dir, expected)
+
+    def test_direct_band_is_the_only_accepted_route(self) -&gt; None:
+        self.check_stderr(
+            &quot;[tiling-validation] route=permutable-band\n&quot;,
+            &quot;permutable-band&quot;,
+        )
+
+    def test_no_loop_is_the_only_not_applicable_status(self) -&gt; None:
+        self.check_stderr(
+            &quot;[tiling-validation] status=not-applicable reason=no-loop\n&quot;,
+            &quot;not-applicable:no-loop&quot;,
+        )
+
+    def test_extra_route_is_rejected(self) -&gt; None:
+        with self.assertRaises(SystemExit):
+            self.check_stderr(
+                &quot;[tiling-validation] route=permutable-band\n&quot;
+                &quot;[tiling-validation] route=rejected\n&quot;,
+                &quot;permutable-band&quot;,
+            )
+
+    def test_alarm_is_rejected(self) -&gt; None:
+        with self.assertRaises(SystemExit):
+            self.check_stderr(
+                &quot;[tiling-validation] route=permutable-band\n&quot;
+                &quot;[alarm] requested checked optimization was rejected\n&quot;,
+                &quot;permutable-band&quot;,
+            )
+
+    def test_fallback_marker_is_case_insensitively_rejected(self) -&gt; None:
+        with self.assertRaises(SystemExit):
+            self.check_stderr(
+                &quot;[tiling-validation] route=permutable-band\n&quot;
+                &quot;General-Fallback\n&quot;,
+                &quot;permutable-band&quot;,
+            )
+
+
+class DiamondPhaseTelemetryTests(unittest.TestCase):
+    accepted = (
+        &quot;[PHASE] affine(before, mid): OK\n&quot;
+        &quot;[PHASE] tiling(mid, posttile): OK route=permutable-band\n&quot;
+        &quot;[PHASE] affine(posttile, after): OK\n&quot;
+        &quot;[OK] Diamond phase-aligned validation succeeded\n&quot;
+    )
+    rejected = (
+        &quot;[PHASE] affine(before, mid): OK\n&quot;
+        &quot;[PHASE] tiling(mid, posttile): FAIL route=rejected\n&quot;
+        &quot;[PHASE] affine(posttile, after): OK\n&quot;
+        &quot;[FAIL] Diamond phase-aligned validation failed\n&quot;
+    )
+
+    def test_exact_direct_phase_route_is_accepted(self) -&gt; None:
+        self.assertTrue(
+            run_pluto_diamond_suite.phase_validation_succeeds(
+                self.accepted,
+                &quot;permutable-band&quot;,
+            )
+        )
+
+    def test_exact_rejected_phase_route_is_accepted(self) -&gt; None:
+        self.assertTrue(
+            run_pluto_diamond_suite.phase_validation_rejects_tiling(
+                self.rejected,
+            )
+        )
+
+    def test_extra_phase_route_is_rejected(self) -&gt; None:
+        self.assertFalse(
+            run_pluto_diamond_suite.phase_validation_succeeds(
+                self.accepted
+                + &quot;[PHASE] tiling(mid, posttile): OK route=general-fallback\n&quot;,
+                &quot;permutable-band&quot;,
+            )
+        )
+
+    def test_fallback_marker_outside_route_is_rejected(self) -&gt; None:
+        self.assertFalse(
+            run_pluto_diamond_suite.phase_validation_succeeds(
+                self.accepted + &quot;fallback selected\n&quot;,
+                &quot;permutable-band&quot;,
+            )
+        )
+
+
+if __name__ == &quot;__main__&quot;:
+    unittest.main()
+</pre>
+</main>
+</body>
+</html>

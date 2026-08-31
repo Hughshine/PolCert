@@ -1,0 +1,2 @@
+[Clan] Error: syntax error at line 91, column 21.
+Error extracting polyhedra from source file: 'heat-3d.c'

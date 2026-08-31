@@ -1,0 +1,53 @@
+# CLooG script generated automatically by PLUTO ordinary-fixed-pluto-snapshot
+# language: C
+c
+
+0 3
+
+1
+N 
+
+# Number of statements
+2
+
+# S1 (a[$i0] = 0;)
+4 5
+1 1 0 0 0 
+1 -1 0 1 -1 
+1 0 1 0 0 
+1 0 -1 1 -1 
+0 0 0
+
+# S2 (a[$i1] = 0;)
+4 5
+1 1 0 0 0 
+1 -1 0 1 -1 
+1 0 1 0 0 
+1 0 -1 1 -1 
+0 0 0
+
+# we want cloog to set the iterator names
+0
+
+# Number of scattering functions
+2
+
+# T(S1)
+5 10
+0 1 0 0 0 0 0 0 0 0 
+0 0 1 0 0 0 -1 0 0 0 
+0 0 0 1 0 0 0 0 0 0 
+0 0 0 0 1 0 0 -1 0 0 
+0 0 0 0 0 1 0 0 0 0 
+
+# T(S2)
+5 10
+0 1 0 0 0 0 0 0 0 0 
+0 0 1 0 0 0 -1 0 0 0 
+0 0 0 1 0 0 0 0 0 0 
+0 0 0 0 1 0 0 -1 0 0 
+0 0 0 0 0 1 0 0 0 -1 
+
+# we will set the scattering dimension names
+5
+t1 t2 t3 t4 t5 

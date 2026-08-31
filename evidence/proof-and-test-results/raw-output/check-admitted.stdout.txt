@@ -1,0 +1,1 @@
+[open-proof] PASS expected=0 actual=0 files=239 interpretation=compiled Coq sources contain no unfinished proof commands

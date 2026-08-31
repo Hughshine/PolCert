@@ -1,0 +1,6 @@
+{
+  "loop": "reverse_iss.loop",
+  "polopt_args": ["--iss"],
+  "benchmark": true,
+  "openmp": false
+}

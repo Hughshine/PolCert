@@ -1,0 +1,468 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>PolCert proof reader</title>
+</head>
+
+<body>
+<div id="artifact-handbook-link" style="padding:8px 12px;border-bottom:1px solid #cbd3d8;background:#f4f6f7;font:14px system-ui,sans-serif"><a href="../index.html">Plain-language guide</a> &middot; <a href="toc.html">Modules</a> &middot; <a href="declarations.html">Declarations</a></div>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div id="toc">
+<h2><a href="polcert.src.CState.html">polcert.src.CState</a></h2>
+<h2><a href="polcert.src.CInstr.html">polcert.src.CInstr</a></h2>
+<h2><a href="polcert.polygen.InstanceListSema.html">polcert.polygen.InstanceListSema</a></h2>
+<h2><a href="polcert.src.PolyLang.html">polcert.src.PolyLang</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.PolyLang.html#lab1">Translating a program from explicit scheduling to lexicographical scanning</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ExtractorFrontend.html">polcert.src.ExtractorFrontend</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ExtractorFrontend.html#lab2">Layer map</a>
+
+</li>
+<li><a href="polcert.src.ExtractorFrontend.html#lab3">Affine frontend checks</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ExtractorFacts.html">polcert.src.ExtractorFacts</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ExtractorFacts.html#lab4">Layer map</a>
+
+</li>
+<li><a href="polcert.src.ExtractorFacts.html#lab5">Flattened-instance witnesses</a>
+
+</li>
+<li><a href="polcert.src.ExtractorFacts.html#lab6">Prefix slices and source-construct filters</a>
+
+</li>
+<li><a href="polcert.src.ExtractorFacts.html#lab7">Sorted-list partitioning</a>
+
+</li>
+<li><a href="polcert.src.ExtractorFacts.html#lab8">Small semantic inversions</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ExtractorCorrect.html">polcert.src.ExtractorCorrect</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ExtractorCorrect.html#lab9">Layer map</a>
+
+</li>
+<li><a href="polcert.src.ExtractorCorrect.html#lab10">Statement-number rebasing</a>
+
+</li>
+<li><a href="polcert.src.ExtractorCorrect.html#lab11">Sequence partitioning and rebasing</a>
+
+</li>
+<li><a href="polcert.src.ExtractorCorrect.html#lab12">Semantic bridges for individual source constructs</a>
+
+</li>
+<li><a href="polcert.src.ExtractorCorrect.html#lab13">Main syntax-directed reconstruction</a>
+
+</li>
+<li><a href="polcert.src.ExtractorCorrect.html#lab14">Top-level specializations</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ISSRefinement.html">polcert.src.ISSRefinement</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ISSRefinement.html#lab15">Proof map</a>
+
+</li>
+<li><a href="polcert.src.ISSRefinement.html#lab16">Parent-child correspondence</a>
+
+</li>
+<li><a href="polcert.src.ISSRefinement.html#lab17">Domain-partition specification</a>
+
+</li>
+<li><a href="polcert.src.ISSRefinement.html#lab18">Complete and unique cut-sign partitions</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ISSBoolChecker.html">polcert.src.ISSBoolChecker</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ISSBoolChecker.html#lab19">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ISSCutSemantics.html">polcert.src.ISSCutSemantics</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ISSCutSemantics.html#lab20">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ISSValidatorCorrect.html">polcert.src.ISSValidatorCorrect</a></h2>
+<h2><a href="polcert.src.AffineValidator.html">polcert.src.AffineValidator</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.AffineValidator.html#lab21">Proof map</a>
+
+</li>
+<li><a href="polcert.src.AffineValidator.html#lab22">Soundness of the Boolean validation checks</a>
+
+</li>
+<li><a href="polcert.src.AffineValidator.html#lab23">Construction and projection of paired instruction instances</a>
+
+</li>
+<li><a href="polcert.src.AffineValidator.html#lab24">Finiteness and pairwise access-dependence exclusion</a>
+
+</li>
+<li><a href="polcert.src.AffineValidator.html#lab25">Lifting instruction proofs to flattened instance lists</a>
+
+</li>
+<li><a href="polcert.src.AffineValidator.html#lab26">End-to-end schedule-validation correctness</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.TilingWitness.html">polcert.src.TilingWitness</a></h2>
+<h2><a href="polcert.src.TilingRelation.html">polcert.src.TilingRelation</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.TilingRelation.html#lab27">Proof map</a>
+
+</li>
+<li><a href="polcert.src.TilingRelation.html#lab28">Declarative source-target structure</a>
+
+</li>
+<li><a href="polcert.src.TilingRelation.html#lab29">Erasing tile coordinates from the intermediate program</a>
+
+</li>
+<li><a href="polcert.src.TilingRelation.html#lab30">Constructing the intermediate view from target instances</a>
+
+</li>
+<li><a href="polcert.src.TilingRelation.html#lab31">Semantic reordering and final composition</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.TilingValidator.html">polcert.src.TilingValidator</a></h2>
+<h2><a href="polcert.src.TilingBandScheduleValidator.html">polcert.src.TilingBandScheduleValidator</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab32">Reader map</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab33">Common band witnesses and row arithmetic</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab34">Ordinary and second-level layout recognition</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab35">Projected schedules and composed-point witnesses</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab36">Direct affine conflict checker for a common band</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab37">Compatibility reduction through the affine checker</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab38">Direct checker soundness</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab39">Lifting component checks across statement lists</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab40">Semantic componentwise permutability kernel</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab41">Program-wide layout bridges and ordinary correctness endpoint</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab42">Scalar-aware band layouts</a>
+
+</li>
+<li><a href="polcert.src.TilingBandScheduleValidator.html#lab43">Phase-aware and second-level band layouts</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.TilingBandMixedSecondValidator.html">polcert.src.TilingBandMixedSecondValidator</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.TilingBandMixedSecondValidator.html#lab44">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.TilingBandPhaseScalarValidator.html">polcert.src.TilingBandPhaseScalarValidator</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.TilingBandPhaseScalarValidator.html#lab45">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.TilingBandDirectRuntime.html">polcert.src.TilingBandDirectRuntime</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.TilingBandDirectRuntime.html#lab46">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.polygen.ParallelLoop.html">polcert.polygen.ParallelLoop</a></h2>
+<ul class="doclist">
+<li><a href="polcert.polygen.ParallelLoop.html#lab47">Annotated loop syntax and transformations</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab48">Raw interleavings and ordering evidence</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab49">Raw and ordered trace semantics</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab50">Affine trace safety and annotation erasure</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab51">Serializing a certified concrete trace</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab52">Constant unrolling for annotated loops</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab53">Metadata-preserving cleanup</a>
+
+</li>
+<li><a href="polcert.polygen.ParallelLoop.html#lab54">Full cleanup and semantic reflection</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ParallelValidator.html">polcert.src.ParallelValidator</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ParallelValidator.html#lab55">Proof map</a>
+
+</li>
+<li><a href="polcert.src.ParallelValidator.html#lab56">Declarative doall property</a>
+
+</li>
+<li><a href="polcert.src.ParallelValidator.html#lab57">Executable certificate and soundness</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.RawCodegenOrigin.html">polcert.src.RawCodegenOrigin</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.RawCodegenOrigin.html#lab58">Proof map</a>
+
+</li>
+<li><a href="polcert.src.RawCodegenOrigin.html#lab59">Neutral traces for PolyLoop</a>
+
+</li>
+<li><a href="polcert.src.RawCodegenOrigin.html#lab60">Neutral traces for generated Loop syntax</a>
+
+</li>
+<li><a href="polcert.src.RawCodegenOrigin.html#lab61">LoopGen trace reflection</a>
+
+</li>
+<li><a href="polcert.src.RawCodegenOrigin.html#lab62">AST generation preserves source-event origin</a>
+
+</li>
+<li><a href="polcert.src.RawCodegenOrigin.html#lab63">Standard raw codegen endpoint</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ParallelCodegenCore.html">polcert.src.ParallelCodegenCore</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ParallelCodegenCore.html#lab64">Proof map</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCore.html#lab65">Tagging, erasure, and sequential trace transport</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCore.html#lab66">Executable annotation paths</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCore.html#lab67">Checked trace-safety and cleanup gates</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ParallelCodegenCompatibility.html">polcert.src.ParallelCodegenCompatibility</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ParallelCodegenCompatibility.html#lab68">Compatibility layer and support interface</a>
+<ul class="doclist">
+<li><a href="polcert.src.ParallelCodegenCompatibility.html#lab69">Legacy global-ordering wrappers</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCompatibility.html#lab70">Checked-codegen result inversions</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCompatibility.html#lab71">Generated schedule slices and source-point transport</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCompatibility.html#lab72">Trace-safety transport and the root-origin interface</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="polcert.src.ParallelCodegenCorrect.html">polcert.src.ParallelCodegenCorrect</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.ParallelCodegenCorrect.html#lab73">Proof map</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCorrect.html#lab74">Mode ownership and origin tags</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCorrect.html#lab75">Certificates order the actual generated trace</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCorrect.html#lab76">Raw codegen origin, ordered traces, and certified refinement</a>
+
+</li>
+<li><a href="polcert.src.ParallelCodegenCorrect.html#lab77">Checked cleanup endpoints</a>
+
+</li>
+</ul>
+<h2><a href="polcert.polygen.LoopUnroll.html">polcert.polygen.LoopUnroll</a></h2>
+<h2><a href="polcert.driver.VerifiedLoopPostpass.html">polcert.driver.VerifiedLoopPostpass</a></h2>
+<h2><a href="polcert.src.PrepareCodegen.html">polcert.src.PrepareCodegen</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.PrepareCodegen.html#lab78">Proof map</a>
+
+</li>
+<li><a href="polcert.src.PrepareCodegen.html#lab79">Dimension normalization and prepared-program invariants</a>
+
+</li>
+</ul>
+<h2><a href="polcert.src.StrengthenDomain.html">polcert.src.StrengthenDomain</a></h2>
+<ul class="doclist">
+<li><a href="polcert.src.StrengthenDomain.html#lab80">Proof map</a>
+
+</li>
+<li><a href="polcert.src.StrengthenDomain.html#lab81">Executable prefix-guard inference</a>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.PolOptCorrect.html">polcert.driver.PolOptCorrect</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.PolOptCorrect.html#lab82">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.PolOptBandTiling.html">polcert.driver.PolOptBandTiling</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.PolOptBandTiling.html#lab83">Proof map</a>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.ParallelPolOptCorrect.html">polcert.driver.ParallelPolOptCorrect</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab84">Proof map</a>
+
+</li>
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab85">Polyhedral preprocessing routes</a>
+
+</li>
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab86">Prepared parallel routes</a>
+
+</li>
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab87">Extraction and strengthening for parallel results</a>
+
+</li>
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab88">Alarm-free parallel entry points</a>
+
+</li>
+<li><a href="polcert.driver.ParallelPolOptCorrect.html#lab89">Vector routes</a>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.VerifiedCompilerConfig.html">polcert.driver.VerifiedCompilerConfig</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.VerifiedCompilerConfig.html#lab90">Generic sequential compiler endpoint</a>
+<ul class="doclist">
+<li><a href="polcert.driver.VerifiedCompilerConfig.html#lab91">Sequential configuration families</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedCompilerConfig.html#lab92">Verified sequential dispatcher</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedCompilerConfig.html#lab93">Generic sequential correctness endpoints</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.VerifiedParallelCompilerConfig.html">polcert.driver.VerifiedParallelCompilerConfig</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab94">Unified generic compiler endpoint</a>
+<ul class="doclist">
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab95">Unified configuration naming</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab96">Sequential lift into the common annotated target</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab97">Verified unified dispatcher</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab98">Constant unrolling after annotated code generation</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab99">Correctness support for sequential lifting</a>
+
+</li>
+<li><a href="polcert.driver.VerifiedParallelCompilerConfig.html#lab100">Generic unified correctness endpoints</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="polcert.syntax.SVerifiedCompilerConfig.html">polcert.syntax.SVerifiedCompilerConfig</a></h2>
+<ul class="doclist">
+<li><a href="polcert.syntax.SVerifiedCompilerConfig.html#lab101">Concrete extracted sequential dispatcher</a>
+<ul class="doclist">
+<li><a href="polcert.syntax.SVerifiedCompilerConfig.html#lab102">Concrete sequential configurations</a>
+
+</li>
+<li><a href="polcert.syntax.SVerifiedCompilerConfig.html#lab103">Concrete verified and raw dispatchers</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html">polcert.syntax.SVerifiedParallelCompilerConfig</a></h2>
+<ul class="doclist">
+<li><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html#lab104">Concrete extracted unified dispatcher</a>
+<ul class="doclist">
+<li><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html#lab105">Concrete unified configurations</a>
+
+</li>
+<li><a href="polcert.syntax.SVerifiedParallelCompilerConfig.html#lab106">Concrete verified and raw dispatchers</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="polcert.driver.ExtractedPipelineCorrect.html">polcert.driver.ExtractedPipelineCorrect</a></h2>
+<ul class="doclist">
+<li><a href="polcert.driver.ExtractedPipelineCorrect.html#lab107">Concrete extracted compiler endpoints</a>
+<ul class="doclist">
+<li><a href="polcert.driver.ExtractedPipelineCorrect.html#lab108">Concrete sequential endpoints</a>
+
+</li>
+<li><a href="polcert.driver.ExtractedPipelineCorrect.html#lab109">Lifting a concrete sequential result into <span class="inlinecode"><span class="id" title="var">ParallelLoop</span></span></a>
+
+</li>
+<li><a href="polcert.driver.ExtractedPipelineCorrect.html#lab110">Concrete unified annotated endpoints</a>
+
+</li>
+<li><a href="polcert.driver.ExtractedPipelineCorrect.html#lab111">Explicit rejection endpoints</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,210 @@
+make -f Makefile.extr polopt
+make[1]: Entering directory '/polcert'
+make[1]: 'polopt' is up to date.
+make[1]: Leaving directory '/polcert'
+rm -rf tests/polopt-generated/cases
+python3 tests/polopt-generated/tools/materialize_polopt_cases.py \
+	--manifest tests/polopt-generated/materialize_manifest.json \
+	--polopt ./polopt
+[1/62] 1dloop-invar: running
+[1/62] 1dloop-invar: ok changed=false time=0.04s
+[2/62] adi: running
+[2/62] adi: ok changed=true time=12.91s
+[3/62] advect3d: running
+[3/62] advect3d: ok changed=true time=75.21s
+[4/62] corcol: running
+[4/62] corcol: ok changed=true time=1.27s
+[5/62] corcol3: running
+[5/62] corcol3: ok changed=true time=1.69s
+[6/62] costfunc: running
+[6/62] costfunc: ok changed=true time=0.20s
+[7/62] covcol: running
+[7/62] covcol: ok changed=true time=0.89s
+[8/62] dct: running
+[8/62] dct: ok changed=true time=3.48s
+[9/62] doitgen: running
+[9/62] doitgen: ok changed=true time=3.65s
+[10/62] dsyr2k: running
+[10/62] dsyr2k: ok changed=true time=0.50s
+[11/62] dsyrk: running
+[11/62] dsyrk: ok changed=true time=0.50s
+[12/62] fdtd-1d: running
+[12/62] fdtd-1d: ok changed=true time=1.09s
+[13/62] fdtd-2d: running
+[13/62] fdtd-2d: ok changed=true time=32.47s
+[14/62] floyd: running
+[14/62] floyd: ok changed=true time=0.80s
+[15/62] fusion1: running
+[15/62] fusion1: ok changed=true time=0.05s
+[16/62] fusion10: running
+[16/62] fusion10: ok changed=true time=0.28s
+[17/62] fusion2: running
+[17/62] fusion2: ok changed=true time=0.50s
+[18/62] fusion3: running
+[18/62] fusion3: ok changed=true time=0.29s
+[19/62] fusion4: running
+[19/62] fusion4: ok changed=true time=0.34s
+[20/62] fusion5: running
+[20/62] fusion5: ok changed=true time=0.58s
+[21/62] fusion6: running
+[21/62] fusion6: ok changed=true time=0.08s
+[22/62] fusion7: running
+[22/62] fusion7: ok changed=true time=0.14s
+[23/62] fusion8: running
+[23/62] fusion8: ok changed=true time=0.07s
+[24/62] fusion9: running
+[24/62] fusion9: ok changed=true time=0.68s
+[25/62] gemver: running
+[25/62] gemver: ok changed=true time=2.04s
+[26/62] intratileopt1: running
+[26/62] intratileopt1: ok changed=true time=0.11s
+[27/62] intratileopt2: running
+[27/62] intratileopt2: ok changed=true time=0.14s
+[28/62] intratileopt3: running
+[28/62] intratileopt3: ok changed=true time=0.16s
+[29/62] intratileopt4: running
+[29/62] intratileopt4: ok changed=true time=0.16s
+[30/62] jacobi-1d-imper: running
+[30/62] jacobi-1d-imper: ok changed=true time=0.95s
+[31/62] jacobi-2d-imper: running
+[31/62] jacobi-2d-imper: ok changed=true time=5.80s
+[32/62] lu: running
+[32/62] lu: ok changed=true time=2.40s
+[33/62] matmul-init: running
+[33/62] matmul-init: ok changed=true time=0.81s
+[34/62] matmul-seq: running
+[34/62] matmul-seq: ok changed=true time=2.79s
+[35/62] matmul-seq3: running
+[35/62] matmul-seq3: ok changed=true time=3.70s
+[36/62] matmul: running
+[36/62] matmul: ok changed=true time=0.62s
+[37/62] multi-loop-param: running
+[37/62] multi-loop-param: ok changed=true time=0.77s
+[38/62] multi-stmt-stencil-seq: running
+[38/62] multi-stmt-stencil-seq: ok changed=true time=0.33s
+[39/62] mvt: running
+[39/62] mvt: ok changed=true time=0.74s
+[40/62] mxv-seq: running
+[40/62] mxv-seq: ok changed=true time=0.84s
+[41/62] mxv-seq3: running
+[41/62] mxv-seq3: ok changed=true time=1.21s
+[42/62] mxv: running
+[42/62] mxv: ok changed=true time=0.25s
+[43/62] negparam: running
+[43/62] negparam: ok changed=true time=0.84s
+[44/62] nodep: running
+[44/62] nodep: ok changed=true time=0.11s
+[45/62] noloop: running
+[45/62] noloop: ok changed=false time=0.01s
+[46/62] pca: running
+[46/62] pca: ok changed=true time=7.77s
+[47/62] polynomial: running
+[47/62] polynomial: ok changed=true time=0.30s
+[48/62] seidel: running
+[48/62] seidel: ok changed=true time=2.72s
+[49/62] seq: running
+[49/62] seq: ok changed=true time=0.06s
+[50/62] shift: running
+[50/62] shift: ok changed=true time=0.62s
+[51/62] spatial: running
+[51/62] spatial: ok changed=true time=0.16s
+[52/62] ssymm: running
+[52/62] ssymm: ok changed=true time=2.08s
+[53/62] strmm: running
+[53/62] strmm: ok changed=true time=0.64s
+[54/62] strsm: running
+[54/62] strsm: ok changed=true time=2.54s
+[55/62] tce: running
+[55/62] tce: ok changed=true time=54.76s
+[56/62] tmm: running
+[56/62] tmm: ok changed=true time=0.63s
+[57/62] tricky1: running
+[57/62] tricky1: ok changed=true time=0.87s
+[58/62] tricky2: running
+[58/62] tricky2: ok changed=true time=0.06s
+[59/62] tricky3: running
+[59/62] tricky3: ok changed=true time=0.93s
+[60/62] tricky4: running
+[60/62] tricky4: ok changed=false time=0.03s
+[61/62] trisolv: running
+[61/62] trisolv: ok changed=true time=2.26s
+[62/62] wavefront: running
+[62/62] wavefront: ok changed=true time=0.17s
+python3 tests/polopt-generated/tools/check_polopt_cases.py \
+	--manifest tests/polopt-generated/strict_suite_manifest.json
+[strict-effect] PASS case=1dloop-invar expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=adi expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=advect3d expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=corcol expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=corcol3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=costfunc expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=covcol expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=dct expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=doitgen expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=dsyr2k expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=dsyrk expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fdtd-1d expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fdtd-2d expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=floyd expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion1 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion10 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion2 expected=nontrivial-change coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=fusion3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion4 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion5 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion6 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion7 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion8 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=fusion9 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=gemver expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=intratileopt1 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=intratileopt2 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=intratileopt3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=intratileopt4 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=jacobi-1d-imper expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=jacobi-2d-imper expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=lu expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=matmul expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=matmul-init expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=matmul-seq expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=matmul-seq3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=multi-loop-param expected=nontrivial-change coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=multi-stmt-stencil-seq expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=mvt expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=mxv expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=mxv-seq expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=mxv-seq3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=negparam expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=nodep expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=noloop expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=pca expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=polynomial expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=seidel expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=seq expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=shift expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=spatial expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=ssymm expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=strmm expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=strsm expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=tce expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=tmm expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=tricky1 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=tricky2 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=tricky3 expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:false interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=tricky4 expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched
+[strict-effect] PASS case=trisolv expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
+[strict-effect] PASS case=wavefront expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
+total=62
+ok=62
+fail=0
+changed=59
+nontrivial_changed=59
+detected_tiled=46
+detected_tiled_cases=adi,advect3d,corcol,corcol3,costfunc,covcol,dct,doitgen,dsyr2k,dsyrk,fdtd-1d,fdtd-2d,floyd,fusion2,fusion5,fusion7,gemver,intratileopt1,intratileopt2,intratileopt3,intratileopt4,jacobi-1d-imper,jacobi-2d-imper,lu,matmul,matmul-init,matmul-seq,matmul-seq3,multi-loop-param,mxv,mxv-seq,mxv-seq3,negparam,pca,polynomial,seidel,shift,spatial,ssymm,strmm,strsm,tce,tmm,tricky1,trisolv,wavefront
+required_tiled_cases=advect3d,fdtd-2d,jacobi-2d-imper,matmul,matmul-init,seidel,tce,wavefront
+required_nontrivial_changed_cases=advect3d,fdtd-2d,fusion2,jacobi-2d-imper,matmul,matmul-init,multi-loop-param,seidel,tce,wavefront
+required_unchanged_cases=1dloop-invar,noloop,tricky4
+tiling_validation=direct-only
+tiling_validation_permutable_band=61
+tiling_validation_not_applicable_no_loop=1
+tiling_validation_fallback=0

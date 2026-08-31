@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wavefront.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/wavefront.loop</code></h1>
+  <pre>context(N);
+
+for i in range(1, N) {
+  for j in range(1, N) {
+    a[i][j] = (a[(i - 1)][j] + a[i][(j - 1)]);
+  }
+}
+</pre>
+</main>
+</body>
+</html>

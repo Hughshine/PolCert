@@ -1,0 +1,39 @@
+{
+  "cases_dir": "tests/polopt-generated/cases",
+  "expect_total": 62,
+  "min_changed": 50,
+  "min_nontrivial_changed": 50,
+  "tiling_validation": {
+    "default": "permutable-band",
+    "overrides": {
+      "noloop": "not-applicable:no-loop"
+    }
+  },
+  "require_tiled": [
+    "advect3d",
+    "fdtd-2d",
+    "jacobi-2d-imper",
+    "matmul",
+    "matmul-init",
+    "seidel",
+    "tce",
+    "wavefront"
+  ],
+  "require_nontrivial_changed": [
+    "advect3d",
+    "fdtd-2d",
+    "fusion2",
+    "jacobi-2d-imper",
+    "matmul",
+    "matmul-init",
+    "multi-loop-param",
+    "seidel",
+    "tce",
+    "wavefront"
+  ],
+  "require_unchanged": [
+    "1dloop-invar",
+    "noloop",
+    "tricky4"
+  ]
+}

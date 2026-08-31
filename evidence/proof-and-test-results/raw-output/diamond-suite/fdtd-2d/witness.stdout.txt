@@ -1,0 +1,35 @@
+before: /tmp/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.posttile.scop
+params: tmax,ny,nx
+
+statement 1:
+  original iterators: t j
+  tiled iterators:    fk0 fk1 fk2 t j
+  added iterators:    fk0 fk1 fk2
+  tile link: fk0 = floor((t - j) / 32)
+  tile link: fk1 = floor((t + j) / 32)
+  tile link: fk2 = floor((t) / 32)
+
+statement 2:
+  original iterators: t i j
+  tiled iterators:    fk0 fk1 fk2 t i j
+  added iterators:    fk0 fk1 fk2
+  tile link: fk0 = floor((t - j) / 32)
+  tile link: fk1 = floor((t + j) / 32)
+  tile link: fk2 = floor((t + i) / 32)
+
+statement 3:
+  original iterators: t i j
+  tiled iterators:    fk0 fk1 fk2 t i j
+  added iterators:    fk0 fk1 fk2
+  tile link: fk0 = floor((t - j) / 32)
+  tile link: fk1 = floor((t + j) / 32)
+  tile link: fk2 = floor((t + i) / 32)
+
+statement 4:
+  original iterators: t i j
+  tiled iterators:    fk0 fk1 fk2 t i j
+  added iterators:    fk0 fk1 fk2
+  tile link: fk0 = floor((t - j) / 32)
+  tile link: fk1 = floor((t + j + 1) / 32)
+  tile link: fk2 = floor((t + i + 1) / 32)

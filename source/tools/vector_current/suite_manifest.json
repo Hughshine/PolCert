@@ -1,0 +1,196 @@
+{
+  "suite_name": "VECTOR-CURRENT",
+  "stderr_needles_exactly_once": true,
+  "fixtures": {
+    "positive": "../parallel_current/fixtures/positive.loop",
+    "symbolic-independent-2d": "../second_level_tiling/fixtures/symbolic-independent-2d.loop",
+    "matmul-init": "../second_level_tiling/fixtures/matmul-init.loop",
+    "diamond-example-inner-batch": "../parallel_current/fixtures/diamond-example-inner-batch.loop",
+    "dependent": "../parallel_current/fixtures/dependent.loop"
+  },
+  "checks": [
+    {
+      "name": "vector-current-positive",
+      "fixture": "positive",
+      "args": [
+        "--vector-current",
+        "2"
+      ],
+      "expect": "success",
+      "needle": "vector for i2",
+      "stderr_needles": [
+        "[tiling-validation] route=permutable-band",
+        "[vector-validation] status=applied source=explicit-current scope=innermost"
+      ],
+      "stderr_counts": {
+        "[tiling-validation] route=permutable-band": 1,
+        "[vector-validation] status=applied source=explicit-current scope=innermost": 1
+      },
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": []
+    },
+    {
+      "name": "vector-current-positive-iss",
+      "fixture": "positive",
+      "args": ["--iss", "--vector-current", "2"],
+      "expect": "success",
+      "needle": "vector for i2",
+      "stderr_needles": [
+        "[tiling-validation] route=permutable-band",
+        "[vector-validation] status=applied source=explicit-current scope=innermost"
+      ],
+      "stderr_counts": {
+        "[tiling-validation] route=permutable-band": 1,
+        "[vector-validation] status=applied source=explicit-current scope=innermost": 1
+      },
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": ["--iss"]
+    },
+    {
+      "name": "identity-tiled-vector-current-innermost",
+      "fixture": "symbolic-independent-2d",
+      "args": [
+        "--identity-tiled",
+        "--vector-current",
+        "3"
+      ],
+      "expect": "success",
+      "needles": [
+        "vector for i3",
+        "32 *",
+        "/ 32"
+      ],
+      "stderr_needles": [
+        "[tiling-validation] route=permutable-band",
+        "[vector-validation] status=applied source=explicit-current scope=innermost"
+      ],
+      "stderr_counts": {
+        "[tiling-validation] route=permutable-band": 1,
+        "[vector-validation] status=applied source=explicit-current scope=innermost": 1
+      },
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--identity-tiled"
+      ]
+    },
+    {
+      "name": "identity-tiled-vector-current-iss-innermost",
+      "fixture": "symbolic-independent-2d",
+      "args": ["--identity-tiled", "--iss", "--vector-current", "3"],
+      "expect": "success",
+      "needles": ["vector for i3", "32 *", "/ 32"],
+      "stderr_needles": [
+        "[tiling-validation] route=permutable-band",
+        "[vector-validation] status=applied source=explicit-current scope=innermost"
+      ],
+      "stderr_counts": {
+        "[tiling-validation] route=permutable-band": 1,
+        "[vector-validation] status=applied source=explicit-current scope=innermost": 1
+      },
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": ["--identity-tiled", "--iss"]
+    },
+    {
+      "name": "vector-current-rejects-non-innermost-diamond",
+      "fixture": "diamond-example-inner-batch",
+      "args": ["--diamond-tile", "--vector-current", "0"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "vector-current-rejects-non-innermost-diamond-iss",
+      "fixture": "diamond-example-inner-batch",
+      "args": ["--diamond-tile", "--iss", "--vector-current", "0"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "vector-current-rejects-non-innermost-positive",
+      "fixture": "positive",
+      "args": ["--vector-current", "0"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "vector-current-rejects-no-vector-output",
+      "fixture": "positive",
+      "args": ["--vector-current", "3"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "identity-vector-current-rejects-non-innermost-matmul",
+      "fixture": "matmul-init",
+      "args": ["--identity-tiled", "--vector-current", "1"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "identity-vector-current-rejects-non-innermost-matmul-iss",
+      "fixture": "matmul-init",
+      "args": ["--identity-tiled", "--iss", "--vector-current", "1"],
+      "expect": "failure",
+      "needles": [
+        "non-innermost vector loop, or no vector loop",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "vector-current-out-of-bounds",
+      "fixture": "positive",
+      "args": [
+        "--vector-current",
+        "5"
+      ],
+      "expect": "failure",
+      "needles": [
+        "Parallel validation failed",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    },
+    {
+      "name": "vector-current-dependent",
+      "fixture": "dependent",
+      "args": [
+        "--vector-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needles": [
+        "Parallel validation failed",
+        "[vector-validation] status=rejected source=explicit-current reason=not-certifiable-or-non-innermost"
+      ],
+      "absent_needles": ["[tiling-validation] route=", "status=applied", "== Optimized Loop =="],
+      "stderr_counts": {"[alarm] requested checked optimization was rejected": 1}
+    }
+  ]
+}

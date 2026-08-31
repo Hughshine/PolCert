@@ -1,0 +1,4 @@
+[PHASE] affine(before, mid): OK
+[PHASE] tiling(mid, posttile): OK route=permutable-band
+[PHASE] affine(posttile, after): OK
+[OK] Diamond phase-aligned validation succeeded for (/tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.beforescheduling.scop -> /tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.midtransform.scop -> /tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.posttile.scop -> /tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.afterscheduling.scop).

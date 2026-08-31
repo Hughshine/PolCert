@@ -1,0 +1,2 @@
+[Clan] Error: syntax error at line 17, column 15.
+Error extracting polyhedra from source file: 'jacobi-3d-25pt.c'

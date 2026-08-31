@@ -1,0 +1,106 @@
+{
+  "output_root": "/tmp/polcert-artifact-check/identity-compositions",
+  "results": [
+    {
+      "case": "fusion7",
+      "mode": "identity-second-level",
+      "pluto_differs_from_identity_tile": true,
+      "pluto_second_level_c": {
+        "has_diamond_macro_hint": true,
+        "has_first_level_32": true,
+        "has_ratio_8": true,
+        "has_second_level_256": true
+      },
+      "polcert_second_level_validation": {
+        "exit": 0,
+        "ok": true,
+        "output": "[TILING-OK] /tmp/polcert-artifact-check/identity-compositions/fusion7.identity.second.scop.afterscheduling.scop validates /tmp/polcert-artifact-check/identity-compositions/fusion7.scop as a tiling-derived refinement (route=permutable-band)."
+      },
+      "polopt_identity_second_level": {
+        "exit": 0,
+        "stderr_first_line": "[tiling-validation] route=permutable-band",
+        "stderr_tail": "[tiling-validation] route=permutable-band\n",
+        "stdout": "== Optimized Loop ==\ncontext(N, M);\n\nif (1 <= N) {\n  for i0 in range(0, ((N + 255) / 256)) {\n    for i1 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {\n      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n        a[i2] = b[i2];\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 255) / 256)) {\n    for i1 in range(max(0, (8 * i0)), min(((M + 31) / 32), ((8 * i0) + 8))) {\n      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), M)) {\n        a[i2] = b[i2];\n      }\n    }\n  }\n}\n\n"
+      },
+      "polopt_identity_second_level_c": {
+        "has_diamond_macro_hint": false,
+        "has_first_level_32": true,
+        "has_ratio_8": true,
+        "has_second_level_256": true
+      },
+      "polopt_identity_second_level_differs_from_identity_tile": true,
+      "polopt_identity_second_level_iss": {
+        "exit": 0,
+        "stderr_first_line": "[tiling-validation] route=permutable-band",
+        "stderr_tail": "[tiling-validation] route=permutable-band\n",
+        "stdout": "== Optimized Loop ==\ncontext(N, M);\n\nif (1 <= N) {\n  for i0 in range(0, ((N + 255) / 256)) {\n    for i1 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {\n      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {\n        a[i2] = b[i2];\n      }\n    }\n  }\n}\nif (1 <= M) {\n  for i0 in range(0, ((M + 255) / 256)) {\n    for i1 in range(max(0, (8 * i0)), min(((M + 31) / 32), ((8 * i0) + 8))) {\n      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), M)) {\n        a[i2] = b[i2];\n      }\n    }\n  }\n}\n\n"
+      },
+      "polopt_identity_second_level_iss_c": {
+        "has_diamond_macro_hint": false,
+        "has_first_level_32": true,
+        "has_ratio_8": true,
+        "has_second_level_256": true
+      },
+      "polopt_identity_second_level_iss_differs_from_identity_tile_iss": true,
+      "polopt_identity_second_level_iss_supported": true,
+      "polopt_identity_second_level_supported": true
+    },
+    {
+      "case": "wavefront",
+      "mode": "identity-diamond",
+      "pluto_diamond_c": {
+        "has_diamond_macro_hint": true,
+        "has_first_level_32": true,
+        "has_ratio_8": false,
+        "has_second_level_256": false
+      },
+      "pluto_differs_from_identity_tile": false,
+      "polcert_diamond_validation": {
+        "exit": 1,
+        "ok": false,
+        "output": "[PHASE] affine(before, mid): OK\n[PHASE] tiling(mid, posttile): FAIL route=rejected\n[PHASE] affine(posttile, after): OK\n[FAIL] Diamond phase-aligned validation failed for (/tmp/polcert-artifact-check/identity-compositions/wavefront.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.midtransform.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.posttile.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.afterscheduling.scop)."
+      },
+      "polopt_identity_diamond": {
+        "exit": 2,
+        "stderr_first_line": "[pluto-compat] reject: --diamond-tile requires a Pluto tiling phase and cannot be combined with --identity",
+        "stderr_tail": "[pluto-compat] reject: --diamond-tile requires a Pluto tiling phase and cannot be combined with --identity\n",
+        "stdout": ""
+      }
+    },
+    {
+      "counts": {
+        "diamond_failed": 0,
+        "distinct_output_unvalidated": 0,
+        "distinct_output_validated": 0,
+        "export_failed": 2,
+        "ordinary_failed": 0,
+        "same_output_no_phase_check": 69,
+        "timeouts": 0
+      },
+      "fixtures_checked": 71,
+      "interesting": [],
+      "interesting_definition": "interesting means direct Pluto --identity --tile --diamond-tile differs from --identity --tile; phase validation is run only for distinct-output candidates",
+      "mode": "identity-diamond-sensitive-search",
+      "output_root": "/tmp/polcert-artifact-check/identity-compositions/identity-diamond-search",
+      "polopt_route_rejection": {
+        "exit": 2,
+        "optimized": "[pluto-compat] reject: --diamond-tile requires a Pluto tiling phase and cannot be combined with --identity\n",
+        "timed_out": false
+      }
+    },
+    {
+      "counts": {
+        "both_failed": 29,
+        "both_success_different_output": 0,
+        "both_success_same_output": 42,
+        "iss_only_success": 0,
+        "noiss_only_success": 0,
+        "timeouts": 0
+      },
+      "fixtures_checked": 71,
+      "interesting": [],
+      "interesting_definition": "interesting means ISS-only success, no-ISS-only success, or both routes succeeding with different optimized loops",
+      "mode": "identity-iss-sensitive-search"
+    }
+  ]
+}

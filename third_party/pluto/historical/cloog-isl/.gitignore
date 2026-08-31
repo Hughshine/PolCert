@@ -1,0 +1,42 @@
+# Ignore objects and archives.
+*.[oa]
+# library description files
+*.lo
+*.la
+
+# Ignore some directories. Already tracked files will still be tracked. It
+# is possible to force tracking of a file within these directories if necessary.
+m4/
+.deps/
+.libs/
+autoconf/
+autom4te.cache/
+
+# Ignore build utilities.
+aclocal.m4
+libtool
+configure
+Makefile
+Makefile.in
+
+# Ignore logs.
+*.log
+*.status
+.dirstamp
+
+# Ignore version files.
+version.[ch]
+genversion.sh
+
+# Ignore build results.
+cloog
+!cloog/
+cloog-*-uninstalled.*
+cloog-*.pc*
+
+# Miscellaneous.
+doc/gitversion.texi
+test/generate_test*
+test/test_main*
+test/test_test*
+test/temp_generated*

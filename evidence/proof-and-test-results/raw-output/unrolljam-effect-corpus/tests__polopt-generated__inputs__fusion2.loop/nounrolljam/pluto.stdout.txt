@@ -1,0 +1,37 @@
+[pluto] inscop dumped.
+[pluto] compute_deps (isl)
+[pluto] Number of statements: 2
+[pluto] Total number of loops: 4
+[pluto] Number of deps: 2
+[pluto] Maximum domain dimensionality: 2
+[pluto] Number of parameters: 0
+[pluto] Affine transformations [<iter coeff's> <param> <const>]
+
+T(S1): ($i0+$i1, $i1, 0)
+loop types (loop, loop, scalar)
+
+T(S2): ($i0+$i1+1, $i1+1, 1)
+loop types (loop, loop, scalar)
+
+[pluto] mid-scop dumped.
+[Pluto] After tiling:
+T(S1): (($i0+$i1)/32, $i1/32, $i0+$i1, $i1, 0)
+loop types (loop, loop, loop, loop, scalar)
+
+T(S2): (zT2, zT3, $i0+$i1+1, $i1+1, 1)
+loop types (loop, loop, loop, loop, scalar)
+
+[pluto] post-tile-scop dumped.
+[pluto] opt-scop dumped.
+[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), 
+[Pluto] Output written to fusion2.scop.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.000072s
+[pluto] Auto-transformation time: 0.004219s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.002447s
+[pluto] Code generation time: 0.020216s
+[pluto] Other/Misc time: 0.008468s
+[pluto] Total time: 0.032975s
+[pluto] All times: 0.000072 0.004219 0.020216 0.008468

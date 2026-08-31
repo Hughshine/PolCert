@@ -1,0 +1,44 @@
+{
+  "direct_route_smoke": {
+    "cases": 20,
+    "zero_fallbacks": true
+  },
+  "non_second_level": {
+    "cases": 90,
+    "explicit_vector_rejection": 6,
+    "permutable_band": 84,
+    "validation_fallback": 0
+  },
+  "required_runtime_checks": {
+    "direct-only-tiling-route-smoke": "pass",
+    "non-second-level-tiling-routes": "pass",
+    "pluto-compat-suite": "pass",
+    "scalar-interleaved-tiling-route": "pass",
+    "second-level-suite": "pass"
+  },
+  "schema_version": 1,
+  "second_level_additional_runtime_matrix": {
+    "diamond_explicit_vector_rejection": 4,
+    "diamond_permutable_band": 16,
+    "standalone_phase_aligned": "permutable-band",
+    "standalone_source_like": "permutable-band",
+    "standalone_trailing_zero_normalized": "permutable-band",
+    "verified": true
+  },
+  "second_level_manifest": {
+    "manifest_checks": 58,
+    "negative": 5,
+    "permutable_band": 53,
+    "successful": 53,
+    "validation_fallback": 0
+  },
+  "strict_loop_corpus": {
+    "not_applicable_no_loop": 1,
+    "permutable_band": 61,
+    "run": true,
+    "validation_fallback": 0,
+    "verified": true
+  },
+  "verified": true,
+  "zero_tiling_validation_fallbacks": true
+}

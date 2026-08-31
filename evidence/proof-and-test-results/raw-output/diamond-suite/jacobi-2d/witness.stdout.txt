@@ -1,0 +1,11 @@
+before: /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.posttile.scop
+params: T,N
+
+statement 1:
+  original iterators: t i j
+  tiled iterators:    fk0 fk1 fk2 t i j
+  added iterators:    fk0 fk1 fk2
+  tile link: fk0 = floor((t - i) / 32)
+  tile link: fk1 = floor((t + i) / 32)
+  tile link: fk2 = floor((t + j) / 32)

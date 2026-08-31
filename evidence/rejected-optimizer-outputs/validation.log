@@ -1,0 +1,41 @@
+python3 tools/pluto_bugs/run_matmul_parallel_hint.py
+[pluto-bug] explicit-RAR matmul parallel-hint case reproduced
+python3 tools/pluto_bugs/run_auto_affine_lp_cc_scaling.py
+[pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
+[pluto-auto-affine-lp] scheduler: expected=automatic-two-component-lp actual=exit-0,illegal-S3-to-S1-order control-files=none
+[pluto-auto-affine-lp] execution: expected=802469374803681347 actual=11412027514774867379 consistency=mismatch
+[pluto-auto-affine-lp] affine-validator: expected=rejected actual=exit-2,overall-FAIL interpretation=automatic-schedule-dependence-violation
+[pluto-auto-affine-lp] checked-default: expected=no-rar,rejected,no-output actual=exit-2,alarm interpretation=pluto-default-aligned-fail-closed
+[pluto-auto-affine-lp] checked-explicit-rar: expected=rar-forwarded,accepted actual=exit-0,optimized-loop interpretation=explicit-oracle-policy-effective
+[pluto-auto-affine-lp] OK
+python3 tools/pluto_bugs/run_affine_fst_reversed.py
+[pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
+[pluto-affine-bug] producer: expected=consumer-before-producer actual=exit-0,reversed-statement-groups interpretation=illegal-affine-order
+[pluto-affine-bug] execution: expected=100 actual=0 consistency=mismatch
+[pluto-affine-bug] affine-validator: expected=rejected actual=exit-2,overall-FAIL interpretation=dependence-violation-detected
+[pluto-affine-bug] checked-pipeline: expected=rejected,no-output actual=exit-2,alarm interpretation=fail-closed
+[pluto-affine-bug] OK
+python3 tools/pluto_bugs/run_tiling_innerpar_satvec.py
+[pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
+[pluto-tiling-bug] producer: expected=parallel-dependent-t4 actual=exit-0,omp-t4 interpretation=stale-satisfaction-metadata
+[pluto-tiling-bug] execution: expected=310235039 actual=12958390,18458966,99753,49485416,1286250 consistency=mismatch
+[pluto-tiling-bug] checked-pipeline: expected=tiling-accepted,no-nontrivial-parallel-loop actual=exit-0,permutable-band,singleton-parallel interpretation=unsafe-overlay-replaced-by-semantically-sequential-loop
+[pluto-tiling-bug] strict-pipeline: expected=rejected,no-output actual=exit-1,alarm interpretation=fail-closed
+[pluto-tiling-bug] OK
+python3 tools/pluto_bugs/run_diamond_nointratile_reschedule.py
+[pluto-diamond-nointra] producer: expected=20 actual=20 consistency=match interpretation=mandatory-diamond-restore-ran
+[pluto-diamond-nointra] checked-pipeline: expected=reject-mixed-scalar-candidate actual=rejected-no-output interpretation=formal-tiling-boundary-failed-closed
+[pluto-diamond-nointra] OK
+python3 tools/pluto_bugs/run_vanished_outer_parallel.py
+[pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
+[pluto-miscompile] producer: expected=success-with-inner-OpenMP actual=exit-0,parallel-t2 interpretation=unsafe-loop-substitution
+[pluto-miscompile] execution: expected=10000 actual=2499,2499,2499 consistency=mismatch
+[pluto-miscompile] polcert-hint: expected=rejected actual=exit-1,no-output interpretation=fail-closed
+[pluto-miscompile] polcert-inner-loop: expected=rejected actual=exit-2 interpretation=dependence-detected
+[pluto-miscompile] OK (white-box defect reproduced and rejected)
+python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
+[pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
+[pluto-unrolljam-bug] producer: expected=success-with-unsafe-jam actual=exit-0,adjacent-j-pair
+[pluto-unrolljam-bug] execution: expected=15 actual=1 consistency=mismatch
+[pluto-unrolljam-bug] polcert: expected=no-unsafe-jam actual=exit-0,separate-k-loops interpretation=jam-candidate-rejected
+[pluto-unrolljam-bug] OK

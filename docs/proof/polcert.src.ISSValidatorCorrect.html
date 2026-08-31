@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>polcert.src.ISSValidatorCorrect</title>
+</head>
+
+<body>
+<div id="artifact-handbook-link" style="padding:8px 12px;border-bottom:1px solid #cbd3d8;background:#f4f6f7;font:14px system-ui,sans-serif"><a href="../index.html">Plain-language guide</a> &middot; <a href="toc.html">Modules</a> &middot; <a href="declarations.html">Declarations</a></div>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">polcert.src.ISSValidatorCorrect</h1>
+
+<div class="code">
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">ISSBoolChecker</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">ISSCutSemantics</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">ISSValidator</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">PolIRs</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect" class="idref" href="#ISSValidatorCorrect"><span class="id" title="module">ISSValidatorCorrect</span></a> (<span class="id" title="var">PolIRs</span>: <span class="id" title="module">POLIRS</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect.ISSVal" class="idref" href="#ISSValidatorCorrect.ISSVal"><span class="id" title="module">ISSVal</span></a> := <span class="id" title="module">ISSValidator</span> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect.ISSCheck" class="idref" href="#ISSValidatorCorrect.ISSCheck"><span class="id" title="module">ISSCheck</span></a> := <a class="idref" href="polcert.src.ISSBoolChecker.html#ISSBoolChecker"><span class="id" title="module">ISSBoolChecker</span></a> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect.ISSSem" class="idref" href="#ISSValidatorCorrect.ISSSem"><span class="id" title="module">ISSSem</span></a> := <a class="idref" href="polcert.src.ISSCutSemantics.html#ISSCutSemantics"><span class="id" title="module">ISSCutSemantics</span></a> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect.State" class="idref" href="#ISSValidatorCorrect.State"><span class="id" title="module">State</span></a> := <a class="idref" href="polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.State"><span class="id" title="module">PolIRs.Instr.State</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="ISSValidatorCorrect.PolyLang" class="idref" href="#ISSValidatorCorrect.PolyLang"><span class="id" title="module">PolyLang</span></a> := <a class="idref" href="polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.PolyLang"><span class="id" title="module">PolIRs.PolyLang</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The public ISS theorem is deliberately a composition point: the boolean
+    checker establishes a complete cut partition, and <span class="inlinecode"><a class="idref" href="polcert.src.ISSCutSemantics.html#ISSCutSemantics"><span class="id" title="module">ISSCutSemantics</span></a></span>
+    converts that partition into semantic refinement. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct" class="idref" href="#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct"><span class="id" title="lemma">checked_iss_complete_cut_shape_validate_semantics_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="before:1" class="idref" href="#before:1"><span class="id" title="binder">before</span></a> <a id="after:2" class="idref" href="#after:2"><span class="id" title="binder">after</span></a> <a id="w:3" class="idref" href="#w:3"><span class="id" title="binder">w</span></a> <a id="st1:4" class="idref" href="#st1:4"><span class="id" title="binder">st1</span></a> <a id="st2:5" class="idref" href="#st2:5"><span class="id" title="binder">st2</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="definition">ISSVal.checked_iss_complete_cut_shape_validate</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#before:1"><span class="id" title="variable">before</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#after:2"><span class="id" title="variable">after</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#w:3"><span class="id" title="variable">w</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">PolyLang.instance_list_semantics</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#after:2"><span class="id" title="variable">after</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st1:4"><span class="id" title="variable">st1</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st2:5"><span class="id" title="variable">st2</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st2':6" class="idref" href="#st2':6"><span class="id" title="binder">st2'</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">PolyLang.instance_list_semantics</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#before:1"><span class="id" title="variable">before</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st1:4"><span class="id" title="variable">st1</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st2':6"><span class="id" title="variable">st2'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="axiom">State.eq</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st2:5"><span class="id" title="variable">st2</span></a> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#st2':6"><span class="id" title="variable">st2'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="keyword">before</span> <span class="id" title="keyword">after</span> <span class="id" title="var">w</span> <span class="id" title="var">st1</span> <span class="id" title="var">st2</span> <span class="id" title="var">Hcheck</span> <span class="id" title="var">Hsem_after</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">ISSSem.iss_complete_cut_shape_to_before_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">ISSCheck.check_domain_partition_complete_cut_shapeb_sound</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect"><span class="id" title="module">ISSValidatorCorrect</span></a>.<br/>
+</div>
+</div>
+
+<div id="footer">
+<hr/><a href="declarations.html">Index</a><hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+[osl] Warning: strdup of a NULL string (osl_coordinates_clone).
+[osl] Warning: strdup of a NULL string (osl_coordinates_clone).
+[osl] Warning: strdup of a NULL string (osl_coordinates_clone).
+[osl] Warning: strdup of a NULL string (osl_coordinates_clone).

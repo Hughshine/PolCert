@@ -1,0 +1,16 @@
+{
+  "cases": 11,
+  "extract_failures": 0,
+  "factor": 4,
+  "native_codegen_effects": 6,
+  "native_effects_covered": 6,
+  "native_effects_uncovered": 0,
+  "native_no_effect": 5,
+  "output_root": "/tmp/polcert-artifact-check/unrolljam-effect-corpus",
+  "pluto_failures": 0,
+  "polopt_extra_checked_effects_without_native": 0,
+  "polopt_extra_effect_fixtures": [],
+  "polopt_tiling_route_fixtures": [],
+  "polopt_tiling_route_reports": 0,
+  "uncovered_fixtures": []
+}

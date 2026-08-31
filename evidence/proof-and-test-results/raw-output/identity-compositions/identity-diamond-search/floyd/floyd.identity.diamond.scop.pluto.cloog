@@ -1,0 +1,48 @@
+# CLooG script generated automatically by PLUTO ordinary-fixed-pluto-snapshot
+# language: C
+c
+
+0 3
+
+1
+NUM_NODES 
+
+# Number of statements
+1
+
+# S1 (pathDistanceMatrix[$i1][$i2] = pathDistanceMatrix[$i1][$i0] + pathDistanceMatrix[$i0][$i2] <= pathDistanceMatrix[$i1][$i2] - 1 ? pathDistanceMatrix[$i1][$i0] + pathDistanceMatrix[$i0][$i2] : pathDistanceMatrix[$i1][$i2];)
+10 8
+1 0 0 1 0 0 0 0 
+1 0 0 -1 0 0 1 -1 
+1 0 0 0 1 0 0 0 
+1 0 0 0 -1 0 1 -1 
+1 0 0 0 0 1 0 0 
+1 0 0 0 0 -1 1 -1 
+1 -32 0 0 1 0 0 0 
+1 32 0 0 -1 0 0 31 
+1 0 -32 0 0 1 0 0 
+1 0 32 0 0 -1 0 31 
+0 0 0
+
+# we want cloog to set the iterator names
+0
+
+# Number of scattering functions
+1
+
+# T(S1)
+10 18
+0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 1 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 
+0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 1 0 0 0 0 0 0 -1 0 0 0 0 0 0 
+0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 1 0 0 0 0 0 -1 0 0 0 0 0 
+0 0 0 0 0 0 0 1 0 0 0 0 0 0 -1 0 0 0 
+0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 -1 0 0 
+0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 
+
+# we will set the scattering dimension names
+10
+t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 

@@ -1,0 +1,171 @@
+{
+  "suite_name": "PARALLEL-CURRENT",
+  "stderr_needles_exactly_once": true,
+  "fixtures": {
+    "positive": "fixtures/positive.loop",
+    "diamond-example-inner-batch": "fixtures/diamond-example-inner-batch.loop",
+    "jacobi-batch": "fixtures/jacobi-batch.loop",
+    "matmul-init": "../second_level_tiling/fixtures/matmul-init.loop",
+    "dependent": "fixtures/dependent.loop"
+  },
+  "checks": [
+    {
+      "name": "parallel-current-positive",
+      "fixture": "positive",
+      "args": [
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": []
+    },
+    {
+      "name": "diamond-route-then-parallel-current-positive",
+      "fixture": "positive",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
+    },
+    {
+      "name": "diamond-current-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "32 *",
+        "/ 32",
+        "i4 + (-1 * i5)"
+      ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
+    },
+    {
+      "name": "diamond-iss-current-combined-effect",
+      "fixture": "diamond-example-inner-batch",
+      "args": [
+        "--diamond-tile",
+        "--iss",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "32 *",
+        "/ 32",
+        "i4 + (-1 * i5)"
+      ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--diamond-tile",
+        "--iss"
+      ]
+    },
+    {
+      "name": "diamond-current-jacobi-batch-positive",
+      "fixture": "jacobi-batch",
+      "args": [
+        "--diamond-tile",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for",
+        "64 *",
+        "(-2 * i11)",
+        "a[",
+        "b["
+      ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--diamond-tile"
+      ]
+    },
+    {
+      "name": "parallel-current-positive-iss",
+      "fixture": "positive",
+      "args": [
+        "--iss",
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "success",
+      "needle": "parallel for",
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--iss"
+      ]
+    },
+    {
+      "name": "identity-tiled-current-combined-effect",
+      "fixture": "matmul-init",
+      "args": [
+        "--identity-tiled",
+        "--parallel-current",
+        "1"
+      ],
+      "expect": "success",
+      "needles": [
+        "parallel for i1",
+        "32 *",
+        "/ 32"
+      ],
+      "stderr_needles": ["[tiling-validation] route=permutable-band"],
+      "stderr_counts": {"[tiling-validation] route=permutable-band": 1},
+      "stderr_absent_needles": ["fallback", "[alarm]"],
+      "differs_from_args": [
+        "--identity-tiled"
+      ]
+    },
+    {
+      "name": "parallel-current-out-of-bounds",
+      "fixture": "positive",
+      "args": [
+        "--parallel-current",
+        "5"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    },
+    {
+      "name": "parallel-current-dependent",
+      "fixture": "dependent",
+      "args": [
+        "--parallel-current",
+        "0"
+      ],
+      "expect": "failure",
+      "needle": "Parallel validation failed"
+    }
+  ]
+}

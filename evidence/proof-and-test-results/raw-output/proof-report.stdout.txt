@@ -1,0 +1,1 @@
+[proof-report] PASS expected=admitted:0,aborted:0,extraction-axioms:0,missing-routes:0 actual=admitted:0,aborted:0,extraction-axioms:0,missing-routes:0 interpretation=proof sources and extracted routes are closed

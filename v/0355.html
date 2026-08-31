@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion2.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/fusion2.loop</code></h1>
+  <pre>for x in range(0, 100) {
+  for y in range(0, 100) {
+    A[x][y] = 1;
+  }
+}
+for x in range(0, 100) {
+  for y in range(0, 100) {
+    B[x][y] = (A[(x + 1)][y] + A[x][(y + 1)]);
+  }
+}
+</pre>
+</main>
+</body>
+</html>

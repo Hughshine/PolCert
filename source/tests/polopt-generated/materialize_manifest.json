@@ -1,0 +1,8 @@
+{
+  "input_dir": "tests/polopt-generated/inputs",
+  "output_dir": "tests/polopt-generated/cases",
+  "timeout_seconds": 300,
+  "case_timeouts": {
+    "tce": 600
+  }
+}

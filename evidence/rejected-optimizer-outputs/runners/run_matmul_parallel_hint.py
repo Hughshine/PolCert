@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def run(cmd, env=None):
+    proc = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=env,
+    )
+    return proc.returncode, proc.stdout
+
+
+def require_contains(label, text, needle):
+    if needle not in text:
+        raise AssertionError(f"{label}: missing expected text: {needle!r}")
+
+
+def require_absent(label, text, needle):
+    if needle in text:
+        raise AssertionError(f"{label}: unexpected text present: {needle!r}")
+
+
+def main() -> int:
+    repo = Path(__file__).resolve().parents[2]
+    polopt = repo / "polopt"
+    input_loop = repo / "tests" / "polopt-generated" / "inputs" / "matmul.loop"
+
+    if not polopt.exists():
+      print(f"[pluto-bug] missing executable: {polopt}", file=sys.stderr)
+      return 2
+
+    env = os.environ.copy()
+    env["POLCERT_DEBUG_PARALLEL_HINT"] = "1"
+
+    compat_flags = [
+        "--pluto-compat",
+        "--tile",
+        "--smartfuse",
+        "--nointratileopt",
+        "--noprevector",
+        "--nounrolljam",
+        "--rar",
+        "--nodiamond-tile",
+        "--parallel",
+    ]
+    debug_cmd = [str(polopt), *compat_flags, str(input_loop)]
+    strict_cmd = [str(polopt), *compat_flags, "--parallel-strict", str(input_loop)]
+
+    rc_debug, out_debug = run(debug_cmd, env=env)
+    if rc_debug != 0:
+        print("[pluto-bug] explicit-RAR parallel route failed", file=sys.stderr)
+        print(out_debug, end="", file=sys.stderr)
+        return rc_debug
+
+    rc_strict, out_strict = run(strict_cmd, env=env)
+    if rc_strict == 0:
+        print("[pluto-bug] strict non-certifiable hint unexpectedly succeeded", file=sys.stderr)
+        print(out_strict, end="", file=sys.stderr)
+        return 1
+
+    require_contains("debug run", out_debug, "parallel for i1 in range(")
+    require_absent("debug run", out_debug, "parallel for i0 in range(")
+
+    strict_rejection = (
+        "[parallel-validation] status=rejected source=pluto-hint "
+        "reason=no-certifiable-dimension"
+    )
+    require_contains("strict run", out_strict, strict_rejection)
+    require_contains("strict run", out_strict, "[alarm] requested checked optimization was rejected")
+    if out_strict.count(strict_rejection) != 1:
+        raise AssertionError("strict run: parallel rejection telemetry was not unique")
+    if out_strict.count("[alarm] requested checked optimization was rejected") != 1:
+        raise AssertionError("strict run: fail-closed alarm was not unique")
+    require_absent("strict run", out_strict, "parallel for ")
+    require_absent("strict run", out_strict, "== Optimized Loop ==")
+
+    print("[pluto-bug] explicit-RAR matmul parallel-hint case reproduced")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except AssertionError as exc:
+        print(f"[pluto-bug] FAIL: {exc}", file=sys.stderr)
+        raise SystemExit(1)

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ssymm.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/ssymm.loop</code></h1>
+  <pre>context(NMAX);
+
+for i in range(0, NMAX) {
+  for j in range(0, NMAX) {
+    for k in range(0, (j - 1)) {
+      c[i][k] = (c[i][k] + (a[j][k] * b[i][j]));
+      c[i][j] = (c[i][j] + (a[j][j] * b[i][j]));
+    }
+    c[i][j] = (c[i][j] + (a[j][j] * b[i][j]));
+  }
+}
+</pre>
+</main>
+</body>
+</html>

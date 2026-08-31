@@ -1,0 +1,220 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>polcert.syntax.SVerifiedCompilerConfig</title>
+</head>
+
+<body>
+<div id="artifact-handbook-link" style="padding:8px 12px;border-bottom:1px solid #cbd3d8;background:#f4f6f7;font:14px system-ui,sans-serif"><a href="../index.html">Plain-language guide</a> &middot; <a href="toc.html">Modules</a> &middot; <a href="declarations.html">Declarations</a></div>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">polcert.syntax.SVerifiedCompilerConfig</h1>
+
+<div class="code">
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Strings.String.html#"><span class="id" title="library">String</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">ImpureAlarmConfig</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Lists.List.html#"><span class="id" title="library">List</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Result</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SPolIRs</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SLoopJamLower</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SPolOpt</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">SBandTilingOpt</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">VerifiedLoopPostpass</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Local Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">string_scope</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab101"></a><h1 class="section">Concrete extracted sequential dispatcher</h1>
+
+
+<div class="paragraph"> </div>
+
+    This file mirrors <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig"><span class="id" title="module">VerifiedCompilerConfig</span></a></span> using the concrete <span class="inlinecode"><span class="id" title="library">SPolIRs</span></span>
+    modules that are extracted to OCaml.  It contains executable definitions,
+    not the generic semantic proof.  The bridge theorem for
+    <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><span class="id" title="definition">compile_verified</span></a></span> is
+    <span class="inlinecode"><span class="id" title="var">ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct</span></span>;
+    the raw-configuration endpoint is
+    <span class="inlinecode"><span class="id" title="var">ExtractedPipelineCorrect.extracted_sequential_compile_correct</span></span>.
+
+<div class="paragraph"> </div>
+
+    The leading <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> therefore means concrete extraction-facing syntax.  It does
+    not mean a stronger theorem or an additional compiler phase. 
+<div class="paragraph"> </div>
+
+<a id="lab102"></a><h2 class="section">Concrete sequential configurations</h2>
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="raw_config" class="idref" href="#raw_config"><span class="id" title="inductive">raw_config</span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+| <a id="RawIdentity" class="idref" href="#RawIdentity"><span class="id" title="constructor">RawIdentity</span></a><br/>
+| <a id="RawAffine" class="idref" href="#RawAffine"><span class="id" title="constructor">RawAffine</span></a><br/>
+| <a id="RawAffineISS" class="idref" href="#RawAffineISS"><span class="id" title="constructor">RawAffineISS</span></a><br/>
+| <a id="RawDefault" class="idref" href="#RawDefault"><span class="id" title="constructor">RawDefault</span></a><br/>
+| <a id="RawDefaultBand" class="idref" href="#RawDefaultBand"><span class="id" title="constructor">RawDefaultBand</span></a><br/>
+| <a id="RawSecondLevel" class="idref" href="#RawSecondLevel"><span class="id" title="constructor">RawSecondLevel</span></a><br/>
+| <a id="RawSecondLevelISS" class="idref" href="#RawSecondLevelISS"><span class="id" title="constructor">RawSecondLevelISS</span></a><br/>
+| <a id="RawIdentitySecondLevel" class="idref" href="#RawIdentitySecondLevel"><span class="id" title="constructor">RawIdentitySecondLevel</span></a><br/>
+| <a id="RawIdentitySecondLevelISS" class="idref" href="#RawIdentitySecondLevelISS"><span class="id" title="constructor">RawIdentitySecondLevelISS</span></a><br/>
+| <a id="RawIdentityBand" class="idref" href="#RawIdentityBand"><span class="id" title="constructor">RawIdentityBand</span></a><br/>
+| <a id="RawIdentityBandISS" class="idref" href="#RawIdentityBandISS"><span class="id" title="constructor">RawIdentityBandISS</span></a><br/>
+| <a id="RawISS" class="idref" href="#RawISS"><span class="id" title="constructor">RawISS</span></a><br/>
+| <a id="RawPostTilingAffine" class="idref" href="#RawPostTilingAffine"><span class="id" title="constructor">RawPostTilingAffine</span></a><br/>
+| <a id="RawPostTilingAffineISS" class="idref" href="#RawPostTilingAffineISS"><span class="id" title="constructor">RawPostTilingAffineISS</span></a><br/>
+| <a id="RawUnsupported" class="idref" href="#RawUnsupported"><span class="id" title="constructor">RawUnsupported</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="verified_config" class="idref" href="#verified_config"><span class="id" title="inductive">verified_config</span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+| <a id="VIdentity" class="idref" href="#VIdentity"><span class="id" title="constructor">VIdentity</span></a><br/>
+| <a id="VAffine" class="idref" href="#VAffine"><span class="id" title="constructor">VAffine</span></a><br/>
+| <a id="VAffineISS" class="idref" href="#VAffineISS"><span class="id" title="constructor">VAffineISS</span></a><br/>
+| <a id="VDefault" class="idref" href="#VDefault"><span class="id" title="constructor">VDefault</span></a><br/>
+| <a id="VDefaultBand" class="idref" href="#VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a><br/>
+| <a id="VSecondLevel" class="idref" href="#VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a><br/>
+| <a id="VSecondLevelISS" class="idref" href="#VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a><br/>
+| <a id="VIdentitySecondLevel" class="idref" href="#VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a><br/>
+| <a id="VIdentitySecondLevelISS" class="idref" href="#VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a><br/>
+| <a id="VIdentityBand" class="idref" href="#VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a><br/>
+| <a id="VIdentityBandISS" class="idref" href="#VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a><br/>
+| <a id="VISS" class="idref" href="#VISS"><span class="id" title="constructor">VISS</span></a><br/>
+| <a id="VPostTilingAffine" class="idref" href="#VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a><br/>
+| <a id="VPostTilingAffineISS" class="idref" href="#VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="check_config" class="idref" href="#check_config"><span class="id" title="definition">check_config</span></a> (<a id="cfg:5" class="idref" href="#cfg:5"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a>) : <span class="id" title="inductive">result</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#verified_config"><span class="id" title="inductive">verified_config</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#cfg:5"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawIdentity"><span class="id" title="constructor">RawIdentity</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentity"><span class="id" title="constructor">VIdentity</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawAffine"><span class="id" title="constructor">RawAffine</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VAffine"><span class="id" title="constructor">VAffine</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawAffineISS"><span class="id" title="constructor">RawAffineISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VAffineISS"><span class="id" title="constructor">VAffineISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawDefault"><span class="id" title="constructor">RawDefault</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefault"><span class="id" title="constructor">VDefault</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawDefaultBand"><span class="id" title="constructor">RawDefaultBand</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawSecondLevel"><span class="id" title="constructor">RawSecondLevel</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawSecondLevelISS"><span class="id" title="constructor">RawSecondLevelISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawIdentitySecondLevel"><span class="id" title="constructor">RawIdentitySecondLevel</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawIdentitySecondLevelISS"><span class="id" title="constructor">RawIdentitySecondLevelISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawIdentityBand"><span class="id" title="constructor">RawIdentityBand</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawIdentityBandISS"><span class="id" title="constructor">RawIdentityBandISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawISS"><span class="id" title="constructor">RawISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VISS"><span class="id" title="constructor">VISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawPostTilingAffine"><span class="id" title="constructor">RawPostTilingAffine</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawPostTilingAffineISS"><span class="id" title="constructor">RawPostTilingAffineISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#RawUnsupported"><span class="id" title="constructor">RawUnsupported</span></a> ⇒ <span class="id" title="constructor">Err</span> "unsupported verified compiler configuration"<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+</div>
+
+<div class="doc">
+<a id="lab103"></a><h2 class="section">Concrete verified and raw dispatchers</h2>
+
+
+<div class="paragraph"> </div>
+
+    <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><span class="id" title="definition">compile_verified</span></a></span> accepts an already checked configuration; <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a></span>
+    runs <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#check_config"><span class="id" title="definition">check_config</span></a></span> first.  Both still execute the validators internal to
+    the selected optimization route. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="compile_verified" class="idref" href="#compile_verified"><span class="id" title="definition">compile_verified</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="cfg:7" class="idref" href="#cfg:7"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#verified_config"><span class="id" title="inductive">verified_config</span></a>) (<a id="loop:8" class="idref" href="#loop:8"><span class="id" title="binder">loop</span></a>: <span class="id" title="definition">SPolIRs.Loop.t</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <span class="id" title="definition">imp</span> <span class="id" title="definition">SPolIRs.Loop.t</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#cfg:7"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentity"><span class="id" title="constructor">VIdentity</span></a> ⇒ <span class="id" title="definition">SPolOpt.opt_identity</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VAffine"><span class="id" title="constructor">VAffine</span></a> ⇒ <span class="id" title="definition">SPolOpt.opt_affine</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VAffineISS"><span class="id" title="constructor">VAffineISS</span></a> ⇒ <span class="id" title="definition">SPolOpt.opt_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefault"><span class="id" title="constructor">VDefault</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_identity_tiled</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a> ⇒<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">SBandTilingOpt.opt_identity_tiled_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_identity_tiled</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_identity_tiled_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VISS"><span class="id" title="constructor">VISS</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_post_tiling_affine</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a> ⇒ <span class="id" title="definition">SBandTilingOpt.opt_post_tiling_affine_with_iss</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="compile" class="idref" href="#compile"><span class="id" title="definition">compile</span></a> (<a id="cfg:10" class="idref" href="#cfg:10"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="loop:11" class="idref" href="#loop:11"><span class="id" title="binder">loop</span></a>: <span class="id" title="definition">SPolIRs.Loop.t</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <span class="id" title="definition">imp</span> <span class="id" title="definition">SPolIRs.Loop.t</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#check_config"><span class="id" title="definition">check_config</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#cfg:10"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="constructor">Okk</span> <span class="id" title="var">vcfg</span> ⇒ <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile_verified"><span class="id" title="definition">compile_verified</span></a> <span class="id" title="var">vcfg</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:11"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <span class="id" title="constructor">Err</span> <span class="id" title="var">msg</span> ⇒ <span class="id" title="definition">res_to_alarm</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:11"><span class="id" title="variable">loop</span></a> (<span class="id" title="constructor">Err</span> <span class="id" title="var">msg</span>)<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="Postpass" class="idref" href="#Postpass"><span class="id" title="module">Postpass</span></a> := <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#VerifiedLoopPostpass"><span class="id" title="module">VerifiedLoopPostpass</span></a> <span class="id" title="module">SPolIRs</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="no_postpass" class="idref" href="#no_postpass"><span class="id" title="definition">no_postpass</span></a> : <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#loop_postpass_config"><span class="id" title="inductive">loop_postpass_config</span></a> := <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#NoLoopPostpass"><span class="id" title="constructor">NoLoopPostpass</span></a>.<br/>
+<span class="id" title="keyword">Definition</span> <a id="const_unroll_postpass" class="idref" href="#const_unroll_postpass"><span class="id" title="definition">const_unroll_postpass</span></a> : <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#loop_postpass_config"><span class="id" title="inductive">loop_postpass_config</span></a> := <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#ConstUnrollPostpass"><span class="id" title="constructor">ConstUnrollPostpass</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="compile_with_postpass" class="idref" href="#compile_with_postpass"><span class="id" title="definition">compile_with_postpass</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="cfg:12" class="idref" href="#cfg:12"><span class="id" title="binder">cfg</span></a> : <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="postpass:13" class="idref" href="#postpass:13"><span class="id" title="binder">postpass</span></a> : <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#loop_postpass_config"><span class="id" title="inductive">loop_postpass_config</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="loop:14" class="idref" href="#loop:14"><span class="id" title="binder">loop</span></a> : <span class="id" title="definition">SPolIRs.Loop.t</span>) : <span class="id" title="definition">imp</span> <span class="id" title="definition">SPolIRs.Loop.t</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="notation">BIND</span> <a id="optimized:15" class="idref" href="#optimized:15"><span class="id" title="binder">optimized</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#cfg:12"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:14"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">-;</span><br/>
+&nbsp;&nbsp;<a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#VerifiedLoopPostpass.apply"><span class="id" title="definition">Postpass.apply</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#postpass:13"><span class="id" title="variable">postpass</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#optimized:15"><span class="id" title="variable">optimized</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="library">SLoopJamLower</span></span> is the concrete plan API consumed by the OCaml driver.
+    Rebuilding each candidate here keeps extraction on that single public
+    nominal type while the verified postpass retains its private functor
+    instance. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="adapt_unrolljam_candidate" class="idref" href="#adapt_unrolljam_candidate"><span class="id" title="definition">adapt_unrolljam_candidate</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="candidate:16" class="idref" href="#candidate:16"><span class="id" title="binder">candidate</span></a> : <span class="id" title="definition">SLoopJamLower.unrolljam_candidate</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <a class="idref"><span class="id" title="record">Postpass.JamLower.unrolljam_candidate</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref"><span class="id" title="constructor">Postpass.JamLower.Build_unrolljam_candidate</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="definition">SLoopJamLower.unrolljam_candidate_depth</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#candidate:16"><span class="id" title="variable">candidate</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="definition">SLoopJamLower.unrolljam_candidate_path</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#candidate:16"><span class="id" title="variable">candidate</span></a>).<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="adapt_unrolljam_plan" class="idref" href="#adapt_unrolljam_plan"><span class="id" title="definition">adapt_unrolljam_plan</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="plan:17" class="idref" href="#plan:17"><span class="id" title="binder">plan</span></a> : <span class="id" title="definition">SLoopJamLower.unrolljam_plan</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <a class="idref"><span class="id" title="definition">Postpass.JamLower.unrolljam_plan</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Lists.List.html#map"><span class="id" title="definition">List.map</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#adapt_unrolljam_candidate"><span class="id" title="definition">adapt_unrolljam_candidate</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#plan:17"><span class="id" title="variable">plan</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="compile_with_unrolljam" class="idref" href="#compile_with_unrolljam"><span class="id" title="definition">compile_with_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="cfg:18" class="idref" href="#cfg:18"><span class="id" title="binder">cfg</span></a> : <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="const_first:19" class="idref" href="#const_first:19"><span class="id" title="binder">const_first</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="select:20" class="idref" href="#select:20"><span class="id" title="binder">select</span></a> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="definition">SPolIRs.Loop.t</span> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <span class="id" title="definition">SLoopJamLower.unrolljam_plan</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="factor:21" class="idref" href="#factor:21"><span class="id" title="binder">factor</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="loop:22" class="idref" href="#loop:22"><span class="id" title="binder">loop</span></a> : <span class="id" title="definition">SPolIRs.Loop.t</span>) : <span class="id" title="definition">imp</span> <span class="id" title="definition">SPolIRs.Loop.t</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="notation">BIND</span> <a id="optimized:23" class="idref" href="#optimized:23"><span class="id" title="binder">optimized</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#cfg:18"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#loop:22"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">-;</span><br/>
+&nbsp;&nbsp;<a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#VerifiedLoopPostpass.apply_checked_unrolljam"><span class="id" title="definition">Postpass.apply_checked_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#const_first:19"><span class="id" title="variable">const_first</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">fun</span> <a id="prepared:24" class="idref" href="#prepared:24"><span class="id" title="binder">prepared</span></a> ⇒ <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#adapt_unrolljam_plan"><span class="id" title="definition">adapt_unrolljam_plan</span></a> (<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#select:20"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#prepared:24"><span class="id" title="variable">prepared</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#factor:21"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#optimized:23"><span class="id" title="variable">optimized</span></a>.<br/>
+</div>
+</div>
+
+<div id="footer">
+<hr/><a href="declarations.html">Index</a><hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

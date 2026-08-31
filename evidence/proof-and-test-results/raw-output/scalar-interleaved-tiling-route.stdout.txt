@@ -1,0 +1,6 @@
+[scalar-interleaved] frozen-positive: PASS
+[scalar-interleaved] scalar-row-deleted: PASS
+[scalar-interleaved] scalar-row-reordered: PASS
+[scalar-interleaved] scalar-constant-changed: PASS
+[scalar-interleaved] noncanonical-output-matrix: PASS
+[scalar-interleaved] OK (1 direct acceptance, 3 exact rejections, 1 importer rejection)

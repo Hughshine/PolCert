@@ -1,0 +1,10 @@
+before: /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.midtransform.scop
+after:  /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.posttile.scop
+params: T,N
+
+statement 1:
+  original iterators: t i
+  tiled iterators:    fk0 fk1 t i
+  added iterators:    fk0 fk1
+  tile link: fk0 = floor((t + i) / 32)
+  tile link: fk1 = floor((t - i) / 32)

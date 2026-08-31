@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>diff.patch</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/tricky3/diff.patch</code></h1>
+  <pre>--- input.pretty.loop
++++ optimized.loop
+@@ -1,12 +1,47 @@
+ context(pointc, clusterc, dims);
+
+-for i0 in range(0, pointc) {
+-  dist_min = 0;
+-  for i1 in range(0, clusterc) {
++if ((1 &lt;= dims &amp;&amp; 1 &lt;= clusterc)) {
++  for i0 in range(0, pointc) {
++    dist_min = 0;
+     dist = 0;
+     kmin = 0;
+-  }
+-  for i1 in range(0, dims) {
+     clusterv = 0;
++    for i1 in range(1, min(dims, clusterc)) {
++      dist = 0;
++      kmin = 0;
++      clusterv = 0;
++    }
++    for i1 in range(clusterc, dims) {
++      clusterv = 0;
++    }
++    for i1 in range(dims, clusterc) {
++      dist = 0;
++      kmin = 0;
++    }
+   }
+ }
++if ((clusterc &lt;= 0 &amp;&amp; 1 &lt;= dims)) {
++  for i0 in range(0, pointc) {
++    dist_min = 0;
++    clusterv = 0;
++    for i1 in range(1, dims) {
++      clusterv = 0;
++    }
++  }
++}
++if ((dims &lt;= 0 &amp;&amp; 1 &lt;= clusterc)) {
++  for i0 in range(0, pointc) {
++    dist_min = 0;
++    dist = 0;
++    kmin = 0;
++    for i1 in range(1, clusterc) {
++      dist = 0;
++      kmin = 0;
++    }
++  }
++}
++if ((clusterc &lt;= 0 &amp;&amp; dims &lt;= 0)) {
++  for i0 in range(0, pointc) {
++    dist_min = 0;
++  }
++}
+</pre>
+</main>
+</body>
+</html>

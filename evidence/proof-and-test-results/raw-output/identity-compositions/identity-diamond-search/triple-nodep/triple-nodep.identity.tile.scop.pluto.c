@@ -1,0 +1,15 @@
+#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	A[16 * $i0 + 4 * $i1 + $i2] = A[16 * $i0 + 4 * $i1 + $i2] + 1;
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t7=0;t7<=3;t7++) {
+  for (t9=0;t9<=3;t9++) {
+    for (t11=0;t11<=3;t11++) {
+      S1(0,0,0,t7,t9,t11);
+    }
+  }
+}
+/* End of CLooG code */

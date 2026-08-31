@@ -1,0 +1,1 @@
+[second-level-route-static] PASS expected=flags-forwarded,band-first-dispatch,unique-final-report,affine-ISS-no-tiling-route,pluto-default-no-rar actual=all-static-route-contracts-matched coverage=static-route-contract interpretation=source-and-extracted-entrypoints-follow-the-declared-routes

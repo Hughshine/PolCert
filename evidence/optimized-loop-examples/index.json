@@ -1,0 +1,326 @@
+{
+  "cases": [
+    {
+      "case": "1dloop-invar",
+      "changed": false,
+      "observed_transformation": "None; output loop is identical"
+    },
+    {
+      "case": "adi",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "advect3d",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "corcol",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "corcol3",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "costfunc",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "covcol",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "dct",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "doitgen",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "dsyr2k",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "dsyrk",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "fdtd-1d",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "fdtd-2d",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "floyd",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "fusion1",
+      "changed": true,
+      "observed_transformation": "Loop fusion"
+    },
+    {
+      "case": "fusion10",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion2",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion3",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion4",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion5",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion6",
+      "changed": true,
+      "observed_transformation": "Loop fusion"
+    },
+    {
+      "case": "fusion7",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion8",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "fusion9",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Ordinary tiling"
+    },
+    {
+      "case": "gemver",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "intratileopt1",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "intratileopt2",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "intratileopt3",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "intratileopt4",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "jacobi-1d-imper",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "jacobi-2d-imper",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "lu",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "matmul",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "matmul-init",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "matmul-seq",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "matmul-seq3",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "multi-loop-param",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "multi-stmt-stencil-seq",
+      "changed": true,
+      "observed_transformation": "Loop fusion"
+    },
+    {
+      "case": "mvt",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "mxv",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "mxv-seq",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "mxv-seq3",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "negparam",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "nodep",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "noloop",
+      "changed": false,
+      "observed_transformation": "None; output loop is identical"
+    },
+    {
+      "case": "pca",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "polynomial",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "seidel",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "seq",
+      "changed": true,
+      "observed_transformation": "Domain guard insertion"
+    },
+    {
+      "case": "shift",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "spatial",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "ssymm",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "strmm",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "strsm",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "tce",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "tmm",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "tricky1",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "tricky2",
+      "changed": true,
+      "observed_transformation": "Loop fusion; Domain splitting"
+    },
+    {
+      "case": "tricky3",
+      "changed": true,
+      "observed_transformation": "Inner-loop fusion; Domain splitting"
+    },
+    {
+      "case": "tricky4",
+      "changed": false,
+      "observed_transformation": "None; output loop is identical"
+    },
+    {
+      "case": "trisolv",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    },
+    {
+      "case": "wavefront",
+      "changed": true,
+      "observed_transformation": "Ordinary tiling"
+    }
+  ],
+  "changed": 59,
+  "total": 62,
+  "transformation_counts": {
+    "Domain guard insertion": 1,
+    "Inner-loop fusion; Domain splitting": 1,
+    "Loop fusion": 3,
+    "Loop fusion; Domain splitting": 1,
+    "Loop fusion; Ordinary tiling": 8,
+    "None; output loop is identical": 3,
+    "Ordinary tiling": 45
+  },
+  "unchanged": 3
+}

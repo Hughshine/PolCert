@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>input.pretty.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/doitgen/input.pretty.loop</code></h1>
+  <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      sum[i0][i1][i2] = 0;
+      for i3 in range(0, N) {
+        sum[i0][i1][i2] = (sum[i0][i1][i2] + (A[i0][i1][i3] * C4[i3][i2]));
+      }
+    }
+    for i2 in range(0, N) {
+      A[i0][i1][i2] = sum[i0][i1][i2];
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

@@ -1,0 +1,5 @@
+context(N, S);
+
+for i in range(0, N, S) {
+  a[i] = i;
+}

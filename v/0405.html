@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>triple-nodep.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/triple-nodep.loop</code></h1>
+  <pre>for i in range(0, 4) {
+  for j in range(0, 4) {
+    for k in range(0, 4) {
+      A[((16 * i) + ((4 * j) + k))] = (A[((16 * i) + ((4 * j) + k))] + 1);
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

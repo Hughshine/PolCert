@@ -1,0 +1,366 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>polcert.driver.VerifiedCompilerConfig</title>
+</head>
+
+<body>
+<div id="artifact-handbook-link" style="padding:8px 12px;border-bottom:1px solid #cbd3d8;background:#f4f6f7;font:14px system-ui,sans-serif"><a href="../index.html">Plain-language guide</a> &middot; <a href="toc.html">Modules</a> &middot; <a href="declarations.html">Declarations</a></div>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">polcert.driver.VerifiedCompilerConfig</h1>
+
+<div class="code">
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Strings.String.html#"><span class="id" title="library">String</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">ImpureAlarmConfig</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">PolIRs</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">PolOptCorrect</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">PolOptBandTiling</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Result</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref"><span class="id" title="library">VerifiedLoopPostpass</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Vpl.Impure</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Local Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">impure_scope</span>.<br/>
+<span class="id" title="keyword">Local Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">string_scope</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig" class="idref" href="#VerifiedCompilerConfig"><span class="id" title="module">VerifiedCompilerConfig</span></a> (<span class="id" title="var">PolIRs</span>: <span class="id" title="module">POLIRS</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.Core" class="idref" href="#VerifiedCompilerConfig.Core"><span class="id" title="module">Core</span></a> := <span class="id" title="module">PolOpt.PolOpt</span> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.CoreCorrect" class="idref" href="#VerifiedCompilerConfig.CoreCorrect"><span class="id" title="module">CoreCorrect</span></a> := <a class="idref" href="polcert.driver.PolOptCorrect.html#PolOptCorrect"><span class="id" title="module">PolOptCorrect</span></a> <a class="idref"><span class="id" title="module">PolIRs</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.Core"><span class="id" title="module">Core</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.BandCorrect" class="idref" href="#VerifiedCompilerConfig.BandCorrect"><span class="id" title="module">BandCorrect</span></a> := <a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling"><span class="id" title="module">PolOptBandTiling</span></a> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.Postpass" class="idref" href="#VerifiedCompilerConfig.Postpass"><span class="id" title="module">Postpass</span></a> := <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#VerifiedLoopPostpass"><span class="id" title="module">VerifiedLoopPostpass</span></a> <a class="idref"><span class="id" title="module">PolIRs</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.LoopIR" class="idref" href="#VerifiedCompilerConfig.LoopIR"><span class="id" title="module">LoopIR</span></a> := <a class="idref"><span class="id" title="module">PolIRs.Loop</span></a>.<br/>
+<span class="id" title="keyword">Module</span> <a id="VerifiedCompilerConfig.State" class="idref" href="#VerifiedCompilerConfig.State"><span class="id" title="module">State</span></a> := <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.State"><span class="id" title="module">PolIRs.State</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab90"></a><h1 class="section">Generic sequential compiler endpoint</h1>
+
+
+<div class="paragraph"> </div>
+
+    This functor is the small, sequential endpoint.  Both its source and target
+    use <span class="inlinecode"><span class="id" title="var">LoopIR</span></span>; it contains no <span class="inlinecode"><a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.ParMode"><span class="id" title="constructor">ParMode</span></a></span> or <span class="inlinecode"><a class="idref" href="polcert.polygen.ParallelLoop.html#ParallelLoop.VecMode"><span class="id" title="constructor">VecMode</span></a></span>.  The 14 constructors of
+    <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#verified_config"><span class="id" title="inductive">verified_config</span></a></span> select identity, affine, tiling, ISS, and post_tiling_affine routes.
+
+<div class="paragraph"> </div>
+
+    The similarly named <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig"><span class="id" title="module">VerifiedParallelCompilerConfig</span></a></span> is the larger unified
+    endpoint: it embeds this sequential compiler into <span class="inlinecode"><a class="idref" href="polcert.driver.ExtractedPipelineCorrect.html#ParallelLoop"><span class="id" title="module">ParallelLoop</span></a></span> and adds
+    single-parallel, vector, and multi-parallel annotation families.
+
+<div class="paragraph"> </div>
+
+    <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile_verified"><span class="id" title="definition">compile_verified</span></a></span> accepts a configuration that already passed
+    <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#check_config"><span class="id" title="definition">check_config</span></a></span>.  It does not bypass the validators inside the selected
+    optimization route.  <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#compile"><span class="id" title="definition">compile</span></a></span> is the raw-configuration wrapper, and
+    <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a></span> is the public theorem when starting from CLI-style
+    configuration data. 
+<div class="paragraph"> </div>
+
+<a id="lab91"></a><h2 class="section">Sequential configuration families</h2>
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="VerifiedCompilerConfig.raw_config" class="idref" href="#VerifiedCompilerConfig.raw_config"><span class="id" title="inductive">raw_config</span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+| <a id="VerifiedCompilerConfig.RawIdentity" class="idref" href="#VerifiedCompilerConfig.RawIdentity"><span class="id" title="constructor">RawIdentity</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawAffine" class="idref" href="#VerifiedCompilerConfig.RawAffine"><span class="id" title="constructor">RawAffine</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawAffineISS" class="idref" href="#VerifiedCompilerConfig.RawAffineISS"><span class="id" title="constructor">RawAffineISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawDefault" class="idref" href="#VerifiedCompilerConfig.RawDefault"><span class="id" title="constructor">RawDefault</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawDefaultBand" class="idref" href="#VerifiedCompilerConfig.RawDefaultBand"><span class="id" title="constructor">RawDefaultBand</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawSecondLevel" class="idref" href="#VerifiedCompilerConfig.RawSecondLevel"><span class="id" title="constructor">RawSecondLevel</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawSecondLevelISS" class="idref" href="#VerifiedCompilerConfig.RawSecondLevelISS"><span class="id" title="constructor">RawSecondLevelISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawIdentitySecondLevel" class="idref" href="#VerifiedCompilerConfig.RawIdentitySecondLevel"><span class="id" title="constructor">RawIdentitySecondLevel</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawIdentitySecondLevelISS" class="idref" href="#VerifiedCompilerConfig.RawIdentitySecondLevelISS"><span class="id" title="constructor">RawIdentitySecondLevelISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawIdentityBand" class="idref" href="#VerifiedCompilerConfig.RawIdentityBand"><span class="id" title="constructor">RawIdentityBand</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawIdentityBandISS" class="idref" href="#VerifiedCompilerConfig.RawIdentityBandISS"><span class="id" title="constructor">RawIdentityBandISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawISS" class="idref" href="#VerifiedCompilerConfig.RawISS"><span class="id" title="constructor">RawISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawPostTilingAffine" class="idref" href="#VerifiedCompilerConfig.RawPostTilingAffine"><span class="id" title="constructor">RawPostTilingAffine</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawPostTilingAffineISS" class="idref" href="#VerifiedCompilerConfig.RawPostTilingAffineISS"><span class="id" title="constructor">RawPostTilingAffineISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.RawUnsupported" class="idref" href="#VerifiedCompilerConfig.RawUnsupported"><span class="id" title="constructor">RawUnsupported</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="VerifiedCompilerConfig.verified_config" class="idref" href="#VerifiedCompilerConfig.verified_config"><span class="id" title="inductive">verified_config</span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+| <a id="VerifiedCompilerConfig.VIdentity" class="idref" href="#VerifiedCompilerConfig.VIdentity"><span class="id" title="constructor">VIdentity</span></a><br/>
+| <a id="VerifiedCompilerConfig.VAffine" class="idref" href="#VerifiedCompilerConfig.VAffine"><span class="id" title="constructor">VAffine</span></a><br/>
+| <a id="VerifiedCompilerConfig.VAffineISS" class="idref" href="#VerifiedCompilerConfig.VAffineISS"><span class="id" title="constructor">VAffineISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.VDefault" class="idref" href="#VerifiedCompilerConfig.VDefault"><span class="id" title="constructor">VDefault</span></a><br/>
+| <a id="VerifiedCompilerConfig.VDefaultBand" class="idref" href="#VerifiedCompilerConfig.VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a><br/>
+| <a id="VerifiedCompilerConfig.VSecondLevel" class="idref" href="#VerifiedCompilerConfig.VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a><br/>
+| <a id="VerifiedCompilerConfig.VSecondLevelISS" class="idref" href="#VerifiedCompilerConfig.VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.VIdentitySecondLevel" class="idref" href="#VerifiedCompilerConfig.VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a><br/>
+| <a id="VerifiedCompilerConfig.VIdentitySecondLevelISS" class="idref" href="#VerifiedCompilerConfig.VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.VIdentityBand" class="idref" href="#VerifiedCompilerConfig.VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a><br/>
+| <a id="VerifiedCompilerConfig.VIdentityBandISS" class="idref" href="#VerifiedCompilerConfig.VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.VISS" class="idref" href="#VerifiedCompilerConfig.VISS"><span class="id" title="constructor">VISS</span></a><br/>
+| <a id="VerifiedCompilerConfig.VPostTilingAffine" class="idref" href="#VerifiedCompilerConfig.VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a><br/>
+| <a id="VerifiedCompilerConfig.VPostTilingAffineISS" class="idref" href="#VerifiedCompilerConfig.VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="VerifiedCompilerConfig.check_config" class="idref" href="#VerifiedCompilerConfig.check_config"><span class="id" title="definition">check_config</span></a> (<a id="cfg:5" class="idref" href="#cfg:5"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.raw_config"><span class="id" title="inductive">raw_config</span></a>) : <span class="id" title="inductive">result</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.verified_config"><span class="id" title="inductive">verified_config</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:5"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawIdentity"><span class="id" title="constructor">RawIdentity</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentity"><span class="id" title="constructor">VIdentity</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawAffine"><span class="id" title="constructor">RawAffine</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VAffine"><span class="id" title="constructor">VAffine</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawAffineISS"><span class="id" title="constructor">RawAffineISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VAffineISS"><span class="id" title="constructor">VAffineISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawDefault"><span class="id" title="constructor">RawDefault</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VDefault"><span class="id" title="constructor">VDefault</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawDefaultBand"><span class="id" title="constructor">RawDefaultBand</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawSecondLevel"><span class="id" title="constructor">RawSecondLevel</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawSecondLevelISS"><span class="id" title="constructor">RawSecondLevelISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawIdentitySecondLevel"><span class="id" title="constructor">RawIdentitySecondLevel</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawIdentitySecondLevelISS"><span class="id" title="constructor">RawIdentitySecondLevelISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawIdentityBand"><span class="id" title="constructor">RawIdentityBand</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawIdentityBandISS"><span class="id" title="constructor">RawIdentityBandISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawISS"><span class="id" title="constructor">RawISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VISS"><span class="id" title="constructor">VISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawPostTilingAffine"><span class="id" title="constructor">RawPostTilingAffine</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawPostTilingAffineISS"><span class="id" title="constructor">RawPostTilingAffineISS</span></a> ⇒ <span class="id" title="constructor">Okk</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawUnsupported"><span class="id" title="constructor">RawUnsupported</span></a> ⇒ <span class="id" title="constructor">Err</span> "unsupported verified compiler configuration"<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab92"></a><h2 class="section">Verified sequential dispatcher</h2>
+
+
+<div class="paragraph"> </div>
+
+    This is intentionally enumerated so every accepted configuration is tied
+    to one existing route theorem.  The concrete executable mirror is
+    <span class="inlinecode"><span class="id" title="var">SVerifiedCompilerConfig.compile_verified</span></span>; its correctness bridge is
+    <span class="inlinecode"><span class="id" title="var">ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct</span></span>.
+
+<div class="paragraph"> </div>
+
+    The word "verified" qualifies <span class="inlinecode"><span class="id" title="var">cfg</span></span>, not the input program and not the
+    result.  The selected route still performs extraction, well-formedness, and
+    transformation-specific validation.  Several external route names
+    (<span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefault"><span class="id" title="constructor">VDefault</span></a></span>, <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a></span>, and <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedCompilerConfig.html#VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a></span>) deliberately converge on
+    <span class="inlinecode"><a class="idref" href="polcert.driver.PolOptBandTiling.html#PolOptBandTiling.Opt_band"><span class="id" title="definition">Opt_band</span></a></span>; the earlier route selection changes how the candidate was
+    produced, while this endpoint needs only the common checked theorem. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="VerifiedCompilerConfig.compile_verified" class="idref" href="#VerifiedCompilerConfig.compile_verified"><span class="id" title="definition">compile_verified</span></a> (<a id="cfg:7" class="idref" href="#cfg:7"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.verified_config"><span class="id" title="inductive">verified_config</span></a>) (<a id="loop:8" class="idref" href="#loop:8"><span class="id" title="binder">loop</span></a>: <a class="idref"><span class="id" title="definition">LoopIR.t</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <span class="id" title="definition">imp</span> <a class="idref"><span class="id" title="definition">LoopIR.t</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:7"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentity"><span class="id" title="constructor">VIdentity</span></a> ⇒ <a class="idref"><span class="id" title="definition">CoreCorrect.Core.identity_opt_prepared</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VAffine"><span class="id" title="constructor">VAffine</span></a> ⇒ <a class="idref"><span class="id" title="definition">CoreCorrect.Core.affine_opt_prepared</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VAffineISS"><span class="id" title="constructor">VAffineISS</span></a> ⇒ <a class="idref"><span class="id" title="definition">CoreCorrect.Core.Opt_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VDefault"><span class="id" title="constructor">VDefault</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VDefaultBand"><span class="id" title="constructor">VDefaultBand</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VSecondLevel"><span class="id" title="constructor">VSecondLevel</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VSecondLevelISS"><span class="id" title="constructor">VSecondLevelISS</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_band_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentitySecondLevel"><span class="id" title="constructor">VIdentitySecondLevel</span></a> ⇒<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="definition">BandCorrect.Opt_identity_tiled_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentitySecondLevelISS"><span class="id" title="constructor">VIdentitySecondLevelISS</span></a> ⇒<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="definition">BandCorrect.Opt_identity_tiled_band_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentityBand"><span class="id" title="constructor">VIdentityBand</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_identity_tiled_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VIdentityBandISS"><span class="id" title="constructor">VIdentityBandISS</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_identity_tiled_band_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VISS"><span class="id" title="constructor">VISS</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_band_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VPostTilingAffine"><span class="id" title="constructor">VPostTilingAffine</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_post_tiling_affine_band</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.VPostTilingAffineISS"><span class="id" title="constructor">VPostTilingAffineISS</span></a> ⇒ <a class="idref"><span class="id" title="definition">BandCorrect.Opt_post_tiling_affine_band_with_iss</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:8"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="VerifiedCompilerConfig.compile" class="idref" href="#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> (<a id="cfg:10" class="idref" href="#cfg:10"><span class="id" title="binder">cfg</span></a>: <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="loop:11" class="idref" href="#loop:11"><span class="id" title="binder">loop</span></a>: <a class="idref"><span class="id" title="definition">LoopIR.t</span></a>) : <span class="id" title="definition">imp</span> <a class="idref"><span class="id" title="definition">LoopIR.t</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.check_config"><span class="id" title="definition">check_config</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:10"><span class="id" title="variable">cfg</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="constructor">Okk</span> <span class="id" title="var">vcfg</span> ⇒ <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_verified"><span class="id" title="definition">compile_verified</span></a> <span class="id" title="var">vcfg</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:11"><span class="id" title="variable">loop</span></a><br/>
+&nbsp;&nbsp;| <span class="id" title="constructor">Err</span> <span class="id" title="var">msg</span> ⇒ <span class="id" title="definition">res_to_alarm</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:11"><span class="id" title="variable">loop</span></a> (<span class="id" title="constructor">Err</span> <span class="id" title="var">msg</span>)<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The postpass is orthogonal to the producer route.  Keeping it as a second
+    argument avoids duplicating every affine, tiling, and ISS constructor. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="VerifiedCompilerConfig.compile_with_postpass" class="idref" href="#VerifiedCompilerConfig.compile_with_postpass"><span class="id" title="definition">compile_with_postpass</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="cfg:12" class="idref" href="#cfg:12"><span class="id" title="binder">cfg</span></a> : <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="postpass:13" class="idref" href="#postpass:13"><span class="id" title="binder">postpass</span></a> : <a class="idref" href="polcert.driver.VerifiedLoopPostpass.html#loop_postpass_config"><span class="id" title="inductive">loop_postpass_config</span></a>) (<a id="loop:14" class="idref" href="#loop:14"><span class="id" title="binder">loop</span></a> : <a class="idref"><span class="id" title="definition">LoopIR.t</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;: <span class="id" title="definition">imp</span> <a class="idref"><span class="id" title="definition">LoopIR.t</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="notation">BIND</span> <a id="optimized:15" class="idref" href="#optimized:15"><span class="id" title="binder">optimized</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:12"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:14"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">-;</span><br/>
+&nbsp;&nbsp;<a class="idref"><span class="id" title="definition">Postpass.apply</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#postpass:13"><span class="id" title="variable">postpass</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#optimized:15"><span class="id" title="variable">optimized</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+End-to-end checked unroll-jam endpoint.  The selector is deliberately a
+    function of the producer result, so an untrusted profitability policy can
+    inspect the actual optimized Loop IR without escaping the theorem. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="VerifiedCompilerConfig.compile_with_unrolljam" class="idref" href="#VerifiedCompilerConfig.compile_with_unrolljam"><span class="id" title="definition">compile_with_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="cfg:16" class="idref" href="#cfg:16"><span class="id" title="binder">cfg</span></a> : <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.raw_config"><span class="id" title="inductive">raw_config</span></a>) (<a id="const_first:17" class="idref" href="#const_first:17"><span class="id" title="binder">const_first</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="select:18" class="idref" href="#select:18"><span class="id" title="binder">select</span></a> : <a class="idref"><span class="id" title="definition">LoopIR.t</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a> <a class="idref"><span class="id" title="definition">Postpass.JamLower.unrolljam_plan</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a id="factor:19" class="idref" href="#factor:19"><span class="id" title="binder">factor</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="loop:20" class="idref" href="#loop:20"><span class="id" title="binder">loop</span></a> : <a class="idref"><span class="id" title="definition">LoopIR.t</span></a>) : <span class="id" title="definition">imp</span> <a class="idref"><span class="id" title="definition">LoopIR.t</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="notation">BIND</span> <a id="optimized:21" class="idref" href="#optimized:21"><span class="id" title="binder">optimized</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:16"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:20"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">-;</span><br/>
+&nbsp;&nbsp;<a class="idref"><span class="id" title="definition">Postpass.apply_checked_unrolljam</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#const_first:17"><span class="id" title="variable">const_first</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#select:18"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#factor:19"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#optimized:21"><span class="id" title="variable">optimized</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab93"></a><h2 class="section">Generic sequential correctness endpoints</h2>
+
+
+<div class="paragraph"> </div>
+
+    <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified_correct"><span class="id" title="lemma">compile_verified_correct</span></a></span> assumes a <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#verified_config"><span class="id" title="inductive">verified_config</span></a></span>.
+    <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a></span> additionally discharges <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#check_config"><span class="id" title="definition">check_config</span></a></span>.  Their semantic
+    conclusions are otherwise identical.  Cite <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a></span> for a caller
+    that supplies <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#raw_config"><span class="id" title="inductive">raw_config</span></a></span>; cite <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified_correct"><span class="id" title="lemma">compile_verified_correct</span></a></span> only when the
+    configuration-checking result is already in hand. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="VerifiedCompilerConfig.compile_verified_correct" class="idref" href="#VerifiedCompilerConfig.compile_verified_correct"><span class="id" title="lemma">compile_verified_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:22" class="idref" href="#cfg:22"><span class="id" title="binder">cfg</span></a> <a id="loop:23" class="idref" href="#loop:23"><span class="id" title="binder">loop</span></a> <a id="st:24" class="idref" href="#st:24"><span class="id" title="binder">st</span></a> <a id="st':25" class="idref" href="#st':25"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':26" class="idref" href="#loop':26"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_verified"><span class="id" title="definition">compile_verified</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:22"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:23"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop':26"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:24"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':25"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':27" class="idref" href="#st'':27"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:23"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:24"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':27"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="axiom">State.eq</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':25"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':27"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">cfg</span>; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">CoreCorrect.Identity_opt_prepared_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">CoreCorrect.Affine_opt_prepared_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">CoreCorrect.Opt_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_identity_tiled_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_post_tiling_affine_band_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="lemma">BandCorrect.Opt_post_tiling_affine_band_with_iss_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Raw-config wrapper around <span class="inlinecode"><a class="idref" href="polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified_correct"><span class="id" title="lemma">compile_verified_correct</span></a></span>.  Rejection has no
+    returned target; acceptance exposes a <span class="inlinecode"><a class="idref" href="polcert.syntax.SVerifiedParallelCompilerConfig.html#verified_config"><span class="id" title="inductive">verified_config</span></a></span> and immediately
+    reuses the theorem above. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Theorem</span> <a id="VerifiedCompilerConfig.compile_correct" class="idref" href="#VerifiedCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:28" class="idref" href="#cfg:28"><span class="id" title="binder">cfg</span></a> <a id="loop:29" class="idref" href="#loop:29"><span class="id" title="binder">loop</span></a> <a id="st:30" class="idref" href="#st:30"><span class="id" title="binder">st</span></a> <a id="st':31" class="idref" href="#st':31"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':32" class="idref" href="#loop':32"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:28"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:29"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop':32"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:30"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':31"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':33" class="idref" href="#st'':33"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:29"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:30"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':33"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="axiom">State.eq</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':31"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':33"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.check_config"><span class="id" title="definition">check_config</span></a> <span class="id" title="var">cfg</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">vcfg</span>|<span class="id" title="var">msg</span>] <span class="id" title="var">eqn</span>:<span class="id" title="var">Hcheck</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_verified_correct"><span class="id" title="lemma">compile_verified_correct</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="VerifiedCompilerConfig.compile_with_postpass_correct" class="idref" href="#VerifiedCompilerConfig.compile_with_postpass_correct"><span class="id" title="lemma">compile_with_postpass_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:34" class="idref" href="#cfg:34"><span class="id" title="binder">cfg</span></a> <a id="postpass:35" class="idref" href="#postpass:35"><span class="id" title="binder">postpass</span></a> <a id="loop:36" class="idref" href="#loop:36"><span class="id" title="binder">loop</span></a> <a id="st:37" class="idref" href="#st:37"><span class="id" title="binder">st</span></a> <a id="st':38" class="idref" href="#st':38"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':39" class="idref" href="#loop':39"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_with_postpass"><span class="id" title="definition">compile_with_postpass</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:34"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#postpass:35"><span class="id" title="variable">postpass</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:36"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop':39"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:37"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':38"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':40" class="idref" href="#st'':40"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:36"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:37"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':40"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="axiom">State.eq</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':38"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':40"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">postpass</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_with_postpass"><span class="id" title="definition">compile_with_postpass</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hproducer</span> <span class="id" title="var">Hpostpass</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref"><span class="id" title="lemma">Postpass.apply_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">postpass</span> <span class="id" title="var">optimized</span> <span class="id" title="var">loop'</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">Hpostpass</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hsem_mid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span> <span class="id" title="var">Hproducer</span> <span class="id" title="var">Hsem_mid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsem_src</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsem_src</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="axiom">State.eq_trans</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="VerifiedCompilerConfig.compile_with_unrolljam_correct" class="idref" href="#VerifiedCompilerConfig.compile_with_unrolljam_correct"><span class="id" title="lemma">compile_with_unrolljam_correct</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="cfg:41" class="idref" href="#cfg:41"><span class="id" title="binder">cfg</span></a> <a id="const_first:42" class="idref" href="#const_first:42"><span class="id" title="binder">const_first</span></a> <a id="select:43" class="idref" href="#select:43"><span class="id" title="binder">select</span></a> <a id="factor:44" class="idref" href="#factor:44"><span class="id" title="binder">factor</span></a> <a id="loop:45" class="idref" href="#loop:45"><span class="id" title="binder">loop</span></a> <a id="st:46" class="idref" href="#st:46"><span class="id" title="binder">st</span></a> <a id="st':47" class="idref" href="#st':47"><span class="id" title="binder">st'</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="notation">WHEN</span> <a id="loop':48" class="idref" href="#loop':48"><span class="id" title="binder">loop'</span></a> <span class="id" title="notation">&lt;-</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_with_unrolljam"><span class="id" title="definition">compile_with_unrolljam</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#cfg:41"><span class="id" title="variable">cfg</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#const_first:42"><span class="id" title="variable">const_first</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#select:43"><span class="id" title="variable">select</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#factor:44"><span class="id" title="variable">factor</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:45"><span class="id" title="variable">loop</span></a> <span class="id" title="notation">THEN</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop':48"><span class="id" title="variable">loop'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:46"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':47"><span class="id" title="variable">st'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">∃</span></a> <a id="st'':49" class="idref" href="#st'':49"><span class="id" title="binder">st''</span></a><a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref"><span class="id" title="inductive">LoopIR.semantics</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:45"><span class="id" title="variable">loop</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st:46"><span class="id" title="variable">st</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':49"><span class="id" title="variable">st''</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">∧</span></a> <a class="idref"><span class="id" title="axiom">State.eq</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st':47"><span class="id" title="variable">st'</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#st'':49"><span class="id" title="variable">st''</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">cfg</span> <span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span> <span class="id" title="var">loop'</span> <span class="id" title="var">Hcompile</span> <span class="id" title="var">Hsem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_with_unrolljam"><span class="id" title="definition">compile_with_unrolljam</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_bind</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hcompile</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hcompile</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">optimized</span> [<span class="id" title="var">Hproducer</span> <span class="id" title="var">Hunrolljam</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref"><span class="id" title="lemma">Postpass.apply_checked_unrolljam_correct</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">const_first</span> <span class="id" title="var">select</span> <span class="id" title="var">factor</span> <span class="id" title="var">optimized</span> <span class="id" title="var">loop'</span> <span class="id" title="var">st</span> <span class="id" title="var">st'</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hunrolljam</span> <span class="id" title="var">Hsem</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_mid</span> [<span class="id" title="var">Hsem_mid</span> <span class="id" title="var">Heq_mid</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_correct"><span class="id" title="lemma">compile_correct</span></a> <span class="id" title="var">cfg</span> <span class="id" title="var">loop</span> <span class="id" title="var">st</span> <span class="id" title="var">st_mid</span> <span class="id" title="var">optimized</span> <span class="id" title="var">Hproducer</span> <span class="id" title="var">Hsem_mid</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> [<span class="id" title="var">st_src</span> [<span class="id" title="var">Hsem_src</span> <span class="id" title="var">Heq_src</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">st_src</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">Hsem_src</span>|].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref"><span class="id" title="axiom">State.eq_trans</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="VerifiedCompilerConfig.compile_unsupported_no_result" class="idref" href="#VerifiedCompilerConfig.compile_unsupported_no_result"><span class="id" title="lemma">compile_unsupported_no_result</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a id="loop:50" class="idref" href="#loop:50"><span class="id" title="binder">loop</span></a> <a id="out:51" class="idref" href="#out:51"><span class="id" title="binder">out</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/V8.13.2/stdlib//Coq.Init.Logic.html#63a68285c81db8f9bc456233bb9ed181"><span class="id" title="notation">¬</span></a> <span class="id" title="definition">mayReturn</span> (<a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.RawUnsupported"><span class="id" title="constructor">RawUnsupported</span></a> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#loop:50"><span class="id" title="variable">loop</span></a>) <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#out:51"><span class="id" title="variable">out</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">loop</span> <span class="id" title="var">out</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile"><span class="id" title="definition">compile</span></a>, <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.check_config"><span class="id" title="definition">check_config</span></a>, <span class="id" title="definition">res_to_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">mayReturn_alarm</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">tauto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig"><span class="id" title="module">VerifiedCompilerConfig</span></a>.<br/>
+</div>
+</div>
+
+<div id="footer">
+<hr/><a href="declarations.html">Index</a><hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

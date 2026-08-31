@@ -1,0 +1,6 @@
+context();
+
+for i in range(0, 100) {
+  A[i] = (i + 1);
+  B[i] = A[i];
+}

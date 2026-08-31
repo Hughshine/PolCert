@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>input.pretty.loop</title>
+  <link rel="stylesheet" href="../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../docs/index.html">Supplement guide</a></p>
+  <h1><code>evidence/optimized-loop-examples/adi/input.pretty.loop</code></h1>
+  <pre>context(T, N);
+
+for i0 in range(0, T) {
+  for i1 in range(0, N) {
+    for i2 in range(1, N) {
+      X[i1][i2] = (X[i1][i2] - ((X[i1][(i2 + -1)] * A[i1][i2]) / B[i1][(i2 + -1)]));
+      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[i1][(i2 + -1)]));
+    }
+  }
+  for i1 in range(1, N) {
+    for i2 in range(0, N) {
+      X[i1][i2] = (X[i1][i2] - ((X[(i1 + -1)][i2] * A[i1][i2]) / B[(i1 + -1)][i2]));
+      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[(i1 + -1)][i2]));
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

@@ -1,0 +1,22 @@
+#include <stdio.h>
+
+static int A[4];
+
+static int checksum(void) {
+  int sum = 0;
+  for (int i = 0; i < 4; ++i) {
+    sum += A[i] * (i + 1);
+  }
+  return sum;
+}
+
+int main(void) {
+  for (int i = 0; i < 4; ++i) {
+    A[i] = 0;
+  }
+  for (long long i = 0; i < 4; ++i) {
+  A[i] = (i + 1);
+}
+  printf("%d\n", checksum());
+  return 0;
+}
