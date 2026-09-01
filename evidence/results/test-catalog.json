@@ -2520,6 +2520,7 @@
       "category": "Verified Transformations",
       "coverage": "recorded result",
       "evidence": [
+        "../../source/tests/iss-pluto-dumps/multicut_valid.bridge",
         "raw/iss-suite.stdout.txt",
         "raw/remote-ci-test-results.stdout.txt"
       ],
@@ -2527,14 +2528,27 @@
       "family": "Index-Set Splitting (ISS)",
       "observed_transformation": "Index-set splitting (ISS)",
       "occurrences": 2,
-      "program_evidence": [],
+      "program_evidence": [
+        "program-comparisons/91084e6d675e10/before.domain",
+        "program-comparisons/91084e6d675e10/after.domain"
+      ],
+      "program_pair": {
+        "after": "program-comparisons/91084e6d675e10/after.domain",
+        "before": "program-comparisons/91084e6d675e10/before.domain",
+        "case": "multicut-complete",
+        "kind": "accepted-domain-pair",
+        "left_label": "Original Statement Domain",
+        "note": "Readable rendering of the exact multicut_valid.bridge fixture. The linked bridge file is the object accepted by the extracted validator.",
+        "right_label": "Accepted Four-Way Split",
+        "suite": "ISS multi-cut validation"
+      },
       "source": [
         "local artifact run",
         "remote CI"
       ],
       "status": "PASS",
       "suite": "ISS multi-cut validation",
-      "view_kind": "result-summary"
+      "view_kind": "accepted-domain-pair"
     },
     {
       "actual": "reject,exit:1",
@@ -31319,7 +31333,7 @@
     }
   ],
   "counts": {
-    "before_after_programs": 691,
+    "before_after_programs": 692,
     "categories": 5,
     "distinct_suite_cases": 998,
     "families": 17,
@@ -31328,7 +31342,7 @@
     "local_artifact_commands": 30,
     "recorded_test_case_results": 1508,
     "remote_ci_phases": 45,
-    "result_summaries": 195,
+    "result_summaries": 194,
     "suites": 35
   },
   "hierarchy": [

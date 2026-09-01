@@ -3,22 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/cb9b8567c69473/before.loop</code></h1>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/ca8d6f40b1dac4/after.loop</code></h1>
   <pre>context(N);
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    C[i][j] = 0;
-    for k in range(0, N) {
-      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+if (2 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          a[(2 * i2)] = (a[(2 * i2)] + b[i3]);
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(1, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          a[((2 * i2) + 1)] = (a[((2 * i2) + 1)] + b[i3]);
+        }
+      }
     }
   }
+}
+if ((N &lt;= 1 &amp;&amp; 1 &lt;= N)) {
+  a[0] = (a[0] + b[0]);
 }
 </pre>
 </main>

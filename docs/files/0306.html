@@ -3,22 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/09dbce45505fdf/before.loop</code></h1>
-  <pre>context(B, T, N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/09d959892bd4b1/after.loop</code></h1>
+  <pre>context(N);
 
-for p in range(0, B) {
-  for t in range(0, T) {
-    for i in range(2, (N - 1)) {
-      b[p][i] = (0.33333 * ((a[p][(i - 1)] + a[p][i]) + a[p][(i + 1)]));
+if (1 &lt;= N) {
+  for i0 in range(0, (N / 4)) {
+    for i1 in range(0, N) {
+      for i2 in range(0, N) {
+        C[(4 * i0)][i1] = (C[(4 * i0)][i1] + (A[(4 * i0)][i2] * B[i2][i1]));
+      }
+      for i2 in range(0, N) {
+        D[(4 * i0)][i2] = (D[(4 * i0)][i2] + (C[(4 * i0)][i1] * E[i1][i2]));
+      }
+      for i2 in range(0, N) {
+        C[((4 * i0) + 1)][i1] = (C[((4 * i0) + 1)][i1] + (A[((4 * i0) + 1)][i2] * B[i2][i1]));
+      }
+      for i2 in range(0, N) {
+        D[((4 * i0) + 1)][i2] = (D[((4 * i0) + 1)][i2] + (C[((4 * i0) + 1)][i1] * E[i1][i2]));
+      }
+      for i2 in range(0, N) {
+        C[((4 * i0) + 2)][i1] = (C[((4 * i0) + 2)][i1] + (A[((4 * i0) + 2)][i2] * B[i2][i1]));
+      }
+      for i2 in range(0, N) {
+        D[((4 * i0) + 2)][i2] = (D[((4 * i0) + 2)][i2] + (C[((4 * i0) + 2)][i1] * E[i1][i2]));
+      }
+      for i2 in range(0, N) {
+        C[((4 * i0) + 3)][i1] = (C[((4 * i0) + 3)][i1] + (A[((4 * i0) + 3)][i2] * B[i2][i1]));
+      }
+      for i2 in range(0, N) {
+        D[((4 * i0) + 3)][i2] = (D[((4 * i0) + 3)][i2] + (C[((4 * i0) + 3)][i1] * E[i1][i2]));
+      }
     }
-    for j in range(2, (N - 1)) {
-      a[p][j] = b[p][j];
+  }
+  for i0 in range((4 * (N / 4)), N) {
+    for i1 in range(0, N) {
+      for i2 in range(0, N) {
+        C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
+      }
+      for i2 in range(0, N) {
+        D[i0][i2] = (D[i0][i2] + (C[i0][i1] * E[i1][i2]));
+      }
     }
   }
 }

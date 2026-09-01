@@ -3,46 +3,705 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>results.json</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/rejected-optimizer-outputs/affine-fst-reversed/README.md</code></h1>
-  <pre># Reversed Affine Statement Order
-
-Status: reproduced, minimized, validator-catches, control-interface case.
-
-This fixture deliberately supplies an inconsistent `.fst` statement grouping.
-It tests validation of a Pluto control interface; it is not evidence that
-Pluto&#x27;s automatic affine scheduler independently discovers the illegal order.
-
-The source loop writes `a[i]` and then copies that value to `b[i]`. The
-`reversed.fst` control file assigns the consumer statement to scalar group `0`
-and the producer to group `1`. Pluto installs that order before affine
-scheduling and later marks the dependence satisfied on a positive loop
-coordinate, without rejecting the earlier negative scalar coordinate.
-
-At the pinned bug-reproduction commit
-`historical-bug-witness-pluto-snapshot`,
-the generated program runs the complete `b` loop before the `a` loop. The
-original prints `100`; Pluto&#x27;s output prints `0`. The ordinary fixed Pluto
-baseline `ordinary-fixed-pluto-snapshot` rejects this candidate at its final lexicographic legality
-gate.
-
-PolCert rejects the same schedule at both useful interfaces:
-
-- `--validate-affine-openscop` reports `overall: FAIL` for Pluto&#x27;s before/after
-  OpenScop pair;
-- the Pluto-compatible route with `--fusion-structure reversed.fst` raises an
-  alarm and emits no optimized Loop.
-
-Run the producer, executable comparison, and both checked rejections with:
-
-```sh
-opam exec -- make test-pluto-miscompilation-affine-fst
-```
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/performance-comparisons/results.json</code></h1>
+  <pre>{
+  &quot;cases&quot;: 62,
+  &quot;exact_output_matches&quot;: 62,
+  &quot;method&quot;: &quot;one recorded timed execution per candidate; baseline time divided by optimized time; generated whole-C harness&quot;,
+  &quot;selected&quot;: [
+    {
+      &quot;baseline_seconds&quot;: 0.00114910100819543,
+      &quot;case&quot;: &quot;1dloop-invar&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010693619988160208,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.0745669001401723
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.0891249350097496,
+      &quot;case&quot;: &quot;adi&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.1686929279967444,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 0.9748893329852262
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.595320726002683,
+      &quot;case&quot;: &quot;advect3d&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.3325571219902486,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.1971874973884664
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.7139643209957285,
+      &quot;case&quot;: &quot;corcol&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.42507618899981026,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 4.0321343922571335
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.8989644660032354,
+      &quot;case&quot;: &quot;corcol3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.48863282198726665,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 3.886281028523951
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.1306252190115629,
+      &quot;case&quot;: &quot;costfunc&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.7711166869994486,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.4662180679956824
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.761309819004964,
+      &quot;case&quot;: &quot;covcol&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.4120690479903715,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 4.274307491899075
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.689387820995762,
+      &quot;case&quot;: &quot;dct&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.7102897420118097,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 0.9943664989881048
+    },
+    {
+      &quot;baseline_seconds&quot;: 7.904220076001366,
+      &quot;case&quot;: &quot;doitgen&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.9920348820014624,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 3.967912483570437
+    },
+    {
+      &quot;baseline_seconds&quot;: 5.332616448009503,
+      &quot;case&quot;: &quot;dsyr2k&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 2.1829598139884183,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 2.442837661892843
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.9034339969948633,
+      &quot;case&quot;: &quot;dsyrk&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.8748276749975048,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 2.082022816843718
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.296023110000533,
+      &quot;case&quot;: &quot;fdtd-1d&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.1838842049910454,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0513483749519346
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.8156754470110172,
+      &quot;case&quot;: &quot;fdtd-2d&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.735997274998226,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0213271493922138
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.8927542630117387,
+      &quot;case&quot;: &quot;floyd&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.8158717720070854,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.0423391630344443
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.004104126011952758,
+      &quot;case&quot;: &quot;fusion1&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.003827581007499248,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0722505948043124
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.001477961995988153,
+      &quot;case&quot;: &quot;fusion10&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0012759410019498318,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.1583309837442344
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0015842940047150478,
+      &quot;case&quot;: &quot;fusion2&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0011795150057878345,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.3431740986261118
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.0138322060083738,
+      &quot;case&quot;: &quot;fusion3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.6195390799985034,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.6364297890793633
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.8951501560077304,
+      &quot;case&quot;: &quot;fusion4&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.6807749760046136,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.3148987368208787
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.46062164299655706,
+      &quot;case&quot;: &quot;fusion5&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.3230483610095689,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.4258597120166572
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.00392253500467632,
+      &quot;case&quot;: &quot;fusion6&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0036596720019588247,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.0718269294561913
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0030400300020119175,
+      &quot;case&quot;: &quot;fusion7&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0027280879876343533,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.1143445577237643
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0012137960002291948,
+      &quot;case&quot;: &quot;fusion8&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010332589881727472,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.1747258084594219
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.4421742630074732,
+      &quot;case&quot;: &quot;fusion9&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.09922697200090624,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 14.534095255817157
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.4445694129972253,
+      &quot;case&quot;: &quot;gemver&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9813154820003547,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.472074413880187
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.5452991009951802,
+      &quot;case&quot;: &quot;intratileopt1&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.8324848500051303,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 1.856248916704799
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.53177871099615,
+      &quot;case&quot;: &quot;intratileopt2&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.841352616000222,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 1.820614427133065
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.4999988049967214,
+      &quot;case&quot;: &quot;intratileopt3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.7264815859962255,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 1.4480309696174118
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.0156432799994946,
+      &quot;case&quot;: &quot;intratileopt4&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.397796292003477,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 2.553174326699398
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.749600299008307,
+      &quot;case&quot;: &quot;jacobi-1d-imper&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.6810940329887671,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0407510018328627
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.9292862310103374,
+      &quot;case&quot;: &quot;jacobi-2d-imper&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.882894947004388,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0246382752684933
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.904085613001371,
+      &quot;case&quot;: &quot;lu&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.9325704110087827,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 0.9902867471142446
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.275157553012832,
+      &quot;case&quot;: &quot;matmul&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.3441706459998386,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 3.7050154271826834
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.3096200169966323,
+      &quot;case&quot;: &quot;matmul-init&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.2733117790048709,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 4.791670603312316
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.5458632090012543,
+      &quot;case&quot;: &quot;matmul-seq&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.5171019720000913,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0114263296922807
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.750976957002422,
+      &quot;case&quot;: &quot;matmul-seq3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.775829910999164,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 0.9934178830660925
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0035091520112473518,
+      &quot;case&quot;: &quot;multi-loop-param&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.002696102994377725,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.3015645242652472
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.007809945003828034,
+      &quot;case&quot;: &quot;multi-stmt-stencil-seq&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.005718112995964475,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.3658255808060906
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.8897960930044064,
+      &quot;case&quot;: &quot;mvt&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.43683816799602937,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 2.036900981171806
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.8556805299886037,
+      &quot;case&quot;: &quot;mxv&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.539684641000349,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 1.205234163265374
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.0033624719944783,
+      &quot;case&quot;: &quot;mxv-seq&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9455987090041162,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0610869731952126
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.038335254008416,
+      &quot;case&quot;: &quot;mxv-seq3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.0322880000021541,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.0058581074334385
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0013194700004532933,
+      &quot;case&quot;: &quot;negparam&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010816180001711473,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.2199038849617057
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0012691930023720488,
+      &quot;case&quot;: &quot;nodep&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010109700087923557,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.2554210227147597
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0014279629976954311,
+      &quot;case&quot;: &quot;noloop&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001100446010241285,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.2976220408871622
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.0022052040003473,
+      &quot;case&quot;: &quot;pca&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.5570892429968808,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.7990029723226209
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.4509511350042885,
+      &quot;case&quot;: &quot;polynomial&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.4666778879909543,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 0.995463451322909
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.705939405001118,
+      &quot;case&quot;: &quot;seidel&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.4017302810098045,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.0894277614217576
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.605100571003277,
+      &quot;case&quot;: &quot;seq&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.902899716005777,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.3690162172452434
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.9734001949982485,
+      &quot;case&quot;: &quot;shift&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9054670549958246,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1.0750255237091284
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.3188012429891387,
+      &quot;case&quot;: &quot;spatial&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.735841541987611,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 1.335836933787179
+    },
+    {
+      &quot;baseline_seconds&quot;: 4.655964614998084,
+      &quot;case&quot;: &quot;ssymm&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.31597189500462264,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 14.735375799578527
+    },
+    {
+      &quot;baseline_seconds&quot;: 5.396353192001698,
+      &quot;case&quot;: &quot;strmm&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.0648454309994122,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 5.067733808968821
+    },
+    {
+      &quot;baseline_seconds&quot;: 7.604562129999977,
+      &quot;case&quot;: &quot;strsm&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.9731404439953621,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 7.814454919557551
+    },
+    {
+      &quot;baseline_seconds&quot;: 3.5964337220066227,
+      &quot;case&quot;: &quot;tce&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.190497632007464,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;speedup&quot;: 1.1272328447847002
+    },
+    {
+      &quot;baseline_seconds&quot;: 7.518935376996524,
+      &quot;case&quot;: &quot;tmm&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 2.207161468992126,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 3.4066086612276516
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.944032598999911,
+      &quot;case&quot;: &quot;tricky1&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0018896019901148975,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;speedup&quot;: 1028.8053299952885
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.001373316001263447,
+      &quot;case&quot;: &quot;tricky2&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001136762002715841,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.2080945685925941
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0012990690011065453,
+      &quot;case&quot;: &quot;tricky3&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001111306992243044,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.1689560222099615
+    },
+    {
+      &quot;baseline_seconds&quot;: 0.0012594559957506135,
+      &quot;case&quot;: &quot;tricky4&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0011234919948037714,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;speedup&quot;: 1.1210191096827438
+    },
+    {
+      &quot;baseline_seconds&quot;: 1.2667794239969226,
+      &quot;case&quot;: &quot;trisolv&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.22329702098795678,
+      &quot;parallelized&quot;: true,
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;speedup&quot;: 5.673069073614038
+    },
+    {
+      &quot;baseline_seconds&quot;: 2.604864555003587,
+      &quot;case&quot;: &quot;wavefront&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.7204476589977276,
+      &quot;parallelized&quot;: false,
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;speedup&quot;: 1.5140620764488062
+    }
+  ],
+  &quot;selected_nonidentity_routes&quot;: 47,
+  &quot;selected_nonidentity_speedups_above_one&quot;: 47,
+  &quot;selected_parallel_outputs&quot;: 19
+}
 </pre>
 </main>
 </body>

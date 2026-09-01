@@ -1,0 +1,117 @@
+{
+  "cases": {
+    "1dloop-invar": "default_no_iss_affine_tiling",
+    "adi": "identity",
+    "advect3d": "iss",
+    "corcol": "affine_only",
+    "corcol3": "parallel_4",
+    "costfunc": "default_no_iss_affine_tiling",
+    "covcol": "affine_only",
+    "dct": "identity",
+    "doitgen": "parallel_4",
+    "dsyr2k": "parallel_4",
+    "dsyrk": "parallel_4",
+    "fdtd-1d": "identity",
+    "fdtd-2d": "identity",
+    "floyd": "iss",
+    "fusion1": "identity",
+    "fusion10": "iss",
+    "fusion2": "affine_only",
+    "fusion3": "affine_only",
+    "fusion4": "default_no_iss_affine_tiling",
+    "fusion5": "affine_only",
+    "fusion6": "default_no_iss_affine_tiling",
+    "fusion7": "default_no_iss_affine_tiling",
+    "fusion8": "iss",
+    "fusion9": "iss_parallel_4",
+    "gemver": "affine_only",
+    "intratileopt1": "iss_parallel_4",
+    "intratileopt2": "parallel_4",
+    "intratileopt3": "iss_parallel_4",
+    "intratileopt4": "parallel_4",
+    "jacobi-1d-imper": "identity",
+    "jacobi-2d-imper": "identity",
+    "lu": "identity",
+    "matmul": "parallel_4",
+    "matmul-init": "parallel_4",
+    "matmul-seq": "identity",
+    "matmul-seq3": "identity",
+    "multi-loop-param": "iss",
+    "multi-stmt-stencil-seq": "identity",
+    "mvt": "iss_parallel_4",
+    "mxv": "parallel_4",
+    "mxv-seq": "identity",
+    "mxv-seq3": "identity",
+    "negparam": "affine_only",
+    "nodep": "iss",
+    "noloop": "default_no_iss_affine_tiling",
+    "pca": "default_no_iss_affine_tiling",
+    "polynomial": "identity",
+    "seidel": "iss",
+    "seq": "default_no_iss_affine_tiling",
+    "shift": "affine_only",
+    "spatial": "iss_parallel_4",
+    "ssymm": "iss_parallel_4",
+    "strmm": "parallel_4",
+    "strsm": "parallel_4",
+    "tce": "identity",
+    "tmm": "parallel_4",
+    "tricky1": "affine_only",
+    "tricky2": "iss",
+    "tricky3": "iss",
+    "tricky4": "iss",
+    "trisolv": "parallel_4",
+    "wavefront": "default_no_iss_affine_tiling"
+  },
+  "default_pipeline": "default_no_iss_affine_tiling",
+  "pipelines": [
+    {
+      "name": "identity",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--identity"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "default_no_iss_affine_tiling",
+      "omp_threads": 1,
+      "source": "cached_default_no_iss_affine_tiling"
+    },
+    {
+      "name": "affine_only",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--affine-only"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "iss",
+      "omp_threads": 1,
+      "polopt_args": [
+        "--iss"
+      ],
+      "source": "polopt"
+    },
+    {
+      "name": "parallel_4",
+      "omp_threads": 4,
+      "polopt_args": [
+        "--parallel"
+      ],
+      "require_parallelized": true,
+      "source": "polopt"
+    },
+    {
+      "name": "iss_parallel_4",
+      "omp_threads": 4,
+      "polopt_args": [
+        "--iss",
+        "--parallel"
+      ],
+      "require_parallelized": true,
+      "source": "polopt"
+    }
+  ]
+}

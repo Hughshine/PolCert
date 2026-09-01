@@ -1,0 +1,7 @@
+Accepted split of S0 by cuts i <= 7 and j <= 7
+  S0_0: original domain, i <= 7, j <= 7
+  S0_1: original domain, i >= 8, j <= 7
+  S0_2: original domain, i <= 7, j >= 8
+  S0_3: original domain, i >= 8, j >= 8
+
+The four sign combinations cover the source domain exactly once.

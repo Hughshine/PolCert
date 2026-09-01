@@ -3,23 +3,1448 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion2.loop</title>
+  <title>RawCodegenOrigin.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/fusion2.loop</code></h1>
-  <pre>for x in range(0, 100) {
-  for y in range(0, 100) {
-    A[x][y] = 1;
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/src/RawCodegenOrigin.v</code></h1>
+  <pre>Require Import ZArith.
+Require Import List.
+Require Import Lia.
+Require Import Bool.
+
+Require Import Linalg.
+Require Import Misc.
+Require Import Result.
+Require Import PolIRs.
+Require Import ASTGen.
+Require Import LoopGen.
+Require Import PolyLoopSimpl.
+Require Import CodeGen.
+Require Import Heuristics.
+Require Import Projection.
+Require Import PolyOperations.
+Require Import ImpureAlarmConfig.
+Require Import Vpl.Impure.
+
+Import ListNotations.
+Local Open Scope Z_scope.
+
+Module RawCodegenOrigin (PolIRs : POLIRS).
+
+Module Instr := PolIRs.Instr.
+Module PolyLang := PolIRs.PolyLang.
+Module ILSema := PolyLang.ILSema.
+Module PolyLoop := PolIRs.PolyLoop.
+Module Loop := PolIRs.Loop.
+Module ASTGenCore := ASTGen PolIRs.
+Module LoopGenCore := LoopGen PolIRs.
+Module PolyLoopSimplifier := PolyLoopSimplify PolIRs.
+Module CodeGenCore := CodeGen PolIRs.
+
+(** * Proof map
+
+    This module is a neutral, proof-only trace bridge for standard raw code
+    generation:
+
+    - [poly_trace] and [loop_trace] record generated instruction events without
+      introducing state semantics;
+    - [polyloop_to_loop_trace_reflect] reflects LoopGen traces to PolyLoop;
+    - [generate_loop_many_event_origin] recovers the source polyhedral
+      instruction selected by AST generation;
+    - schedule elimination and preparation facts then yield
+      [complete_generate_many_event_source], the endpoint consumed by
+      [ParallelCodegenCorrect]. *)
+
+(** * Neutral traces for PolyLoop *)
+
+(** A proof-only trace for the intermediate polyhedral loop language.  Points
+    use the polyhedral coordinate order; the operational loop environment is
+    stored in the reverse order. *)
+Record scan_event := {
+  se_point : list Z;
+  se_instr : Instr.t;
+  se_args : list Z
+}.
+
+Inductive poly_trace : PolyLoop.poly_stmt -&gt; list Z -&gt; list scan_event -&gt; Prop :=
+| PETInstr : forall i es env,
+    poly_trace
+      (PolyLoop.PInstr i es)
+      env
+      [{| se_point := rev env;
+          se_instr := i;
+          se_args := map (PolyLoop.eval_affine_expr env) es |}]
+| PETSkip : forall env,
+    poly_trace PolyLoop.PSkip env []
+| PETSeq : forall s1 s2 env tr1 tr2,
+    poly_trace s1 env tr1 -&gt;
+    poly_trace s2 env tr2 -&gt;
+    poly_trace (PolyLoop.PSeq s1 s2) env (tr1 ++ tr2)
+| PETGuardTrue : forall p body env tr,
+    in_poly (rev env) p = true -&gt;
+    poly_trace body env tr -&gt;
+    poly_trace (PolyLoop.PGuard p body) env tr
+| PETGuardFalse : forall p body env,
+    in_poly (rev env) p = false -&gt;
+    poly_trace (PolyLoop.PGuard p body) env []
+| PETLoop : forall p body env lb ub zs trs,
+    (forall x, in_poly (rev (x :: env)) p = true &lt;-&gt; lb &lt;= x &lt; ub) -&gt;
+    zs = Zrange lb ub -&gt;
+    Forall2 (fun z tr =&gt; poly_trace body (z :: env) tr) zs trs -&gt;
+    poly_trace (PolyLoop.PLoop p body) env (concat trs).
+
+Lemma ctx_simplify_resize_equiv :
+  forall pol ctx n simp point,
+    mayReturn (ctx_simplify (resize_poly n pol) ctx) simp -&gt;
+    Datatypes.length point = n -&gt;
+    in_poly point ctx = true -&gt;
+    in_poly point simp = in_poly point pol.
+Proof.
+  intros pol ctx n simp point Hsimp Hlen Hctx.
+  erewrite &lt;- (ctx_simplify_correct _ _ _ Hsimp); [|exact Hctx].
+  apply resize_poly_in. exact Hlen.
+Qed.
+
+Local Lemma in_poly_cons_preserves_context :
+  forall ctx env x,
+    (poly_nrl ctx &lt;= Datatypes.length env)%nat -&gt;
+    in_poly (rev env) ctx = true -&gt;
+    in_poly (rev (x :: env)) ctx = true.
+Proof.
+  intros ctx env x Hctx Henv.
+  rewrite &lt;- in_poly_nrlength with (n := Datatypes.length env);
+    [|exact Hctx].
+  simpl.
+  rewrite resize_app by (rewrite rev_length; reflexivity).
+  exact Henv.
+Qed.
+
+Lemma Forall2_imp_in_left :
+  forall A B (R S : A -&gt; B -&gt; Prop) xs ys,
+    Forall2 R xs ys -&gt;
+    (forall x y, In x xs -&gt; R x y -&gt; S x y) -&gt;
+    Forall2 S xs ys.
+Proof.
+  intros A B R S xs ys Hfor.
+  induction Hfor; intro Himp.
+  - constructor.
+  - constructor.
+    + eapply Himp; [left; reflexivity | exact H].
+    + apply IHHfor.
+      intros x&#x27; y&#x27; Hin HR.
+      eapply Himp; [right; exact Hin | exact HR].
+Qed.
+
+(** [polyloop_simplify] can remove guards and simplify loop domains, but it
+    does not introduce new execution events.  Any trace of the simplified
+    statement is therefore also a trace of the input statement under the
+    simplifier&#x27;s context. *)
+Lemma polyloop_simplify_trace_reflect :
+  forall stmt n ctx,
+    (poly_nrl ctx &lt;= n)%nat -&gt;
+    forall nst,
+      mayReturn (PolyLoopSimplifier.polyloop_simplify stmt n ctx) nst -&gt;
+      forall env tr,
+        Datatypes.length env = n -&gt;
+        in_poly (rev env) ctx = true -&gt;
+        poly_trace nst env tr -&gt;
+        poly_trace stmt env tr.
+Proof.
+  induction stmt; intros n ctx Hctx nst Hnst env tr Henv Henvctx Htrace;
+    simpl in Hnst.
+  - bind_imp_destruct Hnst npol Hnpol.
+    bind_imp_destruct Hnst nctx Hnctx.
+    bind_imp_destruct Hnst nst1 Hnst1.
+    apply mayReturn_pure in Hnst. subst nst.
+    inversion Htrace as
+      [| | | | |
+       p0 body0 env0 lb ub zs trs Hdomain Hrange Htraces];
+      subst.
+    eapply PETLoop with
+      (lb := lb) (ub := ub) (zs := Zrange lb ub) (trs := trs).
+    + intros x.
+      rewrite &lt;- (Hdomain x).
+      assert (Hinctx : in_poly (rev (x :: env)) ctx = true).
+      { eapply in_poly_cons_preserves_context; eauto. }
+      erewrite &lt;- (ctx_simplify_correct _ _ _ Hnpol); [|exact Hinctx].
+      rewrite resize_poly_in; [reflexivity|].
+      rewrite rev_length. reflexivity.
+    + reflexivity.
+    + eapply Forall2_imp_in_left; [exact Htraces|].
+      intros x tri Hxin Hbody.
+      assert (Hinctx : in_poly (rev (x :: env)) ctx = true).
+      { eapply in_poly_cons_preserves_context; eauto. }
+      assert (Hnctxnrl :
+        (poly_nrl nctx &lt;= S (Datatypes.length env))%nat).
+      { eapply poly_inter_nrl; [apply resize_poly_nrl| |exact Hnctx]; lia. }
+      eapply IHstmt with (n := S (Datatypes.length env)) (ctx := nctx).
+      * exact Hnctxnrl.
+      * exact Hnst1.
+      * reflexivity.
+      * erewrite poly_inter_def, poly_inter_pure_def, resize_poly_in;
+          [|rewrite rev_length; reflexivity|exact Hnctx].
+        reflect. simpl. split; [|exact Hinctx].
+        change (in_poly (rev (x :: env)) p = true).
+        rewrite &lt;- (resize_poly_in
+          (rev (x :: env)) p (S (Datatypes.length env)))
+          by (rewrite rev_length; reflexivity).
+        erewrite (ctx_simplify_correct _ _ _ Hnpol); [|exact Hinctx].
+        apply (proj2 (Hdomain x)).
+        rewrite &lt;- Zrange_in. exact Hxin.
+      * exact Hbody.
+  - apply mayReturn_pure in Hnst. subst nst. exact Htrace.
+  - apply mayReturn_pure in Hnst. subst nst. exact Htrace.
+  - bind_imp_destruct Hnst s1 Hs1.
+    bind_imp_destruct Hnst s2 Hs2.
+    apply mayReturn_pure in Hnst. subst nst.
+    inversion Htrace; subst.
+    constructor.
+    + eapply IHstmt1; eauto.
+    + eapply IHstmt2; eauto.
+  - bind_imp_destruct Hnst npol Hnpol.
+    bind_imp_destruct Hnst nctx Hnctx.
+    bind_imp_destruct Hnst nst1 Hnst1.
+    apply mayReturn_pure in Hnst. subst nst.
+    inversion Htrace as
+      [| | |
+       p0 body0 env0 tr0 Htest Hbody
+       | p0 body0 env0 Htest
+       |];
+      subst.
+    + apply PETGuardTrue.
+      * rewrite (ctx_simplify_resize_equiv
+          p ctx (Datatypes.length env) npol (rev env)
+          Hnpol (eq_trans (rev_length env) eq_refl) Henvctx) in Htest.
+        exact Htest.
+      * assert (Hnctxnrl :
+          (poly_nrl nctx &lt;= Datatypes.length env)%nat).
+        { eapply poly_inter_nrl; [apply resize_poly_nrl|exact Hctx|exact Hnctx]. }
+        eapply IHstmt with (n := Datatypes.length env) (ctx := nctx).
+        -- exact Hnctxnrl.
+        -- exact Hnst1.
+        -- reflexivity.
+        -- erewrite poly_inter_def, poly_inter_pure_def, resize_poly_in;
+             [|rewrite rev_length; reflexivity|exact Hnctx].
+           reflect. simpl. split; [|exact Henvctx].
+           rewrite (ctx_simplify_resize_equiv
+             p ctx (Datatypes.length env) npol (rev env)
+             Hnpol (rev_length env) Henvctx) in Htest.
+           exact Htest.
+        -- exact Hbody.
+    + apply PETGuardFalse.
+      rewrite (ctx_simplify_resize_equiv
+        p ctx (Datatypes.length env) npol (rev env)
+        Hnpol (eq_trans (rev_length env) eq_refl) Henvctx) in Htest.
+      exact Htest.
+Qed.
+
+(** The corresponding pure trace for the generated base Loop language. *)
+(** * Neutral traces for generated Loop syntax *)
+
+Inductive loop_trace : Loop.stmt -&gt; list Z -&gt; list scan_event -&gt; Prop :=
+| LETInstr : forall i es env,
+    loop_trace
+      (Loop.Instr i es)
+      env
+      [{| se_point := rev env;
+          se_instr := i;
+          se_args := map (Loop.eval_expr env) es |}]
+| LETSeq : forall ss env tr,
+    loop_traces ss env tr -&gt;
+    loop_trace (Loop.Seq ss) env tr
+| LETGuardTrue : forall tst body env tr,
+    Loop.eval_test env tst = true -&gt;
+    loop_trace body env tr -&gt;
+    loop_trace (Loop.Guard tst body) env tr
+| LETGuardFalse : forall tst body env,
+    Loop.eval_test env tst = false -&gt;
+    loop_trace (Loop.Guard tst body) env []
+| LETLoop : forall lb ub body env zs trs,
+    zs = Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub) -&gt;
+    Forall2 (fun z tr =&gt; loop_trace body (z :: env) tr) zs trs -&gt;
+    loop_trace (Loop.Loop lb ub body) env (concat trs)
+with loop_traces : Loop.stmt_list -&gt; list Z -&gt; list scan_event -&gt; Prop :=
+| LETNil : forall env,
+    loop_traces Loop.SNil env []
+| LETCons : forall s ss env tr1 tr2,
+    loop_trace s env tr1 -&gt;
+    loop_traces ss env tr2 -&gt;
+    loop_traces (Loop.SCons s ss) env (tr1 ++ tr2).
+
+Definition same_effect
+    (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
+  ip1.(PolyLang.ip_instruction) = ip2.(PolyLang.ip_instruction) /\
+  affine_product ip1.(PolyLang.ip_transformation) ip1.(PolyLang.ip_index) =
+  affine_product ip2.(PolyLang.ip_transformation) ip2.(PolyLang.ip_index).
+
+Lemma instr_point_sema_same_effect_iff :
+  forall ip1 ip2 st1 st2,
+    same_effect ip1 ip2 -&gt;
+    ILSema.instr_point_sema ip1 st1 st2 &lt;-&gt;
+    ILSema.instr_point_sema ip2 st1 st2.
+Proof.
+  intros ip1 ip2 st1 st2 [Hinstr Hargs].
+  split; intro Hsem; inversion Hsem as [wcs rcs Hstep]; subst.
+  - econstructor.
+    rewrite &lt;- Hinstr, &lt;- Hargs.
+    exact Hstep.
+  - econstructor.
+    rewrite Hinstr, Hargs.
+    exact Hstep.
+Qed.
+
+Lemma same_effect_symm :
+  forall ip1 ip2,
+    same_effect ip1 ip2 -&gt;
+    same_effect ip2 ip1.
+Proof.
+  intros ip1 ip2 [Hinstr Hargs].
+  split; symmetry; assumption.
+Qed.
+
+Lemma Permutable_same_effect :
+  forall ip1 ip1&#x27; ip2 ip2&#x27;,
+    same_effect ip1 ip1&#x27; -&gt;
+    same_effect ip2 ip2&#x27; -&gt;
+    ILSema.Permutable ip1 ip2 -&gt;
+    ILSema.Permutable ip1&#x27; ip2&#x27;.
+Proof.
+  intros ip1 ip1&#x27; ip2 ip2&#x27; Heffect1 Heffect2 Hperm.
+  unfold ILSema.Permutable in *.
+  intros st1 Hnonalias.
+  specialize (Hperm st1 Hnonalias).
+  destruct Hperm as [Hforward Hbackward].
+  split.
+  - intros st2 st3 Hstep1 Hstep2.
+    apply (proj2
+      (instr_point_sema_same_effect_iff ip1 ip1&#x27; st1 st2 Heffect1))
+      in Hstep1.
+    apply (proj2
+      (instr_point_sema_same_effect_iff ip2 ip2&#x27; st2 st3 Heffect2))
+      in Hstep2.
+    destruct (Hforward _ _ Hstep1 Hstep2)
+      as [st2&#x27; [st3&#x27; [Hstep2&#x27; [Hstep1&#x27; Heq]]]].
+    exists st2&#x27;, st3&#x27;.
+    repeat split; auto.
+    + apply (proj1
+        (instr_point_sema_same_effect_iff ip2 ip2&#x27; st1 st2&#x27; Heffect2)).
+      exact Hstep2&#x27;.
+    + apply (proj1
+        (instr_point_sema_same_effect_iff ip1 ip1&#x27; st2&#x27; st3&#x27; Heffect1)).
+      exact Hstep1&#x27;.
+  - intros st2 st3 Hstep2 Hstep1.
+    apply (proj2
+      (instr_point_sema_same_effect_iff ip2 ip2&#x27; st1 st2 Heffect2))
+      in Hstep2.
+    apply (proj2
+      (instr_point_sema_same_effect_iff ip1 ip1&#x27; st2 st3 Heffect1))
+      in Hstep1.
+    destruct (Hbackward _ _ Hstep2 Hstep1)
+      as [st2&#x27; [st3&#x27; [Hstep1&#x27; [Hstep2&#x27; Heq]]]].
+    exists st2&#x27;, st3&#x27;.
+    repeat split; auto.
+    + apply (proj1
+        (instr_point_sema_same_effect_iff ip1 ip1&#x27; st1 st2&#x27; Heffect1)).
+      exact Hstep1&#x27;.
+    + apply (proj1
+        (instr_point_sema_same_effect_iff ip2 ip2&#x27; st2&#x27; st3&#x27; Heffect2)).
+      exact Hstep2&#x27;.
+Qed.
+
+Lemma Forall2_in_right :
+  forall A B (R : A -&gt; B -&gt; Prop) xs ys y,
+    Forall2 R xs ys -&gt;
+    In y ys -&gt;
+    exists x, In x xs /\ R x y.
+Proof.
+  intros A B R xs ys y Hfor.
+  induction Hfor; intro Hin.
+  - inversion Hin.
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin].
+    + subst y. exists x. split; [left; reflexivity | assumption].
+    + destruct (IHHfor Hin) as [x&#x27; [Hin&#x27; HR]].
+      exists x&#x27;. split; [right; exact Hin&#x27; | exact HR].
+Qed.
+
+Lemma poly_trace_event_extends_env :
+  forall s env tr ev,
+    poly_trace s env tr -&gt;
+    In ev tr -&gt;
+    exists suffix, se_point ev = rev env ++ suffix.
+Proof.
+  induction s; intros env tr ev Htrace Hin;
+    inversion Htrace as
+      [instr0 exprs0 env0
+      |env0
+      |s1&#x27; s2&#x27; env0 tr1 tr2 Htrace1 Htrace2
+      |p&#x27; body env0 tr0 Htest Hbody
+      |p&#x27; body env0 Htest
+      |p&#x27; body env0 lb ub zs trs Hdomain Hrange Htraces];
+    subst.
+  - apply in_concat in Hin.
+    destruct Hin as [tr0 [Htr0 Hin]].
+    destruct (Forall2_in_right _ _ _ _ _ _ Htraces Htr0)
+      as [z [_ Hz]].
+    destruct (IHs (z :: env) tr0 ev Hz Hin) as [suffix Hevent].
+    exists (z :: suffix).
+    simpl in Hevent.
+    rewrite Hevent.
+    symmetry.
+    exact (app_assoc (rev env) [z] suffix).
+  - simpl in Hin.
+    destruct Hin as [Heq | Hin]; [subst ev | contradiction].
+    exists []. now rewrite app_nil_r.
+  - contradiction.
+  - apply in_app_iff in Hin.
+    destruct Hin as [Hin | Hin].
+    + eapply IHs1; eauto.
+    + eapply IHs2; eauto.
+  - eapply IHs; eauto.
+  - contradiction.
+Qed.
+
+(** Schedule elimination inserts exactly [width] coordinates immediately after
+    the symbolic environment. *)
+Lemma pi_elim_schedule_inserted_coordinates :
+  forall width env_dim pi envv sched_coords source_coords,
+    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
+    Datatypes.length envv = env_dim -&gt;
+    Datatypes.length sched_coords = width -&gt;
+    in_poly
+      (envv ++ sched_coords ++ source_coords)
+      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
+    sched_coords =
+      resize width
+        (affine_product pi.(PolyLang.pi_schedule)
+          (envv ++ source_coords)).
+Proof.
+  intros width env_dim pi envv sched_coords source_coords
+    Hschedule_width Henv_width Hcoords_width Hdomain.
+  unfold PolyLang.pi_elim_schedule in Hdomain.
+  simpl in Hdomain.
+  rewrite in_poly_app in Hdomain.
+  apply andb_true_iff in Hdomain.
+  destruct Hdomain as [Hschedule_domain _].
+  rewrite
+    (PolyLang.make_sched_poly_correct
+       pi.(PolyLang.pi_schedule) width env_dim Hschedule_width
+       envv sched_coords source_coords Henv_width Hcoords_width)
+    in Hschedule_domain.
+  pose proof
+    (resize_eq_compat
+       width sched_coords
+       (affine_product pi.(PolyLang.pi_schedule)
+          (envv ++ source_coords))
+       Hschedule_domain) as Hresized.
+  rewrite resize_length_eq in Hresized by exact Hcoords_width.
+  exact Hresized.
+Qed.
+
+Lemma loop_trace_make_guard_inv :
+  forall tst body env tr,
+    loop_trace (Loop.make_guard tst body) env tr -&gt;
+    (Loop.eval_test env tst = true /\ loop_trace body env tr) \/
+    (Loop.eval_test env tst = false /\ tr = []).
+Proof.
+  intros tst body env tr Htrace.
+  unfold Loop.make_guard in Htrace.
+  destruct tst as [e1 e2 | e1 e2 | t1 t2 | t1 t2 | t | b];
+    simpl in Htrace |- *.
+  - inversion Htrace; subst; [left | right]; auto.
+  - inversion Htrace; subst; [left | right]; auto.
+  - inversion Htrace; subst; [left | right]; auto.
+  - inversion Htrace; subst; [left | right]; auto.
+  - inversion Htrace; subst; [left | right]; auto.
+  - destruct b.
+    + left. auto.
+    + inversion Htrace as [|ss env0 tr0 Hnil| | |]; subst.
+      inversion Hnil; subst.
+      right. split; reflexivity.
+Qed.
+
+Lemma loop_trace_make_let_inv :
+  forall value body env tr,
+    loop_trace (Loop.make_let value body) env tr -&gt;
+    loop_trace body (Loop.eval_expr env value :: env) tr.
+Proof.
+  intros value body env tr Htrace.
+  unfold Loop.make_let in Htrace.
+  inversion Htrace as
+    [| | | |lb ub body0 env0 zs trs Hrange Hiterations]; subst.
+  simpl in Hiterations.
+  rewrite Zrange_single in Hiterations.
+  inversion Hiterations as
+    [|z zs0 tr0 trs0 Hbody Hremaining]; subst.
+  inversion Hremaining; subst.
+  simpl.
+  now rewrite app_nil_r.
+Qed.
+
+Local Lemma empty_scan_trace_witness :
+  forall inner pol env tr,
+    tr = [] -&gt;
+    (forall x, in_poly (rev (x :: env)) pol = true -&gt; False) -&gt;
+    exists lb ub zs trs,
+      (forall x,
+        in_poly (rev (x :: env)) pol = true &lt;-&gt; lb &lt;= x &lt; ub) /\
+      zs = Zrange lb ub /\
+      tr = concat trs /\
+      Forall2 (fun z tri =&gt; loop_trace inner (z :: env) tri) zs trs.
+Proof.
+  intros inner pol env tr Htrace_empty Hdomain_empty.
+  subst tr.
+  exists 0, 0, [], [].
+  split.
+  - intro x. split.
+    + intro Hdomain. exfalso. eapply Hdomain_empty; eauto.
+    + lia.
+  - split.
+    + rewrite Zrange_empty by lia. reflexivity.
+    + split; [reflexivity | constructor].
+Qed.
+
+(** Trace counterpart of [LoopGenCore.scan_dimension_sem].  In particular, the
+    trace iterations are tied to the same interval that characterizes the
+    scanned polyhedron, rather than to an arbitrary list of coordinates. *)
+Lemma scan_dimension_trace_inv :
+  forall n inner pol out,
+    mayReturn (LoopGenCore.scan_dimension n inner pol) out -&gt;
+    forall env tr,
+      length env = n -&gt;
+      loop_trace out env tr -&gt;
+      exists lb ub zs trs,
+        (forall x,
+          in_poly (rev (x :: env)) pol = true &lt;-&gt; lb &lt;= x &lt; ub) /\
+        zs = Zrange lb ub /\
+        tr = concat trs /\
+        Forall2 (fun z tri =&gt; loop_trace inner (z :: env) tri) zs trs.
+Proof.
+  intros n inner pol out Hout env tr Henv.
+  unfold LoopGenCore.scan_dimension in Hout.
+  destruct (find_eq n pol) as [c |] eqn:Hfindeq.
+  - destruct (LoopGenCore.solve_eq n c) as [result test] eqn:Hsolve.
+    apply mayReturn_pure in Hout. subst out.
+    set (test1 :=
+      Loop.make_and test
+        (Loop.and_all
+          (map
+             (fun c1 =&gt;
+                LoopGenCore.make_affine_test n
+                  (make_constraint_with_eq n c c1))
+             (filter (fun c1 =&gt; negb (nth n (fst c1) 0 =? 0)) pol) ++
+           map (LoopGenCore.make_affine_test n)
+             (filter (fun c1 =&gt; nth n (fst c1) 0 =? 0) pol)))).
+    assert (Hcnth : 0 &lt; nth n (fst c) 0) by
+      (eapply find_eq_nth; eauto).
+    intro Htrace.
+    destruct (loop_trace_make_guard_inv test1
+      (Loop.make_let result inner) env tr Htrace)
+      as [[Htest1 Hbody] | [Htest1 Htr]].
+    + pose proof (loop_trace_make_let_inv result inner env tr Hbody)
+        as Hinner.
+      exists (Loop.eval_expr env result).
+      exists (Loop.eval_expr env (Loop.Sum result (Loop.Constant 1))).
+      exists [Loop.eval_expr env result].
+      exists [tr].
+      split.
+      * intros x. simpl.
+        unfold test1 in Htest1.
+        rewrite Loop.make_and_correct in Htest1; reflect.
+        rewrite Loop.and_all_correct in Htest1.
+        destruct Htest1 as [Htest Hcstr].
+        rewrite forallb_app, andb_true_iff in Hcstr.
+        destruct Hcstr as [Hcstr1 Hcstr2].
+        transitivity
+          (Loop.eval_expr env (fst (LoopGenCore.solve_eq n c)) = x /\
+           Loop.eval_test env (snd (LoopGenCore.solve_eq n c)) = true).
+        -- rewrite LoopGenCore.solve_eq_correct by (auto || lia).
+           split.
+           ++ intros H. unfold in_poly in H.
+              rewrite forallb_forall in H.
+              eapply find_eq_correct_1; eauto.
+           ++ intros H. unfold in_poly; rewrite forallb_forall.
+              intros c1 Hc1in.
+              rewrite forallb_map, forallb_forall in Hcstr1, Hcstr2.
+              specialize (Hcstr1 c1). specialize (Hcstr2 c1).
+              rewrite filter_In,
+                LoopGenCore.make_affine_test_correct in Hcstr1, Hcstr2 by auto.
+              destruct (nth n (fst c1) 0 =? 0) eqn:Hc1nth; reflect.
+              ** erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
+                   rewrite ?rev_length; eauto.
+              ** rewrite &lt;- make_constraint_with_eq_correct_1
+                   with (n := n) (c1 := c) by (auto || lia).
+                 erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
+                   rewrite ?rev_length; eauto.
+                 apply make_constraint_with_eq_nth; lia.
+        -- rewrite Hsolve. simpl. intuition lia.
+      * split.
+        -- simpl. rewrite Zrange_single. reflexivity.
+        -- split.
+           ++ simpl. now rewrite app_nil_r.
+           ++ constructor; [exact Hinner | constructor].
+    + eapply empty_scan_trace_witness; [exact Htr |].
+      intros x Hdomain.
+      enough (Loop.eval_test env test1 = true) by congruence.
+      unfold test1.
+      rewrite Loop.make_and_correct, Loop.and_all_correct,
+        forallb_app, !forallb_map.
+      reflect.
+      unfold in_poly in Hdomain.
+      rewrite forallb_forall in Hdomain.
+      assert (Heq : dot_product (rev (x :: env)) (fst c) = snd c) by
+        (eapply find_eq_correct_1; eauto).
+      simpl in Heq.
+      split; [|split].
+      * rewrite &lt;- LoopGenCore.solve_eq_correct in Heq;
+          [|exact Henv|lia].
+        rewrite Hsolve in Heq. simpl in Heq. tauto.
+      * rewrite forallb_forall. intros c1 Hc1in.
+        rewrite filter_In in Hc1in. reflect.
+        rewrite LoopGenCore.make_affine_test_correct by auto.
+        destruct Hc1in as [Hc1in Hc1n].
+        specialize (Hdomain c1 Hc1in).
+        rewrite &lt;- make_constraint_with_eq_correct_1
+          with (n := n) (c1 := c) in Hdomain by (auto || lia).
+        simpl in Hdomain.
+        erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
+          rewrite ?rev_length; eauto.
+        apply make_constraint_with_eq_nth; lia.
+      * rewrite forallb_forall. intros c1 Hc1in.
+        rewrite filter_In in Hc1in. reflect.
+        rewrite LoopGenCore.make_affine_test_correct by auto.
+        destruct Hc1in as [Hc1in Hc1n].
+        specialize (Hdomain c1 Hc1in).
+        simpl in Hdomain.
+        erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
+          rewrite ?rev_length; eauto.
+  - bind_imp_destruct Hout lb Hlb.
+    apply res_to_alarm_correct in Hlb.
+    bind_imp_destruct Hout ub Hub.
+    apply res_to_alarm_correct in Hub.
+    apply mayReturn_pure in Hout. subst out.
+    set (test1 :=
+      LoopGenCore.make_poly_test n
+        (filter (fun c =&gt; nth n (fst c) 0 =? 0) pol)).
+    intro Htrace.
+    destruct (loop_trace_make_guard_inv test1
+      (Loop.Loop lb ub inner) env tr Htrace)
+      as [[Htest1 Hbody] | [Htest1 Htr]].
+    + inversion Hbody as
+        [| | | |lb0 ub0 body0 env0 zs trs Hrange Hiterations]; subst.
+      exists (Loop.eval_expr env lb), (Loop.eval_expr env ub),
+        (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)), trs.
+      split.
+      * intros x.
+        rewrite LoopGenCore.find_bounds_correct;
+          [|exact Hlb|exact Hub|reflexivity].
+        unfold test1 in Htest1.
+        rewrite LoopGenCore.make_poly_test_correct in Htest1 by auto.
+        unfold in_poly in *.
+        rewrite forallb_forall.
+        rewrite forallb_forall in Htest1.
+        split.
+        -- intros H c Hc Hcnth. apply H; auto.
+        -- intros H c Hc.
+           destruct (nth (length env) (fst c) 0 =? 0) eqn:Hcnth; reflect.
+           ++ simpl.
+              erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
+                rewrite ?rev_length; [|eauto|eauto].
+              apply Htest1. rewrite filter_In. reflect. auto.
+           ++ apply H; auto.
+      * repeat split; try reflexivity.
+        exact Hiterations.
+    + eapply empty_scan_trace_witness; [exact Htr |].
+      intros x Hdomain.
+      unfold test1 in Htest1.
+      unfold in_poly in Hdomain.
+        rewrite forallb_forall in Hdomain.
+      eapply eq_true_false_abs; [|exact Htest1].
+      rewrite LoopGenCore.make_poly_test_correct by auto.
+      unfold in_poly. rewrite forallb_forall.
+      intros c Hc. rewrite filter_In in Hc.
+      destruct Hc as [Hcin Hcnth].
+      specialize (Hdomain c Hcin). reflect. simpl in Hdomain.
+      erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
+        rewrite ?rev_length; eauto.
+Qed.
+
+Lemma generated_instr_args_eval :
+  forall n es env,
+    length env = n -&gt;
+    map (Loop.eval_expr env)
+      (map
+        (fun e =&gt;
+          Loop.make_div
+            (LoopGenCore.make_affine_expr n (snd e))
+            (Zpos (fst e)))
+        es) =
+    map (PolyLoop.eval_affine_expr env) es.
+Proof.
+  intros n es env Henv.
+  rewrite map_map.
+  apply map_ext.
+  intros [k a]. simpl.
+  unfold PolyLoop.eval_affine_expr.
+  rewrite Loop.make_div_correct,
+    LoopGenCore.make_affine_expr_correct by auto.
+  reflexivity.
+Qed.
+
+Lemma loop_trace_empty_seq_inv :
+  forall env tr,
+    loop_trace (Loop.Seq Loop.SNil) env tr -&gt;
+    tr = [].
+Proof.
+  intros env tr Htrace.
+  inversion Htrace as [|ss env0 tr0 Hnil| | |]; subst.
+  inversion Hnil.
+  reflexivity.
+Qed.
+
+Lemma loop_trace_two_seq_inv :
+  forall s1 s2 env tr,
+    loop_trace
+      (Loop.Seq (Loop.SCons s1 (Loop.SCons s2 Loop.SNil))) env tr -&gt;
+    exists tr1 tr2,
+      tr = tr1 ++ tr2 /\
+      loop_trace s1 env tr1 /\
+      loop_trace s2 env tr2.
+Proof.
+  intros s1 s2 env tr Htrace.
+  inversion Htrace as [|ss env0 tr0 Hseq| | |]; subst.
+  inversion Hseq as
+    [|stmt1 tail1 env1 tr1 tr_tail1 Htrace1 Htail1]; subst.
+  inversion Htail1 as
+    [|stmt2 tail2 env2 tr2 tr_tail2 Htrace2 Htail2]; subst.
+  inversion Htail2; subst.
+  exists tr1, tr2.
+  split.
+  - simpl. now rewrite app_nil_r.
+  - split; assumption.
+Qed.
+
+(** The direct LoopGen path preserves the neutral event trace.  This theorem is
+    intentionally independent of state semantics: it records which generated
+    loop iteration emits each source instruction and its concrete arguments. *)
+(** * LoopGen trace reflection *)
+
+Theorem polyloop_to_loop_trace_reflect :
+  forall pstmt n out,
+    mayReturn (LoopGenCore.polyloop_to_loop n pstmt) out -&gt;
+    forall env tr,
+      length env = n -&gt;
+      loop_trace out env tr -&gt;
+      poly_trace pstmt env tr.
+Proof.
+  induction pstmt; intros n out Hout env tr Henv Htrace; simpl in Hout.
+  - bind_imp_destruct Hout inner1 Hinner.
+    destruct (scan_dimension_trace_inv n inner1 p out Hout env tr Henv Htrace)
+      as [lb [ub [zs [trs [Hdomain [Hrange [Htr Hfor]]]]]]].
+    subst tr.
+    eapply PETLoop; [exact Hdomain | exact Hrange |].
+    eapply Forall2_imp_in_left; [exact Hfor |].
+    intros z tri _ Hinner_trace.
+    eapply IHpstmt; eauto. simpl. lia.
+  - apply mayReturn_pure in Hout. subst out.
+    inversion Htrace; subst.
+    rewrite generated_instr_args_eval by reflexivity.
+    constructor.
+  - apply mayReturn_pure in Hout. subst out.
+    apply loop_trace_empty_seq_inv in Htrace. subst tr.
+    constructor.
+  - bind_imp_destruct Hout out1 Hout1.
+    bind_imp_destruct Hout out2 Hout2.
+    apply mayReturn_pure in Hout. subst out.
+    destruct (loop_trace_two_seq_inv out1 out2 env tr Htrace)
+      as [tr1 [tr2 [Htr [Htrace1 Htrace2]]]].
+    subst tr.
+    constructor.
+    + eapply IHpstmt1; eauto.
+    + eapply IHpstmt2; eauto.
+  - bind_imp_destruct Hout inner1 Hinner.
+    apply mayReturn_pure in Hout. subst out.
+    destruct (loop_trace_make_guard_inv
+      (LoopGenCore.make_poly_test n p) inner1 env tr Htrace)
+      as [[Htest Hbody] | [Htest Htr]].
+    + apply PETGuardTrue.
+      * rewrite &lt;- (LoopGenCore.make_poly_test_correct n p env Henv).
+        exact Htest.
+      * eapply IHpstmt; eauto.
+    + subst tr. apply PETGuardFalse.
+      rewrite &lt;- (LoopGenCore.make_poly_test_correct n p env Henv).
+      exact Htest.
+Qed.
+
+(** Pointwise view of a [poly_trace].  Besides the leaf instruction effect, the
+    constructors retain every guard and scan-domain fact on the path to it. *)
+Inductive poly_event_origin :
+    PolyLoop.poly_stmt -&gt; list Z -&gt; scan_event -&gt; Prop :=
+| PEOInstr : forall i es env,
+    poly_event_origin
+      (PolyLoop.PInstr i es) env
+      {| se_point := rev env;
+         se_instr := i;
+         se_args := map (PolyLoop.eval_affine_expr env) es |}
+| PEOSeqLeft : forall s1 s2 env ev,
+    poly_event_origin s1 env ev -&gt;
+    poly_event_origin (PolyLoop.PSeq s1 s2) env ev
+| PEOSeqRight : forall s1 s2 env ev,
+    poly_event_origin s2 env ev -&gt;
+    poly_event_origin (PolyLoop.PSeq s1 s2) env ev
+| PEOGuard : forall pol body env ev,
+    in_poly (rev env) pol = true -&gt;
+    poly_event_origin body env ev -&gt;
+    poly_event_origin (PolyLoop.PGuard pol body) env ev
+| PEOLoop : forall pol body env x ev,
+    in_poly (rev (x :: env)) pol = true -&gt;
+    poly_event_origin body (x :: env) ev -&gt;
+    poly_event_origin (PolyLoop.PLoop pol body) env ev.
+
+Lemma poly_trace_event_origin :
+  forall s env tr ev,
+    poly_trace s env tr -&gt;
+    In ev tr -&gt;
+    poly_event_origin s env ev.
+Proof.
+  induction s; intros env tr ev Htrace Hin;
+    inversion Htrace as
+      [instr0 exprs0 env0
+      |env0
+      |s1&#x27; s2&#x27; env0 tr1 tr2 Htrace1 Htrace2
+      |p&#x27; body env0 tr0 Htest Hbody
+      |p&#x27; body env0 Htest
+      |p&#x27; body env0 lb ub zs trs Hdomain Hrange Htraces];
+    subst.
+  - apply in_concat in Hin.
+    destruct Hin as [tri [Htri Hin]].
+    destruct (Forall2_in_right _ _ _ _ _ _ Htraces Htri)
+      as [x [Hx Hbody]].
+    apply PEOLoop with (x := x).
+    + apply Hdomain. apply Zrange_in. exact Hx.
+    + eapply IHs; eauto.
+  - simpl in Hin. destruct Hin as [Heq | Hin]; [subst ev | contradiction].
+    constructor.
+  - contradiction.
+  - apply in_app_iff in Hin. destruct Hin as [Hin | Hin].
+    + apply PEOSeqLeft. eapply IHs1; eauto.
+    + apply PEOSeqRight. eapply IHs2; eauto.
+  - apply PEOGuard.
+    + assumption.
+    + eapply IHs; eauto.
+  - contradiction.
+Qed.
+
+Record generated_pi_event_origin
+    (n : nat) (pi : PolyLang.PolyInstr) (ev : scan_event) : Prop := {
+  generated_event_point_length : length ev.(se_point) = n;
+  generated_event_point_in_domain :
+    in_poly ev.(se_point) pi.(PolyLang.pi_poly) = true;
+  generated_event_instruction : ev.(se_instr) = pi.(PolyLang.pi_instr);
+  generated_event_args :
+    ev.(se_args) =
+      PolyLang.current_src_args_in_dim n pi ev.(se_point)
+}.
+
+(** Pointwise origin for the single-statement AST generator.  This theorem is
+    the singleton branch used by the multi-statement origin induction. *)
+Theorem generate_loop_event_origin :
+  forall d n pi pstmt env ev,
+    (d &lt;= n)%nat -&gt;
+    mayReturn (ASTGenCore.generate_loop d n pi) pstmt -&gt;
+    length env = (n - d)%nat -&gt;
+    (forall c, In c pi.(PolyLang.pi_poly) -&gt;
+      fst c =v= resize n (fst c)) -&gt;
+    project_invariant (n - d)%nat pi.(PolyLang.pi_poly) (rev env) -&gt;
+    poly_event_origin pstmt env ev -&gt;
+    generated_pi_event_origin n pi ev.
+Proof.
+  induction d;
+    intros n pi pstmt env ev Hdn Hgen Henv Hcols Hinv Horigin;
+    simpl in Hgen.
+  - apply mayReturn_pure in Hgen. subst pstmt.
+    inversion Horigin as [instr0 exprs0 env0| | | |]; subst.
+    rewrite Nat.sub_0_r in Henv, Hinv.
+    constructor.
+    + simpl. rewrite rev_length. exact Henv.
+    + simpl. eapply project_id; eauto.
+    + simpl. reflexivity.
+    + unfold PolyLang.current_src_args_in_dim,
+        PolyLang.current_src_args_at.
+      simpl.
+      rewrite map_map.
+      apply map_ext.
+      intros [v c].
+      unfold PolyLoop.eval_affine_expr. simpl.
+      rewrite Z.div_1_r.
+      reflexivity.
+  - bind_imp_destruct Hgen proj Hproj.
+    bind_imp_destruct Hgen inner Hinner.
+    apply mayReturn_pure in Hgen. subst pstmt.
+    inversion Horigin as
+      [| | | |pol0 body0 env0 x0 ev0 Hprojected Hinner_origin]; subst.
+    eapply IHd with (env := x0 :: env).
+    + lia.
+    + exact Hinner.
+    + simpl. lia.
+    + exact Hcols.
+    + replace (n - d)%nat with (S (n - S d))%nat in * by lia.
+      eapply project_next_r_inclusion; [|exact Hproj|].
+      * simpl.
+        rewrite project_invariant_resize, resize_app
+          by (rewrite rev_length; auto).
+        exact Hinv.
+      * intros c Hcin Hcnth.
+        unfold in_poly in Hprojected.
+        rewrite forallb_forall in Hprojected.
+        apply Hprojected.
+        rewrite filter_In.
+        split; auto.
+        apply negb_true_iff.
+        apply Z.eqb_neq.
+        exact Hcnth.
+    + exact Hinner_origin.
+Qed.
+
+Lemma poly_event_origin_make_seq_inv :
+  forall ss env ev,
+    poly_event_origin (PolyLoop.make_seq ss) env ev -&gt;
+    exists s,
+      In s ss /\
+      poly_event_origin s env ev.
+Proof.
+  induction ss as [|s ss IH]; intros env ev Horigin; simpl in Horigin.
+  - inversion Horigin.
+  - inversion Horigin as
+      [|s1 s2 env0 ev0 Hleft1 Hleft2
+       |s1 s2 env0 ev0 Hright
+       | |]; subst.
+    + exists s. split; [left; reflexivity | exact Hleft1].
+    + destruct (IH env ev Hright) as [s&#x27; [Hin Hs&#x27;]].
+      exists s&#x27;. split; [right; exact Hin | exact Hs&#x27;].
+Qed.
+
+Local Lemma poly_event_origin_guarded_instr_inv :
+  forall pol instr args env ev,
+    poly_event_origin
+      (PolyLoop.PGuard pol (PolyLoop.PInstr instr args)) env ev -&gt;
+    in_poly (rev env) pol = true /\
+    ev =
+      {| se_point := rev env;
+         se_instr := instr;
+         se_args := map (PolyLoop.eval_affine_expr env) args |}.
+Proof.
+  intros pol instr args env ev Horigin.
+  inversion Horigin as
+    [| | |pol0 body0 env0 ev0 Hdomain Hinstr|]; subst.
+  inversion Hinstr; subst.
+  split; [exact Hdomain | reflexivity].
+Qed.
+
+Definition generated_program_event_origin
+    (n : nat) (pis : list PolyLang.PolyInstr) (ev : scan_event) : Prop :=
+  exists m pi,
+    nth_error pis m = Some pi /\
+    generated_pi_event_origin n pi ev.
+
+Lemma generate_loop_many_zero_event_origin :
+  forall n pis pstmt env ev,
+    mayReturn (ASTGenCore.generate_loop_many 0 n pis) pstmt -&gt;
+    length env = n -&gt;
+    poly_event_origin pstmt env ev -&gt;
+    generated_program_event_origin n pis ev.
+Proof.
+  intros n pis pstmt env ev Hgen Henv Horigin.
+  simpl in Hgen.
+  apply mayReturn_pure in Hgen. subst pstmt.
+  destruct (poly_event_origin_make_seq_inv _ _ _ Horigin)
+    as [stmt [Hstmt Hstmt_origin]].
+  rewrite in_map_iff in Hstmt.
+  destruct Hstmt as [pi [Heq Hinpi]]. subst stmt.
+  destruct (poly_event_origin_guarded_instr_inv _ _ _ _ _ Hstmt_origin)
+    as [Hdomain Hevent].
+  subst ev.
+  apply In_nth_error in Hinpi.
+  destruct Hinpi as [m Hnth].
+  exists m, pi. split; [exact Hnth |].
+  constructor.
+  - simpl. rewrite rev_length. exact Henv.
+  - simpl. exact Hdomain.
+  - simpl. reflexivity.
+  - simpl.
+    unfold PolyLang.current_src_args_in_dim,
+      PolyLang.current_src_args_at.
+    rewrite map_map.
+    apply map_ext.
+    intros [v c].
+    unfold PolyLoop.eval_affine_expr. simpl.
+    rewrite Z.div_1_r.
+    reflexivity.
+Qed.
+
+Lemma poly_event_origin_guard_inv :
+  forall pol stmt env ev,
+    poly_event_origin (PolyLoop.PGuard pol stmt) env ev -&gt;
+    in_poly (rev env) pol = true /\
+    poly_event_origin stmt env ev.
+Proof.
+  intros pol stmt env ev Horigin.
+  inversion Horigin; subst. auto.
+Qed.
+
+Lemma poly_event_origin_loop_inv :
+  forall pol stmt env ev,
+    poly_event_origin (PolyLoop.PLoop pol stmt) env ev -&gt;
+    exists x,
+      in_poly (rev (x :: env)) pol = true /\
+      poly_event_origin stmt (x :: env) ev.
+Proof.
+  intros pol stmt env ev Horigin.
+  inversion Horigin; subst. eauto.
+Qed.
+
+Definition pi_origin_rel
+    (pi npi : PolyLang.PolyInstr) : Prop :=
+  (forall p,
+    in_poly p npi.(PolyLang.pi_poly) = true -&gt;
+    in_poly p pi.(PolyLang.pi_poly) = true) /\
+  npi.(PolyLang.pi_instr) = pi.(PolyLang.pi_instr) /\
+  npi.(PolyLang.pi_point_witness) = pi.(PolyLang.pi_point_witness) /\
+  npi.(PolyLang.pi_transformation) = pi.(PolyLang.pi_transformation).
+
+Lemma Forall2_nth_error_right_exists :
+  forall A B (R : A -&gt; B -&gt; Prop) xs ys n y,
+    Forall2 R xs ys -&gt;
+    nth_error ys n = Some y -&gt;
+    exists x, nth_error xs n = Some x /\ R x y.
+Proof.
+  intros A B R xs ys n y Hforall Hy.
+  exact (Misc.Forall2_nth_error_right A B R n xs ys y Hforall Hy).
+Qed.
+
+Lemma make_npis_simplify_member_origin :
+  forall pis pol pl npis j npi,
+    mayReturn (ASTGenCore.make_npis_simplify pis pol pl) npis -&gt;
+    (forall t, In t pl -&gt; (t &lt; length pis)%nat) -&gt;
+    nth_error npis j = Some npi -&gt;
+    exists t pi,
+      nth_error pl j = Some t /\
+      nth_error pis t = Some pi /\
+      pi_origin_rel pi npi.
+Proof.
+  intros pis pol pl npis j npi Hnpis Hpl Hnth.
+  pose proof
+    (ASTGenCore.make_npis_simplify_equiv pis pol pl npis Hnpis) as Hequiv.
+  destruct
+    (Forall2_nth_error_right_exists _ _ _ _ _ _ _ Hequiv Hnth)
+    as [mpi [Hmpi_nth Hmpi_equiv]].
+  unfold ASTGenCore.make_npis in Hmpi_nth.
+  rewrite nth_error_map_iff in Hmpi_nth.
+  destruct Hmpi_nth as [t [Ht Hmpi]].
+  subst mpi.
+  assert (Htin : In t pl) by (eapply nth_error_In; eauto).
+  specialize (Hpl t Htin).
+  assert (Hpi :
+    nth_error pis t = Some (nth t pis ASTGenCore.dummy_pi)).
+  {
+    apply nth_error_nth&#x27;. exact Hpl.
   }
-}
-for x in range(0, 100) {
-  for y in range(0, 100) {
-    B[x][y] = (A[(x + 1)][y] + A[x][(y + 1)]);
+  exists t, (nth t pis ASTGenCore.dummy_pi).
+  split; [exact Ht |].
+  split; [exact Hpi |].
+  unfold pi_origin_rel.
+  unfold ASTGenCore.pi_equiv in Hmpi_equiv.
+  destruct Hmpi_equiv as [Hdom [Hinstr [Hwitness Htf]]].
+  simpl in Hinstr, Hwitness, Htf.
+  split.
+  - intros p Hp.
+    rewrite &lt;- Hdom in Hp.
+    unfold ASTGenCore.update_poly in Hp. simpl in Hp.
+    rewrite poly_inter_pure_def in Hp.
+    apply andb_true_iff in Hp. tauto.
+  - repeat split; congruence.
+Qed.
+
+Theorem generate_event_origin :
+  forall d n pi pstmt env ev,
+    (d &lt;= n)%nat -&gt;
+    mayReturn (ASTGenCore.generate d n pi) pstmt -&gt;
+    length env = (n - d)%nat -&gt;
+    (forall c, In c pi.(PolyLang.pi_poly) -&gt;
+      fst c =v= resize n (fst c)) -&gt;
+    poly_event_origin pstmt env ev -&gt;
+    generated_pi_event_origin n pi ev.
+Proof.
+  intros d n pi pstmt env ev Hdn Hgen Henv Hcols Horigin.
+  unfold ASTGenCore.generate in Hgen.
+  bind_imp_destruct Hgen inner Hinner.
+  bind_imp_destruct Hgen ctx Hctx.
+  apply mayReturn_pure in Hgen. subst pstmt.
+  destruct (poly_event_origin_guard_inv _ _ _ _ Horigin)
+    as [Hguard Hinner_origin].
+  eapply generate_loop_event_origin; eauto.
+  rewrite &lt;- (project_invariant_export_correct
+    (n - d)%nat (rev env) pi.(PolyLang.pi_poly) ctx Hctx).
+  exact Hguard.
+Qed.
+
+Lemma generated_pi_event_origin_transport :
+  forall n pi npi ev,
+    pi_origin_rel pi npi -&gt;
+    generated_pi_event_origin n npi ev -&gt;
+    generated_pi_event_origin n pi ev.
+Proof.
+  intros n pi npi ev Hrel Horigin.
+  destruct Hrel as [Hdom [Hinstr [Hwitness Htf]]].
+  destruct Horigin as [Hlen Hinside Hevent_instr Heffect].
+  constructor.
+  - exact Hlen.
+  - eapply Hdom. exact Hinside.
+  - rewrite &lt;- Hinstr. exact Hevent_instr.
+  - unfold PolyLang.current_src_args_in_dim,
+      PolyLang.current_src_args_at,
+      PolyLang.current_env_dim_in_dim,
+      PolyLang.current_transformation_at in *.
+    rewrite Hwitness, Htf in Heffect.
+    exact Heffect.
+Qed.
+
+(** * AST generation preserves source-event origin *)
+
+Theorem generate_loop_many_event_origin :
+  forall d n pis pstmt env ev,
+    (d &lt;= n)%nat -&gt;
+    mayReturn (ASTGenCore.generate_loop_many d n pis) pstmt -&gt;
+    length env = (n - d)%nat -&gt;
+    ASTGenCore.pis_have_dimension pis n -&gt;
+    poly_event_origin pstmt env ev -&gt;
+    generated_program_event_origin n pis ev.
+Proof.
+  induction d;
+    intros n pis pstmt env ev Hdn Hgen Henv Hpidim Horigin;
+    simpl in Hgen.
+  - eapply generate_loop_many_zero_event_origin.
+    + exact Hgen.
+    + rewrite Nat.sub_0_r in Henv. exact Henv.
+    + exact Horigin.
+  - bind_imp_destruct Hgen projs Hprojs.
+    bind_imp_destruct Hgen projsep Hprojsep.
+    bind_imp_destruct Hgen inners Hinners.
+    apply mayReturn_pure in Hgen. subst pstmt.
+    (* Every split group remains within the dimensions available to the
+       recursive generator. *)
+    assert (Hprojnrl :
+      forall ppl, In ppl projsep -&gt;
+        (poly_nrl (fst ppl) &lt;= n - d)%nat).
+    {
+      eapply split_and_sort_nrl; [exact Hprojsep |].
+      intros pol Hpolin.
+      eapply mapM_in_iff in Hpolin; [|exact Hprojs].
+      destruct Hpolin as [pi [Hpol Hpiin]].
+      rewrite &lt;- poly_nrl_def.
+      intros c Hcin.
+      eapply project_constraint_size; eauto.
+    }
+    (* Select the generated loop that actually contains the event. *)
+    destruct (poly_event_origin_make_seq_inv _ _ _ Horigin)
+      as [outer [Houterin Houterorigin]].
+    eapply mapM_in_iff in Houterin; [|exact Hinners].
+    destruct Houterin as [[pol pl] [Houter Hpolplin]].
+    bind_imp_destruct Houter npis Hnpis.
+    bind_imp_destruct Houter inside Hinside.
+    apply mayReturn_pure in Houter. subst outer.
+    destruct (poly_event_origin_loop_inv _ _ _ _ Houterorigin)
+      as [x [Hpol Hinsideorigin]].
+    (* Relate the selected split-group indices and simplified instructions
+       back to the original program. *)
+    assert (Hplvalid :
+      forall t, In t pl -&gt; (t &lt; length pis)%nat).
+    {
+      intros t Htin.
+      erewrite mapM_length; [|exact Hprojs].
+      eapply split_and_sort_index_correct
+        with (polpl := (pol, pl)); eauto.
+    }
+    assert (Hnpisdim : ASTGenCore.pis_have_dimension npis n).
+    {
+      eapply ASTGenCore.make_npis_simplify_have_dimension; eauto.
+      specialize (Hprojnrl (pol, pl) Hpolplin). simpl in Hprojnrl.
+      lia.
+    }
+    (* Recurse for an empty or multi-instruction group; a singleton group uses
+       the single-instruction generator theorem. *)
+    assert (Hnpisorigin : generated_program_event_origin n npis ev).
+    {
+      destruct npis as [|npi npis&#x27;].
+      - simpl in Hinside.
+        eapply IHd with (env := x :: env).
+        + lia.
+        + exact Hinside.
+        + simpl. lia.
+        + exact Hnpisdim.
+        + exact Hinsideorigin.
+      - destruct npis&#x27; as [|npi2 npis&#x27;&#x27;].
+        + simpl in Hinside.
+          exists 0%nat, npi. split; [reflexivity |].
+          refine
+            (generate_event_origin d n npi inside (x :: env) ev
+              ltac:(lia) Hinside ltac:(simpl; lia) _ Hinsideorigin).
+          apply (proj2
+            (poly_nrl_def n npi.(PolyLang.pi_poly))).
+          eapply ASTGenCore.pis_have_dimension_singleton; eauto.
+        + simpl in Hinside.
+          eapply IHd with (env := x :: env).
+          * lia.
+          * exact Hinside.
+          * simpl. lia.
+          * exact Hnpisdim.
+          * exact Hinsideorigin.
+    }
+    (* Transport the event origin through instruction simplification. *)
+    destruct Hnpisorigin as [j [npi [Hnpi_lookup Hnpi_origin]]].
+    destruct
+      (make_npis_simplify_member_origin
+         pis pol pl npis j npi Hnpis Hplvalid Hnpi_lookup)
+      as [t [pi [Hpl_lookup [Hpi_lookup Hrel]]]].
+    exists t, pi. split; [exact Hpi_lookup |].
+    eapply generated_pi_event_origin_transport; eauto.
+Qed.
+
+Definition drop_schedule_coords
+    (env_dim width : nat) (current : list Z) : list Z :=
+  resize env_dim current ++ skipn (width + env_dim)%nat current.
+
+Lemma drop_schedule_coords_length :
+  forall env_dim dim width current,
+    length current = (dim + width)%nat -&gt;
+    (env_dim &lt;= dim)%nat -&gt;
+    length (drop_schedule_coords env_dim width current) = dim.
+Proof.
+  intros env_dim dim width current Hlength Henvdim.
+  unfold drop_schedule_coords.
+  rewrite app_length, resize_length, skipn_length, Hlength.
+  lia.
+Qed.
+
+Lemma drop_schedule_coords_prefix :
+  forall env_dim width current,
+    firstn env_dim (drop_schedule_coords env_dim width current) =
+    resize env_dim current.
+Proof.
+  intros env_dim width current.
+  unfold drop_schedule_coords.
+  rewrite firstn_app, resize_length, Nat.sub_diag.
+  simpl. rewrite firstn_all2 by (rewrite resize_length; lia).
+  now rewrite app_nil_r.
+Qed.
+
+Lemma pi_elim_schedule_domain_source :
+  forall width env_dim pi current,
+    in_poly current
+      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
+    in_poly (drop_schedule_coords env_dim width current)
+      pi.(PolyLang.pi_poly) = true.
+Proof.
+  intros width env_dim pi current Hdomain.
+  unfold PolyLang.pi_elim_schedule in Hdomain.
+  simpl in Hdomain.
+  rewrite in_poly_app in Hdomain.
+  apply andb_true_iff in Hdomain.
+  destruct Hdomain as [_ Hsource].
+  unfold in_poly in *.
+  rewrite forallb_map, forallb_forall in Hsource.
+  rewrite forallb_forall.
+  intros c Hcin.
+  specialize (Hsource c Hcin).
+  unfold satisfies_constraint, PolyLang.insert_zeros_constraint in Hsource.
+  simpl in Hsource.
+  rewrite dot_product_commutative in Hsource.
+  rewrite PolyLang.insert_zeros_product_skipn in Hsource.
+  unfold satisfies_constraint, drop_schedule_coords.
+  rewrite dot_product_commutative.
+  exact Hsource.
+Qed.
+
+Lemma pi_elim_schedule_event_coordinates :
+  forall width env_dim pi current,
+    (length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
+    in_poly current
+      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
+    resize width (skipn env_dim current) =
+      resize width
+        (affine_product pi.(PolyLang.pi_schedule)
+          (drop_schedule_coords env_dim width current)).
+Proof.
+  intros width env_dim pi current Hwidth Hdomain.
+  pose proof (PolyLang.split3_eq env_dim width current) as Hsplit.
+  assert (Hdomain_split :
+    in_poly
+      (resize env_dim current ++
+       resize width (skipn env_dim current) ++
+       skipn (width + env_dim)%nat current)
+      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true).
+  {
+    rewrite Hsplit. exact Hdomain.
   }
-}
+  pose proof
+    (pi_elim_schedule_inserted_coordinates
+      width env_dim pi
+      (resize env_dim current)
+      (resize width (skipn env_dim current))
+      (skipn (width + env_dim)%nat current)
+      Hwidth (resize_length env_dim current)
+      (resize_length width (skipn env_dim current))
+      Hdomain_split) as Hcoords.
+  unfold drop_schedule_coords.
+  exact Hcoords.
+Qed.
+
+Definition prepared_source_event
+    (ppis : list PolyLang.PolyInstr)
+    (env_dim dim width : nat) (ev : scan_event) : Prop :=
+  exists source_nth source_pi,
+    nth_error ppis source_nth = Some source_pi /\
+    length (drop_schedule_coords env_dim width ev.(se_point)) = dim /\
+    in_poly (drop_schedule_coords env_dim width ev.(se_point))
+      source_pi.(PolyLang.pi_poly) = true /\
+    ev.(se_instr) = source_pi.(PolyLang.pi_instr) /\
+    ev.(se_args) =
+      PolyLang.current_src_args_in_dim dim source_pi
+        (drop_schedule_coords env_dim width ev.(se_point)) /\
+    firstn env_dim (drop_schedule_coords env_dim width ev.(se_point)) =
+      resize env_dim ev.(se_point) /\
+    resize width (skipn env_dim ev.(se_point)) =
+      resize width
+        (affine_product source_pi.(PolyLang.pi_schedule)
+          (drop_schedule_coords env_dim width ev.(se_point))).
+
+Theorem elim_schedule_event_source :
+  forall ppis env_dim dim width ev,
+    (env_dim &lt;= dim)%nat -&gt;
+    (forall pi, In pi ppis -&gt;
+      PolyLang.current_env_dim_in_dim dim pi.(PolyLang.pi_point_witness) =
+        env_dim) -&gt;
+    (forall pi, In pi ppis -&gt;
+      (length pi.(PolyLang.pi_schedule) &lt;= width)%nat) -&gt;
+    generated_program_event_origin
+      (dim + width)%nat (PolyLang.elim_schedule width env_dim ppis) ev -&gt;
+    prepared_source_event ppis env_dim dim width ev.
+Proof.
+  intros ppis env_dim dim width ev Henvdim Hcurrent_env Hwidth Horigin.
+  destruct Horigin as [m [epi [Hepi Hgenerated]]].
+  unfold PolyLang.elim_schedule in Hepi.
+  rewrite nth_error_map_iff in Hepi.
+  destruct Hepi as [pi [Hpi Helim]].
+  subst epi.
+  assert (Hpiin : In pi ppis) by (eapply nth_error_In; eauto).
+  destruct Hgenerated as [Hpoint_length Hdomain Hinstr Hargs].
+  exists m, pi.
+  split; [exact Hpi|].
+  repeat split.
+  - eapply drop_schedule_coords_length; eauto.
+  - eapply pi_elim_schedule_domain_source. exact Hdomain.
+  - rewrite Hinstr. reflexivity.
+  -
+    rewrite Hargs.
+    rewrite PolyLang.current_src_args_in_dim_pi_elim_schedule_resize.
+    rewrite (Hcurrent_env pi Hpiin).
+    unfold drop_schedule_coords.
+    reflexivity.
+  - apply drop_schedule_coords_prefix.
+  -
+    eapply pi_elim_schedule_event_coordinates; eauto.
+Qed.
+
+(** The ordinary raw generator retains PolyLoop simplification.  Reflecting
+    its trace through the simplifier exposes the AST generator&#x27;s source-origin
+    relation at the generated Loop program. *)
+(** * Standard raw codegen endpoint *)
+
+Theorem complete_generate_many_event_source :
+  forall env_dim dim pis out env tr ev,
+    (env_dim &lt;= dim)%nat -&gt;
+    mayReturn (CodeGenCore.complete_generate_many env_dim dim pis) out -&gt;
+    Datatypes.length env = env_dim -&gt;
+    ASTGenCore.pis_have_dimension pis dim -&gt;
+    (forall pi, In pi pis -&gt;
+      PolyLang.current_env_dim_in_dim dim
+        pi.(PolyLang.pi_point_witness) = env_dim) -&gt;
+    (forall pi, In pi pis -&gt;
+      (poly_nrl pi.(PolyLang.pi_schedule) &lt;= dim)%nat) -&gt;
+    loop_trace out env tr -&gt;
+    In ev tr -&gt;
+    prepared_source_event pis env_dim dim
+      (list_max
+        (map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule)) pis))
+      ev.
+Proof.
+  intros env_dim dim pis out env tr ev Henvdim Hgen Henv Hpis
+    Hpis_envdim Hpis_schedule Htrace Hevent.
+  unfold CodeGenCore.complete_generate_many in Hgen.
+  set (width :=
+    list_max
+      (map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule)) pis))
+    in *.
+  unfold CodeGenCore.complete_generate_lex_many in Hgen.
+  bind_imp_destruct Hgen pstmt Hpstmt.
+  bind_imp_destruct Hgen simp Hsimp.
+  assert (Helim_dim :
+    ASTGenCore.pis_have_dimension
+      (PolyLang.elim_schedule width env_dim pis) (dim + width)%nat).
+  {
+    unfold ASTGenCore.pis_have_dimension, PolyLang.elim_schedule in *.
+    rewrite forallb_map, forallb_forall in *.
+    intros pi Hpi.
+    specialize (Hpis pi Hpi).
+    reflect.
+    rewrite PolyLang.pi_elim_schedule_nrl by
+      (apply list_max_ge; rewrite in_map_iff; exists pi; auto).
+    specialize (Hpis_schedule pi Hpi).
+    lia.
+  }
+  assert (Hsimp_trace : poly_trace simp env tr).
+  {
+    eapply polyloop_to_loop_trace_reflect.
+    - exact Hgen.
+    - lia.
+    - exact Htrace.
+  }
+  assert (Hpolytrace : poly_trace pstmt env tr).
+  {
+    eapply polyloop_simplify_trace_reflect with
+      (n := env_dim) (ctx := nil) (nst := simp).
+    - unfold poly_nrl. simpl. lia.
+    - replace env_dim with
+        ((dim + width) - (dim + width - env_dim))%nat by lia.
+      exact Hsimp.
+    - exact Henv.
+    - reflexivity.
+    - exact Hsimp_trace.
+  }
+  assert (Horigin :
+    generated_program_event_origin
+      (dim + width)%nat (PolyLang.elim_schedule width env_dim pis) ev).
+  {
+    eapply (generate_loop_many_event_origin
+      (dim + width - env_dim)%nat (dim + width)%nat
+      (PolyLang.elim_schedule width env_dim pis) pstmt env ev).
+    - lia.
+    - exact Hpstmt.
+    - lia.
+    - exact Helim_dim.
+    - eapply poly_trace_event_origin; eauto.
+  }
+  eapply elim_schedule_event_source; eauto.
+  intros pi Hpi.
+  apply list_max_ge.
+  rewrite in_map_iff.
+  exists pi. auto.
+Qed.
+
+End RawCodegenOrigin.
 </pre>
 </main>
 </body>

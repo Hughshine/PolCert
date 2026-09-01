@@ -26,6 +26,12 @@
     "total": 67,
     "unchanged": 3
   },
+  "performance_comparisons": {
+    "cases": 62,
+    "exact_output_matches": 62,
+    "selected_nonidentity_routes": 47,
+    "selected_parallel_outputs": 19
+  },
   "proof_and_test_run": {
     "elapsed_seconds": 2169.037730657903,
     "mode": "full",
@@ -44,7 +50,7 @@
     "total": 7
   },
   "test_catalog": {
-    "before_after_programs": 691,
+    "before_after_programs": 692,
     "categories": 5,
     "distinct_suite_cases": 998,
     "families": 17,
@@ -53,7 +59,7 @@
     "local_artifact_commands": 30,
     "recorded_test_case_results": 1508,
     "remote_ci_phases": 45,
-    "result_summaries": 195,
+    "result_summaries": 194,
     "suites": 35
   },
   "toolchain": {

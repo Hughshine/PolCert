@@ -3,17 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/7786cc0cf378ea/before.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/76234815a1ea71/after.c</code></h1>
+  <pre>#include &lt;math.h&gt;
+#define ceild(n,d)  (((n)&lt;0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))
+#define floord(n,d) (((n)&lt;0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))
+#define max(x,y)    ((x) &gt; (y)? (x) : (y))
+#define min(x,y)    ((x) &lt; (y)? (x) : (y))
 
-for i in range(0, N, 2) {
-  a[i] = (i + 1);
+#include &lt;stdio.h&gt;
+
+#define N 100
+
+static int a[N];
+static int b[N];
+
+int main(void) {
+  int i;
+
+  int t1, t2, t3;
+ register int lbv, ubv;
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=N-1;t2++) {
+    b[t2] = a[t2];;
+  }
+  for (t2=0;t2&lt;=N-1;t2++) {
+    a[t2] = t2 + 1;;
+  }
+}
+
+  printf(&quot;%d\n&quot;, b[N - 1]);
+  return 0;
 }
 </pre>
 </main>

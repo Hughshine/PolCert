@@ -3,22 +3,74 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dsyrk.loop</title>
+  <title>test_check_polopt_cases.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/dsyrk.loop</code></h1>
-  <pre>context(NMAX);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-generated/tools/test_check_polopt_cases.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
 
-for i in range(0, NMAX) {
-  for j in range(0, NMAX) {
-    for k in range(j, NMAX) {
-      c[j][k] = (c[j][k] + (a[i][j] * a[i][k]));
-    }
-  }
-}
+import check_polopt_cases
+
+
+def main() -&gt; int:
+    required_changed = {&quot;changed&quot;}
+    required_unchanged = {&quot;unchanged&quot;}
+    required_tiled = {&quot;changed&quot;}
+
+    assert not check_polopt_cases.required_effect_failures(
+        &quot;changed&quot;,
+        changed=True,
+        nontrivial_changed=True,
+        tiled=True,
+        require_nontrivial_changed=required_changed,
+        require_unchanged=required_unchanged,
+        require_tiled_cases=required_tiled,
+    )
+    assert not check_polopt_cases.required_effect_failures(
+        &quot;unchanged&quot;,
+        changed=False,
+        nontrivial_changed=False,
+        tiled=False,
+        require_nontrivial_changed=required_changed,
+        require_unchanged=required_unchanged,
+        require_tiled_cases=required_tiled,
+    )
+    failures = check_polopt_cases.required_effect_failures(
+        &quot;changed&quot;,
+        changed=True,
+        nontrivial_changed=False,
+        tiled=False,
+        require_nontrivial_changed=required_changed,
+        require_unchanged=required_unchanged,
+        require_tiled_cases=required_tiled,
+    )
+    assert failures == [
+        &quot;expected a nontrivial optimized-loop change&quot;,
+        &quot;expected explicit tiled bounds&quot;,
+    ]
+    failures = check_polopt_cases.required_effect_failures(
+        &quot;unchanged&quot;,
+        changed=True,
+        nontrivial_changed=True,
+        tiled=False,
+        require_nontrivial_changed=required_changed,
+        require_unchanged=required_unchanged,
+        require_tiled_cases=required_tiled,
+    )
+    assert failures == [&quot;expected the optimized loop to remain unchanged&quot;]
+    print(
+        &quot;[strict-effect-unit] PASS expected=reject-missing-effects actual=rejected &quot;
+        &quot;interpretation=per-case effect contracts fail closed&quot;
+    )
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
 </pre>
 </main>
 </body>

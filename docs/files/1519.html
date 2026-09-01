@@ -3,29 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/f2d4ad168f2ec0/after.loop</code></h1>
-  <pre>context(B, T, N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/f128d00943b5c8/before.loop</code></h1>
+  <pre>context(n);
 
-if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
-  for i0 in range(0, ((B + 31) / 32)) {
-    for i1 in range(0, ((T + (N + 24)) / 32)) {
-      for i2 in range(max((((-1 * N) + ((32 * i1) + 6)) / 32), 0), min((((32 * i1) + 58) / 32), ((T + 30) / 32))) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
-          for i4 in range(max(max(((-1 * N) + ((32 * i1) + 6)), 5), (32 * i2)), min(min(((32 * i1) + 27), (T + -1)), ((32 * i2) + 32))) {
-            for i5 in range(max((i4 + 5), (32 * i1)), min((N + (i4 + -5)), ((32 * i1) + 32))) {
-              for i6 in range((i5 + (-1 * i4)), (i5 + ((-1 * i4) + 1))) {
-                A[i3][(i4 + 1)][i6] = (0.125 * (A[i3][i4][(i6 + -1)] + A[i3][(i4 + -2)][(i6 + 1)]));
-              }
-            }
-          }
-        }
-      }
+if (3 &lt;= n) {
+  for i0 in range(0, ((n + 30) / 32)) {
+    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), (n + -1))) {
+      a1[i1] = ((a0[(i1 + -1)] + a0[i1]) + a0[(i1 + 1)]);
+    }
+  }
+}
+if (5 &lt;= n) {
+  for i0 in range(0, ((n + 29) / 32)) {
+    for i1 in range(max((32 * i0), 2), min(((32 * i0) + 32), (n + -2))) {
+      a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
+    }
+  }
+}
+if (7 &lt;= n) {
+  for i0 in range(0, ((n + 28) / 32)) {
+    for i1 in range(max((32 * i0), 3), min(((32 * i0) + 32), (n + -3))) {
+      a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
+    }
+  }
+}
+if (9 &lt;= n) {
+  for i0 in range(0, ((n + 27) / 32)) {
+    for i1 in range(max((32 * i0), 4), min(((32 * i0) + 32), (n + -4))) {
+      a4[i1] = ((a3[(i1 + -1)] + a3[i1]) + a3[(i1 + 1)]);
+    }
+  }
+}
+if (11 &lt;= n) {
+  for i0 in range(0, ((n + 26) / 32)) {
+    for i1 in range(max((32 * i0), 5), min(((32 * i0) + 32), (n + -5))) {
+      a5[i1] = ((a4[(i1 + -1)] + a4[i1]) + a4[(i1 + 1)]);
     }
   }
 }

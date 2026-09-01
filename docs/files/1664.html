@@ -3,15 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>const_unroll.loop</title>
+  <title>fusion7.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/const_unroll.loop</code></h1>
-  <pre>for i in range(0, 4) {
-  a[i] = i;
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-generated/inputs/fusion7.loop</code></h1>
+  <pre>context(N, M);
+
+for i in range(0, N) {
+  a[i] = b[i];
+}
+for i in range(0, M) {
+  a[i] = b[i];
 }
 </pre>
 </main>

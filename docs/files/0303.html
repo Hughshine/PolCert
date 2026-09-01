@@ -3,52 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/09d959892bd4b1/after.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/091c5fafc930e8/before.loop</code></h1>
+  <pre>context(B, T, N);
 
-if (1 &lt;= N) {
-  for i0 in range(0, (N / 4)) {
-    for i1 in range(0, N) {
-      for i2 in range(0, N) {
-        C[(4 * i0)][i1] = (C[(4 * i0)][i1] + (A[(4 * i0)][i2] * B[i2][i1]));
-      }
-      for i2 in range(0, N) {
-        D[(4 * i0)][i2] = (D[(4 * i0)][i2] + (C[(4 * i0)][i1] * E[i1][i2]));
-      }
-      for i2 in range(0, N) {
-        C[((4 * i0) + 1)][i1] = (C[((4 * i0) + 1)][i1] + (A[((4 * i0) + 1)][i2] * B[i2][i1]));
-      }
-      for i2 in range(0, N) {
-        D[((4 * i0) + 1)][i2] = (D[((4 * i0) + 1)][i2] + (C[((4 * i0) + 1)][i1] * E[i1][i2]));
-      }
-      for i2 in range(0, N) {
-        C[((4 * i0) + 2)][i1] = (C[((4 * i0) + 2)][i1] + (A[((4 * i0) + 2)][i2] * B[i2][i1]));
-      }
-      for i2 in range(0, N) {
-        D[((4 * i0) + 2)][i2] = (D[((4 * i0) + 2)][i2] + (C[((4 * i0) + 2)][i1] * E[i1][i2]));
-      }
-      for i2 in range(0, N) {
-        C[((4 * i0) + 3)][i1] = (C[((4 * i0) + 3)][i1] + (A[((4 * i0) + 3)][i2] * B[i2][i1]));
-      }
-      for i2 in range(0, N) {
-        D[((4 * i0) + 3)][i2] = (D[((4 * i0) + 3)][i2] + (C[((4 * i0) + 3)][i1] * E[i1][i2]));
-      }
-    }
-  }
-  for i0 in range((4 * (N / 4)), N) {
-    for i1 in range(0, N) {
-      for i2 in range(0, N) {
-        C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
-      }
-      for i2 in range(0, N) {
-        D[i0][i2] = (D[i0][i2] + (C[i0][i1] * E[i1][i2]));
-      }
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
     }
   }
 }

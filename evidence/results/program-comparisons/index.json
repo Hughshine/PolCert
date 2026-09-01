@@ -21,6 +21,16 @@
       "suite": "ISS from live Pluto output"
     },
     {
+      "after": "program-comparisons/91084e6d675e10/after.domain",
+      "before": "program-comparisons/91084e6d675e10/before.domain",
+      "case": "multicut-complete",
+      "kind": "accepted-domain-pair",
+      "left_label": "Original Statement Domain",
+      "note": "Readable rendering of the exact multicut_valid.bridge fixture. The linked bridge file is the object accepted by the extracted validator.",
+      "right_label": "Accepted Four-Way Split",
+      "suite": "ISS multi-cut validation"
+    },
+    {
       "after": "program-comparisons/c6693a094e1536/after.bridge",
       "before": "program-comparisons/c6693a094e1536/before.bridge",
       "case": "pluto-three-cut-four-piece-mismatch",

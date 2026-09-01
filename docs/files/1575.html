@@ -3,35 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/fdb9afabc83f87/after.loop</code></h1>
-  <pre>context(N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/fcd502c50ba027/before.loop</code></h1>
+  <pre>context(N, M);
 
-if (1 &lt;= N) {
-  for i0 in range(0, N) {
-    y[i0] = 0;
-  }
-}
-if (1 &lt;= N) {
-  if (1 &lt;= N) {
-    for i0 in range(0, (N / 4)) {
-      for i1 in range(0, N) {
-        y[(4 * i0)] = (y[(4 * i0)] + (a[(4 * i0)][i1] * x[i1]));
-        y[((4 * i0) + 1)] = (y[((4 * i0) + 1)] + (a[((4 * i0) + 1)][i1] * x[i1]));
-        y[((4 * i0) + 2)] = (y[((4 * i0) + 2)] + (a[((4 * i0) + 2)][i1] * x[i1]));
-        y[((4 * i0) + 3)] = (y[((4 * i0) + 3)] + (a[((4 * i0) + 3)][i1] * x[i1]));
-      }
-    }
-    for i0 in range((4 * (N / 4)), N) {
-      for i1 in range(0, N) {
-        y[i0] = (y[i0] + (a[i0][i1] * x[i1]));
-      }
-    }
+for i in range(0, N) {
+  for j in range(0, M) {
+    A[i][j] = (B[i][j] + 1);
   }
 }
 </pre>

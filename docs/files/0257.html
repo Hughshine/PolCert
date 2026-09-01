@@ -8,39 +8,39 @@
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/rejected-optimizer-outputs/tiling-innerpar-satvec/README.md</code></h1>
-  <pre># Inner-Parallel Tiling Metadata Corrupts Dependence Satisfaction
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/rejected-optimizer-outputs/diamond-nointratile-reschedule/README.md</code></h1>
+  <pre># Diamond tiling without intra-tile optimization
 
-Status: reproduced, minimized, validator-catches.
+The phase-dump patch at Pluto commit `diamond-regression-introduction-snapshot` accidentally guarded
+`pluto_diamond_tile_reschedule` with `options-&gt;intratileopt`; the regression
+remained present at audited predecessor `diamond-regression-snapshot`. That reschedule restores the
+hyperplane temporarily evicted to construct a concurrent-start diamond
+schedule. It is required for Pluto&#x27;s final CLooG/AST path; it is not the
+optional intra-tile locality pass controlled by `--intratileopt`.
 
-The two-dimensional recurrence reads both `a[i-1][j]` and `a[i][j-1]`.
-The rectangular tiling transformation is legal, but neither original schedule
-dimension is parallel.
+With tile size `2` and every non-tiling optimization disabled, the original
+`diamond_nointratile.c` prints `20`. The old `--diamond-tile
+--nointratileopt` path printed `18`; full-diamond printed `15`. Ordinary and
+two-level rectangular tiling both printed `20`. ASan and UBSan report no error,
+so this is an execution-order defect rather than undefined behavior in the
+fixture.
 
-With `--identity --tile --parallel --innerpar`, pinned Pluto leaves the tile
-schedule unchanged in `lib/tile.c:446-456`. It nevertheless moves inner
-dependence-satisfaction bits to the outer tile dimension and clears the inner
-bits at `lib/tile.c:461-478`. Later parallel-loop discovery trusts those bits
-and emits an OpenMP pragma for tile loop `t4`.
+Pluto commit `diamond-fix-snapshot` on `diamond-fix-branch` makes the
+restore unconditional for diamond tiling and adds the same executable
+regression; this fix is not yet on `historical-phase-dump-branch`. The PolCert regression
+checks both the fixed raw producer and the corresponding mixed-scalar `.loop`
+candidate. PolCert&#x27;s formal tiling boundary rejects that candidate and emits
+no optimized loop. This rejection is conservative: the producer/backend
+defect is the missing mandatory restore, while the formal checker independently
+declines the degenerate scalar tile link. The separate typed `diamond-stencil`
+positive test demonstrates that a supported pure diamond candidate is accepted
+through checked tiling, post-tiling affine validation, and proved code
+generation.
 
-The fixture uses tile size `2`, so the 16-by-16 recurrence contains several
-tiles while all source values remain within signed 32-bit range. The original
-program prints `310235039`. Four-thread executions of Pluto&#x27;s output produce
-different values. PolCert separates the two claims:
-
-- the checked permutable-band validator accepts the rectangular tiling itself;
-- the parallel validator finds no certifiable nontrivial dimension and refuses
-  Pluto&#x27;s unsafe OpenMP annotation;
-- non-strict mode emits the safe tiled loop with only a one-iteration parallel
-  loop, which is semantically sequential, while strict mode rejects the
-  requested parallel optimization without output.
-
-Run the executable comparison and the phase-specific checks with:
-
-```sh
-opam exec -- make test-pluto-miscompilation-tiling-innerpar
-```
+The ordinary artifact baseline `ordinary-fixed-pluto-snapshot` contains this earlier fix. The
+historical `historical-bug-witness-pluto-snapshot` checkout is retained separately for the old failing
+producer and is never used by ordinary PolOpt tests.
 </pre>
 </main>
 </body>

@@ -3,34 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/ab19489af7f902/after.loop</code></h1>
-  <pre>for i0 in range(0, 100) {
-  A[0][i0] = 1;
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/a97c749fb116cc/before.c</code></h1>
+  <pre>// CHECK: T(S1): (t, t+i, 2t+i+j)
+#include &lt;math.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+#include &lt;assert.h&gt;
+
+#define N 1000
+#define T 500
+double a[N][N];
+
+#include &lt;sys/time.h&gt;
+#include &lt;unistd.h&gt;
+
+#ifdef TIME
+#define IF_TIME(foo) foo;
+#else
+#define IF_TIME(foo)
+#endif
+
+void init_array() {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    for (j = 0; j &lt; N; j++) {
+      a[i][j] = i * i + j * j;
+    }
+  }
 }
-for i0 in range(1, 100) {
-  A[i0][0] = 1;
-  for i1 in range(1, 100) {
-    for i2 in range((i0 + -1), i0) {
-      for i3 in range((i1 + -1), i1) {
-        B[i2][i3] = (A[(i2 + 1)][i3] + A[i2][(i3 + 1)]);
+
+void print_array() {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    for (j = 0; j &lt; N; j++) {
+      fprintf(stderr, &quot;%0.2lf &quot;, a[i][j]);
+      if (j % 80 == 20)
+        fprintf(stderr, &quot;\n&quot;);
+    }
+  }
+  fprintf(stderr, &quot;\n&quot;);
+}
+
+double rtclock() {
+  struct timezone Tzp;
+  struct timeval Tp;
+  int stat;
+  stat = gettimeofday(&amp;Tp, &amp;Tzp);
+  if (stat != 0)
+    printf(&quot;Error return from gettimeofday: %d&quot;, stat);
+  return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
+}
+
+int main() {
+  int i, j, k, t;
+
+  double t_start, t_end;
+
+  init_array();
+
+#ifdef PERFCTR
+  PERF_INIT;
+#endif
+
+  IF_TIME(t_start = rtclock());
+
+#pragma scop
+  for (t = 0; t &lt;= T - 1; t++) {
+    for (i = 1; i &lt;= N - 2; i++) {
+      for (j = 1; j &lt;= N - 2; j++) {
+        a[i][j] = (a[i - 1][j - 1] + a[i - 1][j] + a[i - 1][j + 1] +
+                   a[i][j - 1] + a[i][j] + a[i][j + 1] + a[i + 1][j - 1] +
+                   a[i + 1][j] + a[i + 1][j + 1]) /
+                  9.0;
       }
     }
-    A[i0][i1] = 1;
   }
-  for i1 in range((i0 + -1), i0) {
-    B[i1][99] = (A[(i1 + 1)][99] + A[i1][100]);
-  }
-}
-for i0 in range(1, 101) {
-  for i1 in range((i0 + -1), i0) {
-    B[99][i1] = (A[100][i1] + A[99][(i1 + 1)]);
-  }
+#pragma endscop
+
+  IF_TIME(t_end = rtclock());
+  IF_TIME(printf(&quot;%0.6lfs\n&quot;, t_end - t_start));
+
+#ifdef PERFCTR
+  PERF_EXIT;
+#endif
+
+#ifdef TEST
+  print_array();
+#endif
+  return 0;
 }
 </pre>
 </main>

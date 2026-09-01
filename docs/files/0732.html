@@ -3,19 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/57b0f6dad875f4/before.loop</code></h1>
-  <pre>context(M, N, K);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/56ff6aecada3ae/after.loop</code></h1>
+  <pre>context(N, M);
 
-for i in range(0, M) {
-  for j in range(0, N) {
-    for k in range(0, K) {
-      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+      a[i1] = b[i1];
+    }
+  }
+}
+if (1 &lt;= M) {
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), M)) {
+      a[i1] = b[i1];
     }
   }
 }

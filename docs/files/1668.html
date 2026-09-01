@@ -3,21 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>covcol.loop</title>
+  <title>matmul.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/covcol.loop</code></h1>
-  <pre>context(M, N);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-generated/inputs/matmul.loop</code></h1>
+  <pre>context(M, N, K);
 
-for j1 in range(1, (M + 1)) {
-  for j2 in range(j1, (M + 1)) {
-    for i in range(1, (N + 1)) {
-      symmat[j1][j2] = (symmat[j1][j2] + (data[i][j1] * data[i][j2]));
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
     }
-    symmat[j2][j1] = symmat[j1][j2];
   }
 }
 </pre>

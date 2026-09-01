@@ -3,32 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/033b281ee06437/before.c</code></h1>
-  <pre>#define S1(zT2,zT3,$i0,$i1)	a[$i1][$i0] = a[$i1][$i0] + 1;
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/03091f4d46fc0e/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-		int t1, t2, t3, t4, t5, t6, t7, t8;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if ((M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
-  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-    for (t4=0;t4&lt;=floord(M-1,32);t4++) {
-      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-        for (t7=32*t4;t7&lt;=min(M-1,32*t4+31);t7++) {
-          S1(t2,t4,t5,t7);
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range((i0 / 8), ((i0 + 8) / 8)) {
+      for i2 in range(0, ((T + (N + 24)) / 32)) {
+        for i3 in range((i2 / 8), ((i2 + 8) / 8)) {
+          for i4 in range(max((((-1 * N) + ((32 * i2) + 6)) / 32), 0), min((((32 * i2) + 58) / 32), ((T + 30) / 32))) {
+            for i5 in range((i4 / 8), ((i4 + 8) / 8)) {
+              for i6 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+                for i7 in range(max(max(10, ((32 * i4) + 5)), (32 * i2)), min(min((T + (N + -7)), (N + ((32 * i4) + 26))), ((32 * i2) + 32))) {
+                  for i8 in range(max(max((32 * i4), ((-1 * N) + (i7 + 6))), 5), min(min(((32 * i4) + 32), (i7 + -4)), (T + -1))) {
+                    for i9 in range((i7 + (-1 * i8)), (i7 + ((-1 * i8) + 1))) {
+                      A[i6][(i8 + 1)][i9] = (0.125 * (A[i6][i8][(i9 + -1)] + A[i6][(i8 + -2)][(i9 + 1)]));
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

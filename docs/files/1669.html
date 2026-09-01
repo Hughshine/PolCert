@@ -3,30 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dct.loop</title>
+  <title>mxv-seq.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/dct.loop</code></h1>
-  <pre>context(M);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-generated/inputs/mxv-seq.loop</code></h1>
+  <pre>context(N);
 
-for i in range(0, M) {
-  for j in range(0, M) {
-    temp2d[i][j] = 0.0;
-    for k in range(0, M) {
-      temp2d[i][j] = (temp2d[i][j] + (block[i][k] * cos1[j][k]));
-    }
+for i in range(0, N) {
+  for j in range(0, N) {
+    y[i] = (y[i] + (a[i][j] * x[j]));
   }
 }
-for i in range(0, M) {
-  for j in range(0, M) {
-    sum2[i][j] = 0.0;
-    for k in range(0, M) {
-      sum2[i][j] = (sum2[i][j] + (cos1[i][k] * temp2d[k][j]));
-    }
-    block[i][j] = sum2[i][j];
+for i in range(0, N) {
+  for j in range(0, N) {
+    z[i] = (z[i] + (b[i][j] * y[j]));
   }
 }
 </pre>

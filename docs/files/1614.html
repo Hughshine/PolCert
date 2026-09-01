@@ -3,562 +3,204 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>summary.json</title>
+  <title>pluto-compat-suite.stdout.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/raw/unrolljam/summary.json</code></h1>
-  <pre>{
-  &quot;cases&quot;: [
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  1.3 Access\nWRITE\n3 11 3 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\n\nREAD\n1 9 1 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t5\n\nREAD\n3 11 3 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\n\nREAD\n1 9 1 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t4\n\nREAD\n3 11 3 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t3\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t1\t0\t0\t0\t0\n\nREAD\n3 11 3 3 0 3\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  1.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n3\n# List of original iterators\n$i0 $i1 $i2\n# Statement body expression\nC[$i0][$i1] = beta * C[$i0][$i1] + alpha * A[$i0][$i2] * B[$i2][$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n8\n# Mapping array-identifiers/array-names\n6 M\n7 N\n8 K\n1 C\n2 B\n3 A\n4 alpha\n5 beta\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/matmul.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 1\n[pluto] Total number of loops: 3\n[pluto] Number of deps: 3\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 3\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1, $i2)\nloop types (loop, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, $i2/32, $i0, $i1, $i2)\nloop types (loop, loop, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,6), \n[Pluto] Output written to matmul.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000081s\n[pluto] Auto-transformation time: 0.001755s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000379s\n[pluto] Code generation time: 0.005569s\n[pluto] Other/Misc time: 0.025607s\n[pluto] Total time: 0.033012s\n[pluto] All times: 0.000081 0.001755 0.005569 0.025607\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 1\n[pluto] Total number of loops: 3\n[pluto] Number of deps: 3\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 3\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1, $i2)\nloop types (loop, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, $i2/32, $i0, $i1, $i2)\nloop types (loop, loop, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,6), \n[Pluto] Output written to matmul.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000080s\n[pluto] Auto-transformation time: 0.001502s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000329s\n[pluto] Code generation time: 0.005631s\n[pluto] Other/Misc time: 0.024918s\n[pluto] Total time: 0.032131s\n[pluto] All times: 0.000080 0.001502 0.005631 0.024918\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;o&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(M, N, K);\n\nif ((1 &lt;= N &amp;&amp; 1 &lt;= K)) {\n  if (1 &lt;= M) {\n    for i0 in range(0, (M / 4)) {\n      for i1 in range(0, N) {\n        for i2 in range(0, K) {\n          C[(4 * i0)][i1] = ((beta * C[(4 * i0)][i1]) + ((alpha * A[(4 * i0)][i2]) * B[i2][i1]));\n          C[((4 * i0) + 1)][i1] = ((beta * C[((4 * i0) + 1)][i1]) + ((alpha * A[((4 * i0) + 1)][i2]) * B[i2][i1]));\n        }\n        for i2 in range(0, K) {\n          C[((4 * i0) + 2)][i1] = ((beta * C[((4 * i0) + 2)][i1]) + ((alpha * A[((4 * i0) + 2)][i2]) * B[i2][i1]));\n        }\n        for i2 in range(0, K) {\n          C[((4 * i0) + 3)][i1] = ((beta * C[((4 * i0) + 3)][i1]) + ((alpha * A[((4 * i0) + 3)][i2]) * B[i2][i1]));\n        }\n      }\n    }\n    for i0 in range((4 * (M / 4)), M) {\n      for i1 in range(0, N) {\n        for i2 in range(0, K) {\n          C[i0][i1] = ((beta * C[i0][i1]) + ((alpha * A[i0][i2]) * B[i2][i1]));\n        }\n      }\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;\n\t1\t1\t0\t0\t0\t0\n\t1\t-1\t0\t0\t1\t-1\n\t1\t0\t1\t0\t0\t0\n\t1\t0\t-1\t0\t1\t-1\n\t1\t0\t0\t1\t0\t0\n\t1\t0\t0\t-1\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n7 13 7 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t3\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t1\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n3\n# List of original iterators\n$i0 $i1 $i2\n# Statement body expression\nC[$i0][$i1] = C[$i0][$i1] + A[$i0][$i2] * B[$i2][$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n4\n# Mapping array-identifiers/array-names\n4 N\n1 C\n2 B\n3 A\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/matmul-init.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 5\n[pluto] Number of deps: 5\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): (0, $i0, $i1, 0)\nloop types (scalar, loop, loop, scalar)\n\nT(S2): (1, $i0, $i1, $i2)\nloop types (scalar, loop, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (0, $i0/32, $i1/32, $i0, $i1, 0, 0)\nloop types (scalar, loop, loop, loop, loop, scalar, scalar)\n\nT(S2): (1, $i0/32, $i1/32, $i2/32, $i0, $i1, $i2)\nloop types (scalar, loop, loop, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,7), S2(5,7), \n[Pluto] Output written to matmul-init.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000101s\n[pluto] Auto-transformation time: 0.002204s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000397s\n[pluto] Code generation time: 0.009315s\n[pluto] Other/Misc time: 0.032948s\n[pluto] Total time: 0.044568s\n[pluto] All times: 0.000101 0.002204 0.009315 0.032948\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 5\n[pluto] Number of deps: 5\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): (0, $i0, $i1, 0)\nloop types (scalar, loop, loop, scalar)\n\nT(S2): (1, $i0, $i1, $i2)\nloop types (scalar, loop, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (0, $i0/32, $i1/32, $i0, $i1, 0, 0)\nloop types (scalar, loop, loop, loop, loop, scalar, scalar)\n\nT(S2): (1, $i0/32, $i1/32, $i2/32, $i0, $i1, $i2)\nloop types (scalar, loop, loop, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,7), S2(5,7), \n[Pluto] Output written to matmul-init.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000081s\n[pluto] Auto-transformation time: 0.002711s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000457s\n[pluto] Code generation time: 0.009827s\n[pluto] Other/Misc time: 0.037968s\n[pluto] Total time: 0.050587s\n[pluto] All times: 0.000081 0.002711 0.009827 0.037968\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-init.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;pted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(N);\n\nif (1 &lt;= N) {\n  for i0 in range(0, N) {\n    for i1 in range(0, N) {\n      C[i0][i1] = 0;\n    }\n  }\n}\nif (1 &lt;= N) {\n  if (1 &lt;= N) {\n    for i0 in range(0, (N / 4)) {\n      for i1 in range(0, N) {\n        for i2 in range(0, N) {\n          C[(4 * i0)][i1] = (C[(4 * i0)][i1] + (A[(4 * i0)][i2] * B[i2][i1]));\n          C[((4 * i0) + 1)][i1] = (C[((4 * i0) + 1)][i1] + (A[((4 * i0) + 1)][i2] * B[i2][i1]));\n        }\n        for i2 in range(0, N) {\n          C[((4 * i0) + 2)][i1] = (C[((4 * i0) + 2)][i1] + (A[((4 * i0) + 2)][i2] * B[i2][i1]));\n        }\n        for i2 in range(0, N) {\n          C[((4 * i0) + 3)][i1] = (C[((4 * i0) + 3)][i1] + (A[((4 * i0) + 3)][i2] * B[i2][i1]));\n        }\n      }\n    }\n    for i0 in range((4 * (N / 4)), N) {\n      for i1 in range(0, N) {\n        for i2 in range(0, N) {\n          C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));\n        }\n      }\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;0\t0\t0\n\t1\t-1\t0\t0\t1\t-1\n\t1\t0\t1\t0\t0\t0\n\t1\t0\t-1\t0\t1\t-1\n\t1\t0\t0\t1\t0\t0\n\t1\t0\t0\t-1\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n7 13 7 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t4\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t4\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t1\t0\t0\n\nREAD\n3 9 3 3 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t5\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n3\n# List of original iterators\n$i0 $i1 $i2\n# Statement body expression\nD[$i0][$i1] = D[$i0][$i1] + C[$i0][$i2] * E[$i2][$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n6\n# Mapping array-identifiers/array-names\n6 N\n1 C\n2 B\n3 A\n4 D\n5 E\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/matmul-seq.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;tatements: 2\n[pluto] Total number of loops: 6\n[pluto] Number of deps: 7\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1, 0, $i2)\nloop types (loop, loop, scalar, loop)\n\nT(S2): ($i0, $i2, 1, $i1)\nloop types (loop, loop, scalar, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, 0, $i2/32, $i0, $i1, 0, $i2)\nloop types (loop, loop, scalar, loop, loop, loop, scalar, loop)\n\nT(S2): ($i0/32, $i2/32, 1, $i1/32, $i0, $i2, 1, $i1)\nloop types (loop, loop, scalar, loop, loop, loop, scalar, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(5,8), S2(5,8), \n[Pluto] Output written to matmul-seq.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000101s\n[pluto] Auto-transformation time: 0.005384s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000883s\n[pluto] Code generation time: 0.010662s\n[pluto] Other/Misc time: 0.055495s\n[pluto] Total time: 0.071642s\n[pluto] All times: 0.000101 0.005384 0.010662 0.055495\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;tatements: 2\n[pluto] Total number of loops: 6\n[pluto] Number of deps: 7\n[pluto] Maximum domain dimensionality: 3\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1, 0, $i2)\nloop types (loop, loop, scalar, loop)\n\nT(S2): ($i0, $i2, 1, $i1)\nloop types (loop, loop, scalar, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, 0, $i2/32, $i0, $i1, 0, $i2)\nloop types (loop, loop, scalar, loop, loop, loop, scalar, loop)\n\nT(S2): ($i0/32, $i2/32, 1, $i1/32, $i0, $i2, 1, $i1)\nloop types (loop, loop, scalar, loop, loop, loop, scalar, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(5,8), S2(5,8), \n[Pluto] Output written to matmul-seq.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000092s\n[pluto] Auto-transformation time: 0.005216s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000881s\n[pluto] Code generation time: 0.011837s\n[pluto] Other/Misc time: 0.057123s\n[pluto] Total time: 0.074268s\n[pluto] All times: 0.000092 0.005216 0.011837 0.057123\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__matmul-seq.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;  }\n      for i2 in range(0, N) {\n        D[(4 * i0)][i2] = (D[(4 * i0)][i2] + (C[(4 * i0)][i1] * E[i1][i2]));\n      }\n      for i2 in range(0, N) {\n        C[((4 * i0) + 1)][i1] = (C[((4 * i0) + 1)][i1] + (A[((4 * i0) + 1)][i2] * B[i2][i1]));\n      }\n      for i2 in range(0, N) {\n        D[((4 * i0) + 1)][i2] = (D[((4 * i0) + 1)][i2] + (C[((4 * i0) + 1)][i1] * E[i1][i2]));\n      }\n      for i2 in range(0, N) {\n        C[((4 * i0) + 2)][i1] = (C[((4 * i0) + 2)][i1] + (A[((4 * i0) + 2)][i2] * B[i2][i1]));\n      }\n      for i2 in range(0, N) {\n        D[((4 * i0) + 2)][i2] = (D[((4 * i0) + 2)][i2] + (C[((4 * i0) + 2)][i1] * E[i1][i2]));\n      }\n      for i2 in range(0, N) {\n        C[((4 * i0) + 3)][i1] = (C[((4 * i0) + 3)][i1] + (A[((4 * i0) + 3)][i2] * B[i2][i1]));\n      }\n      for i2 in range(0, N) {\n        D[((4 * i0) + 3)][i2] = (D[((4 * i0) + 3)][i2] + (C[((4 * i0) + 3)][i1] * E[i1][i2]));\n      }\n    }\n  }\n  for i0 in range((4 * (N / 4)), N) {\n    for i1 in range(0, N) {\n      for i2 in range(0, N) {\n        C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));\n      }\n      for i2 in range(0, N) {\n        D[i0][i2] = (D[i0][i2] + (C[i0][i1] * E[i1][i2]));\n      }\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;t body expression\ny[$i0] = 0;\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n6\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n4 5 2 0 0 1\n\t1\t1\t0\t0\t0\n\t1\t-1\t0\t1\t-1\n\t1\t0\t1\t0\t0\n\t1\t0\t-1\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n5 10 5 2 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t1\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t0\t0\n\nREAD\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t0\t0\n\nREAD\n3 8 3 2 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t3\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\n\nREAD\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t1\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\ny[$i0] = y[$i0] + a[$i0][$i1] * x[$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n4\n# Mapping array-identifiers/array-names\n4 N\n1 y\n2 x\n3 a\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/mxv.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 3\n[pluto] Number of deps: 5\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): (0, $i0, 0)\nloop types (scalar, loop, scalar)\n\nT(S2): (1, $i0, $i1)\nloop types (scalar, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (0, $i0/32, $i0, 0, 0)\nloop types (scalar, loop, loop, scalar, scalar)\n\nT(S2): (1, $i0/32, $i1/32, $i0, $i1)\nloop types (scalar, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(4,5), \n[Pluto] Output written to mxv.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000083s\n[pluto] Auto-transformation time: 0.000995s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000192s\n[pluto] Code generation time: 0.003286s\n[pluto] Other/Misc time: 0.014692s\n[pluto] Total time: 0.019056s\n[pluto] All times: 0.000083 0.000995 0.003286 0.014692\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 3\n[pluto] Number of deps: 5\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): (0, $i0, 0)\nloop types (scalar, loop, scalar)\n\nT(S2): (1, $i0, $i1)\nloop types (scalar, loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (0, $i0/32, $i0, 0, 0)\nloop types (scalar, loop, loop, scalar, scalar)\n\nT(S2): (1, $i0/32, $i1/32, $i0, $i1)\nloop types (scalar, loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(4,5), \n[Pluto] Output written to mxv.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000056s\n[pluto] Auto-transformation time: 0.001000s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000179s\n[pluto] Code generation time: 0.003317s\n[pluto] Other/Misc time: 0.013665s\n[pluto] Total time: 0.018038s\n[pluto] All times: 0.000056 0.001000 0.003317 0.013665\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;at] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(N);\n\nif (1 &lt;= N) {\n  for i0 in range(0, N) {\n    y[i0] = 0;\n  }\n}\nif (1 &lt;= N) {\n  if (1 &lt;= N) {\n    for i0 in range(0, (N / 4)) {\n      for i1 in range(0, N) {\n        y[(4 * i0)] = (y[(4 * i0)] + (a[(4 * i0)][i1] * x[i1]));\n        y[((4 * i0) + 1)] = (y[((4 * i0) + 1)] + (a[((4 * i0) + 1)][i1] * x[i1]));\n        y[((4 * i0) + 2)] = (y[((4 * i0) + 2)] + (a[((4 * i0) + 2)][i1] * x[i1]));\n        y[((4 * i0) + 3)] = (y[((4 * i0) + 3)] + (a[((4 * i0) + 3)][i1] * x[i1]));\n      }\n    }\n    for i0 in range((4 * (N / 4)), N) {\n      for i1 in range(0, N) {\n        y[i0] = (y[i0] + (a[i0][i1] * x[i1]));\n      }\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;a[$i0][$i1] * x[$i1];\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n6\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n4 5 2 0 0 1\n\t1\t1\t0\t0\t0\n\t1\t-1\t0\t1\t-1\n\t1\t0\t1\t0\t0\n\t1\t0\t-1\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n5 10 5 2 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t4\n\t0\t0\t-1\t1\t0\t0\t0\n\nREAD\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t4\n\t0\t0\t-1\t1\t0\t0\t0\n\nREAD\n3 8 3 2 0 1\n\t0\t-1\t0\t0\t0\t0\t0\t5\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\t0\n\nREAD\n2 7 2 2 0 1\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\nz[$i0] = z[$i0] + b[$i0][$i1] * y[$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n6\n# Mapping array-identifiers/array-names\n6 N\n1 y\n2 x\n3 a\n4 z\n5 b\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/mxv-seq.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 7\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0, $i1)\nloop types (loop, scalar, loop)\n\nT(S2): ($i1, 1, $i0)\nloop types (loop, scalar, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, 0, $i1/32, $i0, 0, $i1)\nloop types (loop, scalar, loop, loop, scalar, loop)\n\nT(S2): ($i1/32, 1, $i0/32, $i1, 1, $i0)\nloop types (loop, scalar, loop, loop, scalar, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,6), S2(4,6), \n[Pluto] Output written to mxv-seq.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000082s\n[pluto] Auto-transformation time: 0.002280s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000356s\n[pluto] Code generation time: 0.004261s\n[pluto] Other/Misc time: 0.023816s\n[pluto] Total time: 0.030439s\n[pluto] All times: 0.000082 0.002280 0.004261 0.023816\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 7\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0, $i1)\nloop types (loop, scalar, loop)\n\nT(S2): ($i1, 1, $i0)\nloop types (loop, scalar, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, 0, $i1/32, $i0, 0, $i1)\nloop types (loop, scalar, loop, loop, scalar, loop)\n\nT(S2): ($i1/32, 1, $i0/32, $i1, 1, $i0)\nloop types (loop, scalar, loop, loop, scalar, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(4,6), S2(4,6), \n[Pluto] Output written to mxv-seq.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000073s\n[pluto] Auto-transformation time: 0.002241s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000347s\n[pluto] Code generation time: 0.005042s\n[pluto] Other/Misc time: 0.023751s\n[pluto] Total time: 0.031107s\n[pluto] All times: 0.000073 0.002241 0.005042 0.023751\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__mxv-seq.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(N);\n\nif (1 &lt;= N) {\n  for i0 in range(0, (N / 4)) {\n    for i1 in range(0, N) {\n      y[(4 * i0)] = (y[(4 * i0)] + (a[(4 * i0)][i1] * x[i1]));\n    }\n    for i1 in range(0, N) {\n      z[i1] = (z[i1] + (b[i1][(4 * i0)] * y[(4 * i0)]));\n    }\n    for i1 in range(0, N) {\n      y[((4 * i0) + 1)] = (y[((4 * i0) + 1)] + (a[((4 * i0) + 1)][i1] * x[i1]));\n    }\n    for i1 in range(0, N) {\n      z[i1] = (z[i1] + (b[i1][((4 * i0) + 1)] * y[((4 * i0) + 1)]));\n    }\n    for i1 in range(0, N) {\n      y[((4 * i0) + 2)] = (y[((4 * i0) + 2)] + (a[((4 * i0) + 2)][i1] * x[i1]));\n    }\n    for i1 in range(0, N) {\n      z[i1] = (z[i1] + (b[i1][((4 * i0) + 2)] * y[((4 * i0) + 2)]));\n    }\n    for i1 in range(0, N) {\n      y[((4 * i0) + 3)] = (y[((4 * i0) + 3)] + (a[((4 * i0) + 3)][i1] * x[i1]));\n    }\n    for i1 in range(0, N) {\n      z[i1] = (z[i1] + (b[i1][((4 * i0) + 3)] * y[((4 * i0) + 3)]));\n    }\n  }\n  for i0 in range((4 * (N / 4)), N) {\n    for i1 in range(0, N) {\n      y[i0] = (y[i0] + (a[i0][i1] * x[i1]));\n    }\n    for i1 in range(0, N) {\n      z[i1] = (z[i1] + (b[i1][i0] * y[i0]));\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;============== Global\n# Language\nC\n\n# Context\nCONTEXT\n0 2 0 0 0 0\n\n# Parameters are not provided\n0\n\n# =============================================== Statements\n# Number of statements:\n1\n# =============================================== Statement 1\n# Number of relations describing the statement:\n4\n\n# ----------------------------------------------  1.1 Domain\nDOMAIN\n4 4 2 0 0 0\n\t1\t1\t0\t0\n\t1\t-1\t0\t99\n\t1\t0\t1\t0\n\t1\t0\t-1\t3\n\n# ----------------------------------------------  1.2 Scattering\nSCATTERING\n5 9 5 2 0 0\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\n\n# ----------------------------------------------  1.3 Access\nWRITE\n2 6 2 2 0 0\n\t0\t-1\t0\t0\t0\t1\n\t0\t0\t-1\t4\t1\t0\n\nREAD\n2 6 2 2 0 0\n\t0\t-1\t0\t0\t0\t1\n\t0\t0\t-1\t4\t1\t0\n\n# ----------------------------------------------  1.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\nA[4 * $i0 + $i1] = 2 * A[4 * $i0 + $i1] + 2;\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n2\n# Mapping array-identifiers/array-names\n1 A\n2 _slot0\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/nodep.loop&quot;,
-      &quot;note&quot;: &quot;native Pluto shows no direct unroll-jam C effect&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: false,
-      &quot;pluto_factor_marker_present&quot;: false,
-      &quot;pluto_generated_c_differs&quot;: false,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 1\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 0\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 0\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1)\nloop types (loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, $i0, $i1)\nloop types (loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,4), \n[Pluto] Output written to nodep.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000052s\n[pluto] Auto-transformation time: 0.000309s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000125s\n[pluto] Code generation time: 0.001609s\n[pluto] Other/Misc time: 0.001688s\n[pluto] Total time: 0.003658s\n[pluto] All times: 0.000052 0.000309 0.001609 0.001688\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: false,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 1\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 0\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 0\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i1)\nloop types (loop, loop)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i1/32, $i0, $i1)\nloop types (loop, loop, loop, loop)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,4), \n[pluto-unroll-jam] No unroll jam loop candidates found\n[Pluto] Output written to nodep.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000041s\n[pluto] Auto-transformation time: 0.000351s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000141s\n[pluto] Code generation time: 0.001481s\n[pluto] Other/Misc time: 0.001615s\n[pluto] Total time: 0.003488s\n[pluto] All times: 0.000041 0.000351 0.001481 0.001615\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__nodep.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto-compat] accepted\n[pluto-compat] polopt args: --notile --unrolljam\n[pluto-compat] pluto oracle flags: --smartfuse\n[pluto-compat] checked post flags: --ufactor=4\n[pluto-compat] note: --smartfuse passed through to Pluto&#x27;s checked scheduler oracle\n[pluto-compat] note: --nointratileopt selects the stable intra-tile loop order\n[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\nfor i0 in range(0, 100) {\n  for i1 in range(0, 4) {\n    A[((4 * i0) + i1)] = ((2 * A[((4 * i0) + i1)]) + 2);\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: false,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: false,
-      &quot;polopt_remainder_marker_present&quot;: false,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot; Number of original iterators\n1\n# List of original iterators\n$i0\n# Statement body expression\nA[$i0] = 0.33 * In[$i0 - 1] + In[$i0] + In[$i0 + 1];\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n6\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n2 4 1 0 0 1\n\t1\t1\t0\t-2\n\t1\t-1\t1\t-4\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n3 7 3 1 0 1\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 6 2 1 0 1\n\t0\t-1\t0\t0\t0\t3\n\t0\t0\t-1\t1\t0\t0\n\nREAD\n2 6 2 1 0 1\n\t0\t-1\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t-1\n\nREAD\n2 6 2 1 0 1\n\t0\t-1\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t0\n\nREAD\n2 6 2 1 0 1\n\t0\t-1\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t1\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n1\n# List of original iterators\n$i0\n# Statement body expression\nOut[$i0] = 0.33 * A[$i0 - 1] + A[$i0] + A[$i0 + 1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n4\n# Mapping array-identifiers/array-names\n4 N\n1 A\n2 In\n3 Out\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/fusion1.loop&quot;,
-      &quot;note&quot;: &quot;native Pluto shows no direct unroll-jam C effect&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: false,
-      &quot;pluto_factor_marker_present&quot;: false,
-      &quot;pluto_generated_c_differs&quot;: false,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 3\n[pluto] Maximum domain dimensionality: 1\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0+1, 1)\nloop types (loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0+1, 1)\nloop types (loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(1,2), S2(1,2), \n[Pluto] Output written to fusion1.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000056s\n[pluto] Auto-transformation time: 0.000602s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000167s\n[pluto] Code generation time: 0.000703s\n[pluto] Other/Misc time: 0.001999s\n[pluto] Total time: 0.003360s\n[pluto] All times: 0.000056 0.000602 0.000703 0.001999\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: false,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 3\n[pluto] Maximum domain dimensionality: 1\n[pluto] Number of parameters: 1\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0+1, 1)\nloop types (loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0+1, 1)\nloop types (loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(1,2), S2(1,2), \n[pluto-unroll-jam] No unroll jam loop candidates found\n[Pluto] Output written to fusion1.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000053s\n[pluto] Auto-transformation time: 0.000571s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000163s\n[pluto] Code generation time: 0.000761s\n[pluto] Other/Misc time: 0.002008s\n[pluto] Total time: 0.003393s\n[pluto] All times: 0.000053 0.000571 0.000761 0.002008\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion1.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;ed\n[pluto-compat] polopt args: --notile --unrolljam\n[pluto-compat] pluto oracle flags: --smartfuse\n[pluto-compat] checked post flags: --ufactor=4\n[pluto-compat] note: --smartfuse passed through to Pluto&#x27;s checked scheduler oracle\n[pluto-compat] note: --nointratileopt selects the stable intra-tile loop order\n[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(N);\n\nfor i0 in range(1, min(3, (N + -2))) {\n  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));\n}\nfor i0 in range(3, (N + -2)) {\n  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));\n  for i1 in range((i0 + -1), i0) {\n    Out[i1] = (0.33 * ((A[(i1 + -1)] + A[i1]) + A[(i1 + 1)]));\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: false,
-      &quot;polopt_factor_marker_present&quot;: false,
-      &quot;polopt_offset_marker_present&quot;: false,
-      &quot;polopt_remainder_marker_present&quot;: false,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;original iterators\n$i0 $i1\n# Statement body expression\nA[$i0][$i1] = 1;\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n5\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n4 4 2 0 0 0\n\t1\t1\t0\t0\n\t1\t-1\t0\t99\n\t1\t0\t1\t0\n\t1\t0\t-1\t99\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n5 9 5 2 0 0\n\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n3 7 3 2 0 0\n\t0\t-1\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t1\t0\n\nREAD\n3 7 3 2 0 0\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t1\n\t0\t0\t0\t-1\t0\t1\t0\n\nREAD\n3 7 3 2 0 0\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\n\t0\t0\t0\t-1\t0\t1\t1\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\nB[$i0][$i1] = A[$i0 + 1][$i1] + A[$i0][$i1 + 1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n2\n# Mapping array-identifiers/array-names\n1 A\n2 B\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/fusion2.loop&quot;,
-      &quot;note&quot;: &quot;native Pluto shows no direct unroll-jam C effect&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: false,
-      &quot;pluto_factor_marker_present&quot;: false,
-      &quot;pluto_generated_c_differs&quot;: false,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 2\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 0\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0+$i1, $i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0+$i1+1, $i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (($i0+$i1)/32, $i1/32, $i0+$i1, $i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): (zT2, zT3, $i0+$i1+1, $i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[Pluto] Output written to fusion2.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000072s\n[pluto] Auto-transformation time: 0.004219s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.002447s\n[pluto] Code generation time: 0.020216s\n[pluto] Other/Misc time: 0.008468s\n[pluto] Total time: 0.032975s\n[pluto] All times: 0.000072 0.004219 0.020216 0.008468\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: false,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 2\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 0\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0+$i1, $i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0+$i1+1, $i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): (($i0+$i1)/32, $i1/32, $i0+$i1, $i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): (zT2, zT3, $i0+$i1+1, $i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[pluto-unroll-jam] No unroll jam loop candidates found\n[Pluto] Output written to fusion2.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000068s\n[pluto] Auto-transformation time: 0.004553s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.002563s\n[pluto] Code generation time: 0.017532s\n[pluto] Other/Misc time: 0.007987s\n[pluto] Total time: 0.030140s\n[pluto] All times: 0.000068 0.004553 0.017532 0.007987\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion2.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;leopt selects the stable intra-tile loop order\n[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\nA[0][0] = 1;\nfor i0 in range(1, 199) {\n  if (i0 &lt;= 99) {\n    A[i0][0] = 1;\n  }\n  for i1 in range(max(1, (i0 + -99)), min((i0 + 1), 100)) {\n    for i2 in range((i0 + (-1 * i1)), (i0 + ((-1 * i1) + 1))) {\n      A[i2][i1] = 1;\n    }\n    for i2 in range((i0 + (-1 * i1)), (i0 + ((-1 * i1) + 1))) {\n      for i3 in range((i1 + -1), i1) {\n        B[i2][i3] = (A[(i2 + 1)][i3] + A[i2][(i3 + 1)]);\n      }\n    }\n  }\n  if (100 &lt;= i0) {\n    for i1 in range((i0 + -100), (i0 + -99)) {\n      B[i1][99] = (A[(i1 + 1)][99] + A[i1][100]);\n    }\n  }\n}\nB[99][99] = (A[100][99] + A[99][100]);\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: false,
-      &quot;polopt_factor_marker_present&quot;: false,
-      &quot;polopt_offset_marker_present&quot;: false,
-      &quot;polopt_remainder_marker_present&quot;: false,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;0\t-1\t0\t0\t0\t0\t2\n\t0\t0\t-1\t1\t0\t0\t0\n\n# ----------------------------------------------  1.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n1\n# List of original iterators\n$i0\n# Statement body expression\na[$i0] = b[$i0];\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n4\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n2 5 1 0 0 2\n\t1\t1\t0\t0\t0\n\t1\t-1\t0\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n3 8 3 1 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 7 2 1 0 2\n\t0\t-1\t0\t0\t0\t0\t1\n\t0\t0\t-1\t1\t0\t0\t0\n\nREAD\n2 7 2 1 0 2\n\t0\t-1\t0\t0\t0\t0\t2\n\t0\t0\t-1\t1\t0\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n1\n# List of original iterators\n$i0\n# Statement body expression\na[$i0] = b[$i0];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n4\n# Mapping array-identifiers/array-names\n3 N\n4 M\n1 a\n2 b\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/fusion7.loop&quot;,
-      &quot;note&quot;: &quot;native Pluto shows no direct unroll-jam C effect&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: false,
-      &quot;pluto_factor_marker_present&quot;: false,
-      &quot;pluto_generated_c_differs&quot;: false,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 1\n[pluto] Maximum domain dimensionality: 1\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0, 1)\nloop types (loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i0, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0/32, $i0, 1)\nloop types (loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(2,3), S2(2,3), \n[Pluto] Output written to fusion7.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000061s\n[pluto] Auto-transformation time: 0.000400s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000110s\n[pluto] Code generation time: 0.005157s\n[pluto] Other/Misc time: 0.002294s\n[pluto] Total time: 0.007912s\n[pluto] All times: 0.000061 0.000400 0.005157 0.002294\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: false,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 2\n[pluto] Number of deps: 1\n[pluto] Maximum domain dimensionality: 1\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 0)\nloop types (loop, scalar)\n\nT(S2): ($i0, 1)\nloop types (loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, $i0, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0/32, $i0, 1)\nloop types (loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(2,3), S2(2,3), \n[pluto-unroll-jam] No unroll jam loop candidates found\n[Pluto] Output written to fusion7.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000050s\n[pluto] Auto-transformation time: 0.000383s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000104s\n[pluto] Code generation time: 0.005093s\n[pluto] Other/Misc time: 0.002311s\n[pluto] Total time: 0.007837s\n[pluto] All times: 0.000050 0.000383 0.005093 0.002311\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fusion7.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto-compat] accepted\n[pluto-compat] polopt args: --notile --unrolljam\n[pluto-compat] pluto oracle flags: --smartfuse\n[pluto-compat] checked post flags: --ufactor=4\n[pluto-compat] note: --smartfuse passed through to Pluto&#x27;s checked scheduler oracle\n[pluto-compat] note: --nointratileopt selects the stable intra-tile loop order\n[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(N, M);\n\nfor i0 in range(0, min(M, N)) {\n  a[i0] = b[i0];\n  a[i0] = b[i0];\n}\nfor i0 in range(max(0, N), M) {\n  a[i0] = b[i0];\n}\nfor i0 in range(max(M, 0), N) {\n  a[i0] = b[i0];\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: false,
-      &quot;polopt_factor_marker_present&quot;: false,
-      &quot;polopt_offset_marker_present&quot;: false,
-      &quot;polopt_remainder_marker_present&quot;: false,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;================ Statement 2\n# Number of relations describing the statement:\n7\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n4 6 2 0 0 2\n\t1\t1\t0\t0\t0\t-1\n\t1\t-1\t0\t1\t0\t0\n\t1\t0\t1\t0\t0\t0\n\t1\t0\t-1\t0\t1\t-1\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n5 11 5 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n1 7 1 2 0 2\n\t0\t-1\t0\t0\t0\t0\t4\n\nREAD\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t1\n\nREAD\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\nh[$i1] = h[$i1] - coeff2 * e[$i1 + 1] - e[$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n6\n# Mapping array-identifiers/array-names\n5 T\n6 N\n1 e\n2 h\n3 coeff1\n4 coeff2\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/fdtd-1d.loop&quot;,
-      &quot;note&quot;: &quot;native effect covered by checked PolOpt structure&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: true,
-      &quot;pluto_factor_marker_present&quot;: true,
-      &quot;pluto_generated_c_differs&quot;: true,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 14\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i0+$i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0, $i0+$i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, ($i0+$i1)/32, $i0, $i0+$i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): ($i0/32, zT3, $i0, $i0+$i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[Pluto] Output written to fdtd-1d.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000074s\n[pluto] Auto-transformation time: 0.002918s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000393s\n[pluto] Code generation time: 0.016604s\n[pluto] Other/Misc time: 0.043628s\n[pluto] Total time: 0.063224s\n[pluto] All times: 0.000074 0.002918 0.016604 0.043628\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: true,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;[pluto] inscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 14\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, $i0+$i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0, $i0+$i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, ($i0+$i1)/32, $i0, $i0+$i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): ($i0/32, zT3, $i0, $i0+$i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[Pluto] Output written to fdtd-1d.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000076s\n[pluto] Auto-transformation time: 0.003187s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000549s\n[pluto] Code generation time: 0.016691s\n[pluto] Other/Misc time: 0.048499s\n[pluto] Total time: 0.068453s\n[pluto] All times: 0.000076 0.003187 0.016691 0.048499\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__fdtd-1d.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot; (i0 + ((4 * i1) + 2))), ((-1 * i0) + (i0 + ((4 * i1) + 3)))) {\n          h[i2] = (h[i2] - (coeff2 * (e[(i2 + 1)] - e[i2])));\n        }\n        for i2 in range(((-1 * i0) + (i0 + ((4 * i1) + 4))), ((-1 * i0) + (i0 + ((4 * i1) + 5)))) {\n          e[i2] = (e[i2] - (coeff1 * (h[i2] - h[(i2 + -1)])));\n        }\n        for i2 in range(((-1 * i0) + (i0 + ((4 * i1) + 3))), ((-1 * i0) + (i0 + ((4 * i1) + 4)))) {\n          h[i2] = (h[i2] - (coeff2 * (e[(i2 + 1)] - e[i2])));\n        }\n      }\n      for i1 in range((i0 + ((4 * ((N + (i0 + (-1 * (i0 + 1)))) / 4)) + 1)), (N + i0)) {\n        for i2 in range(((-1 * i0) + i1), ((-1 * i0) + (i1 + 1))) {\n          e[i2] = (e[i2] - (coeff1 * (h[i2] - h[(i2 + -1)])));\n        }\n        for i2 in range(((-1 * i0) + (i1 + -1)), ((-1 * i0) + i1)) {\n          h[i2] = (h[i2] - (coeff2 * (e[(i2 + 1)] - e[i2])));\n        }\n      }\n    }\n    for i1 in range((N + i0), (N + (i0 + 1))) {\n      for i2 in range((N + -1), N) {\n        h[i2] = (h[i2] - (coeff2 * (e[(i2 + 1)] - e[i2])));\n      }\n    }\n  }\n}\nif ((N &lt;= 1 &amp;&amp; 1 &lt;= N)) {\n  for i0 in range(1, (T + 1)) {\n    for i1 in range((i0 + 1), (i0 + 2)) {\n      h[0] = (h[0] - (coeff2 * (e[1] - e[0])));\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: true,
-      &quot;polopt_factor_marker_present&quot;: true,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: true,
-      &quot;polopt_tiling_route_absent&quot;: true
-    },
-    {
-      &quot;after_scheduling_scops_equal&quot;: true,
-      &quot;covered&quot;: true,
-      &quot;extract&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/extract.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/extract.stdout.scop&quot;,
-        &quot;stdout_tail&quot;: &quot;umber of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\nb[$i1] = 0.33333 * a[$i1 - 1] + a[$i1] + a[$i1 + 1];\n&lt;/body&gt;\n\n# =============================================== Statement 2\n# Number of relations describing the statement:\n4\n\n# ----------------------------------------------  2.1 Domain\nDOMAIN\n4 6 2 0 0 2\n\t1\t1\t0\t0\t0\t0\n\t1\t-1\t0\t1\t0\t-1\n\t1\t0\t1\t0\t0\t-2\n\t1\t0\t-1\t0\t1\t-2\n\n# ----------------------------------------------  2.2 Scattering\nSCATTERING\n5 11 5 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n\t0\t0\t-1\t0\t0\t0\t1\t0\t0\t0\t0\n\t0\t0\t0\t-1\t0\t0\t0\t0\t0\t0\t1\n\t0\t0\t0\t0\t-1\t0\t0\t1\t0\t0\t0\n\t0\t0\t0\t0\t0\t-1\t0\t0\t0\t0\t0\n\n# ----------------------------------------------  2.3 Access\nWRITE\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t2\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\nREAD\n2 8 2 2 0 2\n\t0\t-1\t0\t0\t0\t0\t0\t1\n\t0\t0\t-1\t0\t1\t0\t0\t0\n\n# ----------------------------------------------  2.4 Statement Extensions\n# Number of Statement Extensions\n1\n&lt;body&gt;\n# Number of original iterators\n2\n# List of original iterators\n$i0 $i1\n# Statement body expression\na[$i1] = b[$i1];\n&lt;/body&gt;\n\n# =============================================== Extensions\n&lt;arrays&gt;\n# Number of arrays\n4\n# Mapping array-identifiers/array-names\n3 T\n4 N\n1 b\n2 a\n&lt;/arrays&gt;\n\n&lt;/OpenScop&gt;\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;fixture&quot;: &quot;tests/polopt-generated/inputs/jacobi-1d-imper.loop&quot;,
-      &quot;note&quot;: &quot;native Pluto shows no direct unroll-jam C effect&quot;,
-      &quot;output_dir&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop&quot;,
-      &quot;pluto_codegen_unrolljam_effect&quot;: false,
-      &quot;pluto_factor_marker_present&quot;: false,
-      &quot;pluto_generated_c_differs&quot;: false,
-      &quot;pluto_nounrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/nounrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/nounrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;nscop dumped.\n[pluto] compute_deps (isl)\n[pluto] Number of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 10\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 2$i0+$i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0, 2$i0+$i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, (2$i0+$i1)/32, $i0, 2$i0+$i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): ($i0/32, zT3, $i0, 2$i0+$i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[Pluto] Output written to jacobi-1d-imper.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000073s\n[pluto] Auto-transformation time: 0.002785s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000454s\n[pluto] Code generation time: 0.025102s\n[pluto] Other/Misc time: 0.034029s\n[pluto] Total time: 0.061989s\n[pluto] All times: 0.000073 0.002785 0.025102 0.034029\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;pluto_remainder_marker_present&quot;: false,
-      &quot;pluto_unrolljam&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/unrolljam/pluto.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/unrolljam/pluto.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot; of statements: 2\n[pluto] Total number of loops: 4\n[pluto] Number of deps: 10\n[pluto] Maximum domain dimensionality: 2\n[pluto] Number of parameters: 2\n[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]\n\nT(S1): ($i0, 2$i0+$i1, 0)\nloop types (loop, loop, scalar)\n\nT(S2): ($i0, 2$i0+$i1+1, 1)\nloop types (loop, loop, scalar)\n\n[pluto] mid-scop dumped.\n[Pluto] After tiling:\nT(S1): ($i0/32, (2$i0+$i1)/32, $i0, 2$i0+$i1, 0)\nloop types (loop, loop, loop, loop, scalar)\n\nT(S2): ($i0/32, zT3, $i0, 2$i0+$i1+1, 1)\nloop types (loop, loop, loop, loop, scalar)\n\n[pluto] post-tile-scop dumped.\n[pluto] opt-scop dumped.\n[pluto] using statement-wise -fs/-ls options: S1(3,5), S2(3,5), \n[pluto-unroll-jam] No unroll jam loop candidates found\n[Pluto] Output written to jacobi-1d-imper.scop.pluto.c\n\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: 0.000068s\n[pluto] Auto-transformation time: 0.002685s\n[pluto] Tile size selection time: 0.000000s\n[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: 0.000471s\n[pluto] Code generation time: 0.026841s\n[pluto] Other/Misc time: 0.035318s\n[pluto] Total time: 0.064912s\n[pluto] All times: 0.000068 0.002685 0.026841 0.035318\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked&quot;: {
-        &quot;exit&quot;: 0,
-        &quot;stderr_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/polopt.stderr.txt&quot;,
-        &quot;stderr_tail&quot;: &quot;&quot;,
-        &quot;stdout_path&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus/tests__polopt-generated__inputs__jacobi-1d-imper.loop/polopt.stdout.txt&quot;,
-        &quot;stdout_tail&quot;: &quot;r\n[pluto-compat] note: --noprevector accepted; no checked vector annotation is requested\n[pluto-compat] note: --unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward\n[pluto-compat] note: --ufactor=4 accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size\n[pluto-compat] note: --ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts\n== Optimized Loop ==\ncontext(T, N);\n\nif (4 &lt;= N) {\n  for i0 in range(0, T) {\n    for i1 in range(((2 * i0) + 2), ((2 * i0) + 3)) {\n      b[2] = (0.33333 * ((a[1] + a[2]) + a[3]));\n    }\n    for i1 in range(((2 * i0) + 3), (N + ((2 * i0) + -1))) {\n      for i2 in range(((-2 * i0) + i1), ((-2 * i0) + (i1 + 1))) {\n        b[i2] = (0.33333 * ((a[(i2 + -1)] + a[i2]) + a[(i2 + 1)]));\n      }\n      for i2 in range(((-2 * i0) + (i1 + -1)), ((-2 * i0) + i1)) {\n        a[i2] = b[i2];\n      }\n    }\n    for i1 in range((N + ((2 * i0) + -1)), (N + (2 * i0))) {\n      for i2 in range((N + -2), (N + -1)) {\n        a[i2] = b[i2];\n      }\n    }\n  }\n}\n\n&quot;,
-        &quot;timed_out&quot;: false
-      },
-      &quot;polopt_checked_effect&quot;: false,
-      &quot;polopt_factor_marker_present&quot;: false,
-      &quot;polopt_offset_marker_present&quot;: true,
-      &quot;polopt_remainder_marker_present&quot;: false,
-      &quot;polopt_tiling_route_absent&quot;: true
-    }
-  ],
-  &quot;mode&quot;: &quot;direct-pluto-unrolljam-effect-corpus&quot;,
-  &quot;summary&quot;: {
-    &quot;cases&quot;: 11,
-    &quot;extract_failures&quot;: 0,
-    &quot;factor&quot;: 4,
-    &quot;native_codegen_effects&quot;: 6,
-    &quot;native_effects_covered&quot;: 6,
-    &quot;native_effects_uncovered&quot;: 0,
-    &quot;native_no_effect&quot;: 5,
-    &quot;output_root&quot;: &quot;/tmp/polcert-artifact-check/unrolljam-effect-corpus&quot;,
-    &quot;pluto_failures&quot;: 0,
-    &quot;polopt_extra_checked_effects_without_native&quot;: 0,
-    &quot;polopt_extra_effect_fixtures&quot;: [],
-    &quot;polopt_tiling_route_fixtures&quot;: [],
-    &quot;polopt_tiling_route_reports&quot;: 0,
-    &quot;uncovered_fixtures&quot;: []
-  }
-}</pre>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/raw/pluto-compat-suite.stdout.txt</code></h1>
+  <pre>[pluto-compat-suite] PASS case=default-no-rar-affine expected=success,effects=2,tiling-route=none oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-tiled expected=success,effects=2,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-tiled-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-parallel expected=success,effects=2,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-vector expected=success,effects=3,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-vector-matmul-no-hint expected=success,effects=3,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-diamond expected=success,effects=2,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-second-level expected=success,effects=4,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-islsolve-default expected=success,effects=2,tiling-route=none oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-diagnostic-noops expected=success,effects=2,tiling-route=none oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-no-rar-codegen-noop expected=success,effects=2,tiling-route=none oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=ordinary-tiled expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=ordinary-tiled-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=ordinary-legacy-alias-band expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=ordinary-band-experiment-alias expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-intratileopt expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-second-level expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-second-level-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-identity-tiled expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-identity-tiled-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-parallel expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-parallel-iss expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-vector expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-diamond expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=intratileopt-diamond-iss expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-intratileopt expected=success,effects=2,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-affine-only expected=success,effects=4,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-intratileopt expected=success,effects=4,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-identity-intratileopt expected=success,effects=3,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-iss-intratileopt expected=success,effects=3,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-parallel-intratileopt expected=success,effects=3,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-dump-vector-intratileopt expected=success,effects=3,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-reject-tile-notile-forward expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-tile-notile-reverse expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-intratile-notile-forward expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-intratile-notile-reverse expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-intratile-identity-without-tile expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-intratile-policy-forward expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-intratile-policy-reverse expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-const-unroll-constant-range expected=success,effects=1,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-const-unroll-inside-parallel-current expected=success,effects=2,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-const-unroll-inside-parallel-hint expected=success,effects=2,tiling-route=none oracle-policy=native coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-const-unroll-preserves-parallel-loop expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=native-reject-const-unroll-vector-current expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=optimizer-determine-tile-size expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-cache-size expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-data-element-size expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-ufactor-tile-model expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=affine-only expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-nofuse-affine expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-maxfuse-affine expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-nodepbound-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-per-cc-obj-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-flic-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-fast-lin-ind-check-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-lastwriter-affine expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-nolastwriter-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-pipsolve-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-isldepaccesswise-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-isldepstmtwise-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-isldepcoalesce-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-coeff-bound-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-coeff-bound-tight-effect expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-forceparallel-pass-through expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=identity-notile expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=reject-sequential-iss-identity expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=sequential-iss-notile expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=partial-tiling-levels expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-iss expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=parallel expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=parallel-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=parallel-multipar expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=parallel-multipar-strict-hint-only expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=parallel-multipar-three-dims expected=success,effects=4,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-parallel expected=success,effects=6,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-parallel-matmul-init expected=success,effects=6,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-parallel-multipar expected=success,effects=7,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-parallel-iss expected=success,effects=6,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=second-level-parallel-multipar-iss expected=success,effects=7,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-iss expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel-innerpar expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel-multipar expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel-multipar-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-iss-parallel expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-vector expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-vector-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-iss-parallel-multipar expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-parallel-jacobi-batch expected=success,effects=6,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-second-level expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=diamond-iss-second-level expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-batch expected=success,effects=2,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-iss expected=success,effects=1,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-parallel expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-parallel-iss expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-vector expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-vector-iss expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-multipar expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-multipar-iss expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-second-level expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=full-diamond-iss-second-level expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-bare-default expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=prevector expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-vector expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=native-vector-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=default-prevector expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=const-unrolljam-constant-loop expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=stride-loop-positive-literal expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=stride-loop-negative-literal expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-stride-zero expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stride-symbolic expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=const-unrolljam-ufactor-constant-loop expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=block-unrolljam-ufactor-variable-loop expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=mixed-const-and-block-unrolljam expected=success,effects=5,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=unrolljam-context-bound-escape-rejected expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=unrolljam-empty-selector-policy expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-default-prevector-parallel expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=parallel-unrolljam-constant-range expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-parallel-unrolljam-symbolic-reannotation expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-unrolljam-prevector expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-prevector-conflict expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-intratile-conflict expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-lastwriter-conflict expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-ft-without-lt expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-pet expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stale-multipipe expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stale-lbtile expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stale-sched expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stale-variables-not-global expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-stale-output expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-unroll-abbrev expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-scalpriv-without-candldep expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-cache-without-determine expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-ufactor-without-determine-or-unrolljam expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-ufactor-zero expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-ufactor-nonnumeric expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-missing-explicit-tile-sizes-file expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-bare-identity expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=identity-second-level expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-second-level-matmul-init expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-second-level-iss expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-implicit-tile-sizes-file expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-explicit-tile-sizes-file expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-explicit-tile-sizes-file-nodep expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-implicit-fst-file expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-explicit-fst-file expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-explicit-fst-file-fusion2 expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-implicit-precut-file expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-implicit-skipdeps-file expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-implicit-codegen-context-file expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-implicit-linearized-file expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-implicit-nonlinearized-file expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=optimizer-explicit-precut-file expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-explicit-precut-file-fusion2 expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-mixed-depth expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-mixed-depth-iss expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-parallel expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-parallel-strict-hint-only expected=success,effects=4,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-vector-strict-hint-only expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-vector-strict-valid-hint expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-multipar expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-multipar-strict-hint-only expected=success,effects=5,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=identity-tiled-iss expected=success,effects=3,tiling-route=permutable-band oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-tile-notile expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-diamond-nodiamond expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=optimizer-glpk-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-ilp-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-lp-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-lpcolor-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-dfp-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-clusterscc-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-hybridfuse-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-delayedcut-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-typedfuse-affine expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-dfp-corcol-effect expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-typedfuse-adi-effect expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-hybridfuse-adi-effect expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-delayedcut-corcol-effect expected=success,effects=3,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-candldep-affine expected=success,effects=0,tiling-route=none oracle-policy=explicit-rar coverage=acceptance-only actual=route-accepted,effect-contracts=none interpretation=route-accepted-no-specific-effect-asserted
+[pluto-compat-suite] PASS case=optimizer-candldep-scalpriv-affine expected=success,effects=1,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=optimizer-candldep-scalpriv-parallel-conservative expected=success,effects=2,tiling-route=none oracle-policy=explicit-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
+[pluto-compat-suite] PASS case=reject-candldep-lastwriter expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS case=reject-isldep-candldep expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
+[pluto-compat-suite] PASS expected=189 actual=189 explicit-rar=126 default-no-rar=11 native=10 not-applicable=42 interpretation=all-driver-route-and-effect-contracts-matched
+</pre>
 </main>
 </body>
 </html>

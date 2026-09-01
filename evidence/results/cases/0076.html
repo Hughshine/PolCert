@@ -8,23 +8,45 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
   <h1><code>multicut-complete</code></h1>
   <p class="lede">ISS multi-cut validation. Index-Set Splitting (ISS).</p>
 
-  
-  <section class="result-summary">
-    <h2>Result</h2>
+  <div class="loop-comparison">
+    <section>
+      <h2>Original Statement Domain</h2>
+      <pre>Source statement S0(i, j, k, t)
+  0 &lt;= i &lt;= 15
+  0 &lt;= j &lt;= 15
+  0 &lt;= k &lt;= 15
+  1 &lt;= t &lt;= 15
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Four-Way Split</h2>
+      <pre>Accepted split of S0 by cuts i &lt;= 7 and j &lt;= 7
+  S0_0: original domain, i &lt;= 7, j &lt;= 7
+  S0_1: original domain, i &gt;= 8, j &lt;= 7
+  S0_2: original domain, i &lt;= 7, j &gt;= 8
+  S0_3: original domain, i &gt;= 8, j &gt;= 8
+
+The four sign combinations cover the source domain exactly once.
+</pre>
+    </section>
+  </div>
+  <p class="comparison-note">Readable rendering of the exact multicut_valid.bridge fixture. The linked bridge file is the object accepted by the extracted validator.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
     <dl>
       <dt>Expected</dt><dd>accept,exit:0</dd>
-      
       <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
       <dt>Actual</dt><dd>accept,exit:0</dd>
       <dt>Status</dt><dd>PASS</dd>
     </dl>
   </section>
   <div class="case-links">
-    <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1599.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/1015.html" target="_blank" rel="noopener">before.domain</a> &middot; <a href="../../../docs/files/1014.html" target="_blank" rel="noopener">after.domain</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1660.html" target="_blank" rel="noopener">exact validator input</a> &middot; <a href="../../../docs/files/1610.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
 </main>
 </body>

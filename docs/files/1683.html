@@ -3,20 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion7.loop</title>
+  <title>dsyr2k.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/fusion7.loop</code></h1>
-  <pre>context(N, M);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/dsyr2k.loop</code></h1>
+  <pre>context(NMAX);
 
-for i in range(0, N) {
-  a[i] = b[i];
-}
-for i in range(0, M) {
-  a[i] = b[i];
+for i in range(0, NMAX) {
+  for j in range(0, NMAX) {
+    for k in range(j, NMAX) {
+      c[j][k] = (c[j][k] + ((a[i][j] * b[i][k]) + (b[i][j] * a[i][k])));
+    }
+  }
 }
 </pre>
 </main>

@@ -3,91 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_release_provenance.py</title>
+  <title>tce.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_release_provenance.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/tce.loop</code></h1>
+  <pre>context(N);
 
-from run_artifact_check import check_build_provenance
-
-
-COMMIT = &quot;a&quot; * 40
-SOURCE_SHA256 = &quot;b&quot; * 64
-IMAGE_SHA256 = &quot;c&quot; * 64
-PLUTO_COMMIT = &quot;d&quot; * 40
-PLUTO_BUGGY_COMMIT = &quot;e&quot; * 40
-
-
-def valid_environment() -&gt; dict[str, str]:
-    return {
-        &quot;POLCERT_REQUIRE_PROVENANCE&quot;: &quot;1&quot;,
-        &quot;POLCERT_GIT_COMMIT&quot;: COMMIT,
-        &quot;POLCERT_RELEASE_TAG&quot;: &quot;state-eq-v6&quot;,
-        &quot;POLCERT_SOURCE_ARCHIVE_SHA256&quot;: SOURCE_SHA256,
-        &quot;PLUTO_GIT_COMMIT&quot;: PLUTO_COMMIT,
-        &quot;PLUTO_BUGGY_GIT_COMMIT&quot;: PLUTO_BUGGY_COMMIT,
-        &quot;POLCERT_IMAGE_DIGEST&quot;: f&quot;sha256:{IMAGE_SHA256}&quot;,
+for a in range(0, N) {
+  for q in range(0, N) {
+    for r in range(0, N) {
+      for s in range(0, N) {
+        for p in range(0, N) {
+          T1[a][q][r][s] = (T1[a][q][r][s] + (A[p][q][r][s] * C4[p][a]));
+        }
+      }
     }
-
-
-def valid_manifest() -&gt; dict[str, object]:
-    return {
-        &quot;polcert_git_commit&quot;: COMMIT,
-        &quot;polcert_release_tag&quot;: &quot;state-eq-v6&quot;,
-        &quot;polcert_source_archive_sha256&quot;: SOURCE_SHA256,
-        &quot;pluto_git_commit&quot;: PLUTO_COMMIT,
-        &quot;pluto_buggy_git_commit&quot;: PLUTO_BUGGY_COMMIT,
+  }
+}
+for a in range(0, N) {
+  for b in range(0, N) {
+    for r in range(0, N) {
+      for s in range(0, N) {
+        for q in range(0, N) {
+          T2[a][b][r][s] = (T2[a][b][r][s] + (T1[a][q][r][s] * C3[q][b]));
+        }
+      }
     }
-
-
-def main() -&gt; int:
-    environment = valid_environment()
-    manifest = valid_manifest()
-    assert check_build_provenance(environment, manifest) == []
-
-    environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = (
-        f&quot;registry.example/polcert@sha256:{IMAGE_SHA256}&quot;
-    )
-    assert check_build_provenance(environment, manifest) == []
-
-    for invalid_digest in (&quot;&quot;, &quot;unknown&quot;, &quot;garbage&quot;, &quot;sha256:1234&quot;):
-        environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = invalid_digest
-        assert &quot;invalid release environment field: POLCERT_IMAGE_DIGEST&quot; in (
-            check_build_provenance(environment, manifest)
-        )
-
-    environment = valid_environment()
-    environment[&quot;PLUTO_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert &quot;provenance mismatch: pluto_git_commit != PLUTO_GIT_COMMIT&quot; in (
-        check_build_provenance(environment, manifest)
-    )
-
-    environment = valid_environment()
-    environment[&quot;PLUTO_BUGGY_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert (
-        &quot;provenance mismatch: pluto_buggy_git_commit != PLUTO_BUGGY_GIT_COMMIT&quot;
-        in check_build_provenance(environment, manifest)
-    )
-
-    environment = valid_environment()
-    manifest[&quot;polcert_release_tag&quot;] = &quot;unknown&quot;
-    assert &quot;invalid provenance field: polcert_release_tag&quot; in (
-        check_build_provenance(environment, manifest)
-    )
-
-    environment[&quot;POLCERT_REQUIRE_PROVENANCE&quot;] = &quot;0&quot;
-    assert check_build_provenance(environment, None) == []
-    print(&quot;[release-provenance-unit] PASS&quot;)
-    return 0
-
-
-if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+  }
+}
+for a in range(0, N) {
+  for b in range(0, N) {
+    for c in range(0, N) {
+      for s in range(0, N) {
+        for r in range(0, N) {
+          T3[a][b][c][s] = (T3[a][b][c][s] + (T2[a][b][r][s] * C2[r][c]));
+        }
+      }
+    }
+  }
+}
+for a in range(0, N) {
+  for b in range(0, N) {
+    for c in range(0, N) {
+      for d in range(0, N) {
+        for s in range(0, N) {
+          B[a][b][c][d] = (B[a][b][c][d] + (T3[a][b][c][s] * C1[s][d]));
+        }
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

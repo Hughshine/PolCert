@@ -3,29 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/57dd91becacd20/after.loop</code></h1>
-  <pre>context(NMAX);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/56ff6aecada3ae/before.loop</code></h1>
+  <pre>context(N, M);
 
-if (2 &lt;= NMAX) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 31) / 32)) {
-      for i2 in range(0, min(((NMAX + 30) / 32), (((32 * i0) + 62) / 32))) {
-        for i3 in range(max(max((32 * i0), ((32 * i2) + 1)), 1), min(((32 * i0) + 32), NMAX)) {
-          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), NMAX)) {
-            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), i3)) {
-              b[i4][i5] = (b[i4][i5] + (a[i3][i5] * b[i4][i3]));
-            }
-          }
-        }
-      }
-    }
-  }
+for i in range(0, N) {
+  a[i] = b[i];
+}
+for i in range(0, M) {
+  a[i] = b[i];
 }
 </pre>
 </main>

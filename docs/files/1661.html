@@ -3,17 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>1dloop-invar.loop</title>
+  <title>fdtd-1d.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/1dloop-invar.loop</code></h1>
-  <pre>context(M, N, i);
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-generated/inputs/fdtd-1d.loop</code></h1>
+  <pre>context(T, N);
 
-for t in range(M, (N + 1)) {
-  a[i] = b[i];
+for t in range(1, (T + 1)) {
+  for i in range(1, ((N - 1) + 1)) {
+    e[i] = (e[i] - (coeff1 * (h[i] - h[(i - 1)])));
+  }
+  for i in range(0, ((N - 1) + 1)) {
+    h[i] = (h[i] - (coeff2 * (e[(i + 1)] - e[i])));
+  }
 }
 </pre>
 </main>

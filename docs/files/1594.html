@@ -3,14 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>end-to-end-c-stride-even.stdout.txt</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/raw/end-to-end-c-stride-even.stdout.txt</code></h1>
-  <pre>[E2E] PASS case=stride_even expected=outputs-match,parallel=false,vector=false,unrolled=false,required-effects=2,forbidden-effects=0 coverage=effect-and-executable-semantics actual=outputs-match:true,parallel:false,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:1 executions=1 interpretation=required-optimization-effects-occurred-and-optimized-execution-agrees-with-baseline
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/ffa86f10fdc6e9/after.loop</code></h1>
+  <pre>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, K) {
+    for i1 in range(0, N) {
+      for i2 in range(0, M) {
+        C[i2][i1] = ((beta * C[i2][i1]) + ((alpha * A[i2][i0]) * B[i0][i1]));
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

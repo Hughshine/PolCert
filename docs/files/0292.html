@@ -3,55 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
-  <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/085982bad38008/before.c</code></h1>
-  <pre>//
-// CHECK: T(S1): (t, t+j, t)
-// CHECK: T(S2): (t, t+j, t+i)
-// CHECK: T(S3): (t, t+j, t+i)
-// CHECK: T(S4): (t, t+j+1, t+i+1)
-//
-// After intra-tile optimize
-// CHECK: T(S1): (t, t, t+j)
-// CHECK: T(S2): (t, t+i, t+j)
-// CHECK: T(S3): (t, t+i, t+j)
-// CHECK: T(S4): (t, t+i+1, t+j+1)
-// CHECK: Output written
-//
-#define tmax 128
-#define nx 2048
-#define ny 2048
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/07eac601deb2c2/after.loop</code></h1>
+  <pre>context(N);
 
-double ex[nx][ny + 1];
-double ey[nx + 1][ny];
-double hz[nx][ny];
-
-int main() {
-  int t, i, j;
-
-#pragma scop
-  for (t = 0; t &lt; tmax; t++) {
-    for (j = 0; j &lt; ny; j++)
-      ey[0][j] = t;
-    for (i = 1; i &lt; nx; i++)
-      for (j = 0; j &lt; ny; j++)
-        ey[i][j] = ey[i][j] - 0.5 * (hz[i][j] - hz[i - 1][j]);
-    for (i = 0; i &lt; nx; i++)
-      for (j = 1; j &lt; ny; j++)
-        ex[i][j] = ex[i][j] - 0.5 * (hz[i][j] - hz[i][j - 1]);
-    for (i = 0; i &lt; nx; i++)
-      for (j = 0; j &lt; ny; j++)
-        hz[i][j] = hz[i][j] -
-                   0.7 * (ex[i][j + 1] - ex[i][j] + ey[i + 1][j] - ey[i][j]);
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+            for i5 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+              C[i4][i5] = 0;
+            }
+          }
+        }
+      }
+      for i2 in range(0, ((N + 255) / 256)) {
+        for i3 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+          for i4 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+            for i5 in range(max((8 * i2), 0), min(((8 * i2) + 8), ((N + 31) / 32))) {
+              for i6 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), N)) {
+                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
-#pragma endscop
-
-  return 0;
 }
 </pre>
 </main>
