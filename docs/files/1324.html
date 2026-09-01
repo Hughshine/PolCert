@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>before.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/cd00fe2d17e58e/before.loop</code></h1>
+  <pre>context(N);
+
+for r in range(0, N) {
+  for q in range(0, N) {
+    for p in range(0, N) {
+      sum[r][q][p] = 0;
+      for s in range(0, N) {
+        sum[r][q][p] = (sum[r][q][p] + (A[r][q][s] * C4[s][p]));
+      }
+    }
+    for p in range(0, N) {
+      A[r][q][p] = sum[r][q][p];
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

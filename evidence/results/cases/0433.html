@@ -12,25 +12,107 @@
   <h1><code>trisolv</code></h1>
   <p class="lede">identity-diamond-sensitive-search. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity-Tiled C Program</h2>
+      <pre>#define S1(zT3,zT4,$i0,$i1,$i2)	B[$i1][$i0] = B[$i1][$i0] - L[$i1][$i2] * B[$i2][$i0];
+#define S2(zT2,zT3,$i0,$i1)	B[$i1][$i0] = B[$i1][$i0] / L[$i1][$i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      if ((N &gt;= 2) &amp;&amp; (t4 == 0)) {
+        for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+          S2(t2,0,t5,0);
+          for (t7=1;t7&lt;=min(31,N-1);t7++) {
+            for (t9=0;t9&lt;=t7-1;t9++) {
+              S1(t2,0,t5,t7,t9);
+            }
+            S2(t2,0,t5,t7);
+          }
+        }
+      }
+      if (t4 &gt;= 1) {
+        for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+          for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+            for (t9=0;t9&lt;=t7-1;t9++) {
+              S1(t2,t4,t5,t7,t9);
+            }
+            S2(t2,t4,t5,t7);
+          }
+        }
+      }
+      if ((N == 1) &amp;&amp; (t2 == 0) &amp;&amp; (t4 == 0)) {
+        S2(0,0,0,0);
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
-        <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Identity Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT3,zT4,$i0,$i1,$i2)	B[$i1][$i0] = B[$i1][$i0] - L[$i1][$i2] * B[$i2][$i0];
+#define S2(zT2,zT3,$i0,$i1)	B[$i1][$i0] = B[$i1][$i0] / L[$i1][$i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      if ((N &gt;= 2) &amp;&amp; (t4 == 0)) {
+        for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+          S2(t2,0,t5,0);
+          for (t7=1;t7&lt;=min(31,N-1);t7++) {
+            for (t9=0;t9&lt;=t7-1;t9++) {
+              S1(t2,0,t5,t7,t9);
+            }
+            S2(t2,0,t5,t7);
+          }
+        }
+      }
+      if (t4 &gt;= 1) {
+        for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+          for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+            for (t9=0;t9&lt;=t7-1;t9++) {
+              S1(t2,t4,t5,t7,t9);
+            }
+            S2(t2,t4,t5,t7);
+          }
+        }
+      }
+      if ((N == 1) &amp;&amp; (t2 == 0) &amp;&amp; (t4 == 0)) {
+        S2(0,0,0,0);
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two generated programs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
+      <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0403.html">trisolv.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0696.html">before.c</a> &middot; <a href="../../../docs/files/0695.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1729.html">trisolv.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

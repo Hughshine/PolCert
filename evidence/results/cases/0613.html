@@ -12,26 +12,53 @@
   <h1><code>diamond-stencil</code></h1>
   <p class="lede">typed C instruction pipelines. Typed Instruction Programs.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Typed Input and Requested Path</h2>
-      <dl>
-        <dt>Expected</dt><dd>typed-stencil,verified-diamond-plus-post-affine,coupled-wavefront</dd>
-        
-      </dl>
+      <h2>Typed Input Program</h2>
+      <pre>context(T, N);
+
+for i0 in range(5, (T + -1)) {
+  for i1 in range(5, (N + -5)) {
+    A[(i0 + 1)][i1] = (A[i0][(i1 - 1)] + A[(i0 - 2)][(i1 + 1)]);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Accepted Structural Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Diamond tiling and post-tiling affine rescheduling</dd>
-        <dt>Actual</dt><dd>before={loops:2,divs:0,mods:0,guards:0,instrs:1,coupled:0},no-diamond={loops:6,divs:8,mods:0,guards:1,instrs:1,coupled:32},diamond={loops:6,divs:9,mods:0,guards:1,instrs:1,coupled:31}</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Verified Program</h2>
+      <pre>context(T, N);
+
+if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
+  for i0 in range(0, ((T + (N + 24)) / 32)) {
+    for i1 in range(max(max((((-2 * N) + ((32 * i0) + 12)) / 32), (((-32 * i0) + -21) / 32)), (((-2 * N) + 23) / 64)), min(min((((2 * T) + ((-32 * i0) + 28)) / 32), (((32 * i0) + 53) / 32)), (((2 * T) + 50) / 64))) {
+      for i2 in range(max(max(max(((-32 * i1) + -21), ((32 * i1) + 10)), 10), (32 * i0)), min(min(min(((2 * N) + ((32 * i1) + 20)), ((2 * T) + ((-32 * i1) + -3))), (T + (N + -7))), ((32 * i0) + 32))) {
+        for i3 in range(max(max((i2 + 5), ((-1 * T) + ((2 * i2) + 2))), (((-32 * i1) + ((3 * i2) + -30)) / 2)), min(min((N + (i2 + -5)), ((2 * i2) + -4)), (((-32 * i1) + ((3 * i2) + 2)) / 2))) {
+          for i4 in range(((2 * i2) + (-1 * i3)), ((2 * i2) + ((-1 * i3) + 1))) {
+            for i5 in range((i2 + (-1 * i4)), (i2 + ((-1 * i4) + 1))) {
+              A[(i4 + 1)][i5] = (A[i4][(i5 - 1)] + A[(i4 - 2)][(i5 + 1)]);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>typed-stencil,verified-diamond-plus-post-affine,coupled-wavefront</dd>
+      <dt>Observed effect</dt><dd>Diamond tiling and post-tiling affine rescheduling</dd>
+      <dt>Actual</dt><dd>before={loops:2,divs:0,mods:0,guards:0,instrs:1,coupled:0},no-diamond={loops:6,divs:8,mods:0,guards:1,instrs:1,coupled:32},diamond={loops:6,divs:9,mods:0,guards:1,instrs:1,coupled:31}</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Program material:</strong> <a href="../../../docs/index.html#typed-loop-examples">input/accepted shapes</a></p>
-<p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1540.html">before.loop</a> &middot; <a href="../../../docs/files/1539.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

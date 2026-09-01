@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>after.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/ff48877fa60858/after.loop</code></h1>
+  <pre>context(N, M);
+
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          A[i2][i3] = (B[i2][i3] + 1);
+        }
+      }
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

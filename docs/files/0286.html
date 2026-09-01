@@ -3,14 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tiling-route-summary-unit.stdout.txt</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>evidence/results/raw/tiling-route-summary-unit.stdout.txt</code></h1>
-  <pre>[tiling-route-summary-unit] PASS expected=matching-counts-accepted,mismatched-counts-rejected actual=matching-counts-accepted,mismatched-counts-rejected interpretation=artifact-summary-parses-readable-route-logs-fail-closed
+  <h1><code>evidence/results/program-comparisons/0749dc8c0f119b/before.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  for j in range(0, N) {
+    C[i][j] = 0;
+    for k in range(0, N) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+    }
+  }
+}
 </pre>
 </main>
 </body>

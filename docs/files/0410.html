@@ -3,51 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_unrolljam_route_guard.py</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_unrolljam_route_guard.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <h1><code>evidence/results/program-comparisons/1d66f7d9a60eda/before.c</code></h1>
+  <pre>#define S1(zT2,zT3,$i0,$i1)	x1[$i0] = x1[$i0] + a[$i0][$i1] * y_1[$i1];
+#define S2(zT2,zT3,$i0,$i1)	x2[$i0] = x2[$i0] + a[$i1][$i0] * y_2[$i1];
 
-import sys
-import tempfile
-import unittest
-from pathlib import Path
+		int t1, t2, t3, t4, t5, t6, t7, t8;
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+	register int lbv, ubv;
 
-from tools.artifact.explore_unrolljam_effect_corpus import (
-    tiling_validation_route_absent,
-)
-
-
-class TilingRouteGuardTest(unittest.TestCase):
-    def test_checks_complete_stderr_not_only_tail(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(
-                &quot;[tiling-validation] route=rejected\n&quot; + (&quot;x&quot; * 2400),
-                encoding=&quot;utf-8&quot;,
-            )
-            self.assertFalse(tiling_validation_route_absent(str(stderr_path)))
-
-    def test_accepts_stderr_without_tiling_route(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(&quot;x&quot; * 2400, encoding=&quot;utf-8&quot;)
-            self.assertTrue(tiling_validation_route_absent(str(stderr_path)))
-
-    def test_missing_stderr_fails_closed(self) -&gt; None:
-        self.assertFalse(tiling_validation_route_absent(&quot;/missing/polopt.stderr.txt&quot;))
-
-
-if __name__ == &quot;__main__&quot;:
-    unittest.main()
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S1(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S2(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
 </pre>
 </main>
 </body>

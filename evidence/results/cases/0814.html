@@ -12,25 +12,57 @@
   <h1><code>fusion7 [identity second-level]</code></h1>
   <p class="lede">identity composition. Composition Routes.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>two-level tiling remains effective with identity affine scheduling</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(N, M);
+
+for i in range(0, N) {
+  a[i] = b[i];
+}
+for i in range(0, M) {
+  a[i] = b[i];
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Two-level tiling</dd>
-        <dt>Actual</dt><dd>accepted; first- and second-level tile markers observed</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(N, M);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {
+      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+        a[i2] = b[i2];
+      }
+    }
+  }
+}
+if (1 &lt;= M) {
+  for i0 in range(0, ((M + 255) / 256)) {
+    for i1 in range(max(0, (8 * i0)), min(((M + 31) / 32), ((8 * i0) + 8))) {
+      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), M)) {
+        a[i2] = b[i2];
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>two-level tiling remains effective with identity affine scheduling</dd>
+      <dt>Observed effect</dt><dd>Two-level tiling</dd>
+      <dt>Actual</dt><dd>accepted; first- and second-level tile markers observed</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1478.html">before.loop</a> &middot; <a href="../../../docs/files/1477.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

@@ -12,26 +12,42 @@
   <h1><code>iss-reverse-index</code></h1>
   <p class="lede">typed C instruction pipelines. Typed Instruction Programs.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Typed Input and Requested Path</h2>
-      <dl>
-        <dt>Expected</dt><dd>typed-reverse-access,ISS-statements:1-to-2,verified-codegen</dd>
-        
-      </dl>
+      <h2>Typed Input Program</h2>
+      <pre>context(RI_N);
+
+for i0 in range(0, RI_N) {
+  RI_A[i0] = (2 * RI_A[((RI_N - 1) - i0)]);
+}
+</pre>
     </section>
     <section>
-      <h2>Accepted Structural Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
-        <dt>Actual</dt><dd>source-statements:1,split-statements:2,before={loops:1,divs:0,mods:0,guards:0,instrs:1,coupled:0},after={loops:2,divs:2,mods:0,guards:0,instrs:2,coupled:0}</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Verified Program</h2>
+      <pre>context(RI_N);
+
+for i0 in range(0, ((RI_N + 1) / 2)) {
+  RI_A[i0] = (2 * RI_A[((RI_N - 1) - i0)]);
+}
+for i0 in range(((RI_N + 1) / 2), RI_N) {
+  RI_A[i0] = (2 * RI_A[((RI_N - 1) - i0)]);
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>typed-reverse-access,ISS-statements:1-to-2,verified-codegen</dd>
+      <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
+      <dt>Actual</dt><dd>source-statements:1,split-statements:2,before={loops:1,divs:0,mods:0,guards:0,instrs:1,coupled:0},after={loops:2,divs:2,mods:0,guards:0,instrs:2,coupled:0}</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Program material:</strong> <a href="../../../docs/index.html#typed-loop-examples">input/accepted shapes</a></p>
-<p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0532.html">before.loop</a> &middot; <a href="../../../docs/files/0531.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

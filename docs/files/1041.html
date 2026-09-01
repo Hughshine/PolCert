@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>after.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/976b4efcf7d99e/after.loop</code></h1>
+  <pre>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, K) {
+    for i1 in range(0, N) {
+      for i2 in range(0, M) {
+        C[i2][i1] = ((beta * C[i2][i1]) + ((alpha * A[i2][i0]) * B[i0][i1]));
+      }
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

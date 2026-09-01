@@ -12,25 +12,81 @@
   <h1><code>adi</code></h1>
   <p class="lede">identity-iss-sensitive-search. Index-Set Splitting (ISS).</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with and without ISS</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity Tiling without ISS</h2>
+      <pre>context(T, N);
+
+if (2 &lt;= N) {
+  for i0 in range(0, T) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+          for i4 in range(max((32 * i2), 1), min(((32 * i2) + 32), N)) {
+            X[i3][i4] = (X[i3][i4] - ((X[i3][(i4 + -1)] * A[i3][i4]) / B[i3][(i4 + -1)]));
+            B[i3][i4] = (B[i3][i4] - ((A[i3][i4] * A[i3][i4]) / B[i3][(i4 + -1)]));
+          }
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i1), 1), min(((32 * i1) + 32), N)) {
+          for i4 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+            X[i3][i4] = (X[i3][i4] - ((X[(i3 + -1)][i4] * A[i3][i4]) / B[(i3 + -1)][i4]));
+            B[i3][i4] = (B[i3][i4] - ((A[i3][i4] * A[i3][i4]) / B[(i3 + -1)][i4]));
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>ISS sensitivity comparison</dd>
-        <dt>Actual</dt><dd>included in the suite-level result</dd>
-        <dt>Status</dt><dd>SUITE RESULT</dd>
-      </dl>
+      <h2>Identity Tiling with ISS</h2>
+      <pre>context(T, N);
+
+if (2 &lt;= N) {
+  for i0 in range(0, T) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+          for i4 in range(max((32 * i2), 1), min(((32 * i2) + 32), N)) {
+            X[i3][i4] = (X[i3][i4] - ((X[i3][(i4 + -1)] * A[i3][i4]) / B[i3][(i4 + -1)]));
+            B[i3][i4] = (B[i3][i4] - ((A[i3][i4] * A[i3][i4]) / B[i3][(i4 + -1)]));
+          }
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((N + 31) / 32)) {
+        for i3 in range(max((32 * i1), 1), min(((32 * i1) + 32), N)) {
+          for i4 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
+            X[i3][i4] = (X[i3][i4] - ((X[(i3 + -1)][i4] * A[i3][i4]) / B[(i3 + -1)][i4]));
+            B[i3][i4] = (B[i3][i4] - ((A[i3][i4] * A[i3][i4]) / B[(i3 + -1)][i4]));
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with and without ISS</dd>
+      <dt>Observed effect</dt><dd>ISS sensitivity comparison</dd>
+      <dt>Actual</dt><dd>included in the suite-level result</dd>
+      <dt>Status</dt><dd>SUITE RESULT</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0336.html">adi.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0340.html">before.loop</a> &middot; <a href="../../../docs/files/0339.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1662.html">adi.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

@@ -1,0 +1,9 @@
+context(N);
+
+for i in range(0, 2) {
+  c[i] = i;
+}
+
+for j in range(0, N) {
+  b[j] = j;
+}

@@ -12,25 +12,123 @@
   <h1><code>multi-stmt-stencil-seq</code></h1>
   <p class="lede">identity-diamond-sensitive-search. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity-Tiled C Program</h2>
+      <pre>#define S1(zT1,$i0)	a1[$i0] = a0[$i0 - 1] + a0[$i0] + a0[$i0 + 1];
+#define S2(zT1,$i0)	a2[$i0] = a1[$i0 - 1] + a1[$i0] + a1[$i0 + 1];
+#define S3(zT1,$i0)	a3[$i0] = a2[$i0 - 1] + a2[$i0] + a2[$i0 + 1];
+#define S4(zT1,$i0)	a4[$i0] = a3[$i0 - 1] + a3[$i0] + a3[$i0 + 1];
+#define S5(zT1,$i0)	a5[$i0] = a4[$i0 - 1] + a4[$i0] + a4[$i0 + 1];
+
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (n &gt;= 3) {
+  for (t2=0;t2&lt;=floord(n-2,32);t2++) {
+    for (t3=max(1,32*t2);t3&lt;=min(n-2,32*t2+31);t3++) {
+      S1(t2,t3);
+    }
+  }
+  if (n &gt;= 5) {
+    for (t2=0;t2&lt;=floord(n-3,32);t2++) {
+      for (t3=max(2,32*t2);t3&lt;=min(n-3,32*t2+31);t3++) {
+        S2(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 7) {
+    for (t2=0;t2&lt;=floord(n-4,32);t2++) {
+      for (t3=max(3,32*t2);t3&lt;=min(n-4,32*t2+31);t3++) {
+        S3(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 9) {
+    for (t2=0;t2&lt;=floord(n-5,32);t2++) {
+      for (t3=max(4,32*t2);t3&lt;=min(n-5,32*t2+31);t3++) {
+        S4(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 11) {
+    for (t2=0;t2&lt;=floord(n-6,32);t2++) {
+      for (t3=max(5,32*t2);t3&lt;=min(n-6,32*t2+31);t3++) {
+        S5(t2,t3);
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
-        <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Identity Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT1,$i0)	a1[$i0] = a0[$i0 - 1] + a0[$i0] + a0[$i0 + 1];
+#define S2(zT1,$i0)	a2[$i0] = a1[$i0 - 1] + a1[$i0] + a1[$i0 + 1];
+#define S3(zT1,$i0)	a3[$i0] = a2[$i0 - 1] + a2[$i0] + a2[$i0 + 1];
+#define S4(zT1,$i0)	a4[$i0] = a3[$i0 - 1] + a3[$i0] + a3[$i0 + 1];
+#define S5(zT1,$i0)	a5[$i0] = a4[$i0 - 1] + a4[$i0] + a4[$i0 + 1];
+
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (n &gt;= 3) {
+  for (t2=0;t2&lt;=floord(n-2,32);t2++) {
+    for (t3=max(1,32*t2);t3&lt;=min(n-2,32*t2+31);t3++) {
+      S1(t2,t3);
+    }
+  }
+  if (n &gt;= 5) {
+    for (t2=0;t2&lt;=floord(n-3,32);t2++) {
+      for (t3=max(2,32*t2);t3&lt;=min(n-3,32*t2+31);t3++) {
+        S2(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 7) {
+    for (t2=0;t2&lt;=floord(n-4,32);t2++) {
+      for (t3=max(3,32*t2);t3&lt;=min(n-4,32*t2+31);t3++) {
+        S3(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 9) {
+    for (t2=0;t2&lt;=floord(n-5,32);t2++) {
+      for (t3=max(4,32*t2);t3&lt;=min(n-5,32*t2+31);t3++) {
+        S4(t2,t3);
+      }
+    }
+  }
+  if (n &gt;= 11) {
+    for (t2=0;t2&lt;=floord(n-6,32);t2++) {
+      for (t3=max(5,32*t2);t3&lt;=min(n-6,32*t2+31);t3++) {
+        S5(t2,t3);
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two generated programs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
+      <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0374.html">multi-stmt-stencil-seq.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1330.html">before.c</a> &middot; <a href="../../../docs/files/1329.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1700.html">multi-stmt-stencil-seq.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

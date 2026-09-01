@@ -1,0 +1,17 @@
+context(N, M);
+
+if ((1 <= N && 1 <= M)) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((M + 255) / 256)) {
+      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((M + 31) / 32))) {
+          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+            for i5 in range(max((32 * i3), 0), min(((32 * i3) + 32), M)) {
+              A[i4][i5] = (B[i4][i5] + 1);
+            }
+          }
+        }
+      }
+    }
+  }
+}

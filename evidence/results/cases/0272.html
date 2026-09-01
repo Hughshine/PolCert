@@ -12,25 +12,63 @@
   <h1><code>second-level-diamond-parallel-iss-band</code></h1>
   <p class="lede">two-level tiling configurations. Two-Level Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>result=success,markers=6,baseline-difference=true</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(B, T, N);
+
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
+    }
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Index-set splitting (ISS); Diamond tiling; Two-level tiling; Parallelization</dd>
-        <dt>Actual</dt><dd>all-declared-assertions-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(B, T, N);
+
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  parallel for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range((i0 / 8), ((i0 + 8) / 8)) {
+      for i2 in range(0, ((T + (N + 24)) / 32)) {
+        for i3 in range((i2 / 8), ((i2 + 8) / 8)) {
+          for i4 in range(max((((-1 * N) + ((32 * i2) + 6)) / 32), 0), min((((32 * i2) + 58) / 32), ((T + 30) / 32))) {
+            for i5 in range((i4 / 8), ((i4 + 8) / 8)) {
+              for i6 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+                for i7 in range(max(max(10, ((32 * i4) + 5)), (32 * i2)), min(min((T + (N + -7)), (N + ((32 * i4) + 26))), ((32 * i2) + 32))) {
+                  for i8 in range(max(max((32 * i4), ((-1 * N) + (i7 + 6))), 5), min(min(((32 * i4) + 32), (i7 + -4)), (T + -1))) {
+                    for i9 in range((i7 + (-1 * i8)), (i7 + ((-1 * i8) + 1))) {
+                      A[i6][(i8 + 1)][i9] = (0.125 * (A[i6][i8][(i9 + -1)] + A[i6][(i8 + -2)][(i9 + 1)]));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>result=success,markers=6,baseline-difference=true</dd>
+      <dt>Observed effect</dt><dd>Index-set splitting (ISS); Diamond tiling; Two-level tiling; Parallelization</dd>
+      <dt>Actual</dt><dd>all-declared-assertions-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0284.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0356.html">before.loop</a> &middot; <a href="../../../docs/files/0355.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1610.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

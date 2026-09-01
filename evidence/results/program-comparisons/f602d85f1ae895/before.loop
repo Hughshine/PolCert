@@ -1,0 +1,10 @@
+for i0 in range(0, 4) {
+  for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), 100)) {
+    A[(2 * i1)] = 1;
+  }
+}
+for i0 in range(0, 4) {
+  for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), 100)) {
+    B[(2 * i1)] = A[((2 * i1) + 2)];
+  }
+}

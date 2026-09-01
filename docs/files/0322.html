@@ -3,66 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test.ml</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/extracted-zero-fallback/test.ml</code></h1>
-  <pre>let fail label detail =
-  Printf.eprintf &quot;[extracted-zero-fallback] FAIL %s: %s\n&quot; label detail;
-  exit 1
+  <h1><code>evidence/results/program-comparisons/0d44ec529bc6ea/before.loop</code></h1>
+  <pre>context(M, N);
 
-let expect_certchecker_failure label thunk =
-  try
-    ignore (thunk ());
-    fail label &quot;returned instead of raising CertCheckerFailure&quot;
-  with
-  | CertcheckerConfig.CertCheckerFailure _ -&gt; ()
-  | exn -&gt; fail label (&quot;raised unexpected exception: &quot; ^ Printexc.to_string exn)
-
-let expect_rejected_route label thunk =
-  TilingValidationRoute.clear ();
-  expect_certchecker_failure label thunk;
-  match TilingValidationRoute.take () with
-  | [&quot;rejected&quot;] -&gt; ()
-  | routes -&gt;
-      fail label
-        (&quot;expected route [rejected], observed [&quot;
-         ^ String.concat &quot;; &quot; routes ^ &quot;]&quot;)
-
-let expect_no_return label thunk =
-  TilingValidationRoute.clear ();
-  expect_certchecker_failure label thunk;
-  ignore (TilingValidationRoute.take ())
-
-let () =
-  expect_rejected_route &quot;SBandTilingOpt.reject_tiling&quot;
-    (fun () -&gt; SBandTilingOpt.reject_tiling ());
-  expect_no_return &quot;SBandTilingOpt.Rejected selector&quot;
-    (fun () -&gt;
-      SBandTilingOpt.prepared_codegen_after_tiling_route
-        SBandTilingOpt.PolyLang.dummy
-        SBandTilingOpt.TilingSched.Rejected);
-  expect_no_return &quot;SBandTilingOpt post-tiling affine rejection&quot;
-    (fun () -&gt;
-      SBandTilingOpt.reject_post_tiling_affine
-        SBandTilingOpt.TilingSched.DirectBandAccepted
-        ());
-  expect_rejected_route &quot;SParallelPolOpt.reject_tiling&quot;
-    (fun () -&gt; SParallelPolOpt.reject_tiling ());
-  expect_no_return &quot;SParallelPolOpt.Rejected selector&quot;
-    (fun () -&gt;
-      SParallelPolOpt.select_after_tiling_route
-        SParallelPolOpt.PolyLang.dummy
-        SParallelPolOpt.TilingSched.Rejected);
-  expect_no_return &quot;SParallelPolOpt post-tiling affine rejection&quot;
-    (fun () -&gt;
-      SParallelPolOpt.reject_post_tiling_affine
-        SParallelPolOpt.TilingSched.DirectBandAccepted);
-  Printf.printf
-    &quot;[extracted-zero-fallback] OK (6 direct extracted API rejection paths)\n&quot;
+for j1 in range(1, ((M - 1) + 1)) {
+  symmat[j1][j1] = 1.0;
+  for j2 in range((j1 + 1), (M + 1)) {
+    symmat[j1][j2] = 0.0;
+    for i in range(1, (N + 1)) {
+      symmat[j1][j2] = (symmat[j1][j2] + (data[i][j1] * data[i][j2]));
+    }
+    symmat[j2][j1] = symmat[j1][j2];
+  }
+}
 </pre>
 </main>
 </body>

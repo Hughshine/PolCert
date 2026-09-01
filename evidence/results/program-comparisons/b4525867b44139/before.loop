@@ -1,0 +1,31 @@
+context(NMAX);
+
+if (3 <= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(0, ((NMAX + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {
+        for i3 in range((32 * i1), 2) {
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+        }
+        for i3 in range(max(2, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {
+          for i4 in range(0, (i3 + -1)) {
+            c[i2][i4] = (c[i2][i4] + (a[i3][i4] * b[i2][i3]));
+            c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+          }
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+        }
+      }
+    }
+  }
+}
+if (NMAX <= 2) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(0, ((NMAX + 31) / 32)) {
+      for i2 in range((32 * i0), NMAX) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), NMAX)) {
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+        }
+      }
+    }
+  }
+}

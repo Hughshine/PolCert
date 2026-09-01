@@ -12,26 +12,49 @@
   <h1><code>vector-pointwise</code></h1>
   <p class="lede">typed C instruction pipelines. Typed Instruction Programs.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Typed Input and Requested Path</h2>
-      <dl>
-        <dt>Expected</dt><dd>typed-pointwise,verified-restricted-inner-concurrency</dd>
-        
-      </dl>
+      <h2>Typed Input Program</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    A[i0][i1] = (B[i0][i1] + 1);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Accepted Structural Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling and parallelization restricted to the innermost loop</dd>
-        <dt>Actual</dt><dd>stats={loops:4,divs:2,mods:0,guards:1,instrs:1,coupled:0},seq:3,par:0,vec:1,vec-requested:1,noninnermost:0</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Verified Program</h2>
+      <pre>context(N, M);
+
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        innermost parallel for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          A[i2][i3] = (B[i2][i3] + 1);
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>typed-pointwise,verified-restricted-inner-concurrency</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling and parallelization restricted to the innermost loop</dd>
+      <dt>Actual</dt><dd>stats={loops:4,divs:2,mods:0,guards:1,instrs:1,coupled:0},seq:3,par:0,vec:1,vec-requested:1,noninnermost:0</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Program material:</strong> <a href="../../../docs/index.html#typed-loop-examples">input/accepted shapes</a></p>
-<p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0504.html">before.loop</a> &middot; <a href="../../../docs/files/0503.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

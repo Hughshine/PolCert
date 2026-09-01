@@ -12,25 +12,36 @@
   <h1><code>native-const-unroll-constant-range</code></h1>
   <p class="lede">driver option configurations. Driver Options.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>success,effects=1,tiling-route=none</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>for i in range(0, 4) {
+  a[i] = i;
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Constant-bound loop unrolling</dd>
-        <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>a[0] = 0;
+a[1] = 1;
+a[2] = 2;
+a[3] = 3;
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>success,effects=1,tiling-route=none</dd>
+      <dt>Observed effect</dt><dd>Constant-bound loop unrolling</dd>
+      <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0277.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0434.html">before.loop</a> &middot; <a href="../../../docs/files/0433.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1603.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

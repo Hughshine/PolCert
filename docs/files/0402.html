@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>triple-nodep.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/triple-nodep.loop</code></h1>
-  <pre>for i in range(0, 4) {
-  for j in range(0, 4) {
-    for k in range(0, 4) {
-      A[((16 * i) + ((4 * j) + k))] = (A[((16 * i) + ((4 * j) + k))] + 1);
+  <h1><code>evidence/results/program-comparisons/1af52b412f8994/before.loop</code></h1>
+  <pre>context(B, T, N);
+
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
     }
   }
 }

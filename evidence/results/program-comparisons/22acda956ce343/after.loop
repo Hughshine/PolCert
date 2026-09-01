@@ -1,0 +1,7 @@
+parallel for i0 in range(0, 4) {
+  parallel for i1 in range(0, 4) {
+    parallel for i2 in range(0, 4) {
+      A[((16 * i0) + ((4 * i1) + i2))] = (A[((16 * i0) + ((4 * i1) + i2))] + 1);
+    }
+  }
+}

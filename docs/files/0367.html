@@ -3,25 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>lu.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/lu.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/14c61dd41777c9/after.c</code></h1>
+  <pre>#define S1($i0,$i1)	s = s + a[$i0][$i1];
 
-for k in range(0, N) {
-  for j in range((k + 1), N) {
-    a[k][j] = (a[k][j] / a[k][k]);
-  }
-  for i in range((k + 1), N) {
-    for j in range((k + 1), N) {
-      a[i][j] = (a[i][j] - (a[i][k] * a[k][j]));
+		int t1, t2, t3, t4, t5;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
+  for (t2=0;t2&lt;=N-1;t2++) {
+    for (t4=0;t4&lt;=M-1;t4++) {
+      S1(t2,t4);
     }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

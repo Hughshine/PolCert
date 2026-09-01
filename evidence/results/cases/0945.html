@@ -12,25 +12,94 @@
   <h1><code>tiling-innerpar-satvec</code></h1>
   <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.</dd>
-        <dt>Coverage</dt><dd>rejection-contract</dd>
-      </dl>
+      <h2>Original C Program</h2>
+      <pre>#include &lt;stdio.h&gt;
+
+#define N 16
+
+static int a[N][N];
+
+int main(void) {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    a[i][0] = 1;
+    a[0][i] = 1;
+  }
+
+#pragma scop
+  for (i = 1; i &lt; N; i++)
+    for (j = 1; j &lt; N; j++)
+      a[i][j] = a[i - 1][j] + a[i][j - 1] + 1;
+#pragma endscop
+
+  printf(&quot;%d\n&quot;, a[N - 1][N - 1]);
+  return 0;
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Tiling was legal, but the parallel annotation was unsafe</dd>
-        <dt>Actual</dt><dd>The legal rectangular tiling is accepted; the unsafe parallel loop is removed or rejected in strict mode.</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Rejected Pluto-Generated C Program</h2>
+      <pre>#include &lt;omp.h&gt;
+#include &lt;math.h&gt;
+#define ceild(n,d)  (((n)&lt;0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))
+#define floord(n,d) (((n)&lt;0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))
+#define max(x,y)    ((x) &gt; (y)? (x) : (y))
+#define min(x,y)    ((x) &lt; (y)? (x) : (y))
+
+#include &lt;stdio.h&gt;
+
+#define N 16
+
+static int a[N][N];
+
+int main(void) {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    a[i][0] = 1;
+    a[0][i] = 1;
+  }
+
+  int t1, t2, t3, t4, t5, t6, t7, t8;
+ int lb, ub, lbp, ubp, lb2, ub2;
+ register int lbv, ubv;
+if (N &gt;= 2) {
+  for (t2=0;t2&lt;=floord(N-1,2);t2++) {
+    lbp=0;
+    ubp=floord(N-1,2);
+#pragma omp parallel for private(lbv,ubv,t5,t6,t7,t8)
+    for (t4=lbp;t4&lt;=ubp;t4++) {
+      for (t5=max(1,2*t2);t5&lt;=min(N-1,2*t2+1);t5++) {
+        for (t7=max(1,2*t4);t7&lt;=min(N-1,2*t4+1);t7++) {
+          a[t5][t7] = a[t5 - 1][t7] + a[t5][t7 - 1] + 1;;
+        }
+      }
+    }
+  }
+}
+
+  printf(&quot;%d\n&quot;, a[N - 1][N - 1]);
+  return 0;
+}
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This is the exact generated program from the pinned historical Pluto revision used by the rejection test.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.</dd>
+      <dt>Observed effect</dt><dd>Tiling was legal, but the parallel annotation was unsafe</dd>
+      <dt>Actual</dt><dd>The legal rectangular tiling is accepted; the unsafe parallel loop is removed or rejected in strict mode.</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0556.html">before.c</a> &middot; <a href="../../../docs/files/0555.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

@@ -12,25 +12,49 @@
   <h1><code>optimizer-implicit-precut-file</code></h1>
   <p class="lede">driver option configurations. Driver Options.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>success,effects=3,tiling-route=none</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(N);
+
+for i in range(1, (N - 2)) {
+  A[i] = (0.33 * ((In[(i - 1)] + In[i]) + In[(i + 1)]));
+}
+for i in range(2, (N - 3)) {
+  Out[i] = (0.33 * ((A[(i - 1)] + A[i]) + A[(i + 1)]));
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Affine rescheduling</dd>
-        <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(N);
+
+if (4 &lt;= N) {
+  for i0 in range(1, (N + -2)) {
+    A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+  }
+}
+if (6 &lt;= N) {
+  for i0 in range(2, (N + -3)) {
+    Out[i0] = (0.33 * ((A[(i0 + -1)] + A[i0]) + A[(i0 + 1)]));
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>success,effects=3,tiling-route=none</dd>
+      <dt>Observed effect</dt><dd>Affine rescheduling</dd>
+      <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0277.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0724.html">before.loop</a> &middot; <a href="../../../docs/files/0723.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1603.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

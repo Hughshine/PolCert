@@ -3,21 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>jacobi-1d-imper.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/jacobi-1d-imper.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>evidence/results/program-comparisons/0e8fc386ff6061/after.loop</code></h1>
+  <pre>context(N, M);
 
-for t in range(0, T) {
-  for i in range(2, (N - 1)) {
-    b[i] = (0.33333 * ((a[(i - 1)] + a[i]) + a[(i + 1)]));
-  }
-  for j in range(2, (N - 1)) {
-    a[j] = b[j];
+if (1 &lt;= M) {
+  for i0 in range(0, N) {
+    for i1 in range(0, M) {
+      s = (s + a[i0][i1]);
+    }
   }
 }
 </pre>

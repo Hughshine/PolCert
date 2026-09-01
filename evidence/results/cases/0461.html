@@ -12,25 +12,61 @@
   <h1><code>jacobi-1d-imper</code></h1>
   <p class="lede">unroll-and-jam exploration. Unroll and Jam.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(T, N);
+
+for t in range(0, T) {
+  for i in range(2, (N - 1)) {
+    b[i] = (0.33333 * ((a[(i - 1)] + a[i]) + a[(i + 1)]));
+  }
+  for j in range(2, (N - 1)) {
+    a[j] = b[j];
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
-        <dt>Actual</dt><dd>checked-effect=false</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(T, N);
+
+if (4 &lt;= N) {
+  for i0 in range(0, T) {
+    for i1 in range(((2 * i0) + 2), ((2 * i0) + 3)) {
+      b[2] = (0.33333 * ((a[1] + a[2]) + a[3]));
+    }
+    for i1 in range(((2 * i0) + 3), (N + ((2 * i0) + -1))) {
+      for i2 in range(((-2 * i0) + i1), ((-2 * i0) + (i1 + 1))) {
+        b[i2] = (0.33333 * ((a[(i2 + -1)] + a[i2]) + a[(i2 + 1)]));
+      }
+      for i2 in range(((-2 * i0) + (i1 + -1)), ((-2 * i0) + i1)) {
+        a[i2] = b[i2];
+      }
+    }
+    for i1 in range((N + ((2 * i0) + -1)), (N + (2 * i0))) {
+      for i2 in range((N + -2), (N + -1)) {
+        a[i2] = b[i2];
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
+      <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
+      <dt>Actual</dt><dd>checked-effect=false</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0288.html">summary.json</a> &middot; <a href="../../../docs/files/0327.html">jacobi-1d-imper.loop</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1534.html">before.loop</a> &middot; <a href="../../../docs/files/1533.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1614.html">summary.json</a> &middot; <a href="../../../docs/files/1653.html">jacobi-1d-imper.loop</a></p></details>
   </div>
 </main>
 </body>

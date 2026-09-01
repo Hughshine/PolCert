@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>after.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/ab19489af7f902/after.loop</code></h1>
+  <pre>for i0 in range(0, 100) {
+  A[0][i0] = 1;
+}
+for i0 in range(1, 100) {
+  A[i0][0] = 1;
+  for i1 in range(1, 100) {
+    for i2 in range((i0 + -1), i0) {
+      for i3 in range((i1 + -1), i1) {
+        B[i2][i3] = (A[(i2 + 1)][i3] + A[i2][(i3 + 1)]);
+      }
+    }
+    A[i0][i1] = 1;
+  }
+  for i1 in range((i0 + -1), i0) {
+    B[i1][99] = (A[(i1 + 1)][99] + A[i1][100]);
+  }
+}
+for i0 in range(1, 101) {
+  for i1 in range((i0 + -1), i0) {
+    B[99][i1] = (A[100][i1] + A[99][(i1 + 1)]);
+  }
+}
+</pre>
+</main>
+</body>
+</html>

@@ -67,12 +67,16 @@
       "total": 7
     },
     "test_catalog": {
+      "before_after_programs": 691,
       "categories": 5,
+      "distinct_suite_cases": 998,
       "families": 17,
+      "input_rejected_candidates": 117,
       "listed_test_configurations": 1003,
       "local_artifact_commands": 30,
       "recorded_test_case_results": 1508,
       "remote_ci_phases": 45,
+      "result_summaries": 195,
       "suites": 35
     },
     "toolchain": {

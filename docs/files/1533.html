@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>after.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/f5658acf77e96e/after.loop</code></h1>
+  <pre>context(T, N);
+
+if (4 &lt;= N) {
+  for i0 in range(0, T) {
+    for i1 in range(((2 * i0) + 2), ((2 * i0) + 3)) {
+      b[2] = (0.33333 * ((a[1] + a[2]) + a[3]));
+    }
+    for i1 in range(((2 * i0) + 3), (N + ((2 * i0) + -1))) {
+      for i2 in range(((-2 * i0) + i1), ((-2 * i0) + (i1 + 1))) {
+        b[i2] = (0.33333 * ((a[(i2 + -1)] + a[i2]) + a[(i2 + 1)]));
+      }
+      for i2 in range(((-2 * i0) + (i1 + -1)), ((-2 * i0) + i1)) {
+        a[i2] = b[i2];
+      }
+    }
+    for i1 in range((N + ((2 * i0) + -1)), (N + (2 * i0))) {
+      for i2 in range((N + -2), (N + -1)) {
+        a[i2] = b[i2];
+      }
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

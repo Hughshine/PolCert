@@ -12,25 +12,223 @@
   <h1><code>reverse_bad_payload</code></h1>
   <p class="lede">ISS validator. Index-Set Splitting (ISS).</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>reject,exit:1,validation-fail:true</dd>
-        
-      </dl>
+      <h2>Before ISS Program</h2>
+      <pre>[pluto] compute_deps (isl)
+nvar = 1, npar = 1
+Parameters: N 
+S1 &quot;a[i] = 2 * a[N - 1 - i];&quot;
+ndims: 1; orig_depth: 1
+Index set
+Set #1
+[2 dims; 3 constraints]
+i &gt;= 0
+-i+N-1 &gt;= 0
+N-1 &gt;= 0
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+Read accesses
+a[-i+N-1]
+Write accesses
+a[i]
+Original loop: 0 -&gt; yes
+
+--- Dep 1 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
+on variable: a
+Dependence polyhedron
+Set #1
+[3 dims; 3 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+
+
+--- Dep 2 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
+on variable: a
+Dependence polyhedron
+Set #1
+[3 dims; 3 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] Number of statements: 1
+[pluto] Total number of loops: 1
+[pluto] Number of deps: 2
+[pluto] Maximum domain dimensionality: 1
+[pluto] Number of parameters: 1
+[pluto] pluto_compute_dep_satisfaction
+[pluto] pluto_dep_satisfaction_reset
+[pluto] dep_satisfaction_update (level 0)
+	 0 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 1)
+[pluto] dep_satisfaction_update: dep 1 satisfied
+[pluto] dep_satisfaction_update: dep 2 satisfied
+	 2 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 2)
+	 0 dep(s) satisfied
+[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] generating Cloog file...
+[pluto] using Cloog -f/-l options: 1 3
+[pluto] cloog_input_read
+[pluto] cloog_clast_create
+[Pluto] Output written to reverse-iss.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.003902s
+[pluto] Auto-transformation time: 0.000000s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
+[pluto] Code generation time: 0.000643s
+[pluto] Other/Misc time: 0.011419s
+[pluto] Total time: 0.015964s
+[pluto] All times: 0.003902 0.000000 0.000643 0.011419
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
-        <dt>Actual</dt><dd>exit:1,validation-fail:true</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Rejected ISS Candidate</h2>
+      <pre>[pluto] compute_deps (isl)
+[pluto] Number of statements: 1
+[pluto] Total number of loops: 1
+[pluto] Number of deps: 2
+[pluto] Maximum domain dimensionality: 1
+[pluto] Number of parameters: 1
+[iss] Dimension 0 has 2 long deps
+[iss] Dimension 0
+[pluto] pluto_constraints_lexmin_isl (5 variables, 11 constraints)
+[iss] m = 2
+[iss] h (cut) is Set #1
+[2 dims; 1 constraints]
+2i-N = 0
+
+[iss] Splitting S1 into 2 statements
+After ISS
+nvar = 1, npar = 1
+Parameters: N 
+S1 &quot;a[i] = 3 * a[N - 1 - i];&quot;
+ndims: 1; orig_depth: 1
+Index set
+Set #1
+[2 dims; 4 constraints]
+i &gt;= 0
+-i+N-1 &gt;= 0
+N-1 &gt;= 0
+-2i+N-1 &gt;= 0
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+Read accesses
+a[-i+N-1]
+Write accesses
+a[i]
+Original loop: 0 -&gt; yes
+
+S2 &quot;a[i] = 2 * a[N - 1 - i];&quot;
+ndims: 1; orig_depth: 1
+Index set
+Set #1
+[2 dims; 4 constraints]
+i &gt;= 0
+-i+N-1 &gt;= 0
+N-1 &gt;= 0
+2i-N &gt;= 0
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+Read accesses
+a[-i+N-1]
+Write accesses
+a[i]
+Original loop: 0 -&gt; yes
+
+--- Dep 1 from S1 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[3 dims; 5 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+-2i+N-1 &gt;= 0
+2i&#x27;-N &gt;= 0
+
+
+--- Dep 2 from S1 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[3 dims; 5 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+-2i+N-1 &gt;= 0
+2i&#x27;-N &gt;= 0
+
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] pluto_compute_dep_satisfaction
+[pluto] pluto_dep_satisfaction_reset
+[pluto] dep_satisfaction_update (level 0)
+	 0 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 1)
+	 2 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 2)
+	 0 dep(s) satisfied
+[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] generating Cloog file...
+[pluto] using Cloog -f/-l options: 1 3
+[pluto] cloog_input_read
+[pluto] cloog_clast_create
+[Pluto] Output written to reverse-iss.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.000233s
+[pluto] Auto-transformation time: 0.000000s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
+[pluto] Code generation time: 0.001094s
+[pluto] Other/Misc time: 0.002969s
+[pluto] Total time: 0.004296s
+[pluto] All times: 0.000233 0.000000 0.001094 0.002969
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>reject,exit:1,validation-fail:true</dd>
+      <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
+      <dt>Actual</dt><dd>exit:1,validation-fail:true</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0273.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0416.html">before.txt</a> &middot; <a href="../../../docs/files/0415.html">after.txt</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1599.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

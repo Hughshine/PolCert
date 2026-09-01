@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>before.c</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/c5a8414ac569e8/before.c</code></h1>
+  <pre>#include &lt;stdio.h&gt;
+
+#define N 10000
+
+static int a[1][N];
+
+int main(void) {
+  int i, j;
+  a[0][0] = 1;
+
+#pragma scop
+  for (i = 0; i &lt; 1; i++)
+    for (j = 1; j &lt; N; j++)
+      a[i][j] = a[i][j - 1] + 1;
+#pragma endscop
+
+  printf(&quot;%d\n&quot;, a[0][N - 1]);
+  return 0;
+}
+</pre>
+</main>
+</body>
+</html>

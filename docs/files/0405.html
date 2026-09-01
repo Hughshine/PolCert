@@ -3,20 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>wavefront.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/wavefront.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/1bc3e7c2a15d86/after.c</code></h1>
+  <pre>#define S1(zT1,$i0)	mean[$i0] = 0.0;
+#define S2(zT2,zT3,$i0,$i1)	mean[$i0] = mean[$i0] + data[$i1][$i0];
+#define S3(zT1,$i0)	mean[$i0] = mean[$i0] / float_n;
+#define S4(zT1,$i0)	stddev[$i0] = 0.0;
+#define S5(zT2,zT3,$i0,$i1)	stddev[$i0] = stddev[$i0] + data[$i1][$i0] - mean[$i0] * data[$i1][$i0] - mean[$i0];
+#define S6(zT1,$i0)	stddev[$i0] = stddev[$i0] / float_n;
+#define S7(zT1,$i0)	stddev[$i0] = my_sqrt_array(stddev,$i0);
+#define S8(zT1,$i0)	stddev[$i0] = stddev[$i0] &lt;= eps ? 1.0 : stddev[$i0];
 
-for i in range(1, N) {
-  for j in range(1, N) {
-    a[i][j] = (a[(i - 1)][j] + a[i][(j - 1)]);
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (m &gt;= 1) {
+  for (t2=0;t2&lt;=floord(m,32);t2++) {
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S1(t2,t5);
+    }
+    if (n &gt;= 1) {
+      for (t4=0;t4&lt;=floord(n,32);t4++) {
+        for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+          for (t7=max(1,32*t4);t7&lt;=min(n,32*t4+31);t7++) {
+            S2(t2,t4,t5,t7);
+          }
+        }
+      }
+    }
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S3(t2,t5);
+    }
+  }
+  for (t2=0;t2&lt;=floord(m,32);t2++) {
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S4(t2,t5);
+    }
+    if (n &gt;= 1) {
+      for (t4=0;t4&lt;=floord(n,32);t4++) {
+        for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+          for (t7=max(1,32*t4);t7&lt;=min(n,32*t4+31);t7++) {
+            S5(t2,t4,t5,t7);
+          }
+        }
+      }
+    }
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S6(t2,t5);
+    }
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S7(t2,t5);
+    }
+    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
+      S8(t2,t5);
+    }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

@@ -12,25 +12,598 @@
   <h1><code>jacobi-2d-imper.c</code></h1>
   <p class="lede">diamond tiling. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>effect:diamond,route:permutable-band,phase:true</dd>
-        
-      </dl>
+      <h2>Input C Program</h2>
+      <pre>// CHECK: T(S1): (t, 2t+i, 2t+j)
+// CHECK: T(S2): (t, 2t+i+1, 2t+j+1)
+
+#include &lt;math.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/time.h&gt;
+#include &lt;unistd.h&gt;
+
+#include &lt;assert.h&gt;
+
+#define N 2000
+#define T 1000
+
+#pragma declarations
+double a[N][N];
+double b[N][N];
+#pragma enddeclarations
+
+#ifdef TIME
+#define IF_TIME(foo) foo;
+#else
+#define IF_TIME(foo)
+#endif
+
+void init_array() {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    for (j = 0; j &lt; N; j++) {
+      a[i][j] = ((double)j) / N;
+    }
+  }
+}
+
+void print_array() {
+  int i, j;
+
+  for (i = 0; i &lt; N; i++) {
+    for (j = 0; j &lt; N; j++) {
+      fprintf(stderr, &quot;%lf &quot;, a[i][j]);
+      if (j % 80 == 20)
+        fprintf(stderr, &quot;\n&quot;);
+    }
+  }
+  fprintf(stderr, &quot;\n&quot;);
+}
+
+double rtclock() {
+  struct timezone Tzp;
+  struct timeval Tp;
+  int stat;
+  stat = gettimeofday(&amp;Tp, &amp;Tzp);
+  if (stat != 0)
+    printf(&quot;Error return from gettimeofday: %d&quot;, stat);
+  return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
+}
+#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
+
+int main() {
+  int t, i, j;
+  double t_start, t_end;
+
+  init_array();
+
+  IF_TIME(t_start = rtclock());
+
+#pragma scop
+  for (t = 0; t &lt; T; t++) {
+    for (i = 2; i &lt; N - 1; i++) {
+      for (j = 2; j &lt; N - 1; j++) {
+        b[i][j] = 0.2 * (a[i][j] + a[i][j - 1] + a[i][1 + j] + a[1 + i][j] +
+                         a[i - 1][j]);
+      }
+    }
+    for (i = 2; i &lt; N - 1; i++) {
+      for (j = 2; j &lt; N - 1; j++) {
+        a[i][j] = b[i][j];
+      }
+    }
+  }
+#pragma endscop
+
+  IF_TIME(t_end = rtclock());
+  IF_TIME(fprintf(stdout, &quot;%0.6lfs\n&quot;, t_end - t_start));
+
+  if (fopen(&quot;.test&quot;, &quot;r&quot;)) {
+#ifdef __MPI
+    if (my_rank == 0) {
+      print_array();
+    }
+#else
+    print_array();
+#endif
+  }
+
+  return 0;
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Diamond tiling</dd>
-        <dt>Actual</dt><dd>effect:diamond,affine:true,tiling:true,phase:true</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT3,zT4,zT5,t,i,j)	b[i][j] = 0.2 * (a[i][j] + a[i][j - 1] + a[i][1 + j] + a[1 + i][j] + a[i - 1][j]);
+#define S2(zT3,zT4,zT5,t,i,j)	a[i][j] = b[i][j];
+
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((N &gt;= 4) &amp;&amp; (T &gt;= 1)) {
+  for (t1=ceild(-N-29,32);t1&lt;=floord(T-2,16);t1++) {
+    for (t2=max(t1,-t1-1);t2&lt;=min(min(floord(-8*t1+T-1,8),floord(16*t1+N+13,16)),floord(2*T+N-3,32));t2++) {
+      for (t3=max(max(0,ceild(t1+t2-1,2)),ceild(32*t2-N-27,32));t3&lt;=min(min(floord(2*T+N-3,32),floord(32*t2+N+27,32)),floord(16*t1+16*t2+N+29,32));t3++) {
+        if ((t1 &lt;= floord(16*t2-N+1,16)) &amp;&amp; (t2 &gt;= ceild(N-1,32))) {
+          if ((N+1)%2 == 0) {
+            for (t6=max(32*t3,32*t2-N+4);t6&lt;=min(32*t2,32*t3+31);t6++) {
+              S2(t1,t2,t3,((32*t2-N+1)/2),(N-2),(-32*t2+t6+N-2));
+            }
+          }
+        }
+        if ((t1 &lt;= min(floord(-16*t2+32*t3-N+1,16),floord(32*t3-N-1,32))) &amp;&amp; (t2 &lt;= t3-1) &amp;&amp; (t3 &gt;= ceild(N-1,32))) {
+          if ((N+1)%2 == 0) {
+            for (t5=max(max(32*t2,32*t3-N+4),-32*t1+64*t3-2*N-27);t5&lt;=min(32*t2+31,-32*t1+64*t3-2*N+4);t5++) {
+              S2(t1,t2,t3,((32*t3-N+1)/2),(-32*t3+t5+N-2),(N-2));
+            }
+          }
+        }
+        if ((N == 4) &amp;&amp; (t1 == t2) &amp;&amp; (t1 == t3)) {
+          S1(t1,t1,t1,(16*t1+1),2,2);
+          S2(t1,t1,t1,(16*t1+1),2,2);
+        }
+        if ((N == 4) &amp;&amp; (t2 == t3)) {
+          for (t4=max(max(0,16*t1+2),16*t2-1);t4&lt;=min(min(T-1,16*t1+16),16*t2+14);t4++) {
+            S1(t1,t2,t2,t4,2,2);
+            S2(t1,t2,t2,t4,2,2);
+          }
+        }
+        if ((N &gt;= 5) &amp;&amp; (t1 == t2) &amp;&amp; (t1 &gt;= ceild(32*t3-N,32))) {
+          for (t6=max(32*t3,32*t1+4);t6&lt;=min(32*t1+N,32*t3+31);t6++) {
+            S1(t1,t1,t3,(16*t1+1),2,(-32*t1+t6-2));
+          }
+          for (t5=32*t1+5;t5&lt;=32*t1+6;t5++) {
+            for (t6=max(32*t3,32*t1+5);t6&lt;=min(32*t3+31,32*t1+N+1);t6++) {
+              S2(t1,t1,t3,(16*t1+1),(-32*t1+t5-3),(-32*t1+t6-3));
+            }
+          }
+        }
+        for (t4=max(max(0,ceild(32*t3-N+2,2)),8*t1+8*t2);t4&lt;=min(min(min(min(floord(32*t1+N-2,2),floord(32*t3-N+32,2)),T-1),16*t2-2),8*t1+8*t2+7);t4++) {
+          for (t5=32*t2;t5&lt;=-32*t1+4*t4;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+            S2(t1,t2,t3,t4,(-2*t4+t5-1),(N-2));
+          }
+          for (t5=-32*t1+4*t4+1;t5&lt;=min(-32*t1+4*t4+2,2*t4+N-1);t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        if (t2 == t3) {
+          for (t4=max(max(0,ceild(32*t1+N-1,2)),ceild(32*t2-N+2,2));t4&lt;=min(min(T-1,16*t2-2),8*t1+8*t2+7);t4++) {
+            for (t5=32*t2;t5&lt;=2*t4+N-2;t5++) {
+              for (t6=32*t2;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+              S2(t1,t2,t2,t4,(-2*t4+t5-1),(N-2));
+            }
+            for (t6=32*t2;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,t2,t2,t4,(N-2),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(max(0,ceild(32*t3-N+33,2)),8*t1+8*t2);t4&lt;=min(min(min(min(floord(32*t1+N-2,2),T-1),16*t2-2),16*t3-2),8*t1+8*t2+7);t4++) {
+          for (t5=32*t2;t5&lt;=-32*t1+4*t4;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+          for (t5=-32*t1+4*t4+1;t5&lt;=min(-32*t1+4*t4+2,2*t4+N-1);t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(max(max(0,ceild(32*t1+N-1,2)),ceild(32*t2-N+2,2)),ceild(32*t3-N+33,2));t4&lt;=min(min(T-1,16*t3-2),8*t1+8*t2+7);t4++) {
+          for (t5=32*t2;t5&lt;=2*t4+N-2;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+          for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+            S2(t1,t2,t3,t4,(N-2),(-2*t4+t6-1));
+          }
+        }
+        if (t2 == t3) {
+          for (t4=8*t1+8*t2+8;t4&lt;=min(min(min(floord(32*t1+N+27,2),floord(32*t2-N+32,2)),T-1),16*t2-2);t4++) {
+            for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+              for (t6=32*t2;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+              }
+            }
+            for (t5=-32*t1+4*t4-29;t5&lt;=2*t4+N-2;t5++) {
+              for (t6=32*t2;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+              S2(t1,t2,t2,t4,(-2*t4+t5-1),(N-2));
+            }
+            for (t6=32*t2;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,t2,t2,t4,(N-2),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(max(ceild(32*t2-N+33,2),ceild(32*t3-N+2,2)),8*t1+8*t2+8);t4&lt;=min(min(min(floord(32*t3-N+32,2),T-1),16*t2-2),8*t1+8*t2+15);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+            S2(t1,t2,t3,t4,(-2*t4+t5-1),(N-2));
+          }
+        }
+        for (t4=max(ceild(32*t3-N+33,2),8*t1+8*t2+8);t4&lt;=min(min(min(floord(32*t1+N+27,2),floord(32*t2-N+32,2)),T-1),16*t3-2);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=2*t4+N-2;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+          for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+            S2(t1,t2,t3,t4,(N-2),(-2*t4+t6-1));
+          }
+        }
+        for (t4=max(max(ceild(32*t2-N+33,2),ceild(32*t3-N+33,2)),8*t1+8*t2+8);t4&lt;=min(min(min(T-1,16*t2-2),16*t3-2),8*t1+8*t2+15);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        if ((t1 &lt;= min(min(floord(16*t2-N+2,16),floord(2*T-N-30,32)),floord(32*t3-N-32,32))) &amp;&amp; (t1 &gt;= ceild(16*t3-N+4,16))) {
+          if (N%2 == 0) {
+            for (t5=32*t1+2*N+25;t5&lt;=32*t1+2*N+26;t5++) {
+              for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+                S1(t1,t2,t3,((32*t1+N+28)/2),(-32*t1+t5-N-28),(-32*t1+t6-N-28));
+              }
+            }
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S2(t1,t2,t3,((32*t1+N+28)/2),(N-2),(-32*t1+t6-N-29));
+            }
+          }
+        }
+        if ((t1 &lt;= min(min(floord(16*t2-N+2,16),floord(2*T-N-30,32)),floord(32*t2-N-32,32))) &amp;&amp; (t2 == t3)) {
+          if (N%2 == 0) {
+            for (t5=32*t1+2*N+25;t5&lt;=32*t1+2*N+26;t5++) {
+              for (t6=32*t2;t6&lt;=32*t1+2*N+26;t6++) {
+                S1(t1,t2,t2,((32*t1+N+28)/2),(-32*t1+t5-N-28),(-32*t1+t6-N-28));
+              }
+            }
+            for (t6=32*t2;t6&lt;=32*t1+2*N+27;t6++) {
+              S2(t1,t2,t2,((32*t1+N+28)/2),(N-2),(-32*t1+t6-N-29));
+            }
+          }
+        }
+        if (t2 == t3) {
+          for (t4=max(max(0,16*t1+2),16*t2-1);t4&lt;=min(min(floord(32*t1+N-2,2),floord(32*t2-N+32,2)),T-1);t4++) {
+            for (t6=2*t4+2;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t2,t4,2,(-2*t4+t6));
+            }
+            for (t5=2*t4+3;t5&lt;=-32*t1+4*t4;t5++) {
+              S1(t1,t2,t2,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+              S2(t1,t2,t2,t4,(-2*t4+t5-1),(N-2));
+            }
+            for (t5=-32*t1+4*t4+1;t5&lt;=min(-32*t1+4*t4+2,2*t4+N-1);t5++) {
+              for (t6=2*t4+3;t6&lt;=2*t4+N-1;t6++) {
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+          }
+        }
+        if ((N &gt;= 5) &amp;&amp; (t2 == t3)) {
+          for (t4=max(max(0,ceild(32*t1+N-1,2)),16*t2-1);t4&lt;=min(min(floord(32*t2-N+32,2),T-1),16*t1+16);t4++) {
+            for (t6=2*t4+2;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t2,t4,2,(-2*t4+t6));
+            }
+            for (t5=2*t4+3;t5&lt;=2*t4+N-2;t5++) {
+              S1(t1,t2,t2,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+              S2(t1,t2,t2,t4,(-2*t4+t5-1),(N-2));
+            }
+            for (t6=2*t4+3;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,t2,t2,t4,(N-2),(-2*t4+t6-1));
+            }
+          }
+        }
+        if (t2 == t3) {
+          for (t4=max(max(max(0,ceild(32*t2-N+33,2)),16*t1+2),16*t2-1);t4&lt;=min(T-1,8*t1+8*t2+7);t4++) {
+            for (t6=2*t4+2;t6&lt;=32*t2+31;t6++) {
+              S1(t1,t2,t2,t4,2,(-2*t4+t6));
+            }
+            for (t5=2*t4+3;t5&lt;=-32*t1+4*t4;t5++) {
+              S1(t1,t2,t2,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=32*t2+31;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+            for (t5=-32*t1+4*t4+1;t5&lt;=-32*t1+4*t4+2;t5++) {
+              for (t6=2*t4+3;t6&lt;=32*t2+31;t6++) {
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+          }
+        }
+        if (t2 == t3) {
+          for (t4=max(ceild(32*t2-N+33,2),8*t1+8*t2+8);t4&lt;=min(min(T-1,16*t1+16),16*t2+14);t4++) {
+            for (t6=2*t4+2;t6&lt;=32*t2+31;t6++) {
+              S1(t1,t2,t2,t4,2,(-2*t4+t6));
+            }
+            for (t5=2*t4+3;t5&lt;=32*t2+31;t5++) {
+              S1(t1,t2,t2,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=32*t2+31;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+          }
+        }
+        for (t4=max(max(max(0,ceild(32*t3-N+2,2)),16*t1+2),16*t2-1);t4&lt;=min(min(min(floord(32*t3-N+32,2),T-1),16*t3-2),8*t1+8*t2+7);t4++) {
+          for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+            S1(t1,t2,t3,t4,2,(-2*t4+t6));
+          }
+          for (t5=2*t4+3;t5&lt;=-32*t1+4*t4;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+            S2(t1,t2,t3,t4,(-2*t4+t5-1),(N-2));
+          }
+          for (t5=-32*t1+4*t4+1;t5&lt;=-32*t1+4*t4+2;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(ceild(32*t3-N+2,2),8*t1+8*t2+8);t4&lt;=min(min(min(min(floord(32*t3-N+32,2),T-1),16*t1+16),16*t2+14),16*t3-2);t4++) {
+          for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+            S1(t1,t2,t3,t4,2,(-2*t4+t6));
+          }
+          for (t5=2*t4+3;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+            S2(t1,t2,t3,t4,(-2*t4+t5-1),(N-2));
+          }
+        }
+        for (t4=max(max(max(0,ceild(32*t3-N+33,2)),16*t1+2),16*t2-1);t4&lt;=min(min(T-1,16*t3-2),8*t1+8*t2+7);t4++) {
+          for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+            S1(t1,t2,t3,t4,2,(-2*t4+t6));
+          }
+          for (t5=2*t4+3;t5&lt;=-32*t1+4*t4;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+          for (t5=-32*t1+4*t4+1;t5&lt;=-32*t1+4*t4+2;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(ceild(32*t3-N+33,2),8*t1+8*t2+8);t4&lt;=min(min(min(T-1,16*t1+16),16*t2+14),16*t3-2);t4++) {
+          for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+            S1(t1,t2,t3,t4,2,(-2*t4+t6));
+          }
+          for (t5=2*t4+3;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        if (t2 &gt;= t3+1) {
+          for (t4=max(max(0,8*t1+8*t2),16*t3-1);t4&lt;=min(min(min(floord(32*t1+N-2,2),T-1),16*t3+14),8*t1+8*t2+7);t4++) {
+            for (t5=32*t2;t5&lt;=-32*t1+4*t4;t5++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+                S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+            for (t5=-32*t1+4*t4+1;t5&lt;=min(-32*t1+4*t4+2,2*t4+N-1);t5++) {
+              for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+                S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+          }
+        }
+        if (t2 &gt;= t3+1) {
+          for (t4=max(max(max(0,ceild(32*t1+N-1,2)),ceild(32*t2-N+2,2)),16*t3-1);t4&lt;=min(min(T-1,16*t3+14),8*t1+8*t2+7);t4++) {
+            for (t5=32*t2;t5&lt;=2*t4+N-2;t5++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+                S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+            for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+              S2(t1,t2,t3,t4,(N-2),(-2*t4+t6-1));
+            }
+          }
+        }
+        if ((t1 == t2-1) &amp;&amp; (t1 == t3-1)) {
+          for (t4=16*t1+17;t4&lt;=min(min(floord(32*t1-N+64,2),floord(32*t1+N+27,2)),T-1);t4++) {
+            for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+              for (t6=2*t4+2;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,(t1+1),(t1+1),t4,(-2*t4+t5),(-2*t4+t6));
+              }
+            }
+            for (t5=-32*t1+4*t4-29;t5&lt;=2*t4+N-2;t5++) {
+              S1(t1,(t1+1),(t1+1),t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=2*t4+N-2;t6++) {
+                S1(t1,(t1+1),(t1+1),t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,(t1+1),(t1+1),t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+              S2(t1,(t1+1),(t1+1),t4,(-2*t4+t5-1),(N-2));
+            }
+            for (t6=2*t4+3;t6&lt;=2*t4+N-1;t6++) {
+              S2(t1,(t1+1),(t1+1),t4,(N-2),(-2*t4+t6-1));
+            }
+          }
+        }
+        if (t2 == t3) {
+          for (t4=max(max(ceild(32*t2-N+33,2),16*t1+17),16*t2-1);t4&lt;=min(T-1,8*t1+8*t2+15);t4++) {
+            for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+              for (t6=2*t4+2;t6&lt;=32*t2+31;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+              }
+            }
+            for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+              S1(t1,t2,t2,t4,(-2*t4+t5),2);
+              for (t6=2*t4+3;t6&lt;=32*t2+31;t6++) {
+                S1(t1,t2,t2,t4,(-2*t4+t5),(-2*t4+t6));
+                S2(t1,t2,t2,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+              }
+            }
+          }
+        }
+        for (t4=max(max(ceild(32*t3-N+2,2),16*t1+17),16*t2-1);t4&lt;=min(min(min(floord(32*t3-N+32,2),T-1),16*t3-2),8*t1+8*t2+15);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=2*t4+N-2;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+            S2(t1,t2,t3,t4,(-2*t4+t5-1),(N-2));
+          }
+        }
+        for (t4=max(max(ceild(32*t3-N+33,2),16*t1+17),16*t2-1);t4&lt;=min(min(T-1,16*t3-2),8*t1+8*t2+15);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+            for (t6=32*t3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        for (t4=max(16*t3-1,8*t1+8*t2+8);t4&lt;=min(min(min(min(floord(32*t1+N+27,2),floord(32*t2-N+32,2)),T-1),16*t2-2),16*t3+14);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=2*t4+2;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=2*t4+N-2;t5++) {
+            S1(t1,t2,t3,t4,(-2*t4+t5),2);
+            for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+          for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+            S2(t1,t2,t3,t4,(N-2),(-2*t4+t6-1));
+          }
+        }
+        for (t4=max(max(ceild(32*t2-N+33,2),16*t3-1),8*t1+8*t2+8);t4&lt;=min(min(min(T-1,16*t2-2),16*t3+14),8*t1+8*t2+15);t4++) {
+          for (t5=-32*t1+4*t4-31;t5&lt;=-32*t1+4*t4-30;t5++) {
+            for (t6=2*t4+2;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+            }
+          }
+          for (t5=-32*t1+4*t4-29;t5&lt;=32*t2+31;t5++) {
+            S1(t1,t2,t3,t4,(-2*t4+t5),2);
+            for (t6=2*t4+3;t6&lt;=32*t3+31;t6++) {
+              S1(t1,t2,t3,t4,(-2*t4+t5),(-2*t4+t6));
+              S2(t1,t2,t3,t4,(-2*t4+t5-1),(-2*t4+t6-1));
+            }
+          }
+        }
+        if ((t1 &lt;= min(min(min(floord(16*t2-N+2,16),floord(32*t3-N,32)),floord(2*T-N-30,32)),floord(32*t2-N-32,32))) &amp;&amp; (t1 &gt;= ceild(32*t3-N-30,32))) {
+          if (N%2 == 0) {
+            for (t5=32*t1+2*N+25;t5&lt;=32*t1+2*N+26;t5++) {
+              for (t6=32*t1+N+30;t6&lt;=32*t3+31;t6++) {
+                S1(t1,t2,t3,((32*t1+N+28)/2),(-32*t1+t5-N-28),(-32*t1+t6-N-28));
+              }
+            }
+            for (t6=32*t1+N+31;t6&lt;=32*t3+31;t6++) {
+              S2(t1,t2,t3,((32*t1+N+28)/2),(N-2),(-32*t1+t6-N-29));
+            }
+          }
+        }
+        if ((N &gt;= 6) &amp;&amp; (t1 &lt;= min(floord(16*t2-N+2,16),floord(2*T-N-30,32))) &amp;&amp; (t1 &gt;= ceild(32*t2-N-30,32)) &amp;&amp; (t2 == t3)) {
+          if (N%2 == 0) {
+            for (t5=32*t1+2*N+25;t5&lt;=32*t1+2*N+26;t5++) {
+              for (t6=32*t1+N+30;t6&lt;=32*t1+2*N+26;t6++) {
+                S1(t1,t2,t2,((32*t1+N+28)/2),(-32*t1+t5-N-28),(-32*t1+t6-N-28));
+              }
+            }
+            for (t6=32*t1+N+31;t6&lt;=32*t1+2*N+27;t6++) {
+              S2(t1,t2,t2,((32*t1+N+28)/2),(N-2),(-32*t1+t6-N-29));
+            }
+          }
+        }
+        if (t1 &lt;= min(min(floord(16*t2-N+1,16),floord(2*T-N-31,32)),floord(32*t3-N-1,32))) {
+          if ((N+1)%2 == 0) {
+            for (t6=max(32*t3,32*t1+N+31);t6&lt;=min(32*t3+31,32*t1+2*N+27);t6++) {
+              S1(t1,t2,t3,((32*t1+N+29)/2),(N-2),(-32*t1+t6-N-29));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>effect:diamond,route:permutable-band,phase:true</dd>
+      <dt>Observed effect</dt><dd>Diamond tiling</dd>
+      <dt>Actual</dt><dd>effect:diamond,affine:true,tiling:true,phase:true</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0264.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1162.html">before.c</a> &middot; <a href="../../../docs/files/1161.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1590.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

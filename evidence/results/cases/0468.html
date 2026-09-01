@@ -12,25 +12,105 @@
   <h1><code>matmul-unroll-and-jam</code></h1>
   <p class="lede">code-generation gap exploration. Unroll and Jam.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>checked block unrolling, local jam validation, and remainder loop</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Pluto C without Unroll-and-Jam</h2>
+      <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = beta * C[$i0][$i1] + alpha * A[$i0][$i2] * B[$i2][$i1];
+
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((K &gt;= 1) &amp;&amp; (M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
+  for (t1=0;t1&lt;=floord(M-1,32);t1++) {
+    for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+      for (t3=0;t3&lt;=floord(K-1,32);t3++) {
+        for (t4=32*t1;t4&lt;=min(M-1,32*t1+31);t4++) {
+          for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+            for (t6=32*t3;t6&lt;=min(K-1,32*t3+31);t6++) {
+              S1(t1,t2,t3,t4,t5,t6);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Block unrolling and validated loop jamming</dd>
-        <dt>Actual</dt><dd>all checked markers present; optimized program accepted</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Pluto C with Unroll-and-Jam</h2>
+      <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = beta * C[$i0][$i1] + alpha * A[$i0][$i2] * B[$i2][$i1];
+
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((K &gt;= 1) &amp;&amp; (M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
+  for (t1=0;t1&lt;=floord(M-1,32);t1++) {
+    for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+      for (t3=0;t3&lt;=floord(K-1,32);t3++) {
+        for (t4=32*t1;t4&lt;=(min(M-1,32*t1+31))-3;t4+=4) {
+          for (t5=32*t2;t5&lt;=(min(N-1,32*t2+31))-3;t5+=4) {
+            for (t6=32*t3;t6&lt;=min(K-1,32*t3+31);t6++) {
+              S1(t1,t2,t3,t4,t5,t6);
+              S1(t1,t2,t3,(t4+1),t5,t6);
+              S1(t1,t2,t3,(t4+2),t5,t6);
+              S1(t1,t2,t3,(t4+3),t5,t6);
+              S1(t1,t2,t3,t4,(t5+1),t6);
+              S1(t1,t2,t3,(t4+1),(t5+1),t6);
+              S1(t1,t2,t3,(t4+2),(t5+1),t6);
+              S1(t1,t2,t3,(t4+3),(t5+1),t6);
+              S1(t1,t2,t3,t4,(t5+2),t6);
+              S1(t1,t2,t3,(t4+1),(t5+2),t6);
+              S1(t1,t2,t3,(t4+2),(t5+2),t6);
+              S1(t1,t2,t3,(t4+3),(t5+2),t6);
+              S1(t1,t2,t3,t4,(t5+3),t6);
+              S1(t1,t2,t3,(t4+1),(t5+3),t6);
+              S1(t1,t2,t3,(t4+2),(t5+3),t6);
+              S1(t1,t2,t3,(t4+3),(t5+3),t6);
+            }
+          }
+          for (;t5&lt;=min(N-1,32*t2+31);t5++) {
+            for (t6=32*t3;t6&lt;=min(K-1,32*t3+31);t6++) {
+              S1(t1,t2,t3,t4,t5,t6);
+              S1(t1,t2,t3,(t4+1),t5,t6);
+              S1(t1,t2,t3,(t4+2),t5,t6);
+              S1(t1,t2,t3,(t4+3),t5,t6);
+            }
+          }
+        }
+        for (;t4&lt;=min(M-1,32*t1+31);t4++) {
+          for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+            for (t6=32*t3;t6&lt;=min(K-1,32*t3+31);t6++) {
+              S1(t1,t2,t3,t4,t5,t6);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>checked block unrolling, local jam validation, and remainder loop</dd>
+      <dt>Observed effect</dt><dd>Block unrolling and validated loop jamming</dd>
+      <dt>Actual</dt><dd>all checked markers present; optimized program accepted</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0263.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0510.html">before.c</a> &middot; <a href="../../../docs/files/0509.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1589.html">test log</a></p></details>
   </div>
 </main>
 </body>

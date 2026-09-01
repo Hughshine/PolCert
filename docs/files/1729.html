@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>trisolv.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/trisolv.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, ((N - 1) + 1)) {
+  for j in range(0, ((N - 1) + 1)) {
+    for k in range(0, ((j - 1) + 1)) {
+      B[j][i] = (B[j][i] - (L[j][k] * B[k][i]));
+    }
+    B[j][i] = (B[j][i] / L[j][j]);
+  }
+}
+</pre>
+</main>
+</body>
+</html>

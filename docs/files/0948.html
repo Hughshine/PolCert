@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>before.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/84ed63cb1ef468/before.loop</code></h1>
+  <pre>context(B, T, N);
+
+for p in range(0, B) {
+  for t in range(0, T) {
+    for i in range(2, (N - 1)) {
+      b[p][i] = (0.33333 * ((a[p][(i - 1)] + a[p][i]) + a[p][(i + 1)]));
+    }
+    for j in range(2, (N - 1)) {
+      a[p][j] = b[p][j];
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

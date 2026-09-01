@@ -1,0 +1,18 @@
+for i0 in range(0, 4) {
+  for i1 in range(0, 4) {
+    for i2 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+      for i3 in range(max(0, (32 * i1)), min(100, ((32 * i1) + 32))) {
+        A[i2][i3] = 1;
+      }
+    }
+  }
+}
+for i0 in range(0, 4) {
+  for i1 in range(0, 4) {
+    for i2 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+      for i3 in range(max(0, (32 * i1)), min(100, ((32 * i1) + 32))) {
+        B[i2][i3] = (A[(i2 + 1)][i3] + A[i2][(i3 + 1)]);
+      }
+    }
+  }
+}

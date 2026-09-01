@@ -12,25 +12,39 @@
   <h1><code>nodep</code></h1>
   <p class="lede">unroll-and-jam exploration. Unroll and Jam.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
-        <dt>Actual</dt><dd>checked-effect=false</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>for i0 in range(0, 100) {
+  for i1 in range(0, 4) {
+    A[((4 * i0) + i1)] = ((2 * A[((4 * i0) + i1)]) + 2);
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
+      <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
+      <dt>Actual</dt><dd>checked-effect=false</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0288.html">summary.json</a> &middot; <a href="../../../docs/files/0333.html">nodep.loop</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0342.html">before.loop</a> &middot; <a href="../../../docs/files/0341.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1614.html">summary.json</a> &middot; <a href="../../../docs/files/1659.html">nodep.loop</a></p></details>
   </div>
 </main>
 </body>

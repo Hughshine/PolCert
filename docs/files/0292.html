@@ -3,73 +3,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/README.md</code></h1>
-  <pre># PolCert Source Snapshot
+  <h1><code>evidence/results/program-comparisons/085982bad38008/before.c</code></h1>
+  <pre>//
+// CHECK: T(S1): (t, t+j, t)
+// CHECK: T(S2): (t, t+j, t+i)
+// CHECK: T(S3): (t, t+j, t+i)
+// CHECK: T(S4): (t, t+j+1, t+i+1)
+//
+// After intra-tile optimize
+// CHECK: T(S1): (t, t, t+j)
+// CHECK: T(S2): (t, t+i, t+j)
+// CHECK: T(S3): (t, t+i, t+j)
+// CHECK: T(S4): (t, t+i+1, t+j+1)
+// CHECK: Output written
+//
+#define tmax 128
+#define nx 2048
+#define ny 2048
 
-This directory contains the compiler, its Rocq proofs, and its tests. It is the
-source snapshot used for the recorded proof build and compiler checks.
+double ex[nx][ny + 1];
+double ey[nx + 1][ny];
+double hz[nx][ny];
 
-The main source directories are:
+int main() {
+  int t, i, j;
 
-| Directory | Responsibility |
-| --- | --- |
-| `src/` | The polyhedral model and checks for schedules, tiling, and parallel loops. |
-| `polygen/` | Source and target loop languages, loop generation, and unrolling. |
-| `driver/` | Complete compiler configurations and top-level correctness theorems. |
-| `syntax/` | Concrete instructions, text input, and the extracted command-line tool. |
-| `common/`, `cfrontend/`, `cparser/`, `lib/` | Reused CompCert infrastructure. |
-| `VPL/`, `flocq/`, `MenhirLib/` | Vendored third-party proof and parsing libraries. |
-| `tests/`, `tools/` | Test inputs and validation tools. |
+#pragma scop
+  for (t = 0; t &lt; tmax; t++) {
+    for (j = 0; j &lt; ny; j++)
+      ey[0][j] = t;
+    for (i = 1; i &lt; nx; i++)
+      for (j = 0; j &lt; ny; j++)
+        ey[i][j] = ey[i][j] - 0.5 * (hz[i][j] - hz[i - 1][j]);
+    for (i = 0; i &lt; nx; i++)
+      for (j = 1; j &lt; ny; j++)
+        ex[i][j] = ex[i][j] - 0.5 * (hz[i][j] - hz[i][j - 1]);
+    for (i = 0; i &lt; nx; i++)
+      for (j = 0; j &lt; ny; j++)
+        hz[i][j] = hz[i][j] -
+                   0.7 * (ex[i][j + 1] - ex[i][j] + ey[i + 1][j] - ey[i][j]);
+  }
+#pragma endscop
 
-## Instruction Models and Examples
-
-The validators are parameterized by the interfaces in `polygen/StateTy.v`,
-`polygen/InstrTy.v`, and `polygen/PolIRs.v`. A client supplies its instruction
-syntax, execution relation, state equality, read and write footprints, and
-proof that non-conflicting instructions may exchange order. The validation
-algorithms therefore depend on nested-loop structure and memory effects, not
-on one fixed source-language instruction set.
-
-The executable `.loop` frontend uses the lightweight instruction model in
-`syntax/SInstr.v`. Its proofs establish the required interface laws for that
-modeled store. A hand-written `.loop` input does not, by itself, prove that its
-declared accesses describe an external C program; the recorded tests exercise
-the validator under those supplied memory effects.
-
-The more concrete `src/CInstr.v` instance includes typed scalar and array
-instructions. `samples/CSample1.v`, `CSample2.v`, and `CSample3.v` encode
-matrix multiplication, covariance, and a four-statement GEMVER kernel, with
-the corresponding C snippets in `samples/*.c`. `samples/CTypedLoopSamples.v`
-adds compact typed examples for extraction, ISS, ordinary and two-level
-tiling, diamond tiling, and parallel-loop checking. These files are
-hand-constructed Rocq programs, not output from a verified C parser.
-
-The main reusable theorem is
-`VerifiedParallelCompilerConfig.compile_correct` in
-`driver/VerifiedParallelCompilerConfig.v`. The corresponding theorem for the
-executable compiler is `extracted_parallel_compile_correct` in
-`driver/ExtractedPipelineCorrect.v`.
-
-The validated toolchain used OCaml 4.13.1 and Rocq/Coq 8.13.2. Run:
-
-```sh
-./configure x86_64-linux
-make depend
-make proof
-make extraction
-```
-
-For the packaged proof environment, run the Docker build described in
-`../environment/README.md` from the archive root.
-
-Tests that run the external Pluto optimizer require a compatible Pluto
-installation. Their recorded results are under `../evidence/`.
+  return 0;
+}
 </pre>
 </main>
 </body>

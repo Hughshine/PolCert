@@ -12,25 +12,40 @@
   <h1><code>parallel_const_unroll</code></h1>
   <p class="lede">handwritten C execution. Typed Instruction Programs.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>outputs-match,parallel=true,vector=false,unrolled=false,required-effects=2,forbidden-effects=1</dd>
-        <dt>Coverage</dt><dd>effect-and-executable-semantics</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Parallelization; Constant-bound unrolling not applied on this parallel loop</dd>
-        <dt>Actual</dt><dd>outputs-match:true,parallel:true,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>parallel for i0 in range(0, 100) {
+  A[(4 * i0)] = ((2 * A[(4 * i0)]) + 2);
+  A[((4 * i0) + 1)] = ((2 * A[((4 * i0) + 1)]) + 2);
+  A[((4 * i0) + 2)] = ((2 * A[((4 * i0) + 2)]) + 2);
+  A[((4 * i0) + 3)] = ((2 * A[((4 * i0) + 3)]) + 2);
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>outputs-match,parallel=true,vector=false,unrolled=false,required-effects=2,forbidden-effects=1</dd>
+      <dt>Observed effect</dt><dd>Parallelization; Constant-bound unrolling not applied on this parallel loop</dd>
+      <dt>Actual</dt><dd>outputs-match:true,parallel:true,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0398.html">before.loop</a> &middot; <a href="../../../docs/files/0397.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

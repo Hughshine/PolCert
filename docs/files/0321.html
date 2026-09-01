@@ -3,38 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/end-to-end-c/README.md</code></h1>
-  <pre># Handwritten C-Level Examples
+  <h1><code>evidence/results/program-comparisons/0d44ec529bc6ea/after.loop</code></h1>
+  <pre>context(M, N);
 
-These examples define typed PolCert programs by hand and include small C
-programs that show the intended computation. They test the extracted compiler
-without treating C parsing as part of the theorem.
-
-Representative cases cover:
-
-- construction of the polyhedral model and schedule checking;
-- ISS, ordinary tiling, two-level tiling, and diamond tiling;
-- checked parallel loops;
-- constant unrolling and supported unroll-and-jam routes;
-- dependent loops that must remain sequential or reject an unsafe rewrite.
-
-Each case directory contains a manifest, the structured `.loop` input, and the
-reference C program. Run the suite with:
-
-```sh
-opam exec -- make test-end-to-end-c
-```
-
-The test runner compiles baseline and optimized programs, compares their
-results, and checks that requested transformations occurred. The generated C,
-external compiler, and runtime are tested here but are not part of the Rocq
-theorem.
+if ((1 &lt;= N &amp;&amp; 2 &lt;= M)) {
+  for i0 in range(1, M) {
+    for i1 in range((i0 + 1), (M + 1)) {
+      symmat[i0][i1] = 0.0;
+      for i2 in range(1, (N + 1)) {
+        symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
+      }
+      symmat[i1][i0] = symmat[i0][i1];
+    }
+  }
+}
+if ((N &lt;= 0 &amp;&amp; 2 &lt;= M)) {
+  for i0 in range(1, M) {
+    for i1 in range((i0 + 1), (M + 1)) {
+      symmat[i0][i1] = 0.0;
+      symmat[i1][i0] = symmat[i0][i1];
+    }
+  }
+}
+if (2 &lt;= M) {
+  for i0 in range(1, M) {
+    symmat[i0][i0] = 1.0;
+  }
+}
 </pre>
 </main>
 </body>

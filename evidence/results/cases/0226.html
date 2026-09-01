@@ -12,25 +12,49 @@
   <h1><code>ordinary-iss-parallel-strict</code></h1>
   <p class="lede">one-level tiling configurations. One-Level and Direct Tiling Validation.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>success:true,route:permutable-band,alarm:false</dd>
-        
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(N, M);
+
+for i in range(0, N) {
+  for j in range(0, M) {
+    A[i][j] = (B[i][j] + 1);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Index-set splitting (ISS); Ordinary tiling; Parallelization</dd>
-        <dt>Actual</dt><dd>all-route-assertions-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(N, M);
+
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  parallel for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          A[i2][i3] = (B[i2][i3] + 1);
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>success:true,route:permutable-band,alarm:false</dd>
+      <dt>Observed effect</dt><dd>Index-set splitting (ISS); Ordinary tiling; Parallelization</dd>
+      <dt>Actual</dt><dd>all-route-assertions-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0275.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1564.html">before.loop</a> &middot; <a href="../../../docs/files/1563.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1601.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

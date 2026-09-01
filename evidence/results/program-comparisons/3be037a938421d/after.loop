@@ -1,0 +1,17 @@
+context(M, N, K);
+
+if ((1 <= M && (1 <= N && 1 <= K))) {
+  for i0 in range(0, ((K + 15) / 16)) {
+    for i1 in range(0, ((N + 15) / 16)) {
+      for i2 in range(0, ((M + 15) / 16)) {
+        for i3 in range(max((16 * i0), 0), min(((16 * i0) + 16), K)) {
+          for i4 in range(max((16 * i1), 0), min(((16 * i1) + 16), N)) {
+            for i5 in range(max((16 * i2), 0), min(((16 * i2) + 16), M)) {
+              C[i5][i4] = ((beta * C[i5][i4]) + ((alpha * A[i5][i3]) * B[i3][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>before.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">Supplement guide</a></p>
+  <h1><code>evidence/results/program-comparisons/227a28e880fbb9/before.loop</code></h1>
+  <pre>context(NMAX);
+
+if (1 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(0, ((NMAX + 31) / 32)) {
+      for i2 in range(max(((32 * i1) / 32), 0), ((NMAX + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), NMAX)) {
+          for i4 in range(max((32 * i1), 0), min(min(NMAX, ((32 * i2) + 32)), ((32 * i1) + 32))) {
+            for i5 in range(max((32 * i2), i4), min(((32 * i2) + 32), NMAX)) {
+              c[i4][i5] = (c[i4][i5] + (a[i3][i4] * a[i3][i5]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

@@ -3,45 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CSample2.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/samples/CSample2.c</code></h1>
-  <pre>// covcol, convariance calculation
-// Link to examples to pluto&#x27;s examples: https://github.com/bondhugula/pluto/blob/eddc38537d61cd49d55e454831086848d51473d7/examples/covcol/covcol.c#L97
+  <h1><code>evidence/results/program-comparisons/091c5fafc930e8/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-#pragma scop
-  /* Calculate the m * m covariance matrix. */
-  for (j1 = 1; j1 &lt;= M; j1++) {
-    for (j2 = j1; j2 &lt;= M; j2++) {
-      for (i = 1; i &lt;= N; i++) {
-        symmat[j1][j2] += data[i][j1] * data[i][j2];
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range(0, ((T + (N + 24)) / 32)) {
+      for i2 in range(max(0, (((-1 * N) + ((32 * i1) + 6)) / 32)), min(((T + 30) / 32), (((32 * i1) + 58) / 32))) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+          for i4 in range(max(max(10, ((32 * i2) + 5)), (32 * i1)), min(min((T + (N + -7)), (N + ((32 * i2) + 26))), ((32 * i1) + 32))) {
+            for i5 in range(max(max((32 * i2), 5), ((-1 * N) + (i4 + 6))), min(min(((32 * i2) + 32), (T + -1)), (i4 + -4))) {
+              for i6 in range((i4 + (-1 * i5)), (i4 + ((-1 * i5) + 1))) {
+                A[i3][(i5 + 1)][i6] = (0.125 * (A[i3][i5][(i6 + -1)] + A[i3][(i5 + -2)][(i6 + 1)]));
+              }
+            }
+          }
+        }
       }
-      symmat[j2][j1] = symmat[j1][j2];
     }
   }
-#pragma endscop
-
-// afterscheduling: 
-// for (i = 1; i &lt;= N; i++) {
-//   for (j1 = 1; j1 &lt;= M; j1++) {
-//     for (j2 = j1; j2 &lt;= M; j2++) {
-//       symmat[j1][j2] += data[i][j1] * data[i][j2];
-//     }
-//   }
-// }
-// for (j1 = 1; j1 &lt;= M; j1++) {
-//   for (j2 = j1; j2 &lt;= M; j2++) {
-//     symmat[j2][j1] = symmat[j1][j2];
-//   }
-// }
-
-// Note:
-// 1. speed-up is not in our concern, but with only &quot;reordering&quot;, programs are possible to gain significant speed-up in our working setting, concretely for sample2/3.
-// 2. validator works bidirectionally for all sample1/2/3, which suggests they are semantically equivalent (not just refinement).
+}
 </pre>
 </main>
 </body>

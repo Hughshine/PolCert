@@ -12,25 +12,62 @@
   <h1><code>diamond-tile-example.c</code></h1>
   <p class="lede">diamond tiling. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>effect:diamond,route:permutable-band,phase:true</dd>
-        
-      </dl>
+      <h2>Input C Program</h2>
+      <pre>// Example - thanks to Tobias Grosser.
+// Dependences are (1, 1) and (3, -1). The diamond tiling hyperplanes are (1,1)
+// and (1,-1).
+//
+// TILE-PARALLEL: T(S1): (t+i, t-i)
+// TILE-PARALLEL: After tiling:
+// TILE-PARALLEL: T(S1): ((t+i)/32, (t-i)/32, t+i, t-i)
+#pragma scop
+for (t = 5; t &lt; T - 1; t++) {
+  for (i = 5; i &lt; N - 5; i++) {
+    A[t + 1][i] = 0.125 * (A[t][i - 1] + A[t - 2][i + 1]);
+  }
+}
+#pragma endscop
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Diamond tiling</dd>
-        <dt>Actual</dt><dd>effect:diamond,affine:true,tiling:true,phase:true</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT2,zT3,t,i)	A[t + 1][i] = 0.125 * (A[t][i - 1] + A[t - 2][i + 1]);
+
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((N &gt;= 11) &amp;&amp; (T &gt;= 7)) {
+  for (t1=0;t1&lt;=floord(T+N-8,32);t1++) {
+    for (t2=max(max(ceild(16*t1-N-9,16),ceild(-N-20,32)),-t1-1);t2&lt;=min(min(floord(-16*t1+T-2,16),floord(T-7,32)),t1);t2++) {
+      for (t3=max(max(32*t1,-32*t2-21),32*t2+10);t3&lt;=min(min(min(32*t1+31,T+N-8),-32*t2+2*T-4),32*t2+2*N+19);t3++) {
+        for (t4=max(max(ceild(-32*t2+3*t3-31,2),t3+5),2*t3-T+2);t4&lt;=min(min(floord(-32*t2+3*t3,2),2*t3-5),t3+N-6);t4++) {
+          S1(t1,t2,(2*t3-t4),(-t3+t4));
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>effect:diamond,route:permutable-band,phase:true</dd>
+      <dt>Observed effect</dt><dd>Diamond tiling</dd>
+      <dt>Actual</dt><dd>effect:diamond,affine:true,tiling:true,phase:true</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0264.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0978.html">before.c</a> &middot; <a href="../../../docs/files/0977.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1590.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

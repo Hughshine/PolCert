@@ -12,25 +12,43 @@
   <h1><code>nodep</code></h1>
   <p class="lede">identity-iss-sensitive-search. Index-Set Splitting (ISS).</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with and without ISS</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity Tiling without ISS</h2>
+      <pre>for i0 in range(0, 4) {
+  for i1 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+    for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>ISS sensitivity comparison</dd>
-        <dt>Actual</dt><dd>included in the suite-level result</dd>
-        <dt>Status</dt><dd>SUITE RESULT</dd>
-      </dl>
+      <h2>Identity Tiling with ISS</h2>
+      <pre>for i0 in range(0, 4) {
+  for i1 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+    for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with and without ISS</dd>
+      <dt>Observed effect</dt><dd>ISS sensitivity comparison</dd>
+      <dt>Actual</dt><dd>included in the suite-level result</dd>
+      <dt>Status</dt><dd>SUITE RESULT</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0380.html">nodep.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1122.html">before.loop</a> &middot; <a href="../../../docs/files/1121.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1706.html">nodep.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

@@ -12,25 +12,49 @@
   <h1><code>optimizer-forceparallel-pass-through</code></h1>
   <p class="lede">driver option configurations. Driver Options.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>success,effects=0,tiling-route=none</dd>
-        <dt>Coverage</dt><dd>acceptance-only</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(M, N, K);
+
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Option accepted; this test makes no parallel-effect claim</dd>
-        <dt>Actual</dt><dd>route-accepted,effect-contracts=none</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, K) {
+    for i1 in range(0, N) {
+      for i2 in range(0, M) {
+        C[i2][i1] = ((beta * C[i2][i1]) + ((alpha * A[i2][i0]) * B[i0][i1]));
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>success,effects=0,tiling-route=none</dd>
+      <dt>Observed effect</dt><dd>Option accepted; this test makes no parallel-effect claim</dd>
+      <dt>Actual</dt><dd>route-accepted,effect-contracts=none</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0277.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0586.html">before.loop</a> &middot; <a href="../../../docs/files/0585.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1603.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

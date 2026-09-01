@@ -3,22 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>matmul.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/matmul.loop</code></h1>
-  <pre>context(M, N, K);
+  <h1><code>evidence/results/program-comparisons/15bf0e861b26bd/after.c</code></h1>
+  <pre>#define S1(zT2,$i0,$i1)	A[$i0][$i1] = A[$i0 + -1 * 1][K] + 1;
 
-for i in range(0, M) {
-  for j in range(0, N) {
-    for k in range(0, K) {
-      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((M &gt;= 1) &amp;&amp; (N &gt;= 2)) {
+  for (t2=1;t2&lt;=N-1;t2++) {
+    for (t4=0;t4&lt;=floord(M-1,32);t4++) {
+      for (t5=32*t4;t5&lt;=min(M-1,32*t4+31);t5++) {
+        S1(t4,t2,t5);
+      }
     }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

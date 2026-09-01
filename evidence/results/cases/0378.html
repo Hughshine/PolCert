@@ -12,25 +12,131 @@
   <h1><code>fdtd-2d</code></h1>
   <p class="lede">identity-diamond-sensitive-search. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity-Tiled C Program</h2>
+      <pre>#define S1(zT2,$i0,$i1)	ey[0][$i1] = $i0;
+#define S2(zT3,zT4,$i0,$i1,$i2)	ey[$i1][$i2] = ey[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1 - 1][$i2];
+#define S3(zT3,zT4,$i0,$i1,$i2)	ex[$i1][$i2] = ex[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1][$i2 - 1];
+#define S4(zT3,zT4,$i0,$i1,$i2)	hz[$i1][$i2] = hz[$i1][$i2] - 0.7 * ex[$i1][$i2 + 1] - ex[$i1][$i2] + ey[$i1 + 1][$i2] - ey[$i1][$i2];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((ny &gt;= 1) &amp;&amp; (tmax &gt;= 1)) {
+  for (t2=0;t2&lt;=tmax-1;t2++) {
+    for (t4=0;t4&lt;=floord(ny-1,32);t4++) {
+      for (t5=32*t4;t5&lt;=min(ny-1,32*t4+31);t5++) {
+        S1(t4,t2,t5);
+      }
+    }
+    if (nx &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=max(1,32*t4);t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S2(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    if (ny &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=max(1,32*t6);t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S3(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+        for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+          for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+            S4(t4,t6,t2,t7,t9);
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
-        <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Identity Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT2,$i0,$i1)	ey[0][$i1] = $i0;
+#define S2(zT3,zT4,$i0,$i1,$i2)	ey[$i1][$i2] = ey[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1 - 1][$i2];
+#define S3(zT3,zT4,$i0,$i1,$i2)	ex[$i1][$i2] = ex[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1][$i2 - 1];
+#define S4(zT3,zT4,$i0,$i1,$i2)	hz[$i1][$i2] = hz[$i1][$i2] - 0.7 * ex[$i1][$i2 + 1] - ex[$i1][$i2] + ey[$i1 + 1][$i2] - ey[$i1][$i2];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((ny &gt;= 1) &amp;&amp; (tmax &gt;= 1)) {
+  for (t2=0;t2&lt;=tmax-1;t2++) {
+    for (t4=0;t4&lt;=floord(ny-1,32);t4++) {
+      for (t5=32*t4;t5&lt;=min(ny-1,32*t4+31);t5++) {
+        S1(t4,t2,t5);
+      }
+    }
+    if (nx &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=max(1,32*t4);t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S2(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    if (ny &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=max(1,32*t6);t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S3(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+        for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+          for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+            S4(t4,t6,t2,t7,t9);
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two generated programs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
+      <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0348.html">fdtd-2d.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1312.html">before.c</a> &middot; <a href="../../../docs/files/1311.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1674.html">fdtd-2d.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

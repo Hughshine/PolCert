@@ -1,0 +1,8 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    a[i0] = 0;
+    a[i1] = 0;
+  }
+}

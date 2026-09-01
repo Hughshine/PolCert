@@ -12,25 +12,149 @@
   <h1><code>mutated-cut</code></h1>
   <p class="lede">ISS from live Pluto output. Index-Set Splitting (ISS).</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>reject,exit:1,validation-fail:true</dd>
-        
-      </dl>
+      <h2>Original ISS Proposal</h2>
+      <pre>VAR_ORDER 5
+VAR T
+VAR N
+VAR i
+VAR j
+VAR t
+BEFORE_STMTS 1
+BEFORE_DOMAIN 6
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+AFTER_STMTS 4
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,-1,2,0,0|-1
+ROW 0,-1,0,2,0|-1
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,1,-2,0,0|0
+ROW 0,-1,0,2,0|-1
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,-1,2,0,0|-1
+ROW 0,1,0,-2,0|0
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,1,-2,0,0|0
+ROW 0,1,0,-2,0|0
+CUTS 2
+CUT 0,-1,2,0,0|0
+CUT 0,-1,0,2,0|0
+STMT_WITNESSES 4
+STMT_WITNESS 0 lt,lt
+STMT_WITNESS 0 ge,lt
+STMT_WITNESS 0 lt,ge
+STMT_WITNESS 0 ge,ge
+END
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
-        <dt>Actual</dt><dd>exit:1,validation-fail:true</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Rejected Mutated ISS Proposal</h2>
+      <pre>VAR_ORDER 5
+VAR T
+VAR N
+VAR i
+VAR j
+VAR t
+BEFORE_STMTS 1
+BEFORE_DOMAIN 6
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+AFTER_STMTS 4
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,-1,2,0,0|-1
+ROW 0,-1,0,2,0|-1
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,1,-2,0,0|0
+ROW 0,-1,0,2,0|-1
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,-1,2,0,0|-1
+ROW 0,1,0,-2,0|0
+AFTER_DOMAIN 8
+ROW 0,0,0,0,-1|-1
+ROW -1,0,0,0,1|-1
+ROW 0,0,-1,0,0|0
+ROW 0,-1,1,0,0|-1
+ROW 0,0,0,-1,0|0
+ROW 0,-1,0,1,0|-1
+ROW 0,1,-2,0,0|0
+ROW 0,1,0,-2,0|0
+CUTS 2
+CUT 0,-1,2,0,0|1
+CUT 0,-1,0,2,0|0
+STMT_WITNESSES 4
+STMT_WITNESS 0 lt,lt
+STMT_WITNESS 0 ge,lt
+STMT_WITNESS 0 lt,ge
+STMT_WITNESS 0 ge,ge
+END
+</pre>
     </section>
   </div>
+  <p class="comparison-note">The candidate differs by one corrupted cut constant; the ISS validator rejects it.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>reject,exit:1,validation-fail:true</dd>
+      <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
+      <dt>Actual</dt><dd>exit:1,validation-fail:true</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../program-comparisons/1a8a7b9c570d28/before.bridge">before.bridge</a> &middot; <a href="../program-comparisons/1a8a7b9c570d28/after.bridge">after.bridge</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

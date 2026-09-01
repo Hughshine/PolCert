@@ -12,25 +12,49 @@
   <h1><code>fusion7</code></h1>
   <p class="lede">unroll-and-jam exploration. Unroll and Jam.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(N, M);
+
+for i in range(0, N) {
+  a[i] = b[i];
+}
+for i in range(0, M) {
+  a[i] = b[i];
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
-        <dt>Actual</dt><dd>checked-effect=false</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, min(M, N)) {
+  a[i0] = b[i0];
+  a[i0] = b[i0];
+}
+for i0 in range(max(0, N), M) {
+  a[i0] = b[i0];
+}
+for i0 in range(max(M, 0), N) {
+  a[i0] = b[i0];
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
+      <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
+      <dt>Actual</dt><dd>checked-effect=false</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0288.html">summary.json</a> &middot; <a href="../../../docs/files/0326.html">fusion7.loop</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1514.html">before.loop</a> &middot; <a href="../../../docs/files/1513.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1614.html">summary.json</a> &middot; <a href="../../../docs/files/1652.html">fusion7.loop</a></p></details>
   </div>
 </main>
 </body>

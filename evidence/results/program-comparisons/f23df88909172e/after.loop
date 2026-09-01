@@ -1,0 +1,12 @@
+context(N, M);
+
+for i0 in range(0, min(M, N)) {
+  a[i0] = b[i0];
+  a[i0] = b[i0];
+}
+for i0 in range(max(0, N), M) {
+  a[i0] = b[i0];
+}
+for i0 in range(max(M, 0), N) {
+  a[i0] = b[i0];
+}

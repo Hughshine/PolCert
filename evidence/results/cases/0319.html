@@ -12,25 +12,53 @@
   <h1><code>second-level-vector-hint-band</code></h1>
   <p class="lede">two-level tiling configurations. Two-Level Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>result=success,markers=8,baseline-difference=true</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>context(N, M);
+
+for i in range(0, N) {
+  for j in range(0, M) {
+    A[i][j] = (B[i][j] + 1);
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Two-level tiling; Parallelization restricted to the innermost loop</dd>
-        <dt>Actual</dt><dd>all-declared-assertions-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>context(N, M);
+
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((M + 255) / 256)) {
+      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((M + 31) / 32))) {
+          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+            vector for i5 in range(max((32 * i3), 0), min(((32 * i3) + 32), M)) {
+              A[i4][i5] = (B[i4][i5] + 1);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>result=success,markers=8,baseline-difference=true</dd>
+      <dt>Observed effect</dt><dd>Two-level tiling; Parallelization restricted to the innermost loop</dd>
+      <dt>Actual</dt><dd>all-declared-assertions-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0284.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0700.html">before.loop</a> &middot; <a href="../../../docs/files/0699.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1610.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

@@ -1,0 +1,45 @@
+#define S1(zT2,zT3,$i0,$i1)	B[$i0][$i1] = A[$i0][$i1] + u1[$i0] * v1[$i1] + u2[$i0] * v2[$i1];
+#define S2(zT2,zT3,$i0,$i1)	x[$i0] = x[$i0] + beta * B[$i1][$i0] * y[$i1];
+#define S3(zT1,$i0)	x[$i0] = x[$i0] + z[$i0];
+#define S4(zT2,zT3,$i0,$i1)	w[$i0] = w[$i0] + alpha * B[$i0][$i1] * x[$i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N >= 1) {
+  for (t2=0;t2<=floord(N-1,32);t2++) {
+    for (t4=0;t4<=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5<=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7<=min(N-1,32*t4+31);t7++) {
+          S1(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+  for (t2=0;t2<=floord(N-1,32);t2++) {
+    for (t4=0;t4<=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5<=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7<=min(N-1,32*t4+31);t7++) {
+          S2(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+  for (t2=0;t2<=floord(N-1,32);t2++) {
+    for (t3=32*t2;t3<=min(N-1,32*t2+31);t3++) {
+      S3(t2,t3);
+    }
+  }
+  for (t2=0;t2<=floord(N-1,32);t2++) {
+    for (t4=0;t4<=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5<=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7<=min(N-1,32*t4+31);t7++) {
+          S4(t2,t4,t5,t7);
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */

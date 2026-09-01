@@ -12,25 +12,37 @@
   <h1><code>matmul-parallel-hint</code></h1>
   <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
 
-  <div class="case-side-by-side">
-    <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.</dd>
-        <dt>Coverage</dt><dd>rejection-contract</dd>
-      </dl>
-    </section>
-    <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>The requested parallel dimension was not certifiable</dd>
-        <dt>Actual</dt><dd>Strict mode rejects with no output; permissive mode chooses a different certified dimension.</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
-    </section>
-  </div>
+  
+  <section class="single-program">
+    <h2>Input Loop Program</h2>
+    <pre>context(M, N, K);
+
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
+  }
+}
+</pre>
+  </section>
+  <p class="comparison-note">
+    Strict validation stops before code generation, so this case has no target
+    or rejected candidate program to display.
+  </p>
+  <section class="result-summary">
+    <h2>Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.</dd>
+      <dt>Coverage</dt><dd>rejection-contract</dd>
+      <dt>Observed effect</dt><dd>The requested parallel dimension was not certifiable</dd>
+      <dt>Actual</dt><dd>Strict mode rejects with no output; permissive mode chooses a different certified dimension.</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1656.html">matmul.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

@@ -12,25 +12,63 @@
   <h1><code>mixed_unroll</code></h1>
   <p class="lede">identity-diamond-sensitive-search. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity-Tiled C Program</h2>
+      <pre>#define S1(zT1,$i0)	c[$i0] = $i0;
+#define S2(zT1,$i0)	b[$i0] = $i0;
+
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t3=0;t3&lt;=1;t3++) {
+  S1(0,t3);
+}
+for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+  for (t3=32*t2;t3&lt;=min(N-1,32*t2+31);t3++) {
+    S2(t2,t3);
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
-        <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Identity Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT1,$i0)	c[$i0] = $i0;
+#define S2(zT1,$i0)	b[$i0] = $i0;
+
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t3=0;t3&lt;=1;t3++) {
+  S1(0,t3);
+}
+for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+  for (t3=32*t2;t3&lt;=min(N-1,32*t2+31);t3++) {
+    S2(t2,t3);
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two generated programs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
+      <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0372.html">mixed_unroll.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0926.html">before.c</a> &middot; <a href="../../../docs/files/0925.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1698.html">mixed_unroll.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

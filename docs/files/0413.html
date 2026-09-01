@@ -3,59 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_generated_harness.py</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/end_to_end_c/test_generated_harness.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <h1><code>evidence/results/program-comparisons/1dea10725f411d/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-from generated_harness import (
-    ArrayDim,
-    collect_var_ranges,
-    div_candidates,
-    render_checksum_function,
-)
-
-
-def main() -&gt; int:
-    ranges = collect_var_ranges(
-        [
-            &quot;context(n);\n&quot;
-            &quot;for i in range(0, min(n, 8), 2) {\n&quot;
-            &quot;  A[i] = i;\n&quot;
-            &quot;}\n&quot;
-        ],
-        {&quot;n&quot;: 6},
-    )
-    assert ranges[&quot;i&quot;] == (0, 5), ranges
-    descending = collect_var_ranges(
-        [
-            &quot;context(n);\n&quot;
-            &quot;for i in range((n + -1), -1, -2) {\n&quot;
-            &quot;  A[i] = i;\n&quot;
-            &quot;}\n&quot;
-        ],
-        {&quot;n&quot;: 6},
-    )
-    assert descending[&quot;i&quot;] == (0, 5), descending
-    assert div_candidates(-5, -5, 2, 2) == (-3, -3)
-    checksum = render_checksum_function(
-        {&quot;A&quot;: (ArrayDim(0, 1, 0, 2), ArrayDim(0, 2, 0, 3))}, ()
-    )
-    assert &quot;((__i0) * 3 + __i1)&quot; in checksum, checksum
-    print(
-        &quot;[generated-harness-unit] PASS expected=import-and-parse-positive-and-negative-ranges &quot;
-        &quot;actual=parsed-and-index-weighted interpretation=generated-C-harness-can-start-infer-loop-bounds-and-detect-value-permutations&quot;
-    )
-    return 0
-
-
-if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range(0, ((T + (N + 24)) / 32)) {
+      for i2 in range(max(0, (((-1 * N) + ((32 * i1) + 6)) / 32)), min(((T + 30) / 32), (((32 * i1) + 58) / 32))) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+          for i4 in range(max(max(10, ((32 * i2) + 5)), (32 * i1)), min(min((T + (N + -7)), (N + ((32 * i2) + 26))), ((32 * i1) + 32))) {
+            for i5 in range(max(max((32 * i2), 5), ((-1 * N) + (i4 + 6))), min(min(((32 * i2) + 32), (T + -1)), (i4 + -4))) {
+              for i6 in range((i4 + (-1 * i5)), (i4 + ((-1 * i5) + 1))) {
+                A[i3][(i5 + 1)][i6] = (0.125 * (A[i3][i5][(i6 + -1)] + A[i3][(i5 + -2)][(i6 + 1)]));
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

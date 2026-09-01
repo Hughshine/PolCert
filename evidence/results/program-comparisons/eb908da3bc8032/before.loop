@@ -1,0 +1,10 @@
+for i0 in range(0, 2) {
+  for i1 in range(0, 2) {
+    A[((2 * i0) + i1)] = 1;
+  }
+}
+for i0 in range(0, 2) {
+  for i1 in range(0, 2) {
+    B[((2 * i0) + i1)] = A[((2 * i0) + i1)];
+  }
+}

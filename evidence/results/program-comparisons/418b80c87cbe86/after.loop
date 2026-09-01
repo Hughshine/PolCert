@@ -1,0 +1,12 @@
+context(N, M);
+
+if (1 <= N) {
+  for i0 in range(0, N) {
+    autocorr = (autocorr + 1);
+  }
+}
+if (1 <= M) {
+  for i0 in range(0, M) {
+    temp3 = (temp3 + 1);
+  }
+}

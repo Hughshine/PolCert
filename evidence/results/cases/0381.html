@@ -12,25 +12,67 @@
   <h1><code>fusion10</code></h1>
   <p class="lede">identity-diamond-sensitive-search. Diamond Tiling.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
-        <dt>Coverage</dt><dd>effect search</dd>
-      </dl>
+      <h2>Identity-Tiled C Program</h2>
+      <pre>#define S1(zT2,zT3,$i0,$i1)	A[2 * $i0 + $i1] = 1;
+#define S2(zT2,zT3,$i0,$i1)	B[2 * $i0 + $i1] = A[2 * $i0 + $i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t5=0;t5&lt;=1;t5++) {
+  for (t7=0;t7&lt;=1;t7++) {
+    S1(0,0,t5,t7);
+  }
+}
+for (t5=0;t5&lt;=1;t5++) {
+  for (t7=0;t7&lt;=1;t7++) {
+    S2(0,0,t5,t7);
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
-        <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Identity Diamond-Tiled C Program</h2>
+      <pre>#define S1(zT2,zT3,$i0,$i1)	A[2 * $i0 + $i1] = 1;
+#define S2(zT2,zT3,$i0,$i1)	B[2 * $i0 + $i1] = A[2 * $i0 + $i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t5=0;t5&lt;=1;t5++) {
+  for (t7=0;t7&lt;=1;t7++) {
+    S1(0,0,t5,t7);
+  }
+}
+for (t5=0;t5&lt;=1;t5++) {
+  for (t7=0;t7&lt;=1;t7++) {
+    S2(0,0,t5,t7);
+  }
+}
+/* End of CLooG code */
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This search compares two generated programs; it is not a source-to-target compilation count.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>compare identity tiling with identity diamond tiling</dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; diamond tiling produced the same generated C</dd>
+      <dt>Actual</dt><dd>same generated C; no distinct diamond effect</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0351.html">fusion10.loop</a> &middot; <a href="../../../docs/files/0272.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1018.html">before.c</a> &middot; <a href="../../../docs/files/1017.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1677.html">fusion10.loop</a> &middot; <a href="../../../docs/files/1598.html">test log</a></p></details>
   </div>
 </main>
 </body>

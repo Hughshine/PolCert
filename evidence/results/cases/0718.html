@@ -12,25 +12,48 @@
   <h1><code>optimizer-coeff-bound-tight-effect</code></h1>
   <p class="lede">driver option configurations. Driver Options.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>success,effects=3,tiling-route=none</dd>
-        <dt>Coverage</dt><dd>effect</dd>
-      </dl>
+      <h2>Before Program</h2>
+      <pre>for x in range(0, 2) {
+  for z in range(0, 2) {
+    A[((2 * x) + z)] = 1;
+  }
+}
+for x in range(0, 2) {
+  for z in range(0, 2) {
+    B[((2 * x) + z)] = A[((2 * x) + z)];
+  }
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>Affine rescheduling</dd>
-        <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Accepted Program</h2>
+      <pre>for i0 in range(0, 2) {
+  A[(2 * i0)] = 1;
+  B[(2 * i0)] = A[(2 * i0)];
+  A[((2 * i0) + 1)] = 1;
+  if (1 &lt;= i0) {
+    B[1] = A[1];
+  }
+}
+B[3] = A[3];
+</pre>
     </section>
   </div>
+  
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>success,effects=3,tiling-route=none</dd>
+      <dt>Observed effect</dt><dd>Affine rescheduling</dd>
+      <dt>Actual</dt><dd>success,effect-contracts-matched</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0277.html">test log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/0918.html">before.loop</a> &middot; <a href="../../../docs/files/0917.html">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1603.html">test log</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

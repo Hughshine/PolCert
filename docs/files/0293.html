@@ -3,157 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VerifiedLoopPostpass.v</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/driver/VerifiedLoopPostpass.v</code></h1>
-  <pre>Require Import Bool.
-Require Import String.
+  <h1><code>evidence/results/program-comparisons/086dbd05f4899a/after.loop</code></h1>
+  <pre>context(N);
 
-Require Import ImpureAlarmConfig.
-Require Import LoopCleanup.
-Require Import LoopJamBridge.
-Require Import LoopUnroll.
-Require Import PolIRs.
-Require Import Result.
-Require Import Vpl.Impure.
-
-Local Open Scope impure_scope.
-Local Open Scope string_scope.
-
-(** Constant-bound unrolling is an independent compiler dimension, rather
-    than another copy of every affine, tiling, and ISS route. *)
-Inductive loop_postpass_config : Type :=
-| NoLoopPostpass
-| ConstUnrollPostpass.
-
-Module VerifiedLoopPostpass (PolIRs : POLIRS).
-
-Module Loop := PolIRs.Loop.
-Module State := PolIRs.State.
-Module Unroll := LoopUnroll PolIRs.
-Module Cleanup := LoopCleanup PolIRs.
-Module JamBridge := LoopJamBridge PolIRs.
-Module JamLower := JamBridge.Lower.
-
-Definition apply (cfg : loop_postpass_config) (loop : Loop.t) : imp Loop.t :=
-  match cfg with
-  | NoLoopPostpass =&gt; pure loop
-  | ConstUnrollPostpass =&gt;
-      if Unroll.const_unroll_changed loop then
-        pure (Cleanup.cleanup (Unroll.const_unroll loop))
-      else
-        res_to_alarm loop
-          (Err &quot;constant unroll requested, but no constant-bounded loop exists&quot;)
-  end.
-
-(** Execute the complete checked unroll-jam postpass.  [select] is an
-    untrusted policy function: it may choose any subset of loop positions, but
-    every fusion it requests is independently accepted or rejected by the
-    extracted validator.  Quantifying over [select] keeps profitability and
-    command-line policy outside the trusted base. *)
-Definition apply_checked_unrolljam
-    (const_first : bool)
-    (select : Loop.t -&gt; JamLower.unrolljam_plan)
-    (factor : nat) (loop : Loop.t) : imp Loop.t :=
-  let prepared :=
-    if const_first &amp;&amp; Unroll.const_unroll_changed loop then
-      Cleanup.cleanup (Unroll.const_unroll loop)
-    else loop in
-  BIND jammed &lt;-
-    JamLower.checked_unrolljam_loop_with_plan
-      (select prepared) factor prepared -;
-  pure (Cleanup.cleanup jammed).
-
-Theorem apply_correct :
-  forall cfg loop loop&#x27; st st&#x27;,
-    mayReturn (apply cfg loop) loop&#x27; -&gt;
-    Loop.semantics loop&#x27; st st&#x27; -&gt;
-    exists st&#x27;&#x27;,
-      Loop.semantics loop st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
-Proof.
-  intros cfg loop loop&#x27; st st&#x27; Happly Hsem.
-  destruct cfg as [|]; simpl in Happly.
-  - apply mayReturn_pure in Happly.
-    subst loop&#x27;.
-    exists st&#x27;.
-    split; [exact Hsem|apply State.eq_refl].
-  - destruct (Unroll.const_unroll_changed loop) eqn:Hchanged.
-    + apply mayReturn_pure in Happly.
-      subst loop&#x27;.
-      pose proof
-        ((proj1
-           (Cleanup.cleanup_correct
-              (Unroll.const_unroll loop) st st&#x27;)) Hsem) as Hunrolled.
-      pose proof
-        ((proj1 (Unroll.const_unroll_correct loop st st&#x27;)) Hunrolled)
-        as Hsource.
-      exists st&#x27;.
-      split; [exact Hsource|apply State.eq_refl].
-    + apply mayReturn_alarm in Happly.
-      contradiction.
-Qed.
-
-Theorem apply_checked_unrolljam_correct :
-  forall const_first select factor loop loop&#x27; st st&#x27;,
-    mayReturn
-      (apply_checked_unrolljam const_first select factor loop)
-      loop&#x27; -&gt;
-    Loop.semantics loop&#x27; st st&#x27; -&gt;
-    exists st&#x27;&#x27;,
-      Loop.semantics loop st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
-Proof.
-  intros const_first select factor loop loop&#x27; st st&#x27; Happly Hsem.
-  unfold apply_checked_unrolljam in Happly.
-  remember
-    (if const_first &amp;&amp; Unroll.const_unroll_changed loop then
-       Cleanup.cleanup (Unroll.const_unroll loop)
-     else loop) as prepared eqn:Hprepared.
-  apply mayReturn_bind in Happly.
-  destruct Happly as [jammed [Hjam Hret]].
-  apply mayReturn_pure in Hret.
-  subst loop&#x27;.
-  pose proof
-    ((proj1 (Cleanup.cleanup_correct jammed st st&#x27;)) Hsem)
-    as Hjammed_sem.
-  assert
-    (Hpair :
-       let &#x27;(_, varctxt, vars) := prepared in
-       JamBridge.Context.checked_pair_refines varctxt vars).
-  {
-    destruct prepared as [[prepared_stmt varctxt] vars].
-    simpl.
-    apply JamBridge.checked_pair_refines_sound.
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+            for i5 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+              C[i4][i5] = 0;
+            }
+          }
+        }
+      }
+    }
   }
-  pose proof
-    (JamBridge.Context.checked_unrolljam_loop_with_plan_refines
-       (select prepared) factor prepared jammed Hpair Hjam)
-    as Hrefines.
-  unfold JamBridge.Context.loop_refines in Hrefines.
-  destruct (Hrefines st st&#x27; Hjammed_sem)
-    as [st_prepared [Hprepared_sem Heq]].
-  destruct (const_first &amp;&amp; Unroll.const_unroll_changed loop) eqn:Hconst.
-  - subst prepared.
-    pose proof
-      ((proj1
-          (Cleanup.cleanup_correct
-             (Unroll.const_unroll loop) st st_prepared)) Hprepared_sem)
-      as Hunrolled_sem.
-    pose proof
-      ((proj1 (Unroll.const_unroll_correct loop st st_prepared))
-         Hunrolled_sem)
-      as Hsource_sem.
-    exists st_prepared.
-    split; assumption.
-  - subst prepared.
-    exists st_prepared.
-    split; assumption.
-Qed.
-
-End VerifiedLoopPostpass.
+}
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(0, ((N + 255) / 256)) {
+        for i3 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {
+          for i4 in range(max(0, (8 * i1)), min(((N + 31) / 32), ((8 * i1) + 8))) {
+            for i5 in range(max(0, (8 * i2)), min(((N + 31) / 32), ((8 * i2) + 8))) {
+              for i6 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), N)) {
+                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

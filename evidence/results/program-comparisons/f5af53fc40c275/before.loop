@@ -1,0 +1,7 @@
+context(T, N);
+
+for i0 in range(5, (T + -1)) {
+  for i1 in range(5, (N + -5)) {
+    A[(i0 + 1)][i1] = (A[i0][(i1 - 1)] + A[(i0 - 2)][(i1 + 1)]);
+  }
+}

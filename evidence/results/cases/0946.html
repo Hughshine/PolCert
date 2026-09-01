@@ -12,25 +12,80 @@
   <h1><code>vanished-outer-parallel</code></h1>
   <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
 
-  <div class="case-side-by-side">
+  <div class="loop-comparison">
     <section>
-      <h2>Tested Condition</h2>
-      <dl>
-        <dt>Expected</dt><dd>After a one-trip outer coordinate disappears, an off-by-one band test transfers its parallel annotation to a dependent inner recurrence.</dd>
-        <dt>Coverage</dt><dd>rejection-contract</dd>
-      </dl>
+      <h2>Original C Program</h2>
+      <pre>#include &lt;stdio.h&gt;
+
+#define N 10000
+
+static int a[1][N];
+
+int main(void) {
+  int i, j;
+  a[0][0] = 1;
+
+#pragma scop
+  for (i = 0; i &lt; 1; i++)
+    for (j = 1; j &lt; N; j++)
+      a[i][j] = a[i][j - 1] + 1;
+#pragma endscop
+
+  printf(&quot;%d\n&quot;, a[0][N - 1]);
+  return 0;
+}
+</pre>
     </section>
     <section>
-      <h2>Recorded Result</h2>
-      <dl>
-        <dt>Observed effect</dt><dd>A parallel annotation moved to a dependent inner loop</dd>
-        <dt>Actual</dt><dd>Strict hint mapping rejects the vanished loop, and a direct check also rejects the dependent inner loop.</dd>
-        <dt>Status</dt><dd>PASS</dd>
-      </dl>
+      <h2>Rejected Pluto-Generated C Program</h2>
+      <pre>#include &lt;omp.h&gt;
+#include &lt;math.h&gt;
+#define ceild(n,d)  (((n)&lt;0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))
+#define floord(n,d) (((n)&lt;0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))
+#define max(x,y)    ((x) &gt; (y)? (x) : (y))
+#define min(x,y)    ((x) &lt; (y)? (x) : (y))
+
+#include &lt;stdio.h&gt;
+
+#define N 10000
+
+static int a[1][N];
+
+int main(void) {
+  int i, j;
+  a[0][0] = 1;
+
+  int t1, t2;
+ int lb, ub, lbp, ubp, lb2, ub2;
+ register int lbv, ubv;
+if (N &gt;= 2) {
+  lbp=1;
+  ubp=N-1;
+#pragma omp parallel for private(lbv,ubv)
+  for (t2=lbp;t2&lt;=ubp;t2++) {
+    a[0][t2] = a[0][t2 - 1] + 1;;
+  }
+}
+
+  printf(&quot;%d\n&quot;, a[0][N - 1]);
+  return 0;
+}
+</pre>
     </section>
   </div>
+  <p class="comparison-note">This is the exact generated program from the pinned historical Pluto revision used by the rejection test.</p>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>After a one-trip outer coordinate disappears, an off-by-one band test transfers its parallel annotation to a dependent inner recurrence.</dd>
+      <dt>Observed effect</dt><dd>A parallel annotation moved to a dependent inner loop</dd>
+      <dt>Actual</dt><dd>Strict hint mapping rejects the vanished loop, and a direct check also rejects the dependent inner loop.</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+    <p><strong>Program files:</strong> <a href="../../../docs/files/1288.html">before.c</a> &middot; <a href="../../../docs/files/1287.html">after.c</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/1607.html">CI log</a></p></details>
   </div>
 </main>
 </body>

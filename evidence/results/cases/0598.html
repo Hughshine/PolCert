@@ -29,9 +29,18 @@ A[3] = 4;
 </pre>
     </section>
   </div>
+  <section class="comparison-result">
+    <h2>Validation Result</h2>
+    <dl>
+      <dt>Expected</dt><dd>outputs-match,parallel=false,vector=false,unrolled=true,required-effects=1,forbidden-effects=0</dd>
+      <dt>Observed effect</dt><dd>Constant-bound loop unrolling</dd>
+      <dt>Actual</dt><dd>outputs-match:true,parallel:false,vector:false,unrolled:true,effects-matched:true,omp-threads-requested:1</dd>
+      <dt>Status</dt><dd>PASS</dd>
+    </dl>
+  </section>
   <div class="case-links">
-    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/e2e-const-unroll/comparison.html">before/after</a></p>
-<p><strong>Supporting record:</strong> <a href="../../../docs/files/0266.html">test log</a></p>
+    <p><strong>Program files:</strong> <a href="../../optimized-loop-examples/e2e-const-unroll/comparison.html">before/after</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1592.html">test log</a></p></details>
   </div>
 </main>
 </body>

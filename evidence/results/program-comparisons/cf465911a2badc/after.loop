@@ -1,0 +1,11 @@
+context(M, N, K);
+
+if ((1 <= N && 1 <= K)) {
+  for i0 in range(0, M) {
+    for i1 in range(0, N) {
+      for i2 in range(0, K) {
+        C[i0][i1] = ((beta * C[i0][i1]) + ((alpha * A[i0][i2]) * B[i2][i1]));
+      }
+    }
+  }
+}
