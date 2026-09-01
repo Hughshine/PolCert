@@ -3,87 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>check_legacy_failure_exit.sh</title>
+  <title>test_check_open_proofs.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/ci/check_legacy_failure_exit.sh</code></h1>
-  <pre>#!/usr/bin/env bash
-set -euo pipefail
+  <h1><code>source/tools/ci/test_check_open_proofs.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
 
-readonly root=&quot;$(cd &quot;$(dirname &quot;${BASH_SOURCE[0]}&quot;)/../..&quot; &amp;&amp; pwd)&quot;
-tmp=&quot;$(mktemp -d -t polcert-legacy-failure-XXXXXX)&quot;
-readonly tmp
-trap &#x27;rm -rf &quot;$tmp&quot;&#x27; EXIT
+import pathlib
+import tempfile
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 
-expect_failure() {
-  local name=&quot;$1&quot;
-  local expected_status=&quot;$2&quot;
-  shift 2
-  local log=&quot;$tmp/$name.log&quot;
-  local status
-  set +e
-  &quot;$@&quot; &gt;&quot;$log&quot; 2&gt;&amp;1
-  status=$?
-  set -e
-  if [[ &quot;$status&quot; -ne &quot;$expected_status&quot; ]]; then
-    printf &#x27;[legacy-failure-gate] FAIL case=%s expected=exit:%s actual=exit:%s interpretation=failure-did-not-match-the-declared-rejection-class\n&#x27; \
-      &quot;$name&quot; &quot;$expected_status&quot; &quot;$status&quot; &gt;&amp;2
-    cat &quot;$log&quot; &gt;&amp;2
-    return 1
-  fi
-  printf &#x27;[legacy-failure-gate] PASS case=%s expected=exit:%s actual=exit:%s interpretation=test-binary-propagated-the-declared-failure\n&#x27; \
-    &quot;$name&quot; &quot;$expected_status&quot; &quot;$status&quot;
-}
+import check_open_proofs
 
-run_self_test() {
-  expect_failure exact-exit 7 bash -c &#x27;exit 7&#x27; &gt;/dev/null
-  if expect_failure wrong-exit 7 bash -c &#x27;exit 6&#x27; &gt;/dev/null 2&gt;&amp;1; then
-    printf &#x27;[legacy-failure-gate-unit] FAIL expected=mismatched-exit-rejected actual=accepted\n&#x27; &gt;&amp;2
-    return 1
-  fi
-  if expect_failure zero-exit 7 bash -c &#x27;exit 0&#x27; &gt;/dev/null 2&gt;&amp;1; then
-    printf &#x27;[legacy-failure-gate-unit] FAIL expected=zero-exit-rejected actual=accepted\n&#x27; &gt;&amp;2
-    return 1
-  fi
-  if expect_failure missing-command 7 &quot;$tmp/does-not-exist&quot; &gt;/dev/null 2&gt;&amp;1; then
-    printf &#x27;[legacy-failure-gate-unit] FAIL expected=missing-command-rejected actual=accepted\n&#x27; &gt;&amp;2
-    return 1
-  fi
-  printf &#x27;[legacy-failure-gate-unit] PASS expected=exact-exit-accepted,mismatch-zero-and-missing-rejected actual=exact-exit-accepted,mismatch-zero-and-missing-rejected interpretation=failure-gate-rejects-unrelated-nonzero-statuses\n&#x27;
-}
 
-if [[ &quot;${1:-}&quot; == &quot;--self-test&quot; ]]; then
-  run_self_test
-  exit 0
-fi
+class OpenProofScannerTests(unittest.TestCase):
+    def scan(self, text: str) -&gt; list[tuple[int, str]]:
+        with tempfile.TemporaryDirectory(prefix=&quot;polcert-open-proof-&quot;) as tmp:
+            path = pathlib.Path(tmp) / &quot;Fixture.v&quot;
+            path.write_text(text, encoding=&quot;utf-8&quot;)
+            return check_open_proofs.find_open_proofs(path)
 
-for binary in \
-  &quot;$root/tests/readscop/test&quot; \
-  &quot;$root/tests/pluto-all/test&quot; \
-  &quot;$root/tests/pluto/test&quot;; do
-  if [[ ! -x &quot;$binary&quot; ]]; then
-    printf &#x27;[legacy-failure-gate] FAIL expected=executable:%s actual=missing-or-not-executable interpretation=the-rejection-test-did-not-run\n&#x27; \
-      &quot;$binary&quot; &gt;&amp;2
-    exit 2
-  fi
-done
+    def test_rejects_unfinished_commands(self) -&gt; None:
+        self.assertEqual(
+            self.scan(&quot;Goal True.\n  admit.\nAdmitted.\nGoal True. Abort.\n&quot;),
+            [(2, &quot;admit&quot;), (3, &quot;Admitted&quot;), (4, &quot;Abort.&quot;)],
+        )
 
-expect_failure readscop-missing-input 2 \
-  &quot;$root/tests/readscop/test&quot; &quot;$tmp/missing.scop&quot;
+    def test_ignores_comments_strings_and_identifiers(self) -&gt; None:
+        source = &#x27;&#x27;&#x27;
+(** Admitted. (* nested admit *) *)
+Definition message := &quot;Abort. and Admitted.&quot;.
+Definition Admitted_helper := true.
+Goal True. exact I. Qed.
+&#x27;&#x27;&#x27;
+        self.assertEqual(self.scan(source), [])
 
-mkdir -p &quot;$tmp/corpus/a/b&quot;
-expect_failure pluto-all-missing-corpus 1 \
-  bash -c &#x27;cd &quot;$1&quot; &amp;&amp; &quot;$2&quot;&#x27; _ \
-    &quot;$tmp/corpus/a/b&quot; &quot;$root/tests/pluto-all/test&quot;
+    def test_preserves_line_numbers_across_nested_comments(self) -&gt; None:
+        source = &quot;(* outer\n(* inner *)\n*)\nGoal True.\nAdmitted.\n&quot;
+        self.assertEqual(self.scan(source), [(5, &quot;Admitted&quot;)])
 
-expect_failure pluto-missing-config 2 \
-  bash -c &#x27;cd &quot;$1/tests/pluto&quot; &amp;&amp; COMPCERT_CONFIG=&quot;$2/missing.ini&quot; ./test&#x27; _ \
-    &quot;$root&quot; &quot;$tmp&quot;
+    def test_gate_exit_statuses(self) -&gt; None:
+        with tempfile.TemporaryDirectory(prefix=&quot;polcert-open-proof-gate-&quot;) as tmp:
+            root = pathlib.Path(tmp)
+            clean = root / &quot;Clean.v&quot;
+            dirty = root / &quot;Dirty.v&quot;
+            clean.write_text(&quot;Goal True. exact I. Qed.\n&quot;, encoding=&quot;utf-8&quot;)
+            dirty.write_text(&quot;Goal True. Admitted.\n&quot;, encoding=&quot;utf-8&quot;)
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                self.assertEqual(check_open_proofs.check_files([clean]), 0)
+                self.assertEqual(check_open_proofs.check_files([dirty]), 1)
+                self.assertEqual(
+                    check_open_proofs.check_files([root / &quot;Missing.v&quot;]), 2
+                )
+            self.assertIn(&quot;expected=0 actual=0&quot;, stdout.getvalue())
+            self.assertIn(&quot;expected=0 actual=1&quot;, stderr.getvalue())
+            self.assertIn(&quot;ERROR missing=&quot;, stderr.getvalue())
 
-printf &#x27;[legacy-failure-gate] PASS expected=exit-codes:2,1,2 actual=exit-codes:2,1,2 interpretation=representative-legacy-failures-return-their-declared-statuses\n&#x27;
+
+if __name__ == &quot;__main__&quot;:
+    unittest.main()
 </pre>
 </main>
 </body>

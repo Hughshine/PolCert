@@ -40,7 +40,7 @@
         "Loop fusion": 3,
         "Loop fusion; Domain splitting": 1,
         "Loop fusion; Ordinary tiling": 8,
-        "None; output loop is identical": 3,
+        "No loop-structure change": 3,
         "Ordinary tiling": 45
       },
       "total": 62,

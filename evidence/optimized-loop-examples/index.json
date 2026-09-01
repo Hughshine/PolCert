@@ -3,7 +3,7 @@
     {
       "case": "1dloop-invar",
       "changed": false,
-      "observed_transformation": "None; output loop is identical"
+      "observed_transformation": "No loop-structure change"
     },
     {
       "case": "adi",
@@ -223,7 +223,7 @@
     {
       "case": "noloop",
       "changed": false,
-      "observed_transformation": "None; output loop is identical"
+      "observed_transformation": "No loop-structure change"
     },
     {
       "case": "pca",
@@ -298,7 +298,7 @@
     {
       "case": "tricky4",
       "changed": false,
-      "observed_transformation": "None; output loop is identical"
+      "observed_transformation": "No loop-structure change"
     },
     {
       "case": "trisolv",
@@ -319,7 +319,7 @@
     "Loop fusion": 3,
     "Loop fusion; Domain splitting": 1,
     "Loop fusion; Ordinary tiling": 8,
-    "None; output loop is identical": 3,
+    "No loop-structure change": 3,
     "Ordinary tiling": 45
   },
   "unchanged": 3

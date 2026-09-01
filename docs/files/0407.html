@@ -3,51 +3,94 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_artifact_runner_timeout.py</title>
+  <title>test_proof_report.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_artifact_runner_timeout.py</code></h1>
+  <h1><code>source/tools/artifact/test_proof_report.py</code></h1>
   <pre>#!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
+import pathlib
 import tempfile
-from pathlib import Path
+import unittest
+from unittest import mock
 
-from run_artifact_check import run_check
+import proof_report
 
 
-def main() -&gt; int:
-    with tempfile.TemporaryDirectory() as tmp:
-        result = run_check(
-            &quot;timeout-probe&quot;,
-            [
-                sys.executable,
-                &quot;-c&quot;,
-                (
-                    &quot;import sys, time; &quot;
-                    &quot;print(&#x27;partial stdout&#x27;, flush=True); &quot;
-                    &quot;print(&#x27;partial stderr&#x27;, file=sys.stderr, flush=True); &quot;
-                    &quot;time.sleep(2)&quot;
-                ),
-            ],
-            Path(tmp),
-            1,
+class ProofReportTests(unittest.TestCase):
+    def build(self, coq: str, extracted: str = &quot;&quot;) -&gt; dict[str, object]:
+        with tempfile.TemporaryDirectory(prefix=&quot;polcert-proof-report-&quot;) as tmp:
+            root = pathlib.Path(tmp)
+            source_dir = root / &quot;src&quot;
+            extraction_dir = root / &quot;extraction&quot;
+            source_dir.mkdir()
+            extraction_dir.mkdir()
+            (source_dir / &quot;Fixture.v&quot;).write_text(coq, encoding=&quot;utf-8&quot;)
+            if extracted:
+                (extraction_dir / &quot;Fixture.ml&quot;).write_text(extracted, encoding=&quot;utf-8&quot;)
+            with mock.patch.object(
+                proof_report, &quot;ROOT&quot;, root
+            ), mock.patch.object(
+                proof_report, &quot;SCAN_DIRS&quot;, [&quot;src&quot;]
+            ), mock.patch.object(
+                proof_report, &quot;TOP_LEVEL_ROUTES&quot;, []
+            ):
+                return proof_report.build_report()
+
+    def test_clean_report_passes(self) -&gt; None:
+        report = self.build(&quot;Goal True. exact I. Qed.\n&quot;)
+        self.assertFalse(proof_report.report_has_errors(report))
+
+    def test_open_proofs_fail_but_comments_do_not(self) -&gt; None:
+        report = self.build(
+            &quot;(* Admitted. *)\nGoal True. Admitted.\nGoal True. Abort.\n&quot;
         )
-        assert result.returncode == 124
-        assert &quot;partial stdout&quot; in Path(result.stdout_path).read_text()
-        stderr = Path(result.stderr_path).read_text()
-        assert &quot;partial stderr&quot; in stderr
-        assert &quot;[artifact-check] timeout after 1 seconds&quot; in stderr
-    print(&quot;[artifact-runner-timeout-unit] PASS&quot;)
-    return 0
+        self.assertEqual(report[&quot;admitted_count&quot;], 1)
+        self.assertEqual(report[&quot;abort_count&quot;], 1)
+        self.assertTrue(proof_report.report_has_errors(report))
+
+    def test_unrealized_extraction_axiom_fails(self) -&gt; None:
+        report = self.build(
+            &quot;Goal True. exact I. Qed.\n&quot;,
+            &quot;(* AXIOM TO BE REALIZED *)\n&quot;,
+        )
+        self.assertEqual(report[&quot;extraction_axiom_count&quot;], 1)
+        self.assertTrue(proof_report.report_has_errors(report))
+
+    def test_missing_listed_route_theorem_fails(self) -&gt; None:
+        with tempfile.TemporaryDirectory(prefix=&quot;polcert-proof-report-route-&quot;) as tmp:
+            root = pathlib.Path(tmp)
+            source_dir = root / &quot;src&quot;
+            source_dir.mkdir()
+            (source_dir / &quot;Fixture.v&quot;).write_text(
+                &quot;Theorem present : True. exact I. Qed.\n&quot;, encoding=&quot;utf-8&quot;
+            )
+            routes = [
+                {
+                    &quot;route&quot;: &quot;fixture&quot;,
+                    &quot;cli&quot;: &quot;fixture&quot;,
+                    &quot;theorem_file&quot;: &quot;src/Fixture.v&quot;,
+                    &quot;theorem_names&quot;: [&quot;missing&quot;],
+                }
+            ]
+            with mock.patch.object(
+                proof_report, &quot;ROOT&quot;, root
+            ), mock.patch.object(
+                proof_report, &quot;SCAN_DIRS&quot;, [&quot;src&quot;]
+            ), mock.patch.object(
+                proof_report, &quot;TOP_LEVEL_ROUTES&quot;, routes
+            ):
+                report = proof_report.build_report()
+        self.assertEqual(report[&quot;missing_route_theorem_count&quot;], 1)
+        self.assertTrue(proof_report.report_has_errors(report))
 
 
 if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+    unittest.main()
 </pre>
 </main>
 </body>

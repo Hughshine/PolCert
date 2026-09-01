@@ -3,86 +3,101 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_release_provenance.py</title>
+  <title>test_tiling_route_summary.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_release_provenance.py</code></h1>
+  <h1><code>source/tools/artifact/test_tiling_route_summary.py</code></h1>
   <pre>#!/usr/bin/env python3
 from __future__ import annotations
 
-from run_artifact_check import check_build_provenance
+import tempfile
+from pathlib import Path
+
+from run_artifact_check import CheckResult, build_tiling_route_summary
 
 
-COMMIT = &quot;a&quot; * 40
-SOURCE_SHA256 = &quot;b&quot; * 64
-IMAGE_SHA256 = &quot;c&quot; * 64
-PLUTO_COMMIT = &quot;d&quot; * 40
-PLUTO_BUGGY_COMMIT = &quot;e&quot; * 40
+def make_result(root: Path, name: str, stdout: str) -&gt; CheckResult:
+    stdout_path = root / f&quot;{name}.stdout.txt&quot;
+    stderr_path = root / f&quot;{name}.stderr.txt&quot;
+    stdout_path.write_text(stdout, encoding=&quot;utf-8&quot;)
+    stderr_path.write_text(&quot;&quot;, encoding=&quot;utf-8&quot;)
+    return CheckResult(
+        name=name,
+        command=[name],
+        returncode=0,
+        elapsed_seconds=0.0,
+        stdout_path=str(stdout_path),
+        stderr_path=str(stderr_path),
+    )
 
 
-def valid_environment() -&gt; dict[str, str]:
-    return {
-        &quot;POLCERT_REQUIRE_PROVENANCE&quot;: &quot;1&quot;,
-        &quot;POLCERT_GIT_COMMIT&quot;: COMMIT,
-        &quot;POLCERT_RELEASE_TAG&quot;: &quot;state-eq-v6&quot;,
-        &quot;POLCERT_SOURCE_ARCHIVE_SHA256&quot;: SOURCE_SHA256,
-        &quot;PLUTO_GIT_COMMIT&quot;: PLUTO_COMMIT,
-        &quot;PLUTO_BUGGY_GIT_COMMIT&quot;: PLUTO_BUGGY_COMMIT,
-        &quot;POLCERT_IMAGE_DIGEST&quot;: f&quot;sha256:{IMAGE_SHA256}&quot;,
-    }
-
-
-def valid_manifest() -&gt; dict[str, object]:
-    return {
-        &quot;polcert_git_commit&quot;: COMMIT,
-        &quot;polcert_release_tag&quot;: &quot;state-eq-v6&quot;,
-        &quot;polcert_source_archive_sha256&quot;: SOURCE_SHA256,
-        &quot;pluto_git_commit&quot;: PLUTO_COMMIT,
-        &quot;pluto_buggy_git_commit&quot;: PLUTO_BUGGY_COMMIT,
-    }
+def make_results(root: Path, direct_actual: int) -&gt; list[CheckResult]:
+    return [
+        make_result(
+            root,
+            &quot;direct-only-tiling-route-smoke&quot;,
+            &quot;[direct-route] PASS expected=20,fallbacks:0 &quot;
+            f&quot;actual={direct_actual},fallbacks:0 &quot;
+            &quot;interpretation=all-direct-route-contracts-matched\n&quot;,
+        ),
+        make_result(root, &quot;scalar-interleaved-tiling-route&quot;, &quot;PASS\n&quot;),
+        make_result(
+            root,
+            &quot;non-second-level-tiling-routes&quot;,
+            &quot;[non-second-level-routes] PASS &quot;
+            &quot;expected=permutable-band:84,fallbacks:0,vector-rejections:6 &quot;
+            &quot;actual=permutable-band:84,fallbacks:0,vector-rejections:6 &quot;
+            &quot;interpretation=all-one-level-route-contracts-matched\n&quot;,
+        ),
+        make_result(root, &quot;second-level-suite&quot;, &quot;PASS\n&quot;),
+        make_result(root, &quot;pluto-compat-suite&quot;, &quot;PASS\n&quot;),
+        make_result(
+            root,
+            &quot;strict-loop-suite&quot;,
+            &quot;tiling_validation_permutable_band=61\n&quot;
+            &quot;tiling_validation_not_applicable_no_loop=1\n&quot;
+            &quot;tiling_validation_fallback=0\n&quot;,
+        ),
+    ]
 
 
 def main() -&gt; int:
-    environment = valid_environment()
-    manifest = valid_manifest()
-    assert check_build_provenance(environment, manifest) == []
+    with tempfile.TemporaryDirectory(prefix=&quot;tiling-route-summary-unit-&quot;) as tmp:
+        root = Path(tmp)
+        valid = build_tiling_route_summary(make_results(root, direct_actual=20))
+        assert valid[&quot;verified&quot;] is True
+        assert valid[&quot;zero_tiling_validation_fallbacks&quot;] is True
+        assert valid[&quot;direct_route_smoke&quot;] == {
+            &quot;cases&quot;: 20,
+            &quot;zero_fallbacks&quot;: True,
+        }
+        assert valid[&quot;non_second_level&quot;] == {
+            &quot;cases&quot;: 90,
+            &quot;permutable_band&quot;: 84,
+            &quot;validation_fallback&quot;: 0,
+            &quot;explicit_vector_rejection&quot;: 6,
+        }
+        assert valid[&quot;strict_loop_corpus&quot;][&quot;verified&quot;] is True
 
-    environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = (
-        f&quot;registry.example/polcert@sha256:{IMAGE_SHA256}&quot;
-    )
-    assert check_build_provenance(environment, manifest) == []
-
-    for invalid_digest in (&quot;&quot;, &quot;unknown&quot;, &quot;garbage&quot;, &quot;sha256:1234&quot;):
-        environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = invalid_digest
-        assert &quot;invalid release environment field: POLCERT_IMAGE_DIGEST&quot; in (
-            check_build_provenance(environment, manifest)
+        mismatched = build_tiling_route_summary(
+            make_results(root, direct_actual=19)
         )
+        assert mismatched[&quot;verified&quot;] is False
+        assert mismatched[&quot;zero_tiling_validation_fallbacks&quot;] is False
+        assert mismatched[&quot;direct_route_smoke&quot;] == {
+            &quot;cases&quot;: None,
+            &quot;zero_fallbacks&quot;: False,
+        }
 
-    environment = valid_environment()
-    environment[&quot;PLUTO_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert &quot;provenance mismatch: pluto_git_commit != PLUTO_GIT_COMMIT&quot; in (
-        check_build_provenance(environment, manifest)
+    print(
+        &quot;[tiling-route-summary-unit] PASS &quot;
+        &quot;expected=matching-counts-accepted,mismatched-counts-rejected &quot;
+        &quot;actual=matching-counts-accepted,mismatched-counts-rejected &quot;
+        &quot;interpretation=artifact-summary-parses-readable-route-logs-fail-closed&quot;
     )
-
-    environment = valid_environment()
-    environment[&quot;PLUTO_BUGGY_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert (
-        &quot;provenance mismatch: pluto_buggy_git_commit != PLUTO_BUGGY_GIT_COMMIT&quot;
-        in check_build_provenance(environment, manifest)
-    )
-
-    environment = valid_environment()
-    manifest[&quot;polcert_release_tag&quot;] = &quot;unknown&quot;
-    assert &quot;invalid provenance field: polcert_release_tag&quot; in (
-        check_build_provenance(environment, manifest)
-    )
-
-    environment[&quot;POLCERT_REQUIRE_PROVENANCE&quot;] = &quot;0&quot;
-    assert check_build_provenance(environment, None) == []
-    print(&quot;[release-provenance-unit] PASS&quot;)
     return 0
 
 

@@ -10,7 +10,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -28,7 +28,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -46,7 +46,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -64,7 +64,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -82,7 +82,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -100,7 +100,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -118,7 +118,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -136,7 +136,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -154,7 +154,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -172,7 +172,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -190,7 +190,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -208,7 +208,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -226,7 +226,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -244,7 +244,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -262,7 +262,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -280,7 +280,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -298,7 +298,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -316,7 +316,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -334,7 +334,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -352,7 +352,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -370,7 +370,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -388,7 +388,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -406,7 +406,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -424,7 +424,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -442,7 +442,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -460,7 +460,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -478,7 +478,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -496,7 +496,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -514,7 +514,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -532,7 +532,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -550,7 +550,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -568,7 +568,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -586,7 +586,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -604,7 +604,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -622,7 +622,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -640,7 +640,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -658,7 +658,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -676,7 +676,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -694,7 +694,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -712,7 +712,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -730,7 +730,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -748,7 +748,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -766,7 +766,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -784,7 +784,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -802,7 +802,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -820,7 +820,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -838,7 +838,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -856,7 +856,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -874,7 +874,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -892,7 +892,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -910,7 +910,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -928,7 +928,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -946,7 +946,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -964,7 +964,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -982,7 +982,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1000,7 +1000,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1018,7 +1018,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1036,7 +1036,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1054,7 +1054,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1072,7 +1072,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1090,7 +1090,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1108,7 +1108,7 @@
       ],
       "expected": "forward:true,reverse:true",
       "family": "Affine Schedule Validation",
-      "observed_transformation": "Affine schedule validation; the generated loop effect was not recorded",
+      "observed_transformation": "Original and optimized affine schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1147,7 +1147,7 @@
       ],
       "expected": "reject,exit:1,validation-fail:true",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -1207,7 +1207,7 @@
       ],
       "expected": "reject,exit:1,validation-fail:true",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -1227,7 +1227,7 @@
       ],
       "expected": "reject,exit:1,validation-fail:true",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -1374,7 +1374,7 @@
       ],
       "expected": "reject,exit:1,validation-fail:true",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -1413,7 +1413,7 @@
       ],
       "expected": "reject,exit:1",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -1433,7 +1433,7 @@
       ],
       "expected": "reject,exit:1",
       "family": "Index-Set Splitting (ISS)",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -2922,7 +2922,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -3102,7 +3102,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -3282,7 +3282,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -3462,7 +3462,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -3822,7 +3822,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4002,7 +4002,7 @@
       ],
       "expected": "success:false,route:rejected,alarm:false",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4622,7 +4622,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4642,7 +4642,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4662,7 +4662,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4682,7 +4682,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4702,7 +4702,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4722,7 +4722,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4742,7 +4742,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4762,7 +4762,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -4802,7 +4802,7 @@
       ],
       "expected": "route:rejected,optimized-output:false,rejection-alarm:false,fallbacks:0",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -5019,7 +5019,7 @@
       ],
       "expected": "reject mutated tiling",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -5037,7 +5037,7 @@
       ],
       "expected": "reject mutated tiling",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -5055,7 +5055,7 @@
       ],
       "expected": "reject mutated tiling",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -5073,7 +5073,7 @@
       ],
       "expected": "reject mutated tiling",
       "family": "One-Level and Direct Tiling Validation",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -5912,7 +5912,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6052,7 +6052,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6072,7 +6072,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6092,7 +6092,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6112,7 +6112,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6392,7 +6392,7 @@
       ],
       "expected": "result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6412,7 +6412,7 @@
       ],
       "expected": "result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6592,7 +6592,7 @@
       ],
       "expected": "result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6612,7 +6612,7 @@
       ],
       "expected": "result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false",
       "family": "Two-Level Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6752,7 +6752,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6772,7 +6772,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6812,7 +6812,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6832,7 +6832,7 @@
       ],
       "expected": "status:pluto_final_schedule_rejected,exit:1",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6852,7 +6852,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6872,7 +6872,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6892,7 +6892,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6912,7 +6912,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6952,7 +6952,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -6972,7 +6972,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -7012,7 +7012,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -7032,7 +7032,7 @@
       ],
       "expected": "status:pluto_frontend_rejected,exit:8",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8137,7 +8137,7 @@
       ],
       "expected": "compare identity tiling with identity diamond tiling",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the input could not be exported for this search",
+      "observed_transformation": "Search skipped because the input could not be exported",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -8156,7 +8156,7 @@
       ],
       "expected": "compare identity tiling with identity diamond tiling",
       "family": "Diamond Tiling",
-      "observed_transformation": "None; the input could not be exported for this search",
+      "observed_transformation": "Search skipped because the input could not be exported",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -8541,7 +8541,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8561,7 +8561,7 @@
       ],
       "expected": "result=failure,markers=1,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8661,7 +8661,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8681,7 +8681,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8701,7 +8701,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8721,7 +8721,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8781,7 +8781,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8801,7 +8801,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8821,7 +8821,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8841,7 +8841,7 @@
       ],
       "expected": "result=failure,markers=6,baseline-difference=false",
       "family": "Parallel Loops",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -8880,7 +8880,7 @@
       ],
       "expected": "native Pluto shows no direct unroll-jam C effect",
       "family": "Unroll and Jam",
-      "observed_transformation": "None; no checked unroll-and-jam effect was observed",
+      "observed_transformation": "No checked unroll-and-jam transformation observed",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -8899,7 +8899,7 @@
       ],
       "expected": "native Pluto shows no direct unroll-jam C effect",
       "family": "Unroll and Jam",
-      "observed_transformation": "None; no checked unroll-and-jam effect was observed",
+      "observed_transformation": "No checked unroll-and-jam transformation observed",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -8918,7 +8918,7 @@
       ],
       "expected": "native Pluto shows no direct unroll-jam C effect",
       "family": "Unroll and Jam",
-      "observed_transformation": "None; no checked unroll-and-jam effect was observed",
+      "observed_transformation": "No checked unroll-and-jam transformation observed",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -8937,7 +8937,7 @@
       ],
       "expected": "native Pluto shows no direct unroll-jam C effect",
       "family": "Unroll and Jam",
-      "observed_transformation": "None; no checked unroll-and-jam effect was observed",
+      "observed_transformation": "No checked unroll-and-jam transformation observed",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -9051,7 +9051,7 @@
       ],
       "expected": "native Pluto shows no direct unroll-jam C effect",
       "family": "Unroll and Jam",
-      "observed_transformation": "None; no checked unroll-and-jam effect was observed",
+      "observed_transformation": "No checked unroll-and-jam transformation observed",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -9088,7 +9088,7 @@
       ],
       "expected": "unchanged",
       "family": "Observed Loop-Structure Effects",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -9968,7 +9968,7 @@
       ],
       "expected": "unchanged",
       "family": "Observed Loop-Structure Effects",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -10268,7 +10268,7 @@
       ],
       "expected": "unchanged",
       "family": "Observed Loop-Structure Effects",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -10327,7 +10327,7 @@
       ],
       "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
       "family": "Executable Loop Comparisons",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11119,7 +11119,7 @@
       ],
       "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
       "family": "Executable Loop Comparisons",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11389,7 +11389,7 @@
       ],
       "expected": "outputs-match,parallel=false,vector=false,effect-contracts=0",
       "family": "Executable Loop Comparisons",
-      "observed_transformation": "None; output loop is identical",
+      "observed_transformation": "No loop-structure change",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11911,7 +11911,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11929,7 +11929,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11947,7 +11947,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11965,7 +11965,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -11983,7 +11983,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -12001,7 +12001,7 @@
       ],
       "expected": "ok:true,res:true",
       "family": "Typed Instruction Programs",
-      "observed_transformation": "None; bidirectional refinement of fixed C instruction programs",
+      "observed_transformation": "Typed C-instruction schedules mutually refine",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -12840,7 +12840,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13400,7 +13400,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13560,7 +13560,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13580,7 +13580,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13600,7 +13600,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13620,7 +13620,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13640,7 +13640,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13660,7 +13660,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13680,7 +13680,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13700,7 +13700,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13780,7 +13780,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -13860,7 +13860,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14180,7 +14180,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; option accepted, but no parallelization effect is implemented or asserted",
+      "observed_transformation": "Option accepted; this test makes no parallel-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14360,7 +14360,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14380,7 +14380,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14400,7 +14400,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14540,7 +14540,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14580,7 +14580,7 @@
       ],
       "expected": "success,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; route accepted without a loop-transformation assertion",
+      "observed_transformation": "Route accepted; this test makes no structural-effect claim",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14900,7 +14900,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14920,7 +14920,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14940,7 +14940,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14960,7 +14960,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -14980,7 +14980,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15000,7 +15000,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15020,7 +15020,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15040,7 +15040,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15060,7 +15060,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15080,7 +15080,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15100,7 +15100,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15120,7 +15120,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15140,7 +15140,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15160,7 +15160,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15180,7 +15180,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15200,7 +15200,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15220,7 +15220,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15240,7 +15240,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15260,7 +15260,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15280,7 +15280,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15300,7 +15300,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15320,7 +15320,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15340,7 +15340,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15360,7 +15360,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15380,7 +15380,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15400,7 +15400,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15420,7 +15420,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15440,7 +15440,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15460,7 +15460,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15480,7 +15480,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15500,7 +15500,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15520,7 +15520,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15540,7 +15540,7 @@
       ],
       "expected": "rejection,effects=0,tiling-route=none",
       "family": "Driver Options",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -15817,7 +15817,7 @@
       ],
       "expected": "reject an unsupported identity-plus-diamond route",
       "family": "Composition Routes",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "local artifact run"
@@ -15835,7 +15835,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15853,7 +15853,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15871,7 +15871,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15889,7 +15889,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15907,7 +15907,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15925,7 +15925,7 @@
       ],
       "expected": "parse-success",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; OpenScop parsing and printing only",
+      "observed_transformation": "OpenScop parse/print round trip (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -15943,7 +15943,7 @@
       ],
       "expected": "both conversions succeed",
       "family": "Formats and Scheduler Adapter",
-      "observed_transformation": "None; CPoly-to-OpenScop representation conversion only",
+      "observed_transformation": "CPoly-to-OpenScop conversion (no optimization)",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17158,7 +17158,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17177,7 +17177,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17196,7 +17196,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17215,7 +17215,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17234,7 +17234,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17253,7 +17253,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17272,7 +17272,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17291,7 +17291,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17310,7 +17310,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17329,7 +17329,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17348,7 +17348,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17367,7 +17367,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17386,7 +17386,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17405,7 +17405,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17424,7 +17424,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17443,7 +17443,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17462,7 +17462,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17481,7 +17481,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17500,7 +17500,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17519,7 +17519,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17538,7 +17538,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17557,7 +17557,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17576,7 +17576,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17595,7 +17595,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17614,7 +17614,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17633,7 +17633,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17652,7 +17652,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17671,7 +17671,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17690,7 +17690,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17709,7 +17709,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17728,7 +17728,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17747,7 +17747,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17766,7 +17766,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17785,7 +17785,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17804,7 +17804,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17823,7 +17823,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17842,7 +17842,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17861,7 +17861,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17880,7 +17880,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17899,7 +17899,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17918,7 +17918,7 @@
       ],
       "expected": "reject the malformed tiling before adopting a hinted parallel loop",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17937,7 +17937,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17956,7 +17956,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17975,7 +17975,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -17994,7 +17994,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18013,7 +18013,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18032,7 +18032,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18051,7 +18051,7 @@
       ],
       "expected": "reject a corrupted tiling relation",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18070,7 +18070,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18089,7 +18089,7 @@
       ],
       "expected": "reject the malformed tiling before checking the explicit consumer",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18108,7 +18108,7 @@
       ],
       "expected": "reject a non-permutable band",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18127,7 +18127,7 @@
       ],
       "expected": "reject tiling when no non-scalar statement exists",
       "family": "Tiling and Consumer Rejections",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "observed_transformation": "Candidate rejected; no unchecked program emitted",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18183,8 +18183,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "The supplied .fst grouping places a consumer before its producer, but Pluto accepts the complete lexicographically illegal schedule.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "External grouping placed a consumer before its producer",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18203,8 +18203,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "A real S3-to-S1 dependence is reversed after connected-component relabeling lets LP integerization scale its endpoints differently.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "Affine rescheduling reversed a dependence",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18223,8 +18223,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "A phase-dump patch made a mandatory diamond-schedule restore depend on the optional intra-tile pass, producing a wrong execution order.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "Diamond schedule restoration was omitted",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18243,8 +18243,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "The requested parallel dimension was not certifiable",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18263,8 +18263,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "Under --notile, candidate discovery assumes one tiled level and crosses the real permutable-band boundary, jamming a dependence-carrying loop.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "Loop jamming crossed a permutable-band boundary",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18283,8 +18283,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "Tiling was legal, but the parallel annotation was unsafe",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18303,8 +18303,8 @@
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "expected": "After a one-trip outer coordinate disappears, an off-by-one band test transfers its parallel annotation to a dependent inner recurrence.",
-      "family": "Optimizer-Output Witnesses",
-      "observed_transformation": "None; the invalid or unsupported candidate was rejected",
+      "family": "Invalid and Non-Certifiable Proposals",
+      "observed_transformation": "A parallel annotation moved to a dependent inner loop",
       "occurrences": 2,
       "source": [
         "local release validation",
@@ -18324,7 +18324,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18344,7 +18344,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18365,7 +18365,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18386,7 +18386,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18407,7 +18407,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18428,7 +18428,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18449,7 +18449,7 @@
       ],
       "expected": "raise CertCheckerFailure and return no unchecked program",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 2,
       "source": [
         "local artifact run",
@@ -18469,7 +18469,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18488,7 +18488,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18507,7 +18507,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18526,7 +18526,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18545,7 +18545,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18564,7 +18564,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18583,7 +18583,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18602,7 +18602,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18621,7 +18621,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18640,7 +18640,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18659,7 +18659,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18678,7 +18678,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18697,7 +18697,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18716,7 +18716,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18735,7 +18735,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18754,7 +18754,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18773,7 +18773,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18792,7 +18792,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18811,7 +18811,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18830,7 +18830,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18849,7 +18849,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18868,7 +18868,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18887,7 +18887,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18906,7 +18906,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18925,7 +18925,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18944,7 +18944,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18963,7 +18963,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -18982,7 +18982,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19001,7 +19001,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19020,7 +19020,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19039,7 +19039,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19058,7 +19058,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19077,7 +19077,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19096,7 +19096,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19115,7 +19115,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19134,7 +19134,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19153,7 +19153,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19172,7 +19172,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19191,7 +19191,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19210,7 +19210,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19229,7 +19229,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19248,7 +19248,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19267,7 +19267,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19286,7 +19286,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19305,7 +19305,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19324,7 +19324,7 @@
       ],
       "expected": "the declared unit-test condition",
       "family": "Unit Checks",
-      "observed_transformation": "None; infrastructure or proof-closure check",
+      "observed_transformation": "Artifact infrastructure or proof-build check",
       "occurrences": 1,
       "source": [
         "remote CI"
@@ -19637,7 +19637,7 @@
         },
         {
           "configurations": 7,
-          "name": "Optimizer-Output Witnesses",
+          "name": "Invalid and Non-Certifiable Proposals",
           "suites": [
             {
               "configurations": 7,
