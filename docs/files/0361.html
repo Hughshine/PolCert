@@ -3,18 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion8.loop</title>
+  <title>intratileopt1.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/fusion8.loop</code></h1>
-  <pre>for x in range(0, 100) {
-  A[(2 * x)] = 1;
-}
-for x in range(0, 100) {
-  B[(2 * x)] = A[((2 * x) + 2)];
+  <h1><code>source/tests/polopt-regression/inputs/intratileopt1.loop</code></h1>
+  <pre>context(N, M);
+
+for i in range(0, N) {
+  for j in range(0, M) {
+    a[j][i] = ((b[i][j] + c[j]) + 1);
+  }
 }
 </pre>
 </main>

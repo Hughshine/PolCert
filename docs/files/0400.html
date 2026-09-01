@@ -3,20 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tmm.loop</title>
+  <title>tricky3.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/tmm.loop</code></h1>
-  <pre>context(NMAX);
+  <h1><code>source/tests/polopt-regression/inputs/tricky3.loop</code></h1>
+  <pre>context(pointc, clusterc, dims);
 
-for i in range(0, NMAX) {
-  for j in range(i, NMAX) {
-    for k in range(i, NMAX) {
-      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
-    }
+for p in range(0, pointc) {
+  dist_min = 0;
+  for k in range(0, clusterc) {
+    dist = 0;
+    kmin = 0;
+  }
+  for d in range(0, dims) {
+    clusterv = 0;
   }
 }
 </pre>

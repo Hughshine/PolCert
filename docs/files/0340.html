@@ -3,42 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>advect3d.loop</title>
+  <title>corcol3.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/advect3d.loop</code></h1>
-  <pre>context(ny, nx, nz);
+  <h1><code>source/tests/polopt-regression/inputs/corcol3.loop</code></h1>
+  <pre>context(m, n);
 
-for j in range(4, (((ny + 9) - 2) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      ab[j][i][k] = (((((f60 * (a[(j - 1)][i][k] + a[j][i][k])) + (f61 * (a[(j - 2)][i][k] + a[(j + 1)][i][k]))) + (f62 * (a[(j - 3)][i][k] + a[(j + 2)][i][k]))) * thirddtbydy) * uyb[j][i][k]);
-    }
+for j in range(1, (m + 1)) {
+  mean[j] = 0.0;
+  for i in range(1, (n + 1)) {
+    mean[j] = (mean[j] + data[i][j]);
   }
+  mean[j] = (mean[j] / float_n);
 }
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 2) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      al[j][i][k] = (((((f60 * (a[j][(i - 1)][k] + a[j][i][k])) + (f61 * (a[j][(i - 2)][k] + a[j][(i + 1)][k]))) + (f62 * (a[j][(i - 3)][k] + a[j][(i + 2)][k]))) * thirddtbydx) * uxl[j][i][k]);
-    }
+for j in range(1, (m + 1)) {
+  stddev[j] = 0.0;
+  for i in range(1, (n + 1)) {
+    stddev[j] = (stddev[j] + ((data[i][j] - mean[j]) * (data[i][j] - mean[j])));
   }
-}
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 2) + 1)) {
-      af[j][i][k] = (((((f60 * (a[j][i][(k - 1)] + a[j][i][k])) + (f61 * (a[j][i][(k - 2)] + a[j][i][(k + 1)]))) + (f62 * (a[j][i][(k - 3)] + a[j][i][(k + 2)]))) * thirddtbydz) * uzf[j][i][k]);
-    }
-  }
-}
-for j in range(4, (((ny + 9) - 3) + 1)) {
-  for i in range(4, (((nx + 9) - 3) + 1)) {
-    for k in range(4, (((nz + 9) - 3) + 1)) {
-      athird[j][i][k] = (((a[j][i][k] + (al[j][(i + 1)][k] - al[j][i][k])) + (ab[(j + 1)][i][k] - ab[j][i][k])) + (af[j][i][(k + 1)] - af[j][i][k]));
-    }
-  }
+  stddev[j] = (stddev[j] / float_n);
+  stddev[j] = my_sqrt_array(stddev, j);
+  stddev[j] = ((stddev[j] &lt;= eps) ? 1.0 : stddev[j]);
 }
 </pre>
 </main>

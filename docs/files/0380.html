@@ -3,28 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mxv-seq3.loop</title>
+  <title>nodep.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/mxv-seq3.loop</code></h1>
-  <pre>context(N);
-
-for i in range(0, N) {
-  for j in range(0, N) {
-    y[i] = (y[i] + (a[i][j] * x[j]));
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    z[i] = (z[i] + (b[i][j] * y[j]));
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    w[i] = (w[i] + (b[i][j] * z[j]));
+  <h1><code>source/tests/polopt-regression/inputs/nodep.loop</code></h1>
+  <pre>for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
   }
 }
 </pre>

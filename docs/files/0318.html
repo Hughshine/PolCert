@@ -3,613 +3,714 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TilingBandDirectRuntime.v</title>
+  <title>TilingWitness.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/src/TilingBandDirectRuntime.v</code></h1>
-  <pre>Require Import Bool.
-Require Import List.
+  <h1><code>source/src/TilingWitness.v</code></h1>
+  <pre>Require Import List.
+Require Import ZArith.
 Require Import Lia.
 Import ListNotations.
 
-Require Import PolIRs.
-Require Import TilingWitness.
-Require Import TilingBandScheduleValidator.
-Require Import TilingBandMixedSecondValidator.
-Require Import TilingBandPhaseScalarValidator.
-Require Import ImpureAlarmConfig.
-Require Import Vpl.Impure.
+Open Scope Z_scope.
 
-Module Type TILING_BAND_DIRECT_RUNTIME_API (P: POLIRS).
+Record affine_expr := {
+  ae_var_coeffs : list Z;
+  ae_param_coeffs : list Z;
+  ae_const : Z;
+}.
 
-Inductive tiling_band_validation_route : Type :=
-| DirectBandAccepted
-| Rejected.
-
-Definition tiling_band_validation_route_acceptsb
-    (route: tiling_band_validation_route) : bool :=
-  match route with
-  | DirectBandAccepted =&gt; true
-  | Rejected =&gt; false
+Fixpoint dot_product (xs ys: list Z) : Z :=
+  match xs, ys with
+  | x :: xs&#x27;, y :: ys&#x27; =&gt; x * y + dot_product xs&#x27; ys&#x27;
+  | _, _ =&gt; 0
   end.
 
-Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route :
-  P.PolyLang.t -&gt;
-  P.PolyLang.t -&gt;
-  list statement_tiling_witness -&gt;
-  imp tiling_band_validation_route.
+Definition eval_affine (expr: affine_expr) (vars params: list Z) : Z :=
+  dot_product expr.(ae_var_coeffs) vars +
+  dot_product expr.(ae_param_coeffs) params +
+  expr.(ae_const).
 
-Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :
-  forall before after ws st1 st2 route,
-    P.PolyLang.wf_pprog_affine before -&gt;
-    P.PolyLang.wf_pprog_general after -&gt;
-    mayReturn
-      (checked_tiling_schedule_sourceb_first_runtime_validate_route
-         before after ws)
-      route -&gt;
-    tiling_band_validation_route_acceptsb route = true -&gt;
-    P.PolyLang.instance_list_semantics after st1 st2 -&gt;
-    exists st2&#x27;,
-      P.PolyLang.instance_list_semantics before st1 st2&#x27; /\
-      P.State.eq st2 st2&#x27;.
+Definition affine_row_holds (row: affine_expr) (vars params: list Z) : Prop :=
+  0 &lt;= eval_affine row vars params.
 
-End TILING_BAND_DIRECT_RUNTIME_API.
+Definition insert_zeros_at (added_dims env_size: nat) (coeffs: list Z) : list Z :=
+  firstn env_size coeffs ++ repeat 0 added_dims ++ skipn env_size coeffs.
 
-Module TilingBandDirectRuntime (PolIRs: POLIRS).
+Definition lift_base_row (tile_prefix_len: nat) (row: affine_expr) : affine_expr :=
+  {|
+    ae_var_coeffs := repeat 0 tile_prefix_len ++ row.(ae_var_coeffs);
+    ae_param_coeffs := row.(ae_param_coeffs);
+    ae_const := row.(ae_const);
+  |}.
 
-Module PhaseScalar := TilingBandPhaseScalarValidator PolIRs.
-Module Mixed := PhaseScalar.Mixed.
-Module Legacy := Mixed.Core.
-Module PolyLang := PolIRs.PolyLang.
-Module State := PolIRs.State.
+Definition lift_base_row_after_env
+    (env_size added_dims: nat) (row: affine_expr) : affine_expr :=
+  {|
+    ae_var_coeffs := insert_zeros_at added_dims env_size row.(ae_var_coeffs);
+    ae_param_coeffs := row.(ae_param_coeffs);
+    ae_const := row.(ae_const);
+  |}.
 
-Open Scope impure_scope.
+Record access_row := {
+  ar_output_coeffs : list Z;
+  ar_input_coeffs : list Z;
+  ar_param_coeffs : list Z;
+  ar_const : Z;
+}.
 
-(** * Proof map
+Definition eval_access_row
+    (row: access_row) (outputs inputs params: list Z) : Z :=
+  dot_product row.(ar_output_coeffs) outputs +
+  dot_product row.(ar_input_coeffs) inputs +
+  dot_product row.(ar_param_coeffs) params +
+  row.(ar_const).
 
-    This module is the fail-closed dispatcher for the proved direct tiling
-    layouts.  Each successful branch provides both a semantic band certificate
-    and its layout-specific reversal bridge.  The dispatcher accepts only
-    [DirectBandAccepted]; an unmatched or unproved case returns [Rejected]. *)
+Definition access_row_holds
+    (row: access_row) (outputs inputs params: list Z) : Prop :=
+  0 &lt;= eval_access_row row outputs inputs params.
 
-Inductive tiling_band_validation_route : Type :=
-| DirectBandAccepted
-| Rejected.
+Definition lift_access_row (tile_prefix_len: nat) (row: access_row) : access_row :=
+  {|
+    ar_output_coeffs := row.(ar_output_coeffs);
+    ar_input_coeffs := repeat 0 tile_prefix_len ++ row.(ar_input_coeffs);
+    ar_param_coeffs := row.(ar_param_coeffs);
+    ar_const := row.(ar_const);
+  |}.
 
-Definition tiling_band_validation_route_acceptsb
-    (route: tiling_band_validation_route) : bool :=
-  match route with
-  | DirectBandAccepted =&gt; true
-  | Rejected =&gt; false
+Definition lift_access_row_after_env
+    (env_size added_dims: nat) (row: access_row) : access_row :=
+  {|
+    ar_output_coeffs := row.(ar_output_coeffs);
+    ar_input_coeffs := insert_zeros_at added_dims env_size row.(ar_input_coeffs);
+    ar_param_coeffs := row.(ar_param_coeffs);
+    ar_const := row.(ar_const);
+  |}.
+
+Record tile_link := {
+  tl_expr : affine_expr;
+  tl_tile_size : Z;
+}.
+
+Record tile_trace_step := {
+  tts_link : tile_link;
+  tts_env : list Z;
+  tts_parent : Z;
+}.
+
+Record statement_tiling_witness := {
+  stw_point_dim : nat;
+  stw_links : list tile_link;
+}.
+
+Definition eval_tile_parent (link: tile_link) (vars params: list Z) : Z :=
+  Z.div (eval_affine link.(tl_expr) vars params) link.(tl_tile_size).
+
+Definition tile_link_interval_holds (link: tile_link) (vars params: list Z) (parent: Z) : Prop :=
+  tl_tile_size link * parent &lt;= eval_affine (tl_expr link) vars params &lt;
+  tl_tile_size link * (parent + 1).
+
+Definition lower_link_row_value (link: tile_link) (vars params: list Z) (parent: Z) : Z :=
+  eval_affine (tl_expr link) vars params - tl_tile_size link * parent.
+
+Definition upper_link_row_value (link: tile_link) (vars params: list Z) (parent: Z) : Z :=
+  tl_tile_size link * (parent + 1) - 1 - eval_affine (tl_expr link) vars params.
+
+Definition lower_link_row_holds (link: tile_link) (vars params: list Z) (parent: Z) : Prop :=
+  0 &lt;= lower_link_row_value link vars params parent.
+
+Definition upper_link_row_holds (link: tile_link) (vars params: list Z) (parent: Z) : Prop :=
+  0 &lt;= upper_link_row_value link vars params parent.
+
+Lemma eval_tile_parent_interval:
+  forall link vars params,
+    0 &lt; tl_tile_size link -&gt;
+    tile_link_interval_holds link vars params (eval_tile_parent link vars params).
+Proof.
+  intros link vars params Hsize.
+  unfold tile_link_interval_holds, eval_tile_parent.
+  set (value := eval_affine (tl_expr link) vars params).
+  assert (Hdiv: value = tl_tile_size link * (value / tl_tile_size link) + value mod tl_tile_size link).
+  { apply Z_div_mod_eq; lia. }
+  assert (Hmod_lo: 0 &lt;= value mod tl_tile_size link).
+  { apply Z.mod_pos_bound; lia. }
+  assert (Hmod_hi: value mod tl_tile_size link &lt; tl_tile_size link).
+  { apply Z.mod_pos_bound; lia. }
+  set (q := value / tl_tile_size link).
+  set (r := value mod tl_tile_size link).
+  split.
+  - rewrite Hdiv. unfold q, r. lia.
+  - rewrite Hdiv. unfold q, r. lia.
+Qed.
+
+Lemma interval_implies_lower_link_row:
+  forall link vars params parent,
+    tile_link_interval_holds link vars params parent -&gt;
+    lower_link_row_holds link vars params parent.
+Proof.
+  intros link vars params parent Hinterval.
+  unfold tile_link_interval_holds, lower_link_row_holds, lower_link_row_value in *.
+  lia.
+Qed.
+
+Lemma interval_implies_upper_link_row:
+  forall link vars params parent,
+    tile_link_interval_holds link vars params parent -&gt;
+    upper_link_row_holds link vars params parent.
+Proof.
+  intros link vars params parent Hinterval.
+  unfold tile_link_interval_holds, upper_link_row_holds, upper_link_row_value in *.
+  lia.
+Qed.
+
+Lemma lower_upper_rows_imply_interval:
+  forall link vars params parent,
+    lower_link_row_holds link vars params parent -&gt;
+    upper_link_row_holds link vars params parent -&gt;
+    tile_link_interval_holds link vars params parent.
+Proof.
+  intros link vars params parent Hlower Hupper.
+  unfold lower_link_row_holds, lower_link_row_value in Hlower.
+  unfold upper_link_row_holds, upper_link_row_value in Hupper.
+  unfold tile_link_interval_holds.
+  lia.
+Qed.
+
+Lemma tile_link_interval_unique:
+  forall link vars params parent1 parent2,
+    0 &lt; tl_tile_size link -&gt;
+    tile_link_interval_holds link vars params parent1 -&gt;
+    tile_link_interval_holds link vars params parent2 -&gt;
+    parent1 = parent2.
+Proof.
+  intros link vars params parent1 parent2 Hsize Hint1 Hint2.
+  unfold tile_link_interval_holds in *.
+  nia.
+Qed.
+
+Lemma lower_upper_rows_imply_eval_tile_parent:
+  forall link vars params parent,
+    0 &lt; tl_tile_size link -&gt;
+    lower_link_row_holds link vars params parent -&gt;
+    upper_link_row_holds link vars params parent -&gt;
+    parent = eval_tile_parent link vars params.
+Proof.
+  intros link vars params parent Hsize Hlower Hupper.
+  apply tile_link_interval_unique with (link := link) (vars := vars) (params := params).
+  - exact Hsize.
+  - apply lower_upper_rows_imply_interval; assumption.
+  - apply eval_tile_parent_interval; assumption.
+Qed.
+
+Fixpoint eval_tile_links (prefix point params: list Z) (links: list tile_link) : list Z :=
+  match links with
+  | [] =&gt; prefix
+  | link :: links&#x27; =&gt;
+      let env := prefix ++ point in
+      let tile := eval_tile_parent link env params in
+      eval_tile_links (prefix ++ [tile]) point params links&#x27;
   end.
 
-(** The direct source-first layer recognizes ordinary common-band strip mining
-    with target-side trailing-zero padding, and uniform grouped or interleaved
-    second-level schedules with either symmetric trailing-zero equivalence or
-    program-wide strict-zero-row erasure. *)
-Definition checked_tiling_sourceb_first_direct_band_check
-    (before after: Legacy.Tiling.PL.t)
-    (ws: list statement_tiling_witness) : imp bool :=
-  let &#x27;(before_pis, before_ctxt, _) := before in
-  let &#x27;(after_pis, _, _) := after in
-  if Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws then
-    let ordinary_check :=
-      if Legacy.check_pprog_tiling_schedule_stripminedb before after ws then
-        match Legacy.infer_pprog_tiling_bands before ws with
-        | Some bands =&gt;
-            Legacy.check_pprog_pluto_permutable_tiling_bands_direct
-              before after ws bands
-        | None =&gt; pure false
-        end
-      else pure false in
-    BIND ordinary_ok &lt;- ordinary_check -;
-    if ordinary_ok then pure true
-    else
-      match Legacy.check_pprog_second_level_schedule_directb before after ws with
-      | Some (bands, _, _) =&gt;
-          Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct
-            (List.length before_ctxt) before_pis after_pis ws bands
-      | None =&gt; pure false
-      end
-  else pure false.
+Fixpoint eval_tile_trace (prefix point params: list Z) (links: list tile_link) : list tile_trace_step :=
+  match links with
+  | [] =&gt; []
+  | link :: links&#x27; =&gt;
+      let env := prefix ++ point in
+      let tile := eval_tile_parent link env params in
+      {| tts_link := link; tts_env := env; tts_parent := tile |} ::
+      eval_tile_trace (prefix ++ [tile]) point params links&#x27;
+  end.
 
-(** The complete direct-only candidate checker.  Each branch independently
-    validates the source/witness boundary and proves a permutable-band
-    condition for the layout it recognizes. *)
-Definition checked_tiling_sourceb_complete_direct_band_check
-    (before after: Legacy.Tiling.PL.t)
-    (ws: list statement_tiling_witness) : imp bool :=
-  BIND common_ok &lt;-
-    checked_tiling_sourceb_first_direct_band_check before after ws -;
-  if common_ok then pure true
-  else
-    BIND phase_semantic_ok &lt;-
-      Legacy.checked_tiling_sourceb_phase_semantic_band_direct
-        before after ws -;
-    if phase_semantic_ok then pure true
-    else
-      BIND scalar_aware_ok &lt;-
-        Legacy.checked_tiling_sourceb_scalar_aware_direct before after ws -;
-      if scalar_aware_ok then pure true
-      else
-        BIND phase_ordinary_ok &lt;-
-          Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
-        if phase_ordinary_ok then pure true
-        else
-          BIND phase_scalar_ok &lt;-
-            PhaseScalar.checked_tiling_sourceb_phase_scalar_direct
-              before after ws -;
-          if phase_scalar_ok then pure true
-          else
-            BIND semantic_ok &lt;-
-              Legacy.checked_tiling_sourceb_semantic_band_direct
-                before after ws -;
-            if semantic_ok then pure true
-            else Mixed.check_pprog_mixed_second_level_direct before after ws.
+Definition lift_point (point params: list Z) (links: list tile_link) : list Z :=
+  eval_tile_links [] point params links ++ point.
 
-Lemma checked_tiling_sourceb_first_direct_band_check_sourceb_true :
-  forall before after ws,
-    mayReturn
-      (checked_tiling_sourceb_first_direct_band_check before after ws)
-      true -&gt;
-    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
+Fixpoint well_formed_tile_links (prefix_dim point_dim: nat) (links: list tile_link) : Prop :=
+  match links with
+  | [] =&gt; True
+  | link :: links&#x27; =&gt;
+      length (ae_var_coeffs (tl_expr link)) = (prefix_dim + point_dim)%nat /\
+      well_formed_tile_links (S prefix_dim) point_dim links&#x27;
+  end.
+
+Definition well_formed_statement_tiling_witness (w: statement_tiling_witness) : Prop :=
+  well_formed_tile_links 0 w.(stw_point_dim) w.(stw_links).
+
+Definition eval_statement_tiling_witness
+    (w: statement_tiling_witness) (point params: list Z) : list Z :=
+  lift_point point params w.(stw_links).
+
+Lemma eval_tile_links_length:
+  forall prefix point params links,
+    length (eval_tile_links prefix point params links) = (length prefix + length links)%nat.
 Proof.
-  intros [[before_pis before_ctxt] before_vars]
-         [[after_pis after_ctxt] after_vars] ws Hcheck.
-  unfold checked_tiling_sourceb_first_direct_band_check in Hcheck.
-  cbn beta iota zeta in Hcheck.
-  destruct
-    (Legacy.TilingCheck.check_pprog_tiling_sourceb
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, after_ctxt, after_vars) ws)
-    eqn:Hsource.
-  - reflexivity.
-  - apply mayReturn_pure in Hcheck.
-    discriminate.
+  intros prefix point params links.
+  revert prefix point params.
+  induction links as [|link links IH]; intros prefix point params; simpl.
+  - lia.
+  - rewrite IH. rewrite app_length. simpl. lia.
 Qed.
 
-Lemma checked_tiling_sourceb_complete_direct_band_check_sourceb_true :
-  forall before after ws,
-    mayReturn
-      (checked_tiling_sourceb_complete_direct_band_check before after ws)
-      true -&gt;
-    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
+Lemma dot_product_repeat_zero_app:
+  forall n prefix suffix coeffs,
+    length prefix = n -&gt;
+    dot_product (repeat 0 n ++ coeffs) (prefix ++ suffix) = dot_product coeffs suffix.
 Proof.
-  intros before after ws Hcheck.
-  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
-  bind_imp_destruct Hcheck common_ok Hcommon.
-  destruct common_ok.
-  - eapply checked_tiling_sourceb_first_direct_band_check_sourceb_true.
-    exact Hcommon.
-  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
-    destruct phase_semantic_ok.
-    + eapply
-        Legacy.checked_tiling_sourceb_phase_semantic_band_direct_sourceb_true.
-      exact Hphase_semantic.
-    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
-      destruct scalar_aware_ok.
-      * destruct
-          (Legacy.checked_tiling_sourceb_scalar_aware_direct_true_inv
-             before after ws Hscalar_aware)
-          as [layout [Hsource _]].
-        exact Hsource.
-      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
-        destruct phase_ordinary_ok.
-        -- destruct before as [[before_pis before_ctxt] before_vars].
-           destruct after as [[after_pis after_ctxt] after_vars].
-           destruct
-             (Mixed.check_pprog_phase_separated_ordinary_direct_true_inv
-                before_pis before_ctxt before_vars
-                after_pis after_ctxt after_vars ws Hphase_ordinary)
-             as [bands [Hsource _]].
-           exact Hsource.
-        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
-           destruct phase_scalar_ok.
-           ++ destruct before as [[before_pis before_ctxt] before_vars].
-              destruct after as [[after_pis after_ctxt] after_vars].
-              destruct
-                (PhaseScalar.checked_tiling_sourceb_phase_scalar_direct_true_inv
-                   before_pis before_ctxt before_vars
-                   after_pis after_ctxt after_vars ws Hphase_scalar)
-                as [entries [Hsource _]].
-              exact Hsource.
-           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
-              destruct semantic_ok.
-              ** destruct
-                   (Legacy.checked_tiling_sourceb_semantic_band_direct_true_inv
-                      before after ws Hsemantic)
-                   as [lifted_rows [Hshape _]].
-                 inversion Hshape; assumption.
-              ** destruct before as [[before_pis before_ctxt] before_vars].
-                 destruct after as [[after_pis after_ctxt] after_vars].
-                 destruct
-                   (Mixed.check_pprog_mixed_second_level_direct_true_inv
-                      before_pis before_ctxt before_vars
-                      after_pis after_ctxt after_vars ws Hcheck)
-                   as [bands [recipes [Hsource _]]].
-                 exact Hsource.
+  intros n prefix.
+  revert n.
+  induction prefix as [|x prefix IH]; intros n suffix coeffs Hlen.
+  - destruct n; simpl in *.
+    + reflexivity.
+    + discriminate.
+  - destruct n; simpl in *.
+    + discriminate.
+    + inversion Hlen as [Hlen&#x27;]; subst n.
+      simpl.
+      exact (IH (length prefix) suffix coeffs eq_refl).
 Qed.
 
-Lemma checked_second_level_direct_band_check_correct :
-  forall layout before_pis before_ctxt before_vars after_pis ws
-         bands recipes st1 st2,
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis -&gt;
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis -&gt;
-    Legacy.TilingCheck.check_pprog_tiling_sourceb
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, before_ctxt, before_vars) ws = true -&gt;
-    Legacy.infer_pinstr_list_second_level_bands before_pis ws =
-      Some (bands, recipes) -&gt;
-    Legacy.check_pinstr_list_second_level_schedule_directb
-      layout (List.length before_ctxt) before_pis after_pis bands = true -&gt;
-    Legacy.common_second_level_recipe_sizes recipes -&gt;
-    Legacy.common_band_start bands -&gt;
-    mayReturn
-      (Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct
-         (List.length before_ctxt) before_pis after_pis ws bands)
-      true -&gt;
-    Legacy.Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
-    exists st2&#x27;,
-      Legacy.Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
-      State.eq st2 st2&#x27;.
+Lemma dot_product_app_exact:
+  forall xs1 xs2 ys1 ys2,
+    length xs1 = length ys1 -&gt;
+    dot_product (xs1 ++ xs2) (ys1 ++ ys2) =
+    dot_product xs1 ys1 + dot_product xs2 ys2.
 Proof.
-  intros layout before_pis before_ctxt before_vars after_pis ws
-         bands recipes st1 st2 Hwf_before Hwf_after Hsource Hinfer
-         Hsched Hrecipe_sizes Hcommon_start Hcomponent_check Hsem.
-  pose proof
-    (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws Hsource)
-    as [Hprog [Hbefore_ids [Hwf_ws [Hsizes_ws Hdepths]]]].
-  assert (Hwits :
-    Forall2 Legacy.Tiling.after_matches_tiling_witness after_pis ws).
-  {
-    eapply
-      (Legacy.tiling_rel_pprog_structure_source_after_matches
-         before_pis before_ctxt before_vars
-         after_pis before_ctxt before_vars ws); eauto.
-  }
-  eapply
-    (Legacy.tiling_sourceb_validate_correct_with_reordering
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars)
-       ws bands st1 st2); [exact Hsource| |exact Hsem].
-  simpl.
-  intros envv Hlen_env.
-  assert (Hcomposed_wf :
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
-      (Legacy.Tiling.compose_tiling_pinstrs_ext_from_after
-         (List.length before_ctxt) before_pis after_pis ws)).
-  {
-    eapply Legacy.compose_tiling_pinstrs_ext_from_after_wf_tiling; eauto.
-  }
-  assert (Hcomponentwise :
-    Legacy.pprog_pluto_componentwise_permutable_bands
-      envv before_pis after_pis ws bands).
-  {
-    eapply
-      (Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct_sound
-         before_ctxt envv before_pis after_pis ws bands); eauto.
-  }
-  assert (Hsched_lex :
-    Legacy.second_level_schedule_layout_lex_equivalent
-      layout (List.length before_ctxt) before_pis after_pis bands).
-  {
-    eapply Legacy.check_pinstr_list_second_level_schedule_directb_sound.
-    exact Hsched.
-  }
-  eapply
-    (Legacy.pprog_pluto_componentwise_permutable_bands_implies_reordering_safe_if_local_bridge
-       envv before_pis after_pis ws bands); [exact Hcomponentwise|].
-  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
-  eapply
-    (Legacy.second_level_local_reversal_bridge_by_layout_wf_with_env_len
-       layout before_pis before_ctxt before_vars
-       after_pis ws bands recipes envv); eauto.
-Qed.
-
-Lemma checked_tiling_sourceb_first_direct_band_check_correct :
-  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis -&gt;
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis -&gt;
-    mayReturn
-      (checked_tiling_sourceb_first_direct_band_check
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws)
-      true -&gt;
-    Legacy.Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
-    exists st2&#x27;,
-      Legacy.Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
-      State.eq st2 st2&#x27;.
-Proof.
-  intros before_pis before_ctxt before_vars after_pis ws st1 st2
-         Hwf_before Hwf_after Hcheck Hsem.
-  unfold checked_tiling_sourceb_first_direct_band_check in Hcheck.
-  destruct
-    (Legacy.TilingCheck.check_pprog_tiling_sourceb
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, before_ctxt, before_vars) ws)
-    eqn:Hsource.
-  2:{ apply mayReturn_pure in Hcheck. discriminate. }
-  cbn beta iota zeta in Hcheck.
-  bind_imp_destruct Hcheck ordinary_ok Hordinary.
-  destruct ordinary_ok.
-  - apply mayReturn_pure in Hcheck.
-    destruct
-      (Legacy.check_pprog_tiling_schedule_stripminedb
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws)
-      eqn:Hschedule.
-    2:{ apply mayReturn_pure in Hordinary. discriminate. }
-    destruct
-      (Legacy.infer_pprog_tiling_bands
-         (before_pis, before_ctxt, before_vars) ws)
-      as [bands|] eqn:Hinfer.
-    2:{ apply mayReturn_pure in Hordinary. discriminate. }
-    simpl in Hordinary.
-    pose proof
-      (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws Hsource)
-      as [Hprog [Hbefore_ids [Hwf_ws [Hsizes_ws Hdepths]]]].
-    assert (Hwits :
-      Forall2 Legacy.Tiling.after_matches_tiling_witness after_pis ws).
-    {
-      eapply
-        (Legacy.tiling_rel_pprog_structure_source_after_matches
-           before_pis before_ctxt before_vars
-           after_pis before_ctxt before_vars ws); eauto.
-    }
-    destruct
-      (Legacy.check_pprog_tiling_schedule_stripminedb_sound_flat
-         before_pis before_ctxt before_vars
-         after_pis before_ctxt before_vars ws Hschedule)
-      as [bands&#x27; [Hinfer&#x27; [Hbands [_ _]]]].
-    unfold Legacy.infer_pprog_tiling_bands in Hinfer.
-    simpl in Hinfer.
-    rewrite Hinfer in Hinfer&#x27;.
-    inversion Hinfer&#x27;; subst bands&#x27;; clear Hinfer&#x27;.
-    eapply
-      (Legacy.tiling_sourceb_validate_correct_with_reordering
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws bands st1 st2); [exact Hsource| |exact Hsem].
+  induction xs1 as [|x xs1 IH]; intros xs2 ys1 ys2 Hlen.
+  - destruct ys1; simpl in *; [lia|discriminate].
+  - destruct ys1 as [|y ys1]; simpl in *; [discriminate|].
+    inversion Hlen as [Hlen&#x27;].
     simpl.
-    intros envv Hlen_env.
-    destruct
-      (Legacy.check_pprog_pluto_permutable_tiling_bands_direct_sound_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv
-         Hlen_env Hinfer Hwf_before Hwf_after Hdepths Hwits Hordinary)
-      as [Hstrong Harity].
-    eapply
-      (Legacy.pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len
-         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
-  - destruct
-      (Legacy.check_pprog_second_level_schedule_directb
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars) ws)
-      as [shape|] eqn:Hshape.
-    2:{ apply mayReturn_pure in Hcheck. discriminate. }
-    destruct shape as [[bands recipes] layout].
-    simpl in Hcheck.
-    destruct
-      (Legacy.check_pprog_second_level_schedule_directb_sound
-         before_pis before_ctxt before_vars
-         after_pis before_ctxt before_vars ws bands recipes layout Hshape)
-      as [Hinfer [Hsched [Hrecipe_sizes Hcommon_start]]].
-    eapply
-      (checked_second_level_direct_band_check_correct
-         layout before_pis before_ctxt before_vars
-         after_pis ws bands recipes st1 st2); eauto.
+    rewrite IH by exact Hlen&#x27;.
+    lia.
 Qed.
 
-Lemma checked_tiling_sourceb_complete_direct_band_check_correct :
-  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis -&gt;
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis -&gt;
-    mayReturn
-      (checked_tiling_sourceb_complete_direct_band_check
-         (before_pis, before_ctxt, before_vars)
-         (after_pis, before_ctxt, before_vars)
-         ws)
-      true -&gt;
-    Legacy.Tiling.PL.instance_list_semantics
-      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
-    exists st2&#x27;,
-      Legacy.Tiling.PL.instance_list_semantics
-        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
-      State.eq st2 st2&#x27;.
+Lemma dot_product_cons_singleton:
+  forall x xs y ys,
+    dot_product (x :: xs) (y :: ys) =
+    dot_product [x] [y] + dot_product xs ys.
 Proof.
-  intros before_pis before_ctxt before_vars after_pis ws st1 st2
-         Hwf_before Hwf_after Hcheck Hsem.
-  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
-  bind_imp_destruct Hcheck common_ok Hcommon.
-  destruct common_ok.
-  - eapply checked_tiling_sourceb_first_direct_band_check_correct; eauto.
-  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
-    destruct phase_semantic_ok.
-    + eapply
-        Legacy
-          .checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt;
-        eauto.
-    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
-      destruct scalar_aware_ok.
-      * eapply
-          Legacy.checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt;
-          eauto.
-      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
-        destruct phase_ordinary_ok.
-        -- eapply
-             Mixed.check_pprog_phase_separated_ordinary_direct_correct_same_ctxt;
-             eauto.
-        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
-           destruct phase_scalar_ok.
-           ++ eapply
-                PhaseScalar
-                  .checked_tiling_sourceb_phase_scalar_direct_correct_same_ctxt;
-                eauto.
-           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
-              destruct semantic_ok.
-              ** eapply
-                   Legacy
-                     .checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt;
-                   eauto.
-              ** eapply
-                   Mixed.check_pprog_mixed_second_level_direct_correct_same_ctxt;
-                   eauto.
+  intros.
+  simpl.
+  lia.
 Qed.
 
-Lemma checked_tiling_sourceb_complete_direct_band_check_outer_correct :
-  forall before after ws st1 st2,
-    PolyLang.wf_pprog_affine before -&gt;
-    PolyLang.wf_pprog_general after -&gt;
-    mayReturn
-      (checked_tiling_sourceb_complete_direct_band_check
-         (Legacy.Base.outer_to_tiling_pprog before)
-         (Legacy.Base.outer_to_tiling_pprog after)
-         ws)
-      true -&gt;
-    PolyLang.instance_list_semantics after st1 st2 -&gt;
-    exists st2&#x27;,
-      PolyLang.instance_list_semantics before st1 st2&#x27; /\
-      State.eq st2 st2&#x27;.
+Lemma dot_product_split_firstn_skipn:
+  forall coeffs prefix point,
+    length coeffs = (length prefix + length point)%nat -&gt;
+    dot_product coeffs (prefix ++ point) =
+    dot_product (firstn (length prefix) coeffs) prefix +
+    dot_product (skipn (length prefix) coeffs) point.
 Proof.
-  intros before after ws st1 st2 Hwf_before Hwf_after Hcheck Hsem_after.
-  remember (Legacy.Base.outer_to_tiling_pprog before)
-    as before_tiling eqn:Hbefore_tiling_eq.
-  remember (Legacy.Base.outer_to_tiling_pprog after)
-    as after_tiling eqn:Hafter_tiling_eq.
-  destruct before_tiling as [[before_pis before_ctxt] before_vars].
-  destruct after_tiling as [[after_pis after_ctxt] after_vars].
-  simpl in Hbefore_tiling_eq, Hafter_tiling_eq.
-  assert (Hsource :
-    Legacy.TilingCheck.check_pprog_tiling_sourceb
-      (before_pis, before_ctxt, before_vars)
-      (after_pis, after_ctxt, after_vars)
-      ws = true).
-  {
-    eapply checked_tiling_sourceb_complete_direct_band_check_sourceb_true.
-    exact Hcheck.
-  }
-  pose proof
-    (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
-       (before_pis, before_ctxt, before_vars)
-       (after_pis, after_ctxt, after_vars) ws Hsource)
-    as [Hprog _].
-  unfold Legacy.Tiling.tiling_rel_pprog_structure_source in Hprog.
-  simpl in Hprog.
-  destruct Hprog as [Hctxt_eq [Hvars_eq _]].
-  subst after_ctxt after_vars.
-  pose proof
-    (Legacy.Base.outer_to_tiling_wf_pprog_affine before Hwf_before)
-    as Hwf_before_tiling.
-  rewrite &lt;- Hbefore_tiling_eq in Hwf_before_tiling.
-  destruct Hwf_before_tiling as [_ Hwf_before_tiling].
-  assert (Hwfbefore_pis :
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      before_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Legacy.Tiling.PL.wf_pinstr_affine_implies_wf_pinstr_tiling.
-    eapply Hwf_before_tiling; eauto.
-  }
-  pose proof
-    (Legacy.Base.outer_to_tiling_wf_pprog_general after Hwf_after)
-    as Hwf_after_tiling.
-  rewrite &lt;- Hafter_tiling_eq in Hwf_after_tiling.
-  destruct Hwf_after_tiling as [_ Hwf_after_tiling].
-  assert (Hwfafter_pis :
-    Forall
-      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
-      after_pis).
-  {
-    eapply Forall_forall.
-    intros pi Hin.
-    eapply Hwf_after_tiling; eauto.
-  }
-  pose proof
-    (checked_tiling_sourceb_complete_direct_band_check_correct
-       before_pis before_ctxt before_vars after_pis ws st1 st2
-       Hwfbefore_pis Hwfafter_pis Hcheck) as Hcorr.
-  apply Legacy.Base.outer_to_tiling_instance_list_semantics_iff in Hsem_after.
-  rewrite &lt;- Hafter_tiling_eq in Hsem_after.
-  specialize (Hcorr Hsem_after).
-  destruct Hcorr as [st2&#x27; [Hbefore_tiling Heq]].
-  rewrite Hbefore_tiling_eq in Hbefore_tiling.
-  apply Legacy.Base.outer_to_tiling_instance_list_semantics_iff in Hbefore_tiling.
-  exists st2&#x27;. split; assumption.
+  intros coeffs prefix point Hlen.
+  assert (Hpre:
+    length (firstn (length prefix) coeffs) = length prefix).
+  { rewrite firstn_length. lia. }
+  rewrite &lt;- (firstn_skipn (length prefix) coeffs) at 1.
+  apply dot_product_app_exact.
+  exact Hpre.
 Qed.
 
-Definition checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
-    (before after: PolyLang.t)
-    (ws: list statement_tiling_witness) : imp tiling_band_validation_route :=
-  BIND direct_ok &lt;-
-    checked_tiling_sourceb_complete_direct_band_check
-      (Legacy.Base.outer_to_tiling_pprog before)
-      (Legacy.Base.outer_to_tiling_pprog after)
-      ws -;
-  pure (if direct_ok then DirectBandAccepted else Rejected).
-
-Lemma checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct :
-  forall before after ws st1 st2 route,
-    PolyLang.wf_pprog_affine before -&gt;
-    PolyLang.wf_pprog_general after -&gt;
-    mayReturn
-      (checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
-         before after ws)
-      route -&gt;
-    tiling_band_validation_route_acceptsb route = true -&gt;
-    PolyLang.instance_list_semantics after st1 st2 -&gt;
-    exists st2&#x27;,
-      PolyLang.instance_list_semantics before st1 st2&#x27; /\
-      State.eq st2 st2&#x27;.
+Lemma dot_product_repeat_zero_exact:
+  forall n ys,
+    length ys = n -&gt;
+    dot_product (repeat 0 n) ys = 0.
 Proof.
-  intros before after ws st1 st2 route Hwf_before Hwf_after
-         Hroute Haccept Hsem_after.
-  unfold checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
-    in Hroute.
-  bind_imp_destruct Hroute direct_ok Hdirect.
-  destruct direct_ok.
-  - apply mayReturn_pure in Hroute.
-    subst route.
-    eapply checked_tiling_sourceb_complete_direct_band_check_outer_correct;
-      eauto.
-  - apply mayReturn_pure in Hroute.
-    subst route.
-    simpl in Haccept.
-    discriminate.
+  intros n ys.
+  revert n.
+  induction ys as [|y ys IH]; intros m Hlen.
+  - destruct m; simpl in *; lia.
+  - destruct m; simpl in *; [discriminate|].
+    inversion Hlen as [Hlen&#x27;]; subst m.
+    simpl.
+    rewrite IH by reflexivity.
+    lia.
 Qed.
 
-Definition checked_tiling_schedule_sourceb_first_runtime_validate_route :=
-  checked_tiling_schedule_sourceb_first_direct_runtime_validate_route.
+Lemma dot_product_insert_zeros_at:
+  forall coeffs env middle tail env_size added_dims,
+    length env = env_size -&gt;
+    length middle = added_dims -&gt;
+    (env_size &lt;= length coeffs)%nat -&gt;
+    dot_product (insert_zeros_at added_dims env_size coeffs) (env ++ middle ++ tail) =
+    dot_product coeffs (env ++ tail).
+Proof.
+  intros coeffs env middle tail env_size added_dims Henv Hmid Hcoeff.
+  unfold insert_zeros_at.
+  assert (Hfirstlen: length (firstn env_size coeffs) = env_size).
+  { rewrite firstn_length. lia. }
+  replace (firstn env_size coeffs ++ repeat 0 added_dims ++ skipn env_size coeffs)
+    with ((firstn env_size coeffs ++ repeat 0 added_dims) ++ skipn env_size coeffs)
+    by now rewrite app_assoc.
+  replace (env ++ middle ++ tail) with ((env ++ middle) ++ tail)
+    by now rewrite app_assoc.
+  rewrite dot_product_app_exact
+    with (xs1 := firstn env_size coeffs ++ repeat 0 added_dims)
+         (ys1 := env ++ middle)
+         (xs2 := skipn env_size coeffs)
+         (ys2 := tail).
+  2:{
+    rewrite !app_length, Hfirstlen, repeat_length, Henv, Hmid.
+    lia.
+  }
+  rewrite dot_product_app_exact
+    with (xs1 := firstn env_size coeffs)
+         (ys1 := env)
+         (xs2 := repeat 0 added_dims)
+         (ys2 := middle).
+  2:{
+    rewrite Hfirstlen, Henv.
+    reflexivity.
+  }
+  rewrite dot_product_repeat_zero_exact by exact Hmid.
+  assert (Hsplit:
+    dot_product coeffs (env ++ tail) =
+    dot_product (firstn env_size coeffs) env +
+    dot_product (skipn env_size coeffs) tail).
+  {
+    rewrite &lt;- (firstn_skipn env_size coeffs) at 1.
+    rewrite dot_product_app_exact
+      with (xs1 := firstn env_size coeffs)
+           (ys1 := env)
+           (xs2 := skipn env_size coeffs)
+           (ys2 := tail).
+    2:{
+      rewrite Hfirstlen, Henv.
+      reflexivity.
+    }
+    reflexivity.
+  }
+  rewrite Hsplit.
+  lia.
+Qed.
 
-Definition checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :=
-  checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct.
+Lemma eval_lift_base_row:
+  forall prefix point params row,
+    eval_affine (lift_base_row (length prefix) row) (prefix ++ point) params =
+    eval_affine row point params.
+Proof.
+  intros prefix point params row.
+  unfold eval_affine, lift_base_row.
+  simpl.
+  rewrite dot_product_repeat_zero_app with (prefix := prefix) (suffix := point) (coeffs := ae_var_coeffs row).
+  - lia.
+  - reflexivity.
+Qed.
 
-End TilingBandDirectRuntime.
+Lemma lift_base_row_sound:
+  forall prefix point params row,
+    affine_row_holds row point params -&gt;
+    affine_row_holds (lift_base_row (length prefix) row) (prefix ++ point) params.
+Proof.
+  intros prefix point params row Hrow.
+  unfold affine_row_holds in *.
+  rewrite eval_lift_base_row.
+  exact Hrow.
+Qed.
+
+Lemma eval_lift_access_row:
+  forall prefix outputs point params row,
+    eval_access_row (lift_access_row (length prefix) row) outputs (prefix ++ point) params =
+    eval_access_row row outputs point params.
+Proof.
+  intros prefix outputs point params row.
+  unfold eval_access_row, lift_access_row.
+  simpl.
+  rewrite dot_product_repeat_zero_app with (prefix := prefix) (suffix := point) (coeffs := ar_input_coeffs row).
+  - lia.
+  - reflexivity.
+Qed.
+
+Lemma lift_access_row_sound:
+  forall prefix outputs point params row,
+    access_row_holds row outputs point params -&gt;
+    access_row_holds (lift_access_row (length prefix) row) outputs (prefix ++ point) params.
+Proof.
+  intros prefix outputs point params row Hrow.
+  unfold access_row_holds in *.
+  rewrite eval_lift_access_row.
+  exact Hrow.
+Qed.
+
+Lemma lift_point_suffix:
+  forall point params links,
+    skipn (length links) (lift_point point params links) = point.
+Proof.
+  intros point params links.
+  unfold lift_point.
+  remember (eval_tile_links [] point params links) as tiles eqn:Htiles.
+  assert (Hlen: length tiles = length links).
+  { subst tiles. rewrite eval_tile_links_length. simpl. reflexivity. }
+  rewrite &lt;- Hlen.
+  rewrite skipn_app.
+  rewrite Nat.sub_diag.
+  rewrite skipn_all.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma eval_tile_trace_sound:
+  forall prefix point params links step,
+    In step (eval_tile_trace prefix point params links) -&gt;
+    0 &lt; tl_tile_size (tts_link step) -&gt;
+    tile_link_interval_holds (tts_link step) (tts_env step) params (tts_parent step).
+Proof.
+  intros prefix point params links.
+  revert prefix point params.
+  induction links as [|link links IH]; intros prefix point params step Hin Hsize; simpl in Hin.
+  - contradiction.
+  - destruct Hin as [Heq | Hin].
+    + inversion Heq; subst. simpl.
+      apply eval_tile_parent_interval; assumption.
+    + apply IH with (prefix := prefix ++ [eval_tile_parent link (prefix ++ point) params])
+                    (point := point) (params := params) (step := step) in Hin; auto.
+Qed.
+
+Definition tile_trace_step_rows_hold (step: tile_trace_step) (params: list Z) : Prop :=
+  lower_link_row_holds (tts_link step) (tts_env step) params (tts_parent step) /\
+  upper_link_row_holds (tts_link step) (tts_env step) params (tts_parent step).
+
+Fixpoint tile_trace_rows_hold (trace: list tile_trace_step) (params: list Z) : Prop :=
+  match trace with
+  | [] =&gt; True
+  | step :: trace&#x27; =&gt;
+      tile_trace_step_rows_hold step params /\ tile_trace_rows_hold trace&#x27; params
+  end.
+
+Lemma eval_tile_trace_rows_hold:
+  forall prefix point params links,
+    (forall link, In link links -&gt; 0 &lt; tl_tile_size link) -&gt;
+    tile_trace_rows_hold (eval_tile_trace prefix point params links) params.
+Proof.
+  intros prefix point params links.
+  revert prefix point params.
+  induction links as [|link links IH]; intros prefix point params Hsizes; simpl.
+  - exact I.
+  - split.
+    + unfold tile_trace_step_rows_hold.
+      split.
+      * apply interval_implies_lower_link_row.
+        apply eval_tile_parent_interval.
+        apply Hsizes. simpl. auto.
+      * apply interval_implies_upper_link_row.
+        apply eval_tile_parent_interval.
+        apply Hsizes. simpl. auto.
+    + apply IH.
+      intros link&#x27; Hin.
+      apply Hsizes.
+      simpl. auto.
+Qed.
+
+Lemma eval_statement_tiling_witness_suffix:
+  forall w point params,
+    skipn (length w.(stw_links)) (eval_statement_tiling_witness w point params) = point.
+Proof.
+  intros. unfold eval_statement_tiling_witness.
+  apply lift_point_suffix.
+Qed.
+
+Definition statement_tiling_rows_hold
+    (w: statement_tiling_witness) (point params: list Z) : Prop :=
+  tile_trace_rows_hold (eval_tile_trace [] point params w.(stw_links)) params.
+
+Lemma eval_statement_tiling_rows_hold:
+  forall w point params,
+    (forall link, In link w.(stw_links) -&gt; 0 &lt; tl_tile_size link) -&gt;
+    statement_tiling_rows_hold w point params.
+Proof.
+  intros w point params Hsizes.
+  unfold statement_tiling_rows_hold.
+  apply eval_tile_trace_rows_hold.
+  exact Hsizes.
+Qed.
+
+Lemma eval_statement_tiling_base_row_sound:
+  forall w row point params,
+    affine_row_holds row point params -&gt;
+    affine_row_holds
+      (lift_base_row (length w.(stw_links)) row)
+      (eval_statement_tiling_witness w point params)
+      params.
+Proof.
+  intros w row point params Hrow.
+  unfold eval_statement_tiling_witness, lift_point.
+  replace (length (stw_links w)) with (length (eval_tile_links [] point params (stw_links w))).
+  2:{
+    rewrite eval_tile_links_length.
+    simpl.
+    reflexivity.
+  }
+  apply lift_base_row_sound.
+  exact Hrow.
+Qed.
+
+Lemma eval_statement_tiling_access_row_sound:
+  forall w row outputs point params,
+    access_row_holds row outputs point params -&gt;
+    access_row_holds
+      (lift_access_row (length w.(stw_links)) row)
+      outputs
+      (eval_statement_tiling_witness w point params)
+      params.
+Proof.
+  intros w row outputs point params Hrow.
+  unfold eval_statement_tiling_witness, lift_point.
+  replace (length (stw_links w)) with (length (eval_tile_links [] point params (stw_links w))).
+  2:{
+    rewrite eval_tile_links_length.
+    simpl.
+    reflexivity.
+  }
+  apply lift_access_row_sound.
+  exact Hrow.
+Qed.
+
+Lemma eval_statement_tiling_base_rows_sound:
+  forall w rows point params,
+    Forall (fun row =&gt; affine_row_holds row point params) rows -&gt;
+    Forall
+      (fun row =&gt;
+         affine_row_holds row (eval_statement_tiling_witness w point params) params)
+      (map (lift_base_row (length w.(stw_links))) rows).
+Proof.
+  intros w rows point params Hrows.
+  induction Hrows as [|row rows Hrow Hrows IH]; simpl.
+  - constructor.
+  - constructor.
+    + apply eval_statement_tiling_base_row_sound.
+      exact Hrow.
+    + exact IH.
+Qed.
+
+Lemma eval_statement_tiling_access_rows_sound:
+  forall w rows outputs point params,
+    Forall (fun row =&gt; access_row_holds row outputs point params) rows -&gt;
+    Forall
+      (fun row =&gt;
+         access_row_holds row outputs (eval_statement_tiling_witness w point params) params)
+      (map (lift_access_row (length w.(stw_links))) rows).
+Proof.
+  intros w rows outputs point params Hrows.
+  induction Hrows as [|row rows Hrow Hrows IH]; simpl.
+  - constructor.
+  - constructor.
+    + apply eval_statement_tiling_access_row_sound.
+      exact Hrow.
+    + exact IH.
+Qed.
+
+Theorem statement_tiling_core_sound:
+  forall w base_rows access_rows outputs point params,
+    (forall link, In link w.(stw_links) -&gt; 0 &lt; tl_tile_size link) -&gt;
+    Forall (fun row =&gt; affine_row_holds row point params) base_rows -&gt;
+    Forall (fun row =&gt; access_row_holds row outputs point params) access_rows -&gt;
+    statement_tiling_rows_hold w point params /\
+    Forall
+      (fun row =&gt;
+         affine_row_holds row (eval_statement_tiling_witness w point params) params)
+      (map (lift_base_row (length w.(stw_links))) base_rows) /\
+    Forall
+      (fun row =&gt;
+         access_row_holds row outputs (eval_statement_tiling_witness w point params) params)
+      (map (lift_access_row (length w.(stw_links))) access_rows).
+Proof.
+  intros w base_rows access_rows outputs point params Hsizes Hbase Haccess.
+  split.
+  - apply eval_statement_tiling_rows_hold.
+    exact Hsizes.
+  - split.
+    + apply eval_statement_tiling_base_rows_sound.
+      exact Hbase.
+    + apply eval_statement_tiling_access_rows_sound.
+      exact Haccess.
+Qed.
+
+Definition eval_statement_tiling_witness_with_env
+    (env: list Z) (w: statement_tiling_witness) (point params: list Z) : list Z :=
+  env ++ eval_statement_tiling_witness w point params.
+
+Lemma eval_lift_base_row_after_env:
+  forall env w row point params,
+    (length env &lt;= length (ae_var_coeffs row))%nat -&gt;
+    eval_affine
+      (lift_base_row_after_env (length env) (length w.(stw_links)) row)
+      (eval_statement_tiling_witness_with_env env w point params)
+      params =
+    eval_affine row (env ++ point) params.
+Proof.
+  intros env w row point params Henv.
+  unfold eval_affine, lift_base_row_after_env, eval_statement_tiling_witness_with_env,
+         eval_statement_tiling_witness, lift_point.
+  simpl.
+  rewrite dot_product_insert_zeros_at
+    with (env := env)
+         (middle := eval_tile_links [] point params (stw_links w))
+         (tail := point)
+         (env_size := length env)
+         (added_dims := length (stw_links w)).
+  - lia.
+  - reflexivity.
+  - rewrite eval_tile_links_length. simpl. reflexivity.
+  - exact Henv.
+Qed.
+
+Lemma lift_base_row_after_env_sound:
+  forall env w row point params,
+    (length env &lt;= length (ae_var_coeffs row))%nat -&gt;
+    affine_row_holds row (env ++ point) params -&gt;
+    affine_row_holds
+      (lift_base_row_after_env (length env) (length w.(stw_links)) row)
+      (eval_statement_tiling_witness_with_env env w point params)
+      params.
+Proof.
+  intros env w row point params Henv Hrow.
+  unfold affine_row_holds in *.
+  rewrite eval_lift_base_row_after_env by exact Henv.
+  exact Hrow.
+Qed.
+
+Lemma eval_lift_access_row_after_env:
+  forall env w row outputs point params,
+    (length env &lt;= length (ar_input_coeffs row))%nat -&gt;
+    eval_access_row
+      (lift_access_row_after_env (length env) (length w.(stw_links)) row)
+      outputs
+      (eval_statement_tiling_witness_with_env env w point params)
+      params =
+    eval_access_row row outputs (env ++ point) params.
+Proof.
+  intros env w row outputs point params Henv.
+  unfold eval_access_row, lift_access_row_after_env, eval_statement_tiling_witness_with_env,
+         eval_statement_tiling_witness, lift_point.
+  simpl.
+  rewrite dot_product_insert_zeros_at
+    with (env := env)
+         (middle := eval_tile_links [] point params (stw_links w))
+         (tail := point)
+         (env_size := length env)
+         (added_dims := length (stw_links w)).
+  - lia.
+  - reflexivity.
+  - rewrite eval_tile_links_length. simpl. reflexivity.
+  - exact Henv.
+Qed.
+
+Lemma lift_access_row_after_env_sound:
+  forall env w row outputs point params,
+    (length env &lt;= length (ar_input_coeffs row))%nat -&gt;
+    access_row_holds row outputs (env ++ point) params -&gt;
+    access_row_holds
+      (lift_access_row_after_env (length env) (length w.(stw_links)) row)
+      outputs
+      (eval_statement_tiling_witness_with_env env w point params)
+      params.
+Proof.
+  intros env w row outputs point params Henv Hrow.
+  unfold access_row_holds in *.
+  rewrite eval_lift_access_row_after_env by exact Henv.
+  exact Hrow.
+Qed.
 </pre>
 </main>
 </body>

@@ -3,31 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>gemver.loop</title>
+  <title>intratileopt3.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/gemver.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/tests/polopt-regression/inputs/intratileopt3.loop</code></h1>
+  <pre>context(N, M);
 
 for i in range(0, N) {
-  for j in range(0, N) {
-    B[i][j] = ((A[i][j] + (u1[i] * v1[j])) + (u2[i] * v2[j]));
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    x[i] = (x[i] + ((beta * B[j][i]) * y[j]));
-  }
-}
-for i in range(0, N) {
-  x[i] = (x[i] + z[i]);
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    w[i] = (w[i] + ((alpha * B[i][j]) * x[j]));
+  for j in range(0, M) {
+    d[j] = (d[j] + a[i][j]);
   }
 }
 </pre>

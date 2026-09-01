@@ -3,51 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_unrolljam_route_guard.py</title>
+  <title>test_generated_harness.py</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_unrolljam_route_guard.py</code></h1>
+  <h1><code>source/tools/end_to_end_c/test_generated_harness.py</code></h1>
   <pre>#!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
-import tempfile
-import unittest
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-
-from tools.artifact.explore_unrolljam_effect_corpus import (
-    tiling_validation_route_absent,
+from generated_harness import (
+    ArrayDim,
+    collect_var_ranges,
+    div_candidates,
+    render_checksum_function,
 )
 
 
-class TilingRouteGuardTest(unittest.TestCase):
-    def test_checks_complete_stderr_not_only_tail(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(
-                &quot;[tiling-validation] route=rejected\n&quot; + (&quot;x&quot; * 2400),
-                encoding=&quot;utf-8&quot;,
-            )
-            self.assertFalse(tiling_validation_route_absent(str(stderr_path)))
-
-    def test_accepts_stderr_without_tiling_route(self) -&gt; None:
-        with tempfile.TemporaryDirectory() as tmp:
-            stderr_path = Path(tmp) / &quot;polopt.stderr.txt&quot;
-            stderr_path.write_text(&quot;x&quot; * 2400, encoding=&quot;utf-8&quot;)
-            self.assertTrue(tiling_validation_route_absent(str(stderr_path)))
-
-    def test_missing_stderr_fails_closed(self) -&gt; None:
-        self.assertFalse(tiling_validation_route_absent(&quot;/missing/polopt.stderr.txt&quot;))
+def main() -&gt; int:
+    ranges = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range(0, min(n, 8), 2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert ranges[&quot;i&quot;] == (0, 5), ranges
+    descending = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range((n + -1), -1, -2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert descending[&quot;i&quot;] == (0, 5), descending
+    assert div_candidates(-5, -5, 2, 2) == (-3, -3)
+    checksum = render_checksum_function(
+        {&quot;A&quot;: (ArrayDim(0, 1, 0, 2), ArrayDim(0, 2, 0, 3))}, ()
+    )
+    assert &quot;((__i0) * 3 + __i1)&quot; in checksum, checksum
+    print(
+        &quot;[generated-harness-unit] PASS expected=import-and-parse-positive-and-negative-ranges &quot;
+        &quot;actual=parsed-and-index-weighted interpretation=generated-C-harness-can-start-infer-loop-bounds-and-detect-value-permutations&quot;
+    )
+    return 0
 
 
 if __name__ == &quot;__main__&quot;:
-    unittest.main()
+    raise SystemExit(main())
 </pre>
 </main>
 </body>

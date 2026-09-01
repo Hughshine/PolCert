@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dsyrk.loop</title>
+  <title>floyd.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/dsyrk.loop</code></h1>
-  <pre>context(NMAX);
+  <h1><code>source/tests/polopt-regression/inputs/floyd.loop</code></h1>
+  <pre>context(NUM_NODES);
 
-for i in range(0, NMAX) {
-  for j in range(0, NMAX) {
-    for k in range(j, NMAX) {
-      c[j][k] = (c[j][k] + (a[i][j] * a[i][k]));
+for k in range(0, NUM_NODES) {
+  for y in range(0, NUM_NODES) {
+    for x in range(0, NUM_NODES) {
+      pathDistanceMatrix[y][x] = (((pathDistanceMatrix[y][k] + pathDistanceMatrix[k][x]) &lt;= (pathDistanceMatrix[y][x] - 1)) ? (pathDistanceMatrix[y][k] + pathDistanceMatrix[k][x]) : pathDistanceMatrix[y][x]);
     }
   }
 }

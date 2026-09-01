@@ -3,920 +3,613 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ParallelValidator.v</title>
+  <title>TilingBandDirectRuntime.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/src/ParallelValidator.v</code></h1>
-  <pre>Require Import ZArith.
-Require Import Lia.
+  <h1><code>source/src/TilingBandDirectRuntime.v</code></h1>
+  <pre>Require Import Bool.
 Require Import List.
-Require Import Bool.
-Require Import String.
-Require Import Base.
+Require Import Lia.
+Import ListNotations.
+
+Require Import PolIRs.
+Require Import TilingWitness.
+Require Import TilingBandScheduleValidator.
+Require Import TilingBandMixedSecondValidator.
+Require Import TilingBandPhaseScalarValidator.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
-Import ListNotations.
-Local Open Scope string_scope.
-Local Open Scope list_scope.
 
-Require Import AffineValidator.
-Require Import Linalg.
-Require Import ListExt.
-Require Import Misc.
-Require Import PolyBase.
-Require Import PointWitness.
-Require Import Result.
-Require Import PolIRs.
+Module Type TILING_BAND_DIRECT_RUNTIME_API (P: POLIRS).
 
-Module ParallelValidator (PolIRs : POLIRS).
+Inductive tiling_band_validation_route : Type :=
+| DirectBandAccepted
+| Rejected.
 
+Definition tiling_band_validation_route_acceptsb
+    (route: tiling_band_validation_route) : bool :=
+  match route with
+  | DirectBandAccepted =&gt; true
+  | Rejected =&gt; false
+  end.
+
+Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route :
+  P.PolyLang.t -&gt;
+  P.PolyLang.t -&gt;
+  list statement_tiling_witness -&gt;
+  imp tiling_band_validation_route.
+
+Parameter checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :
+  forall before after ws st1 st2 route,
+    P.PolyLang.wf_pprog_affine before -&gt;
+    P.PolyLang.wf_pprog_general after -&gt;
+    mayReturn
+      (checked_tiling_schedule_sourceb_first_runtime_validate_route
+         before after ws)
+      route -&gt;
+    tiling_band_validation_route_acceptsb route = true -&gt;
+    P.PolyLang.instance_list_semantics after st1 st2 -&gt;
+    exists st2&#x27;,
+      P.PolyLang.instance_list_semantics before st1 st2&#x27; /\
+      P.State.eq st2 st2&#x27;.
+
+End TILING_BAND_DIRECT_RUNTIME_API.
+
+Module TilingBandDirectRuntime (PolIRs: POLIRS).
+
+Module PhaseScalar := TilingBandPhaseScalarValidator PolIRs.
+Module Mixed := PhaseScalar.Mixed.
+Module Legacy := Mixed.Core.
 Module PolyLang := PolIRs.PolyLang.
-Module ILSema := PolyLang.ILSema.
-Module Instr := PolIRs.Instr.
-Module AffineCore := AffineValidator PolIRs.
+Module State := PolIRs.State.
+
+Open Scope impure_scope.
 
 (** * Proof map
 
-    A certificate for dimension [d] states that instances with the same
-    environment and canonical schedule prefix, but different schedule
-    coordinates at [d], commute.  All statement schedules are padded to their
-    program-wide maximum width, matching the coordinates introduced before
-    code generation.  The checker expresses a violation as an affine schedule
-    reversal between two synthetic schedule views.  Affine-validator soundness
-    yields [parallel_safe_dim_pointwise]; the historical flattened-list
-    property [parallel_safe_dim] follows as a compatibility corollary. *)
+    This module is the fail-closed dispatcher for the proved direct tiling
+    layouts.  Each successful branch provides both a semantic band certificate
+    and its layout-specific reversal bridge.  The dispatcher accepts only
+    [DirectBandAccepted]; an unmatched or unproved case returns [Rejected]. *)
 
-Record parallel_plan := {
-  target_dim : nat
-}.
+Inductive tiling_band_validation_route : Type :=
+| DirectBandAccepted
+| Rejected.
 
-Record parallel_cert := {
-  certified_dim : nat
-}.
-
-Definition pprog_pis (pp : PolyLang.t) : list PolyLang.PolyInstr :=
-  let &#x27;(pis, _, _) := pp in pis.
-
-Definition pprog_varctxt (pp : PolyLang.t) : list Instr.ident :=
-  let &#x27;(_, varctxt, _) := pp in varctxt.
-
-Definition current_coord_schedule_row
-  (env_dim depth i : nat) : list Z * Z :=
-  (resize (env_dim + depth) (V0 (env_dim + i) ++ [1%Z]), 0%Z).
-
-
-Definition current_coord_prefix_schedule
-  (env_dim depth d : nat) : list (list Z * Z) :=
-  map (current_coord_schedule_row env_dim depth) (seq 0 d).
-
-Definition schedule_width_of_pis (pis : list PolyLang.PolyInstr) : nat :=
-  list_max
-    (List.map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule)) pis).
-
-Definition schedule_width (pp : PolyLang.t) : nat :=
-  schedule_width_of_pis (pprog_pis pp).
-
-Definition padded_pi_schedule
-  (env_dim width : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
-  PolyLang.pad_schedule_to_len
-    (env_dim + pi.(PolyLang.pi_depth)) width pi.(PolyLang.pi_schedule).
-
-Definition schedule_coord_old_schedule
-  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
-  [nth d (padded_pi_schedule env_dim width pi)
-     (PolyLang.zero_affine_function (env_dim + pi.(PolyLang.pi_depth)))].
-
-Definition schedule_coord_prefix_schedule
-  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : list (list Z * Z) :=
-  firstn d (padded_pi_schedule env_dim width pi).
-
-Definition parallel_old_pi
-  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
-  {|
-    PolyLang.pi_depth := pi.(PolyLang.pi_depth);
-    PolyLang.pi_instr := pi.(PolyLang.pi_instr);
-    PolyLang.pi_poly := pi.(PolyLang.pi_poly);
-    PolyLang.pi_schedule :=
-      schedule_coord_old_schedule env_dim width d pi;
-    PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
-    PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
-    PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
-    PolyLang.pi_waccess := pi.(PolyLang.pi_waccess);
-    PolyLang.pi_raccess := pi.(PolyLang.pi_raccess)
-  |}.
-
-Definition parallel_new_pi
-  (env_dim width d : nat) (pi : PolyLang.PolyInstr) : PolyLang.PolyInstr :=
-  {|
-    PolyLang.pi_depth := pi.(PolyLang.pi_depth);
-    PolyLang.pi_instr := pi.(PolyLang.pi_instr);
-    PolyLang.pi_poly := pi.(PolyLang.pi_poly);
-    PolyLang.pi_schedule :=
-      schedule_coord_prefix_schedule env_dim width d pi;
-    PolyLang.pi_point_witness := pi.(PolyLang.pi_point_witness);
-    PolyLang.pi_transformation := pi.(PolyLang.pi_transformation);
-    PolyLang.pi_access_transformation := pi.(PolyLang.pi_access_transformation);
-    PolyLang.pi_waccess := pi.(PolyLang.pi_waccess);
-    PolyLang.pi_raccess := pi.(PolyLang.pi_raccess)
-  |}.
-
-Definition parallel_old_pprog
-  (pp : PolyLang.t) (d : nat) : PolyLang.t :=
-  let &#x27;(pis, varctxt, vars) := pp in
-  let width := schedule_width_of_pis pis in
-  ((List.map (parallel_old_pi (Datatypes.length varctxt) width d) pis,
-    varctxt), vars).
-
-Definition parallel_new_pprog
-  (pp : PolyLang.t) (d : nat) : PolyLang.t :=
-  let &#x27;(pis, varctxt, vars) := pp in
-  let width := schedule_width_of_pis pis in
-  ((List.map (parallel_new_pi (Datatypes.length varctxt) width d) pis,
-    varctxt), vars).
-
-Local Definition parallel_point_ext
-  (pp : PolyLang.t) (d : nat)
-  (pi : PolyLang.PolyInstr) (tau : PolyLang.InstrPoint) :
-  PolyLang.InstrPoint_ext :=
-  let env_dim := Datatypes.length (pprog_varctxt pp) in
-  let width := schedule_width pp in
-  let old_pi := parallel_old_pi env_dim width d pi in
-  {|
-    PolyLang.ip_nth_ext := tau.(PolyLang.ip_nth);
-    PolyLang.ip_index_ext := tau.(PolyLang.ip_index);
-    PolyLang.ip_transformation_ext := tau.(PolyLang.ip_transformation);
-    PolyLang.ip_access_transformation_ext :=
-      PolyLang.current_access_transformation_at env_dim old_pi;
-    PolyLang.ip_time_stamp1_ext :=
-      [nth d (resize width tau.(PolyLang.ip_time_stamp)) 0%Z];
-    PolyLang.ip_time_stamp2_ext :=
-      firstn d (resize width tau.(PolyLang.ip_time_stamp));
-    PolyLang.ip_instruction_ext := tau.(PolyLang.ip_instruction);
-    PolyLang.ip_depth_ext := tau.(PolyLang.ip_depth)
-  |}.
-
-Local Definition parallel_pinstr_ext
-    (pp : PolyLang.t) (d : nat) (pi : PolyLang.PolyInstr) :
-    PolyLang.PolyInstr_ext :=
-  let env_dim := Datatypes.length (pprog_varctxt pp) in
-  let width := schedule_width pp in
-  AffineCore.compose_pinstr_ext_at env_dim
-    (parallel_old_pi env_dim width d pi)
-    (parallel_new_pi env_dim width d pi).
-
-Local Definition parallel_pinstrs_ext
-    (pp : PolyLang.t) (d : nat) : list PolyLang.PolyInstr_ext :=
-  let &#x27;((pis, varctxt), _) := pp in
-  let env_dim := Datatypes.length varctxt in
-  let width := schedule_width_of_pis pis in
-  AffineCore.compose_pinstrs_ext_at env_dim
-    (List.map (parallel_old_pi env_dim width d) pis)
-    (List.map (parallel_new_pi env_dim width d) pis).
-
-Definition check_current_view_pinstrb (pi : PolyLang.PolyInstr) : bool :=
-  match pi.(PolyLang.pi_point_witness) with
-  | PSWIdentity d&#x27; =&gt; Nat.eqb d&#x27; pi.(PolyLang.pi_depth)
-  | _ =&gt; false
+Definition tiling_band_validation_route_acceptsb
+    (route: tiling_band_validation_route) : bool :=
+  match route with
+  | DirectBandAccepted =&gt; true
+  | Rejected =&gt; false
   end.
 
-Definition check_current_view_pprogb (pp : PolyLang.t) : bool :=
-  forallb check_current_view_pinstrb (pprog_pis pp).
-
-Definition all_pinstrs_cover_dimb (d : nat) (pp : PolyLang.t) : bool :=
-  forallb (fun pi =&gt; Nat.ltb d pi.(PolyLang.pi_depth)) (pprog_pis pp).
-
-Definition env_dim_of (ip : PolyLang.InstrPoint) : nat :=
-  Nat.sub (Datatypes.length ip.(PolyLang.ip_index)) ip.(PolyLang.ip_depth).
-
-Definition env_prefix_of (ip : PolyLang.InstrPoint) : list Z :=
-  firstn (env_dim_of ip) ip.(PolyLang.ip_index).
-
-Definition current_coords_of (ip : PolyLang.InstrPoint) : list Z :=
-  skipn (env_dim_of ip) ip.(PolyLang.ip_index).
-
-Definition same_env_of (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  env_prefix_of ip1 = env_prefix_of ip2.
-
-Definition padded_timestamp
-  (pp : PolyLang.t) (ip : PolyLang.InstrPoint) : list Z :=
-  resize (schedule_width pp) ip.(PolyLang.ip_time_stamp).
-
-Definition same_prefix_before
-  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  firstn d (padded_timestamp pp ip1) =
-  firstn d (padded_timestamp pp ip2).
-
-Definition different_dim_at
-  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  nth_error (padded_timestamp pp ip1) d &lt;&gt;
-  nth_error (padded_timestamp pp ip2) d.
-
-Definition same_parallel_slice
-  (pp : PolyLang.t) (d : nat) (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  same_env_of ip1 ip2 /\
-  same_prefix_before pp d ip1 ip2 /\
-  different_dim_at pp d ip1 ip2.
-
-
-
-Lemma permutable_eq_except_sched :
-  forall ip1 ip1&#x27; ip2 ip2&#x27;,
-    PolyLang.eq_except_sched ip1 ip1&#x27; -&gt;
-    PolyLang.eq_except_sched ip2 ip2&#x27; -&gt;
-    ILSema.Permutable ip1 ip2 -&gt;
-    ILSema.Permutable ip1&#x27; ip2&#x27;.
-Proof.
-  exact ILSema.permutable_eq_except_sched.
-Qed.
-
-(** * Declarative doall property *)
-
-Definition parallel_safe_dim (pp : PolyLang.t) (d : nat) : Prop :=
-  forall envv ipl tau1 tau2,
-    Datatypes.length envv = Datatypes.length (pprog_varctxt pp) -&gt;
-    PolyLang.flatten_instrs envv (pprog_pis pp) ipl -&gt;
-    In tau1 ipl -&gt;
-    In tau2 ipl -&gt;
-    same_parallel_slice pp d tau1 tau2 -&gt;
-    ILSema.Permutable tau1 tau2.
-
-Definition parallel_safe_dim_pointwise (pp : PolyLang.t) (d : nat) : Prop :=
-  forall tau1 tau2 pi1 pi2,
-    nth_error (pprog_pis pp) tau1.(PolyLang.ip_nth) = Some pi1 -&gt;
-    nth_error (pprog_pis pp) tau2.(PolyLang.ip_nth) = Some pi2 -&gt;
-    PolyLang.belongs_to tau1 pi1 -&gt;
-    PolyLang.belongs_to tau2 pi2 -&gt;
-    Datatypes.length tau1.(PolyLang.ip_index) =
-      (Datatypes.length (pprog_varctxt pp) + pi1.(PolyLang.pi_depth))%nat -&gt;
-    Datatypes.length tau2.(PolyLang.ip_index) =
-      (Datatypes.length (pprog_varctxt pp) + pi2.(PolyLang.pi_depth))%nat -&gt;
-    same_parallel_slice pp d tau1 tau2 -&gt;
-    ILSema.Permutable tau1 tau2.
-
-Definition parallel_cert_sound
-  (pp : PolyLang.t) (cert : parallel_cert) : Prop :=
-  parallel_safe_dim pp cert.(certified_dim).
-
-Definition parallel_cert_pointwise_sound
-  (pp : PolyLang.t) (cert : parallel_cert) : Prop :=
-  parallel_safe_dim_pointwise pp cert.(certified_dim).
-
-
-
-
-Lemma schedule_width_ge_pinstr :
-  forall pis varctxt vars pi,
-    In pi pis -&gt;
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;=
-     schedule_width ((pis, varctxt), vars))%nat.
-Proof.
-  intros pis varctxt vars pi Hin.
-  unfold schedule_width, schedule_width_of_pis, pprog_pis.
-  simpl.
-  apply list_max_ge.
-  rewrite in_map_iff.
-  exists pi.
-  split; [reflexivity | exact Hin].
-Qed.
-
-Lemma padded_pi_schedule_length :
-  forall env_dim width pi,
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    Datatypes.length (padded_pi_schedule env_dim width pi) = width.
-Proof.
-  intros env_dim width pi Hlen.
-  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len.
-  rewrite app_length, repeat_length.
-  lia.
-Qed.
-
-
-
-
-
-
-
-
-
-
-
-Lemma check_current_view_pinstrb_sound :
-  forall pi,
-    check_current_view_pinstrb pi = true -&gt;
-    pi.(PolyLang.pi_point_witness) = PSWIdentity pi.(PolyLang.pi_depth).
-Proof.
-  intros pi Hcheck.
-  unfold check_current_view_pinstrb in Hcheck.
-  destruct (PolyLang.pi_point_witness pi); simpl in Hcheck; try discriminate.
-  apply Nat.eqb_eq in Hcheck.
-  subst.
-  reflexivity.
-Qed.
-
-
-
-
-
-
-Lemma flatten_instrs_member_inv :
-  forall envv pis ipl ip,
-    PolyLang.flatten_instrs envv pis ipl -&gt;
-    In ip ipl -&gt;
-    exists pi,
-      nth_error pis ip.(PolyLang.ip_nth) = Some pi /\
-      PolyLang.belongs_to ip pi /\
-      Datatypes.length ip.(PolyLang.ip_index) =
-        (Datatypes.length envv + pi.(PolyLang.pi_depth))%nat.
-Proof.
-  intros envv pis ipl ip Hflat Hin.
-  destruct Hflat as [_ [Hmem _]].
-  specialize (Hmem ip).
-  destruct ((proj1 Hmem) Hin) as [pi [Hnth [_ [Hbel Hlen]]]].
-  exists pi.
-  split; [exact Hnth |].
-  split; [exact Hbel | exact Hlen].
-Qed.
-
-
-Lemma dot_product_select_coord :
-  forall cols n xs,
-    (S n &lt;= cols)%nat -&gt;
-    dot_product (resize cols (V0 n ++ [1%Z])) xs = nth n xs 0%Z.
-Proof.
-  exact LinalgExt.dot_product_select_coordinate.
-Qed.
-
-
-
-
-
-Lemma affine_product_repeat_zero_affine_function :
-  forall cols n idx,
-    affine_product (repeat (PolyLang.zero_affine_function cols) n) idx =
-    repeat 0%Z n.
-Proof.
-  intros cols n idx.
-  induction n as [|n IH]; simpl.
-  - reflexivity.
-  - unfold PolyLang.zero_affine_function.
-    simpl.
-    rewrite dot_product_repeat_zero_left.
-    f_equal.
-    exact IH.
-Qed.
-
-Lemma affine_product_app :
-  forall rows1 rows2 idx,
-    affine_product (rows1 ++ rows2) idx =
-    affine_product rows1 idx ++ affine_product rows2 idx.
-Proof.
-  intros rows1 rows2 idx.
-  unfold affine_product.
-  rewrite map_app.
-  reflexivity.
-Qed.
-
-Lemma affine_product_padded_pi_schedule :
-  forall env_dim width pi idx,
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    affine_product (padded_pi_schedule env_dim width pi) idx =
-    resize width (affine_product pi.(PolyLang.pi_schedule) idx).
-Proof.
-  intros env_dim width pi idx Hlen.
-  unfold padded_pi_schedule, PolyLang.pad_schedule_to_len.
-  rewrite affine_product_app.
-  rewrite affine_product_repeat_zero_affine_function.
-  rewrite &lt;- (app_nil_r (affine_product pi.(PolyLang.pi_schedule) idx)) at 2.
-  rewrite resize_app_le.
-  - rewrite resize_null_repeat by reflexivity.
-    unfold affine_product.
-    rewrite map_length.
-    reflexivity.
-  - unfold affine_product.
-    rewrite map_length.
-    exact Hlen.
-Qed.
-
-Lemma affine_product_firstn :
-  forall d rows idx,
-    affine_product (firstn d rows) idx =
-    firstn d (affine_product rows idx).
-Proof.
-  induction d as [|d IH]; intros rows idx; destruct rows; simpl.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - rewrite IH. reflexivity.
-Qed.
-
-Lemma affine_product_schedule_coord_old_schedule :
-  forall env_dim width d pi idx,
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    (d &lt; width)%nat -&gt;
-    affine_product (schedule_coord_old_schedule env_dim width d pi) idx =
-    [nth d (resize width (affine_product pi.(PolyLang.pi_schedule) idx)) 0%Z].
-Proof.
-  intros env_dim width d pi idx Hlen Hd.
-  unfold schedule_coord_old_schedule.
-  simpl.
-  rewrite &lt;- (affine_product_padded_pi_schedule env_dim) by exact Hlen.
-  unfold affine_product.
-  assert
-    (Hrow :
-       nth_error (padded_pi_schedule env_dim width pi) d =
-       Some
-         (nth d (padded_pi_schedule env_dim width pi)
-            (PolyLang.zero_affine_function
-               (env_dim + pi.(PolyLang.pi_depth))))).
-  {
-    apply nth_error_nth&#x27;.
-    rewrite padded_pi_schedule_length by exact Hlen.
-    exact Hd.
-  }
-  pose proof
-    (map_nth_error
-       (fun t =&gt; dot_product (fst t) idx + snd t)
-       d (padded_pi_schedule env_dim width pi)
-       Hrow) as Hmap.
-  apply nth_error_nth with (d := 0%Z) in Hmap.
-  now rewrite Hmap.
-Qed.
-
-Lemma affine_product_schedule_coord_prefix_schedule :
-  forall env_dim width d pi idx,
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    affine_product (schedule_coord_prefix_schedule env_dim width d pi) idx =
-    firstn d (resize width (affine_product pi.(PolyLang.pi_schedule) idx)).
-Proof.
-  intros env_dim width d pi idx Hlen.
-  unfold schedule_coord_prefix_schedule.
-  rewrite affine_product_firstn.
-  rewrite affine_product_padded_pi_schedule by exact Hlen.
-  reflexivity.
-Qed.
-
-Local Lemma parallel_point_ext_eq_except_sched :
-  forall pp d pi tau,
-    PolyLang.eq_except_sched
-      (PolyLang.old_of_ext (parallel_point_ext pp d pi tau)) tau.
-Proof.
-  intros pp d pi tau.
-  unfold PolyLang.eq_except_sched, PolyLang.old_of_ext, parallel_point_ext.
-  simpl. repeat split; reflexivity.
-Qed.
-
-Local Lemma parallel_ext_pi_in :
-  forall pis env_dim width d n pi,
-    nth_error pis n = Some pi -&gt;
-    In
-      (AffineCore.compose_pinstr_ext_at env_dim
-        (parallel_old_pi env_dim width d pi)
-        (parallel_new_pi env_dim width d pi))
-      (AffineCore.compose_pinstrs_ext_at env_dim
-        (List.map (parallel_old_pi env_dim width d) pis)
-        (List.map (parallel_new_pi env_dim width d) pis)).
-Proof.
-  induction pis as [|head tail IH]; intros env_dim width d [|n] pi Hnth;
-    simpl in *; try discriminate.
-  - inversion Hnth; subst. left. reflexivity.
-  - right. eapply IH. exact Hnth.
-Qed.
-
-Local Lemma parallel_point_ext_belongs :
-  forall pis varctxt vars d tau pi,
-    nth_error pis tau.(PolyLang.ip_nth) = Some pi -&gt;
-    PolyLang.belongs_to tau pi -&gt;
-    check_current_view_pinstrb pi = true -&gt;
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= schedule_width_of_pis pis)%nat -&gt;
-    (d &lt; schedule_width_of_pis pis)%nat -&gt;
-    PolyLang.belongs_to_ext
-      (parallel_point_ext ((pis, varctxt), vars) d pi tau)
-      (AffineCore.compose_pinstr_ext_at (Datatypes.length varctxt)
-        (parallel_old_pi
-          (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi)
-        (parallel_new_pi
-          (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi)).
-Proof.
-  intros pis varctxt vars d tau pi Hnth Hbel Hcurrent Hwidth Hd.
-  pose proof (check_current_view_pinstrb_sound pi Hcurrent) as Hwitness.
-  unfold PolyLang.belongs_to in Hbel.
-  destruct Hbel as (Hdom &amp; Htf &amp; Hts &amp; Hinstr &amp; Hdepth).
-  unfold PolyLang.belongs_to_ext, parallel_point_ext,
-    AffineCore.compose_pinstr_ext_at.
-  simpl.
-  repeat split.
-  - exact Hdom.
-  - rewrite Htf.
-    unfold PolyLang.current_transformation_of,
-      PolyLang.current_transformation_at, parallel_old_pi.
-    simpl. rewrite Hwitness. reflexivity.
-  - change (
-      [nth d (resize (schedule_width_of_pis pis)
-        tau.(PolyLang.ip_time_stamp)) 0%Z] =
-      affine_product
-        (schedule_coord_old_schedule
-          (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi)
-        tau.(PolyLang.ip_index)).
-    rewrite affine_product_schedule_coord_old_schedule by assumption.
-    now rewrite Hts.
-  - change (
-      firstn d (resize (schedule_width_of_pis pis)
-        tau.(PolyLang.ip_time_stamp)) =
-      affine_product
-        (schedule_coord_prefix_schedule
-          (Datatypes.length varctxt) (schedule_width_of_pis pis) d pi)
-        tau.(PolyLang.ip_index)).
-    rewrite affine_product_schedule_coord_prefix_schedule by assumption.
-    now rewrite Hts.
-  - exact Hinstr.
-  - exact Hdepth.
-Qed.
-
-
-
-
-
-
-
-
-
-
-
-Lemma lex_compare_singleton_lt :
-  forall z1 z2,
-    (z1 &lt; z2)%Z -&gt;
-    lex_compare [z1] [z2] = Lt.
-Proof.
-  intros z1 z2 Hlt.
-  simpl.
-  destruct (z1 ?= z2) eqn:Hcmp; simpl.
-  - apply Z.compare_eq_iff in Hcmp. lia.
-  - reflexivity.
-  - apply Z.compare_gt_iff in Hcmp. lia.
-Qed.
-
-(** * Executable certificate and soundness *)
-
-(** The public [*_current*] names below are retained for compatibility.
-    Their dimensions now denote canonical schedule coordinates, rather than
-    coordinates in the current iteration point. *)
-
-Definition check_pprog_parallel_currentb
-  (pp : PolyLang.t) (plan : parallel_plan) : imp bool :=
-  let d := plan.(target_dim) in
-  if Nat.ltb d (schedule_width pp)
-     &amp;&amp; check_current_view_pprogb pp
-  then AffineCore.validate (parallel_old_pprog pp d) (parallel_new_pprog pp d)
+(** The direct source-first layer recognizes ordinary common-band strip mining
+    with target-side trailing-zero padding, and uniform grouped or interleaved
+    second-level schedules with either symmetric trailing-zero equivalence or
+    program-wide strict-zero-row erasure. *)
+Definition checked_tiling_sourceb_first_direct_band_check
+    (before after: Legacy.Tiling.PL.t)
+    (ws: list statement_tiling_witness) : imp bool :=
+  let &#x27;(before_pis, before_ctxt, _) := before in
+  let &#x27;(after_pis, _, _) := after in
+  if Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws then
+    let ordinary_check :=
+      if Legacy.check_pprog_tiling_schedule_stripminedb before after ws then
+        match Legacy.infer_pprog_tiling_bands before ws with
+        | Some bands =&gt;
+            Legacy.check_pprog_pluto_permutable_tiling_bands_direct
+              before after ws bands
+        | None =&gt; pure false
+        end
+      else pure false in
+    BIND ordinary_ok &lt;- ordinary_check -;
+    if ordinary_ok then pure true
+    else
+      match Legacy.check_pprog_second_level_schedule_directb before after ws with
+      | Some (bands, _, _) =&gt;
+          Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct
+            (List.length before_ctxt) before_pis after_pis ws bands
+      | None =&gt; pure false
+      end
   else pure false.
 
-Definition checked_parallelize_current
-  (pp : PolyLang.t) (plan : parallel_plan) : imp (result parallel_cert) :=
-  BIND ok &lt;- check_pprog_parallel_currentb pp plan -;
-  if ok
-  then pure (Okk {| certified_dim := plan.(target_dim) |})
-  else pure (Err &quot;Parallel validation failed&quot;).
+(** The complete direct-only candidate checker.  Each branch independently
+    validates the source/witness boundary and proves a permutable-band
+    condition for the layout it recognizes. *)
+Definition checked_tiling_sourceb_complete_direct_band_check
+    (before after: Legacy.Tiling.PL.t)
+    (ws: list statement_tiling_witness) : imp bool :=
+  BIND common_ok &lt;-
+    checked_tiling_sourceb_first_direct_band_check before after ws -;
+  if common_ok then pure true
+  else
+    BIND phase_semantic_ok &lt;-
+      Legacy.checked_tiling_sourceb_phase_semantic_band_direct
+        before after ws -;
+    if phase_semantic_ok then pure true
+    else
+      BIND scalar_aware_ok &lt;-
+        Legacy.checked_tiling_sourceb_scalar_aware_direct before after ws -;
+      if scalar_aware_ok then pure true
+      else
+        BIND phase_ordinary_ok &lt;-
+          Mixed.check_pprog_phase_separated_ordinary_direct before after ws -;
+        if phase_ordinary_ok then pure true
+        else
+          BIND phase_scalar_ok &lt;-
+            PhaseScalar.checked_tiling_sourceb_phase_scalar_direct
+              before after ws -;
+          if phase_scalar_ok then pure true
+          else
+            BIND semantic_ok &lt;-
+              Legacy.checked_tiling_sourceb_semantic_band_direct
+                before after ws -;
+            if semantic_ok then pure true
+            else Mixed.check_pprog_mixed_second_level_direct before after ws.
 
-Lemma check_pprog_parallel_currentb_true_inv :
-  forall pp plan,
-    mayReturn (check_pprog_parallel_currentb pp plan) true -&gt;
-    (target_dim plan &lt; schedule_width pp)%nat /\
-    check_current_view_pprogb pp = true /\
+Lemma checked_tiling_sourceb_first_direct_band_check_sourceb_true :
+  forall before after ws,
     mayReturn
-      (AffineCore.validate
-         (parallel_old_pprog pp plan.(target_dim))
-         (parallel_new_pprog pp plan.(target_dim)))
-      true.
+      (checked_tiling_sourceb_first_direct_band_check before after ws)
+      true -&gt;
+    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
 Proof.
-  intros pp plan Hret.
-  unfold check_pprog_parallel_currentb in Hret.
+  intros [[before_pis before_ctxt] before_vars]
+         [[after_pis after_ctxt] after_vars] ws Hcheck.
+  unfold checked_tiling_sourceb_first_direct_band_check in Hcheck.
+  cbn beta iota zeta in Hcheck.
   destruct
-    ((Nat.ltb (target_dim plan) (schedule_width pp)
-        &amp;&amp; check_current_view_pprogb pp)%bool) eqn:Hguard.
-  - apply andb_true_iff in Hguard.
-    destruct Hguard as [Hlt Hcur].
-    split.
-    + apply Nat.ltb_lt. exact Hlt.
-    + split; [exact Hcur | exact Hret].
-  - apply mayReturn_pure in Hret.
+    (Legacy.TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws)
+    eqn:Hsource.
+  - reflexivity.
+  - apply mayReturn_pure in Hcheck.
     discriminate.
 Qed.
 
-Local Lemma env_dim_of_pointwise :
-  forall (varctxt : list Instr.ident)
-         (tau : PolyLang.InstrPoint) (pi : PolyLang.PolyInstr),
-    PolyLang.belongs_to tau pi -&gt;
-    Datatypes.length tau.(PolyLang.ip_index) =
-      (Datatypes.length varctxt + pi.(PolyLang.pi_depth))%nat -&gt;
-    env_dim_of tau = Datatypes.length varctxt.
-Proof.
-  intros varctxt tau pi Hbel Hlen.
-  unfold PolyLang.belongs_to in Hbel.
-  destruct Hbel as (_ &amp; _ &amp; _ &amp; _ &amp; Hdepth).
-  unfold env_dim_of. rewrite Hlen, Hdepth. lia.
-Qed.
-
-Local Lemma parallel_single_point_view :
-  forall pis varctxt vars d tau pi,
-    nth_error pis tau.(PolyLang.ip_nth) = Some pi -&gt;
-    PolyLang.belongs_to tau pi -&gt;
-    Datatypes.length tau.(PolyLang.ip_index) =
-      (Datatypes.length varctxt + pi.(PolyLang.pi_depth))%nat -&gt;
-    check_current_view_pinstrb pi = true -&gt;
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;=
-      schedule_width_of_pis pis)%nat -&gt;
-    (d &lt; schedule_width_of_pis pis)%nat -&gt;
-    In
-      (parallel_pinstr_ext ((pis, varctxt), vars) d pi)
-      (parallel_pinstrs_ext ((pis, varctxt), vars) d) /\
-    PolyLang.belongs_to_ext
-      (parallel_point_ext ((pis, varctxt), vars) d pi tau)
-      (parallel_pinstr_ext ((pis, varctxt), vars) d pi) /\
-    Datatypes.length
-      (parallel_point_ext ((pis, varctxt), vars) d pi tau).(PolyLang.ip_index_ext) =
-      (Datatypes.length varctxt +
-       (parallel_pinstr_ext
-          ((pis, varctxt), vars) d pi).(PolyLang.pi_depth_ext))%nat /\
-    PolyLang.eq_except_sched
-      (PolyLang.old_of_ext
-        (parallel_point_ext ((pis, varctxt), vars) d pi tau))
-      tau.
-Proof.
-  intros pis varctxt vars d tau pi Hnth Hbel Hlen Hcurrent Hwidth Hd.
-  split.
-  - unfold parallel_pinstr_ext, parallel_pinstrs_ext.
-    simpl. eapply parallel_ext_pi_in. exact Hnth.
-  - split.
-    + unfold parallel_pinstr_ext. simpl.
-      eapply parallel_point_ext_belongs; eauto.
-    + split.
-      * unfold parallel_point_ext, parallel_pinstr_ext. simpl.
-        exact Hlen.
-      * eapply parallel_point_ext_eq_except_sched.
-Qed.
-
-Local Lemma parallel_direction_pointwise_permutable :
-  forall pis varctxt vars d tau1 tau2 pi1 pi2,
+Lemma checked_tiling_sourceb_complete_direct_band_check_sourceb_true :
+  forall before after ws,
     mayReturn
-      (AffineCore.validate
-        (parallel_old_pprog ((pis, varctxt), vars) d)
-        (parallel_new_pprog ((pis, varctxt), vars) d))
+      (checked_tiling_sourceb_complete_direct_band_check before after ws)
       true -&gt;
-    nth_error pis tau1.(PolyLang.ip_nth) = Some pi1 -&gt;
-    nth_error pis tau2.(PolyLang.ip_nth) = Some pi2 -&gt;
-    PolyLang.belongs_to tau1 pi1 -&gt;
-    PolyLang.belongs_to tau2 pi2 -&gt;
-    Datatypes.length tau1.(PolyLang.ip_index) =
-      (Datatypes.length varctxt + pi1.(PolyLang.pi_depth))%nat -&gt;
-    Datatypes.length tau2.(PolyLang.ip_index) =
-      (Datatypes.length varctxt + pi2.(PolyLang.pi_depth))%nat -&gt;
-    check_current_view_pinstrb pi1 = true -&gt;
-    check_current_view_pinstrb pi2 = true -&gt;
-    (Datatypes.length pi1.(PolyLang.pi_schedule) &lt;=
-      schedule_width_of_pis pis)%nat -&gt;
-    (Datatypes.length pi2.(PolyLang.pi_schedule) &lt;=
-      schedule_width_of_pis pis)%nat -&gt;
-    (d &lt; schedule_width_of_pis pis)%nat -&gt;
-    same_env_of tau1 tau2 -&gt;
-    same_prefix_before ((pis, varctxt), vars) d tau1 tau2 -&gt;
-    (nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z &lt;
-     nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z)%Z -&gt;
-    ILSema.Permutable tau1 tau2.
+    Legacy.TilingCheck.check_pprog_tiling_sourceb before after ws = true.
 Proof.
-  intros pis varctxt vars d tau1 tau2 pi1 pi2 Hval Hnth1 Hnth2
-    Hbel1 Hbel2 Hlen1 Hlen2 Hcurrent1 Hcurrent2 Hwidth1 Hwidth2 Hd
-    Hsame_env Hprefix Hlt.
-  destruct
-    (parallel_single_point_view
-      pis varctxt vars d tau1 pi1
-      Hnth1 Hbel1 Hlen1 Hcurrent1 Hwidth1 Hd)
-    as (Hinext1 &amp; Hbelext1 &amp; Hidxext1 &amp; Heq1).
-  destruct
-    (parallel_single_point_view
-      pis varctxt vars d tau2 pi2
-      Hnth2 Hbel2 Hlen2 Hcurrent2 Hwidth2 Hd)
-    as (Hinext2 &amp; Hbelext2 &amp; Hidxext2 &amp; Heq2).
-  set (pi1_ext := parallel_pinstr_ext ((pis, varctxt), vars) d pi1) in *.
-  set (pi2_ext := parallel_pinstr_ext ((pis, varctxt), vars) d pi2) in *.
-  set (tau1_ext := parallel_point_ext ((pis, varctxt), vars) d pi1 tau1) in *.
-  set (tau2_ext := parallel_point_ext ((pis, varctxt), vars) d pi2 tau2) in *.
-  assert (Hsameidx :
-    firstn (Datatypes.length varctxt) tau1_ext.(PolyLang.ip_index_ext) =
-    firstn (Datatypes.length varctxt) tau2_ext.(PolyLang.ip_index_ext)).
-  {
-    subst tau1_ext tau2_ext. simpl.
-    unfold same_env_of, env_prefix_of in Hsame_env.
-    rewrite
-      (env_dim_of_pointwise varctxt tau1 pi1 Hbel1 Hlen1),
-      (env_dim_of_pointwise varctxt tau2 pi2 Hbel2 Hlen2)
-      in Hsame_env.
-    exact Hsame_env.
-  }
-  assert (Hnew_eq :
-    PolyLang.ip_time_stamp2_ext tau1_ext =
-    PolyLang.ip_time_stamp2_ext tau2_ext).
-  {
-    subst tau1_ext tau2_ext. simpl. exact Hprefix.
-  }
-  assert (Hold : PolyLang.instr_point_ext_old_sched_lt tau1_ext tau2_ext).
-  {
-    unfold PolyLang.instr_point_ext_old_sched_lt.
-    subst tau1_ext tau2_ext. simpl.
-    apply lex_compare_singleton_lt. exact Hlt.
-  }
-  assert (Hnew : PolyLang.instr_point_ext_new_sched_ge tau1_ext tau2_ext).
-  {
-    unfold PolyLang.instr_point_ext_new_sched_ge. left.
-    rewrite Hnew_eq. apply lex_compare_reflexive.
-  }
-  assert (Hperm : PolyLang.Permutable_ext tau1_ext tau2_ext).
-  {
-    eapply AffineCore.validate_pointwise_implies_permutability
-      with
-        (pp1 := parallel_old_pprog ((pis, varctxt), vars) d)
-        (pp2 := parallel_new_pprog ((pis, varctxt), vars) d)
-        (env1 := varctxt) (env2 := varctxt)
-        (vars1 := vars) (vars2 := vars)
-        (pil1 := List.map
-          (parallel_old_pi
-            (Datatypes.length varctxt) (schedule_width_of_pis pis) d) pis)
-        (pil2 := List.map
-          (parallel_new_pi
-            (Datatypes.length varctxt) (schedule_width_of_pis pis) d) pis)
-        (pi1_ext := pi1_ext) (pi2_ext := pi2_ext); eauto.
-  }
-  eapply (permutable_eq_except_sched
-    (PolyLang.old_of_ext tau1_ext) tau1
-    (PolyLang.old_of_ext tau2_ext) tau2); eauto.
+  intros before after ws Hcheck.
+  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
+  bind_imp_destruct Hcheck common_ok Hcommon.
+  destruct common_ok.
+  - eapply checked_tiling_sourceb_first_direct_band_check_sourceb_true.
+    exact Hcommon.
+  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+    destruct phase_semantic_ok.
+    + eapply
+        Legacy.checked_tiling_sourceb_phase_semantic_band_direct_sourceb_true.
+      exact Hphase_semantic.
+    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+      destruct scalar_aware_ok.
+      * destruct
+          (Legacy.checked_tiling_sourceb_scalar_aware_direct_true_inv
+             before after ws Hscalar_aware)
+          as [layout [Hsource _]].
+        exact Hsource.
+      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+        destruct phase_ordinary_ok.
+        -- destruct before as [[before_pis before_ctxt] before_vars].
+           destruct after as [[after_pis after_ctxt] after_vars].
+           destruct
+             (Mixed.check_pprog_phase_separated_ordinary_direct_true_inv
+                before_pis before_ctxt before_vars
+                after_pis after_ctxt after_vars ws Hphase_ordinary)
+             as [bands [Hsource _]].
+           exact Hsource.
+        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
+           destruct phase_scalar_ok.
+           ++ destruct before as [[before_pis before_ctxt] before_vars].
+              destruct after as [[after_pis after_ctxt] after_vars].
+              destruct
+                (PhaseScalar.checked_tiling_sourceb_phase_scalar_direct_true_inv
+                   before_pis before_ctxt before_vars
+                   after_pis after_ctxt after_vars ws Hphase_scalar)
+                as [entries [Hsource _]].
+              exact Hsource.
+           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
+              destruct semantic_ok.
+              ** destruct
+                   (Legacy.checked_tiling_sourceb_semantic_band_direct_true_inv
+                      before after ws Hsemantic)
+                   as [lifted_rows [Hshape _]].
+                 inversion Hshape; assumption.
+              ** destruct before as [[before_pis before_ctxt] before_vars].
+                 destruct after as [[after_pis after_ctxt] after_vars].
+                 destruct
+                   (Mixed.check_pprog_mixed_second_level_direct_true_inv
+                      before_pis before_ctxt before_vars
+                      after_pis after_ctxt after_vars ws Hcheck)
+                   as [bands [recipes [Hsource _]]].
+                 exact Hsource.
 Qed.
 
-Lemma check_pprog_parallel_currentb_pointwise_sound :
-  forall pp plan,
-    mayReturn (check_pprog_parallel_currentb pp plan) true -&gt;
-    parallel_safe_dim_pointwise pp plan.(target_dim).
+Lemma checked_second_level_direct_band_check_correct :
+  forall layout before_pis before_ctxt before_vars after_pis ws
+         bands recipes st1 st2,
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis -&gt;
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis -&gt;
+    Legacy.TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, before_ctxt, before_vars) ws = true -&gt;
+    Legacy.infer_pinstr_list_second_level_bands before_pis ws =
+      Some (bands, recipes) -&gt;
+    Legacy.check_pinstr_list_second_level_schedule_directb
+      layout (List.length before_ctxt) before_pis after_pis bands = true -&gt;
+    Legacy.common_second_level_recipe_sizes recipes -&gt;
+    Legacy.common_band_start bands -&gt;
+    mayReturn
+      (Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct
+         (List.length before_ctxt) before_pis after_pis ws bands)
+      true -&gt;
+    Legacy.Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
+    exists st2&#x27;,
+      Legacy.Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
+      State.eq st2 st2&#x27;.
 Proof.
-  intros [[pis varctxt] vars] [d] Hcheck.
-  simpl in *.
+  intros layout before_pis before_ctxt before_vars after_pis ws
+         bands recipes st1 st2 Hwf_before Hwf_after Hsource Hinfer
+         Hsched Hrecipe_sizes Hcommon_start Hcomponent_check Hsem.
   pose proof
-    (check_pprog_parallel_currentb_true_inv
-       ((pis, varctxt), vars) {| target_dim := d |} Hcheck)
-    as (Hd &amp; Hcurrent &amp; Hval).
-  unfold parallel_safe_dim_pointwise.
-  intros tau1 tau2 pi1 pi2 Hnth1 Hnth2 Hbel1 Hbel2 Hlen1 Hlen2 Hslice.
-  simpl in *.
-  set (width := schedule_width_of_pis pis) in *.
-  assert (Hinpi1 : In pi1 pis) by (eapply nth_error_In; eauto).
-  assert (Hinpi2 : In pi2 pis) by (eapply nth_error_In; eauto).
-  assert (Hwidth1 : (Datatypes.length pi1.(PolyLang.pi_schedule) &lt;= width)%nat).
-  { subst width. exact (schedule_width_ge_pinstr pis varctxt vars pi1 Hinpi1). }
-  assert (Hwidth2 : (Datatypes.length pi2.(PolyLang.pi_schedule) &lt;= width)%nat).
-  { subst width. exact (schedule_width_ge_pinstr pis varctxt vars pi2 Hinpi2). }
-  assert (Hcurrent1 : check_current_view_pinstrb pi1 = true).
+    (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws Hsource)
+    as [Hprog [Hbefore_ids [Hwf_ws [Hsizes_ws Hdepths]]]].
+  assert (Hwits :
+    Forall2 Legacy.Tiling.after_matches_tiling_witness after_pis ws).
   {
-    unfold check_current_view_pprogb in Hcurrent.
-    eapply forallb_forall in Hcurrent; eauto.
+    eapply
+      (Legacy.tiling_rel_pprog_structure_source_after_matches
+         before_pis before_ctxt before_vars
+         after_pis before_ctxt before_vars ws); eauto.
   }
-  assert (Hcurrent2 : check_current_view_pinstrb pi2 = true).
+  eapply
+    (Legacy.tiling_sourceb_validate_correct_with_reordering
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars)
+       ws bands st1 st2); [exact Hsource| |exact Hsem].
+  simpl.
+  intros envv Hlen_env.
+  assert (Hcomposed_wf :
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_ext_tiling before_ctxt)
+      (Legacy.Tiling.compose_tiling_pinstrs_ext_from_after
+         (List.length before_ctxt) before_pis after_pis ws)).
   {
-    unfold check_current_view_pprogb in Hcurrent.
-    eapply forallb_forall in Hcurrent; eauto.
+    eapply Legacy.compose_tiling_pinstrs_ext_from_after_wf_tiling; eauto.
   }
-  destruct Hslice as (Hsame_env &amp; Hprefix &amp; Hdiff).
-  assert (Hneq_coord :
-    nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z &lt;&gt;
-    nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z).
+  assert (Hcomponentwise :
+    Legacy.pprog_pluto_componentwise_permutable_bands
+      envv before_pis after_pis ws bands).
   {
-    intro Heq. apply Hdiff.
-    rewrite nth_error_nth&#x27; with
-      (d := 0%Z) (n := d)
-      (l := padded_timestamp ((pis, varctxt), vars) tau1).
-    2: { unfold padded_timestamp. rewrite resize_length. exact Hd. }
-    rewrite nth_error_nth&#x27; with
-      (d := 0%Z) (n := d)
-      (l := padded_timestamp ((pis, varctxt), vars) tau2).
-    2: { unfold padded_timestamp. rewrite resize_length. exact Hd. }
-    now rewrite Heq.
+    eapply
+      (Legacy.check_pinstr_list_pluto_componentwise_permutable_bands_direct_sound
+         before_ctxt envv before_pis after_pis ws bands); eauto.
   }
+  assert (Hsched_lex :
+    Legacy.second_level_schedule_layout_lex_equivalent
+      layout (List.length before_ctxt) before_pis after_pis bands).
+  {
+    eapply Legacy.check_pinstr_list_second_level_schedule_directb_sound.
+    exact Hsched.
+  }
+  eapply
+    (Legacy.pprog_pluto_componentwise_permutable_bands_implies_reordering_safe_if_local_bridge
+       envv before_pis after_pis ws bands); [exact Hcomponentwise|].
+  intros flat ip1 ip2 Hflat Hin1 Hin2 Hold Hnew.
+  eapply
+    (Legacy.second_level_local_reversal_bridge_by_layout_wf_with_env_len
+       layout before_pis before_ctxt before_vars
+       after_pis ws bands recipes envv); eauto.
+Qed.
+
+Lemma checked_tiling_sourceb_first_direct_band_check_correct :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis -&gt;
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis -&gt;
+    mayReturn
+      (checked_tiling_sourceb_first_direct_band_check
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws)
+      true -&gt;
+    Legacy.Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
+    exists st2&#x27;,
+      Legacy.Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
+      State.eq st2 st2&#x27;.
+Proof.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hwf_before Hwf_after Hcheck Hsem.
+  unfold checked_tiling_sourceb_first_direct_band_check in Hcheck.
   destruct
-    (Z_lt_ge_dec
-      (nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)
-      (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z))
-    as [Hlt12 | Hge12].
-  - subst width.
+    (Legacy.TilingCheck.check_pprog_tiling_sourceb
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, before_ctxt, before_vars) ws)
+    eqn:Hsource.
+  2:{ apply mayReturn_pure in Hcheck. discriminate. }
+  cbn beta iota zeta in Hcheck.
+  bind_imp_destruct Hcheck ordinary_ok Hordinary.
+  destruct ordinary_ok.
+  - apply mayReturn_pure in Hcheck.
+    destruct
+      (Legacy.check_pprog_tiling_schedule_stripminedb
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws)
+      eqn:Hschedule.
+    2:{ apply mayReturn_pure in Hordinary. discriminate. }
+    destruct
+      (Legacy.infer_pprog_tiling_bands
+         (before_pis, before_ctxt, before_vars) ws)
+      as [bands|] eqn:Hinfer.
+    2:{ apply mayReturn_pure in Hordinary. discriminate. }
+    simpl in Hordinary.
+    pose proof
+      (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws Hsource)
+      as [Hprog [Hbefore_ids [Hwf_ws [Hsizes_ws Hdepths]]]].
+    assert (Hwits :
+      Forall2 Legacy.Tiling.after_matches_tiling_witness after_pis ws).
+    {
+      eapply
+        (Legacy.tiling_rel_pprog_structure_source_after_matches
+           before_pis before_ctxt before_vars
+           after_pis before_ctxt before_vars ws); eauto.
+    }
+    destruct
+      (Legacy.check_pprog_tiling_schedule_stripminedb_sound_flat
+         before_pis before_ctxt before_vars
+         after_pis before_ctxt before_vars ws Hschedule)
+      as [bands&#x27; [Hinfer&#x27; [Hbands [_ _]]]].
+    unfold Legacy.infer_pprog_tiling_bands in Hinfer.
+    simpl in Hinfer.
+    rewrite Hinfer in Hinfer&#x27;.
+    inversion Hinfer&#x27;; subst bands&#x27;; clear Hinfer&#x27;.
     eapply
-      (parallel_direction_pointwise_permutable
-        pis varctxt vars d tau1 tau2 pi1 pi2); eassumption.
-  - assert (Hlt21 :
-      (nth d (padded_timestamp ((pis, varctxt), vars) tau2) 0%Z &lt;
-       nth d (padded_timestamp ((pis, varctxt), vars) tau1) 0%Z)%Z) by lia.
-    assert (Hsame_env_rev : same_env_of tau2 tau1).
-    { unfold same_env_of in *. symmetry. exact Hsame_env. }
-    assert (Hprefix_rev :
-      same_prefix_before ((pis, varctxt), vars) d tau2 tau1).
-    { unfold same_prefix_before in *. symmetry. exact Hprefix. }
-    apply ILSema.Permutable_symm.
-    subst width.
+      (Legacy.tiling_sourceb_validate_correct_with_reordering
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws bands st1 st2); [exact Hsource| |exact Hsem].
+    simpl.
+    intros envv Hlen_env.
+    destruct
+      (Legacy.check_pprog_pluto_permutable_tiling_bands_direct_sound_with_env_len
+         before_pis before_ctxt before_vars after_pis ws bands envv
+         Hlen_env Hinfer Hwf_before Hwf_after Hdepths Hwits Hordinary)
+      as [Hstrong Harity].
     eapply
-      (parallel_direction_pointwise_permutable
-        pis varctxt vars d tau2 tau1 pi2 pi1); eassumption.
+      (Legacy.pprog_pluto_permutable_tiling_bands_strong_implies_reordering_safe_wf_with_env_len
+         before_pis before_ctxt before_vars after_pis ws bands envv); eauto.
+  - destruct
+      (Legacy.check_pprog_second_level_schedule_directb
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars) ws)
+      as [shape|] eqn:Hshape.
+    2:{ apply mayReturn_pure in Hcheck. discriminate. }
+    destruct shape as [[bands recipes] layout].
+    simpl in Hcheck.
+    destruct
+      (Legacy.check_pprog_second_level_schedule_directb_sound
+         before_pis before_ctxt before_vars
+         after_pis before_ctxt before_vars ws bands recipes layout Hshape)
+      as [Hinfer [Hsched [Hrecipe_sizes Hcommon_start]]].
+    eapply
+      (checked_second_level_direct_band_check_correct
+         layout before_pis before_ctxt before_vars
+         after_pis ws bands recipes st1 st2); eauto.
 Qed.
 
-Lemma parallel_safe_dim_pointwise_implies_safe_dim :
-  forall pp d,
-    parallel_safe_dim_pointwise pp d -&gt;
-    parallel_safe_dim pp d.
+Lemma checked_tiling_sourceb_complete_direct_band_check_correct :
+  forall before_pis before_ctxt before_vars after_pis ws st1 st2,
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis -&gt;
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis -&gt;
+    mayReturn
+      (checked_tiling_sourceb_complete_direct_band_check
+         (before_pis, before_ctxt, before_vars)
+         (after_pis, before_ctxt, before_vars)
+         ws)
+      true -&gt;
+    Legacy.Tiling.PL.instance_list_semantics
+      (after_pis, before_ctxt, before_vars) st1 st2 -&gt;
+    exists st2&#x27;,
+      Legacy.Tiling.PL.instance_list_semantics
+        (before_pis, before_ctxt, before_vars) st1 st2&#x27; /\
+      State.eq st2 st2&#x27;.
 Proof.
-  intros pp d Hpointwise envv ipl tau1 tau2 Henvlen Hflat Hin1 Hin2 Hslice.
-  destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin1)
-    as [pi1 [Hnth1 [Hbel1 Hlen1]]].
-  destruct (flatten_instrs_member_inv _ _ _ _ Hflat Hin2)
-    as [pi2 [Hnth2 [Hbel2 Hlen2]]].
-  eapply Hpointwise with (pi1 := pi1) (pi2 := pi2); eauto.
-  - now rewrite &lt;- Henvlen.
-  - now rewrite &lt;- Henvlen.
+  intros before_pis before_ctxt before_vars after_pis ws st1 st2
+         Hwf_before Hwf_after Hcheck Hsem.
+  unfold checked_tiling_sourceb_complete_direct_band_check in Hcheck.
+  bind_imp_destruct Hcheck common_ok Hcommon.
+  destruct common_ok.
+  - eapply checked_tiling_sourceb_first_direct_band_check_correct; eauto.
+  - bind_imp_destruct Hcheck phase_semantic_ok Hphase_semantic.
+    destruct phase_semantic_ok.
+    + eapply
+        Legacy
+          .checked_tiling_sourceb_phase_semantic_band_direct_correct_same_ctxt;
+        eauto.
+    + bind_imp_destruct Hcheck scalar_aware_ok Hscalar_aware.
+      destruct scalar_aware_ok.
+      * eapply
+          Legacy.checked_tiling_sourceb_scalar_aware_direct_correct_same_ctxt;
+          eauto.
+      * bind_imp_destruct Hcheck phase_ordinary_ok Hphase_ordinary.
+        destruct phase_ordinary_ok.
+        -- eapply
+             Mixed.check_pprog_phase_separated_ordinary_direct_correct_same_ctxt;
+             eauto.
+        -- bind_imp_destruct Hcheck phase_scalar_ok Hphase_scalar.
+           destruct phase_scalar_ok.
+           ++ eapply
+                PhaseScalar
+                  .checked_tiling_sourceb_phase_scalar_direct_correct_same_ctxt;
+                eauto.
+           ++ bind_imp_destruct Hcheck semantic_ok Hsemantic.
+              destruct semantic_ok.
+              ** eapply
+                   Legacy
+                     .checked_tiling_sourceb_semantic_band_direct_correct_same_ctxt;
+                   eauto.
+              ** eapply
+                   Mixed.check_pprog_mixed_second_level_direct_correct_same_ctxt;
+                   eauto.
 Qed.
 
-Lemma parallel_cert_pointwise_sound_implies_sound :
-  forall pp cert,
-    parallel_cert_pointwise_sound pp cert -&gt;
-    parallel_cert_sound pp cert.
+Lemma checked_tiling_sourceb_complete_direct_band_check_outer_correct :
+  forall before after ws st1 st2,
+    PolyLang.wf_pprog_affine before -&gt;
+    PolyLang.wf_pprog_general after -&gt;
+    mayReturn
+      (checked_tiling_sourceb_complete_direct_band_check
+         (Legacy.Base.outer_to_tiling_pprog before)
+         (Legacy.Base.outer_to_tiling_pprog after)
+         ws)
+      true -&gt;
+    PolyLang.instance_list_semantics after st1 st2 -&gt;
+    exists st2&#x27;,
+      PolyLang.instance_list_semantics before st1 st2&#x27; /\
+      State.eq st2 st2&#x27;.
 Proof.
-  intros pp cert Hpointwise.
-  eapply parallel_safe_dim_pointwise_implies_safe_dim.
-  exact Hpointwise.
+  intros before after ws st1 st2 Hwf_before Hwf_after Hcheck Hsem_after.
+  remember (Legacy.Base.outer_to_tiling_pprog before)
+    as before_tiling eqn:Hbefore_tiling_eq.
+  remember (Legacy.Base.outer_to_tiling_pprog after)
+    as after_tiling eqn:Hafter_tiling_eq.
+  destruct before_tiling as [[before_pis before_ctxt] before_vars].
+  destruct after_tiling as [[after_pis after_ctxt] after_vars].
+  simpl in Hbefore_tiling_eq, Hafter_tiling_eq.
+  assert (Hsource :
+    Legacy.TilingCheck.check_pprog_tiling_sourceb
+      (before_pis, before_ctxt, before_vars)
+      (after_pis, after_ctxt, after_vars)
+      ws = true).
+  {
+    eapply checked_tiling_sourceb_complete_direct_band_check_sourceb_true.
+    exact Hcheck.
+  }
+  pose proof
+    (Legacy.TilingCheck.check_pprog_tiling_sourceb_sound
+       (before_pis, before_ctxt, before_vars)
+       (after_pis, after_ctxt, after_vars) ws Hsource)
+    as [Hprog _].
+  unfold Legacy.Tiling.tiling_rel_pprog_structure_source in Hprog.
+  simpl in Hprog.
+  destruct Hprog as [Hctxt_eq [Hvars_eq _]].
+  subst after_ctxt after_vars.
+  pose proof
+    (Legacy.Base.outer_to_tiling_wf_pprog_affine before Hwf_before)
+    as Hwf_before_tiling.
+  rewrite &lt;- Hbefore_tiling_eq in Hwf_before_tiling.
+  destruct Hwf_before_tiling as [_ Hwf_before_tiling].
+  assert (Hwfbefore_pis :
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      before_pis).
+  {
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply Legacy.Tiling.PL.wf_pinstr_affine_implies_wf_pinstr_tiling.
+    eapply Hwf_before_tiling; eauto.
+  }
+  pose proof
+    (Legacy.Base.outer_to_tiling_wf_pprog_general after Hwf_after)
+    as Hwf_after_tiling.
+  rewrite &lt;- Hafter_tiling_eq in Hwf_after_tiling.
+  destruct Hwf_after_tiling as [_ Hwf_after_tiling].
+  assert (Hwfafter_pis :
+    Forall
+      (Legacy.Tiling.PL.wf_pinstr_tiling before_ctxt before_vars)
+      after_pis).
+  {
+    eapply Forall_forall.
+    intros pi Hin.
+    eapply Hwf_after_tiling; eauto.
+  }
+  pose proof
+    (checked_tiling_sourceb_complete_direct_band_check_correct
+       before_pis before_ctxt before_vars after_pis ws st1 st2
+       Hwfbefore_pis Hwfafter_pis Hcheck) as Hcorr.
+  apply Legacy.Base.outer_to_tiling_instance_list_semantics_iff in Hsem_after.
+  rewrite &lt;- Hafter_tiling_eq in Hsem_after.
+  specialize (Hcorr Hsem_after).
+  destruct Hcorr as [st2&#x27; [Hbefore_tiling Heq]].
+  rewrite Hbefore_tiling_eq in Hbefore_tiling.
+  apply Legacy.Base.outer_to_tiling_instance_list_semantics_iff in Hbefore_tiling.
+  exists st2&#x27;. split; assumption.
 Qed.
 
-Lemma check_pprog_parallel_currentb_sound :
-  forall pp plan,
-    mayReturn (check_pprog_parallel_currentb pp plan) true -&gt;
-    parallel_safe_dim pp plan.(target_dim).
+Definition checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
+    (before after: PolyLang.t)
+    (ws: list statement_tiling_witness) : imp tiling_band_validation_route :=
+  BIND direct_ok &lt;-
+    checked_tiling_sourceb_complete_direct_band_check
+      (Legacy.Base.outer_to_tiling_pprog before)
+      (Legacy.Base.outer_to_tiling_pprog after)
+      ws -;
+  pure (if direct_ok then DirectBandAccepted else Rejected).
+
+Lemma checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct :
+  forall before after ws st1 st2 route,
+    PolyLang.wf_pprog_affine before -&gt;
+    PolyLang.wf_pprog_general after -&gt;
+    mayReturn
+      (checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
+         before after ws)
+      route -&gt;
+    tiling_band_validation_route_acceptsb route = true -&gt;
+    PolyLang.instance_list_semantics after st1 st2 -&gt;
+    exists st2&#x27;,
+      PolyLang.instance_list_semantics before st1 st2&#x27; /\
+      State.eq st2 st2&#x27;.
 Proof.
-  intros pp plan Hcheck.
-  eapply parallel_safe_dim_pointwise_implies_safe_dim.
-  eapply check_pprog_parallel_currentb_pointwise_sound.
-  exact Hcheck.
+  intros before after ws st1 st2 route Hwf_before Hwf_after
+         Hroute Haccept Hsem_after.
+  unfold checked_tiling_schedule_sourceb_first_direct_runtime_validate_route
+    in Hroute.
+  bind_imp_destruct Hroute direct_ok Hdirect.
+  destruct direct_ok.
+  - apply mayReturn_pure in Hroute.
+    subst route.
+    eapply checked_tiling_sourceb_complete_direct_band_check_outer_correct;
+      eauto.
+  - apply mayReturn_pure in Hroute.
+    subst route.
+    simpl in Haccept.
+    discriminate.
 Qed.
 
-Lemma checked_parallelize_current_sound :
-  forall pp plan cert,
-    mayReturn (checked_parallelize_current pp plan) (Okk cert) -&gt;
-    parallel_cert_sound pp cert.
-Proof.
-  intros pp plan cert Hchecked.
-  unfold checked_parallelize_current in Hchecked.
-  apply mayReturn_bind in Hchecked.
-  destruct Hchecked as [ok [Hcheck Hret]].
-  destruct ok;
-    [apply mayReturn_pure in Hret
-    | apply mayReturn_pure in Hret; discriminate].
-  inversion Hret; subst; clear Hret.
-  unfold parallel_cert_sound.
-  simpl.
-  eapply check_pprog_parallel_currentb_sound.
-  exact Hcheck.
-Qed.
+Definition checked_tiling_schedule_sourceb_first_runtime_validate_route :=
+  checked_tiling_schedule_sourceb_first_direct_runtime_validate_route.
 
-Lemma checked_parallelize_current_pointwise_sound :
-  forall pp plan cert,
-    mayReturn (checked_parallelize_current pp plan) (Okk cert) -&gt;
-    parallel_cert_pointwise_sound pp cert.
-Proof.
-  intros pp plan cert Hchecked.
-  unfold checked_parallelize_current in Hchecked.
-  apply mayReturn_bind in Hchecked.
-  destruct Hchecked as [ok [Hcheck Hret]].
-  destruct ok;
-    [apply mayReturn_pure in Hret
-    | apply mayReturn_pure in Hret; discriminate].
-  inversion Hret; subst; clear Hret.
-  unfold parallel_cert_pointwise_sound.
-  simpl.
-  eapply check_pprog_parallel_currentb_pointwise_sound.
-  exact Hcheck.
-Qed.
+Definition checked_tiling_schedule_sourceb_first_runtime_validate_route_correct :=
+  checked_tiling_schedule_sourceb_first_direct_runtime_validate_route_correct.
 
-Lemma checked_parallelize_current_implies_dim_in_range :
-  forall pp plan cert,
-    mayReturn (checked_parallelize_current pp plan) (Okk cert) -&gt;
-    (certified_dim cert &lt; schedule_width pp)%nat.
-Proof.
-  intros pp plan cert Hchecked.
-  unfold checked_parallelize_current in Hchecked.
-  apply mayReturn_bind in Hchecked.
-  destruct Hchecked as [ok [Hcheck Hret]].
-  destruct ok;
-    [apply mayReturn_pure in Hret
-    | apply mayReturn_pure in Hret; discriminate].
-  inversion Hret; subst; clear Hret.
-  simpl.
-  destruct (check_pprog_parallel_currentb_true_inv pp plan Hcheck)
-    as (Hlt &amp; _).
-  exact Hlt.
-Qed.
-
-End ParallelValidator.
+End TilingBandDirectRuntime.
 </pre>
 </main>
 </body>

@@ -3,17 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>stride_down.loop</title>
+  <title>strsm.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/stride_down.loop</code></h1>
+  <h1><code>source/tests/polopt-regression/inputs/strsm.loop</code></h1>
   <pre>context(N);
 
-for i in range(N - 1, -1, -2) {
-  a[i] = (i + 7);
+for i in range(0, N) {
+  for j in range(0, N) {
+    for k in range((i + 1), N) {
+      if (k == (i + 1)) {
+        b[j][i] = (b[j][i] / a[i][i]);
+      }
+      b[j][k] = (b[j][k] - (a[i][k] * b[j][i]));
+    }
+  }
 }
 </pre>
 </main>

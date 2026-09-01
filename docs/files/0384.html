@@ -3,14 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>noloop.loop</title>
+  <title>scalpriv.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/noloop.loop</code></h1>
-  <pre>s = 0;
+  <h1><code>source/tests/polopt-regression/inputs/scalpriv.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  a = 0;
+  b[i] = a;
+}
 </pre>
 </main>
 </body>

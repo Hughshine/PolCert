@@ -3,21 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>polynomial.loop</title>
+  <title>seq.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/polynomial.loop</code></h1>
-  <pre>context(n);
+  <h1><code>source/tests/polopt-regression/inputs/seq.loop</code></h1>
+  <pre>context(N, M);
 
-for i in range(0, (2 * n)) {
-  c[i] = 0;
-}
-for i in range(0, n) {
-  for j in range(0, n) {
-    c[(i + j)] = (c[(i + j)] + (a[i] * b[j]));
+for i in range(0, N) {
+  for j in range(0, M) {
+    s = (s + a[i][j]);
   }
 }
 </pre>

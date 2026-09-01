@@ -3,21 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mxv.loop</title>
+  <title>noloop.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/mxv.loop</code></h1>
-  <pre>context(N);
-
-for i in range(0, N) {
-  y[i] = 0;
-  for j in range(0, N) {
-    y[i] = (y[i] + (a[i][j] * x[j]));
-  }
-}
+  <h1><code>source/tests/polopt-regression/inputs/noloop.loop</code></h1>
+  <pre>s = 0;
 </pre>
 </main>
 </body>

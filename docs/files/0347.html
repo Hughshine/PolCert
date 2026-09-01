@@ -3,26 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>doitgen.loop</title>
+  <title>fdtd-1d.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/doitgen.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/tests/polopt-regression/inputs/fdtd-1d.loop</code></h1>
+  <pre>context(T, N);
 
-for r in range(0, N) {
-  for q in range(0, N) {
-    for p in range(0, N) {
-      sum[r][q][p] = 0;
-      for s in range(0, N) {
-        sum[r][q][p] = (sum[r][q][p] + (A[r][q][s] * C4[s][p]));
-      }
-    }
-    for p in range(0, N) {
-      A[r][q][p] = sum[r][q][p];
-    }
+for t in range(1, (T + 1)) {
+  for i in range(1, ((N - 1) + 1)) {
+    e[i] = (e[i] - (coeff1 * (h[i] - h[(i - 1)])));
+  }
+  for i in range(0, ((N - 1) + 1)) {
+    h[i] = (h[i] - (coeff2 * (e[(i + 1)] - e[i])));
   }
 }
 </pre>

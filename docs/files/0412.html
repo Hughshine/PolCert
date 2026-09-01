@@ -3,91 +3,87 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_release_provenance.py</title>
+  <title>check_legacy_failure_exit.sh</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tools/artifact/test_release_provenance.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <h1><code>source/tools/ci/check_legacy_failure_exit.sh</code></h1>
+  <pre>#!/usr/bin/env bash
+set -euo pipefail
 
-from run_artifact_check import check_build_provenance
+readonly root=&quot;$(cd &quot;$(dirname &quot;${BASH_SOURCE[0]}&quot;)/../..&quot; &amp;&amp; pwd)&quot;
+tmp=&quot;$(mktemp -d -t polcert-legacy-failure-XXXXXX)&quot;
+readonly tmp
+trap &#x27;rm -rf &quot;$tmp&quot;&#x27; EXIT
 
+expect_failure() {
+  local name=&quot;$1&quot;
+  local expected_status=&quot;$2&quot;
+  shift 2
+  local log=&quot;$tmp/$name.log&quot;
+  local status
+  set +e
+  &quot;$@&quot; &gt;&quot;$log&quot; 2&gt;&amp;1
+  status=$?
+  set -e
+  if [[ &quot;$status&quot; -ne &quot;$expected_status&quot; ]]; then
+    printf &#x27;[legacy-failure-gate] FAIL case=%s expected=exit:%s actual=exit:%s interpretation=failure-did-not-match-the-declared-rejection-class\n&#x27; \
+      &quot;$name&quot; &quot;$expected_status&quot; &quot;$status&quot; &gt;&amp;2
+    cat &quot;$log&quot; &gt;&amp;2
+    return 1
+  fi
+  printf &#x27;[legacy-failure-gate] PASS case=%s expected=exit:%s actual=exit:%s interpretation=test-binary-propagated-the-declared-failure\n&#x27; \
+    &quot;$name&quot; &quot;$expected_status&quot; &quot;$status&quot;
+}
 
-COMMIT = &quot;a&quot; * 40
-SOURCE_SHA256 = &quot;b&quot; * 64
-IMAGE_SHA256 = &quot;c&quot; * 64
-PLUTO_COMMIT = &quot;d&quot; * 40
-PLUTO_BUGGY_COMMIT = &quot;e&quot; * 40
+run_self_test() {
+  expect_failure exact-exit 7 bash -c &#x27;exit 7&#x27; &gt;/dev/null
+  if expect_failure wrong-exit 7 bash -c &#x27;exit 6&#x27; &gt;/dev/null 2&gt;&amp;1; then
+    printf &#x27;[legacy-failure-gate-unit] FAIL expected=mismatched-exit-rejected actual=accepted\n&#x27; &gt;&amp;2
+    return 1
+  fi
+  if expect_failure zero-exit 7 bash -c &#x27;exit 0&#x27; &gt;/dev/null 2&gt;&amp;1; then
+    printf &#x27;[legacy-failure-gate-unit] FAIL expected=zero-exit-rejected actual=accepted\n&#x27; &gt;&amp;2
+    return 1
+  fi
+  if expect_failure missing-command 7 &quot;$tmp/does-not-exist&quot; &gt;/dev/null 2&gt;&amp;1; then
+    printf &#x27;[legacy-failure-gate-unit] FAIL expected=missing-command-rejected actual=accepted\n&#x27; &gt;&amp;2
+    return 1
+  fi
+  printf &#x27;[legacy-failure-gate-unit] PASS expected=exact-exit-accepted,mismatch-zero-and-missing-rejected actual=exact-exit-accepted,mismatch-zero-and-missing-rejected interpretation=failure-gate-rejects-unrelated-nonzero-statuses\n&#x27;
+}
 
+if [[ &quot;${1:-}&quot; == &quot;--self-test&quot; ]]; then
+  run_self_test
+  exit 0
+fi
 
-def valid_environment() -&gt; dict[str, str]:
-    return {
-        &quot;POLCERT_REQUIRE_PROVENANCE&quot;: &quot;1&quot;,
-        &quot;POLCERT_GIT_COMMIT&quot;: COMMIT,
-        &quot;POLCERT_RELEASE_TAG&quot;: &quot;state-eq-v6&quot;,
-        &quot;POLCERT_SOURCE_ARCHIVE_SHA256&quot;: SOURCE_SHA256,
-        &quot;PLUTO_GIT_COMMIT&quot;: PLUTO_COMMIT,
-        &quot;PLUTO_BUGGY_GIT_COMMIT&quot;: PLUTO_BUGGY_COMMIT,
-        &quot;POLCERT_IMAGE_DIGEST&quot;: f&quot;sha256:{IMAGE_SHA256}&quot;,
-    }
+for binary in \
+  &quot;$root/tests/readscop/test&quot; \
+  &quot;$root/tests/pluto-all/test&quot; \
+  &quot;$root/tests/pluto/test&quot;; do
+  if [[ ! -x &quot;$binary&quot; ]]; then
+    printf &#x27;[legacy-failure-gate] FAIL expected=executable:%s actual=missing-or-not-executable interpretation=the-rejection-test-did-not-run\n&#x27; \
+      &quot;$binary&quot; &gt;&amp;2
+    exit 2
+  fi
+done
 
+expect_failure readscop-missing-input 2 \
+  &quot;$root/tests/readscop/test&quot; &quot;$tmp/missing.scop&quot;
 
-def valid_manifest() -&gt; dict[str, object]:
-    return {
-        &quot;polcert_git_commit&quot;: COMMIT,
-        &quot;polcert_release_tag&quot;: &quot;state-eq-v6&quot;,
-        &quot;polcert_source_archive_sha256&quot;: SOURCE_SHA256,
-        &quot;pluto_git_commit&quot;: PLUTO_COMMIT,
-        &quot;pluto_buggy_git_commit&quot;: PLUTO_BUGGY_COMMIT,
-    }
+mkdir -p &quot;$tmp/corpus/a/b&quot;
+expect_failure pluto-all-missing-corpus 1 \
+  bash -c &#x27;cd &quot;$1&quot; &amp;&amp; &quot;$2&quot;&#x27; _ \
+    &quot;$tmp/corpus/a/b&quot; &quot;$root/tests/pluto-all/test&quot;
 
+expect_failure pluto-missing-config 2 \
+  bash -c &#x27;cd &quot;$1/tests/pluto&quot; &amp;&amp; COMPCERT_CONFIG=&quot;$2/missing.ini&quot; ./test&#x27; _ \
+    &quot;$root&quot; &quot;$tmp&quot;
 
-def main() -&gt; int:
-    environment = valid_environment()
-    manifest = valid_manifest()
-    assert check_build_provenance(environment, manifest) == []
-
-    environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = (
-        f&quot;registry.example/polcert@sha256:{IMAGE_SHA256}&quot;
-    )
-    assert check_build_provenance(environment, manifest) == []
-
-    for invalid_digest in (&quot;&quot;, &quot;unknown&quot;, &quot;garbage&quot;, &quot;sha256:1234&quot;):
-        environment[&quot;POLCERT_IMAGE_DIGEST&quot;] = invalid_digest
-        assert &quot;invalid release environment field: POLCERT_IMAGE_DIGEST&quot; in (
-            check_build_provenance(environment, manifest)
-        )
-
-    environment = valid_environment()
-    environment[&quot;PLUTO_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert &quot;provenance mismatch: pluto_git_commit != PLUTO_GIT_COMMIT&quot; in (
-        check_build_provenance(environment, manifest)
-    )
-
-    environment = valid_environment()
-    environment[&quot;PLUTO_BUGGY_GIT_COMMIT&quot;] = &quot;f&quot; * 40
-    assert (
-        &quot;provenance mismatch: pluto_buggy_git_commit != PLUTO_BUGGY_GIT_COMMIT&quot;
-        in check_build_provenance(environment, manifest)
-    )
-
-    environment = valid_environment()
-    manifest[&quot;polcert_release_tag&quot;] = &quot;unknown&quot;
-    assert &quot;invalid provenance field: polcert_release_tag&quot; in (
-        check_build_provenance(environment, manifest)
-    )
-
-    environment[&quot;POLCERT_REQUIRE_PROVENANCE&quot;] = &quot;0&quot;
-    assert check_build_provenance(environment, None) == []
-    print(&quot;[release-provenance-unit] PASS&quot;)
-    return 0
-
-
-if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+printf &#x27;[legacy-failure-gate] PASS expected=exit-codes:2,1,2 actual=exit-codes:2,1,2 interpretation=representative-legacy-failures-return-their-declared-statuses\n&#x27;
 </pre>
 </main>
 </body>

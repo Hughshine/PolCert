@@ -3,27 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>matmul-seq.loop</title>
+  <title>mxv.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/matmul-seq.loop</code></h1>
+  <h1><code>source/tests/polopt-generated/inputs/mxv.loop</code></h1>
   <pre>context(N);
 
 for i in range(0, N) {
+  y[i] = 0;
   for j in range(0, N) {
-    for k in range(0, N) {
-      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
-    }
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    for k in range(0, N) {
-      D[i][j] = (D[i][j] + (C[i][k] * E[k][j]));
-    }
+    y[i] = (y[i] + (a[i][j] * x[j]));
   }
 }
 </pre>

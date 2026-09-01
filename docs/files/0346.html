@@ -3,30 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dct.loop</title>
+  <title>dsyrk.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/dct.loop</code></h1>
-  <pre>context(M);
+  <h1><code>source/tests/polopt-regression/inputs/dsyrk.loop</code></h1>
+  <pre>context(NMAX);
 
-for i in range(0, M) {
-  for j in range(0, M) {
-    temp2d[i][j] = 0.0;
-    for k in range(0, M) {
-      temp2d[i][j] = (temp2d[i][j] + (block[i][k] * cos1[j][k]));
+for i in range(0, NMAX) {
+  for j in range(0, NMAX) {
+    for k in range(j, NMAX) {
+      c[j][k] = (c[j][k] + (a[i][j] * a[i][k]));
     }
-  }
-}
-for i in range(0, M) {
-  for j in range(0, M) {
-    sum2[i][j] = 0.0;
-    for k in range(0, M) {
-      sum2[i][j] = (sum2[i][j] + (cos1[i][k] * temp2d[k][j]));
-    }
-    block[i][j] = sum2[i][j];
   }
 }
 </pre>

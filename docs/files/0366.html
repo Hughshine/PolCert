@@ -3,18 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>intratileopt3.loop</title>
+  <title>jacobi-2d-imper.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/intratileopt3.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>source/tests/polopt-regression/inputs/jacobi-2d-imper.loop</code></h1>
+  <pre>context(T, N);
 
-for i in range(0, N) {
-  for j in range(0, M) {
-    d[j] = (d[j] + a[i][j]);
+for t in range(0, T) {
+  for i in range(2, (N - 1)) {
+    for j in range(2, (N - 1)) {
+      b[i][j] = (0.2 * ((((a[i][j] + a[i][(j - 1)]) + a[i][(1 + j)]) + a[(1 + i)][j]) + a[(i - 1)][j]));
+    }
+  }
+  for i in range(2, (N - 1)) {
+    for j in range(2, (N - 1)) {
+      a[i][j] = b[i][j];
+    }
   }
 }
 </pre>

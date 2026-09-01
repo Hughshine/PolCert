@@ -3,21 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mixed_unroll.loop</title>
+  <title>mvt.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/mixed_unroll.loop</code></h1>
+  <h1><code>source/tests/polopt-regression/inputs/mvt.loop</code></h1>
   <pre>context(N);
 
-for i in range(0, 2) {
-  c[i] = i;
+for i in range(0, N) {
+  for j in range(0, N) {
+    x1[i] = (x1[i] + (a[i][j] * y_1[j]));
+  }
 }
-
-for j in range(0, N) {
-  b[j] = j;
+for i in range(0, N) {
+  for j in range(0, N) {
+    x2[i] = (x2[i] + (a[j][i] * y_2[j]));
+  }
 }
 </pre>
 </main>

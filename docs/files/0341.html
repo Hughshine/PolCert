@@ -3,15 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>const_unroll.loop</title>
+  <title>costfunc.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/const_unroll.loop</code></h1>
-  <pre>for i in range(0, 4) {
-  a[i] = i;
+  <h1><code>source/tests/polopt-regression/inputs/costfunc.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  for j in range(1, N) {
+    a[i][j] = (a[j][i] + a[i][(j - 1)]);
+  }
 }
 </pre>
 </main>

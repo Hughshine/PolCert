@@ -3,19 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>spatial.loop</title>
+  <title>stride_bad_zero.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/spatial.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>source/tests/polopt-regression/inputs/stride_bad_zero.loop</code></h1>
+  <pre>context(N);
 
-for i in range(0, N) {
-  for j in range(0, M) {
-    a[j][i] = (a[j][i] + 1);
-  }
+for i in range(0, N, 0) {
+  a[i] = i;
 }
 </pre>
 </main>

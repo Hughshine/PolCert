@@ -3,18 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>intratileopt4.loop</title>
+  <title>lu.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/intratileopt4.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>source/tests/polopt-regression/inputs/lu.loop</code></h1>
+  <pre>context(N);
 
-for i in range(0, N) {
-  for j in range(0, M) {
-    a[i] = (a[i] + (b[j] * c[j][i]));
+for k in range(0, N) {
+  for j in range((k + 1), N) {
+    a[k][j] = (a[k][j] / a[k][k]);
+  }
+  for i in range((k + 1), N) {
+    for j in range((k + 1), N) {
+      a[i][j] = (a[i][j] - (a[i][k] * a[k][j]));
+    }
   }
 }
 </pre>

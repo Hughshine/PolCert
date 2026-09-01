@@ -3,23 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tricky3.loop</title>
+  <title>trisolv.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/tricky3.loop</code></h1>
-  <pre>context(pointc, clusterc, dims);
+  <h1><code>source/tests/polopt-regression/inputs/trisolv.loop</code></h1>
+  <pre>context(N);
 
-for p in range(0, pointc) {
-  dist_min = 0;
-  for k in range(0, clusterc) {
-    dist = 0;
-    kmin = 0;
-  }
-  for d in range(0, dims) {
-    clusterv = 0;
+for i in range(0, ((N - 1) + 1)) {
+  for j in range(0, ((N - 1) + 1)) {
+    for k in range(0, ((j - 1) + 1)) {
+      B[j][i] = (B[j][i] - (L[j][k] * B[k][i]));
+    }
+    B[j][i] = (B[j][i] / L[j][j]);
   }
 }
 </pre>

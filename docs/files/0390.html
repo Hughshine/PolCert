@@ -3,20 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>shift.loop</title>
+  <title>stride_bad_symbolic.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/shift.loop</code></h1>
-  <pre>context(n);
+  <h1><code>source/tests/polopt-regression/inputs/stride_bad_symbolic.loop</code></h1>
+  <pre>context(N, S);
 
-for i in range(0, n) {
-  for j in range(0, n) {
-    a[i][j] = (b[i][(j - 1)] + a[i][(j - 1)]);
-    b[i][j] = (a[(i - 1)][(j + 1)] + b[(i - 1)][j]);
-  }
+for i in range(0, N, S) {
+  a[i] = i;
 }
 </pre>
 </main>

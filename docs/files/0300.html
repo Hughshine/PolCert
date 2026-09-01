@@ -3,45 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CSample2.c</title>
+  <title>CSample3.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/samples/CSample2.c</code></h1>
-  <pre>// covcol, convariance calculation
-// Link to examples to pluto&#x27;s examples: https://github.com/bondhugula/pluto/blob/eddc38537d61cd49d55e454831086848d51473d7/examples/covcol/covcol.c#L97
+  <h1><code>source/samples/CSample3.c</code></h1>
+  <pre>// gemver, Vector Multiplication and Matrix Addition
+// Link to examples to pluto&#x27;s examples: https://github.com/bondhugula/pluto/blob/eddc38537d61cd49d55e454831086848d51473d7/examples/gemver/gemver.c#L81
 
 #pragma scop
-  /* Calculate the m * m covariance matrix. */
-  for (j1 = 1; j1 &lt;= M; j1++) {
-    for (j2 = j1; j2 &lt;= M; j2++) {
-      for (i = 1; i &lt;= N; i++) {
-        symmat[j1][j2] += data[i][j1] * data[i][j2];
-      }
-      symmat[j2][j1] = symmat[j1][j2];
-    }
-  }
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j];
+
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            x[i] = x[i] + beta* B[j][i]*y[j];
+
+
+    for (i=0; i&lt;N; i++)
+        x[i] = x[i] + z[i];
+
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            w[i] = w[i] + alpha* B[i][j]*x[j];
 #pragma endscop
-
-// afterscheduling: 
-// for (i = 1; i &lt;= N; i++) {
-//   for (j1 = 1; j1 &lt;= M; j1++) {
-//     for (j2 = j1; j2 &lt;= M; j2++) {
-//       symmat[j1][j2] += data[i][j1] * data[i][j2];
-//     }
-//   }
-// }
-// for (j1 = 1; j1 &lt;= M; j1++) {
-//   for (j2 = j1; j2 &lt;= M; j2++) {
-//     symmat[j2][j1] = symmat[j1][j2];
-//   }
-// }
-
-// Note:
-// 1. speed-up is not in our concern, but with only &quot;reordering&quot;, programs are possible to gain significant speed-up in our working setting, concretely for sample2/3.
-// 2. validator works bidirectionally for all sample1/2/3, which suggests they are semantically equivalent (not just refinement).
 </pre>
 </main>
 </body>

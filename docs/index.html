@@ -138,58 +138,72 @@
       <p>
         PolCert does not hard-code one instruction language into its validators.
         The <a href="files/0295.html"><code>INSTR</code></a>
-        interface supplies an instruction's execution relation, modeled state,
-        read and write footprints, and a proof that instructions with
-        non-conflicting footprints may exchange order. The polyhedral checks
-        then reason about statement instances and these memory effects.
+        interface supplies instruction semantics and memory effects. The
+        polyhedral checks then reason about loop instances and those effects.
       </p>
       <p>
         The text <code>.loop</code> frontend uses the lightweight model in
-        <a href="files/0322.html"><code>SInstr.v</code></a>. Its
-        results are meaningful under that model, but a hand-written input does
-        not independently establish that its declared accesses match an
-        external C program. The typed
-        <a href="files/0306.html"><code>CInstr.v</code></a> instance and
-        the following hand-constructed Rocq examples show how the same
-        validators apply to C-like scalar and array instructions:
+        <a href="files/0319.html"><code>SInstr.v</code></a>. The
+        examples below instead use typed scalar and array instructions from
+        <a href="files/0303.html"><code>CInstr.v</code></a>.
       </p>
-      <table>
-        <thead><tr><th>Rocq example</th><th>Reference computation</th><th>Purpose</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><a href="files/0299.html"><code>CSample1.v</code></a></td>
-            <td><a href="files/0298.html">matrix multiplication</a></td>
-            <td>Typed array accesses and schedule validation.</td>
-          </tr>
-          <tr>
-            <td><a href="files/0301.html"><code>CSample2.v</code></a></td>
-            <td><a href="files/0300.html">covariance kernel</a></td>
-            <td>Two statements with a producer-consumer dependence.</td>
-          </tr>
-          <tr>
-            <td><a href="files/0303.html"><code>CSample3.v</code></a></td>
-            <td><a href="files/0302.html">GEMVER kernel</a></td>
-            <td>Four statement domains and their memory effects.</td>
-          </tr>
-          <tr>
-            <td>
-              <a href="files/0304.html">
-                <code>CTypedLoopSamples.v</code>
-              </a>
-            </td>
-            <td>Compact C-like loop nests</td>
-            <td>Extraction, ISS, tiling, diamond tiling, and parallel-loop cases.</td>
-          </tr>
-        </tbody>
-      </table>
+
+      <h3>Typed Loop Examples</h3>
+      <div class="wide-table">
+        <table class="typed-examples">
+          <thead>
+            <tr><th>Input computation</th><th>Accepted output shape</th><th>Checked path</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><pre>for i, j
+  A[i][j] = B[i][j] + 1</pre></td>
+              <td><pre>for ii, jj       // tiles
+  for i, j       // points
+    A[i][j] = B[i][j] + 1</pre>
+                A dependence-free generated loop can then be marked parallel;
+                the restricted variant marks only an innermost loop.
+              </td>
+              <td>Typed access extraction, ordinary tiling, and parallel-loop checking.</td>
+            </tr>
+            <tr>
+              <td><pre>for i, j, k
+  C[i][j] += A[i][k] * B[k][j]</pre></td>
+              <td><pre>level-2 tiles
+  level-1 tiles
+    iteration points</pre></td>
+              <td>Two successive tiling validations and verified loop generation.</td>
+            </tr>
+            <tr>
+              <td><pre>for i
+  A[i] = 2 * A[N - 1 - i]</pre></td>
+              <td><pre>one statement domain
+  -&gt; two disjoint subdomains
+  -&gt; generated loops</pre></td>
+              <td>Index-set splitting (ISS), split well-formedness, and verified code generation.</td>
+            </tr>
+            <tr>
+              <td><pre>for t, i
+  A[t + 1][i] =
+    A[t][i - 1] + A[t - 2][i + 1]</pre></td>
+              <td><pre>rectangular (t, i) coordinates
+  -&gt; coupled (t + i, t - i) wavefronts</pre></td>
+              <td>Diamond tiling followed by checked post-tiling affine scheduling.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p>
-        These examples instantiate the formal instruction interface by hand;
-        they do not make C parsing part of the theorem. The
+        <a href="files/0301.html"><code>CTypedLoopSamples.v</code></a>
+        contains the typed inputs and extraction checks. They are constructed
+        directly in Rocq rather than parsed from C. The
         <a
           href="../evidence/results/test-catalog.html#typed-instruction-programs"
-        >six-case typed pipeline record</a>
-        shows the accepted transformations and their observed structural
-        effects in remote CI.
+        >six-case CI record</a> gives the detailed observed results. Additional
+        typed kernels cover
+        <a href="files/0298.html">matrix multiplication</a>,
+        <a href="files/0299.html">covariance</a>, and
+        <a href="files/0300.html">GEMVER</a>.
       </p>
     </section>
 
@@ -229,7 +243,7 @@
           <tr>
             <td><a href="../source/src/"><code>src/</code></a></td>
             <td>The polyhedral model and the checks for schedules, tiling, and parallel loops.</td>
-            <td><a href="files/0316.html"><code>PolyLang.v</code></a></td>
+            <td><a href="files/0313.html"><code>PolyLang.v</code></a></td>
           </tr>
           <tr>
             <td><a href="../source/polygen/"><code>polygen/</code></a></td>
@@ -249,7 +263,7 @@
             <td><a href="../source/syntax/"><code>syntax/</code></a></td>
             <td>Concrete instructions, the text frontend, and the extracted command-line tool.</td>
             <td>
-              <a href="files/0323.html">
+              <a href="files/0320.html">
                 <code>SVerifiedParallelCompilerConfig.v</code>
               </a>
             </td>
@@ -258,7 +272,7 @@
             <td><a href="../source/tests/"><code>tests/</code></a></td>
             <td>Loop examples, executable comparisons, and rejected optimizer proposals.</td>
             <td>
-              <a href="files/0324.html">
+              <a href="files/0321.html">
                 <code>end-to-end-c/README.md</code>
               </a>
             </td>
@@ -267,7 +281,7 @@
             <td><a href="../source/samples/"><code>samples/</code></a></td>
             <td>Concrete typed instruction instances and C reference computations.</td>
             <td>
-              <a href="files/0304.html">
+              <a href="files/0301.html">
                 <code>CTypedLoopSamples.v</code>
               </a>
             </td>
@@ -276,7 +290,7 @@
             <td><a href="../source/tools/artifact/"><code>tools/artifact/</code></a></td>
             <td>Proof and test inventories, the artifact runner, and result files.</td>
             <td>
-              <a href="files/0409.html">
+              <a href="files/0406.html">
                 <code>run_artifact_check.py</code>
               </a>
             </td>
@@ -485,9 +499,9 @@
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/0309.html"><code>ExtractorFrontend.v</code></a>,
-            <a href="files/0308.html"><code>ExtractorFacts.v</code></a>,
-            <a href="files/0307.html"><code>ExtractorCorrect.v</code></a>
+            <a href="files/0306.html"><code>ExtractorFrontend.v</code></a>,
+            <a href="files/0305.html"><code>ExtractorFacts.v</code></a>,
+            <a href="files/0304.html"><code>ExtractorCorrect.v</code></a>
           </dd>
         </dl>
       </article>
@@ -522,9 +536,9 @@
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/0311.html"><code>ISSRefinement.v</code></a>,
-            <a href="files/0310.html"><code>ISSCutSemantics.v</code></a>,
-            <a href="files/0312.html"><code>ISSValidatorCorrect.v</code></a>
+            <a href="files/0308.html"><code>ISSRefinement.v</code></a>,
+            <a href="files/0307.html"><code>ISSCutSemantics.v</code></a>,
+            <a href="files/0309.html"><code>ISSValidatorCorrect.v</code></a>
           </dd>
         </dl>
       </article>
@@ -557,7 +571,7 @@
             <code>validate_correct</code>.
           </dd>
           <dt>Source</dt>
-          <dd><a href="files/0305.html"><code>AffineValidator.v</code></a></dd>
+          <dd><a href="files/0302.html"><code>AffineValidator.v</code></a></dd>
         </dl>
       </article>
 
@@ -602,10 +616,10 @@
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/0321.html"><code>TilingWitness.v</code></a>,
-            <a href="files/0320.html"><code>TilingRelation.v</code></a>,
-            <a href="files/0319.html"><code>TilingBandScheduleValidator.v</code></a>,
-            <a href="files/0318.html"><code>TilingBandDirectRuntime.v</code></a>
+            <a href="files/0318.html"><code>TilingWitness.v</code></a>,
+            <a href="files/0317.html"><code>TilingRelation.v</code></a>,
+            <a href="files/0316.html"><code>TilingBandScheduleValidator.v</code></a>,
+            <a href="files/0315.html"><code>TilingBandDirectRuntime.v</code></a>
           </dd>
         </dl>
       </article>
@@ -649,9 +663,9 @@
           <dt>Source</dt>
           <dd>
             <a href="files/0297.html"><code>ParallelLoop.v</code></a>,
-            <a href="files/0315.html"><code>ParallelValidator.v</code></a>,
-            <a href="files/0317.html"><code>RawCodegenOrigin.v</code></a>,
-            <a href="files/0314.html"><code>ParallelCodegenCorrect.v</code></a>
+            <a href="files/0312.html"><code>ParallelValidator.v</code></a>,
+            <a href="files/0314.html"><code>RawCodegenOrigin.v</code></a>,
+            <a href="files/0311.html"><code>ParallelCodegenCorrect.v</code></a>
           </dd>
         </dl>
         <p>
@@ -693,7 +707,7 @@
           <dt>Source</dt>
           <dd>
             <a href="files/0296.html"><code>LoopUnroll.v</code></a>,
-            <a href="files/0313.html"><code>LoopJamBridge.v</code></a>,
+            <a href="files/0310.html"><code>LoopJamBridge.v</code></a>,
             <a href="files/0293.html"><code>VerifiedLoopPostpass.v</code></a>
           </dd>
         </dl>

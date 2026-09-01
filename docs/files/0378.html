@@ -3,23 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mvt.loop</title>
+  <title>mxv.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/mvt.loop</code></h1>
+  <h1><code>source/tests/polopt-regression/inputs/mxv.loop</code></h1>
   <pre>context(N);
 
 for i in range(0, N) {
+  y[i] = 0;
   for j in range(0, N) {
-    x1[i] = (x1[i] + (a[i][j] * y_1[j]));
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    x2[i] = (x2[i] + (a[j][i] * y_2[j]));
+    y[i] = (y[i] + (a[i][j] * x[j]));
   }
 }
 </pre>
