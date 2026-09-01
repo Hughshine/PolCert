@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion4: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>fusion4</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Loop fusion; Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>for i0 in range(0, 10000) {
+  for i1 in range(0, 10000) {
+    B[i0][i1] = (i0 + i1);
+  }
+}
+for i0 in range(0, 10000) {
+  for i1 in range(0, 10000) {
+    C[i0][i1] = (B[(i0 + -1)][(i1 + -1)] + B[i0][(i1 + -1)]);
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>for i0 in range(0, 313) {
+  for i1 in range(0, 313) {
+    if (i0 &lt;= 0) {
+      for i2 in range((32 * i1), min(((32 * i1) + 32), 10000)) {
+        C[i2][0] = (B[(i2 + -1)][-1] + B[i2][-1]);
+      }
+    }
+    for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), 10000)) {
+      for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), 10000)) {
+        for i4 in range((i2 + -1), i2) {
+          B[i3][i4] = (i3 + i4);
+        }
+        C[i3][i2] = (B[(i3 + -1)][(i2 + -1)] + B[i3][(i2 + -1)]);
+      }
+    }
+    if ((-32 * i0) &lt;= -9969) {
+      for i2 in range(max((32 * i1), 0), min(((32 * i1) + 32), 10000)) {
+        B[i2][9999] = (i2 + 9999);
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0075.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0078.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

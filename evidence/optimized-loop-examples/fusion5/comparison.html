@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion5: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>fusion5</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Loop fusion; Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    B[i0][i1] = (2 * A[i0][i1]);
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    C[i0][i1] = (3 * B[(i0 + -1)][(N + (-1 * i1))]);
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (N + 1))) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          for i4 in range((i2 + -1), i2) {
+            B[i4][i3] = (2 * A[i4][i3]);
+          }
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          C[i2][i3] = (3 * B[(i2 + -1)][(N + (-1 * i3))]);
+        }
+      }
+    }
+  }
+}
+if (((N % 32) == 0 &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, (((32 * (N / 32)) + 31) / 32)) {
+    for i1 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+      if ((N % 32) == 0) {
+        for i2 in range((N + -1), N) {
+          B[i2][i1] = (2 * A[i2][i1]);
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0079.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0082.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

@@ -56,6 +56,31 @@
       "observed_transformation": "Ordinary tiling"
     },
     {
+      "case": "e2e-const-unroll",
+      "changed": true,
+      "observed_transformation": "Constant-trip-count unrolling"
+    },
+    {
+      "case": "e2e-stride-down",
+      "changed": true,
+      "observed_transformation": "Affine bound and stride reconstruction"
+    },
+    {
+      "case": "e2e-stride-even",
+      "changed": true,
+      "observed_transformation": "Affine bound and stride reconstruction"
+    },
+    {
+      "case": "e2e-unrolljam-block-variable",
+      "changed": true,
+      "observed_transformation": "Block unrolling and validated loop jamming"
+    },
+    {
+      "case": "e2e-unrolljam-dependent-guard",
+      "changed": true,
+      "observed_transformation": "Block unrolling and validated loop jamming"
+    },
+    {
       "case": "fdtd-1d",
       "changed": true,
       "observed_transformation": "Ordinary tiling"
@@ -311,9 +336,12 @@
       "observed_transformation": "Ordinary tiling"
     }
   ],
-  "changed": 59,
-  "total": 62,
+  "changed": 64,
+  "total": 67,
   "transformation_counts": {
+    "Affine bound and stride reconstruction": 2,
+    "Block unrolling and validated loop jamming": 2,
+    "Constant-trip-count unrolling": 1,
     "Domain guard insertion": 1,
     "Inner-loop fusion; Domain splitting": 1,
     "Loop fusion": 3,

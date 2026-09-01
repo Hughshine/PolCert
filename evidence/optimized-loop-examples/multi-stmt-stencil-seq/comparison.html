@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>multi-stmt-stencil-seq: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>multi-stmt-stencil-seq</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Loop fusion.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(n);
+
+for i0 in range(1, (n + -1)) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+}
+for i0 in range(2, (n + -2)) {
+  a2[i0] = ((a1[(i0 + -1)] + a1[i0]) + a1[(i0 + 1)]);
+}
+for i0 in range(3, (n + -3)) {
+  a3[i0] = ((a2[(i0 + -1)] + a2[i0]) + a2[(i0 + 1)]);
+}
+for i0 in range(4, (n + -4)) {
+  a4[i0] = ((a3[(i0 + -1)] + a3[i0]) + a3[(i0 + 1)]);
+}
+for i0 in range(5, (n + -5)) {
+  a5[i0] = ((a4[(i0 + -1)] + a4[i0]) + a4[(i0 + 1)]);
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(n);
+
+for i0 in range(1, min(3, (n + -1))) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+}
+for i0 in range(3, min((n + -1), 5)) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+  for i1 in range((i0 + -1), i0) {
+    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
+  }
+}
+for i0 in range(5, min(7, (n + -1))) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+  for i1 in range((i0 + -1), i0) {
+    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -2), (i0 + -1)) {
+    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
+  }
+}
+for i0 in range(7, min((n + -1), 9)) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+  for i1 in range((i0 + -1), i0) {
+    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -2), (i0 + -1)) {
+    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -3), (i0 + -2)) {
+    a4[i1] = ((a3[(i1 + -1)] + a3[i1]) + a3[(i1 + 1)]);
+  }
+}
+for i0 in range(9, (n + -1)) {
+  a1[i0] = ((a0[(i0 + -1)] + a0[i0]) + a0[(i0 + 1)]);
+  for i1 in range((i0 + -1), i0) {
+    a2[i1] = ((a1[(i1 + -1)] + a1[i1]) + a1[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -2), (i0 + -1)) {
+    a3[i1] = ((a2[(i1 + -1)] + a2[i1]) + a2[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -3), (i0 + -2)) {
+    a4[i1] = ((a3[(i1 + -1)] + a3[i1]) + a3[(i1 + 1)]);
+  }
+  for i1 in range((i0 + -4), (i0 + -3)) {
+    a5[i1] = ((a4[(i1 + -1)] + a4[i1]) + a4[(i1 + 1)]);
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0151.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0154.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

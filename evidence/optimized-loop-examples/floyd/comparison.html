@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>floyd: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>floyd</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(NUM_NODES);
+
+for i0 in range(0, NUM_NODES) {
+  for i1 in range(0, NUM_NODES) {
+    for i2 in range(0, NUM_NODES) {
+      pathDistanceMatrix[i1][i2] = (((pathDistanceMatrix[i1][i0] + pathDistanceMatrix[i0][i2]) &lt;= (pathDistanceMatrix[i1][i2] - 1)) ? (pathDistanceMatrix[i1][i0] + pathDistanceMatrix[i0][i2]) : pathDistanceMatrix[i1][i2]);
+    }
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(NUM_NODES);
+
+for i0 in range(0, NUM_NODES) {
+  for i1 in range(0, ((NUM_NODES + 31) / 32)) {
+    for i2 in range(0, ((NUM_NODES + 31) / 32)) {
+      for i3 in range(max(0, (32 * i1)), min(NUM_NODES, ((32 * i1) + 32))) {
+        for i4 in range(max(0, (32 * i2)), min(NUM_NODES, ((32 * i2) + 32))) {
+          pathDistanceMatrix[i3][i4] = (((pathDistanceMatrix[i3][i0] + pathDistanceMatrix[i0][i4]) &lt;= (pathDistanceMatrix[i3][i4] - 1)) ? (pathDistanceMatrix[i3][i0] + pathDistanceMatrix[i0][i4]) : pathDistanceMatrix[i3][i4]);
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0055.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0058.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

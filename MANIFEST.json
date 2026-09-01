@@ -33,8 +33,11 @@
       }
     },
     "optimized_loop_examples": {
-      "changed": 59,
+      "changed": 64,
       "observed_transformations": {
+        "Affine bound and stride reconstruction": 2,
+        "Block unrolling and validated loop jamming": 2,
+        "Constant-trip-count unrolling": 1,
         "Domain guard insertion": 1,
         "Inner-loop fusion; Domain splitting": 1,
         "Loop fusion": 3,
@@ -43,7 +46,7 @@
         "No loop-structure change": 3,
         "Ordinary tiling": 45
       },
-      "total": 62,
+      "total": 67,
       "unchanged": 3
     },
     "proof_and_test_run": {

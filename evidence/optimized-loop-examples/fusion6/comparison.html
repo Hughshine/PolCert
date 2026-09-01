@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion6: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>fusion6</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Loop fusion.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  x[i0] = (a[i0] + b[i0]);
+}
+s = 0.0;
+for i0 in range(0, N) {
+  s = (s + (x[i0] * 3));
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+s = 0.0;
+if (1 &lt;= N) {
+  for i0 in range(0, N) {
+    x[i0] = (a[i0] + b[i0]);
+    s = (s + (x[i0] * 3));
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0083.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0086.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

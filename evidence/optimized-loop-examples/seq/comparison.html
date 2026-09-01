@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>seq: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>seq</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Domain guard insertion.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    s = (s + a[i0][i1]);
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N, M);
+
+if (1 &lt;= M) {
+  for i0 in range(0, N) {
+    for i1 in range(0, M) {
+      s = (s + a[i0][i1]);
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0195.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0198.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nodep: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>nodep</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>for i0 in range(0, 100) {
+  for i1 in range(0, 4) {
+    A[((4 * i0) + i1)] = ((2 * A[((4 * i0) + i1)]) + 2);
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>for i0 in range(0, 4) {
+  for i1 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+    for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0175.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0178.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

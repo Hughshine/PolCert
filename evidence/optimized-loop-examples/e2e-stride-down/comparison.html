@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>e2e-stride-down: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>e2e-stride-down</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Affine bound and stride reconstruction.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i in range(N - 1, -1, -2) {
+  A[i] = (i + 7);
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+for i0 in range(0, ((N + 1) / 2)) {
+  A[(N + ((-2 * i0) + -1))] = (N + ((-2 * i0) + 6));
+}
+</pre>
+    </section>
+  </div>
+
+  <details>
+    <summary>Unified Diff</summary>
+    <pre>--- before.loop
++++ after.loop
+@@ -1,5 +1,5 @@
+ context(N);
+ 
+-for i in range(N - 1, -1, -2) {
+-  A[i] = (i + 7);
++for i0 in range(0, ((N + 1) / 2)) {
++  A[(N + ((-2 * i0) + -1))] = (N + ((-2 * i0) + 6));
+ }
+</pre>
+  </details>
+</main>
+</body>
+</html>

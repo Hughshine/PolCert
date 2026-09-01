@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>e2e-const-unroll: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>e2e-const-unroll</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Constant-trip-count unrolling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>for i in range(0, 4) {
+  A[i] = (i + 1);
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>A[0] = 1;
+A[1] = 2;
+A[2] = 3;
+A[3] = 4;
+</pre>
+    </section>
+  </div>
+
+  <details>
+    <summary>Unified Diff</summary>
+    <pre>--- before.loop
++++ after.loop
+@@ -1,3 +1,4 @@
+-for i in range(0, 4) {
+-  A[i] = (i + 1);
+-}
++A[0] = 1;
++A[1] = 2;
++A[2] = 3;
++A[3] = 4;
+</pre>
+  </details>
+</main>
+</body>
+</html>

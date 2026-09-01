@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion1: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>fusion1</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Loop fusion.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(1, (N + -2)) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+}
+for i0 in range(2, (N + -3)) {
+  Out[i0] = (0.33 * ((A[(i0 + -1)] + A[i0]) + A[(i0 + 1)]));
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+for i0 in range(1, min(3, (N + -2))) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+}
+for i0 in range(3, (N + -2)) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+  for i1 in range((i0 + -1), i0) {
+    Out[i1] = (0.33 * ((A[(i1 + -1)] + A[i1]) + A[(i1 + 1)]));
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0059.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0062.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

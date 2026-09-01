@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wavefront: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>wavefront</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(1, N) {
+  for i1 in range(1, N) {
+    a[i0][i1] = (a[(i0 + -1)][i1] + a[i0][(i1 + -1)]);
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (2 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max(1, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(1, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          a[i2][i3] = (a[(i2 + -1)][i3] + a[i2][(i3 + -1)]);
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0247.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0250.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

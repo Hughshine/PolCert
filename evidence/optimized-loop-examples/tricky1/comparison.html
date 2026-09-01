@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tricky1: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>tricky1</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Ordinary tiling.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    a[i0] = 0;
+    a[i1] = 0;
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, i0) {
+      for i2 in range((32 * i0), min(N, ((32 * i0) + 32))) {
+        for i3 in range((32 * i1), ((32 * i1) + 32)) {
+          a[i2] = 0;
+        }
+      }
+    }
+    for i1 in range(max(0, ((32 * i0) / 32)), min(((N + 31) / 32), (((32 * i0) + 63) / 32))) {
+      for i2 in range(max(max(0, (32 * i0)), (32 * i1)), min(min(N, ((32 * i0) + 32)), ((32 * i1) + 32))) {
+        for i3 in range(max(0, (32 * i1)), i2) {
+          a[i2] = 0;
+        }
+        for i3 in range(0, i2) {
+          a[i2] = 0;
+        }
+        a[i2] = 0;
+        a[i2] = 0;
+        for i3 in range((i2 + 1), N) {
+          a[i2] = 0;
+        }
+        for i3 in range((i2 + 1), min(N, ((32 * i1) + 32))) {
+          a[i2] = 0;
+        }
+      }
+    }
+    for i1 in range((i0 + 1), ((N + 31) / 32)) {
+      for i2 in range((32 * i0), ((32 * i0) + 32)) {
+        for i3 in range((32 * i1), min(N, ((32 * i1) + 32))) {
+          a[i2] = 0;
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0227.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0230.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>

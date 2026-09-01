@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tricky3: Before and After</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html">All optimized loop examples</a></p>
+  <h1><code>tricky3</code>: Before and After</h1>
+  <p class="lede">Observed transformation: Inner-loop fusion; Domain splitting.</p>
+  <div class="loop-comparison">
+    <section id="before">
+      <h2>Before</h2>
+      <pre>context(pointc, clusterc, dims);
+
+for i0 in range(0, pointc) {
+  dist_min = 0;
+  for i1 in range(0, clusterc) {
+    dist = 0;
+    kmin = 0;
+  }
+  for i1 in range(0, dims) {
+    clusterv = 0;
+  }
+}
+</pre>
+    </section>
+    <section id="after">
+      <h2>Accepted Output</h2>
+      <pre>context(pointc, clusterc, dims);
+
+if ((1 &lt;= dims &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    clusterv = 0;
+    for i1 in range(1, min(dims, clusterc)) {
+      dist = 0;
+      kmin = 0;
+      clusterv = 0;
+    }
+    for i1 in range(clusterc, dims) {
+      clusterv = 0;
+    }
+    for i1 in range(dims, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
+  }
+}
+if ((clusterc &lt;= 0 &amp;&amp; 1 &lt;= dims)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    clusterv = 0;
+    for i1 in range(1, dims) {
+      clusterv = 0;
+    }
+  }
+}
+if ((dims &lt;= 0 &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    for i1 in range(1, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
+  }
+}
+if ((clusterc &lt;= 0 &amp;&amp; dims &lt;= 0)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+  }
+}
+</pre>
+    </section>
+  </div>
+
+  <p>
+    <a href="../../../docs/files/0235.html">Unified diff</a> &middot;
+    <a href="../../../docs/files/0238.html">Compiler log</a>
+  </p>
+</main>
+</body>
+</html>
