@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>affine-fst-reversed: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>affine-fst-reversed</code></h1>
+  <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
+
+  <div class="case-side-by-side">
+    <section>
+      <h2>Tested Condition</h2>
+      <dl>
+        <dt>Expected</dt><dd>The supplied .fst grouping places a consumer before its producer, but Pluto accepts the complete lexicographically illegal schedule.</dd>
+        <dt>Coverage</dt><dd>rejection-contract</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Recorded Result</h2>
+      <dl>
+        <dt>Observed effect</dt><dd>External grouping placed a consumer before its producer</dd>
+        <dt>Actual</dt><dd>The affine checker rejects the schedule and the complete route emits no optimized loop.</dd>
+        <dt>Status</dt><dd>PASS</dd>
+      </dl>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

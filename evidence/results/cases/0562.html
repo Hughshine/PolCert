@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lu: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>lu</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range((i0 + 1), N) {
+    a[i0][i1] = (a[i0][i1] / a[i0][i0]);
+  }
+  for i1 in range((i0 + 1), N) {
+    for i2 in range((i0 + 1), N) {
+      a[i1][i2] = (a[i1][i2] - (a[i1][i0] * a[i0][i2]));
+    }
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (2 &lt;= N) {
+  for i0 in range(0, ((N + 30) / 32)) {
+    for i1 in range(max((((32 * i0) + 1) / 32), 0), ((N + 31) / 32)) {
+      for i2 in range(max(0, (((32 * i0) + 1) / 32)), min(min(((N + 30) / 32), (((32 * i1) + 62) / 32)), (((32 * i0) + 63) / 32))) {
+        for i3 in range(max(max((32 * i0), 0), (32 * i2)), min(min(min((N + -1), ((32 * i1) + 31)), ((32 * i0) + 32)), ((32 * i2) + 31))) {
+          for i4 in range(max((32 * i1), (i3 + 1)), min(((32 * i1) + 32), N)) {
+            a[i3][i4] = (a[i3][i4] / a[i3][i3]);
+            for i5 in range((i3 + 1), min(N, ((32 * i2) + 32))) {
+              a[i5][i4] = (a[i5][i4] - (a[i5][i3] * a[i3][i4]));
+            }
+          }
+        }
+        if ((((-1 * N) + (32 * i2)) &lt;= -33 &amp;&amp; (((-32 * i1) + (32 * i2)) &lt;= -1 &amp;&amp; ((-32 * i0) + (32 * i2)) &lt;= 0))) {
+          for i3 in range(((32 * i2) + 31), ((32 * i2) + 32)) {
+            for i4 in range(max((i3 + 1), (32 * i1)), min(((32 * i1) + 32), N)) {
+              for i5 in range(((32 * i2) + 31), ((32 * i2) + 32)) {
+                if (((i5 + -31) % 32) == 0) {
+                  for i6 in range(((32 * i2) + 31), ((32 * i2) + 32)) {
+                    a[i6][i4] = (a[i6][i4] / a[i6][i6]);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      for i2 in range((i0 + 1), ((N + 31) / 32)) {
+        for i3 in range((32 * i0), min(((32 * i1) + 31), ((32 * i0) + 32))) {
+          for i4 in range(max((32 * i1), (i3 + 1)), min(((32 * i1) + 32), N)) {
+            for i5 in range((32 * i2), min(((32 * i2) + 32), N)) {
+              a[i5][i4] = (a[i5][i4] - (a[i5][i3] * a[i3][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/lu/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0128.html">before</a> &middot; <a href="../../../docs/files/0129.html">after</a> &middot; <a href="../../../docs/files/0127.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

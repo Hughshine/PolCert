@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tmm: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>tmm</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(NMAX);
+
+for i0 in range(0, NMAX) {
+  for i1 in range(i0, NMAX) {
+    for i2 in range(i0, NMAX) {
+      C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
+    }
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(NMAX);
+
+if (1 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {
+      for i2 in range(max(0, ((32 * i0) / 32)), ((NMAX + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32)), ((32 * i2) + 32))) {
+          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {
+            for i5 in range(max((32 * i2), i3), min(((32 * i2) + 32), NMAX)) {
+              C[i3][i4] = (C[i3][i4] + (A[i3][i5] * B[i5][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/tmm/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0224.html">before</a> &middot; <a href="../../../docs/files/0225.html">after</a> &middot; <a href="../../../docs/files/0223.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

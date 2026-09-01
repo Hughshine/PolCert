@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dsyr2k: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>dsyr2k</code></h1>
+  <p class="lede">default optimization structural effects. Observed Loop-Structure Effects.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(NMAX);
+
+for i0 in range(0, NMAX) {
+  for i1 in range(0, NMAX) {
+    for i2 in range(i1, NMAX) {
+      c[i1][i2] = (c[i1][i2] + ((a[i0][i1] * b[i0][i2]) + (b[i0][i1] * a[i0][i2])));
+    }
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(NMAX);
+
+if (1 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {
+      for i2 in range(0, ((NMAX + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32))) {
+          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), NMAX)) {
+              c[i3][i4] = (c[i3][i4] + ((a[i5][i3] * b[i5][i4]) + (b[i5][i3] * a[i5][i4])));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/dsyr2k/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0040.html">before</a> &middot; <a href="../../../docs/files/0041.html">after</a> &middot; <a href="../../../docs/files/0039.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0285.html">local log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tricky2: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>tricky2</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, N) {
+  autocorr = (autocorr + 1);
+}
+for i0 in range(0, M) {
+  temp3 = (temp3 + 1);
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, min(M, N)) {
+  autocorr = (autocorr + 1);
+  temp3 = (temp3 + 1);
+}
+for i0 in range(max(0, N), M) {
+  temp3 = (temp3 + 1);
+}
+for i0 in range(max(M, 0), N) {
+  autocorr = (autocorr + 1);
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/tricky2/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0232.html">before</a> &middot; <a href="../../../docs/files/0233.html">after</a> &middot; <a href="../../../docs/files/0231.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tiling-innerpar-satvec: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>tiling-innerpar-satvec</code></h1>
+  <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
+
+  <div class="case-side-by-side">
+    <section>
+      <h2>Tested Condition</h2>
+      <dl>
+        <dt>Expected</dt><dd>Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.</dd>
+        <dt>Coverage</dt><dd>rejection-contract</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Recorded Result</h2>
+      <dl>
+        <dt>Observed effect</dt><dd>Tiling was legal, but the parallel annotation was unsafe</dd>
+        <dt>Actual</dt><dd>The legal rectangular tiling is accepted; the unsafe parallel loop is removed or rejected in strict mode.</dd>
+        <dt>Status</dt><dd>PASS</dd>
+      </dl>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mxv: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>mxv</code></h1>
+  <p class="lede">default optimization structural effects. Observed Loop-Structure Effects.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  y[i0] = 0;
+  for i1 in range(0, N) {
+    y[i0] = (y[i0] + (a[i0][i1] * x[i1]));
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+      y[i1] = 0;
+    }
+  }
+}
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          y[i2] = (y[i2] + (a[i2][i3] * x[i3]));
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/mxv/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0160.html">before</a> &middot; <a href="../../../docs/files/0161.html">after</a> &middot; <a href="../../../docs/files/0159.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0285.html">local log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

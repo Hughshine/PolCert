@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>matmul: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>matmul</code></h1>
+  <p class="lede">default optimization structural effects. Observed Loop-Structure Effects.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(M, N, K);
+
+for i0 in range(0, M) {
+  for i1 in range(0, N) {
+    for i2 in range(0, K) {
+      C[i0][i1] = ((beta * C[i0][i1]) + ((alpha * A[i0][i2]) * B[i2][i1]));
+    }
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; (1 &lt;= N &amp;&amp; 1 &lt;= K))) {
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((K + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), M)) {
+          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), K)) {
+              C[i3][i4] = ((beta * C[i3][i4]) + ((alpha * A[i3][i5]) * B[i5][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/matmul/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0132.html">before</a> &middot; <a href="../../../docs/files/0133.html">after</a> &middot; <a href="../../../docs/files/0131.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0285.html">local log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

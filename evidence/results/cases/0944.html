@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>notile-unrolljam-nonpermutable: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>notile-unrolljam-nonpermutable</code></h1>
+  <p class="lede">optimizer-output rejection. Invalid and Non-Certifiable Proposals.</p>
+
+  <div class="case-side-by-side">
+    <section>
+      <h2>Tested Condition</h2>
+      <dl>
+        <dt>Expected</dt><dd>Under --notile, candidate discovery assumes one tiled level and crosses the real permutable-band boundary, jamming a dependence-carrying loop.</dd>
+        <dt>Coverage</dt><dd>rejection-contract</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Recorded Result</h2>
+      <dl>
+        <dt>Observed effect</dt><dd>Loop jamming crossed a permutable-band boundary</dd>
+        <dt>Actual</dt><dd>Proved block unrolling is retained, but the unsafe local jam is refused.</dd>
+        <dt>Status</dt><dd>PASS</dd>
+      </dl>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Supporting record:</strong> <a href="../../rejected-optimizer-outputs/index.html">index.html</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

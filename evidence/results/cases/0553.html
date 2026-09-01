@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion8: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>fusion8</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>for i0 in range(0, 100) {
+  A[(2 * i0)] = 1;
+}
+for i0 in range(0, 100) {
+  B[(2 * i0)] = A[((2 * i0) + 2)];
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>for i0 in range(0, 4) {
+  if (i0 &lt;= 0) {
+    A[0] = 1;
+  }
+  for i1 in range(max(1, (32 * i0)), min(((32 * i0) + 32), 100)) {
+    A[(2 * i1)] = 1;
+    for i2 in range((i1 + -1), i1) {
+      B[(2 * i2)] = A[((2 * i2) + 2)];
+    }
+  }
+  if (3 &lt;= i0) {
+    B[198] = A[200];
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/fusion8/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0092.html">before</a> &middot; <a href="../../../docs/files/0093.html">after</a> &middot; <a href="../../../docs/files/0091.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

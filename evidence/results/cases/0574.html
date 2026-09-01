@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nodep: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>nodep</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>for i0 in range(0, 100) {
+  for i1 in range(0, 4) {
+    A[((4 * i0) + i1)] = ((2 * A[((4 * i0) + i1)]) + 2);
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>for i0 in range(0, 4) {
+  for i1 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+    for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/nodep/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0176.html">before</a> &middot; <a href="../../../docs/files/0177.html">after</a> &middot; <a href="../../../docs/files/0175.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

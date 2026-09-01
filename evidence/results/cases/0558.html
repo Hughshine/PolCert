@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>intratileopt3: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>intratileopt3</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N, M);
+
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    d[i1] = (d[i1] + a[i0][i1]);
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N, M);
+
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  for i0 in range(0, ((M + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(M, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          d[i2] = (d[i2] + a[i3][i2]);
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/intratileopt3/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0112.html">before</a> &middot; <a href="../../../docs/files/0113.html">after</a> &middot; <a href="../../../docs/files/0111.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

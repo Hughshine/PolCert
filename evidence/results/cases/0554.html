@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion9: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>fusion9</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    a[(2 * i0)] = (a[(2 * i0)] + b[i1]);
+  }
+  for i1 in range(1, N) {
+    a[((2 * i0) + 1)] = (a[((2 * i0) + 1)] + b[i1]);
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (2 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        if (i1 &lt;= 0) {
+          a[(2 * i2)] = (a[(2 * i2)] + b[0]);
+        }
+        for i3 in range(max(1, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          a[(2 * i2)] = (a[(2 * i2)] + b[i3]);
+          a[((2 * i2) + 1)] = (a[((2 * i2) + 1)] + b[i3]);
+        }
+      }
+    }
+  }
+}
+if ((N &lt;= 1 &amp;&amp; 1 &lt;= N)) {
+  a[0] = (a[0] + b[0]);
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/fusion9/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0096.html">before</a> &middot; <a href="../../../docs/files/0097.html">after</a> &middot; <a href="../../../docs/files/0095.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

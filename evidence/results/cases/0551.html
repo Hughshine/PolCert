@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion6: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>fusion6</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  x[i0] = (a[i0] + b[i0]);
+}
+s = 0.0;
+for i0 in range(0, N) {
+  s = (s + (x[i0] * 3));
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+s = 0.0;
+if (1 &lt;= N) {
+  for i0 in range(0, N) {
+    x[i0] = (a[i0] + b[i0]);
+    s = (s + (x[i0] * 3));
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/fusion6/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0084.html">before</a> &middot; <a href="../../../docs/files/0085.html">after</a> &middot; <a href="../../../docs/files/0083.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

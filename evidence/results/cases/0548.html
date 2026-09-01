@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion3: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>fusion3</code></h1>
+  <p class="lede">generated execution: default-corpus. Executable Loop Comparisons.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>for i0 in range(0, 10000) {
+  for i1 in range(0, 10000) {
+    B[i0][i1] = (i1 + i0);
+  }
+}
+for i0 in range(0, 10000) {
+  for i1 in range(0, 10000) {
+    C[i1][i0] = (B[(i1 + -1)][(i0 + -1)] + B[i1][i0]);
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>for i0 in range(0, 313) {
+  for i1 in range(0, 313) {
+    for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), 10000)) {
+      for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), 10000)) {
+        B[i2][i3] = (i3 + i2);
+        C[i2][i3] = (B[(i2 + -1)][(i3 + -1)] + B[i2][i3]);
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/fusion3/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0072.html">before</a> &middot; <a href="../../../docs/files/0073.html">after</a> &middot; <a href="../../../docs/files/0071.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0002.html">validation log</a></p>
+  </div>
+</main>
+</body>
+</html>

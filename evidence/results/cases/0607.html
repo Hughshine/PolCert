@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stride_even: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>stride_even</code></h1>
+  <p class="lede">handwritten C execution. Typed Instruction Programs.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i in range(0, N, 2) {
+  A[i] = (A[i] + i);
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+for i0 in range(0, ((N + 1) / 2)) {
+  A[(2 * i0)] = (A[(2 * i0)] + (2 * i0));
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/e2e-stride-even/comparison.html">before/after</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0268.html">test log</a></p>
+  </div>
+</main>
+</body>
+</html>

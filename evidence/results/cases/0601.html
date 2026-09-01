@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>matmul [parallel]: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>matmul [parallel]</code></h1>
+  <p class="lede">handwritten C execution. Typed Instruction Programs.</p>
+
+  <div class="case-side-by-side">
+    <section>
+      <h2>Tested Condition</h2>
+      <dl>
+        <dt>Expected</dt><dd>outputs-match,parallel=true,vector=false,unrolled=false,required-effects=4,forbidden-effects=0</dd>
+        <dt>Coverage</dt><dd>effect-and-executable-semantics</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Recorded Result</h2>
+      <dl>
+        <dt>Observed effect</dt><dd>Ordinary tiling and parallelization</dd>
+        <dt>Actual</dt><dd>outputs-match:true,parallel:true,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4</dd>
+        <dt>Status</dt><dd>PASS</dd>
+      </dl>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Supporting record:</strong> <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion5: Test Case</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../test-catalog.html">Test catalog</a></p>
+  <h1><code>fusion5</code></h1>
+  <p class="lede">default optimization structural effects. Observed Loop-Structure Effects.</p>
+
+  <div class="loop-comparison">
+    <section>
+      <h2>Before</h2>
+      <pre>context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    B[i0][i1] = (2 * A[i0][i1]);
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    C[i0][i1] = (3 * B[(i0 + -1)][(N + (-1 * i1))]);
+  }
+}
+</pre>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre>context(N);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (N + 1))) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          for i4 in range((i2 + -1), i2) {
+            B[i4][i3] = (2 * A[i4][i3]);
+          }
+        }
+      }
+    }
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), N)) {
+        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          C[i2][i3] = (3 * B[(i2 + -1)][(N + (-1 * i3))]);
+        }
+      }
+    }
+  }
+}
+if (((N % 32) == 0 &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, (((32 * (N / 32)) + 31) / 32)) {
+    for i1 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+      if ((N % 32) == 0) {
+        for i2 in range((N + -1), N) {
+          B[i2][i1] = (2 * A[i2][i1]);
+        }
+      }
+    }
+  }
+}
+</pre>
+    </section>
+  </div>
+  <div class="case-links">
+    <p><strong>Program material:</strong> <a href="../../optimized-loop-examples/fusion5/comparison.html">before/after</a> &middot; <a href="../../../docs/files/0080.html">before</a> &middot; <a href="../../../docs/files/0081.html">after</a> &middot; <a href="../../../docs/files/0079.html">diff</a></p>
+<p><strong>Supporting record:</strong> <a href="../../../docs/files/0285.html">local log</a> &middot; <a href="../../../docs/files/0281.html">CI log</a></p>
+  </div>
+</main>
+</body>
+</html>
