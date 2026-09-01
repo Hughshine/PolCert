@@ -8,24 +8,46 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#unit-checks" data-same-tab>Unit Checks</a>
+    <span>/</span>
+    <span>unit</span>
+  </p>
   <h1><code>legacy failure gate: declared-nonzero-exit-accepted</code></h1>
-  <p class="lede">unit. Unit Checks.</p>
+  <p class="lede">Artifact infrastructure or proof-build check</p>
 
-  
-  <section class="result-summary">
-    <h2>Result</h2>
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks that only the declared legacy command exit status is accepted.</p>
     <dl>
-      <dt>Test</dt><dd>legacy failure gate: declared-nonzero-exit-accepted</dd>
-      
-      <dt>Observed effect</dt><dd>Artifact infrastructure or proof-build check</dd>
-      <dt>Actual</dt><dd>PASS</dd>
-      <dt>Status</dt><dd>PASS</dd>
+      <dt>Expected outcome</dt><dd>The test requires that the failure gate accepts exactly the declared nonzero exit status.</dd>
+      <dt>Recorded outcome</dt><dd>The unit test confirmed that the failure gate accepts exactly the declared nonzero exit status.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>A generic nonzero exit could otherwise hide a crash, missing command, or unrelated failure.</dd>
     </dl>
   </section>
+
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
+    <dl>
+      <dt>Expected</dt><dd><code>the declared unit-test condition</code></dd>
+      <dt>Actual</dt><dd><code>PASS</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>unit</code></dd>
+      <dt>Observed effect</dt><dd>Artifact infrastructure or proof-build check</dd>
+    </dl>
+    <h3>Term meanings</h3><ul><li>PASS: the named unit assertion was confirmed.</li></ul>
+  </details>
   <div class="case-links">
     <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1749.html" target="_blank" rel="noopener">check_legacy_failure_exit.sh</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0957.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0959.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

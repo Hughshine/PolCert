@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#typed-instruction-programs" data-same-tab>Typed Instruction Programs</a>
+    <span>/</span>
+    <span>handwritten C execution</span>
+  </p>
   <h1><code>matmul [sequential]</code></h1>
-  <p class="lede">handwritten C execution. Typed Instruction Programs.</p>
+  <p class="lede">Ordinary tiling</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Instantiates the typed instruction interface with a handwritten C-like loop and compares baseline and optimized execution.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>Baseline and generated executions must produce the same output and all 4 declared structural-effect checks must match.</dd>
+      <dt>Recorded outcome</dt><dd>Required optimization effects occurred and optimized execution agrees with baseline.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>These examples show that the abstract validators compose with a stateful, typed instruction semantics.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -48,20 +67,24 @@ if ((1 &lt;= M &amp;&amp; (1 &lt;= N &amp;&amp; 1 &lt;= K))) {
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>outputs-match,parallel=false,vector=false,unrolled=false,required-effects=4,forbidden-effects=0</dd>
+      <dt>Expected</dt><dd><code>outputs-match,parallel=false,vector=false,unrolled=false,required-effects=4,forbidden-effects=0</code></dd>
+      <dt>Actual</dt><dd><code>outputs-match:true,parallel:false,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>effect-and-executable-semantics</code></dd>
       <dt>Observed effect</dt><dd>Ordinary tiling</dd>
-      <dt>Actual</dt><dd>outputs-match:true,parallel:false,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>outputs-match: baseline and generated executions produced the same checked values.</li><li>effects-matched:true: every declared structural optimization effect was observed.</li><li>required-effects: number of structural markers that must be present.</li><li>forbidden-effects: number of structural markers that must be absent.</li><li>parallel: whether the generated Loop contains a general parallel loop.</li><li>vector: whether the generated Loop contains the restricted innermost parallel form.</li><li>unrolled: whether the generated Loop contains the declared unrolling effect.</li><li>omp-threads-requested: thread count used by the execution check, not a proof claim.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1431.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1430.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0601.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0603.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

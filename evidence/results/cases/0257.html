@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#one-level-and-direct-tiling-validation" data-same-tab>One-Level and Direct Tiling Validation</a>
+    <span>/</span>
+    <span>direct tiling-validator routes</span>
+  </p>
   <h1><code>second-level-mixed-depth-semantic-band-iss</code></h1>
-  <p class="lede">direct tiling-validator routes. One-Level and Direct Tiling Validation.</p>
+  <p class="lede">Index-set splitting (ISS); Two-level tiling</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks the direct permutable-band tiling route and its output, alarm, and fallback behavior.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The permutable-band validator must emit an optimized output, with no fallback or rejection alarm.</dd>
+      <dt>Recorded outcome</dt><dd>Direct-only route contract matched.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>The route boundary prevents malformed or inapplicable tiling proposals from reaching code generation.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -64,20 +83,24 @@ if (1 &lt;= N) {
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0</dd>
+      <dt>Expected</dt><dd><code>route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0</code></dd>
+      <dt>Actual</dt><dd><code>all-route-assertions-matched</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
       <dt>Observed effect</dt><dd>Index-set splitting (ISS); Two-level tiling</dd>
-      <dt>Actual</dt><dd>all-route-assertions-matched</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>route:permutable-band: the direct checked band-tiling route was selected.</li><li>optimized-output:true: the route emitted an optimized Loop program.</li><li>alarm:false: no unexpected certification alarm was reported.</li><li>fallbacks:0: the route did not use an unchecked fallback.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0451.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0450.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1602.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0256.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0258.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

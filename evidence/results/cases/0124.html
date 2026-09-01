@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#index-set-splitting-iss" data-same-tab>Index-Set Splitting (ISS)</a>
+    <span>/</span>
+    <span>identity-iss-sensitive-search</span>
+  </p>
   <h1><code>nodep</code></h1>
-  <p class="lede">identity-iss-sensitive-search. Index-Set Splitting (ISS).</p>
+  <p class="lede">ISS sensitivity comparison</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Compares identity-tiling output with and without ISS for this corpus input.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The search must compare the two accepted Loop outputs. This page must not infer an individual result when the retained log gives only totals.</dd>
+      <dt>Recorded outcome</dt><dd>The retained log reports only the suite totals, so this input has no independent per-case outcome.</dd>
+      <dt>Verdict</dt><dd>This page reports membership in an aggregate search result, not a per-input pass or failure.</dd>
+      <dt>Why this test matters</dt><dd>The search records whether ISS changes the generated program under an otherwise fixed schedule.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -37,19 +56,24 @@
     </section>
   </div>
   <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>compare identity tiling with and without ISS</dd>
+      <dt>Expected</dt><dd><code>compare identity tiling with and without ISS</code></dd>
+      <dt>Actual</dt><dd><code>included in the suite-level result</code></dd>
+      <dt>Status</dt><dd><code>SUITE RESULT</code></dd>
+      <dt>Coverage</dt><dd><code>effect search</code></dd>
       <dt>Observed effect</dt><dd>ISS sensitivity comparison</dd>
-      <dt>Actual</dt><dd>included in the suite-level result</dd>
-      <dt>Status</dt><dd>SUITE RESULT</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>SUITE RESULT: only aggregate totals are available for this input set.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1131.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1130.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1718.html" target="_blank" rel="noopener">nodep.loop</a> &middot; <a href="../../../docs/files/1609.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0123.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0125.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

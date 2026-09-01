@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#index-set-splitting-iss" data-same-tab>Index-Set Splitting (ISS)</a>
+    <span>/</span>
+    <span>ISS from live Pluto output</span>
+  </p>
   <h1><code>mutated-cut</code></h1>
-  <p class="lede">ISS from live Pluto output. Index-Set Splitting (ISS).</p>
+  <p class="lede">Candidate rejected; no unchecked program emitted</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks bridge generation or ISS validation using a split emitted by the packaged Pluto producer.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The validator must reject the malformed proposal and return exit code 1.</dd>
+      <dt>Recorded outcome</dt><dd>Mutated-live-ISS-witness-was-rejected.</dd>
+      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
+      <dt>Why this test matters</dt><dd>This connects the standalone ISS checker to the optimizer output used by the compiler route.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -143,19 +162,31 @@ END
     </section>
   </div>
   <p class="comparison-note">The candidate differs by one corrupted cut constant; the ISS validator rejects it.</p>
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+  <section class="rejection-explanation">
+    <h2>Why Rejection Is Correct</h2>
     <dl>
-      <dt>Expected</dt><dd>reject,exit:1,validation-fail:true</dd>
-      <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
-      <dt>Actual</dt><dd>exit:1,validation-fail:true</dd>
-      <dt>Status</dt><dd>PASS</dd>
+      <dt>Classification</dt><dd>Invalid ISS witness</dd>
+      <dt>Reason</dt><dd>One live-Pluto cut constant was changed without changing the split domains, so the bridge no longer proves the partition it declares.</dd>
     </dl>
   </section>
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
+    <dl>
+      <dt>Expected</dt><dd><code>reject,exit:1,validation-fail:true</code></dd>
+      <dt>Actual</dt><dd><code>exit:1,validation-fail:true</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
+      <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
+    </dl>
+    <h3>Term meanings</h3><ul><li>exit:1: declared validator or producer rejection in this case.</li><li>validation-fail:true: the extracted validator reported a failed certificate check.</li><li>PASS: the expected rejection, failure, or verified fallback was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0401.html" target="_blank" rel="noopener">before.bridge</a> &middot; <a href="../../../docs/files/0400.html" target="_blank" rel="noopener">after.bridge</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0074.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0076.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

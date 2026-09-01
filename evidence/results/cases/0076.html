@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#index-set-splitting-iss" data-same-tab>Index-Set Splitting (ISS)</a>
+    <span>/</span>
+    <span>ISS multi-cut validation</span>
+  </p>
   <h1><code>multicut-complete</code></h1>
-  <p class="lede">ISS multi-cut validation. Index-Set Splitting (ISS).</p>
+  <p class="lede">Index-set splitting (ISS)</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks whether several affine cuts form a complete, non-overlapping partition of one statement domain.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The validator must accept the proposal and return exit code 0.</dd>
+      <dt>Recorded outcome</dt><dd>All four sign regions proved.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>A multi-cut split is valid only when every source instance belongs to exactly one resulting region.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -35,19 +54,24 @@ The four sign combinations cover the source domain exactly once.
     </section>
   </div>
   <p class="comparison-note">Readable rendering of the exact multicut_valid.bridge fixture. The linked bridge file is the object accepted by the extracted validator.</p>
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>accept,exit:0</dd>
+      <dt>Expected</dt><dd><code>accept,exit:0</code></dd>
+      <dt>Actual</dt><dd><code>accept,exit:0</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
       <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
-      <dt>Actual</dt><dd>accept,exit:0</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>exit:0: successful command completion.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1015.html" target="_blank" rel="noopener">before.domain</a> &middot; <a href="../../../docs/files/1014.html" target="_blank" rel="noopener">after.domain</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1660.html" target="_blank" rel="noopener">exact validator input</a> &middot; <a href="../../../docs/files/1610.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0075.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0077.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

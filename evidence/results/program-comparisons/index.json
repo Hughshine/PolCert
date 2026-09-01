@@ -53,8 +53,9 @@
       "before": "program-comparisons/679438e6ae08a0/before.txt",
       "case": "heat_2dp_before.txt-to-heat_2dp_after.txt",
       "kind": "accepted-program-pair",
-      "left_label": "Before ISS Proposal",
-      "right_label": "Accepted Split Proposal",
+      "left_label": "Polyhedral Program Before ISS",
+      "note": "Component-level evidence: the ISS validator checks these polyhedral programs before verified Loop generation.",
+      "right_label": "Accepted Split Polyhedral Program",
       "suite": "ISS validator"
     },
     {
@@ -71,8 +72,9 @@
       "before": "program-comparisons/561c13d05816b0/before.txt",
       "case": "jacobi_2d_periodic_before.txt-to-jacobi_2d_periodic_after.txt",
       "kind": "accepted-program-pair",
-      "left_label": "Before ISS Proposal",
-      "right_label": "Accepted Split Proposal",
+      "left_label": "Polyhedral Program Before ISS",
+      "note": "Component-level evidence: the ISS validator checks these polyhedral programs before verified Loop generation.",
+      "right_label": "Accepted Split Polyhedral Program",
       "suite": "ISS validator"
     },
     {
@@ -80,8 +82,9 @@
       "before": "program-comparisons/5c946cafacf5fa/before.txt",
       "case": "multi_stmt_periodic_before.txt-to-multi_stmt_periodic_after.txt",
       "kind": "accepted-program-pair",
-      "left_label": "Before ISS Proposal",
-      "right_label": "Accepted Split Proposal",
+      "left_label": "Polyhedral Program Before ISS",
+      "note": "Component-level evidence: the ISS validator checks these polyhedral programs before verified Loop generation.",
+      "right_label": "Accepted Split Polyhedral Program",
       "suite": "ISS validator"
     },
     {
@@ -107,8 +110,9 @@
       "before": "program-comparisons/7e01edbcd96d47/before.txt",
       "case": "reverse_before.txt-to-reverse_after.txt",
       "kind": "accepted-program-pair",
-      "left_label": "Before ISS Proposal",
-      "right_label": "Accepted Split Proposal",
+      "left_label": "Polyhedral Program Before ISS",
+      "note": "Component-level evidence: the ISS validator checks these polyhedral programs before verified Loop generation.",
+      "right_label": "Accepted Split Polyhedral Program",
       "suite": "ISS validator"
     },
     {

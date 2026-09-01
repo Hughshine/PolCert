@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#formats-and-scheduler-adapter" data-same-tab>Formats and Scheduler Adapter</a>
+    <span>/</span>
+    <span>OpenScop round trips</span>
+  </p>
   <h1><code>./scops/.afterscheduling</code></h1>
-  <p class="lede">OpenScop round trips. Formats and Scheduler Adapter.</p>
+  <p class="lede">OpenScop parse/print round trip (no optimization)</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Parses and reprints an OpenScop input through the packaged format adapter.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The OpenScop input must parse and reprint successfully.</dd>
+      <dt>Recorded outcome</dt><dd>OpenScop-input-was-read-and-reprinted.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>A readable round trip is required before an external schedule can reach a validator.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -279,20 +298,24 @@ t1 t2 t3
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>parse-success</dd>
+      <dt>Expected</dt><dd><code>parse-success</code></dd>
+      <dt>Actual</dt><dd><code>parse-success</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
       <dt>Observed effect</dt><dd>OpenScop parse/print round trip (no optimization)</dd>
-      <dt>Actual</dt><dd>parse-success</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1577.html" target="_blank" rel="noopener">before.scop</a> &middot; <a href="../../../docs/files/1576.html" target="_blank" rel="noopener">after.scop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0815.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0817.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

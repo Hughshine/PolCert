@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#executable-loop-comparisons" data-same-tab>Executable Loop Comparisons</a>
+    <span>/</span>
+    <span>generated execution: second-level-effect</span>
+  </p>
   <h1><code>matmul-init</code></h1>
-  <p class="lede">generated execution: second-level-effect. Executable Loop Comparisons.</p>
+  <p class="lede">Two-level tiling</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks output agreement and the additional loop hierarchy produced by two-level tiling.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>Baseline and generated executions must produce the same output.</dd>
+      <dt>Recorded outcome</dt><dd>Baseline and optimized outputs matched. The declared structural effects also matched.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>This distinguishes a working two-level route from a successful fallback to a simpler program.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -70,20 +89,24 @@ if (1 &lt;= N) {
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>outputs-match,parallel=false,vector=false,effect-contracts=3</dd>
+      <dt>Expected</dt><dd><code>outputs-match,parallel=false,vector=false,effect-contracts=3</code></dd>
+      <dt>Actual</dt><dd><code>outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>effect-and-executable-semantics</code></dd>
       <dt>Observed effect</dt><dd>Two-level tiling</dd>
-      <dt>Actual</dt><dd>outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>outputs-match: baseline and generated executions produced the same checked values.</li><li>effects-matched:true: every declared structural optimization effect was observed.</li><li>parallel: whether the generated Loop contains a general parallel loop.</li><li>vector: whether the generated Loop contains the restricted innermost parallel form.</li><li>omp-threads-requested: thread count used by the execution check, not a proof claim.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1001.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1000.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/0002.html" target="_blank" rel="noopener">validation log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0595.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0597.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

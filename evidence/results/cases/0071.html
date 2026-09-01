@@ -8,24 +8,46 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#index-set-splitting-iss" data-same-tab>Index-Set Splitting (ISS)</a>
+    <span>/</span>
+    <span>ISS from live Pluto output</span>
+  </p>
   <h1><code>jacobi-2d-periodic.c-emit</code></h1>
-  <p class="lede">ISS from live Pluto output. Index-Set Splitting (ISS).</p>
+  <p class="lede">Index-set splitting (ISS)</p>
 
-  
-  <section class="result-summary">
-    <h2>Result</h2>
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks bridge generation or ISS validation using a split emitted by the packaged Pluto producer.</p>
     <dl>
-      <dt>Expected</dt><dd>bridge-with-var-order</dd>
-      
-      <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
-      <dt>Actual</dt><dd>bridge-emitted,exit:0</dd>
-      <dt>Status</dt><dd>PASS</dd>
+      <dt>Expected outcome</dt><dd>The live Pluto run must emit an ISS bridge with an explicit variable ordering.</dd>
+      <dt>Recorded outcome</dt><dd>Pluto-live-ISS-bridge-was-emitted.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>This connects the standalone ISS checker to the optimizer output used by the compiler route.</dd>
     </dl>
   </section>
+
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
+    <dl>
+      <dt>Expected</dt><dd><code>bridge-with-var-order</code></dd>
+      <dt>Actual</dt><dd><code>bridge-emitted,exit:0</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
+      <dt>Observed effect</dt><dd>Index-set splitting (ISS)</dd>
+    </dl>
+    <h3>Term meanings</h3><ul><li>exit:0: successful command completion.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0070.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0072.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

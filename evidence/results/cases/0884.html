@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#tiling-and-consumer-rejections" data-same-tab>Tiling and Consumer Rejections</a>
+    <span>/</span>
+    <span>second-level rejection</span>
+  </p>
   <h1><code>identity-vector-strict</code></h1>
-  <p class="lede">second-level rejection. Tiling and Consumer Rejections.</p>
+  <p class="lede">Ordinary tiling; no innermost parallel annotation because the hint was not certifiable</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Injects one declared fault into a tiling, affine, or consumer stage and checks the exact failure boundary.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The tiling stage must remain accepted, while the uncertifiable optional annotation is omitted.</dd>
+      <dt>Recorded outcome</dt><dd>The route stopped at the declared failing stage and emitted no unchecked continuation.</dd>
+      <dt>Verdict</dt><dd>PASS means the verified part was retained and the uncertifiable optional effect was not emitted.</dd>
+      <dt>Why this test matters</dt><dd>A composed route must stop at the first uncertified stage and must never emit an unchecked program.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -54,20 +73,31 @@ if (1 &lt;= N) {
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+  <section class="rejection-explanation">
+    <h2>Why the Requested Effect Is Not Applied</h2>
     <dl>
-      <dt>Expected</dt><dd>keep verified tiling and skip the optional annotation</dd>
-      <dt>Observed effect</dt><dd>Ordinary tiling; no innermost parallel annotation because the hint was not certifiable</dd>
-      <dt>Actual</dt><dd>PASS; the declared failure point was preserved</dd>
-      <dt>Status</dt><dd>PASS</dd>
+      <dt>Classification</dt><dd>Verified fallback after an uncertifiable optional annotation</dd>
+      <dt>Reason</dt><dd>The tiling certificate is valid, but the requested innermost parallel annotation is not. The correct result keeps the tiled sequential program and omits that annotation.</dd>
     </dl>
   </section>
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
+    <dl>
+      <dt>Expected</dt><dd><code>keep verified tiling and skip the optional annotation</code></dd>
+      <dt>Actual</dt><dd><code>PASS; the declared failure point was preserved</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>rejection-contract</code></dd>
+      <dt>Observed effect</dt><dd>Ordinary tiling; no innermost parallel annotation because the hint was not certifiable</dd>
+    </dl>
+    <h3>Term meanings</h3><ul><li>PASS: the expected rejection, failure, or verified fallback was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0743.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0742.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1753.html" target="_blank" rel="noopener">check_rejected_tiling_route.py</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0883.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0885.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

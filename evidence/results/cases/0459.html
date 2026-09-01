@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#unroll-and-jam" data-same-tab>Unroll and Jam</a>
+    <span>/</span>
+    <span>unroll-and-jam exploration</span>
+  </p>
   <h1><code>fusion2</code></h1>
-  <p class="lede">unroll-and-jam exploration. Unroll and Jam.</p>
+  <p class="lede">No checked unroll-and-jam transformation observed</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Compares the input Loop program with the output of the checked unroll-and-jam postpass.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The recorded result must satisfy this contract: native Pluto shows no direct unroll-jam C effect.</dd>
+      <dt>Recorded outcome</dt><dd>Checked-effect was not observed.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>The test distinguishes proved block unrolling and local jamming from a producer option that has no checked structural effect.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -54,20 +73,24 @@ B[99][99] = (A[100][99] + A[99][100]);
 </pre>
     </section>
   </div>
-  
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>native Pluto shows no direct unroll-jam C effect</dd>
+      <dt>Expected</dt><dd><code>native Pluto shows no direct unroll-jam C effect</code></dd>
+      <dt>Actual</dt><dd><code>checked-effect=false</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>effect</code></dd>
       <dt>Observed effect</dt><dd>No checked unroll-and-jam transformation observed</dd>
-      <dt>Actual</dt><dd>checked-effect=false</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>checked-effect: whether the checked Loop output exhibits unroll-and-jam structure.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0787.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0786.html" target="_blank" rel="noopener">after.loop</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1625.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/1663.html" target="_blank" rel="noopener">fusion2.loop</a></p></details>
   </div>
+  <p class="case-pager"><a href="0458.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0460.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

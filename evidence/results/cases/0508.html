@@ -8,9 +8,28 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#observed-loop-structure-effects" data-same-tab>Observed Loop-Structure Effects</a>
+    <span>/</span>
+    <span>default optimization structural effects</span>
+  </p>
   <h1><code>mxv</code></h1>
-  <p class="lede">default optimization structural effects. Observed Loop-Structure Effects.</p>
+  <p class="lede">Ordinary tiling</p>
+
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Checks the visible Loop-structure effect of the default verified optimization route.</p>
+    <dl>
+      <dt>Expected outcome</dt><dd>The route must produce an accepted Loop program; this case makes no separate structural-effect claim.</dd>
+      <dt>Recorded outcome</dt><dd>No case-specific effect contract.</dd>
+      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
+      <dt>Why this test matters</dt><dd>Successful compilation alone would not show whether the requested optimization actually occurred.</dd>
+    </dl>
+  </section>
 
   <div class="loop-comparison">
     <section>
@@ -50,19 +69,24 @@ if (1 &lt;= N) {
 </pre>
     </section>
   </div>
-  <section class="comparison-result">
-    <h2>Validation Result</h2>
+
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
     <dl>
-      <dt>Expected</dt><dd>successful-materialization</dd>
+      <dt>Expected</dt><dd><code>successful-materialization</code></dd>
+      <dt>Actual</dt><dd><code>changed:true,nontrivial:true,tiled:true</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>acceptance-only</code></dd>
       <dt>Observed effect</dt><dd>Ordinary tiling</dd>
-      <dt>Actual</dt><dd>changed:true,nontrivial:true,tiled:true</dd>
-      <dt>Status</dt><dd>PASS</dd>
     </dl>
-  </section>
+    <h3>Term meanings</h3><ul><li>changed: whether the accepted Loop text differs from the input Loop text.</li><li>nontrivial: whether the structural oracle found a change beyond renaming or formatting.</li><li>tiled: whether the structural oracle found the expected tile/point loop pattern.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
+  </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../optimized-loop-examples/mxv/comparison.html" target="_blank" rel="noopener">before/after</a> &middot; <a href="../../../docs/files/0160.html" target="_blank" rel="noopener">before</a> &middot; <a href="../../../docs/files/0161.html" target="_blank" rel="noopener">after</a> &middot; <a href="../../../docs/files/0159.html" target="_blank" rel="noopener">diff</a></p>
 <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1622.html" target="_blank" rel="noopener">local log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0507.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0509.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>

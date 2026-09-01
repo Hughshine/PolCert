@@ -8,24 +8,53 @@
 </head>
 <body>
 <main>
-  <p><a href="../test-catalog.html" target="_blank" rel="noopener">Test catalog</a></p>
+  <p class="breadcrumbs">
+    <a href="../../../docs/index.html" data-same-tab>Artifact overview</a>
+    <span>/</span>
+    <a href="../test-catalog.html" data-same-tab>Test catalog</a>
+    <span>/</span>
+    <a href="../test-catalog.html#diamond-tiling" data-same-tab>Diamond Tiling</a>
+    <span>/</span>
+    <span>diamond tiling</span>
+  </p>
   <h1><code>jacobi-1d-mod.c</code></h1>
-  <p class="lede">diamond tiling. Diamond Tiling.</p>
+  <p class="lede">No optimizer candidate; Pluto stopped in its source frontend</p>
 
-  
-  <section class="result-summary">
-    <h2>Result</h2>
+  <section class="case-overview">
+    <h2>What This Case Checks</h2>
+    <p>Runs the diamond-tiling producer and classifies the resulting transformation or producer failure.</p>
     <dl>
-      <dt>Expected</dt><dd>status:pluto_frontend_rejected,exit:8</dd>
-      
-      <dt>Observed effect</dt><dd>Candidate rejected; no unchecked program emitted</dd>
-      <dt>Actual</dt><dd>status:pluto_frontend_rejected,exit:8</dd>
-      <dt>Status</dt><dd>PASS</dd>
+      <dt>Expected outcome</dt><dd>Pluto must stop in its source frontend before producing a diamond-tiling proposal; exit code 8 records that frontend rejection.</dd>
+      <dt>Recorded outcome</dt><dd>Pluto reported a frontend rejection and returned 8. No optimizer candidate was produced, so this input did not reach PolCert validation or code generation.</dd>
+      <dt>Verdict</dt><dd>PASS means the observed Pluto frontend failure matched the producer-side expectation; PolCert did not receive a candidate.</dd>
+      <dt>Why this test matters</dt><dd>The suite distinguishes a verified diamond proposal from inputs for which Pluto produces no usable proposal.</dd>
     </dl>
   </section>
+
+
+  <section class="rejection-explanation">
+    <h2>Why the Pipeline Stops</h2>
+    <dl>
+      <dt>Classification</dt><dd>Unsupported producer input; no PolCert candidate</dd>
+      <dt>Reason</dt><dd>Pluto&#x27;s source frontend cannot extract a supported polyhedral input for this case. Exit 8 confirms that the pipeline stopped before PolCert validation and before code generation.</dd>
+    </dl>
+  </section>
+
+  <details class="recorded-fields">
+    <summary>Recorded Fields and Terms</summary>
+    <dl>
+      <dt>Expected</dt><dd><code>status:pluto_frontend_rejected,exit:8</code></dd>
+      <dt>Actual</dt><dd><code>status:pluto_frontend_rejected,exit:8</code></dd>
+      <dt>Status</dt><dd><code>PASS</code></dd>
+      <dt>Coverage</dt><dd><code>recorded result</code></dd>
+      <dt>Observed effect</dt><dd>No optimizer candidate; Pluto stopped in its source frontend</dd>
+    </dl>
+    <h3>Term meanings</h3><ul><li>pluto_frontend_rejected: Pluto failed before producing a proposal for PolCert.</li><li>exit:8: Pluto source-frontend rejection before validation.</li><li>PASS: the expected rejection, failure, or verified fallback was observed.</li></ul>
+  </details>
   <div class="case-links">
     <details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1601.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
+  <p class="case-pager"><a href="0352.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0354.html" data-same-tab>Next case</a></p>
 </main>
 </body>
 </html>
