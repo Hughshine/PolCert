@@ -57,9 +57,10 @@
     <section id="top-theorems">
       <h2>Top-Level Theorems</h2>
       <p>
-        Four public theorems expose the guarantee for the reusable compiler,
-        checked configurations, the extracted executable, and sequential
-        targets.
+        The packaged executable is covered by
+        <code>extracted_parallel_compile_correct</code>. Its proof connects the
+        extracted compiler to the reusable compiler theorem; the remaining
+        entries expose the same guarantee at intermediate interfaces.
       </p>
       <table>
         <thead>
@@ -68,18 +69,18 @@
             <th>Use</th>
           </tr>
         </thead>
-        <tbody>
+          <tbody>
+            <tr>
+            <td><a href="proof/polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct" target="_blank" rel="noopener"><code>extracted_parallel_compile_correct</code></a></td>
+            <td>Main end-to-end theorem for the extracted sequential and parallel compiler used by <code>polopt</code>.</td>
+          </tr>
           <tr>
             <td><a href="proof/polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct" target="_blank" rel="noopener"><code>VerifiedParallelCompilerConfig.compile_correct</code></a></td>
-            <td>Main end-to-end theorem for sequential and parallel targets.</td>
+            <td>Reusable end-to-end theorem for a raw sequential or parallel configuration.</td>
           </tr>
           <tr>
             <td><a href="proof/polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_verified_correct" target="_blank" rel="noopener"><code>compile_verified_correct</code></a></td>
             <td>Correctness after the compiler configuration has passed its checks.</td>
-          </tr>
-          <tr>
-            <td><a href="proof/polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct" target="_blank" rel="noopener"><code>extracted_parallel_compile_correct</code></a></td>
-            <td>Connection from the extracted executable configuration to the reusable theorem.</td>
           </tr>
           <tr>
             <td><a href="proof/polcert.driver.VerifiedCompilerConfig.html#VerifiedCompilerConfig.compile_correct" target="_blank" rel="noopener"><code>VerifiedCompilerConfig.compile_correct</code></a></td>
@@ -137,7 +138,7 @@
         <div class="number">7</div>
         <div>
           <h3>Compose the stage results at the compiler interface</h3>
-          <p><a href="proof/polcert.driver.VerifiedParallelCompilerConfig.html#VerifiedParallelCompilerConfig.compile_correct" target="_blank" rel="noopener"><code>VerifiedParallelCompilerConfig.compile_correct</code></a></p>
+          <p><a href="proof/polcert.driver.ExtractedPipelineCorrect.html#extracted_parallel_compile_correct" target="_blank" rel="noopener"><code>extracted_parallel_compile_correct</code></a></p>
         </div>
       </div>
     </section>
@@ -157,32 +158,32 @@
             <tr>
             <td>Extraction</td>
             <td>Induct over the source loop and reconstruct its ordered statement instances.</td>
-            <td><a href="files/3597.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a><br><a href="proof/polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct" target="_blank" rel="noopener"><code>extractor_correct</code></a></td>
+            <td><a href="files/3607.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a><br><a href="proof/polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct" target="_blank" rel="noopener"><code>extractor_correct</code></a></td>
           </tr>
             <tr>
             <td>Index-set splitting</td>
             <td>Coverage preserves every instance; disjointness prevents duplication.</td>
-            <td><a href="files/3602.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a><br><a href="proof/polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct" target="_blank" rel="noopener"><code>checked_iss_complete_cut_shape_validate_semantics_correct</code></a></td>
+            <td><a href="files/3613.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a><br><a href="proof/polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct" target="_blank" rel="noopener"><code>checked_iss_complete_cut_shape_validate_semantics_correct</code></a></td>
           </tr>
             <tr>
             <td>Affine scheduling</td>
             <td>Decompose the new order into adjacent exchanges and prove every reversed pair safe.</td>
-            <td><a href="files/3595.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a><br><a href="proof/polcert.src.AffineValidator.html#AffineValidator.validate_correct" target="_blank" rel="noopener"><code>validate_correct</code></a></td>
+            <td><a href="files/3604.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a><br><a href="proof/polcert.src.AffineValidator.html#AffineValidator.validate_correct" target="_blank" rel="noopener"><code>validate_correct</code></a></td>
           </tr>
             <tr>
             <td>Tiling</td>
             <td>Prove a bijection between source and tiled coordinates, then prove the checked band order safe.</td>
-            <td><a href="files/3610.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a><br><a href="files/3609.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a></td>
+            <td><a href="files/3626.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a><br><a href="files/3625.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a></td>
           </tr>
             <tr>
             <td>Parallel loops</td>
             <td>Map generated events to checked instances and reorder each interleaving into a sequential execution.</td>
-            <td><a href="files/3604.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a><br><a href="proof/polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.checked_annotated_codegen_many_correct_general_certified" target="_blank" rel="noopener"><code>checked_annotated_codegen_many_correct_general_certified</code></a></td>
+            <td><a href="files/3617.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a><br><a href="proof/polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.checked_annotated_codegen_many_correct_general_certified" target="_blank" rel="noopener"><code>checked_annotated_codegen_many_correct_general_certified</code></a></td>
           </tr>
             <tr>
             <td>Unrolling and jam</td>
             <td>Cover the original range exactly; validate the exchanges needed to fuse inner loops.</td>
-            <td><a href="files/3589.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a><br><a href="files/3603.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a></td>
+            <td><a href="files/3598.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a><br><a href="files/3614.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a></td>
           </tr>
           </tbody>
         </table>

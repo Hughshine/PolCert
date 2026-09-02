@@ -19,7 +19,7 @@
       <a href="#model">Polyhedral model</a>
       <a href="#entry">Executable entry point</a>
       <a href="#pipeline">Verified pipeline</a>
-      <a href="#transformations">Transformations</a>
+      <a href="#running-example">Running example</a>
       <a href="#instructions">Instruction interface</a>
       <a href="../evidence/results/test-catalog.html" target="_blank" rel="noopener">Test catalog</a>
     </div>
@@ -49,10 +49,10 @@
         It must preserve every original statement instance and respect any
         memory dependence that constrains execution order.
         The source and intermediate representations are defined in
-        <a href="files/3596.html" target="_blank" rel="noopener"><code>Loop.v</code></a> and
-        <a href="files/3622.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a>;
+        <a href="files/3595.html" target="_blank" rel="noopener"><code>Loop.v</code></a> and
+        <a href="files/3619.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a>;
         parallel output uses
-        <a href="files/3600.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a>.
+        <a href="files/3599.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a>.
       </p>
     </section>
 
@@ -78,27 +78,27 @@
           <tr>
             <td>Parser and elaborator</td>
             <td>Parse <code>.loop</code> syntax and construct a well-scoped source <code>Loop</code> program.</td>
-            <td><a href="files/3638.html" target="_blank" rel="noopener"><code>SLoopParse.ml</code></a>, <a href="files/3636.html" target="_blank" rel="noopener"><code>SLoopElab.ml</code></a></td>
+            <td><a href="files/3635.html" target="_blank" rel="noopener"><code>SLoopParse.ml</code></a>, <a href="files/3633.html" target="_blank" rel="noopener"><code>SLoopElab.ml</code></a></td>
           </tr>
           <tr>
             <td>Option and route selection</td>
             <td>Interpret native and Pluto-compatible options, reject unsupported combinations, and select a checked compiler route.</td>
-            <td><a href="files/3633.html" target="_blank" rel="noopener"><code>SLoopCli.ml</code></a>, <a href="files/3634.html" target="_blank" rel="noopener"><code>SLoopConfig.ml</code></a>, <a href="files/3640.html" target="_blank" rel="noopener"><code>SLoopRoute.ml</code></a></td>
+            <td><a href="files/3630.html" target="_blank" rel="noopener"><code>SLoopCli.ml</code></a>, <a href="files/3631.html" target="_blank" rel="noopener"><code>SLoopConfig.ml</code></a>, <a href="files/3637.html" target="_blank" rel="noopener"><code>SLoopRoute.ml</code></a></td>
           </tr>
           <tr>
             <td>Pluto adapter</td>
             <td>Invoke Pluto and read its schedule, phase, ISS, parallel, and vector proposals.</td>
-            <td><a href="files/3591.html" target="_blank" rel="noopener"><code>Scheduler.ml</code></a>, <a href="files/3588.html" target="_blank" rel="noopener"><code>PhaseISS.ml</code></a>, <a href="files/3589.html" target="_blank" rel="noopener"><code>PhaseTiling.ml</code></a></td>
+            <td><a href="files/3590.html" target="_blank" rel="noopener"><code>Scheduler.ml</code></a>, <a href="files/3588.html" target="_blank" rel="noopener"><code>PhaseISS.ml</code></a>, <a href="files/3589.html" target="_blank" rel="noopener"><code>PhaseTiling.ml</code></a></td>
           </tr>
           <tr>
             <td>Extracted compiler interface</td>
             <td>Instantiate the verified sequential and parallel configurations for extraction to OCaml.</td>
-            <td><a href="files/3641.html" target="_blank" rel="noopener"><code>SVerifiedCompilerConfig.v</code></a>, <a href="files/3642.html" target="_blank" rel="noopener"><code>SVerifiedParallelCompilerConfig.v</code></a></td>
+            <td><a href="files/3638.html" target="_blank" rel="noopener"><code>SVerifiedCompilerConfig.v</code></a>, <a href="files/3639.html" target="_blank" rel="noopener"><code>SVerifiedParallelCompilerConfig.v</code></a></td>
           </tr>
           <tr>
             <td>Dispatch and output</td>
             <td>Run the selected extracted function and print the accepted target loop or a rejection message.</td>
-            <td><a href="files/3635.html" target="_blank" rel="noopener"><code>SLoopDispatch.ml</code></a>, <a href="files/3637.html" target="_blank" rel="noopener"><code>SLoopMain.ml</code></a>, <a href="files/3639.html" target="_blank" rel="noopener"><code>SLoopPretty.ml</code></a></td>
+            <td><a href="files/3632.html" target="_blank" rel="noopener"><code>SLoopDispatch.ml</code></a>, <a href="files/3634.html" target="_blank" rel="noopener"><code>SLoopMain.ml</code></a>, <a href="files/3636.html" target="_blank" rel="noopener"><code>SLoopPretty.ml</code></a></td>
           </tr>
         </tbody>
       </table>
@@ -146,79 +146,79 @@
               <td>Loop extraction</td>
               <td>Converts a structured <code>Loop</code> program to statement domains, accesses, and a source schedule.</td>
               <td>The polyhedral program executes exactly the source statement instances in source order.</td>
-              <td><a href="files/3607.html" target="_blank" rel="noopener"><code>Extractor.v</code></a>, <a href="files/3608.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a></td>
+              <td><a href="files/3606.html" target="_blank" rel="noopener"><code>Extractor.v</code></a>, <a href="files/3607.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a></td>
             </tr>
             <tr>
               <td>Domain strengthening</td>
               <td>Adds parameter and enclosing-loop guards that are already implied by the extracted domains.</td>
               <td>The added constraints are redundant, so the set and order of statement instances are unchanged.</td>
-              <td><a href="files/3625.html" target="_blank" rel="noopener"><code>StrengthenDomain.v</code></a></td>
+              <td><a href="files/3622.html" target="_blank" rel="noopener"><code>StrengthenDomain.v</code></a></td>
             </tr>
             <tr>
               <td>Index-set splitting (optional)</td>
               <td>Replaces a statement domain with a proposed collection of subdomains.</td>
               <td>The checker establishes exact coverage, pairwise disjointness, and preservation of the statement payload.</td>
-              <td><a href="files/3613.html" target="_blank" rel="noopener"><code>ISSValidator.v</code></a>, <a href="files/3614.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a></td>
+              <td><a href="files/3612.html" target="_blank" rel="noopener"><code>ISSValidator.v</code></a>, <a href="files/3613.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a></td>
             </tr>
             <tr>
               <td>Affine scheduling (optional)</td>
               <td>Replaces schedule coordinates; this represents interchange, skewing, fusion, fission, and related affine changes.</td>
               <td>For every pair whose order changes, the validator proves that exchanging the pair is safe.</td>
-              <td><a href="files/3605.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a>, <a href="files/3631.html" target="_blank" rel="noopener"><code>Validator.v</code></a></td>
+              <td><a href="files/3604.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a>, <a href="files/3628.html" target="_blank" rel="noopener"><code>Validator.v</code></a></td>
             </tr>
             <tr>
               <td>Tiling (optional)</td>
-              <td>Adds tile and intra-tile coordinates for ordinary, two-level, or diamond tiling.</td>
+              <td>Ordinary tiling adds rectangular tile and point coordinates; two-level tiling adds nested tile levels; diamond and full-diamond routes use coupled wavefront coordinates.</td>
               <td>The tiling witness maps every source instance to the candidate coordinates, and the checked band order permits the introduced grouping.</td>
-              <td><a href="files/3629.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a>, <a href="files/3626.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a></td>
+              <td><a href="files/3626.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a>, <a href="files/3625.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a>, <a href="files/3624.html" target="_blank" rel="noopener"><code>TilingBandMixedSecondValidator.v</code></a>, <a href="files/3623.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a></td>
             </tr>
             <tr>
               <td>Post-tiling affine scheduling (optional)</td>
               <td>Applies another affine schedule to the tiled program, including changes to intra-tile order.</td>
               <td>The same affine validator checks the new order against the post-tiling program.</td>
-              <td><a href="files/3587.html" target="_blank" rel="noopener"><code>ParallelPolOpt.v</code></a>, <a href="files/3605.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a></td>
+              <td><a href="files/3587.html" target="_blank" rel="noopener"><code>ParallelPolOpt.v</code></a>, <a href="files/3604.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a></td>
             </tr>
             <tr>
               <td>Current-coordinate view</td>
               <td>Composes earlier coordinate maps so code generation works directly with the current transformed indices.</td>
               <td>The view changes the representation of coordinates, not the represented statement instances.</td>
-              <td><a href="files/3622.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a></td>
+              <td><a href="files/3619.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a></td>
             </tr>
             <tr>
               <td>Parallel eligibility (optional)</td>
-              <td>Checks one or more proposed schedule dimensions in the current-coordinate view before annotated loop generation.</td>
-              <td>Instances that differ at a selected dimension, under the same outer prefix, may exchange order. This supports arbitrary interleavings of the generated parallel loop.</td>
-              <td><a href="files/3621.html" target="_blank" rel="noopener"><code>ParallelValidator.v</code></a></td>
+              <td>Checks one or more proposed schedule dimensions in the current-coordinate view. A vector request uses the same certificate and requires an innermost generated loop.</td>
+              <td>Instances that differ at a selected dimension, under the same outer prefix, may exchange order. This supports arbitrary interleavings of each generated parallel loop.</td>
+              <td><a href="files/3618.html" target="_blank" rel="noopener"><code>ParallelValidator.v</code></a></td>
             </tr>
             <tr>
               <td>Codegen preparation</td>
               <td>Pads domains, schedules, accesses, and coordinate maps to one program-wide dimension and records shorter statement depths with zero constraints.</td>
               <td>Padding preserves the current polyhedral program and supplies the dimension invariants required by loop generation.</td>
-              <td><a href="files/3623.html" target="_blank" rel="noopener"><code>PrepareCodegen.v</code></a></td>
+              <td><a href="files/3620.html" target="_blank" rel="noopener"><code>PrepareCodegen.v</code></a></td>
             </tr>
             <tr>
               <td>Loop generation and annotation</td>
               <td>Generates a sequential <code>Loop</code> or a <code>ParallelLoop</code> whose certified dimensions carry parallel annotations.</td>
               <td>The generated loop realizes the checked instance order; parallel annotations are added only for certified dimensions.</td>
-              <td><a href="files/3594.html" target="_blank" rel="noopener"><code>CodeGen.v</code></a>, <a href="files/3619.html" target="_blank" rel="noopener"><code>ParallelCodegenCore.v</code></a>, <a href="files/3620.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a></td>
+              <td><a href="files/3593.html" target="_blank" rel="noopener"><code>CodeGen.v</code></a>, <a href="files/3616.html" target="_blank" rel="noopener"><code>ParallelCodegenCore.v</code></a>, <a href="files/3617.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a></td>
             </tr>
             <tr>
               <td>Generated-loop cleanup</td>
               <td>Eliminates singleton loops and simplifies generated expressions and statements.</td>
               <td>Each cleanup has a semantic-preservation theorem. Parallel codegen uses the cleaned result only when its trace check succeeds; otherwise it retains the safe uncleaned result.</td>
-              <td><a href="files/3598.html" target="_blank" rel="noopener"><code>LoopSingletonCleanup.v</code></a>, <a href="files/3597.html" target="_blank" rel="noopener"><code>LoopCleanup.v</code></a>, <a href="files/3600.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a></td>
+              <td><a href="files/3597.html" target="_blank" rel="noopener"><code>LoopSingletonCleanup.v</code></a>, <a href="files/3596.html" target="_blank" rel="noopener"><code>LoopCleanup.v</code></a>, <a href="files/3599.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a></td>
             </tr>
             <tr>
               <td>Loop postpasses (optional)</td>
-              <td>Applies constant-bound unrolling or checked block/remainder unroll-and-jam to generated loops. A parallel route after unroll-and-jam re-extracts the changed loop and validates its parallel dimensions again.</td>
-              <td>Unrolling covers the original iteration range exactly. Jamming also validates the exchanges introduced by fusion.</td>
-              <td><a href="files/3599.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a>, <a href="files/3618.html" target="_blank" rel="noopener"><code>LoopJamValidator.v</code></a>, <a href="files/3592.html" target="_blank" rel="noopener"><code>VerifiedLoopPostpass.v</code></a></td>
+              <td>Applies constant-bound unrolling, or block and remainder unrolling followed by checked loop jamming. A parallel route after unroll-and-jam re-extracts the changed loop and validates its parallel dimensions again.</td>
+              <td>Each unrolling form covers the original iteration range exactly. Jamming also validates the exchanges introduced by fusion.</td>
+              <td><a href="files/3598.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a>, <a href="files/3615.html" target="_blank" rel="noopener"><code>LoopJamValidator.v</code></a>, <a href="files/3591.html" target="_blank" rel="noopener"><code>VerifiedLoopPostpass.v</code></a></td>
             </tr>
             <tr>
               <td>Configuration and composition</td>
               <td>Selects a supported sequential, parallel, or innermost-vector route and composes its stage results.</td>
               <td>The public end-to-end theorem covers every accepted configuration. Unsupported configurations return no target program.</td>
-              <td><a href="files/3593.html" target="_blank" rel="noopener"><code>VerifiedParallelCompilerConfig.v</code></a>, <a href="files/3586.html" target="_blank" rel="noopener"><code>ExtractedPipelineCorrect.v</code></a></td>
+              <td><a href="files/3592.html" target="_blank" rel="noopener"><code>VerifiedParallelCompilerConfig.v</code></a>, <a href="files/3586.html" target="_blank" rel="noopener"><code>ExtractedPipelineCorrect.v</code></a></td>
             </tr>
           </tbody>
         </table>
@@ -277,106 +277,16 @@ if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
       </p>
     </section>
 
-    <section id="transformations">
-      <h2>Supported Transformations and Cleanup Passes</h2>
-      <div class="wide-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Transformation</th>
-              <th>Effect</th>
-              <th>Acceptance condition</th>
-              <th>Implementation</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Affine scheduling</td>
-              <td>Changes loop order and shape; covers interchange, skewing, fusion, and fission.</td>
-              <td>Every statement pair whose order reverses may safely exchange.</td>
-              <td><a href="files/3605.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Index-set splitting (ISS)</td>
-              <td>Splits one statement domain into disjoint pieces, which may then receive different schedules.</td>
-              <td>The pieces preserve the statement and form an exact partition of the source domain.</td>
-              <td><a href="files/3613.html" target="_blank" rel="noopener"><code>ISSValidator.v</code></a>, <a href="files/3615.html" target="_blank" rel="noopener"><code>ISSWitness.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Ordinary tiling</td>
-              <td>Adds rectangular tile coordinates and intra-tile point coordinates.</td>
-              <td>The candidate realizes every source instance exactly once and the tiled band has a safe order.</td>
-              <td><a href="files/3629.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a>, <a href="files/3628.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Two-level tiling</td>
-              <td>Adds two nested levels of tile coordinates.</td>
-              <td>Both levels satisfy the instance-mapping and band-order obligations for a recognized layout.</td>
-              <td><a href="files/3626.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a>, <a href="files/3627.html" target="_blank" rel="noopener"><code>TilingBandMixedSecondValidator.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Diamond tiling</td>
-              <td>Uses coupled tile coordinates to form wavefront-shaped tiles; full-diamond routes use the same checked tiling boundary.</td>
-              <td>The candidate satisfies the same exact instance mapping and band-order obligations as other accepted tiling layouts.</td>
-              <td><a href="files/3626.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a>, <a href="files/3590.html" target="_blank" rel="noopener"><code>PolOpt.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Post-tiling affine scheduling</td>
-              <td>Reschedules the tiled program, including its intra-tile loops.</td>
-              <td>The affine validator accepts the new schedule relative to the tiled program.</td>
-              <td><a href="files/3587.html" target="_blank" rel="noopener"><code>ParallelPolOpt.v</code></a>, <a href="files/3631.html" target="_blank" rel="noopener"><code>Validator.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Parallelization</td>
-              <td>Marks one or more generated loop dimensions as parallel, allowing their iterations to interleave.</td>
-              <td>Statement instances from distinct iterations at each selected dimension may exchange order.</td>
-              <td><a href="files/3621.html" target="_blank" rel="noopener"><code>ParallelValidator.v</code></a>, <a href="files/3619.html" target="_blank" rel="noopener"><code>ParallelCodegenCore.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Innermost vector annotation</td>
-              <td>Uses the parallel certificate for an innermost loop and records the more restricted vector mode.</td>
-              <td>The parallel check succeeds and the selected generated loop is innermost.</td>
-              <td><a href="files/3619.html" target="_blank" rel="noopener"><code>ParallelCodegenCore.v</code></a>, <a href="files/3620.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Constant-bound unrolling</td>
-              <td>Expands sequential loops whose complete iteration range is known.</td>
-              <td>The expanded statements cover the original range exactly. Parallel loop annotations are retained and are not themselves unrolled.</td>
-              <td><a href="files/3599.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a>, <a href="files/3593.html" target="_blank" rel="noopener"><code>VerifiedParallelCompilerConfig.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Block and remainder unrolling</td>
-              <td>Executes full blocks of a chosen factor and handles the remaining iterations separately.</td>
-              <td>The block and remainder ranges partition the original loop range.</td>
-              <td><a href="files/3599.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Unroll-and-jam</td>
-              <td>Block-unrolls an outer loop and fuses corresponding inner loops.</td>
-              <td>The unrolling is exact, and the validator accepts every exchange introduced by the fusion.</td>
-              <td><a href="files/3618.html" target="_blank" rel="noopener"><code>LoopJamValidator.v</code></a>, <a href="files/3616.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a>, <a href="files/3617.html" target="_blank" rel="noopener"><code>LoopJamLower.v</code></a></td>
-            </tr>
-            <tr>
-              <td>Singleton-loop and expression cleanup</td>
-              <td>Removes one-iteration loops and simplifies generated loop syntax.</td>
-              <td>The cleaned loop has the same executions as the generated loop.</td>
-              <td><a href="files/3598.html" target="_blank" rel="noopener"><code>LoopSingletonCleanup.v</code></a>, <a href="files/3597.html" target="_blank" rel="noopener"><code>LoopCleanup.v</code></a>, <a href="files/3600.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
     <section id="instructions">
       <h2>Reusable Instruction Interface</h2>
       <p>
         The validators reason about loop instances and memory effects through
-        the <a href="files/3595.html" target="_blank" rel="noopener"><code>INSTR</code></a>
+        the <a href="files/3594.html" target="_blank" rel="noopener"><code>INSTR</code></a>
         interface. They do not require instructions to be empty or tied to one
         frontend. The text <code>.loop</code> examples use a lightweight
         instruction model. Additional examples instantiate typed scalar and
         array operations in
-        <a href="files/3604.html" target="_blank" rel="noopener"><code>CTypedLoopSamples.v</code></a>.
+        <a href="files/3603.html" target="_blank" rel="noopener"><code>CTypedLoopSamples.v</code></a>.
       </p>
       <p>
         <a href="../evidence/results/test-catalog.html#typed-instruction-programs" target="_blank" rel="noopener">
