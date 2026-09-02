@@ -91,7 +91,7 @@ LIBS_BYTE=$(patsubst %.cmxa,%.cma,$(patsubst %.cmx,%.cmo,$(LIBS)))
 EXECUTABLES=polcert polcert.byte polopt polopt.byte cchecklink cchecklink.byte clightgen clightgen.byte
 GENERATED=$(PARSERS:.mly=.mli) $(PARSERS:.mly=.ml) $(LEXERS:.mll=.ml)
 
-.PHONY: test-extracted-zero-fallback test-typed-c-pipeline
+.PHONY: test-extracted-zero-fallback test-typed-c-pipeline test-parallel-hint-mapping
 
 # Beginning of part that assumes .depend.extr already exists
 
@@ -128,6 +128,10 @@ TYPED_C_PIPELINE_OBJS:=$(shell $(MODORDER) \
   extraction/ParallelPolOpt.cmx \
   driver/Scheduler.cmx)
 TYPED_C_PIPELINE_TEST=tests/typed-c-pipeline/test.cmx
+PARALLEL_HINT_MAPPING_OBJS:=$(shell $(MODORDER) \
+  extraction/OpenScop.cmx \
+  driver/Scheduler.cmx)
+PARALLEL_HINT_MAPPING_TEST=tests/parallel-hint-mapping/test.cmx
 
 $(TYPED_C_PIPELINE_TEST): COMPFLAGS += -I tests/typed-c-pipeline
 
@@ -194,6 +198,19 @@ test-typed-c-pipeline: \
 	@$(OCAMLOPT) -o /tmp/polcert-typed-c-pipeline-test \
 	  $(LIBS) $(LINK_OPT) $+
 	@/tmp/polcert-typed-c-pipeline-test -conf polcert.ini
+
+tests/parallel-hint-mapping/test.cmo $(PARALLEL_HINT_MAPPING_TEST): \
+    extraction/OpenScop.cmi \
+    lib/OpenScopReader.cmi \
+    driver/Scheduler.cmi
+
+test-parallel-hint-mapping: \
+    $(PARALLEL_HINT_MAPPING_OBJS) \
+    $(PARALLEL_HINT_MAPPING_TEST)
+	@echo "Linking /tmp/polcert-parallel-hint-mapping-test"
+	@$(OCAMLOPT) -o /tmp/polcert-parallel-hint-mapping-test \
+	  $(LIBS) $(LINK_OPT) $+
+	@/tmp/polcert-parallel-hint-mapping-test -conf polcert.ini
 
 CLIGHTGEN_OBJS:=$(shell $(MODORDER) export/ExportDriver.cmx)
 
@@ -278,7 +295,8 @@ NO_MLI_MODULES := \
 	syntax/SLoopDispatch \
 	syntax/SLoopIss \
 	syntax/SLoopProfile \
-	syntax/SLoopRoute
+	syntax/SLoopRoute \
+	tests/parallel-hint-mapping/test
 
 NO_MLI_CMIS := $(addsuffix .cmi,$(NO_MLI_MODULES))
 NO_MLI_CMXS := $(addsuffix .cmx,$(NO_MLI_MODULES))
@@ -317,6 +335,9 @@ clean:
 	rm -f tests/extracted-zero-fallback/*.cm[iotx] \
 	      tests/extracted-zero-fallback/*cmti \
 	      tests/extracted-zero-fallback/*.o
+	rm -f tests/parallel-hint-mapping/*.cm[iotx] \
+	      tests/parallel-hint-mapping/*cmti \
+	      tests/parallel-hint-mapping/*.o
 # $(MAKE) -C cparser clean
 
 # Generation of .depend.extr

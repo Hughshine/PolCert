@@ -1,3 +1,2 @@
-OCAMLOPT tests/extracted-zero-fallback/test.ml
 Linking /tmp/polcert-extracted-zero-fallback-gate
 [extracted-zero-fallback] OK (6 direct extracted API rejection paths)

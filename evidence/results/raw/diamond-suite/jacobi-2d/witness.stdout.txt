@@ -1,5 +1,5 @@
-before: /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.midtransform.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.posttile.scop
+before: /release/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.midtransform.scop
+after:  /release/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.posttile.scop
 params: T,N
 
 statement 1:

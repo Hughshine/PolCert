@@ -3,43 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/b4525867b44139/after.loop</code></h1>
-  <pre>context(NMAX);
+  <h1><code>evidence/results/program-comparisons/b3f9d1f7d77171/before.loop</code></h1>
+  <pre>context(N);
 
-if (3 &lt;= NMAX) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {
-        for i3 in range((32 * i1), 2) {
-          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
-        }
-        for i3 in range(max(2, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {
-          for i4 in range(0, (i3 + -1)) {
-            c[i2][i4] = (c[i2][i4] + (a[i3][i4] * b[i2][i3]));
-            c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
-          }
-          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
-        }
-      }
-    }
-  }
+for i0 in range(0, N) {
+  x[i0] = (a[i0] + b[i0]);
 }
-if (NMAX &lt;= 2) {
-  for i0 in range(0, ((NMAX + 31) / 32)) {
-    for i1 in range(0, ((NMAX + 31) / 32)) {
-      for i2 in range((32 * i0), NMAX) {
-        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), NMAX)) {
-          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
-        }
-      }
-    }
-  }
+s = 0.0;
+for i0 in range(0, N) {
+  s = (s + (x[i0] * 3));
 }
 </pre>
 </main>

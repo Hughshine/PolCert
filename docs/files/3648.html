@@ -3,21 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion4.loop</title>
+  <title>costfunc.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/fusion4.loop</code></h1>
-  <pre>for x in range(0, 10000) {
-  for y in range(0, 10000) {
-    B[x][y] = (x + y);
-  }
-}
-for x in range(0, 10000) {
-  for y in range(0, 10000) {
-    C[x][y] = (B[(x - 1)][(y - 1)] + B[x][(y - 1)]);
+  <h1><code>source/tests/polopt-regression/inputs/costfunc.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  for j in range(1, N) {
+    a[i][j] = (a[j][i] + a[i][(j - 1)]);
   }
 }
 </pre>

@@ -1,5 +1,5 @@
-before: /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.midtransform.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.posttile.scop
+before: /release/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.midtransform.scop
+after:  /release/polcert-artifact-check/diamond-suite/diamond-tile-example/diamond/diamond-tile-example.posttile.scop
 params: T,N
 
 statement 1:

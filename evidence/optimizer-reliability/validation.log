@@ -1,5 +1,5 @@
 python3 tools/pluto_bugs/run_matmul_parallel_hint.py
-[pluto-bug] explicit-RAR matmul parallel-hint case reproduced
+[pluto-bug] explicit-RAR matmul hint certifies the intended loop
 python3 tools/pluto_bugs/run_auto_affine_lp_cc_scaling.py
 [pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
 [pluto-auto-affine-lp] scheduler: expected=automatic-two-component-lp actual=exit-0,illegal-S3-to-S1-order control-files=none
@@ -18,9 +18,10 @@ python3 tools/pluto_bugs/run_affine_fst_reversed.py
 python3 tools/pluto_bugs/run_tiling_innerpar_satvec.py
 [pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
 [pluto-tiling-bug] producer: expected=parallel-dependent-t4 actual=exit-0,omp-t4 interpretation=stale-satisfaction-metadata
-[pluto-tiling-bug] execution: expected=310235039 actual=12958390,18458966,99753,49485416,1286250 consistency=mismatch
+[pluto-tiling-bug] execution: expected=310235039 actual=3960635,2636236,26157393,25676264,52469207 consistency=mismatch
 [pluto-tiling-bug] checked-pipeline: expected=tiling-accepted,no-nontrivial-parallel-loop actual=exit-0,permutable-band,singleton-parallel interpretation=unsafe-overlay-replaced-by-semantically-sequential-loop
-[pluto-tiling-bug] strict-pipeline: expected=rejected,no-output actual=exit-1,alarm interpretation=fail-closed
+[pluto-tiling-bug] strict-pipeline: expected=tiling-accepted,no-nontrivial-parallel-loop actual=exit-0,permutable-band,singleton-parallel interpretation=mapped-hint-remains-semantically-sequential
+[pluto-tiling-bug] dependent-tile-loop: expected=rejected actual=exit-2 interpretation=dependence-detected
 [pluto-tiling-bug] OK
 python3 tools/pluto_bugs/run_diamond_nointratile_reschedule.py
 [pluto-diamond-nointra] producer: expected=20 actual=20 consistency=match interpretation=mandatory-diamond-restore-ran
@@ -30,7 +31,7 @@ python3 tools/pluto_bugs/run_vanished_outer_parallel.py
 [pluto-baseline] role=bug-reproducer commit=historical-bug-witness-pluto-snapshot root=/opt/polcert/pluto-buggy
 [pluto-miscompile] producer: expected=success-with-inner-OpenMP actual=exit-0,parallel-t2 interpretation=unsafe-loop-substitution
 [pluto-miscompile] execution: expected=10000 actual=2499,2499,2499 consistency=mismatch
-[pluto-miscompile] polcert-hint: expected=rejected actual=exit-1,no-output interpretation=fail-closed
+[pluto-miscompile] polcert-hint: expected=singleton-parallel actual=exit-0,parallel-i0-range-0-1 interpretation=vanished-coordinate-did-not-transfer-inward
 [pluto-miscompile] polcert-inner-loop: expected=rejected actual=exit-2 interpretation=dependence-detected
 [pluto-miscompile] OK (white-box defect reproduced and rejected)
 python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py

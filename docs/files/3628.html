@@ -3,74 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_check_polopt_cases.py</title>
+  <title>test.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/tools/test_check_polopt_cases.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <h1><code>source/tests/extracted-zero-fallback/test.ml</code></h1>
+  <pre>let fail label detail =
+  Printf.eprintf &quot;[extracted-zero-fallback] FAIL %s: %s\n&quot; label detail;
+  exit 1
 
-import check_polopt_cases
+let expect_certchecker_failure label thunk =
+  try
+    ignore (thunk ());
+    fail label &quot;returned instead of raising CertCheckerFailure&quot;
+  with
+  | CertcheckerConfig.CertCheckerFailure _ -&gt; ()
+  | exn -&gt; fail label (&quot;raised unexpected exception: &quot; ^ Printexc.to_string exn)
 
+let expect_rejected_route label thunk =
+  TilingValidationRoute.clear ();
+  expect_certchecker_failure label thunk;
+  match TilingValidationRoute.take () with
+  | [&quot;rejected&quot;] -&gt; ()
+  | routes -&gt;
+      fail label
+        (&quot;expected route [rejected], observed [&quot;
+         ^ String.concat &quot;; &quot; routes ^ &quot;]&quot;)
 
-def main() -&gt; int:
-    required_changed = {&quot;changed&quot;}
-    required_unchanged = {&quot;unchanged&quot;}
-    required_tiled = {&quot;changed&quot;}
+let expect_no_return label thunk =
+  TilingValidationRoute.clear ();
+  expect_certchecker_failure label thunk;
+  ignore (TilingValidationRoute.take ())
 
-    assert not check_polopt_cases.required_effect_failures(
-        &quot;changed&quot;,
-        changed=True,
-        nontrivial_changed=True,
-        tiled=True,
-        require_nontrivial_changed=required_changed,
-        require_unchanged=required_unchanged,
-        require_tiled_cases=required_tiled,
-    )
-    assert not check_polopt_cases.required_effect_failures(
-        &quot;unchanged&quot;,
-        changed=False,
-        nontrivial_changed=False,
-        tiled=False,
-        require_nontrivial_changed=required_changed,
-        require_unchanged=required_unchanged,
-        require_tiled_cases=required_tiled,
-    )
-    failures = check_polopt_cases.required_effect_failures(
-        &quot;changed&quot;,
-        changed=True,
-        nontrivial_changed=False,
-        tiled=False,
-        require_nontrivial_changed=required_changed,
-        require_unchanged=required_unchanged,
-        require_tiled_cases=required_tiled,
-    )
-    assert failures == [
-        &quot;expected a nontrivial optimized-loop change&quot;,
-        &quot;expected explicit tiled bounds&quot;,
-    ]
-    failures = check_polopt_cases.required_effect_failures(
-        &quot;unchanged&quot;,
-        changed=True,
-        nontrivial_changed=True,
-        tiled=False,
-        require_nontrivial_changed=required_changed,
-        require_unchanged=required_unchanged,
-        require_tiled_cases=required_tiled,
-    )
-    assert failures == [&quot;expected the optimized loop to remain unchanged&quot;]
-    print(
-        &quot;[strict-effect-unit] PASS expected=reject-missing-effects actual=rejected &quot;
-        &quot;interpretation=per-case effect contracts fail closed&quot;
-    )
-    return 0
-
-
-if __name__ == &quot;__main__&quot;:
-    raise SystemExit(main())
+let () =
+  expect_rejected_route &quot;SBandTilingOpt.reject_tiling&quot;
+    (fun () -&gt; SBandTilingOpt.reject_tiling ());
+  expect_no_return &quot;SBandTilingOpt.Rejected selector&quot;
+    (fun () -&gt;
+      SBandTilingOpt.prepared_codegen_after_tiling_route
+        SBandTilingOpt.PolyLang.dummy
+        SBandTilingOpt.TilingSched.Rejected);
+  expect_no_return &quot;SBandTilingOpt post-tiling affine rejection&quot;
+    (fun () -&gt;
+      SBandTilingOpt.reject_post_tiling_affine
+        SBandTilingOpt.TilingSched.DirectBandAccepted
+        ());
+  expect_rejected_route &quot;SParallelPolOpt.reject_tiling&quot;
+    (fun () -&gt; SParallelPolOpt.reject_tiling ());
+  expect_no_return &quot;SParallelPolOpt.Rejected selector&quot;
+    (fun () -&gt;
+      SParallelPolOpt.select_after_tiling_route
+        SParallelPolOpt.PolyLang.dummy
+        SParallelPolOpt.TilingSched.Rejected);
+  expect_no_return &quot;SParallelPolOpt post-tiling affine rejection&quot;
+    (fun () -&gt;
+      SParallelPolOpt.reject_post_tiling_affine
+        SParallelPolOpt.TilingSched.DirectBandAccepted);
+  Printf.printf
+    &quot;[extracted-zero-fallback] OK (6 direct extracted API rejection paths)\n&quot;
 </pre>
 </main>
 </body>

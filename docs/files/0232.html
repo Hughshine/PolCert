@@ -3,20 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>input.pretty.loop</title>
+  <title>optimized.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/optimized-loop-examples/tricky2/input.pretty.loop</code></h1>
+  <h1><code>evidence/optimized-loop-examples/tricky2/optimized.loop</code></h1>
   <pre>context(N, M);
 
-for i0 in range(0, N) {
+for i0 in range(0, min(M, N)) {
   autocorr = (autocorr + 1);
-}
-for i0 in range(0, M) {
   temp3 = (temp3 + 1);
+}
+for i0 in range(max(0, N), M) {
+  temp3 = (temp3 + 1);
+}
+for i0 in range(max(M, 0), N) {
+  autocorr = (autocorr + 1);
 }
 </pre>
 </main>

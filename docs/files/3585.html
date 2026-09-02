@@ -3,73 +3,1233 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>ParallelPolOpt.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/README.md</code></h1>
-  <pre># PolCert Source Snapshot
+  <h1><code>source/driver/ParallelPolOpt.v</code></h1>
+  <pre>Require Import Result.
+Require Import List.
+Require Import String.
+Require Import PolyLang.
+Require Import PolIRs.
+Require Import Loop.
+Require Import OpenScop.
+Require Import ParallelCodegen.
+Require Import Validator.
+Require Import PolOpt.
+Require Import TilingBandDirectRuntime.
+Require Import ImpureAlarmConfig.
+Require Import Vpl.Impure.
 
-This directory contains the compiler, its Rocq proofs, and its tests. It is the
-source snapshot used for the recorded proof build and compiler checks.
+Module ParallelPolOpt (PolIRs : POLIRS).
 
-The main source directories are:
+Module CoreOpt := PolOpt PolIRs.
+Module PolyLang := PolIRs.PolyLang.
+Module State := PolIRs.State.
+Module ValidatorCore := Validator PolIRs.
+Module ParallelCodegenCore := ParallelCodegen PolIRs.
+Module TilingSched : TILING_BAND_DIRECT_RUNTIME_API PolIRs :=
+  TilingBandDirectRuntime PolIRs.
+Module LoopIR := PolIRs.Loop.
 
-| Directory | Responsibility |
-| --- | --- |
-| `src/` | The polyhedral model and checks for schedules, tiling, and parallel loops. |
-| `polygen/` | Source and target loop languages, loop generation, and unrolling. |
-| `driver/` | Complete compiler configurations and top-level correctness theorems. |
-| `syntax/` | Concrete instructions, text input, and the extracted command-line tool. |
-| `common/`, `cfrontend/`, `cparser/`, `lib/` | Reused CompCert infrastructure. |
-| `VPL/`, `flocq/`, `MenhirLib/` | Vendored third-party proof and parsing libraries. |
-| `tests/`, `tools/` | Test inputs and validation tools. |
+(** * Proof map
 
-## Instruction Models and Examples
+    The executable definitions first run the dimension validator, convert its
+    certificate to the codegen functor instance, and request annotation.
+    [parallel_codegen_cert_of_validator_cert_sound] proves that this conversion
+    retains pointwise soundness and the schedule-coordinate bound.  The final
+    single and multi correctness theorems consume those facts rather than
+    treating the numeric dimension as trusted metadata. *)
 
-The validators are parameterized by the interfaces in `polygen/StateTy.v`,
-`polygen/InstrTy.v`, and `polygen/PolIRs.v`. A client supplies its instruction
-syntax, execution relation, state equality, read and write footprints, and
-proof that non-conflicting instructions may exchange order. The validation
-algorithms therefore depend on nested-loop structure and memory effects, not
-on one fixed source-language instruction set.
+(** * Checked single and vector annotations *)
 
-The executable `.loop` frontend uses the lightweight instruction model in
-`syntax/SInstr.v`. Its proofs establish the required interface laws for that
-modeled store. A hand-written `.loop` input does not, by itself, prove that its
-declared accesses describe an external C program; the recorded tests exercise
-the validator under those supplied memory effects.
+Definition parallel_plan_of_dim (d : nat) : ValidatorCore.parallel_plan :=
+  {| ValidatorCore.ParallelCore.target_dim := d |}.
 
-The more concrete `src/CInstr.v` instance includes typed scalar and array
-instructions. `samples/CSample1.v`, `CSample2.v`, and `CSample3.v` encode
-matrix multiplication, covariance, and a four-statement GEMVER kernel, with
-the corresponding C snippets in `samples/*.c`. `samples/CTypedLoopSamples.v`
-adds compact typed examples for extraction, ISS, ordinary and two-level
-tiling, diamond tiling, and parallel-loop checking. These files are
-hand-constructed Rocq programs, not output from a verified C parser.
+Definition checked_parallel_current_annotated_codegen
+    (pol : PolyLang.t)
+    (plan : ValidatorCore.parallel_plan)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND cert_res &lt;- ValidatorCore.checked_parallelize_current
+                     (PolyLang.current_view_pprog pol) plan -;
+  match cert_res with
+  | Okk cert =&gt;
+      let cert&#x27; :=
+        {| ParallelCodegenCore.ParallelValidator.certified_dim :=
+             cert.(ValidatorCore.ParallelCore.certified_dim) |} in
+      ParallelCodegenCore.checked_annotated_codegen
+        (PolyLang.current_view_pprog pol) cert&#x27;
+  | Err msg =&gt; pure (Err msg)
+  end.
 
-The main reusable theorem is
-`VerifiedParallelCompilerConfig.compile_correct` in
-`driver/VerifiedParallelCompilerConfig.v`. The corresponding theorem for the
-executable compiler is `extracted_parallel_compile_correct` in
-`driver/ExtractedPipelineCorrect.v`.
+Definition checked_parallel_current_annotated_codegen_at
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_parallel_current_annotated_codegen pol (parallel_plan_of_dim d).
 
-The validated toolchain used OCaml 4.13.1 and Rocq/Coq 8.13.2. Run:
+Definition checked_vector_current_annotated_codegen
+    (pol : PolyLang.t)
+    (plan : ValidatorCore.parallel_plan)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND cert_res &lt;- ValidatorCore.checked_parallelize_current
+                     (PolyLang.current_view_pprog pol) plan -;
+  match cert_res with
+  | Okk cert =&gt;
+      let cert&#x27; :=
+        {| ParallelCodegenCore.ParallelValidator.certified_dim :=
+             cert.(ValidatorCore.ParallelCore.certified_dim) |} in
+      ParallelCodegenCore.checked_vector_annotated_codegen
+        (PolyLang.current_view_pprog pol) cert&#x27;
+  | Err msg =&gt; pure (Err msg)
+  end.
 
-```sh
-./configure x86_64-linux
-make depend
-make proof
-make extraction
-```
+Definition checked_vector_current_annotated_codegen_at
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_vector_current_annotated_codegen pol (parallel_plan_of_dim d).
 
-For the packaged proof environment, run the Docker build described in
-`../environment/README.md` from the archive root.
+Definition parallel_codegen_cert_of_validator_cert
+    (cert : ValidatorCore.parallel_cert)
+  : ParallelCodegenCore.ParallelValidator.parallel_cert :=
+  {| ParallelCodegenCore.ParallelValidator.certified_dim :=
+       cert.(ValidatorCore.ParallelCore.certified_dim) |}.
 
-Tests that run the external Pluto optimizer require a compatible Pluto
-installation. Their recorded results are under `../evidence/`.
+(** * Certificate transport across functor instances *)
+
+Lemma parallel_codegen_cert_of_validator_cert_sound :
+  forall pp plan cert,
+    mayReturn (ValidatorCore.checked_parallelize_current pp plan) (Okk cert) -&gt;
+    ParallelCodegenCore.parallel_codegen_cert_sound pp
+      (parallel_codegen_cert_of_validator_cert cert).
+Proof.
+  intros pp plan cert Hchecked.
+  unfold ParallelCodegenCore.parallel_codegen_cert_sound,
+    parallel_codegen_cert_of_validator_cert.
+  split; simpl.
+  - exact
+      (ValidatorCore.checked_parallelize_current_pointwise_sound
+         pp plan cert Hchecked).
+  - exact
+      (ValidatorCore.checked_parallelize_current_implies_dim_in_range
+         pp plan cert Hchecked).
+Qed.
+
+(** * Collecting multiple certified schedule coordinates *)
+
+Fixpoint collect_parallel_current_codegen_certs
+    (pp : PolyLang.t)
+    (dims : list nat)
+  : imp (list ParallelCodegenCore.ParallelValidator.parallel_cert) :=
+  match dims with
+  | nil =&gt; pure nil
+  | cons d dims&#x27; =&gt;
+      BIND cert_res &lt;-
+        ValidatorCore.checked_parallelize_current pp (parallel_plan_of_dim d) -;
+      match cert_res with
+      | Okk cert =&gt;
+          BIND certs &lt;- collect_parallel_current_codegen_certs pp dims&#x27; -;
+          pure (cons (parallel_codegen_cert_of_validator_cert cert) certs)
+      | Err _ =&gt;
+          collect_parallel_current_codegen_certs pp dims&#x27;
+      end
+  end.
+
+Lemma collect_parallel_current_codegen_certs_sound :
+  forall pp dims certs,
+    mayReturn (collect_parallel_current_codegen_certs pp dims) certs -&gt;
+    Forall (ParallelCodegenCore.parallel_codegen_cert_sound pp) certs.
+Proof.
+  intros pp dims.
+  induction dims as [|d dims IH]; intros certs Hcollect; simpl in Hcollect.
+  - apply mayReturn_pure in Hcollect. subst certs. constructor.
+  - apply mayReturn_bind in Hcollect.
+    destruct Hcollect as [cert_res [Hchecked Hrest]].
+    destruct cert_res as [cert | msg].
+    + apply mayReturn_bind in Hrest.
+      destruct Hrest as [certs&#x27; [Htail Hpure]].
+      apply mayReturn_pure in Hpure. subst certs.
+      constructor.
+      * eapply parallel_codegen_cert_of_validator_cert_sound; eauto.
+      * eapply IH; eauto.
+    + eapply IH; eauto.
+Qed.
+
+Definition checked_parallel_current_many_annotated_codegen_at
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  let current := PolyLang.current_view_pprog pol in
+  BIND certs &lt;- collect_parallel_current_codegen_certs current dims -;
+  match certs with
+  | nil =&gt; pure (Err &quot;Parallel validation failed&quot;%string)
+  | cons _ _ =&gt;
+      ParallelCodegenCore.checked_annotated_codegen_many current certs
+  end.
+
+Definition parallel_current_identity_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_parallel_current_annotated_codegen_at pol d.
+
+Definition parallel_current_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- CoreOpt.checked_affine_schedule pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_identity_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_vector_current_annotated_codegen_at pol d.
+
+Definition vector_current_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- CoreOpt.checked_affine_schedule pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition observe_tiling_validation_route
+    (route : TilingSched.tiling_band_validation_route)
+  : TilingSched.tiling_band_validation_route :=
+  PolOpt.print (fun _ =&gt; tt) route.
+
+Lemma observe_tiling_validation_route_eq :
+  forall route, observe_tiling_validation_route route = route.
+Proof. reflexivity. Qed.
+
+Definition reject_tiling (_ : unit) : imp PolyLang.t :=
+  match observe_tiling_validation_route TilingSched.Rejected with
+  | TilingSched.Rejected =&gt;
+      res_to_alarm PolyLang.dummy
+        (Err &quot;Tiling validation rejected or unavailable.&quot;%string)
+  | TilingSched.DirectBandAccepted =&gt;
+      res_to_alarm PolyLang.dummy
+        (Err &quot;Tiling validation rejected or unavailable.&quot;%string)
+  end.
+
+Definition select_after_tiling_route
+    (pol_after : PolyLang.t)
+    (route : TilingSched.tiling_band_validation_route)
+  : imp PolyLang.t :=
+  match route with
+  | TilingSched.DirectBandAccepted =&gt;
+      pure (PolyLang.current_view_pprog pol_after)
+  | TilingSched.Rejected =&gt;
+      res_to_alarm PolyLang.dummy
+        (Err &quot;Tiling validation rejected.&quot;%string)
+  end.
+
+Definition reject_post_tiling_affine
+    (route : TilingSched.tiling_band_validation_route) : imp PolyLang.t :=
+  match route with
+  | TilingSched.DirectBandAccepted =&gt;
+      res_to_alarm PolyLang.dummy
+        (Err &quot;Post-tiling affine validation failed.&quot;)
+  | TilingSched.Rejected =&gt;
+      res_to_alarm PolyLang.dummy
+        (Err &quot;Post-tiling affine validation failed.&quot;)
+  end.
+
+Definition try_verified_tiling_after_phase_mid_poly
+    (pol_mid : PolyLang.t)
+    (mid_scop after_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match CoreOpt.infer_tiling_witness_scops mid_scop after_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk ws =&gt;
+      match ValidatorCore.import_canonical_tiled_after_poly pol_mid after_scop ws with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_after =&gt;
+          BIND route &lt;-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_after ws -;
+          match route with
+          | TilingSched.DirectBandAccepted =&gt;
+              BIND wf_after &lt;-
+                ValidatorCore.check_wf_polyprog_general pol_after -;
+              if wf_after then
+                select_after_tiling_route
+                  pol_after
+                  (observe_tiling_validation_route route)
+              else rejected tt
+          | TilingSched.Rejected =&gt;
+              rejected tt
+          end
+      end
+  end.
+
+Definition try_phase_pipeline_from_source_pol_poly
+    (pol_source : PolyLang.t)
+    (phase_runner : OpenScop -&gt; result (OpenScop * OpenScop))
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match phase_runner before_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk (mid_scop, after_scop) =&gt;
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_mid =&gt;
+          BIND affine_ok &lt;- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_tiling_after_phase_mid_poly pol_mid mid_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_identity_tiling_phase_pipeline_from_source_pol_poly
+    (pol_source : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match CoreOpt.run_pluto_identity_tiling_pipeline before_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk (mid_scop, after_scop) =&gt;
+      match PolyLang.from_openscop_like_source pol_source mid_scop with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_mid =&gt;
+          BIND affine_ok &lt;- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_tiling_after_phase_mid_poly pol_mid mid_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_verified_post_tiling_affine_after_phase_mid_poly
+    (pol_mid : PolyLang.t)
+    (mid_scop posttile_scop after_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match CoreOpt.infer_tiling_witness_scops mid_scop posttile_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk ws =&gt;
+      match ValidatorCore.import_canonical_tiled_after_poly pol_mid posttile_scop ws with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_posttile =&gt;
+          BIND route &lt;-
+            TilingSched.checked_tiling_schedule_sourceb_first_runtime_validate_route
+              pol_mid pol_posttile ws -;
+          match route with
+          | TilingSched.DirectBandAccepted =&gt;
+              BIND wf_posttile &lt;-
+                ValidatorCore.check_wf_polyprog_general pol_posttile -;
+              if wf_posttile then
+                let route := observe_tiling_validation_route route in
+                match PolyLang.from_openscop_schedule_only
+                        pol_posttile after_scop with
+                | Err _ =&gt; reject_post_tiling_affine route
+                | Okk pol_after =&gt;
+                    BIND final_ok &lt;-
+                      ValidatorCore.validate_general pol_posttile pol_after -;
+                    if final_ok then
+                      BIND wf_after &lt;-
+                        ValidatorCore.check_wf_polyprog_general pol_after -;
+                      if wf_after then
+                        select_after_tiling_route pol_after route
+                      else reject_post_tiling_affine route
+                    else reject_post_tiling_affine route
+                end
+              else rejected tt
+          | TilingSched.Rejected =&gt;
+              rejected tt
+          end
+      end
+  end.
+
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_poly
+    (pol_source : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline before_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk (mid_scop, (posttile_scop, after_scop)) =&gt;
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_mid =&gt;
+          BIND affine_ok &lt;- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_post_tiling_affine_after_phase_mid_poly
+              pol_mid mid_scop posttile_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
+    (pol_source : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  let rejected := reject_tiling in
+  match CoreOpt.run_pluto_post_tiling_affine_phase_pipeline_with_iss before_scop with
+  | Err _ =&gt;
+      rejected tt
+  | Okk (mid_scop, (posttile_scop, after_scop)) =&gt;
+      match PolyLang.from_openscop_schedule_only pol_source mid_scop with
+      | Err _ =&gt;
+          rejected tt
+      | Okk pol_mid =&gt;
+          BIND affine_ok &lt;- ValidatorCore.validate pol_source pol_mid -;
+          if affine_ok then
+            try_verified_post_tiling_affine_after_phase_mid_poly
+              pol_mid mid_scop posttile_scop after_scop
+          else
+            rejected tt
+      end
+  end.
+
+Definition try_checked_iss_phase_pipeline_from_poly_poly
+    (pol : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  match CoreOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =&gt;
+      if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf &lt;- ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          try_phase_pipeline_from_source_pol_poly
+            pol_iss
+            CoreOpt.run_pluto_phase_pipeline_with_iss
+            before_scop
+        else
+          try_phase_pipeline_from_source_pol_poly
+            pol
+            CoreOpt.run_pluto_phase_pipeline
+            before_scop
+      else
+        try_phase_pipeline_from_source_pol_poly
+          pol
+          CoreOpt.run_pluto_phase_pipeline
+          before_scop
+  | _ =&gt;
+      try_phase_pipeline_from_source_pol_poly
+        pol
+        CoreOpt.run_pluto_phase_pipeline
+        before_scop
+  end.
+
+Definition try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly
+    (pol : PolyLang.t)
+    (before_scop : OpenScop)
+  : imp PolyLang.t :=
+  match CoreOpt.infer_iss_from_source_scop pol before_scop with
+  | Okk (Some (pol_iss, w)) =&gt;
+      if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+        BIND iss_wf &lt;- ValidatorCore.check_wf_polyprog pol_iss -;
+        if iss_wf then
+          try_post_tiling_affine_phase_pipeline_from_source_pol_poly_with_iss
+            pol_iss
+            before_scop
+        else
+          try_post_tiling_affine_phase_pipeline_from_source_pol_poly
+            pol
+            before_scop
+      else
+        try_post_tiling_affine_phase_pipeline_from_source_pol_poly
+          pol
+          before_scop
+  | _ =&gt;
+      try_post_tiling_affine_phase_pipeline_from_source_pol_poly
+        pol
+        before_scop
+  end.
+
+Definition iss_only_prepared_from_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  match CoreOpt.export_for_phase_scheduler pol with
+  | None =&gt;
+      pure pol
+  | Some before_scop =&gt;
+      match CoreOpt.infer_iss_from_source_scop pol before_scop with
+      | Okk (Some (pol_iss, w)) =&gt;
+          if ValidatorCore.checked_iss_complete_cut_shape_validate pol pol_iss w then
+            BIND iss_wf &lt;- ValidatorCore.check_wf_polyprog pol_iss -;
+            if iss_wf then pure pol_iss else pure pol
+          else
+            pure pol
+      | _ =&gt;
+          pure pol
+      end
+  end.
+
+Definition iss_affine_prepared_from_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  BIND pol_iss &lt;- iss_only_prepared_from_poly pol -;
+  CoreOpt.checked_affine_schedule pol_iss.
+
+Definition phase_pipeline_opt_prepared_from_poly_no_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =&gt;
+        reject_tiling tt
+    | Some before_scop =&gt;
+        try_phase_pipeline_from_source_pol_poly
+          pol
+          CoreOpt.run_pluto_phase_pipeline
+          before_scop
+    end
+  else
+    reject_tiling tt.
+
+Definition identity_tiling_opt_prepared_from_poly_no_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =&gt;
+        reject_tiling tt
+    | Some before_scop =&gt;
+        try_identity_tiling_phase_pipeline_from_source_pol_poly
+          pol before_scop
+    end
+  else
+    reject_tiling tt.
+
+Definition identity_tiling_opt_prepared_from_poly_with_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  BIND pol_iss &lt;- iss_only_prepared_from_poly pol -;
+  identity_tiling_opt_prepared_from_poly_no_iss_poly pol_iss.
+
+Definition phase_pipeline_opt_prepared_from_poly_with_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =&gt;
+        reject_tiling tt
+    | Some before_scop =&gt;
+        try_checked_iss_phase_pipeline_from_poly_poly pol before_scop
+    end
+  else
+    reject_tiling tt.
+
+Definition post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =&gt;
+        reject_tiling tt
+    | Some before_scop =&gt;
+        try_post_tiling_affine_phase_pipeline_from_source_pol_poly pol before_scop
+    end
+  else
+    reject_tiling tt.
+
+Definition post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly
+    (pol : PolyLang.t)
+  : imp PolyLang.t :=
+  if CoreOpt.has_nonscalar_stmt pol then
+    match CoreOpt.export_for_phase_scheduler pol with
+    | None =&gt;
+        reject_tiling tt
+    | Some before_scop =&gt;
+        try_checked_iss_post_tiling_affine_phase_pipeline_from_poly_poly pol before_scop
+    end
+  else
+    reject_tiling tt.
+
+Definition parallel_current_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_identity_tiled_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_post_tiling_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_post_tiling_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_identity_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_only_prepared_from_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_affine_prepared_from_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_current_many_identity_prepared_from_poly
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  checked_parallel_current_many_annotated_codegen_at pol dims.
+
+Definition parallel_current_many_identity_tiled_prepared_from_poly
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- CoreOpt.checked_affine_schedule pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_prepared_from_poly
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_post_tiling_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_identity_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_only_prepared_from_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_affine_prepared_from_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition parallel_current_many_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_parallel_current_many_annotated_codegen_at pol&#x27; dims.
+
+Definition vector_current_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_identity_tiled_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_identity_tiled_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- identity_tiling_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_post_tiling_affine_prepared_from_poly
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_no_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_post_tiling_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- post_tiling_affine_phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_identity_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_only_prepared_from_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_affine_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- iss_affine_prepared_from_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition vector_current_prepared_from_poly_with_iss
+    (pol : PolyLang.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol&#x27; &lt;- phase_pipeline_opt_prepared_from_poly_with_iss_poly pol -;
+  checked_vector_current_annotated_codegen_at pol&#x27; d.
+
+Definition parallel_dummy : ParallelCodegenCore.ParallelLoop.t :=
+  ParallelCodegenCore.tag_loop LoopIR.dummy.
+
+Definition Opt_parallel_current_identity_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_identity_tiled_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_tiled_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_tiled_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_affine_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_affine_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_post_tiling_affine_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_post_tiling_affine_prepared_from_poly pol d.
+
+Definition Opt_parallel_current_post_tiling_affine_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_post_tiling_affine_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_identity_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_identity_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_affine_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_affine_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_many_identity_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_identity_prepared_from_poly pol dims.
+
+Definition Opt_parallel_current_many_identity_tiled_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_identity_tiled_prepared_from_poly pol dims.
+
+Definition Opt_parallel_current_many_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_identity_tiled_prepared_from_poly_with_iss pol dims.
+
+Definition Opt_parallel_current_many_affine_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_affine_prepared_from_poly pol dims.
+
+Definition Opt_parallel_current_many_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_prepared_from_poly pol dims.
+
+Definition Opt_parallel_current_many_post_tiling_affine_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_post_tiling_affine_prepared_from_poly pol dims.
+
+Definition Opt_parallel_current_many_post_tiling_affine_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_post_tiling_affine_prepared_from_poly_with_iss pol dims.
+
+Definition Opt_parallel_current_many_identity_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_identity_prepared_from_poly_with_iss pol dims.
+
+Definition Opt_parallel_current_many_affine_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_affine_prepared_from_poly_with_iss pol dims.
+
+Definition Opt_parallel_current_many_with_iss_result
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  parallel_current_many_prepared_from_poly_with_iss pol dims.
+
+Definition Opt_vector_current_identity_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_prepared_from_poly pol d.
+
+Definition Opt_vector_current_identity_tiled_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_tiled_prepared_from_poly pol d.
+
+Definition Opt_vector_current_identity_tiled_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_tiled_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_affine_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_affine_prepared_from_poly pol d.
+
+Definition Opt_vector_current_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_prepared_from_poly pol d.
+
+Definition Opt_vector_current_post_tiling_affine_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_post_tiling_affine_prepared_from_poly pol d.
+
+Definition Opt_vector_current_post_tiling_affine_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_post_tiling_affine_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_identity_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_identity_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_affine_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_affine_prepared_from_poly_with_iss pol d.
+
+Definition Opt_vector_current_with_iss_result
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp (result ParallelCodegenCore.ParallelLoop.t) :=
+  BIND pol0 &lt;- res_to_alarm PolyLang.dummy (CoreOpt.Extractor.extractor loop) -;
+  let pol := CoreOpt.Strengthen.strengthen_pprog pol0 in
+  vector_current_prepared_from_poly_with_iss pol d.
+
+Definition Opt_parallel_current_identity
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_identity_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_identity_tiled
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_identity_tiled_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_identity_tiled_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_affine
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_affine_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_post_tiling_affine
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_post_tiling_affine_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_post_tiling_affine_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_post_tiling_affine_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_identity_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_identity_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_affine_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_affine_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_identity
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_identity_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_identity_tiled
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_identity_tiled_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_identity_tiled_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_affine
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_affine_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_post_tiling_affine
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_post_tiling_affine_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_post_tiling_affine_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_post_tiling_affine_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_identity_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_identity_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_affine_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_affine_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_parallel_current_many_with_iss
+    (loop : LoopIR.t)
+    (dims : list nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_parallel_current_many_with_iss_result loop dims -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_identity_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_tiled
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_identity_tiled_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_tiled_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_identity_tiled_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_affine
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_affine_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_post_tiling_affine
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_post_tiling_affine_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_post_tiling_affine_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_post_tiling_affine_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_identity_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_identity_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_affine_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_affine_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Definition Opt_vector_current_with_iss
+    (loop : LoopIR.t)
+    (d : nat)
+  : imp ParallelCodegenCore.ParallelLoop.t :=
+  BIND res &lt;- Opt_vector_current_with_iss_result loop d -;
+  res_to_alarm parallel_dummy res.
+
+Lemma checked_parallel_current_annotated_codegen_correct :
+  forall pol plan pl st st&#x27;,
+    mayReturn (checked_parallel_current_annotated_codegen pol plan) (Okk pl) -&gt;
+    PolyLang.wf_pprog_general pol -&gt;
+    ParallelCodegenCore.ParallelLoop.semantics pl st st&#x27; -&gt;
+    exists st&#x27;&#x27;,
+      PolyLang.instance_list_semantics pol st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
+Proof.
+  intros pol plan pl st st&#x27; Hopt Hwf Hsem.
+  unfold checked_parallel_current_annotated_codegen in Hopt.
+  apply mayReturn_bind in Hopt.
+  destruct Hopt as [cert_res [Hcert Hret]].
+  destruct cert_res as [cert|msg].
+  - pose proof
+      (parallel_codegen_cert_of_validator_cert_sound
+         (PolyLang.current_view_pprog pol) plan cert Hcert) as Hcert_sound.
+    eapply ParallelCodegenCore.checked_annotated_codegen_correct_general; eauto.
+  - apply mayReturn_pure in Hret.
+    discriminate.
+Qed.
+
+Lemma checked_vector_current_annotated_codegen_correct :
+  forall pol plan pl st st&#x27;,
+    mayReturn (checked_vector_current_annotated_codegen pol plan) (Okk pl) -&gt;
+    PolyLang.wf_pprog_general pol -&gt;
+    ParallelCodegenCore.ParallelLoop.semantics pl st st&#x27; -&gt;
+    exists st&#x27;&#x27;,
+      PolyLang.instance_list_semantics pol st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
+Proof.
+  intros pol plan pl st st&#x27; Hopt Hwf Hsem.
+  unfold checked_vector_current_annotated_codegen in Hopt.
+  apply mayReturn_bind in Hopt.
+  destruct Hopt as [cert_res [Hcert Hret]].
+  destruct cert_res as [cert|msg].
+  - eapply ParallelCodegenCore.checked_vector_annotated_codegen_correct_general; eauto.
+  - apply mayReturn_pure in Hret.
+    discriminate.
+Qed.
+
+End ParallelPolOpt.
 </pre>
 </main>
 </body>

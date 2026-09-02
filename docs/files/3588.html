@@ -3,122 +3,1151 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>InstrTy.v</title>
+  <title>Scheduler.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/polygen/InstrTy.v</code></h1>
-  <pre>Require Import ZArith.
-Require Import List.
-Require Import StateTy.
-Require Import TyTy.
-Require Import IterSemantics.
-Require Import ImpureAlarmConfig.
-Require Import Base.
-Require Import PolyBase.
-(* Require Import AST. *)
-Require Import OpenScop.
+  <h1><code>source/driver/Scheduler.ml</code></h1>
+  <pre>
 
-(** The interface for base instruction, parameterizing the validator. *)
-(** User should give its syntax, semantics, and proves its properties (Bernstein&#x27;s Conditions). *)
+(* let scheduler  *)
+open Result
+open Driveraux
+(* open CPolIRs *)
+open Camlcoq
+open Filename
+open Str  (* Required for regular expressions *)
 
-Module Type INSTR.
-    Declare Module State: STATE.
-    Declare Module Ty: TY.
-    Module IterSem := IterSem(State).
-    Module IterSemImpure := IterSem.IterImpureSemantics(CoreAlarmed).
-    Parameter t : Type.
-    Parameter dummy_instr : t.
-    Parameter ident: Type.
-    Parameter ident_eqb: ident -&gt; ident -&gt; bool.
-    Parameter ident_eqb_eq: forall i1 i2, ident_eqb i1 i2 = true &lt;-&gt; i1 = i2.
+type pluto_raw_loop_hint = {
+  raw_hint_iterator : string;
+  raw_hint_stmt_ids : int list;
+  raw_hint_dim : int;
+  raw_hint_directive : int;
+}
+
+type pluto_parallel_hint = {
+  hint_iterator : string;
+  hint_stmt_ids : int list;
+  hint_raw_dim : int;
+  hint_current_dim : int;
+  hint_directive : int;
+}
+
+type tiling_mode =
+  | OrdinaryTiling
+  | SecondLevelTiling
+
+type schedule_mode =
+  | AffineSchedule
+  | IdentitySchedule
+
+type diamond_mode =
+  | NoDiamondTiling
+  | DiamondOneDimensionalStart
+  | DiamondFullDimensionalStart
+
+type intra_tile_mode =
+  | DisableIntraTile
+  | EnableIntraTile
+
+let current_tiling_mode = ref OrdinaryTiling
+let current_schedule_mode = ref AffineSchedule
+let current_diamond_mode = ref NoDiamondTiling
+let current_intra_tile_mode = ref DisableIntraTile
+let current_pluto_extra_flags = ref []
+let current_pluto_control_files = ref []
+
+let set_tiling_mode mode =
+  current_tiling_mode := mode
+
+let set_schedule_mode mode =
+  current_schedule_mode := mode
+
+let set_diamond_mode mode =
+  current_diamond_mode := mode
+
+let set_intra_tile_mode mode =
+  current_intra_tile_mode := mode
+
+let set_pluto_extra_flags flags =
+  current_pluto_extra_flags := flags
+
+let absolute_path path =
+  if Filename.is_relative path then
+    Filename.concat (Sys.getcwd ()) path
+  else
+    path
+
+let set_pluto_control_files files =
+  current_pluto_control_files :=
+    List.map (fun (target, source) -&gt; (target, absolute_path source)) files
+
+let with_pluto_extra_flags flags =
+  flags @ !current_pluto_extra_flags
+
+let second_level_tiling_enabled () =
+  !current_tiling_mode = SecondLevelTiling
+
+let diamond_tiling_enabled () =
+  !current_diamond_mode &lt;&gt; NoDiamondTiling
+
+let full_dimensional_diamond_start_enabled () =
+  !current_diamond_mode = DiamondFullDimensionalStart
+
+let identity_schedule_enabled () =
+  !current_schedule_mode = IdentitySchedule
+
+let intra_tile_enabled () =
+  !current_intra_tile_mode = EnableIntraTile
+
+let post_tiling_affine_enabled () =
+  diamond_tiling_enabled () || intra_tile_enabled ()
+
+let intra_tile_flags () =
+  match !current_intra_tile_mode with
+  | DisableIntraTile -&gt; [&quot;--nointratileopt&quot;]
+  | EnableIntraTile -&gt; [&quot;--intratileopt&quot;]
+
+let identity_schedule_flags () =
+  match !current_schedule_mode with
+  | AffineSchedule -&gt; []
+  | IdentitySchedule -&gt; [&quot;--identity&quot;]
+
+let tmp_file_abs suff =
+  absolute_path (tmp_file suff)
+
+let copy_file src dst =
+  let ic = open_in_bin src in
+  Fun.protect
+    ~finally:(fun () -&gt; close_in_noerr ic)
+    (fun () -&gt;
+      let oc = open_out_bin dst in
+      Fun.protect
+        ~finally:(fun () -&gt; close_out_noerr oc)
+        (fun () -&gt;
+          let buf = Bytes.create 65536 in
+          let rec loop () =
+            let n = input ic buf 0 (Bytes.length buf) in
+            if n &gt; 0 then begin
+              output oc buf 0 n;
+              loop ()
+            end
+          in
+          loop ()))
+
+let with_pluto_control_workdir f =
+  match !current_pluto_control_files with
+  | [] -&gt; f ()
+  | files -&gt;
+      let installed = ref [] in
+      Fun.protect
+        ~finally:(fun () -&gt;
+          List.iter safe_remove !installed)
+        (fun () -&gt;
+          List.iter
+            (fun (target, source) -&gt;
+              if Sys.file_exists target then
+                failwith
+                  (Printf.sprintf
+                     &quot;explicit Pluto control file target %s already exists in the oracle working directory&quot;
+                     target);
+              installed := target :: !installed;
+              copy_file source target)
+            files;
+          f ())
+
+let pluto_executable () =
+  match Sys.getenv_opt &quot;POLCERT_PLUTO&quot; with
+  | Some path when String.trim path &lt;&gt; &quot;&quot; -&gt; path
+  | _ -&gt;
+      let container_pluto = &quot;/pluto/tool/pluto&quot; in
+      if Sys.file_exists container_pluto then
+        container_pluto
+      else
+        &quot;pluto&quot;
+
+let resolve_repo_file rel =
+  let candidates =
+    [ rel;
+      Filename.concat (Sys.getcwd ()) rel;
+      Filename.concat &quot;/polcert&quot; rel ]
+  in
+  match List.find_opt Sys.file_exists candidates with
+  | Some path -&gt; path
+  | None -&gt; failwith (&quot;cannot locate repository file &quot; ^ rel)
+
+let read_file path =
+  let ic = open_in path in
+  let buf = Buffer.create 4096 in
+  Fun.protect
+    ~finally:(fun () -&gt; close_in ic)
+    (fun () -&gt;
+      (try
+         while true do
+           Buffer.add_string buf (input_line ic);
+           Buffer.add_char buf &#x27;\n&#x27;
+         done
+       with End_of_file -&gt; ());
+      Buffer.contents buf)
+
+(* These legacy Pluto inputs bypass the explicit PolOpt option surface.  In
+   particular, skipdeps.txt can remove legality constraints before scheduling,
+   while codegen.context can silently restrict the generated parameter domain. *)
+let implicit_pluto_control_files =
+  [&quot;skipdeps.txt&quot;; &quot;codegen.context&quot;; &quot;.linearized&quot;; &quot;.nonlinearized&quot;]
+
+let implicit_pluto_control_file_error () =
+  match List.find_opt Sys.file_exists implicit_pluto_control_files with
+  | None -&gt; None
+  | Some path -&gt;
+      Some
+        (coqstring_of_camlstring
+           (Printf.sprintf
+              &quot;implicit Pluto control file %s is not supported by polopt; remove it or use a future explicit file option&quot;
+              path))
+
+(** scop to scop *)
+
+(** TODO: specify dump scop file name in pluto*)
+let run_pluto_scop flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -&gt; Err msg
+  | None -&gt;
+  let inscop_file = tmp_file_abs &quot;.scop&quot; in
+  let outscop_file = inscop_file ^ &quot;.afterscheduling.scop&quot; in 
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  let cmd =
+    List.concat
+      [[pluto_executable (); &quot;--dumpscop&quot;; &quot;--readscop&quot;]; flags; [inscop_file]]
+  in
+  (* print_string ((String.concat &quot; &quot; cmd) ^ &quot;\n&quot;); *)
+  let stdout = tmp_file_abs &quot;.stdout&quot; in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -&gt; command ?stdout:(Some stdout) cmd)
+  in
+  let read_outscop () =
+      if Sys.file_exists outscop_file then
+      OpenScopReader.read outscop_file
+    else
+      None
+  in
+  match read_outscop () with
+  | Some outscop -&gt; Okk outscop
+  | None -&gt;
+      if exc &lt;&gt; 0 then (
+        safe_remove outscop_file;
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf &quot;scheduler failed with exit code %d&quot; exc))
+      ) else
+        Err (coqstring_of_camlstring (&quot;scheduler failed&quot;))
+
+let text_has_line tag text =
+  String.split_on_char &#x27;\n&#x27; text
+  |&gt; List.exists (fun line -&gt; String.trim line = tag)
+
+let run_pluto_scop_with_phase_dumps flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -&gt; Err msg
+  | None -&gt;
+  let inscop_file = tmp_file_abs &quot;.scop&quot; in
+  let midscop_file = inscop_file ^ &quot;.midtransform.scop&quot; in
+  let posttile_file = inscop_file ^ &quot;.posttile.scop&quot; in
+  let outscop_file = inscop_file ^ &quot;.afterscheduling.scop&quot; in
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  let cmd =
+    List.concat
+      [[pluto_executable (); &quot;--dumpscop&quot;; &quot;--readscop&quot;]; flags; [inscop_file]]
+  in
+  let stdout = tmp_file_abs &quot;.stdout&quot; in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -&gt; command ?stdout:(Some stdout) cmd)
+  in
+  let read_scop path =
+    if Sys.file_exists path then
+      OpenScopReader.read path
+    else
+      None
+  in
+  match read_scop midscop_file, read_scop posttile_file, read_scop outscop_file with
+  | Some midscop, Some posttile_scop, Some outscop -&gt; Okk (midscop, posttile_scop, outscop)
+  | _ -&gt;
+      if exc &lt;&gt; 0 then (
+        safe_remove midscop_file;
+        safe_remove posttile_file;
+        safe_remove outscop_file;
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf &quot;post-tiling affine scheduler failed with exit code %d&quot; exc))
+      ) else
+        Err (coqstring_of_camlstring &quot;post-tiling affine scheduler failed&quot;)
+
+let trim_nonempty_lines lines =
+  List.filter_map
+    (fun line -&gt;
+      let line = String.trim line in
+      if line = &quot;&quot; then None else Some line)
+    lines
+
+let payload_lines_between_tags begin_tag end_tag text =
+  let rec seek = function
+    | [] -&gt; []
+    | line :: rest -&gt;
+        if String.trim line = begin_tag then
+          collect [] rest
+        else
+          seek rest
+  and collect acc = function
+    | [] -&gt; List.rev acc
+    | line :: rest -&gt;
+        if String.trim line = end_tag then
+          List.rev acc
+        else
+          collect (line :: acc) rest
+  in
+  seek (String.split_on_char &#x27;\n&#x27; text)
+
+let noncomment_payload_lines lines =
+  trim_nonempty_lines lines
+  |&gt; List.filter (fun line -&gt; line.[0] &lt;&gt; &#x27;#&#x27;)
+
+let split_ws s =
+  List.filter (fun tok -&gt; tok &lt;&gt; &quot;&quot;)
+    (Str.split (Str.regexp &quot;[ \t\r]+&quot;) s)
+
+let concat_map f xs =
+  List.concat (List.map f xs)
+
+let take n xs =
+  let rec go k acc ys =
+    if k &lt;= 0 then List.rev acc
+    else match ys with
+      | [] -&gt; List.rev acc
+      | y :: ys&#x27; -&gt; go (k - 1) (y :: acc) ys&#x27;
+  in
+  go n [] xs
+
+let drop n xs =
+  let rec go k ys =
+    if k &lt;= 0 then ys
+    else match ys with
+      | [] -&gt; []
+      | _ :: ys&#x27; -&gt; go (k - 1) ys&#x27;
+  in
+  go n xs
+
+let extract_loop_hints_from_outscop directive_mask outscop_file =
+  try
+    let text = read_file outscop_file in
+    let scatnames =
+      payload_lines_between_tags &quot;&lt;scatnames&gt;&quot; &quot;&lt;/scatnames&gt;&quot; text
+      |&gt; noncomment_payload_lines
+      |&gt; concat_map split_ws
+    in
+    let loop_payload =
+      payload_lines_between_tags &quot;&lt;loop&gt;&quot; &quot;&lt;/loop&gt;&quot; text
+      |&gt; noncomment_payload_lines
+    in
+    let parse_loop_entries payload =
+      match payload with
+      | [] -&gt; []
+      | loop_count_s :: rest -&gt;
+          let loop_count = int_of_string loop_count_s in
+          let rec parse count acc lines =
+            if count &lt;= 0 then List.rev acc
+            else
+              match lines with
+              | iterator :: stmt_nb_s :: tail -&gt;
+                  let stmt_nb = int_of_string stmt_nb_s in
+                  let stmt_ids = take stmt_nb tail in
+                  if List.length stmt_ids &lt;&gt; stmt_nb then
+                    raise (Failure &quot;loop stmt id count mismatch&quot;);
+                  begin
+                    match drop stmt_nb tail with
+                    | _private_vars :: directive_s :: rest&#x27; -&gt;
+                        let directive = int_of_string directive_s in
+                        parse
+                          (count - 1)
+                          ((iterator, List.map int_of_string stmt_ids, directive) :: acc)
+                          rest&#x27;
+                    | _ -&gt;
+                        raise (Failure &quot;truncated loop extension&quot;)
+                  end
+              | _ -&gt;
+                  raise (Failure &quot;truncated loop extension&quot;)
+          in
+          parse loop_count [] rest
+    in
+    let loop_entries = parse_loop_entries loop_payload in
+    let rec find_indices iterator i = function
+      | [] -&gt; []
+      | name :: rest -&gt;
+          let tail = find_indices iterator (i + 1) rest in
+          if String.equal name iterator then i :: tail else tail
+    in
+    let rec add_unique seen acc = function
+      | [] -&gt; List.rev acc
+      | (iterator, stmt_ids, directive) :: rest -&gt;
+          if directive land directive_mask = 0 then
+            add_unique seen acc rest
+          else
+            match find_indices iterator 0 scatnames with
+            | [dim] -&gt;
+                let key = (iterator, stmt_ids, directive) in
+                if List.mem key seen then
+                  add_unique seen acc rest
+                else
+                  let hint =
+                    {
+                      raw_hint_iterator = iterator;
+                      raw_hint_stmt_ids = stmt_ids;
+                      raw_hint_dim = dim;
+                      raw_hint_directive = directive;
+                    }
+                  in
+                  add_unique (key :: seen) (hint :: acc) rest
+            | _ -&gt; add_unique seen acc rest
+    in
+    add_unique [] [] loop_entries
+  with
+  | Sys_error _
+  | Failure _ -&gt; []
+
+let extract_parallel_hints_from_outscop outscop_file =
+  extract_loop_hints_from_outscop 1 outscop_file
+
+let extract_vector_hints_from_outscop outscop_file =
+  extract_loop_hints_from_outscop 4 outscop_file
+
+let extract_parallel_hint_from_outscop outscop_file =
+  match extract_parallel_hints_from_outscop outscop_file with
+  | [] -&gt; None
+  | hint :: _ -&gt; Some hint
+
+let extract_vector_hint_from_outscop outscop_file =
+  match extract_vector_hints_from_outscop outscop_file with
+  | [] -&gt; None
+  | hint :: _ -&gt; Some hint
+
+let map_parallel_hints_to_canonical_dims outscop hints =
+  List.filter_map
+    (fun hint -&gt;
+      match
+        OpenScop.raw_to_canonical_schedule_dim
+          outscop
+          (Camlcoq.Nat.of_int hint.raw_hint_dim)
+      with
+      | Some dim -&gt;
+          let canonical_dim = Camlcoq.Nat.to_int dim in
+          Some
+            {
+              hint_iterator = hint.raw_hint_iterator;
+              hint_stmt_ids = hint.raw_hint_stmt_ids;
+              hint_raw_dim = hint.raw_hint_dim;
+              hint_current_dim = canonical_dim;
+              hint_directive = hint.raw_hint_directive;
+            }
+      | None -&gt;
+          None)
+    hints
+
+type pluto_stmt_loop_path = {
+  path_stmt_id : int;
+  path_iterators : string list;
+}
+
+let leading_spaces line =
+  let rec go idx =
+    if idx &lt; String.length line &amp;&amp; line.[idx] = &#x27; &#x27; then go (idx + 1)
+    else idx
+  in
+  go 0
+
+let for_iterator_of_line line =
+  let line = String.trim line in
+  let is_for =
+    String.length line &gt;= 3
+    &amp;&amp; String.sub line 0 3 = &quot;for&quot;
+    &amp;&amp; (String.length line = 3 || line.[3] = &#x27; &#x27; || line.[3] = &#x27;\t&#x27; || line.[3] = &#x27;(&#x27;)
+  in
+  if not is_for then None
+  else
+    try
+      let left = String.index line &#x27;(&#x27; in
+      let right = String.index_from line (left + 1) &#x27;=&#x27; in
+      let iterator =
+        String.sub line (left + 1) (right - left - 1) |&gt; String.trim
+      in
+      if iterator = &quot;&quot; || String.contains iterator &#x27; &#x27; then None
+      else Some iterator
+    with Not_found -&gt; None
+
+let stmt_id_of_line line =
+  let line = String.trim line in
+  if String.length line &lt; 3 || line.[0] &lt;&gt; &#x27;S&#x27; then None
+  else
+    let rec digits_end idx =
+      if idx &lt; String.length line &amp;&amp; line.[idx] &gt;= &#x27;0&#x27; &amp;&amp; line.[idx] &lt;= &#x27;9&#x27;
+      then digits_end (idx + 1)
+      else idx
+    in
+    let stop = digits_end 1 in
+    if stop = 1 || stop &gt;= String.length line || line.[stop] &lt;&gt; &#x27;(&#x27; then None
+    else
+      try Some (int_of_string (String.sub line 1 (stop - 1)))
+      with Failure _ -&gt; None
+
+let pluto_c_stmt_loop_paths pluto_c_file =
+  let rec scan stack paths = function
+    | [] -&gt; List.rev paths
+    | line :: rest -&gt;
+        let indent = leading_spaces line in
+        let stack = List.filter (fun (loop_indent, _) -&gt; loop_indent &lt; indent) stack in
+        begin match for_iterator_of_line line, stmt_id_of_line line with
+        | Some iterator, _ -&gt; scan (stack @ [(indent, iterator)]) paths rest
+        | None, Some stmt_id -&gt;
+            let iterators = List.map snd stack in
+            scan stack ({ path_stmt_id = stmt_id; path_iterators = iterators } :: paths) rest
+        | None, None -&gt; scan stack paths rest
+        end
+  in
+  try
+    read_file pluto_c_file
+    |&gt; String.split_on_char &#x27;\n&#x27;
+    |&gt; scan [] []
+  with Sys_error _ -&gt; []
+
+let map_vector_hints_to_c_loop_dims pluto_c_file hints =
+  let paths = pluto_c_stmt_loop_paths pluto_c_file in
+  let rec find_index iterator idx = function
+    | [] -&gt; None
+    | current :: rest -&gt;
+        if String.equal iterator current then Some idx
+        else find_index iterator (idx + 1) rest
+  in
+  let add_unique value values =
+    if List.mem value values then values else value :: values
+  in
+  List.filter_map
+    (fun hint -&gt;
+      let dims =
+        List.fold_left
+          (fun dims path -&gt;
+            if hint.raw_hint_stmt_ids &lt;&gt; []
+               &amp;&amp; not (List.mem path.path_stmt_id hint.raw_hint_stmt_ids)
+            then dims
+            else
+              match find_index hint.raw_hint_iterator 0 path.path_iterators with
+              | None -&gt; dims
+              | Some dim -&gt; add_unique dim dims)
+          []
+          paths
+      in
+      match dims with
+      | [dim] -&gt;
+          Some
+            {
+              hint_iterator = hint.raw_hint_iterator;
+              hint_stmt_ids = hint.raw_hint_stmt_ids;
+              hint_raw_dim = hint.raw_hint_dim;
+              hint_current_dim = dim;
+              hint_directive = hint.raw_hint_directive;
+            }
+      | _ -&gt; None)
+    hints
+
+let run_pluto_scop_with_loop_hint extractor map_hints flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -&gt; Err msg
+  | None -&gt;
+  let inscop_file = tmp_file_abs &quot;.scop&quot; in
+  let outscop_file = inscop_file ^ &quot;.afterscheduling.scop&quot; in
+  let pluto_c_file = inscop_file ^ &quot;.pluto.c&quot; in
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  let cmd =
+    List.concat
+      [[pluto_executable (); &quot;--dumpscop&quot;; &quot;--readscop&quot;]; flags; [inscop_file]]
+  in
+  let stdout = tmp_file_abs &quot;.stdout&quot; in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -&gt; command ?stdout:(Some stdout) cmd)
+  in
+  let read_outscop () =
+    if Sys.file_exists outscop_file then
+      OpenScopReader.read outscop_file
+    else
+      None
+  in
+  let hints = extractor outscop_file in
+  match read_outscop () with
+  | Some outscop -&gt;
+      Okk
+        (outscop,
+         map_hints outscop pluto_c_file hints)
+  | None -&gt;
+      if exc &lt;&gt; 0 then (
+        safe_remove outscop_file;
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf &quot;scheduler failed with exit code %d&quot; exc))
+      ) else
+        Err (coqstring_of_camlstring (&quot;scheduler failed&quot;))
+
+let run_pluto_scop_with_parallel_hint flags inscop =
+  run_pluto_scop_with_loop_hint
+    extract_parallel_hints_from_outscop
+    (fun outscop _ hints -&gt; map_parallel_hints_to_canonical_dims outscop hints)
+    flags
+    inscop
+
+let run_pluto_scop_with_vector_hint flags inscop =
+  run_pluto_scop_with_loop_hint
+    extract_vector_hints_from_outscop
+    (fun _ pluto_c_file hints -&gt; map_vector_hints_to_c_loop_dims pluto_c_file hints)
+    flags
+    inscop
+
+let run_pluto_bridge flags inscop =
+  match implicit_pluto_control_file_error () with
+  | Some msg -&gt; Err msg
+  | None -&gt;
+  let inscop_file = tmp_file_abs &quot;.scop&quot; in
+  let stdout_file = tmp_file_abs &quot;.stdout&quot; in
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  let cmd =
+    List.concat
+      [[pluto_executable (); &quot;--readscop&quot;]; flags; [inscop_file]]
+  in
+  let exc =
+    with_pluto_control_workdir
+      (fun () -&gt; command ?stdout:(Some stdout_file) cmd)
+  in
+  let output = read_file stdout_file in
+  if exc &lt;&gt; 0 then
+    Err
+      (coqstring_of_camlstring
+         (Printf.sprintf &quot;ISS debug dump export failed with exit code %d&quot; exc))
+  else if not (text_has_line &quot;After ISS&quot; output) then
+    Okk output
+  else
+    try
+      let bridge_tool = resolve_repo_file &quot;tools/iss/pluto_iss_check.py&quot; in
+      let bridge_stdout = tmp_file_abs &quot;.bridge.stdout&quot; in
+      let bridge_cmd =
+        [ &quot;python3&quot;;
+          bridge_tool;
+          &quot;--emit-bridge-from-combined&quot;;
+          stdout_file ]
+      in
+      let bridge_exc = command ?stdout:(Some bridge_stdout) bridge_cmd in
+      let bridge_output = read_file bridge_stdout in
+      if bridge_exc = 0 then
+        Okk bridge_output
+      else
+        Err
+          (coqstring_of_camlstring
+             (Printf.sprintf
+                &quot;ISS bridge recovery from Pluto debug dump failed with exit code %d&quot;
+                bridge_exc))
+    with Failure msg -&gt;
+      Err (coqstring_of_camlstring msg)
+
+let affine_only_flags =
+  [
+    &quot;--nointratileopt&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+    &quot;--notile&quot;;
+  ]
+
+let tile_only_flags () =
+  [
+    &quot;--identity&quot;;
+    &quot;--tile&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+  ] @ intra_tile_flags ()
+
+let tile_only_second_level_flags () =
+  tile_only_flags () @ [&quot;--second-level-tile&quot;]
+
+let affine_with_iss_flags =
+  [&quot;--iss&quot;] @ affine_only_flags
+
+let affine_only_parallel_flags =
+  [
+    &quot;--nointratileopt&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--parallel&quot;;
+    &quot;--notile&quot;;
+  ]
+
+let affine_only_vector_flags =
+  [
+    &quot;--nointratileopt&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--prevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+    &quot;--notile&quot;;
+  ]
+
+let tile_only_parallel_flags () =
+  [
+    &quot;--identity&quot;;
+    &quot;--tile&quot;;
+    (* Keep parallelization inside the chosen tile.  The post-tiling affine
+       route separately validates any requested intra-tile rescheduling. *)
+    &quot;--innerpar&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--parallel&quot;;
+  ] @ intra_tile_flags ()
+
+let tile_only_vector_flags () =
+  [
+    &quot;--identity&quot;;
+    &quot;--tile&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--prevector&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+  ] @ intra_tile_flags ()
+
+let tile_only_parallel_second_level_flags () =
+  tile_only_parallel_flags () @ [&quot;--second-level-tile&quot;]
+
+let tile_only_vector_second_level_flags () =
+  tile_only_vector_flags () @ [&quot;--second-level-tile&quot;]
+
+let second_level_tiling_flags () =
+  if second_level_tiling_enabled ()
+  then [&quot;--second-level-tile&quot;]
+  else []
+
+let diamond_tiling_flags () =
+  match !current_diamond_mode with
+  | NoDiamondTiling -&gt; [&quot;--nodiamond-tile&quot;]
+  | DiamondOneDimensionalStart -&gt; [&quot;--diamond-tile&quot;]
+  | DiamondFullDimensionalStart -&gt;
+      [&quot;--diamond-tile&quot;; &quot;--full-diamond-tile&quot;]
+
+let post_tiling_affine_flags () =
+  identity_schedule_flags () @ [
+    &quot;--tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+  ]
+  @ intra_tile_flags ()
+  @
+  diamond_tiling_flags ()
+  @
+  second_level_tiling_flags ()
+
+let post_tiling_affine_parallel_flags () =
+  identity_schedule_flags () @ [
+    &quot;--tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--parallel&quot;;
+  ]
+  @ intra_tile_flags ()
+  @
+  diamond_tiling_flags ()
+  @
+  second_level_tiling_flags ()
+
+let post_tiling_affine_parallel_with_iss_flags () =
+  &quot;--iss&quot; :: post_tiling_affine_parallel_flags ()
+
+let post_tiling_affine_vector_flags () =
+  identity_schedule_flags () @ [
+    &quot;--tile&quot;;
+    &quot;--prevector&quot;;
+    &quot;--smartfuse&quot;;
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+  ]
+  @ intra_tile_flags ()
+  @
+  diamond_tiling_flags ()
+  @
+  second_level_tiling_flags ()
+
+let post_tiling_affine_vector_with_iss_flags () =
+  &quot;--iss&quot; :: post_tiling_affine_vector_flags ()
+
+let post_tiling_affine_with_iss_flags () =
+  &quot;--iss&quot; :: post_tiling_affine_flags ()
+
+(* These aliases retain the names inspected by older tooling.  The recipe is
+   shape-independent: it emits affine, post-tiling, and final schedule dumps
+   for rectangular intratile optimization as well as diamond tiling. *)
+let diamond_phase_flags = post_tiling_affine_flags
+
+let diamond_phase_with_iss_flags = post_tiling_affine_with_iss_flags
+
+let affine_with_iss_parallel_flags =
+  [&quot;--iss&quot;] @ affine_only_parallel_flags
+
+let affine_with_iss_vector_flags =
+  [&quot;--iss&quot;] @ affine_only_vector_flags
+
+let iss_identity_bridge_flags =
+  [
+    &quot;--iss&quot;;
+    &quot;--identity&quot;;
+    &quot;--moredebug&quot;;
+    &quot;--silent&quot;;
+  ]
+
+let affine_only_scop_scheduler inscop =
+  run_pluto_scop (with_pluto_extra_flags affine_only_flags) inscop
+
+let tile_only_scop_scheduler inscop =
+  let flags =
+    if second_level_tiling_enabled ()
+    then tile_only_second_level_flags ()
+    else tile_only_flags ()
+  in
+  run_pluto_scop (with_pluto_extra_flags flags) inscop
+
+let affine_only_scop_scheduler_with_parallel_hint inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags affine_only_parallel_flags)
+    inscop
+
+let affine_only_scop_scheduler_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags affine_only_vector_flags)
+    inscop
+
+let tile_only_scop_scheduler_with_parallel_hint inscop =
+  let flags =
+    if second_level_tiling_enabled ()
+    then tile_only_parallel_second_level_flags ()
+    else tile_only_parallel_flags ()
+  in
+  run_pluto_scop_with_parallel_hint (with_pluto_extra_flags flags) inscop
+
+let tile_only_scop_scheduler_with_vector_hint inscop =
+  let flags =
+    if second_level_tiling_enabled ()
+    then tile_only_vector_second_level_flags ()
+    else tile_only_vector_flags ()
+  in
+  run_pluto_scop_with_vector_hint (with_pluto_extra_flags flags) inscop
+
+let affine_only_scop_scheduler_with_iss inscop =
+  run_pluto_scop (with_pluto_extra_flags affine_with_iss_flags) inscop
+
+let affine_only_scop_scheduler_with_iss_with_parallel_hint inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags affine_with_iss_parallel_flags)
+    inscop
+
+let affine_only_scop_scheduler_with_iss_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags affine_with_iss_vector_flags)
+    inscop
+
+let iss_identity_bridge_from_scop inscop =
+  run_pluto_bridge iss_identity_bridge_flags inscop
+
+let run_pluto_phase_pipeline inscop =
+  match affine_only_scop_scheduler inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler midscop with
+        | Err msg -&gt; Err msg
+        | Okk outscop -&gt;
+            if second_level_tiling_enabled () then
+              begin
+                try
+                  let artifact =
+                    PlutoTilingValidator.extract_phase_artifact_from_scops
+                      ~tiling_mode:PlutoTilingValidator.SecondLevel
+                      ~before_path:&quot;mid_affine&quot;
+                      ~after_path:&quot;after_tiled&quot;
+                      midscop
+                      outscop
+                  in
+                  Okk (midscop, artifact.artifact_after_scop)
+                with
+                | PlutoTilingValidator.ValidationError msg -&gt;
+                    Err (coqstring_of_camlstring msg)
+                | exn -&gt;
+                    Err (coqstring_of_camlstring (Printexc.to_string exn))
+              end
+            else
+              Okk (midscop, outscop)
+      end
+
+let run_pluto_identity_tiling_pipeline inscop =
+  match tile_only_scop_scheduler inscop with
+  | Err msg -&gt; Err msg
+  | Okk outscop -&gt;
+      if second_level_tiling_enabled () then
+        begin
+          try
+            let artifact =
+              PlutoTilingValidator.extract_phase_artifact_from_scops
+                ~tiling_mode:PlutoTilingValidator.SecondLevel
+                ~before_path:&quot;identity_before&quot;
+                ~after_path:&quot;identity_tiled&quot;
+                inscop
+                outscop
+            in
+            Okk (inscop, artifact.artifact_after_scop)
+          with
+          | PlutoTilingValidator.ValidationError msg -&gt;
+              Err (coqstring_of_camlstring msg)
+          | exn -&gt;
+              Err (coqstring_of_camlstring (Printexc.to_string exn))
+        end
+      else
+        Okk (inscop, outscop)
+
+let run_pluto_post_tiling_affine_pipeline inscop =
+  run_pluto_scop_with_phase_dumps
+    (with_pluto_extra_flags (post_tiling_affine_flags ()))
+    inscop
+
+let run_pluto_post_tiling_affine_pipeline_nested inscop =
+  match run_pluto_post_tiling_affine_pipeline inscop with
+  | Err msg -&gt; Err msg
+  | Okk (midscop, posttile_scop, after_scop) -&gt;
+      Okk (midscop, (posttile_scop, after_scop))
+
+let run_pluto_post_tiling_affine_pipeline_with_iss inscop =
+  run_pluto_scop_with_phase_dumps
+    (with_pluto_extra_flags (post_tiling_affine_with_iss_flags ()))
+    inscop
+
+let run_pluto_post_tiling_affine_pipeline_with_iss_nested inscop =
+  match run_pluto_post_tiling_affine_pipeline_with_iss inscop with
+  | Err msg -&gt; Err msg
+  | Okk (midscop, posttile_scop, after_scop) -&gt;
+      Okk (midscop, (posttile_scop, after_scop))
+
+(* The extracted constants name the shape-independent phase composition:
+   affine scheduling, checked tiling, then checked post-tiling affine
+   rescheduling. *)
+let run_pluto_post_tiling_affine_phase_pipeline_nested =
+  run_pluto_post_tiling_affine_pipeline_nested
+
+let run_pluto_post_tiling_affine_phase_pipeline_with_iss_nested =
+  run_pluto_post_tiling_affine_pipeline_with_iss_nested
+
+let run_pluto_phase_pipeline_with_parallel_hint inscop =
+  match affine_only_scop_scheduler inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler_with_parallel_hint midscop with
+        | Err msg -&gt; Err msg
+        | Okk (outscop, hint) -&gt; Okk (midscop, outscop, hint)
+      end
+
+let run_pluto_phase_pipeline_with_vector_hint inscop =
+  match affine_only_scop_scheduler inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler_with_vector_hint midscop with
+        | Err msg -&gt; Err msg
+        | Okk (outscop, hint) -&gt; Okk (midscop, outscop, hint)
+      end
+
+let post_tiling_affine_scop_scheduler_with_parallel_hint inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags (post_tiling_affine_parallel_flags ()))
+    inscop
+
+let post_tiling_affine_scop_scheduler_with_parallel_hint_with_iss inscop =
+  run_pluto_scop_with_parallel_hint
+    (with_pluto_extra_flags (post_tiling_affine_parallel_with_iss_flags ()))
+    inscop
+
+let post_tiling_affine_scop_scheduler_with_vector_hint inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags (post_tiling_affine_vector_flags ()))
+    inscop
+
+let post_tiling_affine_scop_scheduler_with_vector_hint_with_iss inscop =
+  run_pluto_scop_with_vector_hint
+    (with_pluto_extra_flags (post_tiling_affine_vector_with_iss_flags ()))
+    inscop
+
+let run_pluto_phase_pipeline_with_iss inscop =
+  match affine_only_scop_scheduler_with_iss inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler midscop with
+        | Err msg -&gt; Err msg
+        | Okk outscop -&gt;
+            if second_level_tiling_enabled () then
+              begin
+                try
+                  let artifact =
+                    PlutoTilingValidator.extract_phase_artifact_from_scops
+                      ~tiling_mode:PlutoTilingValidator.SecondLevel
+                      ~before_path:&quot;mid_affine&quot;
+                      ~after_path:&quot;after_tiled&quot;
+                      midscop
+                      outscop
+                  in
+                  Okk (midscop, artifact.artifact_after_scop)
+                with
+                | PlutoTilingValidator.ValidationError msg -&gt;
+                    Err (coqstring_of_camlstring msg)
+                | exn -&gt;
+                    Err (coqstring_of_camlstring (Printexc.to_string exn))
+              end
+            else
+              Okk (midscop, outscop)
+      end
+
+let run_pluto_phase_pipeline_with_iss_with_parallel_hint inscop =
+  match affine_only_scop_scheduler_with_iss inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler_with_parallel_hint midscop with
+        | Err msg -&gt; Err msg
+        | Okk (outscop, hint) -&gt; Okk (midscop, outscop, hint)
+      end
+
+let run_pluto_phase_pipeline_with_iss_with_vector_hint inscop =
+  match affine_only_scop_scheduler_with_iss inscop with
+  | Err msg -&gt; Err msg
+  | Okk midscop -&gt;
+      begin
+        match tile_only_scop_scheduler_with_vector_hint midscop with
+        | Err msg -&gt; Err msg
+        | Okk (outscop, hint) -&gt; Okk (midscop, outscop, hint)
+      end
+
+let phase_scop_scheduler = run_pluto_phase_pipeline
+
+let infer_tiling_witness_scops before_scop after_scop =
+  try
+    let witness =
+      let tiling_mode =
+        if second_level_tiling_enabled ()
+        then PlutoTilingValidator.SecondLevel
+        else PlutoTilingValidator.Ordinary
+      in
+      PlutoTilingValidator.extract_witness_from_scops
+        ~tiling_mode
+        ~before_path:&quot;mid_affine&quot;
+        ~after_path:&quot;after_tiled&quot;
+        before_scop
+        after_scop
+    in
+    Okk (PhaseTiling.convert_witness witness)
+  with
+  | PlutoTilingValidator.ValidationError msg -&gt;
+      Err (coqstring_of_camlstring msg)
+  | exn -&gt;
+      Err (coqstring_of_camlstring (Printexc.to_string exn))
+
+let scheduler&#x27; = affine_only_scop_scheduler
 
 
-    (** auxiliary definitions for file exchange *)
-    Parameter ident_to_varname: ident -&gt; varname.
-    Parameter ident_to_openscop_ident: ident -&gt; AST.ident.
-    Parameter openscop_ident_to_ident: AST.ident -&gt; ident.
-    Parameter varname_to_ident : varname -&gt; ident.
-    Parameter bind_ident_varname : list (ident * varname) -&gt; list ident.
-    Parameter iterator_to_varname: nat -&gt; varname.
+let find_and_extract_time filename =
+  let ic = open_in filename in
+  let rec process_lines () =
+    try
+      let line = input_line ic in
+      let regex = regexp &quot;\\[pluto\\] Auto-transformation time: \\([0-9.]+\\)s&quot; in
+      if string_match regex line 0 then begin
+        let time_str = matched_group 1 line in
+        let time_float = float_of_string time_str in
+        close_in ic;
+        time_float
+      end else
+        process_lines ()
+    with
+      End_of_file -&gt; close_in ic; max_float
+  in
+  process_lines ()
 
-    (* the semantics expose write/read cells(footprint) for it *)
-    Parameter instr_semantics : t -&gt; list Z -&gt; list MemCell -&gt; list MemCell -&gt; State.t -&gt; State.t -&gt; Prop.
 
-    Parameter instr_semantics_stable_under_state_eq:
-        forall i p wcs rcs st1 st2 st1&#x27; st2&#x27;,
-            State.eq st1 st1&#x27; -&gt;
-            State.eq st2 st2&#x27; -&gt;
-            instr_semantics i p wcs rcs st1 st2 -&gt;
-            instr_semantics i p wcs rcs st1&#x27; st2&#x27;.
+(* also return the autoscheduling time, in pluto&#x27;s stdout, &quot;Auto-transformation time&quot; *)
+let invoke_pluto testname =
+  let inscop_file = testname ^ &quot;.beforescheduling.scop&quot; in
+  let outscop_file = testname ^ &quot;.afterscheduling.scop&quot; in
+  let cmd = List.concat [
+    [pluto_executable ();
+    &quot;--dumpscop&quot;;
+    &quot;--nointratileopt&quot;;
+    &quot;--nodiamond-tile&quot;;
+    &quot;--noprevector&quot;;
+    &quot;--smartfuse&quot;;     
+    &quot;--nounrolljam&quot;;
+    &quot;--noparallel&quot;;
+    &quot;--notile&quot;;
+    (* Preserve the original 62-case evaluation recipe explicitly.  User-facing
+       scheduler recipes follow Pluto&#x27;s default and add RAR only on request. *)
+    &quot;--rar&quot;];
+    [testname ^ &quot;.c&quot;]
+  ] in
+  let stdout =  (tmp_file (&quot;.&quot; ^ testname ^ &quot;.stdout&quot;)) in
+  print_string (&quot;\027[90mInfo\027[0m: Executing \&quot;&quot; ^ (String.concat &quot; &quot; cmd) ^ &quot;\&quot;\n&quot;);
+  let exc = command ?stdout:(Some stdout) cmd in
+  if exc &lt;&gt; 0 then (
+    command_error &quot;invoke pluto failed&quot; exc;)
+  else 
+    (* [pluto] Auto-transformation time: 0.001530s *)
+    let runtime = find_and_extract_time stdout in
+    Printf.printf &quot;\027[90mInfo\027[0m: Invoke pluto succeed, with auto-transformation time %fs\n&quot; runtime;
+    print_string (&quot;\027[90mInfo\027[0m: Reading &quot; ^ (inscop_file) ^ &quot; ...\n&quot;);
+    match OpenScopReader.read inscop_file with 
+    | Some inscop -&gt; 
+      print_string (&quot;\027[90mInfo\027[0m: Read &quot; ^ (inscop_file) ^ &quot; successfully\n&quot;);
+      (match OpenScopReader.read outscop_file with 
+      | Some outscop -&gt;
+        print_string (&quot;\027[90mInfo\027[0m: Read &quot; ^ (outscop_file) ^ &quot; successfully\n&quot;);
+        Okk (inscop, outscop, runtime)
+      | None -&gt; Err (coqstring_of_camlstring (&quot;invoke pluto failed&quot;))
+      )
+    | None -&gt; Err (coqstring_of_camlstring (&quot;invoke pluto failed&quot;)) 
     
-    Parameter eqb : t -&gt; t -&gt; bool.
-    Parameter eqb_eq: forall i1 i2, eqb i1 i2 = true &lt;-&gt; i1 = i2.
-    
-    (* Parameter NonAlias: (list ident) -&gt; State.t -&gt; Prop. *)
-    Parameter NonAlias: State.t -&gt; Prop.
-    Parameter InitEnv: (list ident) -&gt; (list Z) -&gt; State.t -&gt; Prop.
-    Parameter Compat: (list (ident * Ty.t)) -&gt; State.t -&gt; Prop.
+  (* match OpenScopReader.read inscop_file with
+  | Some outscop -&gt; Okk outscop
+  | None -&gt; Err (coqstring_of_camlstring (&quot;cannot read &quot; ^ inscop_file ^ &quot;\n&quot;)) *)
 
-    Parameter init_env_samelen: 
-        forall env envv st,
-            InitEnv env envv st -&gt;
-            length env = length envv.
+(* let scheduler&#x27; cpol =
+  let inscop = CPolIRs.PolyLang.to_openscop cpol in
+  let inscop_file = tmp_file &quot;.scop&quot; in
+  let outscop_file = tmp_file &quot;.scop&quot; in 
+  OpenScopPrinter.openscop_printer inscop_file inscop;
+  match OpenScopReader.read inscop_file with
+  | Some outscop -&gt; CPolIRs.PolyLang.from_openscop cpol outscop
+  | None -&gt; Err (coqstring_of_camlstring (&quot;Error: cannot read &quot; ^ inscop_file ^ &quot;\n&quot;)) *)
 
-    Parameter to_openscop: t -&gt; list varname -&gt; option OpenScop.ArrayStmt.
-
-    (** Used by extractor. could just return None when unnecessary. *)
-    Parameter waccess: t -&gt; option (list AccessFunction).
-    Parameter raccess: t -&gt; option (list AccessFunction).
-
-    (** Valid access functions should overapproximate memory footprint in dynamic semantics *)
-    Definition valid_access_function (wl rl: list AccessFunction) (i: t): Prop := 
-        forall p st st&#x27; wcells rcells,
-        instr_semantics i p wcells rcells st st&#x27; -&gt;
-        valid_access_cells p wcells wl /\ valid_access_cells p rcells rl.
-
-    (** Check that all constant context are indeed not written by its instruction. *)
-    Parameter check_never_written: (list ident) -&gt; t -&gt; bool.
-
-    (** Check all access functions are valid. *)
-    Parameter access_function_checker: list AccessFunction -&gt; list AccessFunction -&gt; t -&gt; bool.
-    Parameter access_function_checker_correct: 
-        forall wl rl i, 
-            access_function_checker wl rl i = true -&gt; valid_access_function wl rl i. 
-
-    Parameter sema_prsv_nonalias:
-        forall i p wcs rcs st1 st2,
-            NonAlias st1 -&gt;
-            instr_semantics i p wcs rcs st1 st2 -&gt;
-            NonAlias st2.
-
-    Parameter bc_condition_implie_permutbility:
-    forall i1 p1 wcs1 rcs1 st1 st2 st3 i2 p2 wcs2 rcs2,
-        NonAlias st1 -&gt;
-        (instr_semantics i1 p1 wcs1 rcs1 st1 st2 /\ instr_semantics i2 p2 wcs2 rcs2 st2 st3) -&gt;
-        (
-        Forall (fun wc2 =&gt; 
-            Forall (fun wc1 =&gt; cell_neq wc1 wc2) wcs1
-        ) wcs2
-        )
-        /\
-        (
-            Forall (fun rc2 =&gt; 
-                Forall (fun wc1 =&gt; cell_neq wc1 rc2) wcs1
-            ) rcs2
-        )
-        /\
-        (
-            Forall (fun wc2 =&gt; 
-                Forall (fun rc1 =&gt; cell_neq rc1 wc2 ) rcs1
-            ) wcs2
-        )
-        -&gt;
-    (exists st2&#x27; st3&#x27;, instr_semantics i2 p2 wcs2 rcs2 st1 st2&#x27; /\ instr_semantics i1 p1 wcs1 rcs1 st2&#x27; st3&#x27; /\ State.eq st3 st3&#x27;).
-
-End INSTR.
+let scop_scheduler inscop = scheduler&#x27; inscop;;
 </pre>
 </main>
 </body>

@@ -3,157 +3,338 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VerifiedLoopPostpass.v</title>
+  <title>PhaseISS.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/driver/VerifiedLoopPostpass.v</code></h1>
-  <pre>Require Import Bool.
-Require Import String.
+  <h1><code>source/driver/PhaseISS.ml</code></h1>
+  <pre>open Result
 
-Require Import ImpureAlarmConfig.
-Require Import LoopCleanup.
-Require Import LoopJamBridge.
-Require Import LoopUnroll.
-Require Import PolIRs.
-Require Import Result.
-Require Import Vpl.Impure.
+exception PhaseISSFailure of string
 
-Local Open Scope impure_scope.
-Local Open Scope string_scope.
+let failf fmt = Printf.ksprintf (fun s -&gt; raise (PhaseISSFailure s)) fmt
 
-(** Constant-bound unrolling is an independent compiler dimension, rather
-    than another copy of every affine, tiling, and ISS route. *)
-Inductive loop_postpass_config : Type :=
-| NoLoopPostpass
-| ConstUnrollPostpass.
+let rec nat_of_int n =
+  if n &lt;= 0 then Datatypes.O else Datatypes.S (nat_of_int (n - 1))
 
-Module VerifiedLoopPostpass (PolIRs : POLIRS).
+let rec int_of_nat = function
+  | Datatypes.O -&gt; 0
+  | Datatypes.S n -&gt; 1 + int_of_nat n
 
-Module Loop := PolIRs.Loop.
-Module State := PolIRs.State.
-Module Unroll := LoopUnroll PolIRs.
-Module Cleanup := LoopCleanup PolIRs.
-Module JamBridge := LoopJamBridge PolIRs.
-Module JamLower := JamBridge.Lower.
+let split_on_char ch s =
+  let rec go i j acc =
+    if j = String.length s then
+      List.rev (String.sub s i (j - i) :: acc)
+    else if s.[j] = ch then
+      go (j + 1) (j + 1) (String.sub s i (j - i) :: acc)
+    else
+      go i (j + 1) acc
+  in
+  go 0 0 []
 
-Definition apply (cfg : loop_postpass_config) (loop : Loop.t) : imp Loop.t :=
-  match cfg with
-  | NoLoopPostpass =&gt; pure loop
-  | ConstUnrollPostpass =&gt;
-      if Unroll.const_unroll_changed loop then
-        pure (Cleanup.cleanup (Unroll.const_unroll loop))
-      else
-        res_to_alarm loop
-          (Err &quot;constant unroll requested, but no constant-bounded loop exists&quot;)
-  end.
+let int_of_string_or_fail ctx s =
+  try int_of_string s
+  with Failure _ -&gt; failf &quot;cannot parse integer in %s: %S&quot; ctx s
 
-(** Execute the complete checked unroll-jam postpass.  [select] is an
-    untrusted policy function: it may choose any subset of loop positions, but
-    every fusion it requests is independently accepted or rejected by the
-    extracted validator.  Quantifying over [select] keeps profitability and
-    command-line policy outside the trusted base. *)
-Definition apply_checked_unrolljam
-    (const_first : bool)
-    (select : Loop.t -&gt; JamLower.unrolljam_plan)
-    (factor : nat) (loop : Loop.t) : imp Loop.t :=
-  let prepared :=
-    if const_first &amp;&amp; Unroll.const_unroll_changed loop then
-      Cleanup.cleanup (Unroll.const_unroll loop)
-    else loop in
-  BIND jammed &lt;-
-    JamLower.checked_unrolljam_loop_with_plan
-      (select prepared) factor prepared -;
-  pure (Cleanup.cleanup jammed).
+let z_of_string s =
+  Camlcoq.Z.of_sint (int_of_string_or_fail &quot;ISS bridge&quot; s)
 
-Theorem apply_correct :
-  forall cfg loop loop&#x27; st st&#x27;,
-    mayReturn (apply cfg loop) loop&#x27; -&gt;
-    Loop.semantics loop&#x27; st st&#x27; -&gt;
-    exists st&#x27;&#x27;,
-      Loop.semantics loop st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
-Proof.
-  intros cfg loop loop&#x27; st st&#x27; Happly Hsem.
-  destruct cfg as [|]; simpl in Happly.
-  - apply mayReturn_pure in Happly.
-    subst loop&#x27;.
-    exists st&#x27;.
-    split; [exact Hsem|apply State.eq_refl].
-  - destruct (Unroll.const_unroll_changed loop) eqn:Hchanged.
-    + apply mayReturn_pure in Happly.
-      subst loop&#x27;.
-      pose proof
-        ((proj1
-           (Cleanup.cleanup_correct
-              (Unroll.const_unroll loop) st st&#x27;)) Hsem) as Hunrolled.
-      pose proof
-        ((proj1 (Unroll.const_unroll_correct loop st st&#x27;)) Hunrolled)
-        as Hsource.
-      exists st&#x27;.
-      split; [exact Hsource|apply State.eq_refl].
-    + apply mayReturn_alarm in Happly.
-      contradiction.
-Qed.
+let parse_row_line line =
+  match String.split_on_char &#x27; &#x27; line with
+  | [&quot;ROW&quot;; payload] -&gt;
+      begin match split_on_char &#x27;|&#x27; payload with
+      | [coeffs_s; const_s] -&gt;
+          let coeffs =
+            if coeffs_s = &quot;&quot; then []
+            else List.map z_of_string (split_on_char &#x27;,&#x27; coeffs_s)
+          in
+          (coeffs, z_of_string const_s)
+      | _ -&gt;
+          failf &quot;bad ISS bridge ROW payload: %S&quot; payload
+      end
+  | _ -&gt;
+      failf &quot;bad ISS bridge ROW line: %S&quot; line
 
-Theorem apply_checked_unrolljam_correct :
-  forall const_first select factor loop loop&#x27; st st&#x27;,
-    mayReturn
-      (apply_checked_unrolljam const_first select factor loop)
-      loop&#x27; -&gt;
-    Loop.semantics loop&#x27; st st&#x27; -&gt;
-    exists st&#x27;&#x27;,
-      Loop.semantics loop st st&#x27;&#x27; /\ State.eq st&#x27; st&#x27;&#x27;.
-Proof.
-  intros const_first select factor loop loop&#x27; st st&#x27; Happly Hsem.
-  unfold apply_checked_unrolljam in Happly.
-  remember
-    (if const_first &amp;&amp; Unroll.const_unroll_changed loop then
-       Cleanup.cleanup (Unroll.const_unroll loop)
-     else loop) as prepared eqn:Hprepared.
-  apply mayReturn_bind in Happly.
-  destruct Happly as [jammed [Hjam Hret]].
-  apply mayReturn_pure in Hret.
-  subst loop&#x27;.
-  pose proof
-    ((proj1 (Cleanup.cleanup_correct jammed st st&#x27;)) Hsem)
-    as Hjammed_sem.
-  assert
-    (Hpair :
-       let &#x27;(_, varctxt, vars) := prepared in
-       JamBridge.Context.checked_pair_refines varctxt vars).
+let iss_sign_of_string = function
+  | &quot;ge&quot; -&gt; ISSWitness.ISSCutGeZero
+  | &quot;lt&quot; -&gt; ISSWitness.ISSCutLtZero
+  | s -&gt; failf &quot;unknown ISS halfspace sign %S in bridge&quot; s
+
+type parsed_iss_bridge = {
+  pib_var_order : string list;
+  pib_before_domains : (BinNums.coq_Z list * BinNums.coq_Z) list list;
+  pib_after_domains : (BinNums.coq_Z list * BinNums.coq_Z) list list;
+  pib_witness : ISSWitness.iss_witness;
+}
+
+let iss_bridge_text_present text =
+  String.split_on_char &#x27;\n&#x27; text
+  |&gt; List.exists
+       (fun line -&gt;
+         let line = String.trim line in
+         String.length line &gt;= 9 &amp;&amp; String.sub line 0 9 = &quot;VAR_ORDER&quot;)
+
+let parse_iss_bridge_text text =
+  let lines0 =
+    String.split_on_char &#x27;\n&#x27; text
+    |&gt; List.filter (fun s -&gt; String.trim s &lt;&gt; &quot;&quot;)
+  in
+  let rec drop_preamble = function
+    | [] -&gt; failf &quot;missing ISS bridge VAR_ORDER&quot;
+    | line :: rest as lines -&gt;
+        if String.length line &gt;= 9 &amp;&amp; String.sub line 0 9 = &quot;VAR_ORDER&quot;
+        then lines
+        else drop_preamble rest
+  in
+  let lines = drop_preamble lines0 in
+  let rec take_rows n acc = function
+    | [] -&gt; failf &quot;unexpected end of ISS bridge while reading %d rows&quot; n
+    | line :: rest -&gt;
+        if n = 0 then (List.rev acc, line :: rest)
+        else take_rows (n - 1) (parse_row_line line :: acc) rest
+  in
+  let rec take_vars n acc = function
+    | [] -&gt; failf &quot;unexpected end of ISS bridge while reading %d vars&quot; n
+    | line :: rest -&gt;
+        if n = 0 then (List.rev acc, line :: rest)
+        else
+          begin match String.split_on_char &#x27; &#x27; line with
+          | [&quot;VAR&quot;; name] -&gt; take_vars (n - 1) (name :: acc) rest
+          | _ -&gt; failf &quot;bad ISS bridge VAR line: %S&quot; line
+          end
+  in
+  let rec take_domains tag n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -&gt; failf &quot;unexpected end of ISS bridge while reading %s domains&quot; tag
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [hdr; row_count_s] when hdr = tag -&gt;
+            let row_count =
+              int_of_string_or_fail &quot;ISS bridge domain row count&quot; row_count_s
+            in
+            let (rows, rest&#x27;) = take_rows row_count [] rest in
+            take_domains tag (n - 1) (rows :: acc) rest&#x27;
+        | _ -&gt;
+            failf &quot;bad ISS bridge %s line: %S&quot; tag line
+        end
+  in
+  let rec take_cuts n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -&gt; failf &quot;unexpected end of ISS bridge while reading cuts&quot;
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;CUT&quot;; payload] -&gt;
+            let row = parse_row_line (&quot;ROW &quot; ^ payload) in
+            take_cuts (n - 1) (row :: acc) rest
+        | _ -&gt; failf &quot;bad ISS bridge CUT line: %S&quot; line
+        end
+  in
+  let rec take_stmt_witnesses n acc lines =
+    if n = 0 then (List.rev acc, lines) else
+    match lines with
+    | [] -&gt;
+        failf &quot;unexpected end of ISS bridge while reading stmt witnesses&quot;
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;STMT_WITNESS&quot;; parent_s; signs_s] -&gt;
+            let signs =
+              if signs_s = &quot;&quot; then []
+              else List.map iss_sign_of_string (split_on_char &#x27;,&#x27; signs_s)
+            in
+            let w =
+              {
+                ISSWitness.isw_parent_stmt =
+                  nat_of_int (int_of_string_or_fail &quot;ISS bridge parent&quot; parent_s);
+                isw_piece_signs = signs;
+              }
+            in
+            take_stmt_witnesses (n - 1) (w :: acc) rest
+        | _ -&gt; failf &quot;bad ISS bridge STMT_WITNESS line: %S&quot; line
+        end
+  in
+  let var_order, rest1 =
+    match lines with
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;VAR_ORDER&quot;; n_s] -&gt;
+            take_vars (int_of_string_or_fail &quot;ISS bridge var count&quot; n_s) [] rest
+        | _ -&gt; failf &quot;bad ISS bridge header: %S&quot; line
+        end
+    | [] -&gt; failf &quot;empty ISS bridge output&quot;
+  in
+  let before_domains, rest2 =
+    match rest1 with
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;BEFORE_STMTS&quot;; n_s] -&gt;
+            take_domains
+              &quot;BEFORE_DOMAIN&quot;
+              (int_of_string_or_fail &quot;ISS bridge before stmt count&quot; n_s)
+              [] rest
+        | _ -&gt; failf &quot;bad ISS bridge BEFORE_STMTS line: %S&quot; line
+        end
+    | [] -&gt; failf &quot;missing ISS bridge BEFORE_STMTS&quot;
+  in
+  let after_domains, rest3 =
+    match rest2 with
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;AFTER_STMTS&quot;; n_s] -&gt;
+            take_domains
+              &quot;AFTER_DOMAIN&quot;
+              (int_of_string_or_fail &quot;ISS bridge after stmt count&quot; n_s)
+              [] rest
+        | _ -&gt; failf &quot;bad ISS bridge AFTER_STMTS line: %S&quot; line
+        end
+    | [] -&gt; failf &quot;missing ISS bridge AFTER_STMTS&quot;
+  in
+  let cuts, rest4 =
+    match rest3 with
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;CUTS&quot;; n_s] -&gt;
+            take_cuts (int_of_string_or_fail &quot;ISS bridge cut count&quot; n_s) [] rest
+        | _ -&gt; failf &quot;bad ISS bridge CUTS line: %S&quot; line
+        end
+    | [] -&gt; failf &quot;missing ISS bridge CUTS&quot;
+  in
+  let stmt_witnesses, rest5 =
+    match rest4 with
+    | line :: rest -&gt;
+        begin match String.split_on_char &#x27; &#x27; line with
+        | [&quot;STMT_WITNESSES&quot;; n_s] -&gt;
+            take_stmt_witnesses
+              (int_of_string_or_fail &quot;ISS bridge stmt witness count&quot; n_s)
+              [] rest
+        | _ -&gt; failf &quot;bad ISS bridge STMT_WITNESSES line: %S&quot; line
+        end
+    | [] -&gt; failf &quot;missing ISS bridge STMT_WITNESSES&quot;
+  in
+  begin match rest5 with
+  | [&quot;END&quot;] -&gt; ()
+  | line :: _ -&gt; failf &quot;unexpected trailing ISS bridge line: %S&quot; line
+  | [] -&gt; failf &quot;missing ISS bridge END&quot;
+  end;
+  let witness =
+    {
+      ISSWitness.iw_cuts = cuts;
+      iw_stmt_witnesses = stmt_witnesses;
+    }
+  in
   {
-    destruct prepared as [[prepared_stmt varctxt] vars].
-    simpl.
-    apply JamBridge.checked_pair_refines_sound.
+    pib_var_order = var_order;
+    pib_before_domains = before_domains;
+    pib_after_domains = after_domains;
+    pib_witness = witness;
   }
-  pose proof
-    (JamBridge.Context.checked_unrolljam_loop_with_plan_refines
-       (select prepared) factor prepared jammed Hpair Hjam)
-    as Hrefines.
-  unfold JamBridge.Context.loop_refines in Hrefines.
-  destruct (Hrefines st st&#x27; Hjammed_sem)
-    as [st_prepared [Hprepared_sem Heq]].
-  destruct (const_first &amp;&amp; Unroll.const_unroll_changed loop) eqn:Hconst.
-  - subst prepared.
-    pose proof
-      ((proj1
-          (Cleanup.cleanup_correct
-             (Unroll.const_unroll loop) st st_prepared)) Hprepared_sem)
-      as Hunrolled_sem.
-    pose proof
-      ((proj1 (Unroll.const_unroll_correct loop st st_prepared))
-         Hunrolled_sem)
-      as Hsource_sem.
-    exists st_prepared.
-    split; assumption.
-  - subst prepared.
-    exists st_prepared.
-    split; assumption.
-Qed.
 
-End VerifiedLoopPostpass.
+let parse_iss_bridge_text_opt text =
+  if iss_bridge_text_present text then
+    Some (parse_iss_bridge_text text)
+  else
+    None
+
+let nth_or_fail ctx xs n =
+  try List.nth xs n
+  with Failure _ -&gt;
+    failf &quot;%s index %d is out of bounds&quot; ctx n
+
+module SPolyLang = PolyLang.PolyLang(SInstr.SInstr)
+module TPolyLang = PolyLang.PolyLang(TInstr.TInstr)
+module CPolyLang = PolyLang.PolyLang(CInstr.CInstr)
+
+let reconstruct_after_pis after_domains stmt_ws before_pis set_domain =
+  if List.length stmt_ws &lt;&gt; List.length after_domains then
+    failf
+      &quot;ISS bridge after stmt count mismatch between witness (%d) and domains (%d)&quot;
+      (List.length stmt_ws)
+      (List.length after_domains);
+  List.map2
+    (fun domain w -&gt;
+      let parent = int_of_nat w.ISSWitness.isw_parent_stmt in
+      let source = nth_or_fail &quot;ISS parent stmt&quot; before_pis parent in
+      set_domain source domain)
+    after_domains
+    stmt_ws
+
+let apply_bridge_to_spol_source before_pol bridge =
+  let ((before_pis, ctxt), vars) = before_pol in
+  if List.length before_pis &lt;&gt; List.length bridge.pib_before_domains then
+    failf
+      &quot;ISS bridge before stmt count mismatch between source polyhedral model (%d) and bridge (%d)&quot;
+      (List.length before_pis)
+      (List.length bridge.pib_before_domains);
+  let after_pis =
+    reconstruct_after_pis
+      bridge.pib_after_domains
+      bridge.pib_witness.ISSWitness.iw_stmt_witnesses
+      before_pis
+      (fun source domain -&gt; { source with SPolyLang.pi_poly = domain })
+  in
+  (((after_pis, ctxt), vars), bridge.pib_witness)
+
+let apply_bridge_to_tpol_source before_pol bridge =
+  let ((before_pis, ctxt), vars) = before_pol in
+  if List.length before_pis &lt;&gt; List.length bridge.pib_before_domains then
+    failf
+      &quot;ISS bridge before stmt count mismatch between source polyhedral model (%d) and bridge (%d)&quot;
+      (List.length before_pis)
+      (List.length bridge.pib_before_domains);
+  let after_pis =
+    reconstruct_after_pis
+      bridge.pib_after_domains
+      bridge.pib_witness.ISSWitness.iw_stmt_witnesses
+      before_pis
+      (fun source domain -&gt; { source with TPolyLang.pi_poly = domain })
+  in
+  (((after_pis, ctxt), vars), bridge.pib_witness)
+
+let apply_bridge_to_cpol_source before_pol bridge =
+  let ((before_pis, ctxt), vars) = before_pol in
+  if List.length before_pis &lt;&gt; List.length bridge.pib_before_domains then
+    failf
+      &quot;ISS bridge before stmt count mismatch between source polyhedral model (%d) and bridge (%d)&quot;
+      (List.length before_pis)
+      (List.length bridge.pib_before_domains);
+  let after_pis =
+    reconstruct_after_pis
+      bridge.pib_after_domains
+      bridge.pib_witness.ISSWitness.iw_stmt_witnesses
+      before_pis
+      (fun source domain -&gt; { source with CPolyLang.pi_poly = domain })
+  in
+  (((after_pis, ctxt), vars), bridge.pib_witness)
+
+let infer_from_source_scop apply_bridge before_pol before_scop =
+  match Scheduler.iss_identity_bridge_from_scop before_scop with
+  | Err _ as err -&gt; err
+  | Okk text -&gt;
+      begin
+        match parse_iss_bridge_text_opt text with
+        | None -&gt; Okk None
+        | Some bridge -&gt;
+            try
+              let (after_pol, witness) = apply_bridge before_pol bridge in
+              Okk (Some (after_pol, witness))
+            with
+            | PhaseISSFailure msg -&gt;
+                Err (Camlcoq.coqstring_of_camlstring msg)
+            | Invalid_argument msg -&gt;
+                Err (Camlcoq.coqstring_of_camlstring msg)
+      end
+
+let spol_infer_iss_from_source_scop before_pol before_scop =
+  infer_from_source_scop apply_bridge_to_spol_source before_pol before_scop
+
+let tpol_infer_iss_from_source_scop before_pol before_scop =
+  infer_from_source_scop apply_bridge_to_tpol_source before_pol before_scop
+
+let cpol_infer_iss_from_source_scop before_pol before_scop =
+  infer_from_source_scop apply_bridge_to_cpol_source before_pol before_scop
 </pre>
 </main>
 </body>

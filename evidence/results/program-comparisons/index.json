@@ -5465,64 +5465,64 @@
       "suite": "one-level tiling configurations"
     },
     {
-      "after": "program-comparisons/76234815a1ea71/after.c",
-      "before": "program-comparisons/76234815a1ea71/before.c",
+      "after": "program-comparisons/af324c025ea4fb/after.c",
+      "before": "program-comparisons/af324c025ea4fb/before.c",
       "case": "affine-fst-reversed",
       "kind": "rejected-candidate-pair",
       "left_label": "Original C Program",
       "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
       "right_label": "Rejected Pluto-Generated C Program",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
-      "after": "program-comparisons/7d6f016d0c8c2c/after.c",
-      "before": "program-comparisons/7d6f016d0c8c2c/before.c",
+      "after": "program-comparisons/11fd588c02292a/after.c",
+      "before": "program-comparisons/11fd588c02292a/before.c",
       "case": "auto-affine-lp-cc-scaling",
       "kind": "rejected-candidate-pair",
       "left_label": "Original C Program",
       "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
       "right_label": "Rejected Pluto-Generated C Program",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
-      "after": "program-comparisons/d71a5dc22dfebc/after.scop",
-      "before": "program-comparisons/d71a5dc22dfebc/before.scop",
+      "after": "program-comparisons/05b6da29e11a24/after.scop",
+      "before": "program-comparisons/05b6da29e11a24/before.scop",
       "case": "diamond-nointratile-reschedule",
       "kind": "rejected-candidate-pair",
       "left_label": "Input Polyhedral Program",
       "note": "PolCert rejects this mixed-scalar diamond proposal before code generation; no target Loop program is emitted.",
       "right_label": "Rejected Diamond-Tiling Candidate",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
-      "after": "program-comparisons/828f2f5a24ff6e/after.c",
-      "before": "program-comparisons/828f2f5a24ff6e/before.c",
+      "after": "program-comparisons/b315c637b89c53/after.c",
+      "before": "program-comparisons/b315c637b89c53/before.c",
       "case": "notile-unrolljam-nonpermutable",
       "kind": "rejected-candidate-pair",
       "left_label": "Original C Program",
       "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
       "right_label": "Rejected Pluto-Generated C Program",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
-      "after": "program-comparisons/3648ee81d7d9eb/after.c",
-      "before": "program-comparisons/3648ee81d7d9eb/before.c",
+      "after": "program-comparisons/6deeb7b34abdea/after.c",
+      "before": "program-comparisons/6deeb7b34abdea/before.c",
       "case": "tiling-innerpar-satvec",
       "kind": "rejected-candidate-pair",
       "left_label": "Original C Program",
       "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
       "right_label": "Rejected Pluto-Generated C Program",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
-      "after": "program-comparisons/c5a8414ac569e8/after.c",
-      "before": "program-comparisons/c5a8414ac569e8/before.c",
+      "after": "program-comparisons/ec413703b83826/after.c",
+      "before": "program-comparisons/ec413703b83826/before.c",
       "case": "vanished-outer-parallel",
       "kind": "rejected-candidate-pair",
       "left_label": "Original C Program",
       "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
       "right_label": "Rejected Pluto-Generated C Program",
-      "suite": "optimizer-output rejection"
+      "suite": "optimizer reliability"
     },
     {
       "after": "program-comparisons/b0a325754b21ac/after.loop",
@@ -7431,8 +7431,8 @@
     }
   ],
   "producer": {
-    "fixed_pluto_sha256": "60e6c714f9b804257aae52844b93b203a6ee4d8336bbb70235f000669005d980",
-    "historical_polycc_sha256": "9b42e43485e3ebaf81fa96add84235f6f70745d8bd1093a2acb5f1a14e31991d",
-    "polopt_sha256": "030245cf9741692a0dc29b000aef82e50620396f756a0ea8af0163aa05f49eaf"
+    "fixed_pluto_sha256": "87053c7373078991f9e70eba686b06a192df61033885134dba2d2beada88aff2",
+    "historical_polycc_sha256": "1bf3bdedccbbf918b87f2b0cf7a9c727dfa522d36b67868d98434b2840ce423d",
+    "polopt_sha256": "2ba773fc600b69df22d934945088092ba851d4ba6f5035b6d22ab9347a2c4438"
   }
 }

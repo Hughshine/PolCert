@@ -3,7 +3,7 @@
   "fixture": "tests/polopt-generated/inputs/matmul.loop",
   "generated_c_differs": true,
   "mode": "pluto-codegen-gap-unrolljam",
-  "output_root": "/tmp/polcert-artifact-check/codegen-gaps",
+  "output_root": "/release/polcert-artifact-check/codegen-gaps",
   "pluto_nounrolljam_exit": 0,
   "pluto_unrolljam_exit": 0,
   "polopt_checked_unrolljam": {

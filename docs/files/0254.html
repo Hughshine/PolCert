@@ -3,18 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/programs/1dloop-invar/before.loop</code></h1>
-  <pre>context(M, N, i);
+  <h1><code>evidence/optimizer-reliability/matmul-parallel-hint/README.md</code></h1>
+  <pre># Matrix-Multiplication Parallel Hint
 
-for t in range(M, (N + 1)) {
-  a[i] = b[i];
-}
+This is a coordinate-mapping regression, not a demonstrated Pluto
+miscompilation. With explicit read-after-read dependences, Pluto&#x27;s hint names a
+raw scattering coordinate that corresponds to a safe generated parallel loop.
+
+PolCert maps that raw coordinate through schedule canonicalization before
+validation. Strict and permissive modes therefore certify and parallelize the
+same intended loop. The recorded test also checks that the obsolete compact-C
+loop-depth interpretation is not used.
+
+Files:
+
+- `matmul.loop`: structured-loop input;
+- `run.py`: test runner;
+- `../validation.log`: recorded result from the complete reliability run.
 </pre>
 </main>
 </body>

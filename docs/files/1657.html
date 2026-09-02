@@ -3,20 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/cad04b6a6df878/before.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>evidence/results/program-comparisons/cb6656931e3f9c/after.c</code></h1>
+  <pre>#define S1(zT2,$i0,$i1)	ey[0][$i1] = $i0;
+#define S2(zT3,zT4,$i0,$i1,$i2)	ey[$i1][$i2] = ey[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1 - 1][$i2];
+#define S3(zT3,zT4,$i0,$i1,$i2)	ex[$i1][$i2] = ex[$i1][$i2] - 0.5 * hz[$i1][$i2] - hz[$i1][$i2 - 1];
+#define S4(zT3,zT4,$i0,$i1,$i2)	hz[$i1][$i2] = hz[$i1][$i2] - 0.7 * ex[$i1][$i2 + 1] - ex[$i1][$i2] + ey[$i1 + 1][$i2] - ey[$i1][$i2];
 
-for i in range(0, N) {
-  for j in range(0, M) {
-    A[i][j] = (B[i][j] + 1);
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((ny &gt;= 1) &amp;&amp; (tmax &gt;= 1)) {
+  for (t2=0;t2&lt;=tmax-1;t2++) {
+    for (t4=0;t4&lt;=floord(ny-1,32);t4++) {
+      for (t5=32*t4;t5&lt;=min(ny-1,32*t4+31);t5++) {
+        S1(t4,t2,t5);
+      }
+    }
+    if (nx &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=max(1,32*t4);t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S2(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    if (ny &gt;= 2) {
+      for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+        for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+          for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+            for (t9=max(1,32*t6);t9&lt;=min(ny-1,32*t6+31);t9++) {
+              S3(t4,t6,t2,t7,t9);
+            }
+          }
+        }
+      }
+    }
+    for (t4=0;t4&lt;=floord(nx-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(ny-1,32);t6++) {
+        for (t7=32*t4;t7&lt;=min(nx-1,32*t4+31);t7++) {
+          for (t9=32*t6;t9&lt;=min(ny-1,32*t6+31);t9++) {
+            S4(t4,t6,t2,t7,t9);
+          }
+        }
+      }
+    }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

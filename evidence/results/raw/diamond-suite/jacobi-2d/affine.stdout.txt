@@ -1,4 +1,4 @@
-before: /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.beforescheduling.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.midtransform.scop
+before: /release/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.beforescheduling.scop
+after:  /release/polcert-artifact-check/diamond-suite/jacobi-2d/diamond/jacobi-2d.midtransform.scop
 contract: schedule refinement under supplied domains and trusted access summaries; statement bodies are not checked
 overall: PASS

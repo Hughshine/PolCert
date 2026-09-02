@@ -3,129 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>selected-pipelines.json</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/selected-pipelines.json</code></h1>
-  <pre>{
-  &quot;cases&quot;: {
-    &quot;1dloop-invar&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;adi&quot;: &quot;identity&quot;,
-    &quot;advect3d&quot;: &quot;iss&quot;,
-    &quot;corcol&quot;: &quot;affine_only&quot;,
-    &quot;corcol3&quot;: &quot;parallel_4&quot;,
-    &quot;costfunc&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;covcol&quot;: &quot;affine_only&quot;,
-    &quot;dct&quot;: &quot;identity&quot;,
-    &quot;doitgen&quot;: &quot;parallel_4&quot;,
-    &quot;dsyr2k&quot;: &quot;parallel_4&quot;,
-    &quot;dsyrk&quot;: &quot;parallel_4&quot;,
-    &quot;fdtd-1d&quot;: &quot;identity&quot;,
-    &quot;fdtd-2d&quot;: &quot;identity&quot;,
-    &quot;floyd&quot;: &quot;iss&quot;,
-    &quot;fusion1&quot;: &quot;identity&quot;,
-    &quot;fusion10&quot;: &quot;iss&quot;,
-    &quot;fusion2&quot;: &quot;affine_only&quot;,
-    &quot;fusion3&quot;: &quot;affine_only&quot;,
-    &quot;fusion4&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;fusion5&quot;: &quot;affine_only&quot;,
-    &quot;fusion6&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;fusion7&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;fusion8&quot;: &quot;iss&quot;,
-    &quot;fusion9&quot;: &quot;iss_parallel_4&quot;,
-    &quot;gemver&quot;: &quot;affine_only&quot;,
-    &quot;intratileopt1&quot;: &quot;iss_parallel_4&quot;,
-    &quot;intratileopt2&quot;: &quot;parallel_4&quot;,
-    &quot;intratileopt3&quot;: &quot;iss_parallel_4&quot;,
-    &quot;intratileopt4&quot;: &quot;parallel_4&quot;,
-    &quot;jacobi-1d-imper&quot;: &quot;identity&quot;,
-    &quot;jacobi-2d-imper&quot;: &quot;identity&quot;,
-    &quot;lu&quot;: &quot;identity&quot;,
-    &quot;matmul&quot;: &quot;parallel_4&quot;,
-    &quot;matmul-init&quot;: &quot;parallel_4&quot;,
-    &quot;matmul-seq&quot;: &quot;identity&quot;,
-    &quot;matmul-seq3&quot;: &quot;identity&quot;,
-    &quot;multi-loop-param&quot;: &quot;iss&quot;,
-    &quot;multi-stmt-stencil-seq&quot;: &quot;identity&quot;,
-    &quot;mvt&quot;: &quot;iss_parallel_4&quot;,
-    &quot;mxv&quot;: &quot;parallel_4&quot;,
-    &quot;mxv-seq&quot;: &quot;identity&quot;,
-    &quot;mxv-seq3&quot;: &quot;identity&quot;,
-    &quot;negparam&quot;: &quot;affine_only&quot;,
-    &quot;nodep&quot;: &quot;iss&quot;,
-    &quot;noloop&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;pca&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;polynomial&quot;: &quot;identity&quot;,
-    &quot;seidel&quot;: &quot;iss&quot;,
-    &quot;seq&quot;: &quot;default_no_iss_affine_tiling&quot;,
-    &quot;shift&quot;: &quot;affine_only&quot;,
-    &quot;spatial&quot;: &quot;iss_parallel_4&quot;,
-    &quot;ssymm&quot;: &quot;iss_parallel_4&quot;,
-    &quot;strmm&quot;: &quot;parallel_4&quot;,
-    &quot;strsm&quot;: &quot;parallel_4&quot;,
-    &quot;tce&quot;: &quot;identity&quot;,
-    &quot;tmm&quot;: &quot;parallel_4&quot;,
-    &quot;tricky1&quot;: &quot;affine_only&quot;,
-    &quot;tricky2&quot;: &quot;iss&quot;,
-    &quot;tricky3&quot;: &quot;iss&quot;,
-    &quot;tricky4&quot;: &quot;iss&quot;,
-    &quot;trisolv&quot;: &quot;parallel_4&quot;,
-    &quot;wavefront&quot;: &quot;default_no_iss_affine_tiling&quot;
-  },
-  &quot;default_pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
-  &quot;pipelines&quot;: [
-    {
-      &quot;name&quot;: &quot;identity&quot;,
-      &quot;omp_threads&quot;: 1,
-      &quot;polopt_args&quot;: [
-        &quot;--identity&quot;
-      ],
-      &quot;source&quot;: &quot;polopt&quot;
-    },
-    {
-      &quot;name&quot;: &quot;default_no_iss_affine_tiling&quot;,
-      &quot;omp_threads&quot;: 1,
-      &quot;source&quot;: &quot;cached_default_no_iss_affine_tiling&quot;
-    },
-    {
-      &quot;name&quot;: &quot;affine_only&quot;,
-      &quot;omp_threads&quot;: 1,
-      &quot;polopt_args&quot;: [
-        &quot;--affine-only&quot;
-      ],
-      &quot;source&quot;: &quot;polopt&quot;
-    },
-    {
-      &quot;name&quot;: &quot;iss&quot;,
-      &quot;omp_threads&quot;: 1,
-      &quot;polopt_args&quot;: [
-        &quot;--iss&quot;
-      ],
-      &quot;source&quot;: &quot;polopt&quot;
-    },
-    {
-      &quot;name&quot;: &quot;parallel_4&quot;,
-      &quot;omp_threads&quot;: 4,
-      &quot;polopt_args&quot;: [
-        &quot;--parallel&quot;
-      ],
-      &quot;require_parallelized&quot;: true,
-      &quot;source&quot;: &quot;polopt&quot;
-    },
-    {
-      &quot;name&quot;: &quot;iss_parallel_4&quot;,
-      &quot;omp_threads&quot;: 4,
-      &quot;polopt_args&quot;: [
-        &quot;--iss&quot;,
-        &quot;--parallel&quot;
-      ],
-      &quot;require_parallelized&quot;: true,
-      &quot;source&quot;: &quot;polopt&quot;
-    }
-  ]
+  <h1><code>evidence/performance-comparisons/programs/tricky4/before.loop</code></h1>
+  <pre>context(M);
+
+for i in range(0, ((0 - M) + 1)) {
+  s = (s + 1);
 }
 </pre>
 </main>

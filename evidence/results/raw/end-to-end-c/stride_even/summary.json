@@ -1,15 +1,16 @@
 {
   "abs_tolerance": 0.0,
-  "baseline_best_seconds": 0.001042418007273227,
+  "baseline_best_seconds": 0.00138131994754076,
   "exact_match": true,
   "execution_repeats": 1,
   "max_abs_diff": 0.0,
   "max_rel_diff": 0.0,
   "numeric_comparable": true,
+  "numeric_finite": true,
   "numeric_within_tolerance": true,
   "omp_threads_requested": 1,
   "openmp": false,
-  "optimized_best_seconds": 0.0011249079834669828,
+  "optimized_best_seconds": 0.0013065669918432832,
   "outputs_match": true,
   "parallelized_loop": false,
   "polopt_args": [
@@ -24,7 +25,7 @@
   ],
   "rel_tolerance": 0.0,
   "result": "ok",
-  "speedup": 0.9266695788401105,
+  "speedup": 1.057213258994104,
   "value_count_match": true,
   "vectorized_loop": false
 }

@@ -28,11 +28,11 @@ loop types (loop, scalar)
 [Pluto] Output written to fusion1.scop.pluto.c
 
 [pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.000053s
-[pluto] Auto-transformation time: 0.000571s
+[pluto] SCoP extraction + dependence analysis time: 0.000066s
+[pluto] Auto-transformation time: 0.000605s
 [pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000163s
-[pluto] Code generation time: 0.000761s
-[pluto] Other/Misc time: 0.002008s
-[pluto] Total time: 0.003393s
-[pluto] All times: 0.000053 0.000571 0.000761 0.002008
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000176s
+[pluto] Code generation time: 0.000699s
+[pluto] Other/Misc time: 0.001929s
+[pluto] Total time: 0.003299s
+[pluto] All times: 0.000066 0.000605 0.000699 0.001929

@@ -3,71 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/programs/fdtd-2d/after.loop</code></h1>
-  <pre>context(tmax, ny, nx);
+  <h1><code>evidence/performance-comparisons/programs/doitgen/before.loop</code></h1>
+  <pre>context(N);
 
-if ((2 &lt;= nx &amp;&amp; 2 &lt;= ny)) {
-  for i0 in range(0, tmax) {
-    for i1 in range(0, ny) {
-      ey[0][i1] = i0;
-    }
-    for i1 in range(1, nx) {
-      for i2 in range(0, ny) {
-        ey[i1][i2] = (ey[i1][i2] - (0.5 * (hz[i1][i2] - hz[(i1 + -1)][i2])));
+for r in range(0, N) {
+  for q in range(0, N) {
+    for p in range(0, N) {
+      sum[r][q][p] = 0;
+      for s in range(0, N) {
+        sum[r][q][p] = (sum[r][q][p] + (A[r][q][s] * C4[s][p]));
       }
     }
-    for i1 in range(0, nx) {
-      for i2 in range(1, ny) {
-        ex[i1][i2] = (ex[i1][i2] - (0.5 * (hz[i1][i2] - hz[i1][(i2 + -1)])));
-      }
-    }
-    for i1 in range(0, nx) {
-      for i2 in range(0, ny) {
-        hz[i1][i2] = (hz[i1][i2] - (0.7 * (((ex[i1][(i2 + 1)] - ex[i1][i2]) + ey[(i1 + 1)][i2]) - ey[i1][i2])));
-      }
-    }
-  }
-}
-if ((2 &lt;= ny &amp;&amp; (nx &lt;= 1 &amp;&amp; 1 &lt;= nx))) {
-  for i0 in range(0, tmax) {
-    for i1 in range(0, ny) {
-      ey[0][i1] = i0;
-    }
-    for i1 in range(1, ny) {
-      ex[0][i1] = (ex[0][i1] - (0.5 * (hz[0][i1] - hz[0][(i1 + -1)])));
-    }
-    for i1 in range(0, ny) {
-      hz[0][i1] = (hz[0][i1] - (0.7 * (((ex[0][(i1 + 1)] - ex[0][i1]) + ey[1][i1]) - ey[0][i1])));
-    }
-  }
-}
-if ((2 &lt;= nx &amp;&amp; (ny &lt;= 1 &amp;&amp; 1 &lt;= ny))) {
-  for i0 in range(0, tmax) {
-    ey[0][0] = i0;
-    for i1 in range(1, nx) {
-      ey[i1][0] = (ey[i1][0] - (0.5 * (hz[i1][0] - hz[(i1 + -1)][0])));
-    }
-    for i1 in range(0, nx) {
-      hz[i1][0] = (hz[i1][0] - (0.7 * (((ex[i1][1] - ex[i1][0]) + ey[(i1 + 1)][0]) - ey[i1][0])));
-    }
-  }
-}
-if ((nx &lt;= 1 &amp;&amp; (1 &lt;= nx &amp;&amp; (ny &lt;= 1 &amp;&amp; 1 &lt;= ny)))) {
-  for i0 in range(0, tmax) {
-    ey[0][0] = i0;
-    hz[0][0] = (hz[0][0] - (0.7 * (((ex[0][1] - ex[0][0]) + ey[1][0]) - ey[0][0])));
-  }
-}
-if ((nx &lt;= 0 &amp;&amp; 1 &lt;= ny)) {
-  for i0 in range(0, tmax) {
-    for i1 in range(0, ny) {
-      ey[0][i1] = i0;
+    for p in range(0, N) {
+      A[r][q][p] = sum[r][q][p];
     }
   }
 }

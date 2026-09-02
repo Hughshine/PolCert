@@ -7,129 +7,129 @@ python3 tests/polopt-generated/tools/materialize_polopt_cases.py \
 	--manifest tests/polopt-generated/materialize_manifest.json \
 	--polopt ./polopt
 [1/62] 1dloop-invar: running
-[1/62] 1dloop-invar: ok changed=false time=0.04s
+[1/62] 1dloop-invar: ok changed=false time=0.05s
 [2/62] adi: running
-[2/62] adi: ok changed=true time=12.91s
+[2/62] adi: ok changed=true time=13.51s
 [3/62] advect3d: running
-[3/62] advect3d: ok changed=true time=75.21s
+[3/62] advect3d: ok changed=true time=78.73s
 [4/62] corcol: running
-[4/62] corcol: ok changed=true time=1.27s
+[4/62] corcol: ok changed=true time=1.40s
 [5/62] corcol3: running
-[5/62] corcol3: ok changed=true time=1.69s
+[5/62] corcol3: ok changed=true time=1.80s
 [6/62] costfunc: running
-[6/62] costfunc: ok changed=true time=0.20s
+[6/62] costfunc: ok changed=true time=0.21s
 [7/62] covcol: running
-[7/62] covcol: ok changed=true time=0.89s
+[7/62] covcol: ok changed=true time=0.94s
 [8/62] dct: running
-[8/62] dct: ok changed=true time=3.48s
+[8/62] dct: ok changed=true time=3.44s
 [9/62] doitgen: running
-[9/62] doitgen: ok changed=true time=3.65s
+[9/62] doitgen: ok changed=true time=3.79s
 [10/62] dsyr2k: running
-[10/62] dsyr2k: ok changed=true time=0.50s
+[10/62] dsyr2k: ok changed=true time=0.53s
 [11/62] dsyrk: running
-[11/62] dsyrk: ok changed=true time=0.50s
+[11/62] dsyrk: ok changed=true time=0.53s
 [12/62] fdtd-1d: running
-[12/62] fdtd-1d: ok changed=true time=1.09s
+[12/62] fdtd-1d: ok changed=true time=1.12s
 [13/62] fdtd-2d: running
-[13/62] fdtd-2d: ok changed=true time=32.47s
+[13/62] fdtd-2d: ok changed=true time=33.92s
 [14/62] floyd: running
 [14/62] floyd: ok changed=true time=0.80s
 [15/62] fusion1: running
-[15/62] fusion1: ok changed=true time=0.05s
+[15/62] fusion1: ok changed=true time=0.06s
 [16/62] fusion10: running
-[16/62] fusion10: ok changed=true time=0.28s
+[16/62] fusion10: ok changed=true time=0.31s
 [17/62] fusion2: running
 [17/62] fusion2: ok changed=true time=0.50s
 [18/62] fusion3: running
-[18/62] fusion3: ok changed=true time=0.29s
+[18/62] fusion3: ok changed=true time=0.30s
 [19/62] fusion4: running
-[19/62] fusion4: ok changed=true time=0.34s
+[19/62] fusion4: ok changed=true time=0.36s
 [20/62] fusion5: running
-[20/62] fusion5: ok changed=true time=0.58s
+[20/62] fusion5: ok changed=true time=0.57s
 [21/62] fusion6: running
 [21/62] fusion6: ok changed=true time=0.08s
 [22/62] fusion7: running
-[22/62] fusion7: ok changed=true time=0.14s
+[22/62] fusion7: ok changed=true time=0.17s
 [23/62] fusion8: running
 [23/62] fusion8: ok changed=true time=0.07s
 [24/62] fusion9: running
-[24/62] fusion9: ok changed=true time=0.68s
+[24/62] fusion9: ok changed=true time=0.87s
 [25/62] gemver: running
-[25/62] gemver: ok changed=true time=2.04s
+[25/62] gemver: ok changed=true time=2.13s
 [26/62] intratileopt1: running
 [26/62] intratileopt1: ok changed=true time=0.11s
 [27/62] intratileopt2: running
-[27/62] intratileopt2: ok changed=true time=0.14s
+[27/62] intratileopt2: ok changed=true time=0.15s
 [28/62] intratileopt3: running
-[28/62] intratileopt3: ok changed=true time=0.16s
+[28/62] intratileopt3: ok changed=true time=0.18s
 [29/62] intratileopt4: running
-[29/62] intratileopt4: ok changed=true time=0.16s
+[29/62] intratileopt4: ok changed=true time=0.17s
 [30/62] jacobi-1d-imper: running
-[30/62] jacobi-1d-imper: ok changed=true time=0.95s
+[30/62] jacobi-1d-imper: ok changed=true time=0.98s
 [31/62] jacobi-2d-imper: running
-[31/62] jacobi-2d-imper: ok changed=true time=5.80s
+[31/62] jacobi-2d-imper: ok changed=true time=5.87s
 [32/62] lu: running
-[32/62] lu: ok changed=true time=2.40s
+[32/62] lu: ok changed=true time=2.66s
 [33/62] matmul-init: running
-[33/62] matmul-init: ok changed=true time=0.81s
+[33/62] matmul-init: ok changed=true time=0.86s
 [34/62] matmul-seq: running
-[34/62] matmul-seq: ok changed=true time=2.79s
+[34/62] matmul-seq: ok changed=true time=2.73s
 [35/62] matmul-seq3: running
-[35/62] matmul-seq3: ok changed=true time=3.70s
+[35/62] matmul-seq3: ok changed=true time=3.67s
 [36/62] matmul: running
-[36/62] matmul: ok changed=true time=0.62s
+[36/62] matmul: ok changed=true time=0.75s
 [37/62] multi-loop-param: running
-[37/62] multi-loop-param: ok changed=true time=0.77s
+[37/62] multi-loop-param: ok changed=true time=0.78s
 [38/62] multi-stmt-stencil-seq: running
 [38/62] multi-stmt-stencil-seq: ok changed=true time=0.33s
 [39/62] mvt: running
-[39/62] mvt: ok changed=true time=0.74s
+[39/62] mvt: ok changed=true time=0.69s
 [40/62] mxv-seq: running
-[40/62] mxv-seq: ok changed=true time=0.84s
+[40/62] mxv-seq: ok changed=true time=0.87s
 [41/62] mxv-seq3: running
-[41/62] mxv-seq3: ok changed=true time=1.21s
+[41/62] mxv-seq3: ok changed=true time=1.24s
 [42/62] mxv: running
-[42/62] mxv: ok changed=true time=0.25s
+[42/62] mxv: ok changed=true time=0.26s
 [43/62] negparam: running
-[43/62] negparam: ok changed=true time=0.84s
+[43/62] negparam: ok changed=true time=0.92s
 [44/62] nodep: running
-[44/62] nodep: ok changed=true time=0.11s
+[44/62] nodep: ok changed=true time=0.12s
 [45/62] noloop: running
 [45/62] noloop: ok changed=false time=0.01s
 [46/62] pca: running
-[46/62] pca: ok changed=true time=7.77s
+[46/62] pca: ok changed=true time=8.20s
 [47/62] polynomial: running
-[47/62] polynomial: ok changed=true time=0.30s
+[47/62] polynomial: ok changed=true time=0.32s
 [48/62] seidel: running
-[48/62] seidel: ok changed=true time=2.72s
+[48/62] seidel: ok changed=true time=2.84s
 [49/62] seq: running
-[49/62] seq: ok changed=true time=0.06s
+[49/62] seq: ok changed=true time=0.07s
 [50/62] shift: running
-[50/62] shift: ok changed=true time=0.62s
+[50/62] shift: ok changed=true time=0.59s
 [51/62] spatial: running
-[51/62] spatial: ok changed=true time=0.16s
+[51/62] spatial: ok changed=true time=0.15s
 [52/62] ssymm: running
-[52/62] ssymm: ok changed=true time=2.08s
+[52/62] ssymm: ok changed=true time=2.24s
 [53/62] strmm: running
-[53/62] strmm: ok changed=true time=0.64s
+[53/62] strmm: ok changed=true time=0.78s
 [54/62] strsm: running
-[54/62] strsm: ok changed=true time=2.54s
+[54/62] strsm: ok changed=true time=2.63s
 [55/62] tce: running
-[55/62] tce: ok changed=true time=54.76s
+[55/62] tce: ok changed=true time=56.41s
 [56/62] tmm: running
-[56/62] tmm: ok changed=true time=0.63s
+[56/62] tmm: ok changed=true time=0.59s
 [57/62] tricky1: running
-[57/62] tricky1: ok changed=true time=0.87s
+[57/62] tricky1: ok changed=true time=1.03s
 [58/62] tricky2: running
-[58/62] tricky2: ok changed=true time=0.06s
+[58/62] tricky2: ok changed=true time=0.07s
 [59/62] tricky3: running
-[59/62] tricky3: ok changed=true time=0.93s
+[59/62] tricky3: ok changed=true time=0.98s
 [60/62] tricky4: running
-[60/62] tricky4: ok changed=false time=0.03s
+[60/62] tricky4: ok changed=false time=0.04s
 [61/62] trisolv: running
-[61/62] trisolv: ok changed=true time=2.26s
+[61/62] trisolv: ok changed=true time=2.30s
 [62/62] wavefront: running
-[62/62] wavefront: ok changed=true time=0.17s
+[62/62] wavefront: ok changed=true time=0.18s
 python3 tests/polopt-generated/tools/check_polopt_cases.py \
 	--manifest tests/polopt-generated/strict_suite_manifest.json
 [strict-effect] PASS case=1dloop-invar expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched

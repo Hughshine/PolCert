@@ -3,30 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>reproduction-config.json</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/rejected-optimizer-outputs/matmul-parallel-hint/README.md</code></h1>
-  <pre># Matrix-Multiplication Parallel Hint
-
-This is a conservative-validation example, not a demonstrated Pluto
-miscompilation. With explicit read-after-read dependences, Pluto&#x27;s hint names a
-schedule coordinate that PolCert cannot certify as a safe generated parallel
-loop for this matrix-multiplication schedule.
-
-Strict mode rejects the requested optimization and emits no optimized loop.
-Permissive mode ignores the non-certifiable hint and chooses a different
-dimension that passes the parallel-loop check. The recorded test requires both
-outcomes.
-
-Files:
-
-- `matmul.loop`: structured-loop input;
-- `run.py`: test runner;
-- `../validation.log`: recorded result from the complete reliability run.
+  <h1><code>evidence/performance-comparisons/reproduction-config.json</code></h1>
+  <pre>{
+  &quot;candidate_measurement_runs_per_program&quot;: 1,
+  &quot;case_parameters&quot;: &quot;results.json -&gt; selected[].params&quot;,
+  &quot;compiler&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+  &quot;container_commands&quot;: [
+    &quot;docker build -f environment/Dockerfile -t polcert-artifact .&quot;,
+    &quot;docker run --rm polcert-artifact performance&quot;
+  ],
+  &quot;note&quot;: &quot;Elapsed times depend on the Docker host and should be remeasured locally.&quot;,
+  &quot;parallel_compiler&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+  &quot;parallel_environment&quot;: {
+    &quot;OMP_DYNAMIC&quot;: &quot;FALSE&quot;,
+    &quot;OMP_NUM_THREADS&quot;: 4
+  },
+  &quot;programs&quot;: &quot;programs/&lt;case&gt;/{before,after}.loop&quot;,
+  &quot;route_options&quot;: &quot;selected-pipelines.json -&gt; pipelines&quot;,
+  &quot;selected_routes&quot;: &quot;selected-pipelines.json -&gt; cases&quot;,
+  &quot;tier&quot;: &quot;perf&quot;,
+  &quot;timeout_seconds_per_optimizer_or_program_run&quot;: 300
+}
 </pre>
 </main>
 </body>

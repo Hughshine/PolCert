@@ -3,39 +3,1390 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>results.json</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/rejected-optimizer-outputs/notile-unrolljam-nonpermutable/README.md</code></h1>
-  <pre># No-tile unroll-jam crosses a non-permutable loop
-
-Status: reproduced, minimized, validator-catches.
-
-The outer `i,h` loops form a permutable band. The `j` loop carries a
-dependence: iteration `j + 1` reads element `a[...,j,3]`, which iteration `j`
-writes only when the inner `k` loop reaches `3`.
-
-At the pinned bug-reproduction commit
-`historical-bug-witness-pluto-snapshot`,
-the unroll-jam candidate search unconditionally treats the program as having
-one tiled level. With `--notile`, that skips the real band boundary and admits
-the non-permutable `j` loop. Pluto then emits adjacent `j` and `j + 1`
-statements inside the `k` loop. At `k = 0`, the second statement reads
-`a[...,j,3]` before it has been written.
-
-The original program prints `15`; Pluto&#x27;s generated program prints `1`.
-PolCert&#x27;s checked unroll-jam route does not emit the unsafe adjacent pair.
-The ordinary fixed Pluto baseline `ordinary-fixed-pluto-snapshot` also corrects the tiled-level
-count used for candidate discovery.
-
-Run the complete producer and validator check with:
-
-```sh
-python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
-```
+  <h1><code>evidence/performance-comparisons/results.json</code></h1>
+  <pre>{
+  &quot;cases&quot;: 62,
+  &quot;exact_output_matches&quot;: 62,
+  &quot;method&quot;: &quot;one recorded timed execution per candidate; baseline time divided by optimized time; generated whole-C harness&quot;,
+  &quot;selected&quot;: [
+    {
+      &quot;accepted_program&quot;: &quot;programs/1dloop-invar/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.00114910100819543,
+      &quot;before_program&quot;: &quot;programs/1dloop-invar/before.loop&quot;,
+      &quot;case&quot;: &quot;1dloop-invar&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010693619988160208,
+      &quot;page&quot;: &quot;cases/1dloop-invar.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 262144,
+        &quot;N&quot;: 262144,
+        &quot;i&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.0745669001401723
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/adi/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.0891249350097496,
+      &quot;before_program&quot;: &quot;programs/adi/before.loop&quot;,
+      &quot;case&quot;: &quot;adi&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.1686929279967444,
+      &quot;page&quot;: &quot;cases/adi.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 768,
+        &quot;T&quot;: 768
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 0.9748893329852262
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/advect3d/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.595320726002683,
+      &quot;before_program&quot;: &quot;programs/advect3d/before.loop&quot;,
+      &quot;case&quot;: &quot;advect3d&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.3325571219902486,
+      &quot;page&quot;: &quot;cases/advect3d.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;nx&quot;: 320,
+        &quot;ny&quot;: 320,
+        &quot;nz&quot;: 320
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.1971874973884664
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/corcol/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.7139643209957285,
+      &quot;before_program&quot;: &quot;programs/corcol/before.loop&quot;,
+      &quot;case&quot;: &quot;corcol&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.42507618899981026,
+      &quot;page&quot;: &quot;cases/corcol.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 1536,
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 4.0321343922571335
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/corcol3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.8989644660032354,
+      &quot;before_program&quot;: &quot;programs/corcol3/before.loop&quot;,
+      &quot;case&quot;: &quot;corcol3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.48863282198726665,
+      &quot;page&quot;: &quot;cases/corcol3.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;m&quot;: 12288,
+        &quot;n&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 3.886281028523951
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/costfunc/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.1306252190115629,
+      &quot;before_program&quot;: &quot;programs/costfunc/before.loop&quot;,
+      &quot;case&quot;: &quot;costfunc&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.7711166869994486,
+      &quot;page&quot;: &quot;cases/costfunc.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.4662180679956824
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/covcol/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.761309819004964,
+      &quot;before_program&quot;: &quot;programs/covcol/before.loop&quot;,
+      &quot;case&quot;: &quot;covcol&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.4120690479903715,
+      &quot;page&quot;: &quot;cases/covcol.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 1536,
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 4.274307491899075
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/dct/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.689387820995762,
+      &quot;before_program&quot;: &quot;programs/dct/before.loop&quot;,
+      &quot;case&quot;: &quot;dct&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.7102897420118097,
+      &quot;page&quot;: &quot;cases/dct.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 0.9943664989881048
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/doitgen/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 7.904220076001366,
+      &quot;before_program&quot;: &quot;programs/doitgen/before.loop&quot;,
+      &quot;case&quot;: &quot;doitgen&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.9920348820014624,
+      &quot;page&quot;: &quot;cases/doitgen.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 384
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 3.967912483570437
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/dsyr2k/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 5.332616448009503,
+      &quot;before_program&quot;: &quot;programs/dsyr2k/before.loop&quot;,
+      &quot;case&quot;: &quot;dsyr2k&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 2.1829598139884183,
+      &quot;page&quot;: &quot;cases/dsyr2k.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;NMAX&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 2.442837661892843
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/dsyrk/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.9034339969948633,
+      &quot;before_program&quot;: &quot;programs/dsyrk/before.loop&quot;,
+      &quot;case&quot;: &quot;dsyrk&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.8748276749975048,
+      &quot;page&quot;: &quot;cases/dsyrk.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;NMAX&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 2.082022816843718
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fdtd-1d/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.296023110000533,
+      &quot;before_program&quot;: &quot;programs/fdtd-1d/before.loop&quot;,
+      &quot;case&quot;: &quot;fdtd-1d&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.1838842049910454,
+      &quot;page&quot;: &quot;cases/fdtd-1d.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 65536,
+        &quot;T&quot;: 65536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0513483749519346
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fdtd-2d/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.8156754470110172,
+      &quot;before_program&quot;: &quot;programs/fdtd-2d/before.loop&quot;,
+      &quot;case&quot;: &quot;fdtd-2d&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.735997274998226,
+      &quot;page&quot;: &quot;cases/fdtd-2d.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;nx&quot;: 1536,
+        &quot;ny&quot;: 1536,
+        &quot;tmax&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0213271493922138
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/floyd/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.8927542630117387,
+      &quot;before_program&quot;: &quot;programs/floyd/before.loop&quot;,
+      &quot;case&quot;: &quot;floyd&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.8158717720070854,
+      &quot;page&quot;: &quot;cases/floyd.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;NUM_NODES&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.0423391630344443
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion1/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.004104126011952758,
+      &quot;before_program&quot;: &quot;programs/fusion1/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion1&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.003827581007499248,
+      &quot;page&quot;: &quot;cases/fusion1.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0722505948043124
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion10/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.001477961995988153,
+      &quot;before_program&quot;: &quot;programs/fusion10/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion10&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0012759410019498318,
+      &quot;page&quot;: &quot;cases/fusion10.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.1583309837442344
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion2/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0015842940047150478,
+      &quot;before_program&quot;: &quot;programs/fusion2/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion2&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0011795150057878345,
+      &quot;page&quot;: &quot;cases/fusion2.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.3431740986261118
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.0138322060083738,
+      &quot;before_program&quot;: &quot;programs/fusion3/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.6195390799985034,
+      &quot;page&quot;: &quot;cases/fusion3.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.6364297890793633
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion4/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.8951501560077304,
+      &quot;before_program&quot;: &quot;programs/fusion4/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion4&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.6807749760046136,
+      &quot;page&quot;: &quot;cases/fusion4.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.3148987368208787
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion5/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.46062164299655706,
+      &quot;before_program&quot;: &quot;programs/fusion5/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion5&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.3230483610095689,
+      &quot;page&quot;: &quot;cases/fusion5.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 6144
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.4258597120166572
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion6/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.00392253500467632,
+      &quot;before_program&quot;: &quot;programs/fusion6/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion6&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0036596720019588247,
+      &quot;page&quot;: &quot;cases/fusion6.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.0718269294561913
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion7/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0030400300020119175,
+      &quot;before_program&quot;: &quot;programs/fusion7/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion7&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0027280879876343533,
+      &quot;page&quot;: &quot;cases/fusion7.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 262144,
+        &quot;N&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.1143445577237643
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion8/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0012137960002291948,
+      &quot;before_program&quot;: &quot;programs/fusion8/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion8&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010332589881727472,
+      &quot;page&quot;: &quot;cases/fusion8.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.1747258084594219
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/fusion9/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.4421742630074732,
+      &quot;before_program&quot;: &quot;programs/fusion9/before.loop&quot;,
+      &quot;case&quot;: &quot;fusion9&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.09922697200090624,
+      &quot;page&quot;: &quot;cases/fusion9.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 32768
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 14.534095255817157
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/gemver/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.4445694129972253,
+      &quot;before_program&quot;: &quot;programs/gemver/before.loop&quot;,
+      &quot;case&quot;: &quot;gemver&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9813154820003547,
+      &quot;page&quot;: &quot;cases/gemver.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.472074413880187
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/intratileopt1/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.5452991009951802,
+      &quot;before_program&quot;: &quot;programs/intratileopt1/before.loop&quot;,
+      &quot;case&quot;: &quot;intratileopt1&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.8324848500051303,
+      &quot;page&quot;: &quot;cases/intratileopt1.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;M&quot;: 12288,
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 1.856248916704799
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/intratileopt2/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.53177871099615,
+      &quot;before_program&quot;: &quot;programs/intratileopt2/before.loop&quot;,
+      &quot;case&quot;: &quot;intratileopt2&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.841352616000222,
+      &quot;page&quot;: &quot;cases/intratileopt2.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;M&quot;: 12288,
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 1.820614427133065
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/intratileopt3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.4999988049967214,
+      &quot;before_program&quot;: &quot;programs/intratileopt3/before.loop&quot;,
+      &quot;case&quot;: &quot;intratileopt3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.7264815859962255,
+      &quot;page&quot;: &quot;cases/intratileopt3.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;M&quot;: 24576,
+        &quot;N&quot;: 24576
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 1.4480309696174118
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/intratileopt4/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.0156432799994946,
+      &quot;before_program&quot;: &quot;programs/intratileopt4/before.loop&quot;,
+      &quot;case&quot;: &quot;intratileopt4&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.397796292003477,
+      &quot;page&quot;: &quot;cases/intratileopt4.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;M&quot;: 12288,
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 2.553174326699398
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/jacobi-1d-imper/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.749600299008307,
+      &quot;before_program&quot;: &quot;programs/jacobi-1d-imper/before.loop&quot;,
+      &quot;case&quot;: &quot;jacobi-1d-imper&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.6810940329887671,
+      &quot;page&quot;: &quot;cases/jacobi-1d-imper.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 65536,
+        &quot;T&quot;: 65536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0407510018328627
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/jacobi-2d-imper/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.9292862310103374,
+      &quot;before_program&quot;: &quot;programs/jacobi-2d-imper/before.loop&quot;,
+      &quot;case&quot;: &quot;jacobi-2d-imper&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.882894947004388,
+      &quot;page&quot;: &quot;cases/jacobi-2d-imper.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 1536,
+        &quot;T&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0246382752684933
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/lu/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.904085613001371,
+      &quot;before_program&quot;: &quot;programs/lu/before.loop&quot;,
+      &quot;case&quot;: &quot;lu&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.9325704110087827,
+      &quot;page&quot;: &quot;cases/lu.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 0.9902867471142446
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/matmul/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.275157553012832,
+      &quot;before_program&quot;: &quot;programs/matmul/before.loop&quot;,
+      &quot;case&quot;: &quot;matmul&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.3441706459998386,
+      &quot;page&quot;: &quot;cases/matmul.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;K&quot;: 1536,
+        &quot;M&quot;: 1536,
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 3.7050154271826834
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/matmul-init/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.3096200169966323,
+      &quot;before_program&quot;: &quot;programs/matmul-init/before.loop&quot;,
+      &quot;case&quot;: &quot;matmul-init&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.2733117790048709,
+      &quot;page&quot;: &quot;cases/matmul-init.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 4.791670603312316
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/matmul-seq/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.5458632090012543,
+      &quot;before_program&quot;: &quot;programs/matmul-seq/before.loop&quot;,
+      &quot;case&quot;: &quot;matmul-seq&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 2.5171019720000913,
+      &quot;page&quot;: &quot;cases/matmul-seq.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0114263296922807
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/matmul-seq3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.750976957002422,
+      &quot;before_program&quot;: &quot;programs/matmul-seq3/before.loop&quot;,
+      &quot;case&quot;: &quot;matmul-seq3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.775829910999164,
+      &quot;page&quot;: &quot;cases/matmul-seq3.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 0.9934178830660925
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/multi-loop-param/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0035091520112473518,
+      &quot;before_program&quot;: &quot;programs/multi-loop-param/before.loop&quot;,
+      &quot;case&quot;: &quot;multi-loop-param&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.002696102994377725,
+      &quot;page&quot;: &quot;cases/multi-loop-param.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;L&quot;: 262144,
+        &quot;M&quot;: 262144,
+        &quot;N&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.3015645242652472
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/multi-stmt-stencil-seq/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.007809945003828034,
+      &quot;before_program&quot;: &quot;programs/multi-stmt-stencil-seq/before.loop&quot;,
+      &quot;case&quot;: &quot;multi-stmt-stencil-seq&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.005718112995964475,
+      &quot;page&quot;: &quot;cases/multi-stmt-stencil-seq.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;n&quot;: 262144
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.3658255808060906
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/mvt/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.8897960930044064,
+      &quot;before_program&quot;: &quot;programs/mvt/before.loop&quot;,
+      &quot;case&quot;: &quot;mvt&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.43683816799602937,
+      &quot;page&quot;: &quot;cases/mvt.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 2.036900981171806
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/mxv/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.8556805299886037,
+      &quot;before_program&quot;: &quot;programs/mxv/before.loop&quot;,
+      &quot;case&quot;: &quot;mxv&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.539684641000349,
+      &quot;page&quot;: &quot;cases/mxv.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 24576
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 1.205234163265374
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/mxv-seq/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.0033624719944783,
+      &quot;before_program&quot;: &quot;programs/mxv-seq/before.loop&quot;,
+      &quot;case&quot;: &quot;mxv-seq&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9455987090041162,
+      &quot;page&quot;: &quot;cases/mxv-seq.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0610869731952126
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/mxv-seq3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.038335254008416,
+      &quot;before_program&quot;: &quot;programs/mxv-seq3/before.loop&quot;,
+      &quot;case&quot;: &quot;mxv-seq3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.0322880000021541,
+      &quot;page&quot;: &quot;cases/mxv-seq3.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.0058581074334385
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/negparam/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0013194700004532933,
+      &quot;before_program&quot;: &quot;programs/negparam/before.loop&quot;,
+      &quot;case&quot;: &quot;negparam&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010816180001711473,
+      &quot;page&quot;: &quot;cases/negparam.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;n&quot;: 4
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.2199038849617057
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/nodep/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0012691930023720488,
+      &quot;before_program&quot;: &quot;programs/nodep/before.loop&quot;,
+      &quot;case&quot;: &quot;nodep&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0010109700087923557,
+      &quot;page&quot;: &quot;cases/nodep.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.2554210227147597
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/noloop/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0014279629976954311,
+      &quot;before_program&quot;: &quot;programs/noloop/before.loop&quot;,
+      &quot;case&quot;: &quot;noloop&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001100446010241285,
+      &quot;page&quot;: &quot;cases/noloop.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {},
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.2976220408871622
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/pca/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.0022052040003473,
+      &quot;before_program&quot;: &quot;programs/pca/before.loop&quot;,
+      &quot;case&quot;: &quot;pca&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.5570892429968808,
+      &quot;page&quot;: &quot;cases/pca.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;m&quot;: 1024,
+        &quot;n&quot;: 2048
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.7990029723226209
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/polynomial/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.4509511350042885,
+      &quot;before_program&quot;: &quot;programs/polynomial/before.loop&quot;,
+      &quot;case&quot;: &quot;polynomial&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.4666778879909543,
+      &quot;page&quot;: &quot;cases/polynomial.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;n&quot;: 131072
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 0.995463451322909
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/seidel/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.705939405001118,
+      &quot;before_program&quot;: &quot;programs/seidel/before.loop&quot;,
+      &quot;case&quot;: &quot;seidel&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.4017302810098045,
+      &quot;page&quot;: &quot;cases/seidel.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 768,
+        &quot;T&quot;: 768
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.0894277614217576
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/seq/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.605100571003277,
+      &quot;before_program&quot;: &quot;programs/seq/before.loop&quot;,
+      &quot;case&quot;: &quot;seq&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.902899716005777,
+      &quot;page&quot;: &quot;cases/seq.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 24576,
+        &quot;N&quot;: 24576
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.3690162172452434
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/shift/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.9734001949982485,
+      &quot;before_program&quot;: &quot;programs/shift/before.loop&quot;,
+      &quot;case&quot;: &quot;shift&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.9054670549958246,
+      &quot;page&quot;: &quot;cases/shift.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;n&quot;: 12288
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1.0750255237091284
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/spatial/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.3188012429891387,
+      &quot;before_program&quot;: &quot;programs/spatial/before.loop&quot;,
+      &quot;case&quot;: &quot;spatial&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.735841541987611,
+      &quot;page&quot;: &quot;cases/spatial.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;M&quot;: 24576,
+        &quot;N&quot;: 24576
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 1.335836933787179
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/ssymm/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 4.655964614998084,
+      &quot;before_program&quot;: &quot;programs/ssymm/before.loop&quot;,
+      &quot;case&quot;: &quot;ssymm&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.31597189500462264,
+      &quot;page&quot;: &quot;cases/ssymm.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;NMAX&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;iss_parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;,
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 14.735375799578527
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/strmm/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 5.396353192001698,
+      &quot;before_program&quot;: &quot;programs/strmm/before.loop&quot;,
+      &quot;case&quot;: &quot;strmm&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 1.0648454309994122,
+      &quot;page&quot;: &quot;cases/strmm.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;NMAX&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 5.067733808968821
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/strsm/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 7.604562129999977,
+      &quot;before_program&quot;: &quot;programs/strsm/before.loop&quot;,
+      &quot;case&quot;: &quot;strsm&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.9731404439953621,
+      &quot;page&quot;: &quot;cases/strsm.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 7.814454919557551
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tce/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 3.5964337220066227,
+      &quot;before_program&quot;: &quot;programs/tce/before.loop&quot;,
+      &quot;case&quot;: &quot;tce&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 3.190497632007464,
+      &quot;page&quot;: &quot;cases/tce.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 72
+      },
+      &quot;pipeline&quot;: &quot;identity&quot;,
+      &quot;pipeline_label&quot;: &quot;identity fallback&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--identity&quot;
+      ],
+      &quot;speedup&quot;: 1.1272328447847002
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tmm/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 7.518935376996524,
+      &quot;before_program&quot;: &quot;programs/tmm/before.loop&quot;,
+      &quot;case&quot;: &quot;tmm&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 2.207161468992126,
+      &quot;page&quot;: &quot;cases/tmm.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;NMAX&quot;: 3072
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 3.4066086612276516
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tricky1/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.944032598999911,
+      &quot;before_program&quot;: &quot;programs/tricky1/before.loop&quot;,
+      &quot;case&quot;: &quot;tricky1&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0018896019901148975,
+      &quot;page&quot;: &quot;cases/tricky1.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 65536
+      },
+      &quot;pipeline&quot;: &quot;affine_only&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling only&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--affine-only&quot;
+      ],
+      &quot;speedup&quot;: 1028.8053299952885
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tricky2/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.001373316001263447,
+      &quot;before_program&quot;: &quot;programs/tricky2/before.loop&quot;,
+      &quot;case&quot;: &quot;tricky2&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001136762002715841,
+      &quot;page&quot;: &quot;cases/tricky2.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 32768,
+        &quot;N&quot;: 32768
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.2080945685925941
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tricky3/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0012990690011065453,
+      &quot;before_program&quot;: &quot;programs/tricky3/before.loop&quot;,
+      &quot;case&quot;: &quot;tricky3&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.001111306992243044,
+      &quot;page&quot;: &quot;cases/tricky3.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;clusterc&quot;: 32768,
+        &quot;dims&quot;: 32768,
+        &quot;pointc&quot;: 32768
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.1689560222099615
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/tricky4/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 0.0012594559957506135,
+      &quot;before_program&quot;: &quot;programs/tricky4/before.loop&quot;,
+      &quot;case&quot;: &quot;tricky4&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 0.0011234919948037714,
+      &quot;page&quot;: &quot;cases/tricky4.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;M&quot;: 32768
+      },
+      &quot;pipeline&quot;: &quot;iss&quot;,
+      &quot;pipeline_label&quot;: &quot;ISS-enabled sequential route&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--iss&quot;
+      ],
+      &quot;speedup&quot;: 1.1210191096827438
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/trisolv/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 1.2667794239969226,
+      &quot;before_program&quot;: &quot;programs/trisolv/before.loop&quot;,
+      &quot;case&quot;: &quot;trisolv&quot;,
+      &quot;compiler_command&quot;: &quot;cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 4,
+      &quot;optimized_seconds&quot;: 0.22329702098795678,
+      &quot;page&quot;: &quot;cases/trisolv.html&quot;,
+      &quot;parallelized&quot;: true,
+      &quot;params&quot;: {
+        &quot;N&quot;: 1536
+      },
+      &quot;pipeline&quot;: &quot;parallel_4&quot;,
+      &quot;pipeline_label&quot;: &quot;parallel route (4 threads)&quot;,
+      &quot;polopt_args&quot;: [
+        &quot;--parallel&quot;
+      ],
+      &quot;speedup&quot;: 5.673069073614038
+    },
+    {
+      &quot;accepted_program&quot;: &quot;programs/wavefront/after.loop&quot;,
+      &quot;baseline_seconds&quot;: 2.604864555003587,
+      &quot;before_program&quot;: &quot;programs/wavefront/before.loop&quot;,
+      &quot;case&quot;: &quot;wavefront&quot;,
+      &quot;compiler_command&quot;: &quot;cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM&quot;,
+      &quot;exact_match&quot;: true,
+      &quot;measurement_runs&quot;: 1,
+      &quot;omp_threads&quot;: 1,
+      &quot;optimized_seconds&quot;: 1.7204476589977276,
+      &quot;page&quot;: &quot;cases/wavefront.html&quot;,
+      &quot;parallelized&quot;: false,
+      &quot;params&quot;: {
+        &quot;N&quot;: 24576
+      },
+      &quot;pipeline&quot;: &quot;default_no_iss_affine_tiling&quot;,
+      &quot;pipeline_label&quot;: &quot;affine scheduling + tiling&quot;,
+      &quot;polopt_args&quot;: [],
+      &quot;speedup&quot;: 1.5140620764488062
+    }
+  ],
+  &quot;selected_nonidentity_routes&quot;: 47,
+  &quot;selected_nonidentity_speedups_above_one&quot;: 47,
+  &quot;selected_parallel_outputs&quot;: 19
+}
 </pre>
 </main>
 </body>

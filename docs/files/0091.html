@@ -3,35 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diff.patch</title>
+  <title>input.pretty.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/optimized-loop-examples/fusion8/diff.patch</code></h1>
-  <pre>--- input.pretty.loop
-+++ optimized.loop
-@@ -1,6 +1,14 @@
--for i0 in range(0, 100) {
--  A[(2 * i0)] = 1;
-+for i0 in range(0, 4) {
-+  if (i0 &lt;= 0) {
-+    A[0] = 1;
-+  }
-+  for i1 in range(max(1, (32 * i0)), min(((32 * i0) + 32), 100)) {
-+    A[(2 * i1)] = 1;
-+    for i2 in range((i1 + -1), i1) {
-+      B[(2 * i2)] = A[((2 * i2) + 2)];
-+    }
-+  }
-+  if (3 &lt;= i0) {
-+    B[198] = A[200];
-+  }
- }
--for i0 in range(0, 100) {
--  B[(2 * i0)] = A[((2 * i0) + 2)];
--}
+  <h1><code>evidence/optimized-loop-examples/fusion8/input.pretty.loop</code></h1>
+  <pre>for i0 in range(0, 100) {
+  A[(2 * i0)] = 1;
+}
+for i0 in range(0, 100) {
+  B[(2 * i0)] = A[((2 * i0) + 2)];
+}
 </pre>
 </main>
 </body>

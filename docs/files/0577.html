@@ -3,22 +3,128 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/1e6bc69fcd50af/before.loop</code></h1>
-  <pre>context(B, T, N);
+  <h1><code>evidence/results/program-comparisons/1e433ed92695d7/after.txt</code></h1>
+  <pre>[pluto] compute_deps (isl)
+[pluto] Number of statements: 1
+[pluto] Total number of loops: 1
+[pluto] Number of deps: 2
+[pluto] Maximum domain dimensionality: 1
+[pluto] Number of parameters: 1
+[iss] Dimension 0 has 2 long deps
+[iss] Dimension 0
+[pluto] pluto_constraints_lexmin_isl (5 variables, 11 constraints)
+[iss] m = 2
+[iss] h (cut) is Set #1
+[2 dims; 1 constraints]
+2i-N = 0
 
-for t in range(5, (T - 1)) {
-  for i in range(5, (N - 5)) {
-    for p in range(0, B) {
-      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
-    }
-  }
-}
+[iss] Splitting S1 into 2 statements
+After ISS
+nvar = 1, npar = 1
+Parameters: N 
+S1 &quot;a[i] = 3 * a[N - 1 - i];&quot;
+ndims: 1; orig_depth: 1
+Index set
+Set #1
+[2 dims; 4 constraints]
+i &gt;= 0
+-i+N-1 &gt;= 0
+N-1 &gt;= 0
+-2i+N-1 &gt;= 0
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+Read accesses
+a[-i+N-1]
+Write accesses
+a[i]
+Original loop: 0 -&gt; yes
+
+S2 &quot;a[i] = 2 * a[N - 1 - i];&quot;
+ndims: 1; orig_depth: 1
+Index set
+Set #1
+[2 dims; 4 constraints]
+i &gt;= 0
+-i+N-1 &gt;= 0
+N-1 &gt;= 0
+2i-N &gt;= 0
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+Read accesses
+a[-i+N-1]
+Write accesses
+a[i]
+Original loop: 0 -&gt; yes
+
+--- Dep 1 from S1 to S2; satisfied: 0, sat level: -1; Type: RAW
+Dependence polyhedron
+Set #1
+[3 dims; 5 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+-2i+N-1 &gt;= 0
+2i&#x27;-N &gt;= 0
+
+
+--- Dep 2 from S1 to S2; satisfied: 0, sat level: -1; Type: WAR
+Dependence polyhedron
+Set #1
+[3 dims; 5 constraints]
+i+i&#x27;-N+1 = 0
+i &gt;= 0
+-2i+N-2 &gt;= 0
+-2i+N-1 &gt;= 0
+2i&#x27;-N &gt;= 0
+
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] pluto_compute_dep_satisfaction
+[pluto] pluto_dep_satisfaction_reset
+[pluto] dep_satisfaction_update (level 0)
+	 0 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 1)
+	 2 dep(s) satisfied
+[pluto] dep_satisfaction_update (level 2)
+	 0 dep(s) satisfied
+[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]
+
+T(S1): (0, i, 0)
+loop types (loop, loop, loop)
+
+T(S2): (0, i, 0)
+loop types (loop, loop, loop)
+
+[pluto] generating Cloog file...
+[pluto] using Cloog -f/-l options: 1 3
+[pluto] cloog_input_read
+[pluto] cloog_clast_create
+[Pluto] Output written to reverse-iss.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.000233s
+[pluto] Auto-transformation time: 0.000000s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
+[pluto] Code generation time: 0.001094s
+[pluto] Other/Misc time: 0.002969s
+[pluto] Total time: 0.004296s
+[pluto] All times: 0.000233 0.000000 0.001094 0.002969
 </pre>
 </main>
 </body>

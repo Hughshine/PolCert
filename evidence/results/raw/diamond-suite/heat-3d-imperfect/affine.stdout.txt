@@ -1,4 +1,4 @@
-before: /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.beforescheduling.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop
+before: /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.beforescheduling.scop
+after:  /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop
 contract: schedule refinement under supplied domains and trusted access summaries; statement bodies are not checked
 overall: PASS

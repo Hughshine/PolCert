@@ -1,5 +1,5 @@
 [ci-timing] START pluto-baseline
-[ci-timing] END pluto-baseline wall=0s
+[ci-timing] END pluto-baseline wall=1s
 [ci-timing] START route-telemetry
 [ci-timing] END route-telemetry wall=0s
 [ci-timing] START open-proof-gate-unit
@@ -16,7 +16,7 @@
 [release-provenance-unit] PASS
 [ci-timing] END release-provenance-unit wall=0s
 [ci-timing] START unrolljam-route-unit
-[ci-timing] END unrolljam-route-unit wall=1s
+[ci-timing] END unrolljam-route-unit wall=0s
 [ci-timing] START flag-manifest-unit
 [manifest-runner] OK (failed commands cannot emit optimized results)
 [ci-timing] END flag-manifest-unit wall=0s
@@ -24,7 +24,7 @@
 [strict-effect-unit] PASS expected=reject-missing-effects actual=rejected interpretation=per-case effect contracts fail closed
 [ci-timing] END strict-effect-unit wall=0s
 [ci-timing] START generated-harness-unit
-[generated-harness-unit] PASS expected=import-and-parse-positive-and-negative-ranges actual=parsed-and-index-weighted interpretation=generated-C-harness-can-start-infer-loop-bounds-and-detect-value-permutations
+[generated-harness-unit] PASS expected=range-checks-and-Rocq-Z-integer-operators actual=parsed-state-observation-and-semantics-lowered interpretation=generated-C-harness-matches-control-arithmetic-and-hashes-every-modeled-value
 [ci-timing] END generated-harness-unit wall=0s
 [ci-timing] START legacy-failure-gate-unit
 [legacy-failure-gate-unit] PASS expected=exact-exit-accepted,mismatch-zero-and-missing-rejected actual=exact-exit-accepted,mismatch-zero-and-missing-rejected interpretation=failure-gate-rejects-unrelated-nonzero-statuses
@@ -33,15 +33,15 @@
 [ci-timing] END python-syntax wall=0s
 [ci-timing] START check-admitted
 [open-proof] PASS expected=0 actual=0 files=239 interpretation=compiled Coq sources contain no unfinished proof commands
-[ci-timing] END check-admitted wall=2s
+[ci-timing] END check-admitted wall=1s
 [ci-timing] START clean
 [ci-timing] END clean wall=0s
 [ci-timing] START depend
-[ci-timing] END depend wall=0s
+[ci-timing] END depend wall=1s
 [ci-timing] START proof
-[ci-timing] END proof wall=1226s
+[ci-timing] END proof wall=1073s
 [ci-timing] START extraction
-[ci-timing] END extraction wall=163s
+[ci-timing] END extraction wall=146s
 [ci-timing] START proof-report
 [proof-report] PASS expected=admitted:0,aborted:0,extraction-axioms:0,missing-routes:0 actual=admitted:0,aborted:0,extraction-axioms:0,missing-routes:0 interpretation=proof sources and extracted routes are closed
 [ci-timing] END proof-report wall=2s
@@ -50,12 +50,12 @@
 [ci-timing] START extraction-depend
 [ci-timing] END extraction-depend wall=3s
 [ci-timing] START polcert
-[ci-timing] END polcert wall=28s
+[ci-timing] END polcert wall=22s
 [ci-timing] START polopt
-[ci-timing] END polopt wall=24s
+[ci-timing] END polopt wall=18s
 [ci-timing] START second-level-rejection
 [second-level-rejection] PASS expected=malformed:16,scalar-only:1,nonpermutable:1,vector-skips:4,consumer-failures:12,malformed-explicit:16,malformed-hinted:18,final-affine:48 actual=malformed:16,scalar-only:1,nonpermutable:1,vector-skips:4,consumer-failures:12,malformed-explicit:16,malformed-hinted:18,final-affine:48 interpretation=producer-consumer-and-final-affine-failures-preserved-the-declared-route
-[ci-timing] END second-level-rejection wall=581s
+[ci-timing] END second-level-rejection wall=498s
 [ci-timing] START second-level-manifest
 [SECOND-LEVEL-TILE] PASS case=second-level-default-band expected=result=success,markers=8,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
 [SECOND-LEVEL-TILE] PASS case=second-level-default-iss-band expected=result=success,markers=8,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
@@ -116,7 +116,7 @@
 [SECOND-LEVEL-TILE] PASS case=second-level-fusion-band expected=result=success,markers=8,baseline-difference=false coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
 [SECOND-LEVEL-TILE] PASS case=second-level-fusion-iss-band expected=result=success,markers=8,baseline-difference=false coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
 [SECOND-LEVEL-TILE] PASS expected=58 actual=58 interpretation=all-manifest-contracts-matched
-[ci-timing] END second-level-manifest wall=954s
+[ci-timing] END second-level-manifest wall=818s
 [ci-timing] START second-level-routes
 [second-level-route-static] PASS expected=flags-forwarded,band-first-dispatch,unique-final-report,affine-ISS-no-tiling-route,pluto-default-no-rar actual=all-static-route-contracts-matched coverage=static-route-contract interpretation=source-and-extracted-entrypoints-follow-the-declared-routes
 [second-level-routes] PASS case=phase-aligned-standalone-formal-tiling-validation expected=structural:PASS,formal:PASS,route:permutable-band,alarm:false actual=structural:PASS,formal:PASS,route:permutable-band,alarm:false interpretation=standalone-tiling-candidate-was-formally-accepted
@@ -143,7 +143,7 @@
 [second-level-routes] PASS case=second-level-full-diamond-tile-vector-current expected=result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false actual=result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false interpretation=explicit-invalid-vector-consumer-failed-closed
 [second-level-routes] PASS case=second-level-full-diamond-tile-vector-current-ISS expected=result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false actual=result:reject,reason:non-innermost-vector,tiling-route:none,optimized-output:false interpretation=explicit-invalid-vector-consumer-failed-closed
 [second-level-routes] PASS expected=accepted:16,rejected:4 actual=accepted:16,rejected:4 interpretation=diamond-consumer-route-matrix-matched
-[ci-timing] END second-level-routes wall=892s
+[ci-timing] END second-level-routes wall=766s
 [ci-timing] START pluto-compat
 [pluto-compat-suite] PASS case=default-no-rar-affine expected=success,effects=2,tiling-route=none oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
 [pluto-compat-suite] PASS case=default-no-rar-tiled expected=success,effects=2,tiling-route=permutable-band oracle-policy=default-no-rar coverage=effect actual=success,effect-contracts-matched interpretation=route-and-optimization-contract-matched
@@ -335,7 +335,7 @@
 [pluto-compat-suite] PASS case=reject-candldep-lastwriter expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
 [pluto-compat-suite] PASS case=reject-isldep-candldep expected=rejection,effects=0,tiling-route=none oracle-policy=not-applicable coverage=rejection-contract actual=rejection,reason-matched interpretation=unsupported-route-rejected-as-declared
 [pluto-compat-suite] PASS expected=189 actual=189 explicit-rar=126 default-no-rar=11 native=10 not-applicable=42 interpretation=all-driver-route-and-effect-contracts-matched
-[ci-timing] END pluto-compat wall=711s
+[ci-timing] END pluto-compat wall=605s
 [ci-timing] START strict-generated
 [strict-effect] PASS case=1dloop-invar expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched
 [strict-effect] PASS case=adi expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
@@ -399,7 +399,7 @@
 [strict-effect] PASS case=tricky4 expected=unchanged coverage=effect actual=changed:false,nontrivial:false,tiled:false interpretation=declared-optimization-effect-matched
 [strict-effect] PASS case=trisolv expected=successful-materialization coverage=acceptance-only actual=changed:true,nontrivial:true,tiled:true interpretation=no-case-specific-effect-contract
 [strict-effect] PASS case=wavefront expected=nontrivial-change+tiled coverage=effect actual=changed:true,nontrivial:true,tiled:true interpretation=declared-optimization-effect-matched
-[ci-timing] END strict-generated wall=485s
+[ci-timing] END strict-generated wall=419s
 [ci-timing] START generated-c-correctness
 [E2E-GEN] PASS case=1dloop-invar expected=outputs-match,parallel=false,vector=false,effect-contracts=0 actual=outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1 executions=1 coverage=executable-semantics interpretation=generated-baseline-and-optimized-execution-agree
 [E2E-GEN] PASS case=adi expected=outputs-match,parallel=false,vector=false,effect-contracts=0 actual=outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1 executions=1 coverage=executable-semantics interpretation=generated-baseline-and-optimized-execution-agree
@@ -464,21 +464,21 @@
 [E2E-GEN] PASS case=trisolv expected=outputs-match,parallel=false,vector=false,effect-contracts=0 actual=outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1 executions=1 coverage=executable-semantics interpretation=generated-baseline-and-optimized-execution-agree
 [E2E-GEN] PASS case=wavefront expected=outputs-match,parallel=false,vector=false,effect-contracts=0 actual=outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1 executions=1 coverage=executable-semantics interpretation=generated-baseline-and-optimized-execution-agree
 [E2E-GEN-SUITE] PASS expected=62 actual=62 coverage=executable-semantics interpretation=all-generated-optimized-programs-matched-their-baselines
-[ci-timing] END generated-c-correctness wall=20s
+[ci-timing] END generated-c-correctness wall=21s
 [ci-timing] START generated-parallel-c-correctness
 [E2E-GEN] PASS case=matmul expected=outputs-match,parallel=true,vector=false,effect-contracts=1 actual=outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4 executions=3 coverage=effect-and-executable-semantics interpretation=requested-effects-occurred-and-generated-executions-agree
 [E2E-GEN] PASS case=corcol3 expected=outputs-match,parallel=true,vector=false,effect-contracts=1 actual=outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4 executions=3 coverage=effect-and-executable-semantics interpretation=requested-effects-occurred-and-generated-executions-agree
 [E2E-GEN] PASS case=doitgen expected=outputs-match,parallel=true,vector=false,effect-contracts=1 actual=outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4 executions=3 coverage=effect-and-executable-semantics interpretation=requested-effects-occurred-and-generated-executions-agree
 [E2E-GEN-SUITE] PASS expected=3 actual=3 coverage=effect-and-executable-semantics interpretation=all-generated-optimized-programs-matched-their-baselines
-[ci-timing] END generated-parallel-c-correctness wall=17s
+[ci-timing] END generated-parallel-c-correctness wall=10s
 [ci-timing] START generated-second-level-c-correctness
 [E2E-GEN] PASS case=matmul-init expected=outputs-match,parallel=false,vector=false,effect-contracts=3 actual=outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1 executions=1 coverage=effect-and-executable-semantics interpretation=requested-effects-occurred-and-generated-executions-agree
 [E2E-GEN-SUITE] PASS expected=1 actual=1 coverage=effect-and-executable-semantics interpretation=all-generated-optimized-programs-matched-their-baselines
-[ci-timing] END generated-second-level-c-correctness wall=5s
+[ci-timing] END generated-second-level-c-correctness wall=4s
 [ci-timing] START generated-intratile-c-correctness
 [E2E-GEN] PASS case=matmul expected=outputs-match,parallel=false,vector=false,effect-contracts=1 actual=outputs-match:true,parallel:false,vector:false,effects-matched:true,omp-threads-requested:1 executions=1 coverage=effect-and-executable-semantics interpretation=requested-effects-occurred-and-generated-executions-agree
 [E2E-GEN-SUITE] PASS expected=1 actual=1 coverage=effect-and-executable-semantics interpretation=all-generated-optimized-programs-matched-their-baselines
-[ci-timing] END generated-intratile-c-correctness wall=2s
+[ci-timing] END generated-intratile-c-correctness wall=3s
 [ci-timing] START direct-routes
 [direct-route] PASS case=ordinary-common-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
 [direct-route] PASS case=second-level-zero-row-band expected=route:permutable-band,optimized-output:true,rejection-alarm:false,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
@@ -501,7 +501,7 @@
 [direct-route] PASS case=explicit-second-level-noloop expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
 [direct-route] PASS case=explicit-second-level-noloop-iss expected=route:rejected,optimized-output:false,rejection-alarm:true,fallbacks:0 actual=all-route-assertions-matched interpretation=direct-only-route-contract-matched
 [direct-route] PASS expected=20,fallbacks:0 actual=20,fallbacks:0 interpretation=all-direct-route-contracts-matched
-[ci-timing] END direct-routes wall=38s
+[ci-timing] END direct-routes wall=32s
 [ci-timing] START non-second-level-routes
 [non-second-level-routes] PASS case=ordinary-sequential expected=success:true,route:permutable-band,alarm:false actual=all-route-assertions-matched interpretation=one-level-route-composition-matched
 [non-second-level-routes] PASS case=ordinary-parallel-hint expected=success:true,route:permutable-band,alarm:false actual=all-route-assertions-matched interpretation=one-level-route-composition-matched
@@ -594,7 +594,7 @@
 [non-second-level-routes] PASS case=identity-mixed-depth-iss-parallel-current expected=success:true,route:permutable-band,alarm:false actual=all-route-assertions-matched interpretation=one-level-route-composition-matched
 [non-second-level-routes] PASS case=identity-mixed-depth-iss-vector-current expected=success:false,route:rejected,alarm:false actual=all-route-assertions-matched interpretation=one-level-route-composition-matched
 [non-second-level-routes] PASS expected=permutable-band:84,fallbacks:0,vector-rejections:6 actual=permutable-band:84,fallbacks:0,vector-rejections:6 interpretation=all-one-level-route-contracts-matched
-[ci-timing] END non-second-level-routes wall=327s
+[ci-timing] END non-second-level-routes wall=278s
 [ci-timing] START parallel-current
 [PARALLEL-CURRENT] PASS case=parallel-current-positive expected=result=success,markers=5,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
 [PARALLEL-CURRENT] PASS case=diamond-route-then-parallel-current-positive expected=result=success,markers=5,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
@@ -606,7 +606,7 @@
 [PARALLEL-CURRENT] PASS case=parallel-current-out-of-bounds expected=result=failure,markers=1,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
 [PARALLEL-CURRENT] PASS case=parallel-current-dependent expected=result=failure,markers=1,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
 [PARALLEL-CURRENT] PASS expected=9 actual=9 interpretation=all-manifest-contracts-matched
-[ci-timing] END parallel-current wall=42s
+[ci-timing] END parallel-current wall=37s
 [ci-timing] START vector-current
 [VECTOR-CURRENT] PASS case=vector-current-positive expected=result=success,markers=7,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
 [VECTOR-CURRENT] PASS case=vector-current-positive-iss expected=result=success,markers=7,baseline-difference=true coverage=effect actual=all-declared-assertions-matched interpretation=requested-result-and-effects-observed
@@ -621,7 +621,7 @@
 [VECTOR-CURRENT] PASS case=vector-current-out-of-bounds expected=result=failure,markers=6,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
 [VECTOR-CURRENT] PASS case=vector-current-dependent expected=result=failure,markers=6,baseline-difference=false coverage=rejection-contract actual=all-declared-assertions-matched interpretation=unsupported-route-rejected-as-declared
 [VECTOR-CURRENT] PASS expected=12 actual=12 interpretation=all-manifest-contracts-matched
-[ci-timing] END vector-current wall=15s
+[ci-timing] END vector-current wall=12s
 [ci-timing] START diamond-tiling
 [diamond-suite] PASS case=diamond-tile-example.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
 [diamond-suite] PASS case=fdtd-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
@@ -643,7 +643,7 @@
 [diamond-suite] PASS case=jacobi-3d-25pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
 [diamond-suite] PASS case=jacobi-3d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
 [diamond-suite] PASS expected=19 actual=19 interpretation=all-declared-diamond-effects-and-rejections-matched
-[ci-timing] END diamond-tiling wall=167s
+[ci-timing] END diamond-tiling wall=144s
 [ci-timing] START scalar-interleaved
 [scalar-interleaved] OK (1 direct acceptance, 3 exact rejections, 1 importer rejection)
 [ci-timing] END scalar-interleaved wall=1s
@@ -739,7 +739,7 @@
 [typed-c-pipeline] PASS case=vector-pointwise expected=typed-pointwise,verified-restricted-inner-concurrency actual=stats={loops:4,divs:2,mods:0,guards:1,instrs:1,coupled:0},seq:3,par:0,vec:1,vec-requested:1,noninnermost:0 interpretation=dependence-free-innermost-schedule-coordinate-was-marked-vector
 [typed-c-pipeline] PASS expected=6 actual=6 interpretation=all-typed-C-verified-route-and-component-effects-observed
 [legacy-ci] PASS expected=all-legacy-suites actual=all-passed interpretation=verbose-Pluto-traces-suppressed-full-log=/tmp/polcert-legacy-tests.log
-[ci-timing] END legacy-tests wall=116s
+[ci-timing] END legacy-tests wall=99s
 [ci-timing] START legacy-failure-gate
 [legacy-failure-gate] PASS case=readscop-missing-input expected=exit:2 actual=exit:2 interpretation=test-binary-propagated-the-declared-failure
 [legacy-failure-gate] PASS case=pluto-all-missing-corpus expected=exit:1 actual=exit:1 interpretation=test-binary-propagated-the-declared-failure
@@ -761,7 +761,7 @@
 [E2E-SUITE] PASS expected=8 actual=8 interpretation=all selected optimized programs matched their baselines
 [E2E] PASS case=matmul expected=outputs-match,parallel=true,vector=false,unrolled=false,required-effects=4,forbidden-effects=0 coverage=effect-and-executable-semantics actual=outputs-match:true,parallel:true,vector:false,unrolled:false,effects-matched:true,omp-threads-requested:4 executions=3 interpretation=required-optimization-effects-occurred-and-optimized-execution-agrees-with-baseline
 [E2E] PASS case=matmul expected=outputs-match,parallel=false,vector=true,unrolled=false,required-effects=4,forbidden-effects=0 coverage=effect-and-executable-semantics actual=outputs-match:true,parallel:false,vector:true,unrolled:false,effects-matched:true,omp-threads-requested:1 executions=1 interpretation=required-optimization-effects-occurred-and-optimized-execution-agrees-with-baseline
-[ci-timing] END executable-c-correctness wall=7s
+[ci-timing] END executable-c-correctness wall=8s
 [ci-timing] START iss-suite
 [ISS-MULTICUT] PASS case=multicut-complete expected=accept,exit:0 actual=accept,exit:0 interpretation=all-four-sign-regions-proved
 [ISS-MULTICUT] PASS case=pluto-three-cut-four-piece-mismatch expected=reject,exit:1 actual=reject,exit:1 interpretation=incomplete-three-cut-sign-space-rejected
@@ -785,13 +785,13 @@
 [ISS-LIVE] PASS case=heat-2dp.c-validate expected=accept actual=accept,exit:0 interpretation=live-Pluto-ISS-witness-was-accepted
 [ISS-LIVE] PASS case=mutated-cut expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=mutated-live-ISS-witness-was-rejected
 [ISS-LIVE-SUITE] PASS expected=emitted:3,accepted:3,rejected:1 actual=emitted:3,accepted:3,rejected:1 interpretation=live-ISS-contracts-matched
-[ci-timing] END iss-live-suite wall=3s
+[ci-timing] END iss-live-suite wall=2s
 [ci-timing] START pluto-bug-oracle
-[pluto-bug] explicit-RAR matmul parallel-hint case reproduced
+[pluto-bug] explicit-RAR matmul hint certifies the intended loop
 [pluto-auto-affine-lp] OK
 [pluto-affine-bug] OK
 [pluto-tiling-bug] OK
 [pluto-diamond-nointra] OK
 [pluto-miscompile] OK (white-box defect reproduced and rejected)
 [pluto-unrolljam-bug] OK
-[ci-timing] END pluto-bug-oracle wall=12s
+[ci-timing] END pluto-bug-oracle wall=11s

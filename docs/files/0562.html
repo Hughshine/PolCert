@@ -3,74 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.txt</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/1c7fcb2a15e3fe/after.txt</code></h1>
-  <pre>[pluto] compute_deps (isl)
-nvar = 1, npar = 2
-Parameters: alphaaa alphaab 
-S1 &quot;A[longiter] = A[longiter] + 1;&quot;
-ndims: 1; orig_depth: 1
-Index set
-Set #1
-[3 dims; 5 constraints]
-longi &gt;= 0
--longi+alpha-1 &gt;= 0
--longi+alpha-1 &gt;= 0
-alpha-1 &gt;= 0
-alpha-1 &gt;= 0
-
-T(S1): (0, longiter, 0)
-loop types (loop, loop, loop)
-
-Read accesses
-A[longiter]
-Write accesses
-A[longiter]
-Original loop: 0 -&gt; yes
-
-** No dependences **
-
-T(S1): (0, longiter, 0)
-loop types (loop, loop, loop)
-
-[pluto] Number of statements: 1
-[pluto] Total number of loops: 1
-[pluto] Number of deps: 0
-[pluto] Maximum domain dimensionality: 1
-[pluto] Number of parameters: 2
-[pluto] pluto_compute_dep_satisfaction
-[pluto] pluto_dep_satisfaction_reset
-[pluto] dep_satisfaction_update (level 0)
-	 0 dep(s) satisfied
-[pluto] dep_satisfaction_update (level 1)
-	 0 dep(s) satisfied
-[pluto] dep_satisfaction_update (level 2)
-	 0 dep(s) satisfied
-[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]
-
-T(S1): (0, longiter, 0)
-loop types (loop, loop, loop)
-
-[pluto] generating Cloog file...
-[pluto] using Cloog -f/-l options: 1 3
-[pluto] cloog_input_read
-[pluto] cloog_clast_create
-[Pluto] Output written to iss_name_collision.pluto.c
-
-[pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.000378s
-[pluto] Auto-transformation time: 0.000000s
-[pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
-[pluto] Code generation time: 0.001126s
-[pluto] Other/Misc time: 0.008544s
-[pluto] Total time: 0.010048s
-[pluto] All times: 0.000378 0.000000 0.001126 0.008544
+  <h1><code>evidence/results/program-comparisons/1b208fbb1e330b/before.loop</code></h1>
+  <pre>for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
+  }
+}
 </pre>
 </main>
 </body>

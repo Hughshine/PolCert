@@ -3,27 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/8b52a7be49eb4a/before.c</code></h1>
-  <pre>// Example - thanks to Tobias Grosser.
-// Dependences are (1, 1) and (3, -1). The diamond tiling hyperplanes are (1,1)
-// and (1,-1).
-//
-// TILE-PARALLEL: T(S1): (t+i, t-i)
-// TILE-PARALLEL: After tiling:
-// TILE-PARALLEL: T(S1): ((t+i)/32, (t-i)/32, t+i, t-i)
-#pragma scop
-for (t = 5; t &lt; T - 1; t++) {
-  for (i = 5; i &lt; N - 5; i++) {
-    A[t + 1][i] = 0.125 * (A[t][i - 1] + A[t - 2][i + 1]);
-  }
+  <h1><code>evidence/results/program-comparisons/8b80d84e435e45/after.loop</code></h1>
+  <pre>context(N);
+
+for i0 in range(0, ((N + 1) / 2)) {
+  A[(N + ((-2 * i0) + -1))] = (N + ((-2 * i0) + 6));
 }
-#pragma endscop
 </pre>
 </main>
 </body>

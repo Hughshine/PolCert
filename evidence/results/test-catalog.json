@@ -55202,7 +55202,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-diamond-parallel-current",
       "case_view": "cases/0824.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55240,7 +55240,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-diamond-vector-current",
       "case_view": "cases/0825.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55278,7 +55278,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-full-diamond-iss-parallel-current",
       "case_view": "cases/0826.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55316,7 +55316,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-full-diamond-iss-vector-current",
       "case_view": "cases/0827.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55354,7 +55354,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-identity-mixed-depth-parallel-current",
       "case_view": "cases/0828.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55392,7 +55392,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-identity-mixed-depth-vector-current",
       "case_view": "cases/0829.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55430,7 +55430,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-ordinary-parallel-current",
       "case_view": "cases/0830.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55468,7 +55468,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-ordinary-vector-current",
       "case_view": "cases/0831.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55506,7 +55506,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-second-level-identity-mixed-depth-iss-parallel-current",
       "case_view": "cases/0832.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55544,7 +55544,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-second-level-identity-mixed-depth-iss-vector-current",
       "case_view": "cases/0833.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55582,7 +55582,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-second-level-iss-parallel-current",
       "case_view": "cases/0834.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55620,7 +55620,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "consumer-second-level-iss-vector-current",
       "case_view": "cases/0835.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55658,7 +55658,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-multipar-hint-strict",
       "case_view": "cases/0836.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55708,7 +55708,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-parallel-current",
       "case_view": "cases/0837.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55758,7 +55758,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-parallel-hint-strict",
       "case_view": "cases/0838.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55808,7 +55808,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-sequential",
       "case_view": "cases/0839.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55858,7 +55858,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-vector-current",
       "case_view": "cases/0840.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55908,7 +55908,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-iss-with-vector-hint-strict",
       "case_view": "cases/0841.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -55958,7 +55958,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-multipar-hint-strict",
       "case_view": "cases/0842.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56008,7 +56008,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-parallel-current",
       "case_view": "cases/0843.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56058,7 +56058,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-parallel-hint-strict",
       "case_view": "cases/0844.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56108,7 +56108,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-sequential",
       "case_view": "cases/0845.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56158,7 +56158,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-vector-current",
       "case_view": "cases/0846.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56208,7 +56208,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-diamond-with-vector-hint-strict",
       "case_view": "cases/0847.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56258,7 +56258,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-multipar-hint-strict",
       "case_view": "cases/0848.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56308,7 +56308,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-parallel-current",
       "case_view": "cases/0849.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56358,7 +56358,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-parallel-hint-strict",
       "case_view": "cases/0850.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56408,7 +56408,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-sequential",
       "case_view": "cases/0851.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56458,7 +56458,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-vector-current",
       "case_view": "cases/0852.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56508,7 +56508,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-iss-with-vector-hint-strict",
       "case_view": "cases/0853.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56558,7 +56558,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-multipar-hint-strict",
       "case_view": "cases/0854.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56608,7 +56608,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-parallel-current",
       "case_view": "cases/0855.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56658,7 +56658,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-parallel-hint-strict",
       "case_view": "cases/0856.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56708,7 +56708,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-sequential",
       "case_view": "cases/0857.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56758,7 +56758,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-vector-current",
       "case_view": "cases/0858.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56808,7 +56808,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-full-diamond-with-vector-hint-strict",
       "case_view": "cases/0859.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56858,7 +56858,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-multipar-hint-strict",
       "case_view": "cases/0860.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56908,7 +56908,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-parallel-current",
       "case_view": "cases/0861.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -56958,7 +56958,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-parallel-hint-strict",
       "case_view": "cases/0862.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57008,7 +57008,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-sequential",
       "case_view": "cases/0863.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57058,7 +57058,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-vector-current",
       "case_view": "cases/0864.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57108,7 +57108,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-iss-with-vector-hint-strict",
       "case_view": "cases/0865.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57158,7 +57158,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-multipar-hint-strict",
       "case_view": "cases/0866.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57208,7 +57208,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-parallel-current",
       "case_view": "cases/0867.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57258,7 +57258,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-parallel-hint-strict",
       "case_view": "cases/0868.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57308,7 +57308,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-sequential",
       "case_view": "cases/0869.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57358,7 +57358,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-vector-current",
       "case_view": "cases/0870.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57408,7 +57408,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-diamond-with-vector-hint-strict",
       "case_view": "cases/0871.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57458,7 +57458,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-multipar-hint-strict",
       "case_view": "cases/0872.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57508,7 +57508,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-parallel-current",
       "case_view": "cases/0873.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57558,7 +57558,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-parallel-hint-strict",
       "case_view": "cases/0874.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57608,7 +57608,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-sequential",
       "case_view": "cases/0875.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57658,7 +57658,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-vector-current",
       "case_view": "cases/0876.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57708,7 +57708,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-iss-with-vector-hint-strict",
       "case_view": "cases/0877.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57758,7 +57758,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-multipar-hint-strict",
       "case_view": "cases/0878.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57808,7 +57808,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-parallel-current",
       "case_view": "cases/0879.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57858,7 +57858,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-parallel-hint-strict",
       "case_view": "cases/0880.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57908,7 +57908,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-sequential",
       "case_view": "cases/0881.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -57958,7 +57958,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-vector-current",
       "case_view": "cases/0882.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58008,7 +58008,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "final-affine-second-level-full-diamond-with-vector-hint-strict",
       "case_view": "cases/0883.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58058,7 +58058,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "identity-vector-strict",
       "case_view": "cases/0884.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "program-executions/595213810ef161/summary.json",
@@ -58134,7 +58134,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "identity-vector-strict-iss",
       "case_view": "cases/0885.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "program-executions/6a44b5ec1bb122/summary.json",
@@ -58210,7 +58210,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond",
       "case_view": "cases/0886.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58260,7 +58260,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-iss",
       "case_view": "cases/0887.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58310,7 +58310,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-multipar",
       "case_view": "cases/0888.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58360,7 +58360,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-multipar-strict",
       "case_view": "cases/0889.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58410,7 +58410,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-parallel",
       "case_view": "cases/0890.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58460,7 +58460,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-parallel-strict",
       "case_view": "cases/0891.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58510,7 +58510,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-vector",
       "case_view": "cases/0892.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58560,7 +58560,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-hinted-vector-strict",
       "case_view": "cases/0893.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58610,7 +58610,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-parallel-current",
       "case_view": "cases/0894.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58660,7 +58660,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-diamond-with-vector-current",
       "case_view": "cases/0895.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58710,7 +58710,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-full-diamond",
       "case_view": "cases/0896.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58760,7 +58760,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-full-diamond-iss",
       "case_view": "cases/0897.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58810,7 +58810,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-full-diamond-iss-with-parallel-current",
       "case_view": "cases/0898.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58860,7 +58860,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-full-diamond-iss-with-vector-current",
       "case_view": "cases/0899.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58910,7 +58910,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-identity-mixed-depth",
       "case_view": "cases/0900.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -58960,7 +58960,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-identity-mixed-depth-iss",
       "case_view": "cases/0901.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59010,7 +59010,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-identity-mixed-depth-iss-with-parallel-current",
       "case_view": "cases/0902.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59060,7 +59060,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-identity-mixed-depth-iss-with-vector-current",
       "case_view": "cases/0903.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59110,7 +59110,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary",
       "case_view": "cases/0904.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59160,7 +59160,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-iss",
       "case_view": "cases/0905.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59210,7 +59210,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-multipar",
       "case_view": "cases/0906.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59260,7 +59260,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-multipar-strict",
       "case_view": "cases/0907.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59310,7 +59310,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-parallel",
       "case_view": "cases/0908.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59360,7 +59360,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-parallel-strict",
       "case_view": "cases/0909.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59410,7 +59410,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-vector",
       "case_view": "cases/0910.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59460,7 +59460,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-hinted-vector-strict",
       "case_view": "cases/0911.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59510,7 +59510,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-parallel-current",
       "case_view": "cases/0912.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59560,7 +59560,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-ordinary-with-vector-current",
       "case_view": "cases/0913.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59610,7 +59610,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level",
       "case_view": "cases/0914.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59660,7 +59660,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-diamond",
       "case_view": "cases/0915.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59710,7 +59710,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-diamond-iss",
       "case_view": "cases/0916.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59760,7 +59760,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-diamond-with-parallel-current",
       "case_view": "cases/0917.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59810,7 +59810,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-diamond-with-vector-current",
       "case_view": "cases/0918.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59860,7 +59860,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond",
       "case_view": "cases/0919.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59910,7 +59910,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss",
       "case_view": "cases/0920.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -59960,7 +59960,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-multipar",
       "case_view": "cases/0921.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60010,7 +60010,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-multipar-strict",
       "case_view": "cases/0922.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60060,7 +60060,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-parallel",
       "case_view": "cases/0923.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60110,7 +60110,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-parallel-strict",
       "case_view": "cases/0924.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60160,7 +60160,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-vector",
       "case_view": "cases/0925.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60210,7 +60210,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-hinted-vector-strict",
       "case_view": "cases/0926.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60260,7 +60260,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-parallel-current",
       "case_view": "cases/0927.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60310,7 +60310,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-full-diamond-iss-with-vector-current",
       "case_view": "cases/0928.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60360,7 +60360,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-identity-mixed-depth",
       "case_view": "cases/0929.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60410,7 +60410,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-identity-mixed-depth-iss",
       "case_view": "cases/0930.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60460,7 +60460,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-identity-mixed-depth-iss-with-parallel-current",
       "case_view": "cases/0931.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60510,7 +60510,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-identity-mixed-depth-iss-with-vector-current",
       "case_view": "cases/0932.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60560,7 +60560,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-iss",
       "case_view": "cases/0933.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60610,7 +60610,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-with-parallel-current",
       "case_view": "cases/0934.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60660,7 +60660,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "malformed-second-level-with-vector-current",
       "case_view": "cases/0935.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60710,7 +60710,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "nonpermutable-band",
       "case_view": "cases/0936.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60760,7 +60760,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "scalar-only",
       "case_view": "cases/0937.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "raw/remote-ci-test-results.stdout.txt",
@@ -60798,7 +60798,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "second-level-identity-vector-strict",
       "case_view": "cases/0938.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "program-executions/4b1e9d80cdf73b/summary.json",
@@ -60874,7 +60874,7 @@
       "actual": "PASS; the declared failure point was preserved",
       "case": "second-level-identity-vector-strict-iss",
       "case_view": "cases/0939.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
         "program-executions/07eac601deb2c2/summary.json",
@@ -60950,10 +60950,10 @@
       "actual": "The affine checker rejects the schedule and the complete route emits no optimized loop.",
       "case": "affine-fst-reversed",
       "case_view": "cases/0940.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -60962,22 +60962,22 @@
       },
       "expected": "The supplied .fst grouping places a consumer before its producer, but Pluto accepts the complete lexicographically illegal schedule.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: The supplied .fst grouping places a consumer before its producer, but Pluto accepts the complete lexicographically illegal schedule.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "External grouping placed a consumer before its producer",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/76234815a1ea71/before.c",
-        "program-comparisons/76234815a1ea71/after.c"
+        "program-comparisons/af324c025ea4fb/before.c",
+        "program-comparisons/af324c025ea4fb/after.c"
       ],
       "program_pair": {
-        "after": "program-comparisons/76234815a1ea71/after.c",
-        "before": "program-comparisons/76234815a1ea71/before.c",
+        "after": "program-comparisons/af324c025ea4fb/after.c",
+        "before": "program-comparisons/af324c025ea4fb/before.c",
         "case": "affine-fst-reversed",
         "kind": "rejected-candidate-pair",
         "left_label": "Original C Program",
         "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
         "right_label": "Rejected Pluto-Generated C Program",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
       "recorded_outcome": "The affine checker rejects the schedule and the complete route emits no optimized loop.",
       "recorded_term_explanations": [
@@ -60995,20 +60995,20 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
       "actual": "The affine checker rejects the before/after schedule; the complete default no-RAR route emits no optimized loop.",
       "case": "auto-affine-lp-cc-scaling",
       "case_view": "cases/0941.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -61017,22 +61017,22 @@
       },
       "expected": "A real S3-to-S1 dependence is reversed after connected-component relabeling lets LP integerization scale its endpoints differently.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: A real S3-to-S1 dependence is reversed after connected-component relabeling lets LP integerization scale its endpoints differently.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "Affine rescheduling reversed a dependence",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/7d6f016d0c8c2c/before.c",
-        "program-comparisons/7d6f016d0c8c2c/after.c"
+        "program-comparisons/11fd588c02292a/before.c",
+        "program-comparisons/11fd588c02292a/after.c"
       ],
       "program_pair": {
-        "after": "program-comparisons/7d6f016d0c8c2c/after.c",
-        "before": "program-comparisons/7d6f016d0c8c2c/before.c",
+        "after": "program-comparisons/11fd588c02292a/after.c",
+        "before": "program-comparisons/11fd588c02292a/before.c",
         "case": "auto-affine-lp-cc-scaling",
         "kind": "rejected-candidate-pair",
         "left_label": "Original C Program",
         "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
         "right_label": "Rejected Pluto-Generated C Program",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
       "recorded_outcome": "The affine checker rejects the before/after schedule; the complete default no-RAR route emits no optimized loop.",
       "recorded_term_explanations": [
@@ -61050,20 +61050,20 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
       "actual": "The corresponding mixed-scalar candidate is conservatively rejected; a separate pure-diamond case is accepted.",
       "case": "diamond-nointratile-reschedule",
       "case_view": "cases/0942.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -61072,22 +61072,22 @@
       },
       "expected": "A phase-dump patch made a mandatory diamond-schedule restore depend on the optional intra-tile pass, producing a wrong execution order.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: A phase-dump patch made a mandatory diamond-schedule restore depend on the optional intra-tile pass, producing a wrong execution order.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "Diamond schedule restoration was omitted",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/d71a5dc22dfebc/before.scop",
-        "program-comparisons/d71a5dc22dfebc/after.scop"
+        "program-comparisons/05b6da29e11a24/before.scop",
+        "program-comparisons/05b6da29e11a24/after.scop"
       ],
       "program_pair": {
-        "after": "program-comparisons/d71a5dc22dfebc/after.scop",
-        "before": "program-comparisons/d71a5dc22dfebc/before.scop",
+        "after": "program-comparisons/05b6da29e11a24/after.scop",
+        "before": "program-comparisons/05b6da29e11a24/before.scop",
         "case": "diamond-nointratile-reschedule",
         "kind": "rejected-candidate-pair",
         "left_label": "Input Polyhedral Program",
         "note": "PolCert rejects this mixed-scalar diamond proposal before code generation; no target Loop program is emitted.",
         "right_label": "Rejected Diamond-Tiling Candidate",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
       "recorded_outcome": "The corresponding mixed-scalar candidate is conservatively rejected; a separate pure-diamond case is accepted.",
       "recorded_term_explanations": [
@@ -61105,68 +61105,61 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
-      "actual": "Strict mode rejects with no output; permissive mode chooses a different certified dimension.",
+      "actual": "Strict and permissive modes map the hint through schedule canonicalization and certify the intended loop.",
       "case": "matmul-parallel-hint",
       "case_view": "cases/0943.html",
-      "category": "Rejected Candidates",
-      "coverage": "rejection-contract",
+      "category": "Validation Boundaries",
+      "coverage": "parallel-hint-mapping",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
-        "reason": "The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.",
+        "reason": "This focused case checks hint-coordinate mapping and the selected parallel loop directly in the compiler output; it has no separate whole-C execution record.",
         "status": "not-applicable"
       },
-      "expected": "The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.",
-      "expected_outcome": "The route must reject or replace the uncertifiable effect described here: The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "expected": "The raw Pluto scattering coordinate must map to the intended canonical schedule coordinate rather than a compact C loop depth.",
+      "expected_outcome": "The raw Pluto hint must map to the intended canonical schedule coordinate, and both strict and permissive routes must certify it.",
+      "family": "Optimizer Reliability Cases",
       "input_program": {
         "label": "Input Loop Program",
         "path": "../../source/tests/polopt-generated/inputs/matmul.loop"
       },
-      "observed_transformation": "The requested parallel dimension was not certifiable",
+      "observed_transformation": "Parallelization",
       "occurrences": 2,
       "program_evidence": [
         "../../source/tests/polopt-generated/inputs/matmul.loop"
       ],
-      "recorded_outcome": "Strict mode rejects with no output; permissive mode chooses a different certified dimension.",
+      "recorded_outcome": "Strict and permissive modes map the hint through schedule canonicalization and certify the intended loop.",
       "recorded_term_explanations": [
-        "PASS: the expected rejection, failure, or verified fallback was observed."
+        "PASS: the expected acceptance, effect, refinement, or execution result was observed."
       ],
-      "rejection": {
-        "classification": "Non-certifiable optimizer hint; no Pluto miscompilation claimed",
-        "correctness_consequence": "PolCert makes no claim that the raw Pluto program is wrong; it only refuses to emit an unproved annotation.",
-        "optimizer_error": "No optimizer defect is established. Pluto supplies a hint, but a hint is not a proof of independence.",
-        "polcert_response": "Strict mode emits no output. Permissive mode rejects the hint and selects a different dimension that passes validation.",
-        "reason": "The hinted coordinate cannot obtain the concrete certificate required for a generated parallel loop."
-      },
       "source": [
         "local release validation",
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
-      "verdict": "PASS means the verified part was retained and the uncertifiable optional effect was not emitted.",
+      "suite": "optimizer reliability",
+      "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "input-no-target",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
       "actual": "Proved block unrolling is retained, but the unsafe local jam is refused.",
       "case": "notile-unrolljam-nonpermutable",
       "case_view": "cases/0944.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -61175,22 +61168,22 @@
       },
       "expected": "Under --notile, candidate discovery assumes one tiled level and crosses the real permutable-band boundary, jamming a dependence-carrying loop.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: Under --notile, candidate discovery assumes one tiled level and crosses the real permutable-band boundary, jamming a dependence-carrying loop.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "Loop jamming crossed a permutable-band boundary",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/828f2f5a24ff6e/before.c",
-        "program-comparisons/828f2f5a24ff6e/after.c"
+        "program-comparisons/b315c637b89c53/before.c",
+        "program-comparisons/b315c637b89c53/after.c"
       ],
       "program_pair": {
-        "after": "program-comparisons/828f2f5a24ff6e/after.c",
-        "before": "program-comparisons/828f2f5a24ff6e/before.c",
+        "after": "program-comparisons/b315c637b89c53/after.c",
+        "before": "program-comparisons/b315c637b89c53/before.c",
         "case": "notile-unrolljam-nonpermutable",
         "kind": "rejected-candidate-pair",
         "left_label": "Original C Program",
         "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
         "right_label": "Rejected Pluto-Generated C Program",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
       "recorded_outcome": "Proved block unrolling is retained, but the unsafe local jam is refused.",
       "recorded_term_explanations": [
@@ -61208,20 +61201,20 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
-      "actual": "The legal rectangular tiling is accepted; the unsafe parallel loop is removed or rejected in strict mode.",
+      "actual": "The legal tiling and mapped one-iteration coordinate are accepted; direct validation rejects the dependence-carrying tile loop.",
       "case": "tiling-innerpar-satvec",
       "case_view": "cases/0945.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -61230,24 +61223,24 @@
       },
       "expected": "Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: Pluto moves dependence-satisfaction bits to a tile dimension without constructing the schedule that would satisfy those dependences.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "Tiling was legal, but the parallel annotation was unsafe",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/3648ee81d7d9eb/before.c",
-        "program-comparisons/3648ee81d7d9eb/after.c"
+        "program-comparisons/6deeb7b34abdea/before.c",
+        "program-comparisons/6deeb7b34abdea/after.c"
       ],
       "program_pair": {
-        "after": "program-comparisons/3648ee81d7d9eb/after.c",
-        "before": "program-comparisons/3648ee81d7d9eb/before.c",
+        "after": "program-comparisons/6deeb7b34abdea/after.c",
+        "before": "program-comparisons/6deeb7b34abdea/before.c",
         "case": "tiling-innerpar-satvec",
         "kind": "rejected-candidate-pair",
         "left_label": "Original C Program",
         "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
         "right_label": "Rejected Pluto-Generated C Program",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
-      "recorded_outcome": "The legal rectangular tiling is accepted; the unsafe parallel loop is removed or rejected in strict mode.",
+      "recorded_outcome": "The legal tiling and mapped one-iteration coordinate are accepted; direct validation rejects the dependence-carrying tile loop.",
       "recorded_term_explanations": [
         "PASS: the expected rejection, failure, or verified fallback was observed."
       ],
@@ -61255,7 +61248,7 @@
         "classification": "Confirmed official Pluto tiling/parallel miscompilation",
         "correctness_consequence": "OpenMP tile interleavings violate the recurrence and produce nondeterministic wrong results.",
         "optimizer_error": "Pluto moves dependence-satisfaction bits to an outer tile dimension and clears inner bits without constructing the schedule that would satisfy those dependences.",
-        "polcert_response": "PolCert accepts the legal rectangular tiling but independently rejects or removes the unsafe parallel overlay.",
+        "polcert_response": "PolCert accepts the legal rectangular tiling and the mapped one-iteration coordinate; direct validation rejects the dependence-carrying tile-loop coordinate.",
         "reason": "The two-dimensional recurrence has cross-tile dependences, so the selected tile loop is not parallel."
       },
       "source": [
@@ -61263,20 +61256,20 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
-      "actual": "Strict hint mapping rejects the vanished loop, and a direct check also rejects the dependent inner loop.",
+      "actual": "PolCert keeps the hint on its canonical one-iteration coordinate instead of transferring it inward; direct validation rejects the dependent inner loop.",
       "case": "vanished-outer-parallel",
       "case_view": "cases/0946.html",
-      "category": "Rejected Candidates",
+      "category": "Validation Boundaries",
       "coverage": "rejection-contract",
       "evidence": [
-        "../rejected-optimizer-outputs/index.html",
+        "../optimizer-reliability/index.html",
         "raw/remote-ci-test-results.stdout.txt"
       ],
       "execution": {
@@ -61285,24 +61278,24 @@
       },
       "expected": "After a one-trip outer coordinate disappears, an off-by-one band test transfers its parallel annotation to a dependent inner recurrence.",
       "expected_outcome": "The route must reject or replace the uncertifiable effect described here: After a one-trip outer coordinate disappears, an off-by-one band test transfers its parallel annotation to a dependent inner recurrence.",
-      "family": "Invalid and Non-Certifiable Proposals",
+      "family": "Optimizer Reliability Cases",
       "observed_transformation": "A parallel annotation moved to a dependent inner loop",
       "occurrences": 2,
       "program_evidence": [
-        "program-comparisons/c5a8414ac569e8/before.c",
-        "program-comparisons/c5a8414ac569e8/after.c"
+        "program-comparisons/ec413703b83826/before.c",
+        "program-comparisons/ec413703b83826/after.c"
       ],
       "program_pair": {
-        "after": "program-comparisons/c5a8414ac569e8/after.c",
-        "before": "program-comparisons/c5a8414ac569e8/before.c",
+        "after": "program-comparisons/ec413703b83826/after.c",
+        "before": "program-comparisons/ec413703b83826/before.c",
         "case": "vanished-outer-parallel",
         "kind": "rejected-candidate-pair",
         "left_label": "Original C Program",
         "note": "This is the exact generated program from the pinned historical Pluto revision used by the rejection test.",
         "right_label": "Rejected Pluto-Generated C Program",
-        "suite": "optimizer-output rejection"
+        "suite": "optimizer reliability"
       },
-      "recorded_outcome": "Strict hint mapping rejects the vanished loop, and a direct check also rejects the dependent inner loop.",
+      "recorded_outcome": "PolCert keeps the hint on its canonical one-iteration coordinate instead of transferring it inward; direct validation rejects the dependent inner loop.",
       "recorded_term_explanations": [
         "PASS: the expected rejection, failure, or verified fallback was observed."
       ],
@@ -61310,7 +61303,7 @@
         "classification": "Confirmed official Pluto parallel-annotation miscompilation",
         "correctness_consequence": "Parallel interleavings violate the recurrence; a recorded four-thread run changes the result from 10000 to 2499.",
         "optimizer_error": "After a one-trip outer coordinate disappears, an off-by-one band-boundary test transfers its parallel annotation to the dependent inner loop.",
-        "polcert_response": "Strict hint mapping finds no surviving certifiable coordinate, and direct validation also rejects the dependent inner loop.",
+        "polcert_response": "PolCert preserves the hint on its canonical one-iteration coordinate instead of transferring it inward; direct validation rejects the dependent inner loop.",
         "reason": "The surviving inner loop carries a j-1 to j recurrence and therefore cannot use interleaving parallel semantics."
       },
       "source": [
@@ -61318,11 +61311,11 @@
         "remote CI"
       ],
       "status": "PASS",
-      "suite": "optimizer-output rejection",
+      "suite": "optimizer reliability",
       "verdict": "PASS means the expected rejection or certified fallback occurred at the declared boundary.",
       "view_kind": "rejected-candidate-pair",
-      "what_is_tested": "Replays an optimizer proposal or hint that PolCert cannot certify.",
-      "why_this_test_matters": "These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim."
+      "what_is_tested": "Replays unsafe optimizer proposals and a valid parallel-hint mapping case.",
+      "why_this_test_matters": "The route must reject uncertified effects while preserving and certifying a valid optimizer hint against the intended loop."
     },
     {
       "actual": "PASS",
@@ -63329,7 +63322,7 @@
             {
               "configurations": 71,
               "name": "identity-iss-sensitive-search",
-              "note": "The search log contains only the totals: 42 equal outputs and 29 paired failures. It does not identify the outcome for each input."
+              "note": "This differential search compares accepted identity-schedule outputs with and without ISS. Its retained log reports suite-level outcomes."
             }
           ]
         },
@@ -63522,7 +63515,7 @@
     },
     {
       "configurations": 123,
-      "description": "Candidates that PolCert rejects without emitting unchecked code.",
+      "description": "Cases that exercise rejection of unsafe effects and faithful handling of valid optimizer hints.",
       "families": [
         {
           "configurations": 116,
@@ -63536,16 +63529,16 @@
         },
         {
           "configurations": 7,
-          "name": "Invalid and Non-Certifiable Proposals",
+          "name": "Optimizer Reliability Cases",
           "suites": [
             {
               "configurations": 7,
-              "name": "optimizer-output rejection"
+              "name": "optimizer reliability"
             }
           ]
         }
       ],
-      "name": "Rejected Candidates"
+      "name": "Validation Boundaries"
     },
     {
       "configurations": 56,
@@ -63578,210 +63571,210 @@
   "local_artifact_commands": [
     {
       "command": "/usr/bin/python3 -m py_compile tools/artifact/run_artifact_check.py tools/artifact/explore_codegen_gaps.py tools/artifact/explore_flag_effects.py tools/artifact/explore_identity_compositions.py tools/artifact/explore_unrolljam_effect_corpus.py tools/artifact/test_artifact_runner_timeout.py tools/artifact/test_tiling_route_summary.py tools/artifact/test_release_provenance.py tools/artifact/test_unrolljam_route_guard.py tools/artifact/generate_capability_matrix.py tools/artifact/proof_report.py tools/end_to_end_c/loop_to_c.py tools/end_to_end_c/run_case.py tools/end_to_end_c/runner_common.py tools/diamond_tiling/run_pluto_diamond_suite.py tools/parallel_current/run_parallel_current_suite.py tools/vector_current/run_vector_current_suite.py tools/tiling_routes/check_complete_direct_routes.py tools/tiling_routes/check_scalar_interleaved_fusion.py tools/tiling_routes/check_non_second_level_routes.py tools/tiling_routes/test_route_telemetry.py tools/polopt_flag_suites/manifest_runner.py tools/polopt_flag_suites/test_manifest_runner.py tools/polopt_flag_suites/pluto_compat_driver.py tools/polopt_flag_suites/run_pluto_compat_suite.py tools/second_level_tiling/check_second_level_diamond_routes.py tools/second_level_tiling/check_scheduler_flag_forwarding.py tools/second_level_tiling/check_standalone_formal_route.py tools/second_level_tiling/check_suite_manifest.py tools/second_level_tiling/run_second_level_tile_suite.py",
-      "elapsed_seconds": 0.0748339289566502,
+      "elapsed_seconds": 0.09165535203646868,
       "evidence": "raw/py-compile-artifact-tools.stdout.txt",
       "name": "py-compile-artifact-tools",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/artifact/test_artifact_runner_timeout.py",
-      "elapsed_seconds": 1.040338176942896,
+      "elapsed_seconds": 1.0518253271002322,
       "evidence": "raw/artifact-runner-timeout-unit.stdout.txt",
       "name": "artifact-runner-timeout-unit",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/artifact/test_tiling_route_summary.py",
-      "elapsed_seconds": 0.03787938295863569,
+      "elapsed_seconds": 0.03821369097568095,
       "evidence": "raw/tiling-route-summary-unit.stdout.txt",
       "name": "tiling-route-summary-unit",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/artifact/test_release_provenance.py",
-      "elapsed_seconds": 0.025050405005458742,
+      "elapsed_seconds": 0.03127274406142533,
       "evidence": "raw/release-provenance-unit.stdout.txt",
       "name": "release-provenance-unit",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/polopt_flag_suites/test_manifest_runner.py",
-      "elapsed_seconds": 0.07515499601140618,
+      "elapsed_seconds": 0.07060883892700076,
       "evidence": "raw/manifest-runner-fail-closed-unit.stdout.txt",
       "name": "manifest-runner-fail-closed-unit",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/tiling_routes/test_route_telemetry.py",
-      "elapsed_seconds": 0.04983368900138885,
+      "elapsed_seconds": 0.05731084302533418,
       "evidence": "raw/tiling-route-telemetry-unit.stdout.txt",
       "name": "tiling-route-telemetry-unit",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/artifact/test_unrolljam_route_guard.py",
-      "elapsed_seconds": 0.04841311398195103,
+      "elapsed_seconds": 0.07201707107014954,
       "evidence": "raw/unrolljam-route-guard-unit.stdout.txt",
       "name": "unrolljam-route-guard-unit",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make -f Makefile.extr test-extracted-zero-fallback",
-      "elapsed_seconds": 1.170675861008931,
+      "elapsed_seconds": 0.8735805640462786,
       "evidence": "raw/extracted-zero-fallback-gate.stdout.txt",
       "name": "extracted-zero-fallback-gate",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/artifact/proof_report.py --json-out /tmp/polcert-artifact-check/proof-report.json --markdown-out /tmp/polcert-artifact-check/proof-report.md",
-      "elapsed_seconds": 1.6338356789783575,
+      "command": "/usr/bin/python3 tools/artifact/proof_report.py --json-out /release/polcert-artifact-check/proof-report.json --markdown-out /release/polcert-artifact-check/proof-report.md",
+      "elapsed_seconds": 1.625279639963992,
       "evidence": "raw/proof-report.stdout.txt",
       "name": "proof-report",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/artifact/generate_capability_matrix.py --json-out /tmp/polcert-artifact-check/capability-matrix.json --markdown-out /tmp/polcert-artifact-check/capability-matrix.md",
-      "elapsed_seconds": 0.10340858798008412,
+      "command": "/usr/bin/python3 tools/artifact/generate_capability_matrix.py --json-out /release/polcert-artifact-check/capability-matrix.json --markdown-out /release/polcert-artifact-check/capability-matrix.md",
+      "elapsed_seconds": 0.10108859895262867,
       "evidence": "raw/capability-matrix.stdout.txt",
       "name": "capability-matrix",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/artifact/explore_codegen_gaps.py --output-root /tmp/polcert-artifact-check/codegen-gaps",
-      "elapsed_seconds": 0.7073520910344087,
+      "command": "/usr/bin/python3 tools/artifact/explore_codegen_gaps.py --output-root /release/polcert-artifact-check/codegen-gaps",
+      "elapsed_seconds": 0.7525254680076614,
       "evidence": "raw/codegen-gap-exploration.stdout.txt",
       "name": "codegen-gap-exploration",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/artifact/explore_unrolljam_effect_corpus.py --output-root /tmp/polcert-artifact-check/unrolljam-effect-corpus",
-      "elapsed_seconds": 15.096920176991262,
+      "command": "/usr/bin/python3 tools/artifact/explore_unrolljam_effect_corpus.py --output-root /release/polcert-artifact-check/unrolljam-effect-corpus",
+      "elapsed_seconds": 16.26882813696284,
       "evidence": "raw/unrolljam-effect-corpus.stdout.txt",
       "name": "unrolljam-effect-corpus",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/artifact/explore_identity_compositions.py --output-root /tmp/polcert-artifact-check/identity-compositions",
-      "elapsed_seconds": 137.14396259200294,
+      "command": "/usr/bin/python3 tools/artifact/explore_identity_compositions.py --output-root /release/polcert-artifact-check/identity-compositions",
+      "elapsed_seconds": 146.98206444701646,
       "evidence": "raw/identity-composition-exploration.stdout.txt",
       "name": "identity-composition-exploration",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/tiling_routes/check_complete_direct_routes.py --polopt ./polopt --polcert ./polcert --timeout 180",
-      "elapsed_seconds": 15.593777525005862,
+      "elapsed_seconds": 16.916417306056246,
       "evidence": "raw/direct-only-tiling-route-smoke.stdout.txt",
       "name": "direct-only-tiling-route-smoke",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/tiling_routes/check_scalar_interleaved_fusion.py --polcert ./polcert --timeout 60",
-      "elapsed_seconds": 0.3542380099534057,
+      "elapsed_seconds": 0.37769990297965705,
       "evidence": "raw/scalar-interleaved-tiling-route.stdout.txt",
       "name": "scalar-interleaved-tiling-route",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/tiling_routes/check_non_second_level_routes.py --polopt ./polopt --timeout 180",
-      "elapsed_seconds": 164.7550826469669,
+      "elapsed_seconds": 175.04204825800844,
       "evidence": "raw/non-second-level-tiling-routes.stdout.txt",
       "name": "non-second-level-tiling-routes",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/polopt_flag_suites/run_pluto_compat_suite.py --timeout 30",
-      "elapsed_seconds": 325.2900827790145,
+      "elapsed_seconds": 341.92094825604,
       "evidence": "raw/pluto-compat-suite.stdout.txt",
       "name": "pluto-compat-suite",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/const_unroll --polopt ./polopt --output-root /tmp/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
-      "elapsed_seconds": 0.13180735701462254,
+      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/const_unroll --polopt ./polopt --output-root /release/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
+      "elapsed_seconds": 0.15474155498668551,
       "evidence": "raw/end-to-end-c-const-unroll.stdout.txt",
       "name": "end-to-end-c-const-unroll",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/unrolljam_block_variable --polopt ./polopt --output-root /tmp/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
-      "elapsed_seconds": 0.44170208799187094,
+      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/unrolljam_block_variable --polopt ./polopt --output-root /release/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
+      "elapsed_seconds": 0.5977906389161944,
       "evidence": "raw/end-to-end-c-unrolljam-block-variable.stdout.txt",
       "name": "end-to-end-c-unrolljam-block-variable",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/unrolljam_dependent_guard --polopt ./polopt --output-root /tmp/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
-      "elapsed_seconds": 0.2704142620204948,
+      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/unrolljam_dependent_guard --polopt ./polopt --output-root /release/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
+      "elapsed_seconds": 0.3250271730357781,
       "evidence": "raw/end-to-end-c-unrolljam-dependent-guard.stdout.txt",
       "name": "end-to-end-c-unrolljam-dependent-guard",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/stride_even --polopt ./polopt --output-root /tmp/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
-      "elapsed_seconds": 0.10161114600487053,
+      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/stride_even --polopt ./polopt --output-root /release/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
+      "elapsed_seconds": 0.12599165993742645,
       "evidence": "raw/end-to-end-c-stride-even.stdout.txt",
       "name": "end-to-end-c-stride-even",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/stride_down --polopt ./polopt --output-root /tmp/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
-      "elapsed_seconds": 0.09742552600800991,
+      "command": "/usr/bin/python3 tools/end_to_end_c/run_case.py tests/end-to-end-c/cases/stride_down --polopt ./polopt --output-root /release/polcert-artifact-check/end-to-end-c --benchmark-repeats 1",
+      "elapsed_seconds": 0.12547132594045252,
       "evidence": "raw/end-to-end-c-stride-down.stdout.txt",
       "name": "end-to-end-c-stride-down",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/second_level_tiling/check_scheduler_flag_forwarding.py",
-      "elapsed_seconds": 0.07576000696280971,
+      "elapsed_seconds": 0.07965815893840045,
       "evidence": "raw/second-level-scheduler-forwarding.stdout.txt",
       "name": "second-level-scheduler-forwarding",
       "status": "PASS"
     },
     {
       "command": "/usr/bin/python3 tools/second_level_tiling/run_second_level_tile_suite.py --polopt ./polopt --timeout 180",
-      "elapsed_seconds": 1107.063094683981,
+      "elapsed_seconds": 1160.1469835890457,
       "evidence": "raw/second-level-suite.stdout.txt",
       "name": "second-level-suite",
       "status": "PASS"
     },
     {
-      "command": "/usr/bin/python3 tools/diamond_tiling/run_pluto_diamond_suite.py --timeout-seconds 180 --output-root /tmp/polcert-artifact-check/diamond-suite",
-      "elapsed_seconds": 116.09615800401662,
+      "command": "/usr/bin/python3 tools/diamond_tiling/run_pluto_diamond_suite.py --timeout-seconds 180 --output-root /release/polcert-artifact-check/diamond-suite",
+      "elapsed_seconds": 120.26463394705206,
       "evidence": "raw/diamond-suite.stdout.txt",
       "name": "diamond-suite",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make -s check-admitted",
-      "elapsed_seconds": 1.8796815810492262,
+      "elapsed_seconds": 1.9214001559885219,
       "evidence": "raw/check-admitted.stdout.txt",
       "name": "check-admitted",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make test-polopt-loop-suite",
-      "elapsed_seconds": 239.48441265599104,
+      "elapsed_seconds": 249.37748111900873,
       "evidence": "raw/strict-loop-suite.stdout.txt",
       "name": "strict-loop-suite",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make test-iss-pluto-suite",
-      "elapsed_seconds": 0.5744278940255754,
+      "elapsed_seconds": 0.6183124659582973,
       "evidence": "raw/iss-suite.stdout.txt",
       "name": "iss-suite",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make test-parallel-current-suite",
-      "elapsed_seconds": 29.261541625019163,
+      "elapsed_seconds": 31.039162572007626,
       "evidence": "raw/parallel-current-suite.stdout.txt",
       "name": "parallel-current-suite",
       "status": "PASS"
     },
     {
       "command": "opam exec -- make test-vector-current-suite",
-      "elapsed_seconds": 10.358854186022654,
+      "elapsed_seconds": 11.011911601992324,
       "evidence": "raw/vector-current-suite.stdout.txt",
       "name": "vector-current-suite",
       "status": "PASS"
@@ -63789,7 +63782,7 @@
   ],
   "remote_ci_phases": [
     {
-      "elapsed": "0s",
+      "elapsed": "1s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "pluto-baseline",
       "status": "PASS"
@@ -63831,7 +63824,7 @@
       "status": "PASS"
     },
     {
-      "elapsed": "1s",
+      "elapsed": "0s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "unrolljam-route-unit",
       "status": "PASS"
@@ -63867,7 +63860,7 @@
       "status": "PASS"
     },
     {
-      "elapsed": "2s",
+      "elapsed": "1s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "check-admitted",
       "status": "PASS"
@@ -63879,19 +63872,19 @@
       "status": "PASS"
     },
     {
-      "elapsed": "0s",
+      "elapsed": "1s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "depend",
       "status": "PASS"
     },
     {
-      "elapsed": "1226s",
+      "elapsed": "1073s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "proof",
       "status": "PASS"
     },
     {
-      "elapsed": "163s",
+      "elapsed": "146s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "extraction",
       "status": "PASS"
@@ -63915,97 +63908,97 @@
       "status": "PASS"
     },
     {
-      "elapsed": "28s",
+      "elapsed": "22s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "polcert",
       "status": "PASS"
     },
     {
-      "elapsed": "24s",
+      "elapsed": "18s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "polopt",
       "status": "PASS"
     },
     {
-      "elapsed": "581s",
+      "elapsed": "498s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "second-level-rejection",
       "status": "PASS"
     },
     {
-      "elapsed": "954s",
+      "elapsed": "818s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "second-level-manifest",
       "status": "PASS"
     },
     {
-      "elapsed": "892s",
+      "elapsed": "766s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "second-level-routes",
       "status": "PASS"
     },
     {
-      "elapsed": "711s",
+      "elapsed": "605s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "pluto-compat",
       "status": "PASS"
     },
     {
-      "elapsed": "485s",
+      "elapsed": "419s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "strict-generated",
       "status": "PASS"
     },
     {
-      "elapsed": "20s",
+      "elapsed": "21s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "generated-c-correctness",
       "status": "PASS"
     },
     {
-      "elapsed": "17s",
+      "elapsed": "10s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "generated-parallel-c-correctness",
       "status": "PASS"
     },
     {
-      "elapsed": "5s",
+      "elapsed": "4s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "generated-second-level-c-correctness",
       "status": "PASS"
     },
     {
-      "elapsed": "2s",
+      "elapsed": "3s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "generated-intratile-c-correctness",
       "status": "PASS"
     },
     {
-      "elapsed": "38s",
+      "elapsed": "32s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "direct-routes",
       "status": "PASS"
     },
     {
-      "elapsed": "327s",
+      "elapsed": "278s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "non-second-level-routes",
       "status": "PASS"
     },
     {
-      "elapsed": "42s",
+      "elapsed": "37s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "parallel-current",
       "status": "PASS"
     },
     {
-      "elapsed": "15s",
+      "elapsed": "12s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "vector-current",
       "status": "PASS"
     },
     {
-      "elapsed": "167s",
+      "elapsed": "144s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "diamond-tiling",
       "status": "PASS"
@@ -64017,7 +64010,7 @@
       "status": "PASS"
     },
     {
-      "elapsed": "116s",
+      "elapsed": "99s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "legacy-tests",
       "status": "PASS"
@@ -64035,7 +64028,7 @@
       "status": "PASS"
     },
     {
-      "elapsed": "7s",
+      "elapsed": "8s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "executable-c-correctness",
       "status": "PASS"
@@ -64047,19 +64040,19 @@
       "status": "PASS"
     },
     {
-      "elapsed": "3s",
+      "elapsed": "2s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "iss-live-suite",
       "status": "PASS"
     },
     {
-      "elapsed": "12s",
+      "elapsed": "11s",
       "evidence": "raw/remote-ci-test-results.stdout.txt",
       "name": "pluto-bug-oracle",
       "status": "PASS"
     }
   ],
   "suite_notes": {
-    "identity-iss-sensitive-search": "The search log contains only the totals: 42 equal outputs and 29 paired failures. It does not identify the outcome for each input."
+    "identity-iss-sensitive-search": "This differential search compares accepted identity-schedule outputs with and without ISS. Its retained log reports suite-level outcomes."
   }
 }

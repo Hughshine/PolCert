@@ -3,23 +3,237 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>jacobi-1d-imper.loop</title>
+  <title>SLoopElab.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/jacobi-1d-imper.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>source/syntax/SLoopElab.ml</code></h1>
+  <pre>open SLoopAst
 
-for t in range(0, T) {
-  for i in range(2, (N - 1)) {
-    b[i] = (0.33333 * ((a[(i - 1)] + a[i]) + a[(i + 1)]));
-  }
-  for j in range(2, (N - 1)) {
-    a[j] = b[j];
-  }
+module IR = SPolIRs.SPolIRs
+module Loop = IR.Loop
+module Instr = IR.Instr
+
+exception Error of string
+
+let errorf fmt = Printf.ksprintf (fun s -&gt; raise (Error s)) fmt
+
+let z_of_int = Camlcoq.Z.of_sint
+let nat_of_int = Camlcoq.Nat.of_int
+
+let ident_of_string s =
+  AST.varname_to_ident (Camlcoq.coqstring_of_camlstring s)
+
+let rec dedup = function
+  | [] -&gt; []
+  | x :: xs -&gt; if List.mem x xs then dedup xs else x :: dedup xs
+
+let ensure_unique what names =
+  let rec go seen = function
+    | [] -&gt; ()
+    | x :: xs -&gt;
+        if List.mem x seen
+        then errorf &quot;duplicate %s name: %s&quot; what x
+        else go (x :: seen) xs
+  in
+  go [] names
+
+type env = {
+  params : string list;
+  loops : string list;
 }
+
+let loop_env env = List.rev env.loops @ List.rev env.params
+let slot_env env = env.params @ env.loops
+
+let lookup_in names name =
+  let rec go idx = function
+    | [] -&gt; None
+    | x :: xs -&gt; if String.equal x name then Some idx else go (idx + 1) xs
+  in
+  go 0 names
+
+let lookup_loop env name = lookup_in (loop_env env) name
+let lookup_slot env name = lookup_in (slot_env env) name
+
+let ensure_not_bound env name kind =
+  if List.mem name (loop_env env)
+  then errorf &quot;%s %s conflicts with a loop/context variable&quot; kind name
+
+let stmt_list_of_list stmts =
+  List.fold_right (fun st acc -&gt; Loop.SCons (st, acc)) stmts Loop.SNil
+
+let stmt_of_list = function
+  | [] -&gt; Loop.Seq Loop.SNil
+  | [st] -&gt; st
+  | sts -&gt; Loop.Seq (stmt_list_of_list sts)
+
+let rec stmt_depth = function
+  | Assign _ -&gt; 0
+  | If (_, body) -&gt; stmt_list_depth body
+  | For (_, _, _, _, body) -&gt; 1 + stmt_list_depth body
+
+and stmt_list_depth body =
+  List.fold_left (fun acc st -&gt; max acc (stmt_depth st)) 0 body
+
+let fresh_padding_names used count =
+  let rec pick used acc next remaining =
+    if remaining = 0 then List.rev acc
+    else
+      let cand = Printf.sprintf &quot;_slot%d&quot; next in
+      if List.mem cand used
+      then pick used acc (next + 1) remaining
+      else pick (cand :: used) (cand :: acc) (next + 1) (remaining - 1)
+  in
+  pick used [] 0 count
+
+let slot_exprs env =
+  List.map
+    (fun name -&gt;
+      match lookup_loop env name with
+      | Some idx -&gt; Loop.Var (nat_of_int idx)
+      | None -&gt; errorf &quot;internal error: missing slot binding for %s&quot; name)
+    (slot_env env)
+
+let rec const_affine = function
+  | Int n -&gt; Some n
+  | Name _ -&gt; None
+  | Add (a, b) -&gt;
+      Option.bind (const_affine a) (fun x -&gt;
+        Option.map (fun y -&gt; x + y) (const_affine b))
+  | Sub (a, b) -&gt;
+      Option.bind (const_affine a) (fun x -&gt;
+        Option.map (fun y -&gt; x - y) (const_affine b))
+  | Mul (a, b) -&gt;
+      Option.bind (const_affine a) (fun x -&gt;
+        Option.map (fun y -&gt; x * y) (const_affine b))
+
+let const_expr = function
+  | IntLit n -&gt; Some n
+  | _ -&gt; None
+
+let rec elab_loop_aff env = function
+  | Int n -&gt; Loop.Constant (z_of_int n)
+  | Name x -&gt;
+      begin match lookup_loop env x with
+      | Some idx -&gt; Loop.Var (nat_of_int idx)
+      | None -&gt; errorf &quot;free affine variable %s&quot; x
+      end
+  | Add (a, b) -&gt; Loop.make_sum (elab_loop_aff env a) (elab_loop_aff env b)
+  | Sub (a, b) -&gt;
+      Loop.make_sum (elab_loop_aff env a)
+        (Loop.make_mult (z_of_int (-1)) (elab_loop_aff env b))
+  | Mul (a, b) -&gt;
+      begin match const_affine a, const_affine b with
+      | Some k, _ -&gt; Loop.make_mult (z_of_int k) (elab_loop_aff env b)
+      | _, Some k -&gt; Loop.make_mult (z_of_int k) (elab_loop_aff env a)
+      | None, None -&gt; errorf &quot;non-affine multiplication is not supported&quot;
+      end
+
+let rec elab_instr_aff env = function
+  | Int n -&gt; Instr.AeConst (z_of_int n)
+  | Name x -&gt;
+      begin match lookup_slot env x with
+      | Some idx -&gt; Instr.AeVar (nat_of_int idx)
+      | None -&gt; errorf &quot;free affine variable %s&quot; x
+      end
+  | Add (a, b) -&gt; Instr.AeAdd (elab_instr_aff env a, elab_instr_aff env b)
+  | Sub (a, b) -&gt; Instr.AeSub (elab_instr_aff env a, elab_instr_aff env b)
+  | Mul (a, b) -&gt;
+      begin match const_affine a, const_affine b with
+      | Some k, _ -&gt; Instr.AeMul (z_of_int k, elab_instr_aff env b)
+      | _, Some k -&gt; Instr.AeMul (z_of_int k, elab_instr_aff env a)
+      | None, None -&gt; errorf &quot;non-affine multiplication is not supported&quot;
+      end
+
+let note_memory seen name =
+  if List.mem name !seen then () else seen := !seen @ [name]
+
+let elab_access env seen { base; indices } =
+  ensure_not_bound env base &quot;memory access&quot;;
+  note_memory seen base;
+  let id = ident_of_string base in
+  match indices with
+  | [] -&gt; Instr.AcVar id
+  | _ -&gt; Instr.AcArr (id, List.map (elab_instr_aff env) indices)
+
+let rec elab_expr env seen = function
+  | IntLit n -&gt; Instr.ExConst (z_of_int n)
+  | FloatLit s -&gt; Instr.ExFloat (Camlcoq.coqstring_of_camlstring s)
+  | NameRef x -&gt;
+      begin match lookup_slot env x with
+      | Some idx -&gt; Instr.ExVar (nat_of_int idx)
+      | None -&gt;
+          note_memory seen x;
+          Instr.ExAccess (Instr.AcVar (ident_of_string x))
+      end
+  | Access a -&gt; Instr.ExAccess (elab_access env seen a)
+  | AddE (a, b) -&gt; Instr.ExAdd (elab_expr env seen a, elab_expr env seen b)
+  | SubE (a, b) -&gt; Instr.ExSub (elab_expr env seen a, elab_expr env seen b)
+  | MulE (a, b) -&gt; Instr.ExMul (elab_expr env seen a, elab_expr env seen b)
+  | DivE (a, b) -&gt; Instr.ExDiv (elab_expr env seen a, elab_expr env seen b)
+  | LeE (a, b) -&gt; Instr.ExLe (elab_expr env seen a, elab_expr env seen b)
+  | EqE (a, b) -&gt; Instr.ExEq (elab_expr env seen a, elab_expr env seen b)
+  | AndE (a, b) -&gt; Instr.ExAnd (elab_expr env seen a, elab_expr env seen b)
+  | CallE (name, args) -&gt;
+      Instr.ExCall (Camlcoq.coqstring_of_camlstring name, List.map (elab_expr env seen) args)
+  | CondE (c, t, f) -&gt;
+      Instr.ExCond (elab_expr env seen c, elab_expr env seen t, elab_expr env seen f)
+
+let rec elab_test env = function
+  | Le (a, b) -&gt; Loop.make_le (elab_loop_aff env a) (elab_loop_aff env b)
+  | Eq (a, b) -&gt; Loop.make_eq (elab_loop_aff env a) (elab_loop_aff env b)
+  | And (t1, t2) -&gt; Loop.make_and (elab_test env t1) (elab_test env t2)
+
+let rec elab_stmt env seen = function
+  | Assign (lhs, rhs) -&gt;
+      let lhs&#x27; = elab_access env seen lhs in
+      let rhs&#x27; = elab_expr env seen rhs in
+      Loop.Instr (Instr.SAssign (lhs&#x27;, rhs&#x27;), slot_exprs env)
+  | If (tst, body) -&gt;
+      let body&#x27; = stmt_of_list (List.map (elab_stmt env seen) body) in
+      Loop.Guard (elab_test env tst, body&#x27;)
+  | For (iter, lb, ub, step, body) -&gt;
+      if List.mem iter (loop_env env)
+      then errorf &quot;loop iterator %s shadows an existing loop/context variable&quot; iter;
+      let lb&#x27; = elab_loop_aff env lb in
+      let ub&#x27; = elab_loop_aff env ub in
+      let env&#x27; = { env with loops = env.loops @ [iter] } in
+      let body&#x27; = stmt_of_list (List.map (elab_stmt env&#x27; seen) body) in
+      begin match step with
+      | None -&gt; Loop.Loop (lb&#x27;, ub&#x27;, body&#x27;)
+      | Some step_aff -&gt;
+          begin match const_affine step_aff with
+          | Some n when n &gt; 0 -&gt;
+              SLoopStride.stride_loop (nat_of_int n) lb&#x27; ub&#x27; body&#x27;
+          | Some n when n &lt; 0 -&gt;
+              if n = min_int
+              then errorf &quot;range step literal is out of supported range&quot;
+              else SLoopStride.down_stride_loop (nat_of_int (-n)) lb&#x27; ub&#x27; body&#x27;
+          | Some _ -&gt;
+              errorf &quot;range step must be a nonzero integer literal&quot;
+          | None -&gt;
+              errorf &quot;range step must be a nonzero integer literal&quot;
+          end
+      end
+
+let elaborate (prog : program) : IR.Loop.t =
+  ensure_unique &quot;context&quot; prog.context;
+  let seen_memory = ref [] in
+  let env = { params = prog.context; loops = [] } in
+  let body = stmt_of_list (List.map (elab_stmt env seen_memory) prog.body) in
+  let varctxt = List.map ident_of_string prog.context in
+  let base_names = dedup (prog.context @ !seen_memory) in
+  let needed_slots = List.length prog.context + stmt_list_depth prog.body in
+  let padding = fresh_padding_names base_names (max 0 (needed_slots - List.length base_names)) in
+  let vars =
+    List.map
+      (fun name -&gt; (ident_of_string name, IR.Ty.dummy))
+      (base_names @ padding)
+  in
+  ((body, varctxt), vars)
 </pre>
 </main>
 </body>

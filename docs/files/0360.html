@@ -3,22 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/programs/strsm/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/performance-comparisons/programs/spatial/after.loop</code></h1>
+  <pre>context(N, M);
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    for k in range((i + 1), N) {
-      if (k == (i + 1)) {
-        b[j][i] = (b[j][i] / a[i][i]);
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  parallel for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((M + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
+          a[i3][i2] = (a[i3][i2] + 1);
+        }
       }
-      b[j][k] = (b[j][k] - (a[i][k] * b[j][i]));
     }
   }
 }

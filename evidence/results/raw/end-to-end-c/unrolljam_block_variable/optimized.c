@@ -1,3 +1,5 @@
+#include <limits.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #define N 10
@@ -23,39 +25,69 @@ static long long checksum(void) {
   return sum;
 }
 
+static long long polcert_z_div(long long numerator, long long denominator) {
+  if (denominator == 0) {
+    return 0;
+  }
+  if (numerator == LLONG_MIN && denominator == -1) {
+    fputs("PolCert harness: Z.div result exceeds signed 64-bit range\n", stderr);
+    abort();
+  }
+  long long quotient = numerator / denominator;
+  long long remainder = numerator % denominator;
+  if (remainder != 0 && ((remainder < 0) != (denominator < 0))) {
+    quotient -= 1;
+  }
+  return quotient;
+}
+
+static long long polcert_z_mod(long long numerator, long long denominator) {
+  if (denominator == 0) {
+    return 0;
+  }
+  if (numerator == LLONG_MIN && denominator == -1) {
+    return 0;
+  }
+  long long remainder = numerator % denominator;
+  if (remainder != 0 && ((remainder < 0) != (denominator < 0))) {
+    remainder += denominator;
+  }
+  return remainder;
+}
+
 int main(void) {
   init_data();
   
 if (1 <= M) {
   if (1 <= N) {
-    for (long long i0 = 0; i0 < (N / 3); ++i0) {
+    for (long long i0 = 0; i0 < polcert_z_div(N, 3); ++i0) {
       if (1 <= M) {
-        for (long long i1 = 0; i1 < (M / 3); ++i1) {
-          A[(3 * i0)][(3 * i1)] = ((A[(3 * i0)][(3 * i1)] + (3 * i0)) + (3 * i1));
-          A[((3 * i0) + 1)][(3 * i1)] = ((A[((3 * i0) + 1)][(3 * i1)] + ((3 * i0) + 1)) + (3 * i1));
-          A[((3 * i0) + 2)][(3 * i1)] = ((A[((3 * i0) + 2)][(3 * i1)] + ((3 * i0) + 2)) + (3 * i1));
-          A[(3 * i0)][((3 * i1) + 1)] = ((A[(3 * i0)][((3 * i1) + 1)] + (3 * i0)) + ((3 * i1) + 1));
-          A[((3 * i0) + 1)][((3 * i1) + 1)] = ((A[((3 * i0) + 1)][((3 * i1) + 1)] + ((3 * i0) + 1)) + ((3 * i1) + 1));
-          A[((3 * i0) + 2)][((3 * i1) + 1)] = ((A[((3 * i0) + 2)][((3 * i1) + 1)] + ((3 * i0) + 2)) + ((3 * i1) + 1));
-          A[(3 * i0)][((3 * i1) + 2)] = ((A[(3 * i0)][((3 * i1) + 2)] + (3 * i0)) + ((3 * i1) + 2));
-          A[((3 * i0) + 1)][((3 * i1) + 2)] = ((A[((3 * i0) + 1)][((3 * i1) + 2)] + ((3 * i0) + 1)) + ((3 * i1) + 2));
-          A[((3 * i0) + 2)][((3 * i1) + 2)] = ((A[((3 * i0) + 2)][((3 * i1) + 2)] + ((3 * i0) + 2)) + ((3 * i1) + 2));
+        for (long long i1 = 0; i1 < polcert_z_div(M, 3); ++i1) {
+          A[3 * i0][3 * i1] = ((A[3 * i0][3 * i1] + (3 * i0)) + (3 * i1));
+          A[3 * i0 + 1][3 * i1] = ((A[3 * i0 + 1][3 * i1] + ((3 * i0) + 1)) + (3 * i1));
+          A[3 * i0 + 2][3 * i1] = ((A[3 * i0 + 2][3 * i1] + ((3 * i0) + 2)) + (3 * i1));
+          A[3 * i0][3 * i1 + 1] = ((A[3 * i0][3 * i1 + 1] + (3 * i0)) + ((3 * i1) + 1));
+          A[3 * i0 + 1][3 * i1 + 1] = ((A[3 * i0 + 1][3 * i1 + 1] + ((3 * i0) + 1)) + ((3 * i1) + 1));
+          A[3 * i0 + 2][3 * i1 + 1] = ((A[3 * i0 + 2][3 * i1 + 1] + ((3 * i0) + 2)) + ((3 * i1) + 1));
+          A[3 * i0][3 * i1 + 2] = ((A[3 * i0][3 * i1 + 2] + (3 * i0)) + ((3 * i1) + 2));
+          A[3 * i0 + 1][3 * i1 + 2] = ((A[3 * i0 + 1][3 * i1 + 2] + ((3 * i0) + 1)) + ((3 * i1) + 2));
+          A[3 * i0 + 2][3 * i1 + 2] = ((A[3 * i0 + 2][3 * i1 + 2] + ((3 * i0) + 2)) + ((3 * i1) + 2));
         }
-        for (long long i1 = (3 * (M / 3)); i1 < M; ++i1) {
-          A[(3 * i0)][i1] = ((A[(3 * i0)][i1] + (3 * i0)) + i1);
-          A[((3 * i0) + 1)][i1] = ((A[((3 * i0) + 1)][i1] + ((3 * i0) + 1)) + i1);
-          A[((3 * i0) + 2)][i1] = ((A[((3 * i0) + 2)][i1] + ((3 * i0) + 2)) + i1);
+        for (long long i1 = 3 * polcert_z_div(M, 3); i1 < M; ++i1) {
+          A[3 * i0][i1] = ((A[3 * i0][i1] + (3 * i0)) + i1);
+          A[3 * i0 + 1][i1] = ((A[3 * i0 + 1][i1] + ((3 * i0) + 1)) + i1);
+          A[3 * i0 + 2][i1] = ((A[3 * i0 + 2][i1] + ((3 * i0) + 2)) + i1);
         }
       }
     }
-    for (long long i0 = (3 * (N / 3)); i0 < N; ++i0) {
+    for (long long i0 = 3 * polcert_z_div(N, 3); i0 < N; ++i0) {
       if (1 <= M) {
-        for (long long i1 = 0; i1 < (M / 3); ++i1) {
-          A[i0][(3 * i1)] = ((A[i0][(3 * i1)] + i0) + (3 * i1));
-          A[i0][((3 * i1) + 1)] = ((A[i0][((3 * i1) + 1)] + i0) + ((3 * i1) + 1));
-          A[i0][((3 * i1) + 2)] = ((A[i0][((3 * i1) + 2)] + i0) + ((3 * i1) + 2));
+        for (long long i1 = 0; i1 < polcert_z_div(M, 3); ++i1) {
+          A[i0][3 * i1] = ((A[i0][3 * i1] + i0) + (3 * i1));
+          A[i0][3 * i1 + 1] = ((A[i0][3 * i1 + 1] + i0) + ((3 * i1) + 1));
+          A[i0][3 * i1 + 2] = ((A[i0][3 * i1 + 2] + i0) + ((3 * i1) + 2));
         }
-        for (long long i1 = (3 * (M / 3)); i1 < M; ++i1) {
+        for (long long i1 = 3 * polcert_z_div(M, 3); i1 < M; ++i1) {
           A[i0][i1] = ((A[i0][i1] + i0) + i1);
         }
       }

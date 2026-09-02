@@ -3,22 +3,142 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>matmul.loop</title>
+  <title>SLoopPretty.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/matmul.loop</code></h1>
-  <pre>context(M, N, K);
+  <h1><code>source/syntax/SLoopPretty.ml</code></h1>
+  <pre>module IR = SPolIRs.SPolIRs
+module Loop = IR.Loop
+module Instr = IR.Instr
 
-for i in range(0, M) {
-  for j in range(0, N) {
-    for k in range(0, K) {
-      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
-    }
-  }
-}
+let indent n = String.make (2 * n) &#x27; &#x27;
+let z0 = Camlcoq.Z.zero
+let z1 = Camlcoq.Z.one
+let z_eq a b = Camlcoq.Z.eq a b
+
+let nth_or xs n default =
+  try List.nth xs n with _ -&gt; default
+
+let name_of_ident id = Camlcoq.extern_atom id
+let name_of_nat n = string_of_int (Camlcoq.Nat.to_int n)
+let string_of_z z = Camlcoq.Z.to_string z
+
+let rec string_of_loop_expr_raw env = function
+  | Loop.Constant z -&gt; string_of_z z
+  | Loop.Var n -&gt; nth_or env (Camlcoq.Nat.to_int n) (&quot;v&quot; ^ name_of_nat n)
+  | Loop.Sum (a, b) -&gt; Printf.sprintf &quot;(%s + %s)&quot; (string_of_loop_expr_raw env a) (string_of_loop_expr_raw env b)
+  | Loop.Mult (k, e) -&gt; Printf.sprintf &quot;(%s * %s)&quot; (string_of_z k) (string_of_loop_expr_raw env e)
+  | Loop.Div (e, k) -&gt; Printf.sprintf &quot;(%s / %s)&quot; (string_of_loop_expr_raw env e) (string_of_z k)
+  | Loop.Mod (e, k) -&gt; Printf.sprintf &quot;(%s %% %s)&quot; (string_of_loop_expr_raw env e) (string_of_z k)
+  | Loop.Max (a, b) -&gt; Printf.sprintf &quot;max(%s, %s)&quot; (string_of_loop_expr_raw env a) (string_of_loop_expr_raw env b)
+  | Loop.Min (a, b) -&gt; Printf.sprintf &quot;min(%s, %s)&quot; (string_of_loop_expr_raw env a) (string_of_loop_expr_raw env b)
+
+let string_of_loop_expr env e =
+  string_of_loop_expr_raw env e
+
+let slot_expr slots n = nth_or slots (Camlcoq.Nat.to_int n) (Loop.Constant (Camlcoq.Z.of_sint 0))
+
+let string_of_affine env slots aff =
+  string_of_loop_expr env (SLoopSymbolicSimpl.display_affine_expr slots aff)
+
+let string_of_access env slots = function
+  | Instr.AcVar id -&gt; name_of_ident id
+  | Instr.AcArr (id, idxs) -&gt;
+      let base = name_of_ident id in
+      List.fold_left
+        (fun acc idx -&gt; acc ^ &quot;[&quot; ^ string_of_affine env slots idx ^ &quot;]&quot;)
+        base idxs
+
+let string_of_instr_expr env slots expr =
+  let rec go = function
+    | expr -&gt;
+        begin match SLoopSymbolicSimpl.display_instr_expr slots expr with
+        | Some e -&gt; string_of_loop_expr env e
+        | None -&gt;
+            go_raw expr
+        end
+  and go_raw = function
+    | Instr.ExConst z -&gt; string_of_z z
+    | Instr.ExFloat lit -&gt; Camlcoq.camlstring_of_coqstring lit
+    | Instr.ExVar n -&gt; string_of_loop_expr env (slot_expr slots n)
+    | Instr.ExAccess a -&gt; string_of_access env slots a
+    | Instr.ExAdd (a, b) -&gt; Printf.sprintf &quot;(%s + %s)&quot; (go a) (go b)
+    | Instr.ExSub (a, b) -&gt; Printf.sprintf &quot;(%s - %s)&quot; (go a) (go b)
+    | Instr.ExMul (a, b) -&gt; Printf.sprintf &quot;(%s * %s)&quot; (go a) (go b)
+    | Instr.ExDiv (a, b) -&gt; Printf.sprintf &quot;(%s / %s)&quot; (go a) (go b)
+    | Instr.ExLe (a, b) -&gt; Printf.sprintf &quot;(%s &lt;= %s)&quot; (go a) (go b)
+    | Instr.ExEq (a, b) -&gt; Printf.sprintf &quot;(%s == %s)&quot; (go a) (go b)
+    | Instr.ExAnd (a, b) -&gt; Printf.sprintf &quot;(%s &amp;&amp; %s)&quot; (go a) (go b)
+    | Instr.ExCall (fn, args) -&gt;
+        let fn = Camlcoq.camlstring_of_coqstring fn in
+        let args =
+          match List.map go args with
+          | [] -&gt; &quot;&quot;
+          | hd :: tl -&gt; List.fold_left (fun acc s -&gt; acc ^ &quot;, &quot; ^ s) hd tl
+        in
+        Printf.sprintf &quot;%s(%s)&quot; fn args
+    | Instr.ExCond (c, t, f) -&gt;
+        Printf.sprintf &quot;(%s ? %s : %s)&quot; (go c) (go t) (go f)
+  in
+  go expr
+
+let string_of_test env tst =
+  let rec go = function
+    | Loop.LE (a, b) -&gt; Printf.sprintf &quot;%s &lt;= %s&quot; (string_of_loop_expr env a) (string_of_loop_expr env b)
+    | Loop.EQ (a, b) -&gt; Printf.sprintf &quot;%s == %s&quot; (string_of_loop_expr env a) (string_of_loop_expr env b)
+    | Loop.And (a, b) -&gt; Printf.sprintf &quot;(%s &amp;&amp; %s)&quot; (go a) (go b)
+    | Loop.Or (a, b) -&gt; Printf.sprintf &quot;(%s || %s)&quot; (go a) (go b)
+    | Loop.Not t -&gt; Printf.sprintf &quot;!(%s)&quot; (go t)
+    | Loop.TConstantTest true -&gt; &quot;true&quot;
+    | Loop.TConstantTest false -&gt; &quot;false&quot;
+  in
+  go tst
+
+let rec stmt_list_to_list = function
+  | Loop.SNil -&gt; []
+  | Loop.SCons (st, tl) -&gt; st :: stmt_list_to_list tl
+
+let concat_map f xs =
+  List.concat (List.map f xs)
+
+let fresh_loop_name env depth =
+  let rec pick n =
+    let cand = Printf.sprintf &quot;i%d&quot; (depth + n) in
+    if List.mem cand env then pick (n + 1) else cand
+  in
+  pick 0
+
+let rec lines_of_stmt env depth lvl = function
+  | Loop.Loop (lb, ub, body) -&gt;
+      let v = fresh_loop_name env depth in
+      let header = Printf.sprintf &quot;%sfor %s in range(%s, %s) {&quot;
+        (indent lvl) v (string_of_loop_expr env lb) (string_of_loop_expr env ub)
+      in
+      let body_lines = lines_of_stmt (v :: env) (depth + 1) (lvl + 1) body in
+      header :: body_lines @ [indent lvl ^ &quot;}&quot;]
+  | Loop.Instr (instr, slots) -&gt;
+      begin match instr with
+      | Instr.SSkip -&gt; [indent lvl ^ &quot;skip;&quot;]
+      | Instr.SAssign (lhs, rhs) -&gt;
+          [indent lvl ^ string_of_access env slots lhs ^ &quot; = &quot; ^ string_of_instr_expr env slots rhs ^ &quot;;&quot;]
+      end
+  | Loop.Seq stmts -&gt; concat_map (lines_of_stmt env depth lvl) (stmt_list_to_list stmts)
+  | Loop.Guard (tst, body) -&gt;
+      let header = Printf.sprintf &quot;%sif (%s) {&quot; (indent lvl) (string_of_test env tst) in
+      let body_lines = lines_of_stmt env depth (lvl + 1) body in
+      header :: body_lines @ [indent lvl ^ &quot;}&quot;]
+
+let string_of_loop (((stmt, varctxt), _vars) : IR.Loop.t) =
+  let ctxt_names = List.map name_of_ident varctxt in
+  let header =
+    match ctxt_names with
+    | [] -&gt; []
+    | _ -&gt; [&quot;context(&quot; ^ String.concat &quot;, &quot; ctxt_names ^ &quot;);&quot;; &quot;&quot;]
+  in
+  String.concat &quot;\n&quot; (header @ lines_of_stmt (List.rev ctxt_names) 0 0 stmt) ^ &quot;\n&quot;
 </pre>
 </main>
 </body>

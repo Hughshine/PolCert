@@ -63,11 +63,102 @@ class _LowerIntegerOperators(ast.NodeTransformer):
         return node
 
 
+_BINOP_TEXT = {
+    ast.Add: ("+", 50),
+    ast.Sub: ("-", 50),
+    ast.Mult: ("*", 60),
+    ast.Div: ("/", 60),
+    ast.FloorDiv: ("//", 60),
+    ast.Mod: ("%", 60),
+    ast.LShift: ("<<", 40),
+    ast.RShift: (">>", 40),
+    ast.BitOr: ("|", 30),
+    ast.BitXor: ("^", 35),
+    ast.BitAnd: ("&", 40),
+}
+
+_COMPARE_TEXT = {
+    ast.Eq: "==",
+    ast.NotEq: "!=",
+    ast.Lt: "<",
+    ast.LtE: "<=",
+    ast.Gt: ">",
+    ast.GtE: ">=",
+}
+
+
+def _unparse_expr(node: ast.AST, parent_precedence: int = 0) -> str:
+    """Render the expression subset emitted by the Loop frontend.
+
+    Python 3.8, used by the pinned CI image, predates ``ast.unparse``.
+    """
+    precedence = 100
+    if isinstance(node, ast.Name):
+        text = node.id
+    elif isinstance(node, ast.Constant):
+        text = repr(node.value)
+    elif isinstance(node, ast.Call):
+        func = _unparse_expr(node.func, 90)
+        args = ", ".join(_unparse_expr(arg) for arg in node.args)
+        text = f"{func}({args})"
+        precedence = 90
+    elif isinstance(node, ast.UnaryOp):
+        operators = {
+            ast.UAdd: "+",
+            ast.USub: "-",
+            ast.Invert: "~",
+            ast.Not: "not ",
+        }
+        operator = operators.get(type(node.op))
+        if operator is None:
+            raise ValueError(f"unsupported unary operator: {ast.dump(node)}")
+        precedence = 70
+        text = operator + _unparse_expr(node.operand, precedence)
+    elif isinstance(node, ast.BinOp):
+        entry = _BINOP_TEXT.get(type(node.op))
+        if entry is None:
+            raise ValueError(f"unsupported binary operator: {ast.dump(node)}")
+        operator, precedence = entry
+        left = _unparse_expr(node.left, precedence)
+        right = _unparse_expr(node.right, precedence + 1)
+        text = f"{left} {operator} {right}"
+    elif isinstance(node, ast.BoolOp):
+        if isinstance(node.op, ast.And):
+            operator, precedence = "and", 20
+        elif isinstance(node.op, ast.Or):
+            operator, precedence = "or", 10
+        else:
+            raise ValueError(f"unsupported Boolean operator: {ast.dump(node)}")
+        text = f" {operator} ".join(
+            _unparse_expr(value, precedence) for value in node.values
+        )
+    elif isinstance(node, ast.Compare):
+        precedence = 25
+        operands = [node.left, *node.comparators]
+        comparisons = []
+        for left, operator, right in zip(operands, node.ops, operands[1:]):
+            operator_text = _COMPARE_TEXT.get(type(operator))
+            if operator_text is None:
+                raise ValueError(f"unsupported comparison: {ast.dump(node)}")
+            comparisons.append(
+                f"{_unparse_expr(left, precedence + 1)} {operator_text} "
+                f"{_unparse_expr(right, precedence + 1)}"
+            )
+        text = " and ".join(comparisons)
+        if len(comparisons) > 1:
+            precedence = 20
+    else:
+        raise ValueError(f"unsupported integer expression: {ast.dump(node)}")
+    return f"({text})" if precedence < parent_precedence else text
+
+
 def _rewrite_python_expr(text: str) -> str:
     tree = ast.parse(text, mode="eval")
     lowered = _LowerIntegerOperators().visit(tree)
     ast.fix_missing_locations(lowered)
-    return ast.unparse(lowered.body)
+    if hasattr(ast, "unparse"):
+        return ast.unparse(lowered.body)
+    return _unparse_expr(lowered.body)
 
 
 def rewrite_integer_expr(text: str) -> str:

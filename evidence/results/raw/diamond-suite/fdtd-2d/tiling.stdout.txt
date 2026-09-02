@@ -1,5 +1,5 @@
-before: /tmp/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.midtransform.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.posttile.scop
+before: /release/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.midtransform.scop
+after:  /release/polcert-artifact-check/diamond-suite/fdtd-2d/diamond/fdtd-2d.posttile.scop
 overall: PASS
 params: tmax,ny,nx
 

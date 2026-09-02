@@ -18,11 +18,11 @@ program prints `310235039`. Four-thread executions of Pluto's output produce
 different values. PolCert separates the two claims:
 
 - the checked permutable-band validator accepts the rectangular tiling itself;
-- the parallel validator finds no certifiable nontrivial dimension and refuses
-  Pluto's unsafe OpenMP annotation;
-- non-strict mode emits the safe tiled loop with only a one-iteration parallel
-  loop, which is semantically sequential, while strict mode rejects the
-  requested parallel optimization without output.
+- the raw Pluto hint maps to a canonical one-iteration coordinate, which the
+  parallel validator safely certifies;
+- both non-strict and strict modes emit only that semantically sequential
+  singleton parallel loop, never Pluto's dependent tile loop;
+- a direct check of the dependence-carrying tile-loop coordinate is rejected.
 
 Run the executable comparison and the phase-specific checks with:
 

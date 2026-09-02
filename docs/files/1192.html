@@ -3,22 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/7e6346ddf0be18/after.loop</code></h1>
-  <pre>for i0 in range(0, 2) {
-  A[(2 * i0)] = 1;
-  B[(2 * i0)] = A[(2 * i0)];
-  A[((2 * i0) + 1)] = 1;
-  if (1 &lt;= i0) {
-    B[1] = A[1];
+  <h1><code>evidence/results/program-comparisons/7e6346ddf0be18/before.loop</code></h1>
+  <pre>for x in range(0, 2) {
+  for z in range(0, 2) {
+    A[((2 * x) + z)] = 1;
   }
 }
-B[3] = A[3];
+for x in range(0, 2) {
+  for z in range(0, 2) {
+    B[((2 * x) + z)] = A[((2 * x) + z)];
+  }
+}
 </pre>
 </main>
 </body>

@@ -3,21 +3,162 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mxv.loop</title>
+  <title>SVerifiedCompilerConfig.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/mxv.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/syntax/SVerifiedCompilerConfig.v</code></h1>
+  <pre>Require Import String.
 
-for i in range(0, N) {
-  y[i] = 0;
-  for j in range(0, N) {
-    y[i] = (y[i] + (a[i][j] * x[j]));
-  }
-}
+Require Import ImpureAlarmConfig.
+Require Import List.
+Require Import Result.
+Require Import SPolIRs.
+Require Import SLoopJamLower.
+Require Import SPolOpt.
+Require Import SBandTilingOpt.
+Require Import VerifiedLoopPostpass.
+
+Local Open Scope string_scope.
+
+(** * Concrete extracted sequential dispatcher
+
+    This file mirrors [VerifiedCompilerConfig] using the concrete [SPolIRs]
+    modules that are extracted to OCaml.  It contains executable definitions,
+    not the generic semantic proof.  The bridge theorem for
+    [compile_verified] is
+    [ExtractedPipelineCorrect.extracted_sequential_compile_verified_correct];
+    the raw-configuration endpoint is
+    [ExtractedPipelineCorrect.extracted_sequential_compile_correct].
+
+    The leading [S] therefore means concrete extraction-facing syntax.  It does
+    not mean a stronger theorem or an additional compiler phase. *)
+
+(** ** Concrete sequential configurations *)
+
+Inductive raw_config : Type :=
+| RawIdentity
+| RawAffine
+| RawAffineISS
+| RawDefault
+| RawDefaultBand
+| RawSecondLevel
+| RawSecondLevelISS
+| RawIdentitySecondLevel
+| RawIdentitySecondLevelISS
+| RawIdentityBand
+| RawIdentityBandISS
+| RawISS
+| RawPostTilingAffine
+| RawPostTilingAffineISS
+| RawUnsupported.
+
+Inductive verified_config : Type :=
+| VIdentity
+| VAffine
+| VAffineISS
+| VDefault
+| VDefaultBand
+| VSecondLevel
+| VSecondLevelISS
+| VIdentitySecondLevel
+| VIdentitySecondLevelISS
+| VIdentityBand
+| VIdentityBandISS
+| VISS
+| VPostTilingAffine
+| VPostTilingAffineISS.
+
+Definition check_config (cfg: raw_config) : result verified_config :=
+  match cfg with
+  | RawIdentity =&gt; Okk VIdentity
+  | RawAffine =&gt; Okk VAffine
+  | RawAffineISS =&gt; Okk VAffineISS
+  | RawDefault =&gt; Okk VDefault
+  | RawDefaultBand =&gt; Okk VDefaultBand
+  | RawSecondLevel =&gt; Okk VSecondLevel
+  | RawSecondLevelISS =&gt; Okk VSecondLevelISS
+  | RawIdentitySecondLevel =&gt; Okk VIdentitySecondLevel
+  | RawIdentitySecondLevelISS =&gt; Okk VIdentitySecondLevelISS
+  | RawIdentityBand =&gt; Okk VIdentityBand
+  | RawIdentityBandISS =&gt; Okk VIdentityBandISS
+  | RawISS =&gt; Okk VISS
+  | RawPostTilingAffine =&gt; Okk VPostTilingAffine
+  | RawPostTilingAffineISS =&gt; Okk VPostTilingAffineISS
+  | RawUnsupported =&gt; Err &quot;unsupported verified compiler configuration&quot;
+  end.
+(** ** Concrete verified and raw dispatchers
+
+    [compile_verified] accepts an already checked configuration; [compile]
+    runs [check_config] first.  Both still execute the validators internal to
+    the selected optimization route. *)
+Definition compile_verified
+    (cfg: verified_config) (loop: SPolIRs.Loop.t)
+    : imp SPolIRs.Loop.t :=
+  match cfg with
+  | VIdentity =&gt; SPolOpt.opt_identity loop
+  | VAffine =&gt; SPolOpt.opt_affine loop
+  | VAffineISS =&gt; SPolOpt.opt_with_iss loop
+  | VDefault =&gt; SBandTilingOpt.opt loop
+  | VDefaultBand =&gt; SBandTilingOpt.opt loop
+  | VSecondLevel =&gt; SBandTilingOpt.opt loop
+  | VSecondLevelISS =&gt; SBandTilingOpt.opt_with_iss loop
+  | VIdentitySecondLevel =&gt; SBandTilingOpt.opt_identity_tiled loop
+  | VIdentitySecondLevelISS =&gt;
+      SBandTilingOpt.opt_identity_tiled_with_iss loop
+  | VIdentityBand =&gt; SBandTilingOpt.opt_identity_tiled loop
+  | VIdentityBandISS =&gt; SBandTilingOpt.opt_identity_tiled_with_iss loop
+  | VISS =&gt; SBandTilingOpt.opt_with_iss loop
+  | VPostTilingAffine =&gt; SBandTilingOpt.opt_post_tiling_affine loop
+  | VPostTilingAffineISS =&gt; SBandTilingOpt.opt_post_tiling_affine_with_iss loop
+  end.
+
+Definition compile (cfg: raw_config) (loop: SPolIRs.Loop.t)
+    : imp SPolIRs.Loop.t :=
+  match check_config cfg with
+  | Okk vcfg =&gt; compile_verified vcfg loop
+  | Err msg =&gt; res_to_alarm loop (Err msg)
+  end.
+
+Module Postpass := VerifiedLoopPostpass SPolIRs.
+
+Definition no_postpass : loop_postpass_config := NoLoopPostpass.
+Definition const_unroll_postpass : loop_postpass_config := ConstUnrollPostpass.
+
+Definition compile_with_postpass
+    (cfg : raw_config) (postpass : loop_postpass_config)
+    (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND optimized &lt;- compile cfg loop -;
+  Postpass.apply postpass optimized.
+
+(** [SLoopJamLower] is the concrete plan API consumed by the OCaml driver.
+    Rebuilding each candidate here keeps extraction on that single public
+    nominal type while the verified postpass retains its private functor
+    instance. *)
+Definition adapt_unrolljam_candidate
+    (candidate : SLoopJamLower.unrolljam_candidate)
+    : Postpass.JamLower.unrolljam_candidate :=
+  Postpass.JamLower.Build_unrolljam_candidate
+    (SLoopJamLower.unrolljam_candidate_depth candidate)
+    (SLoopJamLower.unrolljam_candidate_path candidate).
+
+Definition adapt_unrolljam_plan
+    (plan : SLoopJamLower.unrolljam_plan)
+    : Postpass.JamLower.unrolljam_plan :=
+  List.map adapt_unrolljam_candidate plan.
+
+Definition compile_with_unrolljam
+    (cfg : raw_config) (const_first : bool)
+    (select :
+       SPolIRs.Loop.t -&gt; SLoopJamLower.unrolljam_plan)
+    (factor : nat) (loop : SPolIRs.Loop.t) : imp SPolIRs.Loop.t :=
+  BIND optimized &lt;- compile cfg loop -;
+  Postpass.apply_checked_unrolljam
+    const_first
+    (fun prepared =&gt; adapt_unrolljam_plan (select prepared))
+    factor optimized.
 </pre>
 </main>
 </body>

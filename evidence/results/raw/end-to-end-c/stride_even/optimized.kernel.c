@@ -1,4 +1,4 @@
 
-for (long long i0 = 0; i0 < ((N + 1) / 2); ++i0) {
-  A[(2 * i0)] = (A[(2 * i0)] + (2 * i0));
+for (long long i0 = 0; i0 < polcert_z_div(N + 1, 2); ++i0) {
+  A[2 * i0] = (A[2 * i0] + (2 * i0));
 }

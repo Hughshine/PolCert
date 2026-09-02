@@ -3,20 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/programs/fusion1/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/performance-comparisons/programs/fdtd-1d/after.loop</code></h1>
+  <pre>context(T, N);
 
-for i in range(1, (N - 2)) {
-  A[i] = (0.33 * ((In[(i - 1)] + In[i]) + In[(i + 1)]));
+if (2 &lt;= N) {
+  for i0 in range(1, (T + 1)) {
+    for i1 in range(1, N) {
+      e[i1] = (e[i1] - (coeff1 * (h[i1] - h[(i1 + -1)])));
+    }
+    for i1 in range(0, N) {
+      h[i1] = (h[i1] - (coeff2 * (e[(i1 + 1)] - e[i1])));
+    }
+  }
 }
-for i in range(2, (N - 3)) {
-  Out[i] = (0.33 * ((A[(i - 1)] + A[i]) + A[(i + 1)]));
+if ((N &lt;= 1 &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(1, (T + 1)) {
+    h[0] = (h[0] - (coeff2 * (e[1] - e[0])));
+  }
 }
 </pre>
 </main>

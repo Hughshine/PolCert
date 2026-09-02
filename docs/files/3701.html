@@ -3,94 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>test_proof_report.py</title>
+  <title>strmm.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tools/artifact/test_proof_report.py</code></h1>
-  <pre>#!/usr/bin/env python3
-from __future__ import annotations
+  <h1><code>source/tests/polopt-regression/inputs/strmm.loop</code></h1>
+  <pre>context(NMAX);
 
-import pathlib
-import tempfile
-import unittest
-from unittest import mock
-
-import proof_report
-
-
-class ProofReportTests(unittest.TestCase):
-    def build(self, coq: str, extracted: str = &quot;&quot;) -&gt; dict[str, object]:
-        with tempfile.TemporaryDirectory(prefix=&quot;polcert-proof-report-&quot;) as tmp:
-            root = pathlib.Path(tmp)
-            source_dir = root / &quot;src&quot;
-            extraction_dir = root / &quot;extraction&quot;
-            source_dir.mkdir()
-            extraction_dir.mkdir()
-            (source_dir / &quot;Fixture.v&quot;).write_text(coq, encoding=&quot;utf-8&quot;)
-            if extracted:
-                (extraction_dir / &quot;Fixture.ml&quot;).write_text(extracted, encoding=&quot;utf-8&quot;)
-            with mock.patch.object(
-                proof_report, &quot;ROOT&quot;, root
-            ), mock.patch.object(
-                proof_report, &quot;SCAN_DIRS&quot;, [&quot;src&quot;]
-            ), mock.patch.object(
-                proof_report, &quot;TOP_LEVEL_ROUTES&quot;, []
-            ):
-                return proof_report.build_report()
-
-    def test_clean_report_passes(self) -&gt; None:
-        report = self.build(&quot;Goal True. exact I. Qed.\n&quot;)
-        self.assertFalse(proof_report.report_has_errors(report))
-
-    def test_open_proofs_fail_but_comments_do_not(self) -&gt; None:
-        report = self.build(
-            &quot;(* Admitted. *)\nGoal True. Admitted.\nGoal True. Abort.\n&quot;
-        )
-        self.assertEqual(report[&quot;admitted_count&quot;], 1)
-        self.assertEqual(report[&quot;abort_count&quot;], 1)
-        self.assertTrue(proof_report.report_has_errors(report))
-
-    def test_unrealized_extraction_axiom_fails(self) -&gt; None:
-        report = self.build(
-            &quot;Goal True. exact I. Qed.\n&quot;,
-            &quot;(* AXIOM TO BE REALIZED *)\n&quot;,
-        )
-        self.assertEqual(report[&quot;extraction_axiom_count&quot;], 1)
-        self.assertTrue(proof_report.report_has_errors(report))
-
-    def test_missing_listed_route_theorem_fails(self) -&gt; None:
-        with tempfile.TemporaryDirectory(prefix=&quot;polcert-proof-report-route-&quot;) as tmp:
-            root = pathlib.Path(tmp)
-            source_dir = root / &quot;src&quot;
-            source_dir.mkdir()
-            (source_dir / &quot;Fixture.v&quot;).write_text(
-                &quot;Theorem present : True. exact I. Qed.\n&quot;, encoding=&quot;utf-8&quot;
-            )
-            routes = [
-                {
-                    &quot;route&quot;: &quot;fixture&quot;,
-                    &quot;cli&quot;: &quot;fixture&quot;,
-                    &quot;theorem_file&quot;: &quot;src/Fixture.v&quot;,
-                    &quot;theorem_names&quot;: [&quot;missing&quot;],
-                }
-            ]
-            with mock.patch.object(
-                proof_report, &quot;ROOT&quot;, root
-            ), mock.patch.object(
-                proof_report, &quot;SCAN_DIRS&quot;, [&quot;src&quot;]
-            ), mock.patch.object(
-                proof_report, &quot;TOP_LEVEL_ROUTES&quot;, routes
-            ):
-                report = proof_report.build_report()
-        self.assertEqual(report[&quot;missing_route_theorem_count&quot;], 1)
-        self.assertTrue(proof_report.report_has_errors(report))
-
-
-if __name__ == &quot;__main__&quot;:
-    unittest.main()
+for i in range(1, NMAX) {
+  for j in range(0, NMAX) {
+    for k in range(0, i) {
+      b[j][k] = (b[j][k] + (a[i][k] * b[j][i]));
+    }
+  }
+}
 </pre>
 </main>
 </body>

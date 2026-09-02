@@ -3,29 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/performance-comparisons/programs/adi/before.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>evidence/optimizer-reliability/tiling-innerpar-satvec/README.md</code></h1>
+  <pre># Inner-Parallel Tiling Metadata Corrupts Dependence Satisfaction
 
-for t in range(0, T) {
-  for i1 in range(0, N) {
-    for i2 in range(1, N) {
-      X[i1][i2] = (X[i1][i2] - ((X[i1][(i2 - 1)] * A[i1][i2]) / B[i1][(i2 - 1)]));
-      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[i1][(i2 - 1)]));
-    }
-  }
-  for i1 in range(1, N) {
-    for i2 in range(0, N) {
-      X[i1][i2] = (X[i1][i2] - ((X[(i1 - 1)][i2] * A[i1][i2]) / B[(i1 - 1)][i2]));
-      B[i1][i2] = (B[i1][i2] - ((A[i1][i2] * A[i1][i2]) / B[(i1 - 1)][i2]));
-    }
-  }
-}
+Status: reproduced, minimized, validator-catches.
+
+The two-dimensional recurrence reads both `a[i-1][j]` and `a[i][j-1]`.
+The rectangular tiling transformation is legal, but neither original schedule
+dimension is parallel.
+
+With `--identity --tile --parallel --innerpar`, pinned Pluto leaves the tile
+schedule unchanged in `lib/tile.c:446-456`. It nevertheless moves inner
+dependence-satisfaction bits to the outer tile dimension and clears the inner
+bits at `lib/tile.c:461-478`. Later parallel-loop discovery trusts those bits
+and emits an OpenMP pragma for tile loop `t4`.
+
+The fixture uses tile size `2`, so the 16-by-16 recurrence contains several
+tiles while all source values remain within signed 32-bit range. The original
+program prints `310235039`. Four-thread executions of Pluto&#x27;s output produce
+different values. PolCert separates the two claims:
+
+- the checked permutable-band validator accepts the rectangular tiling itself;
+- the raw Pluto hint maps to a canonical one-iteration coordinate, which the
+  parallel validator safely certifies;
+- both non-strict and strict modes emit only that semantically sequential
+  singleton parallel loop, never Pluto&#x27;s dependent tile loop;
+- a direct check of the dependence-carrying tile-loop coordinate is rejected.
+
+Run the executable comparison and the phase-specific checks with:
+
+```sh
+opam exec -- make test-pluto-miscompilation-tiling-innerpar
+```
 </pre>
 </main>
 </body>

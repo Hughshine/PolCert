@@ -118,16 +118,18 @@ def main():
             cwd=repo,
             env=polcert_env,
         )
-        require(strict.returncode != 0, "PolCert strict hinted route accepted Pluto's vanished-loop hint")
         require(
-            "[parallel-validation] status=rejected" in strict.stdout
-            and "[alarm] requested checked optimization was rejected" in strict.stdout
-            and "== Optimized Loop ==" not in strict.stdout,
-            f"PolCert strict rejection was incomplete:\n{strict.stdout}",
+            strict.returncode == 0
+            and strict.stdout.count("parallel for") == 1
+            and "parallel for i0 in range(0, 1)" in strict.stdout
+            and "parallel for i1" not in strict.stdout,
+            "PolCert strict hinted route did not preserve the vanished hint as "
+            f"a semantically sequential singleton loop:\n{strict.stdout}",
         )
         print(
-            f"[pluto-miscompile] polcert-hint: expected=rejected "
-            f"actual=exit-{strict.returncode},no-output interpretation=fail-closed"
+            "[pluto-miscompile] polcert-hint: expected=singleton-parallel "
+            "actual=exit-0,parallel-i0-range-0-1 "
+            "interpretation=vanished-coordinate-did-not-transfer-inward"
         )
 
         actual_inner = run(

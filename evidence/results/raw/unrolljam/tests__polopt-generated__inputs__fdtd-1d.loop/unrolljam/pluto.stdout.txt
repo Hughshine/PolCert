@@ -27,11 +27,11 @@ loop types (loop, loop, loop, loop, scalar)
 [Pluto] Output written to fdtd-1d.scop.pluto.c
 
 [pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.000076s
-[pluto] Auto-transformation time: 0.003187s
+[pluto] SCoP extraction + dependence analysis time: 0.000096s
+[pluto] Auto-transformation time: 0.002901s
 [pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000549s
-[pluto] Code generation time: 0.016691s
-[pluto] Other/Misc time: 0.048499s
-[pluto] Total time: 0.068453s
-[pluto] All times: 0.000076 0.003187 0.016691 0.048499
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000401s
+[pluto] Code generation time: 0.018031s
+[pluto] Other/Misc time: 0.044873s
+[pluto] Total time: 0.065901s
+[pluto] All times: 0.000096 0.002901 0.018031 0.044873

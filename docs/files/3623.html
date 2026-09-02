@@ -3,29 +3,458 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>matmul-seq.loop</title>
+  <title>SLoopParse.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/matmul-seq.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/syntax/SLoopParse.ml</code></h1>
+  <pre>open SLoopAst
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    for k in range(0, N) {
-      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
-    }
-  }
+type token_kind =
+  | KContext
+  | KFor
+  | KIf
+  | KIn
+  | KRange
+  | Ident of string
+  | Int of int
+  | Float of string
+  | LParen
+  | RParen
+  | LBrace
+  | RBrace
+  | LBracket
+  | RBracket
+  | Comma
+  | Semi
+  | Assign
+  | Plus
+  | Minus
+  | Star
+  | Slash
+  | Le
+  | EqEq
+  | AndAnd
+  | Question
+  | Colon
+  | Eof
+
+type token = {
+  kind : token_kind;
+  pos : int;
 }
-for i in range(0, N) {
-  for j in range(0, N) {
-    for k in range(0, N) {
-      D[i][j] = (D[i][j] + (C[i][k] * E[k][j]));
-    }
-  }
+
+exception Error of int * string
+
+let error pos msg = raise (Error (pos, msg))
+
+let string_of_token_kind = function
+  | KContext -&gt; &quot;context&quot;
+  | KFor -&gt; &quot;for&quot;
+  | KIf -&gt; &quot;if&quot;
+  | KIn -&gt; &quot;in&quot;
+  | KRange -&gt; &quot;range&quot;
+  | Ident s -&gt; Printf.sprintf &quot;identifier(%s)&quot; s
+  | Int n -&gt; Printf.sprintf &quot;int(%d)&quot; n
+  | Float s -&gt; Printf.sprintf &quot;float(%s)&quot; s
+  | LParen -&gt; &quot;(&quot;
+  | RParen -&gt; &quot;)&quot;
+  | LBrace -&gt; &quot;{&quot;
+  | RBrace -&gt; &quot;}&quot;
+  | LBracket -&gt; &quot;[&quot;
+  | RBracket -&gt; &quot;]&quot;
+  | Comma -&gt; &quot;,&quot;
+  | Semi -&gt; &quot;;&quot;
+  | Assign -&gt; &quot;=&quot;
+  | Plus -&gt; &quot;+&quot;
+  | Minus -&gt; &quot;-&quot;
+  | Star -&gt; &quot;*&quot;
+  | Slash -&gt; &quot;/&quot;
+  | Le -&gt; &quot;&lt;=&quot;
+  | EqEq -&gt; &quot;==&quot;
+  | AndAnd -&gt; &quot;&amp;&amp;&quot;
+  | Question -&gt; &quot;?&quot;
+  | Colon -&gt; &quot;:&quot;
+  | Eof -&gt; &quot;&lt;eof&gt;&quot;
+
+let is_space = function
+  | &#x27; &#x27; | &#x27;\t&#x27; | &#x27;\r&#x27; | &#x27;\n&#x27; -&gt; true
+  | _ -&gt; false
+
+let is_digit c = c &gt;= &#x27;0&#x27; &amp;&amp; c &lt;= &#x27;9&#x27;
+
+let is_ident_start = function
+  | &#x27;a&#x27; .. &#x27;z&#x27; | &#x27;A&#x27; .. &#x27;Z&#x27; | &#x27;_&#x27; -&gt; true
+  | _ -&gt; false
+
+let is_ident_char = function
+  | &#x27;a&#x27; .. &#x27;z&#x27; | &#x27;A&#x27; .. &#x27;Z&#x27; | &#x27;0&#x27; .. &#x27;9&#x27; | &#x27;_&#x27; -&gt; true
+  | _ -&gt; false
+
+let keyword_or_ident s =
+  match s with
+  | &quot;context&quot; -&gt; KContext
+  | &quot;for&quot; -&gt; KFor
+  | &quot;if&quot; -&gt; KIf
+  | &quot;in&quot; -&gt; KIn
+  | &quot;range&quot; -&gt; KRange
+  | _ -&gt; Ident s
+
+let lex input =
+  let len = String.length input in
+  let rec skip_block_comment i =
+    if i + 1 &gt;= len then error i &quot;unterminated block comment&quot;;
+    if input.[i] = &#x27;*&#x27; &amp;&amp; input.[i + 1] = &#x27;/&#x27;
+    then i + 2
+    else skip_block_comment (i + 1)
+  in
+  let rec skip i =
+    if i &gt;= len then i
+    else if is_space input.[i] then skip (i + 1)
+    else if i + 1 &lt; len &amp;&amp; input.[i] = &#x27;/&#x27; &amp;&amp; input.[i + 1] = &#x27;/&#x27;
+    then skip_line (i + 2)
+    else if i + 1 &lt; len &amp;&amp; input.[i] = &#x27;/&#x27; &amp;&amp; input.[i + 1] = &#x27;*&#x27;
+    then skip (skip_block_comment (i + 2))
+    else i
+  and skip_line i =
+    if i &gt;= len then i
+    else if input.[i] = &#x27;\n&#x27; then skip (i + 1)
+    else skip_line (i + 1)
+  in
+  let rec ident_end i =
+    if i &lt; len &amp;&amp; is_ident_char input.[i] then ident_end (i + 1) else i
+  in
+  let rec number_end i seen_dot seen_digit =
+    if i &gt;= len then (i, seen_dot, seen_digit)
+    else if is_digit input.[i] then number_end (i + 1) seen_dot true
+    else if input.[i] = &#x27;.&#x27; &amp;&amp; not seen_dot then number_end (i + 1) true seen_digit
+    else (i, seen_dot, seen_digit)
+  in
+  let rec go i acc =
+    let i = skip i in
+    if i &gt;= len then List.rev ({ kind = Eof; pos = len } :: acc)
+    else
+      let two c1 c2 tok =
+        if i + 1 &lt; len &amp;&amp; input.[i] = c1 &amp;&amp; input.[i + 1] = c2
+        then Some { kind = tok; pos = i }
+        else None
+      in
+      match two &#x27;&lt;&#x27; &#x27;=&#x27; Le with
+      | Some tok -&gt; go (i + 2) (tok :: acc)
+      | None -&gt;
+          match two &#x27;=&#x27; &#x27;=&#x27; EqEq with
+          | Some tok -&gt; go (i + 2) (tok :: acc)
+          | None -&gt;
+              match two &#x27;&amp;&#x27; &#x27;&amp;&#x27; AndAnd with
+              | Some tok -&gt; go (i + 2) (tok :: acc)
+              | None -&gt;
+                  begin match input.[i] with
+                  | &#x27;(&#x27; -&gt; go (i + 1) ({ kind = LParen; pos = i } :: acc)
+                  | &#x27;)&#x27; -&gt; go (i + 1) ({ kind = RParen; pos = i } :: acc)
+                  | &#x27;{&#x27; -&gt; go (i + 1) ({ kind = LBrace; pos = i } :: acc)
+                  | &#x27;}&#x27; -&gt; go (i + 1) ({ kind = RBrace; pos = i } :: acc)
+                  | &#x27;[&#x27; -&gt; go (i + 1) ({ kind = LBracket; pos = i } :: acc)
+                  | &#x27;]&#x27; -&gt; go (i + 1) ({ kind = RBracket; pos = i } :: acc)
+                  | &#x27;,&#x27; -&gt; go (i + 1) ({ kind = Comma; pos = i } :: acc)
+                  | &#x27;;&#x27; -&gt; go (i + 1) ({ kind = Semi; pos = i } :: acc)
+                  | &#x27;=&#x27; -&gt; go (i + 1) ({ kind = Assign; pos = i } :: acc)
+                  | &#x27;+&#x27; -&gt; go (i + 1) ({ kind = Plus; pos = i } :: acc)
+                  | &#x27;-&#x27; -&gt; go (i + 1) ({ kind = Minus; pos = i } :: acc)
+                  | &#x27;*&#x27; -&gt; go (i + 1) ({ kind = Star; pos = i } :: acc)
+                  | &#x27;/&#x27; -&gt; go (i + 1) ({ kind = Slash; pos = i } :: acc)
+                  | &#x27;?&#x27; -&gt; go (i + 1) ({ kind = Question; pos = i } :: acc)
+                  | &#x27;:&#x27; -&gt; go (i + 1) ({ kind = Colon; pos = i } :: acc)
+                  | c when is_ident_start c -&gt;
+                      let j = ident_end (i + 1) in
+                      let s = String.sub input i (j - i) in
+                      go j ({ kind = keyword_or_ident s; pos = i } :: acc)
+                  | c when is_digit c || (c = &#x27;.&#x27; &amp;&amp; i + 1 &lt; len &amp;&amp; is_digit input.[i + 1]) -&gt;
+                      let j, seen_dot, seen_digit = number_end (i + 1) (c = &#x27;.&#x27;) (is_digit c) in
+                      if not seen_digit then error i &quot;malformed numeric literal&quot;;
+                      let s = String.sub input i (j - i) in
+                      if seen_dot then
+                        go j ({ kind = Float s; pos = i } :: acc)
+                      else
+                        let n =
+                          match int_of_string_opt s with
+                          | Some n -&gt; n
+                          | None -&gt; error i (Printf.sprintf &quot;integer literal out of range: %s&quot; s)
+                        in
+                        go j ({ kind = Int n; pos = i } :: acc)
+                  | c -&gt; error i (Printf.sprintf &quot;unexpected character %C&quot; c)
+                  end
+  in
+  go 0 []
+
+type stream = {
+  tokens : token array;
+  mutable idx : int;
 }
+
+let make_stream toks = { tokens = Array.of_list toks; idx = 0 }
+
+let peek st =
+  if st.idx &lt; Array.length st.tokens then st.tokens.(st.idx)
+  else { kind = Eof; pos = Array.length st.tokens }
+
+let bump st =
+  let tok = peek st in
+  st.idx &lt;- st.idx + 1;
+  tok
+
+let accept st pred =
+  let tok = peek st in
+  if pred tok.kind then Some (bump st) else None
+
+let expect st pred expected =
+  let tok = peek st in
+  if pred tok.kind then bump st
+  else error tok.pos (Printf.sprintf &quot;expected %s, got %s&quot; expected (string_of_token_kind tok.kind))
+
+let expect_ident st =
+  match bump st with
+  | { kind = Ident s; _ } -&gt; s
+  | tok -&gt; error tok.pos (Printf.sprintf &quot;expected identifier, got %s&quot; (string_of_token_kind tok.kind))
+
+let expect_token st kind expected =
+  ignore (expect st (fun k -&gt; k = kind) expected)
+
+let rec parse_program st =
+  let context =
+    match accept st (function KContext -&gt; true | _ -&gt; false) with
+    | None -&gt; []
+    | Some _ -&gt; parse_context_decl st
+  in
+  let body = parse_stmt_seq_until st (function Eof -&gt; true | _ -&gt; false) in
+  ignore (expect st (function Eof -&gt; true | _ -&gt; false) &quot;end of file&quot;);
+  { context; body }
+
+and parse_context_decl st =
+  expect_token st LParen &quot;( after context&quot;;
+  let names = parse_ident_list st in
+  expect_token st RParen &quot;) after context list&quot;;
+  expect_token st Semi &quot;; after context declaration&quot;;
+  names
+
+and parse_ident_list st =
+  match peek st with
+  | { kind = RParen; _ } -&gt; []
+  | _ -&gt;
+      let rec go acc =
+        let name = expect_ident st in
+        match accept st (function Comma -&gt; true | _ -&gt; false) with
+        | None -&gt; List.rev (name :: acc)
+        | Some _ -&gt; go (name :: acc)
+      in
+      go []
+
+and parse_block st =
+  expect_token st LBrace &quot;{&quot;;
+  let body = parse_stmt_seq_until st (function RBrace -&gt; true | _ -&gt; false) in
+  expect_token st RBrace &quot;}&quot;;
+  body
+
+and parse_stmt_seq_until st stop =
+  let rec go acc =
+    if stop (peek st).kind then List.rev acc else go (parse_stmt st :: acc)
+  in
+  go []
+
+and parse_stmt st =
+  match peek st with
+  | { kind = KFor; _ } -&gt; parse_for st
+  | { kind = KIf; _ } -&gt; parse_if st
+  | _ -&gt; parse_assign st
+
+and parse_for st =
+  ignore (bump st);
+  let iter = expect_ident st in
+  ignore (expect st (function KIn -&gt; true | _ -&gt; false) &quot;in&quot;);
+  ignore (expect st (function KRange -&gt; true | _ -&gt; false) &quot;range&quot;);
+  expect_token st LParen &quot;( after range&quot;;
+  let lb = parse_affine st in
+  expect_token st Comma &quot;, in range&quot;;
+  let ub = parse_affine st in
+  let step =
+    match accept st (function Comma -&gt; true | _ -&gt; false) with
+    | None -&gt; None
+    | Some _ -&gt; Some (parse_affine st)
+  in
+  expect_token st RParen &quot;) after range&quot;;
+  let body = parse_block st in
+  For (iter, lb, ub, step, body)
+
+and parse_if st =
+  ignore (bump st);
+  expect_token st LParen &quot;( after if&quot;;
+  let tst = parse_test st in
+  expect_token st RParen &quot;) after if condition&quot;;
+  let body = parse_block st in
+  If (tst, body)
+
+and parse_assign st =
+  let lhs = parse_access st in
+  expect_token st Assign &quot;=&quot;;
+  let rhs = parse_expr st in
+  expect_token st Semi &quot;;&quot;;
+  Assign (lhs, rhs)
+
+and parse_access st =
+  let base = expect_ident st in
+  parse_access_after_base st base
+
+and parse_access_after_base st base =
+  let rec indices acc =
+    match accept st (function LBracket -&gt; true | _ -&gt; false) with
+    | None -&gt; { base; indices = List.rev acc }
+    | Some _ -&gt;
+        let idx = parse_affine st in
+        expect_token st RBracket &quot;]&quot;;
+        indices (idx :: acc)
+  in
+  indices []
+
+and parse_test st =
+  let lhs = parse_cmp st in
+  let rec more acc =
+    match accept st (function AndAnd -&gt; true | _ -&gt; false) with
+    | None -&gt; acc
+    | Some _ -&gt; more (And (acc, parse_cmp st))
+  in
+  more lhs
+
+and parse_cmp st =
+  let lhs = parse_affine st in
+  match bump st with
+  | { kind = Le; _ } -&gt; Le (lhs, parse_affine st)
+  | { kind = EqEq; _ } -&gt; Eq (lhs, parse_affine st)
+  | tok -&gt; error tok.pos (Printf.sprintf &quot;expected &lt;= or ==, got %s&quot; (string_of_token_kind tok.kind))
+
+and parse_affine st = parse_affine_add st
+
+and parse_affine_add st =
+  let lhs = parse_affine_mul st in
+  let rec more acc =
+    match peek st with
+    | { kind = Plus; _ } -&gt; ignore (bump st); more (Add (acc, parse_affine_mul st))
+    | { kind = Minus; _ } -&gt; ignore (bump st); more (Sub (acc, parse_affine_mul st))
+    | _ -&gt; acc
+  in
+  more lhs
+
+and parse_affine_mul st =
+  let lhs = parse_affine_atom st in
+  let rec more acc =
+    match peek st with
+    | { kind = Star; _ } -&gt; ignore (bump st); more (Mul (acc, parse_affine_atom st))
+    | _ -&gt; acc
+  in
+  more lhs
+
+and parse_affine_atom st =
+  match bump st with
+  | { kind = Int n; _ } -&gt; Int n
+  | { kind = Ident s; _ } -&gt; Name s
+  | { kind = Minus; _ } -&gt; Mul (Int (-1), parse_affine_atom st)
+  | { kind = LParen; _ } -&gt;
+      let e = parse_affine st in
+      expect_token st RParen &quot;)&quot;;
+      e
+  | tok -&gt; error tok.pos (Printf.sprintf &quot;unexpected token in affine expression: %s&quot; (string_of_token_kind tok.kind))
+
+and parse_expr st = parse_expr_ternary st
+
+and parse_expr_ternary st =
+  let lhs = parse_expr_and st in
+  match accept st (function Question -&gt; true | _ -&gt; false) with
+  | None -&gt; lhs
+  | Some _ -&gt;
+      let then_e = parse_expr st in
+      expect_token st Colon &quot;:&quot;;
+      let else_e = parse_expr st in
+      CondE (lhs, then_e, else_e)
+
+and parse_expr_and st =
+  let lhs = parse_expr_cmp st in
+  let rec more acc =
+    match peek st with
+    | { kind = AndAnd; _ } -&gt; ignore (bump st); more (AndE (acc, parse_expr_cmp st))
+    | _ -&gt; acc
+  in
+  more lhs
+
+and parse_expr_cmp st =
+  let lhs = parse_expr_add st in
+  match peek st with
+  | { kind = Le; _ } -&gt; ignore (bump st); LeE (lhs, parse_expr_add st)
+  | { kind = EqEq; _ } -&gt; ignore (bump st); EqE (lhs, parse_expr_add st)
+  | _ -&gt; lhs
+
+and parse_expr_add st =
+  let lhs = parse_expr_mul st in
+  let rec more acc =
+    match peek st with
+    | { kind = Plus; _ } -&gt; ignore (bump st); more (AddE (acc, parse_expr_mul st))
+    | { kind = Minus; _ } -&gt; ignore (bump st); more (SubE (acc, parse_expr_mul st))
+    | _ -&gt; acc
+  in
+  more lhs
+
+and parse_expr_mul st =
+  let lhs = parse_expr_atom st in
+  let rec more acc =
+    match peek st with
+    | { kind = Star; _ } -&gt; ignore (bump st); more (MulE (acc, parse_expr_atom st))
+    | { kind = Slash; _ } -&gt; ignore (bump st); more (DivE (acc, parse_expr_atom st))
+    | _ -&gt; acc
+  in
+  more lhs
+
+and parse_expr_atom st =
+  match bump st with
+  | { kind = Int n; _ } -&gt; IntLit n
+  | { kind = Float s; _ } -&gt; FloatLit s
+  | { kind = Ident s; _ } -&gt;
+      if Option.is_some (accept st (function LParen -&gt; true | _ -&gt; false)) then begin
+        let rec args acc =
+          match peek st with
+          | { kind = RParen; _ } -&gt;
+              ignore (bump st);
+              List.rev acc
+          | _ -&gt;
+              let arg = parse_expr st in
+              begin match peek st with
+              | { kind = Comma; _ } -&gt; ignore (bump st); args (arg :: acc)
+              | { kind = RParen; _ } -&gt; ignore (bump st); List.rev (arg :: acc)
+              | tok -&gt; error tok.pos (Printf.sprintf &quot;expected , or ), got %s&quot; (string_of_token_kind tok.kind))
+              end
+        in
+        CallE (s, args [])
+      end else if Option.is_some (accept st (function LBracket -&gt; true | _ -&gt; false)) then begin
+        st.idx &lt;- st.idx - 1;
+        Access (parse_access_after_base st s)
+      end else NameRef s
+  | { kind = Minus; _ } -&gt; MulE (IntLit (-1), parse_expr_atom st)
+  | { kind = LParen; _ } -&gt;
+      let e = parse_expr st in
+      expect_token st RParen &quot;)&quot;;
+      e
+  | tok -&gt; error tok.pos (Printf.sprintf &quot;unexpected token in expression: %s&quot; (string_of_token_kind tok.kind))
+
+let parse_string input =
+  let st = make_stream (lex input) in
+  parse_program st
+
+let parse_file filename =
+  let ic = open_in filename in
+  Fun.protect
+    ~finally:(fun () -&gt; close_in ic)
+    (fun () -&gt;
+      let len = in_channel_length ic in
+      let input = really_input_string ic len in
+      parse_string input)
 </pre>
 </main>
 </body>

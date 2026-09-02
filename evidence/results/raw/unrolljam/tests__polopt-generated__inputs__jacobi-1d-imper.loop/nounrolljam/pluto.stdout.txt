@@ -27,11 +27,11 @@ loop types (loop, loop, loop, loop, scalar)
 [Pluto] Output written to jacobi-1d-imper.scop.pluto.c
 
 [pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.000073s
-[pluto] Auto-transformation time: 0.002785s
+[pluto] SCoP extraction + dependence analysis time: 0.000087s
+[pluto] Auto-transformation time: 0.002685s
 [pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000454s
-[pluto] Code generation time: 0.025102s
-[pluto] Other/Misc time: 0.034029s
-[pluto] Total time: 0.061989s
-[pluto] All times: 0.000073 0.002785 0.025102 0.034029
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000487s
+[pluto] Code generation time: 0.028428s
+[pluto] Other/Misc time: 0.034454s
+[pluto] Total time: 0.065654s
+[pluto] All times: 0.000087 0.002685 0.028428 0.034454

@@ -3,24 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/09196bf87094b6/after.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/08bbe29f46dc1b/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-if (1 &lt;= N) {
-  for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((N + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
-          x1[i2] = (x1[i2] + (a[i2][i3] * y_1[i3]));
-          x2[i2] = (x2[i2] + (a[i3][i2] * y_2[i3]));
-        }
-      }
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
     }
   }
 }

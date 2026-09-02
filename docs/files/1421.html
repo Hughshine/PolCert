@@ -3,20 +3,43 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/a76d08cb7e7538/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/a8a8d3696e7f58/after.loop</code></h1>
+  <pre>context(n);
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    C[i][j] = 0;
-    for k in range(0, N) {
-      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+if (1 &lt;= n) {
+  for i0 in range(0, ((n + 31) / 32)) {
+    for i1 in range(0, ((n + 31) / 32)) {
+      for i2 in range(max((32 * i0), 0), min(((32 * i0) + 32), n)) {
+        if (i1 &lt;= 0) {
+          a[i2][0] = (b[i2][-1] + a[i2][-1]);
+        }
+        for i3 in range(max(1, (32 * i1)), min(((32 * i1) + 32), n)) {
+          for i4 in range((i3 + -1), i3) {
+            b[i2][i4] = (a[(i2 + -1)][(i4 + 1)] + b[(i2 + -1)][i4]);
+          }
+          a[i2][i3] = (b[i2][(i3 + -1)] + a[i2][(i3 + -1)]);
+        }
+        if ((n + (-32 * i1)) &lt;= 31) {
+          for i3 in range((n + -1), n) {
+            b[i2][i3] = (a[(i2 + -1)][(i3 + 1)] + b[(i2 + -1)][i3]);
+          }
+        }
+      }
+    }
+    if ((n % 32) == 0) {
+      for i1 in range((32 * i0), ((32 * i0) + 32)) {
+        if ((n % 32) == 0) {
+          for i2 in range((n + -1), n) {
+            b[i1][i2] = (a[(i1 + -1)][(i2 + 1)] + b[(i1 + -1)][i2]);
+          }
+        }
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
-before: /tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.midtransform.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.posttile.scop
+before: /release/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.midtransform.scop
+after:  /release/polcert-artifact-check/diamond-suite/seidel/diamond/seidel.posttile.scop
 params: T,N
 
 statement 1:

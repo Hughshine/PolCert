@@ -1,5 +1,5 @@
 {
-  "output_root": "/tmp/polcert-artifact-check/identity-compositions",
+  "output_root": "/release/polcert-artifact-check/identity-compositions",
   "results": [
     {
       "case": "fusion7",
@@ -14,7 +14,7 @@
       "polcert_second_level_validation": {
         "exit": 0,
         "ok": true,
-        "output": "[TILING-OK] /tmp/polcert-artifact-check/identity-compositions/fusion7.identity.second.scop.afterscheduling.scop validates /tmp/polcert-artifact-check/identity-compositions/fusion7.scop as a tiling-derived refinement (route=permutable-band)."
+        "output": "[TILING-OK] /release/polcert-artifact-check/identity-compositions/fusion7.identity.second.scop.afterscheduling.scop validates /release/polcert-artifact-check/identity-compositions/fusion7.scop as a tiling-derived refinement (route=permutable-band)."
       },
       "polopt_identity_second_level": {
         "exit": 0,
@@ -58,7 +58,7 @@
       "polcert_diamond_validation": {
         "exit": 1,
         "ok": false,
-        "output": "[PHASE] affine(before, mid): OK\n[PHASE] tiling(mid, posttile): FAIL route=rejected\n[PHASE] affine(posttile, after): OK\n[FAIL] Diamond phase-aligned validation failed for (/tmp/polcert-artifact-check/identity-compositions/wavefront.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.midtransform.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.posttile.scop -> /tmp/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.afterscheduling.scop)."
+        "output": "[PHASE] affine(before, mid): OK\n[PHASE] tiling(mid, posttile): FAIL route=rejected\n[PHASE] affine(posttile, after): OK\n[FAIL] Diamond phase-aligned validation failed for (/release/polcert-artifact-check/identity-compositions/wavefront.scop -> /release/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.midtransform.scop -> /release/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.posttile.scop -> /release/polcert-artifact-check/identity-compositions/wavefront.identity.diamond.scop.afterscheduling.scop)."
       },
       "polopt_identity_diamond": {
         "exit": 2,
@@ -81,7 +81,7 @@
       "interesting": [],
       "interesting_definition": "interesting means direct Pluto --identity --tile --diamond-tile differs from --identity --tile; phase validation is run only for distinct-output candidates",
       "mode": "identity-diamond-sensitive-search",
-      "output_root": "/tmp/polcert-artifact-check/identity-compositions/identity-diamond-search",
+      "output_root": "/release/polcert-artifact-check/identity-compositions/identity-diamond-search",
       "polopt_route_rejection": {
         "exit": 2,
         "optimized": "[pluto-compat] reject: --diamond-tile requires a Pluto tiling phase and cannot be combined with --identity\n",

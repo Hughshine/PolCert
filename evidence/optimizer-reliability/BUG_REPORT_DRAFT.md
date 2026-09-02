@@ -41,9 +41,9 @@ needed.
 |---|---|---:|---:|---|---|
 | P1 | Automatic affine LP schedule integerization | `802469374803681347` | `11412027514774867379` | Reproduced at `dc462163` without a control file | The affine validator rejects the exact bad before/after schedule. |
 | C1 | Optional `.fst` statement-order control | `100` | `0` | Reproduced at `dc462163`; not an automatic-scheduler witness | Affine validation rejects the schedule; the complete route emits no optimized loop. |
-| P2 | Parallel annotation after a one-trip schedule coordinate vanishes | `10000` | `2499` in repeated four-thread runs | Reproduced at `dc462163` | Strict hint mapping and a direct check of the actual inner dimension both reject. |
+| P2 | Parallel annotation after a one-trip schedule coordinate vanishes | `10000` | `2499` in repeated four-thread runs | Reproduced at `dc462163` | The mapped hint remains a singleton parallel loop; a direct check rejects the actual inner dimension. |
 | P3 | Unroll-jam under `--notile` | `15` | `1` | Reproduced at `dc462163` | Proved block unrolling is retained, but the unsafe local jam is rejected. |
-| P4 | `--tile --parallel --innerpar` satisfaction metadata | `310235039` | `928116`, `7631020`, and `23122525` in three four-thread runs | Reproduced at `dc462163` | Rectangular tiling is accepted; the unsafe parallel overlay is removed or rejected in strict mode. |
+| P4 | `--tile --parallel --innerpar` satisfaction metadata | `310235039` | `928116`, `7631020`, and `23122525` in three four-thread runs | Reproduced at `dc462163` | Rectangular tiling and the mapped singleton coordinate are accepted; the unsafe nontrivial overlay is never applied. |
 | F1 | Diamond tiling without intra-tile optimization in the `phase-dump-fork` phase-dump patch | `20` | `18`; full-diamond: `15` | Not present in official `dc462163`; fixed in fork commit `diamond-fix-snapshot` | The mixed-scalar candidate is conservatively rejected; a separate supported pure-diamond case is accepted. |
 
 Parallel wrong-code results can vary across executions. The values above are
@@ -246,10 +246,10 @@ dependence-carrying inner loop, then execute the generated OpenMP program.
 
 ### PolCert cross-check
 
-PolCert's strict route rejects the parallel hint because the selected
-coordinate has no surviving certifiable loop. A separate test asks PolCert to
-check the concrete inner coordinate chosen by Pluto's fallback; its dependence
-check also rejects that loop.
+PolCert's strict route maps the parallel hint to the canonical one-iteration
+coordinate and does not transfer it to the dependent inner loop. A separate
+test asks PolCert to check the concrete inner coordinate chosen by Pluto's
+fallback; its dependence check rejects that loop.
 
 ## P3: No-Tile Unroll-Jam Can Cross a Non-Permutable Loop
 
@@ -352,9 +352,10 @@ recurrence with several OpenMP threads.
 ### PolCert cross-check
 
 PolCert validates rectangular tiling and parallelization as separate claims.
-It accepts the legal permutable-band tiling, finds no parallel dimension, and
-emits a sequential tiled program in non-strict mode. Strict parallel mode
-rejects the candidate and emits no optimized program.
+It accepts the legal permutable-band tiling and maps Pluto's hint to a canonical
+one-iteration coordinate. Strict and non-strict modes emit only that
+semantically sequential singleton parallel loop, never the dependent tile
+loop selected by Pluto's backend.
 
 ## F1: Fork-Specific Diamond Restore Regression
 

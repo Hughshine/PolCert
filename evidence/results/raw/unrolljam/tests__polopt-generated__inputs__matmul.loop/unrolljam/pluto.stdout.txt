@@ -21,11 +21,11 @@ loop types (loop, loop, loop, loop, loop, loop)
 [Pluto] Output written to matmul.scop.pluto.c
 
 [pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.000080s
-[pluto] Auto-transformation time: 0.001502s
+[pluto] SCoP extraction + dependence analysis time: 0.000087s
+[pluto] Auto-transformation time: 0.001607s
 [pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000329s
-[pluto] Code generation time: 0.005631s
-[pluto] Other/Misc time: 0.024918s
-[pluto] Total time: 0.032131s
-[pluto] All times: 0.000080 0.001502 0.005631 0.024918
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000388s
+[pluto] Code generation time: 0.005628s
+[pluto] Other/Misc time: 0.024169s
+[pluto] Total time: 0.031491s
+[pluto] All times: 0.000087 0.001607 0.005628 0.024169

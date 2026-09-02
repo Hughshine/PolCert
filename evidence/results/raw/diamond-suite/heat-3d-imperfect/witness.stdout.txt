@@ -1,5 +1,5 @@
-before: /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop
-after:  /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.posttile.scop
+before: /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop
+after:  /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.posttile.scop
 params: T,N
 
 statement 1:

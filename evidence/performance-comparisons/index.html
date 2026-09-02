@@ -16,12 +16,6 @@
     the same input, and every selected pair produced the same result. Open any
     row to inspect the complete programs side by side.
   </p>
-  <dl class="performance-summary">
-    <div><dt>Compared kernels</dt><dd>62</dd></div>
-    <div><dt>Matching results</dt><dd>62 / 62</dd></div>
-    <div><dt>Non-identity routes selected</dt><dd>47</dd></div>
-    <div><dt>Selected parallel outputs</dt><dd>19</dd></div>
-  </dl>
   <h2>How to Read the Numbers</h2>
   <p>
     The search compared identity, affine-only, affine-plus-tiling, ISS-enabled,
@@ -38,7 +32,7 @@
     occurred in that case. Very short runtimes and unusually large ratios
     should not be interpreted without rerunning the benchmark.
   </div>
-  <h2>All 62 Kernels</h2>
+  <h2>Recorded Kernels</h2>
   <div class="wide-table">
     <table class="performance-table">
       <thead>
@@ -117,24 +111,24 @@
     The recorded search used the <code>perf</code> parameter tier, one timed
     execution of each baseline and candidate, <code>cc -O3 -std=c99</code>,
     and four OpenMP threads for parallel routes. Rebuild the packaged
-    environment and rerun the selected 62 routes with:
+    environment and rerun the selected routes with:
   </p>
   <pre><code>docker build -f environment/Dockerfile -t polcert-artifact .
 docker run --rm polcert-artifact performance</code></pre>
   <p>
-    Exact route options are in <a href="../../docs/files/0379.html" target="_blank" rel="noopener">selected-pipelines.json</a>,
-    per-kernel sizes are in <a href="../../docs/files/0378.html" target="_blank" rel="noopener">results.json</a>, and the
-    consolidated settings are in <a href="../../docs/files/0377.html" target="_blank" rel="noopener">reproduction-config.json</a>.
+    Exact route options are in <a href="../../docs/files/0386.html" target="_blank" rel="noopener">selected-pipelines.json</a>,
+    per-kernel sizes are in <a href="../../docs/files/0385.html" target="_blank" rel="noopener">results.json</a>, and the
+    consolidated settings are in <a href="../../docs/files/0384.html" target="_blank" rel="noopener">reproduction-config.json</a>.
     Elapsed times depend on the Docker host.
   </p>
   <details class="supporting-files">
     <summary>Supporting data</summary>
     <p>
-      <a href="../../docs/files/0378.html" target="_blank" rel="noopener">selected measurements</a> &middot;
-      <a href="../../docs/files/0251.html" target="_blank" rel="noopener">all pipeline candidates</a> &middot;
-      <a href="../../docs/files/0379.html" target="_blank" rel="noopener">selected pipeline map</a> &middot;
-      <a href="../../docs/files/0252.html" target="_blank" rel="noopener">parameter tiers</a> &middot;
-      <a href="../../docs/files/0377.html" target="_blank" rel="noopener">reproduction configuration</a>
+      <a href="../../docs/files/0385.html" target="_blank" rel="noopener">selected measurements</a> &middot;
+      <a href="../../docs/files/0258.html" target="_blank" rel="noopener">all pipeline candidates</a> &middot;
+      <a href="../../docs/files/0386.html" target="_blank" rel="noopener">selected pipeline map</a> &middot;
+      <a href="../../docs/files/0259.html" target="_blank" rel="noopener">parameter tiers</a> &middot;
+      <a href="../../docs/files/0384.html" target="_blank" rel="noopener">reproduction configuration</a>
     </p>
   </details>
 </main>

@@ -62,7 +62,7 @@
       "selected_parallel_outputs": 19
     },
     "proof_and_test_run": {
-      "elapsed_seconds": 2169.037730657903,
+      "elapsed_seconds": 2278.0619504080387,
       "mode": "full",
       "passed": 30,
       "total": 30

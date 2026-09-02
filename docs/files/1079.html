@@ -3,20 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/6a8dc0b0e23fa4/before.loop</code></h1>
+  <h1><code>evidence/results/program-comparisons/6a8dc0b0e23fa4/after.loop</code></h1>
   <pre>context(N);
 
-for i in range(1, (N - 2)) {
-  A[i] = (0.33 * ((In[(i - 1)] + In[i]) + In[(i + 1)]));
+if (4 &lt;= N) {
+  for i0 in range(1, (N + -2)) {
+    A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+  }
 }
-for i in range(2, (N - 3)) {
-  Out[i] = (0.33 * ((A[(i - 1)] + A[i]) + A[(i + 1)]));
+if (6 &lt;= N) {
+  for i0 in range(2, (N + -3)) {
+    Out[i0] = (0.33 * ((A[(i0 + -1)] + A[i0]) + A[(i0 + 1)]));
+  }
 }
 </pre>
 </main>

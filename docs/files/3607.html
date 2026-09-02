@@ -3,358 +3,770 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RawCodegenOrigin.v</title>
+  <title>ParallelCodegenCore.v</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/src/RawCodegenOrigin.v</code></h1>
-  <pre>Require Import ZArith.
-Require Import List.
+  <h1><code>source/src/ParallelCodegenCore.v</code></h1>
+  <pre>Require Import List.
+Require Import ZArith.
 Require Import Lia.
-Require Import Bool.
-
-Require Import Linalg.
 Require Import Misc.
+Require Import Linalg.
 Require Import Result.
-Require Import PolIRs.
-Require Import ASTGen.
-Require Import LoopGen.
-Require Import PolyLoopSimpl.
-Require Import CodeGen.
-Require Import Heuristics.
-Require Import Projection.
-Require Import PolyOperations.
+Require Import String.
 Require Import ImpureAlarmConfig.
 Require Import Vpl.Impure.
+Require Import PolIRs.
+Require Import PolyBase.
+Require Import PrepareCodegen.
+Require Import RawCodegenOrigin.
+Require Import ParallelLoop.
+Require Import ParallelValidator.
 
 Import ListNotations.
-Local Open Scope Z_scope.
 
-Module RawCodegenOrigin (PolIRs : POLIRS).
+Module ParallelCodegenCore (PolIRs : POLIRS).
 
 Module Instr := PolIRs.Instr.
 Module PolyLang := PolIRs.PolyLang.
-Module ILSema := PolyLang.ILSema.
-Module PolyLoop := PolIRs.PolyLoop.
 Module Loop := PolIRs.Loop.
-Module ASTGenCore := ASTGen PolIRs.
-Module LoopGenCore := LoopGen PolIRs.
-Module PolyLoopSimplifier := PolyLoopSimplify PolIRs.
-Module CodeGenCore := CodeGen PolIRs.
+Module PrepareCore := PrepareCodegen PolIRs.
+Module RawOrigin := RawCodegenOrigin PolIRs.
+Module ParallelLoop := ParallelLoop Instr.
+Module ParallelValidator := ParallelValidator PolIRs.
+
+Definition parallel_codegen_cert_sound
+    (pp : PolyLang.t) (cert : ParallelValidator.parallel_cert) : Prop :=
+  ParallelValidator.parallel_cert_pointwise_sound pp cert /\
+  (cert.(ParallelValidator.certified_dim) &lt;
+   ParallelValidator.schedule_width pp)%nat.
 
 (** * Proof map
 
-    This module is a neutral, proof-only trace bridge for standard raw code
-    generation:
+    The parallel proof has four stages.  First, standard code generation emits
+    a sequential loop nest whose origin tags identify the padded schedule
+    coordinates.  Second, the trace-origin lemmas below map every instruction
+    in an actual annotated execution back to a source polyhedral instance.
+    Third, each accepted certificate proves that points from distinct
+    iterations of its tagged loop commute; the concrete execution therefore
+    admits an [ordered_semantics] derivation.  Finally, erasure serializes that
+    ordered execution and [PrepareCodegen] relates it to the polyhedral source.
 
-    - [poly_trace] and [loop_trace] record generated instruction events without
-      introducing state semantics;
-    - [polyloop_to_loop_trace_reflect] reflects LoopGen traces to PolyLoop;
-    - [generate_loop_many_event_origin] recovers the source polyhedral
-      instruction selected by AST generation;
-    - schedule elimination and preparation facts then yield
-      [complete_generate_many_event_source], the endpoint consumed by
-      [ParallelCodegenCorrect]. *)
+    The checked endpoint tries metadata-preserving simplification, structural
+    cleanup, and sequential-singleton elimination first.  It falls back to the
+    standard raw loop unless every representation required by the reflection
+    proof has affine instruction traces.  Cleanup correctness reflects the
+    chosen execution to the certified pre-clean loop, so origin tags need not
+    be reconstructed after a loop disappears.  Multi-dimensional
+    parallelization uses the same argument with one owning certificate per
+    parallel tag.  Vectorization follows a separate structural proof: it
+    introduces no parallel interleaving and also checks that vector annotations
+    are innermost. *)
 
-(** * Neutral traces for PolyLoop *)
+(** Generated and source instruction points belong to distinct functor
+    instances.  Equality of their records is neither available nor needed;
+    parallel safety only depends on their observable instruction semantics. *)
+Definition point_sema_equiv
+    (generated : ParallelLoop.InstrPoint)
+    (source : PolyLang.InstrPoint) : Prop :=
+  forall st1 st2,
+    ParallelLoop.ILSema.instr_point_sema generated st1 st2 &lt;-&gt;
+    PolyLang.ILSema.instr_point_sema source st1 st2.
 
-(** A proof-only trace for the intermediate polyhedral loop language.  Points
-    use the polyhedral coordinate order; the operational loop environment is
-    stored in the reverse order. *)
-Record scan_event := {
-  se_point : list Z;
-  se_instr : Instr.t;
-  se_args : list Z
-}.
-
-Inductive poly_trace : PolyLoop.poly_stmt -&gt; list Z -&gt; list scan_event -&gt; Prop :=
-| PETInstr : forall i es env,
-    poly_trace
-      (PolyLoop.PInstr i es)
-      env
-      [{| se_point := rev env;
-          se_instr := i;
-          se_args := map (PolyLoop.eval_affine_expr env) es |}]
-| PETSkip : forall env,
-    poly_trace PolyLoop.PSkip env []
-| PETSeq : forall s1 s2 env tr1 tr2,
-    poly_trace s1 env tr1 -&gt;
-    poly_trace s2 env tr2 -&gt;
-    poly_trace (PolyLoop.PSeq s1 s2) env (tr1 ++ tr2)
-| PETGuardTrue : forall p body env tr,
-    in_poly (rev env) p = true -&gt;
-    poly_trace body env tr -&gt;
-    poly_trace (PolyLoop.PGuard p body) env tr
-| PETGuardFalse : forall p body env,
-    in_poly (rev env) p = false -&gt;
-    poly_trace (PolyLoop.PGuard p body) env []
-| PETLoop : forall p body env lb ub zs trs,
-    (forall x, in_poly (rev (x :: env)) p = true &lt;-&gt; lb &lt;= x &lt; ub) -&gt;
-    zs = Zrange lb ub -&gt;
-    Forall2 (fun z tr =&gt; poly_trace body (z :: env) tr) zs trs -&gt;
-    poly_trace (PolyLoop.PLoop p body) env (concat trs).
-
-Lemma ctx_simplify_resize_equiv :
-  forall pol ctx n simp point,
-    mayReturn (ctx_simplify (resize_poly n pol) ctx) simp -&gt;
-    Datatypes.length point = n -&gt;
-    in_poly point ctx = true -&gt;
-    in_poly point simp = in_poly point pol.
+Lemma permutable_of_point_sema_equiv :
+  forall generated1 source1 generated2 source2,
+    point_sema_equiv generated1 source1 -&gt;
+    point_sema_equiv generated2 source2 -&gt;
+    PolyLang.ILSema.Permutable source1 source2 -&gt;
+    ParallelLoop.ILSema.Permutable generated1 generated2.
 Proof.
-  intros pol ctx n simp point Hsimp Hlen Hctx.
-  erewrite &lt;- (ctx_simplify_correct _ _ _ Hsimp); [|exact Hctx].
-  apply resize_poly_in. exact Hlen.
-Qed.
-
-Local Lemma in_poly_cons_preserves_context :
-  forall ctx env x,
-    (poly_nrl ctx &lt;= Datatypes.length env)%nat -&gt;
-    in_poly (rev env) ctx = true -&gt;
-    in_poly (rev (x :: env)) ctx = true.
-Proof.
-  intros ctx env x Hctx Henv.
-  rewrite &lt;- in_poly_nrlength with (n := Datatypes.length env);
-    [|exact Hctx].
-  simpl.
-  rewrite resize_app by (rewrite rev_length; reflexivity).
-  exact Henv.
-Qed.
-
-Lemma Forall2_imp_in_left :
-  forall A B (R S : A -&gt; B -&gt; Prop) xs ys,
-    Forall2 R xs ys -&gt;
-    (forall x y, In x xs -&gt; R x y -&gt; S x y) -&gt;
-    Forall2 S xs ys.
-Proof.
-  intros A B R S xs ys Hfor.
-  induction Hfor; intro Himp.
-  - constructor.
-  - constructor.
-    + eapply Himp; [left; reflexivity | exact H].
-    + apply IHHfor.
-      intros x&#x27; y&#x27; Hin HR.
-      eapply Himp; [right; exact Hin | exact HR].
-Qed.
-
-(** [polyloop_simplify] can remove guards and simplify loop domains, but it
-    does not introduce new execution events.  Any trace of the simplified
-    statement is therefore also a trace of the input statement under the
-    simplifier&#x27;s context. *)
-Lemma polyloop_simplify_trace_reflect :
-  forall stmt n ctx,
-    (poly_nrl ctx &lt;= n)%nat -&gt;
-    forall nst,
-      mayReturn (PolyLoopSimplifier.polyloop_simplify stmt n ctx) nst -&gt;
-      forall env tr,
-        Datatypes.length env = n -&gt;
-        in_poly (rev env) ctx = true -&gt;
-        poly_trace nst env tr -&gt;
-        poly_trace stmt env tr.
-Proof.
-  induction stmt; intros n ctx Hctx nst Hnst env tr Henv Henvctx Htrace;
-    simpl in Hnst.
-  - bind_imp_destruct Hnst npol Hnpol.
-    bind_imp_destruct Hnst nctx Hnctx.
-    bind_imp_destruct Hnst nst1 Hnst1.
-    apply mayReturn_pure in Hnst. subst nst.
-    inversion Htrace as
-      [| | | | |
-       p0 body0 env0 lb ub zs trs Hdomain Hrange Htraces];
-      subst.
-    eapply PETLoop with
-      (lb := lb) (ub := ub) (zs := Zrange lb ub) (trs := trs).
-    + intros x.
-      rewrite &lt;- (Hdomain x).
-      assert (Hinctx : in_poly (rev (x :: env)) ctx = true).
-      { eapply in_poly_cons_preserves_context; eauto. }
-      erewrite &lt;- (ctx_simplify_correct _ _ _ Hnpol); [|exact Hinctx].
-      rewrite resize_poly_in; [reflexivity|].
-      rewrite rev_length. reflexivity.
-    + reflexivity.
-    + eapply Forall2_imp_in_left; [exact Htraces|].
-      intros x tri Hxin Hbody.
-      assert (Hinctx : in_poly (rev (x :: env)) ctx = true).
-      { eapply in_poly_cons_preserves_context; eauto. }
-      assert (Hnctxnrl :
-        (poly_nrl nctx &lt;= S (Datatypes.length env))%nat).
-      { eapply poly_inter_nrl; [apply resize_poly_nrl| |exact Hnctx]; lia. }
-      eapply IHstmt with (n := S (Datatypes.length env)) (ctx := nctx).
-      * exact Hnctxnrl.
-      * exact Hnst1.
-      * reflexivity.
-      * erewrite poly_inter_def, poly_inter_pure_def, resize_poly_in;
-          [|rewrite rev_length; reflexivity|exact Hnctx].
-        reflect. simpl. split; [|exact Hinctx].
-        change (in_poly (rev (x :: env)) p = true).
-        rewrite &lt;- (resize_poly_in
-          (rev (x :: env)) p (S (Datatypes.length env)))
-          by (rewrite rev_length; reflexivity).
-        erewrite (ctx_simplify_correct _ _ _ Hnpol); [|exact Hinctx].
-        apply (proj2 (Hdomain x)).
-        rewrite &lt;- Zrange_in. exact Hxin.
-      * exact Hbody.
-  - apply mayReturn_pure in Hnst. subst nst. exact Htrace.
-  - apply mayReturn_pure in Hnst. subst nst. exact Htrace.
-  - bind_imp_destruct Hnst s1 Hs1.
-    bind_imp_destruct Hnst s2 Hs2.
-    apply mayReturn_pure in Hnst. subst nst.
-    inversion Htrace; subst.
-    constructor.
-    + eapply IHstmt1; eauto.
-    + eapply IHstmt2; eauto.
-  - bind_imp_destruct Hnst npol Hnpol.
-    bind_imp_destruct Hnst nctx Hnctx.
-    bind_imp_destruct Hnst nst1 Hnst1.
-    apply mayReturn_pure in Hnst. subst nst.
-    inversion Htrace as
-      [| | |
-       p0 body0 env0 tr0 Htest Hbody
-       | p0 body0 env0 Htest
-       |];
-      subst.
-    + apply PETGuardTrue.
-      * rewrite (ctx_simplify_resize_equiv
-          p ctx (Datatypes.length env) npol (rev env)
-          Hnpol (eq_trans (rev_length env) eq_refl) Henvctx) in Htest.
-        exact Htest.
-      * assert (Hnctxnrl :
-          (poly_nrl nctx &lt;= Datatypes.length env)%nat).
-        { eapply poly_inter_nrl; [apply resize_poly_nrl|exact Hctx|exact Hnctx]. }
-        eapply IHstmt with (n := Datatypes.length env) (ctx := nctx).
-        -- exact Hnctxnrl.
-        -- exact Hnst1.
-        -- reflexivity.
-        -- erewrite poly_inter_def, poly_inter_pure_def, resize_poly_in;
-             [|rewrite rev_length; reflexivity|exact Hnctx].
-           reflect. simpl. split; [|exact Henvctx].
-           rewrite (ctx_simplify_resize_equiv
-             p ctx (Datatypes.length env) npol (rev env)
-             Hnpol (rev_length env) Henvctx) in Htest.
-           exact Htest.
-        -- exact Hbody.
-    + apply PETGuardFalse.
-      rewrite (ctx_simplify_resize_equiv
-        p ctx (Datatypes.length env) npol (rev env)
-        Hnpol (eq_trans (rev_length env) eq_refl) Henvctx) in Htest.
-      exact Htest.
-Qed.
-
-(** The corresponding pure trace for the generated base Loop language. *)
-(** * Neutral traces for generated Loop syntax *)
-
-Inductive loop_trace : Loop.stmt -&gt; list Z -&gt; list scan_event -&gt; Prop :=
-| LETInstr : forall i es env,
-    loop_trace
-      (Loop.Instr i es)
-      env
-      [{| se_point := rev env;
-          se_instr := i;
-          se_args := map (Loop.eval_expr env) es |}]
-| LETSeq : forall ss env tr,
-    loop_traces ss env tr -&gt;
-    loop_trace (Loop.Seq ss) env tr
-| LETGuardTrue : forall tst body env tr,
-    Loop.eval_test env tst = true -&gt;
-    loop_trace body env tr -&gt;
-    loop_trace (Loop.Guard tst body) env tr
-| LETGuardFalse : forall tst body env,
-    Loop.eval_test env tst = false -&gt;
-    loop_trace (Loop.Guard tst body) env []
-| LETLoop : forall lb ub body env zs trs,
-    zs = Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub) -&gt;
-    Forall2 (fun z tr =&gt; loop_trace body (z :: env) tr) zs trs -&gt;
-    loop_trace (Loop.Loop lb ub body) env (concat trs)
-with loop_traces : Loop.stmt_list -&gt; list Z -&gt; list scan_event -&gt; Prop :=
-| LETNil : forall env,
-    loop_traces Loop.SNil env []
-| LETCons : forall s ss env tr1 tr2,
-    loop_trace s env tr1 -&gt;
-    loop_traces ss env tr2 -&gt;
-    loop_traces (Loop.SCons s ss) env (tr1 ++ tr2).
-
-Definition same_effect
-    (ip1 ip2 : PolyLang.InstrPoint) : Prop :=
-  ip1.(PolyLang.ip_instruction) = ip2.(PolyLang.ip_instruction) /\
-  affine_product ip1.(PolyLang.ip_transformation) ip1.(PolyLang.ip_index) =
-  affine_product ip2.(PolyLang.ip_transformation) ip2.(PolyLang.ip_index).
-
-Lemma instr_point_sema_same_effect_iff :
-  forall ip1 ip2 st1 st2,
-    same_effect ip1 ip2 -&gt;
-    ILSema.instr_point_sema ip1 st1 st2 &lt;-&gt;
-    ILSema.instr_point_sema ip2 st1 st2.
-Proof.
-  intros ip1 ip2 st1 st2 [Hinstr Hargs].
-  split; intro Hsem; inversion Hsem as [wcs rcs Hstep]; subst.
-  - econstructor.
-    rewrite &lt;- Hinstr, &lt;- Hargs.
-    exact Hstep.
-  - econstructor.
-    rewrite Hinstr, Hargs.
-    exact Hstep.
-Qed.
-
-Lemma same_effect_symm :
-  forall ip1 ip2,
-    same_effect ip1 ip2 -&gt;
-    same_effect ip2 ip1.
-Proof.
-  intros ip1 ip2 [Hinstr Hargs].
-  split; symmetry; assumption.
-Qed.
-
-Lemma Permutable_same_effect :
-  forall ip1 ip1&#x27; ip2 ip2&#x27;,
-    same_effect ip1 ip1&#x27; -&gt;
-    same_effect ip2 ip2&#x27; -&gt;
-    ILSema.Permutable ip1 ip2 -&gt;
-    ILSema.Permutable ip1&#x27; ip2&#x27;.
-Proof.
-  intros ip1 ip1&#x27; ip2 ip2&#x27; Heffect1 Heffect2 Hperm.
-  unfold ILSema.Permutable in *.
-  intros st1 Hnonalias.
+  intros generated1 source1 generated2 source2 Hequiv1 Hequiv2 Hperm
+    st1 Hnonalias.
   specialize (Hperm st1 Hnonalias).
   destruct Hperm as [Hforward Hbackward].
   split.
   - intros st2 st3 Hstep1 Hstep2.
-    apply (proj2
-      (instr_point_sema_same_effect_iff ip1 ip1&#x27; st1 st2 Heffect1))
-      in Hstep1.
-    apply (proj2
-      (instr_point_sema_same_effect_iff ip2 ip2&#x27; st2 st3 Heffect2))
-      in Hstep2.
-    destruct (Hforward _ _ Hstep1 Hstep2)
+    apply (proj1 (Hequiv1 st1 st2)) in Hstep1.
+    apply (proj1 (Hequiv2 st2 st3)) in Hstep2.
+    destruct (Hforward st2 st3 Hstep1 Hstep2)
       as [st2&#x27; [st3&#x27; [Hstep2&#x27; [Hstep1&#x27; Heq]]]].
     exists st2&#x27;, st3&#x27;.
     repeat split; auto.
-    + apply (proj1
-        (instr_point_sema_same_effect_iff ip2 ip2&#x27; st1 st2&#x27; Heffect2)).
-      exact Hstep2&#x27;.
-    + apply (proj1
-        (instr_point_sema_same_effect_iff ip1 ip1&#x27; st2&#x27; st3&#x27; Heffect1)).
-      exact Hstep1&#x27;.
+    + apply (proj2 (Hequiv2 st1 st2&#x27;)). exact Hstep2&#x27;.
+    + apply (proj2 (Hequiv1 st2&#x27; st3&#x27;)). exact Hstep1&#x27;.
   - intros st2 st3 Hstep2 Hstep1.
-    apply (proj2
-      (instr_point_sema_same_effect_iff ip2 ip2&#x27; st1 st2 Heffect2))
-      in Hstep2.
-    apply (proj2
-      (instr_point_sema_same_effect_iff ip1 ip1&#x27; st2 st3 Heffect1))
-      in Hstep1.
-    destruct (Hbackward _ _ Hstep2 Hstep1)
+    apply (proj1 (Hequiv2 st1 st2)) in Hstep2.
+    apply (proj1 (Hequiv1 st2 st3)) in Hstep1.
+    destruct (Hbackward st2 st3 Hstep2 Hstep1)
       as [st2&#x27; [st3&#x27; [Hstep1&#x27; [Hstep2&#x27; Heq]]]].
     exists st2&#x27;, st3&#x27;.
     repeat split; auto.
-    + apply (proj1
-        (instr_point_sema_same_effect_iff ip1 ip1&#x27; st1 st2&#x27; Heffect1)).
-      exact Hstep1&#x27;.
-    + apply (proj1
-        (instr_point_sema_same_effect_iff ip2 ip2&#x27; st2&#x27; st3&#x27; Heffect2)).
-      exact Hstep2&#x27;.
+    + apply (proj2 (Hequiv1 st1 st2&#x27;)). exact Hstep1&#x27;.
+    + apply (proj2 (Hequiv2 st2&#x27; st3&#x27;)). exact Hstep2&#x27;.
 Qed.
 
-Lemma Forall2_in_right :
+Definition generated_source_point
+    (pp : PolyLang.t)
+    (generated : ParallelLoop.InstrPoint)
+    (source : PolyLang.InstrPoint) : Prop :=
+  point_sema_equiv generated source /\
+  exists pi,
+    nth_error (ParallelValidator.pprog_pis pp)
+      source.(PolyLang.ip_nth) = Some pi /\
+    PolyLang.belongs_to source pi /\
+    Datatypes.length source.(PolyLang.ip_index) =
+      (Datatypes.length (ParallelValidator.pprog_varctxt pp) +
+       pi.(PolyLang.pi_depth))%nat.
+
+(** The raw interleaving relation consumes every point from every family
+    member.  This is the direction needed to lift membership from a child
+    trace into the actual interleaved parent trace. *)
+Lemma interleave_family_concat_member_in_output :
+  forall trs out ip,
+    ParallelLoop.interleave_family trs out -&gt;
+    In ip (List.concat trs) -&gt;
+    In ip out.
+Proof.
+  intros trs out ip Hinter.
+  induction Hinter as
+      [|trs out Hinter IH
+       |pre x xs post out Hinter IH]; intro Hin.
+  - exact Hin.
+  - simpl in Hin. eapply IH. exact Hin.
+  - simpl.
+    apply in_concat in Hin.
+    destruct Hin as [tr [Htr Hin]].
+    apply in_app_or in Htr.
+    destruct Htr as [Hpre | Hrest].
+    + right. apply IH. apply in_concat.
+      exists tr. split.
+      * apply in_or_app. left. exact Hpre.
+      * exact Hin.
+    + simpl in Hrest.
+      destruct Hrest as [Heq | Hpost].
+      * subst tr. simpl in Hin.
+        destruct Hin as [-&gt; | Hin].
+        -- left. reflexivity.
+        -- right. apply IH. apply in_concat.
+           exists xs. split.
+           ++ apply in_or_app. right. simpl. auto.
+           ++ exact Hin.
+      * right. apply IH. apply in_concat.
+        exists tr. split.
+        -- apply in_or_app. right. simpl. right. exact Hpost.
+        -- exact Hin.
+Qed.
+
+Definition point_has_effect
+    (ip : ParallelLoop.InstrPoint)
+    (i : PolIRs.Instr.t)
+    (args : list Z) : Prop :=
+  forall st1 st2,
+    ParallelLoop.ILSema.instr_point_sema ip st1 st2 &lt;-&gt;
+    exists wcs rcs,
+      PolIRs.Instr.instr_semantics i args wcs rcs st1 st2.
+
+Definition point_matches_event
+    (ip : ParallelLoop.InstrPoint) (ev : RawOrigin.scan_event) : Prop :=
+  ev.(RawOrigin.se_point) = rev ip.(ParallelLoop.ILSema.ip_index) /\
+  point_has_effect ip ev.(RawOrigin.se_instr) ev.(RawOrigin.se_args).
+
+Record generated_source_point_full
+    (pp : PolyLang.t) (width : nat)
+    (generated : ParallelLoop.InstrPoint)
+    (source : PolyLang.InstrPoint) : Prop := {
+  gspf_basic : generated_source_point pp generated source;
+  gspf_env_prefix :
+    firstn (Datatypes.length (ParallelValidator.pprog_varctxt pp))
+      source.(PolyLang.ip_index) =
+    resize (Datatypes.length (ParallelValidator.pprog_varctxt pp))
+      (rev generated.(ParallelLoop.ILSema.ip_index));
+  gspf_schedule_coordinates :
+    resize width (skipn
+      (Datatypes.length (ParallelValidator.pprog_varctxt pp))
+      (rev generated.(ParallelLoop.ILSema.ip_index))) =
+    resize width source.(PolyLang.ip_time_stamp)
+}.
+
+Lemma prepare_source_args_eq :
+  forall pis varctxt vars cols m pi p,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) -&gt;
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) &lt;= cols)%nat -&gt;
+    nth_error pis m = Some pi -&gt;
+    p =v= resize cols p -&gt;
+    PolyLang.current_src_args_in_dim cols
+      (PrepareCore.prepare_pi (Datatypes.length varctxt) cols pi) p =
+    affine_product
+      (PolyLang.current_transformation_of pi
+        (resize (Datatypes.length varctxt + pi.(PolyLang.pi_depth)) p))
+      (resize (Datatypes.length varctxt + pi.(PolyLang.pi_depth)) p).
+Proof.
+  intros pis varctxt vars cols m pi p Hwf Hdim Hnth Hp.
+  pose proof Hwf as Hwf_all.
+  pose proof (nth_error_In _ _ Hnth) as Hpi_in.
+  unfold PolyLang.wf_pprog_affine in Hwf.
+  destruct Hwf as [_ Hwfpis].
+  pose proof (Hwfpis pi Hpi_in) as Hwfpi.
+  unfold PolyLang.wf_pinstr_affine in Hwfpi.
+  destruct Hwfpi as [Hwfpi [Hwit_eq _]].
+  unfold PolyLang.wf_pinstr in Hwfpi.
+  destruct Hwfpi as
+    [_ [_ [_ [_ [_ [Htf_exact [_ [_ [_ _]]]]]]]]].
+  rewrite Hwit_eq in Htf_exact.
+  simpl in Htf_exact.
+  pose proof
+    (PrepareCore.wf_pprog_affine_implies_source_cols_le
+      pis varctxt vars cols pi Hwf_all Hdim Hpi_in) as Hcols.
+  rewrite PrepareCore.prepare_pi_current_src_args_in_dim_affine.
+  2: exact Hcols.
+  2: exact Hwit_eq.
+  2: exact Hp.
+  rewrite
+    (PrepareCore.prepare_pi_transformation_eval
+      (Datatypes.length varctxt) cols pi p Htf_exact Hcols).
+  assert (Htf_current :
+    PolyLang.current_transformation_of pi
+      (resize (Datatypes.length varctxt + pi.(PolyLang.pi_depth)) p) =
+    pi.(PolyLang.pi_transformation)).
+  {
+    unfold PolyLang.current_transformation_of,
+      PolyLang.current_transformation_at,
+      PolyLang.current_env_dim_of.
+    rewrite Hwit_eq.
+    simpl.
+    replace
+      (Datatypes.length varctxt + pi.(PolyLang.pi_depth) -
+       pi.(PolyLang.pi_depth))%nat
+      with (Datatypes.length varctxt) by lia.
+    reflexivity.
+  }
+  rewrite Htf_current.
+  reflexivity.
+Qed.
+
+Lemma point_sema_equiv_of_prepared_effect :
+  forall pis varctxt vars cols m pi p ip,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) -&gt;
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) &lt;= cols)%nat -&gt;
+    nth_error pis m = Some pi -&gt;
+    p =v= resize cols p -&gt;
+    point_has_effect ip
+      (PrepareCore.prepare_pi
+        (Datatypes.length varctxt) cols pi).(PolyLang.pi_instr)
+      (PolyLang.current_src_args_in_dim cols
+        (PrepareCore.prepare_pi (Datatypes.length varctxt) cols pi) p) -&gt;
+    point_sema_equiv ip
+      (PrepareCore.source_ip_of
+        (Datatypes.length varctxt) m pi p).
+Proof.
+  intros pis varctxt vars cols m pi p ip Hwf Hdim Hnth Hp Heffect.
+  pose proof
+    (prepare_source_args_eq
+      pis varctxt vars cols m pi p Hwf Hdim Hnth Hp) as Hargs.
+  unfold point_sema_equiv, point_has_effect in *.
+  intros st1 st2.
+  specialize (Heffect st1 st2).
+  split.
+  - intro Hgenerated.
+    apply Heffect in Hgenerated.
+    destruct Hgenerated as [wcs [rcs Hstep]].
+    econstructor.
+    unfold PrepareCore.source_ip_of. simpl.
+    simpl in Hstep.
+    rewrite &lt;- Hargs.
+    exact Hstep.
+  - intro Hsource.
+    apply Heffect.
+    inversion Hsource as [wcs rcs Hstep]; subst.
+    exists wcs, rcs.
+    unfold PrepareCore.source_ip_of in Hstep. simpl in Hstep.
+    simpl.
+    rewrite Hargs.
+    exact Hstep.
+Qed.
+
+(** Convert the neutral RawCodegenOrigin endpoint back to an instruction point
+    of the unprepared source program. *)
+Theorem prepared_event_to_source_point :
+  forall pis varctxt vars cols width ip ev,
+    PolyLang.wf_pprog_affine (pis, varctxt, vars) -&gt;
+    (PolyLang.pprog_current_dim (pis, varctxt, vars) &lt;= cols)%nat -&gt;
+    point_matches_event ip ev -&gt;
+    RawOrigin.prepared_source_event
+      (map (PrepareCore.prepare_pi (Datatypes.length varctxt) cols) pis)
+      (Datatypes.length varctxt) cols width ev -&gt;
+    exists source_ip,
+      generated_source_point_full
+        ((pis, varctxt), vars) width ip source_ip.
+Proof.
+  intros pis varctxt vars cols width ip ev Hwf Hdim Hmatch Hprepared.
+  (* Recover the original instruction and current point hidden by [prepare_pi]
+     and schedule elimination. *)
+  destruct Hmatch as [Hevent_point Heffect].
+  destruct Hprepared as
+    [m [prep_pi
+      [Hprep_lookup
+       [Hp_len
+        [Hprep_domain
+         [Hevent_instr
+          [Hevent_args [Henv_prefix Hschedule]]]]]]]].
+  rewrite nth_error_map_iff in Hprep_lookup.
+  destruct Hprep_lookup as [pi [Hpi Hprep_pi]].
+  subst prep_pi.
+  set (env_dim := Datatypes.length varctxt).
+  set (p := RawOrigin.drop_schedule_coords env_dim width
+    ev.(RawOrigin.se_point)).
+  assert (Henv_cols : (env_dim &lt;= cols)%nat).
+  {
+    pose proof
+      (PolyLang.pprog_current_dim_ge_pinstr
+        pis varctxt vars pi (nth_error_In _ _ Hpi)) as Hpi_dim.
+    unfold PolyLang.pinstr_current_dim in Hpi_dim.
+    unfold env_dim.
+    lia.
+  }
+  assert (Hp_resize : p =v= resize cols p).
+  {
+    rewrite resize_length_eq by exact Hp_len.
+    reflexivity.
+  }
+  set (envv := resize env_dim p).
+  assert (Henvv_len : Datatypes.length envv = Datatypes.length varctxt).
+  {
+    unfold envv, env_dim. rewrite resize_length. reflexivity.
+  }
+  assert (Hscan :
+    PolyLang.env_scan
+      (map (PrepareCore.prepare_pi (Datatypes.length varctxt) cols) pis)
+      envv cols m p = true).
+  {
+    unfold PolyLang.env_scan.
+    rewrite map_nth_error with (d := pi); [|exact Hpi].
+    simpl.
+    apply andb_true_intro. split.
+    - apply andb_true_intro. split.
+      + unfold envv, env_dim. rewrite resize_length. apply is_eq_reflexive.
+      + rewrite is_eq_veq. exact Hp_resize.
+    - exact Hprep_domain.
+  }
+  (* Preparation&#x27;s scan theorem supplies source membership, depth, and the
+     environment prefix. *)
+  pose proof
+    (PrepareCore.prepare_env_scan_true_implies_source_ip_props
+      pis varctxt vars cols envv m p pi Hwf Hdim Henvv_len Hpi Hscan)
+    as Hprops.
+  change (
+    firstn (Datatypes.length varctxt)
+      (PrepareCore.source_ip_of
+        (Datatypes.length varctxt) m pi p).(PolyLang.ip_index) = envv /\
+    PolyLang.belongs_to
+      (PrepareCore.source_ip_of
+        (Datatypes.length varctxt) m pi p) pi /\
+    Datatypes.length
+      (PrepareCore.source_ip_of
+        (Datatypes.length varctxt) m pi p).(PolyLang.ip_index) =
+      (Datatypes.length varctxt + pi.(PolyLang.pi_depth))%nat /\
+    is_eq p (resize cols p) = true /\
+    is_null
+      (skipn (Datatypes.length varctxt + pi.(PolyLang.pi_depth))
+        (resize cols p)) = true) in Hprops.
+  destruct Hprops as [Hprefix [Hbelongs [Hsource_len [_ _]]]].
+  set (source_ip :=
+    PrepareCore.source_ip_of (Datatypes.length varctxt) m pi p).
+  exists source_ip.
+  (* Package semantic equivalence, the source witness, and both coordinate
+     correspondences needed by the parallel certificate proof. *)
+  constructor.
+  - split.
+    + subst source_ip.
+      eapply point_sema_equiv_of_prepared_effect; eauto.
+      unfold point_has_effect in *.
+      intros st1 st2.
+      specialize (Heffect st1 st2).
+      change
+        (ev.(RawOrigin.se_args) =
+         PolyLang.current_src_args_in_dim cols
+           (PrepareCore.prepare_pi
+             (Datatypes.length varctxt) cols pi) p)
+        in Hevent_args.
+      rewrite &lt;- Hevent_instr, &lt;- Hevent_args.
+      exact Heffect.
+    + exists pi.
+      subst source_ip. simpl.
+      split; [exact Hpi|].
+      split; assumption.
+  - subst source_ip.
+    transitivity envv.
+    + exact Hprefix.
+    + unfold envv, p, env_dim, RawOrigin.drop_schedule_coords.
+      rewrite resize_app.
+      * rewrite Hevent_point. reflexivity.
+      * rewrite resize_length. reflexivity.
+  - subst source_ip.
+    transitivity
+      (resize width
+        (affine_product
+          (PrepareCore.prepare_pi
+            (Datatypes.length varctxt) cols pi).(PolyLang.pi_schedule) p)).
+    + rewrite &lt;- Hevent_point.
+      exact Hschedule.
+    + rewrite &lt;- PrepareCore.source_ip_of_timestamp_prepare
+        with (pis := pis) (varctxt := varctxt) (vars := vars)
+             (cols := cols) (n := m) (pi := pi) (p := p); eauto.
+Qed.
+
+Fixpoint tag_expr (e : Loop.expr) : ParallelLoop.expr :=
+  match e with
+  | Loop.Constant z =&gt; ParallelLoop.BaseLoop.Constant z
+  | Loop.Sum e1 e2 =&gt; ParallelLoop.BaseLoop.Sum (tag_expr e1) (tag_expr e2)
+  | Loop.Mult z e1 =&gt; ParallelLoop.BaseLoop.Mult z (tag_expr e1)
+  | Loop.Div e1 z =&gt; ParallelLoop.BaseLoop.Div (tag_expr e1) z
+  | Loop.Mod e1 z =&gt; ParallelLoop.BaseLoop.Mod (tag_expr e1) z
+  | Loop.Var n =&gt; ParallelLoop.BaseLoop.Var n
+  | Loop.Max e1 e2 =&gt; ParallelLoop.BaseLoop.Max (tag_expr e1) (tag_expr e2)
+  | Loop.Min e1 e2 =&gt; ParallelLoop.BaseLoop.Min (tag_expr e1) (tag_expr e2)
+  end.
+
+Fixpoint tag_test (t : Loop.test) : ParallelLoop.test :=
+  match t with
+  | Loop.LE e1 e2 =&gt; ParallelLoop.BaseLoop.LE (tag_expr e1) (tag_expr e2)
+  | Loop.EQ e1 e2 =&gt; ParallelLoop.BaseLoop.EQ (tag_expr e1) (tag_expr e2)
+  | Loop.And t1 t2 =&gt; ParallelLoop.BaseLoop.And (tag_test t1) (tag_test t2)
+  | Loop.Or t1 t2 =&gt; ParallelLoop.BaseLoop.Or (tag_test t1) (tag_test t2)
+  | Loop.Not t1 =&gt; ParallelLoop.BaseLoop.Not (tag_test t1)
+  | Loop.TConstantTest b =&gt; ParallelLoop.BaseLoop.TConstantTest b
+  end.
+
+Fixpoint erase_expr (e : ParallelLoop.expr) : Loop.expr :=
+  match e with
+  | ParallelLoop.BaseLoop.Constant z =&gt; Loop.Constant z
+  | ParallelLoop.BaseLoop.Sum e1 e2 =&gt; Loop.Sum (erase_expr e1) (erase_expr e2)
+  | ParallelLoop.BaseLoop.Mult z e1 =&gt; Loop.Mult z (erase_expr e1)
+  | ParallelLoop.BaseLoop.Div e1 z =&gt; Loop.Div (erase_expr e1) z
+  | ParallelLoop.BaseLoop.Mod e1 z =&gt; Loop.Mod (erase_expr e1) z
+  | ParallelLoop.BaseLoop.Var n =&gt; Loop.Var n
+  | ParallelLoop.BaseLoop.Max e1 e2 =&gt; Loop.Max (erase_expr e1) (erase_expr e2)
+  | ParallelLoop.BaseLoop.Min e1 e2 =&gt; Loop.Min (erase_expr e1) (erase_expr e2)
+  end.
+
+Fixpoint erase_test (t : ParallelLoop.test) : Loop.test :=
+  match t with
+  | ParallelLoop.BaseLoop.LE e1 e2 =&gt; Loop.LE (erase_expr e1) (erase_expr e2)
+  | ParallelLoop.BaseLoop.EQ e1 e2 =&gt; Loop.EQ (erase_expr e1) (erase_expr e2)
+  | ParallelLoop.BaseLoop.And t1 t2 =&gt; Loop.And (erase_test t1) (erase_test t2)
+  | ParallelLoop.BaseLoop.Or t1 t2 =&gt; Loop.Or (erase_test t1) (erase_test t2)
+  | ParallelLoop.BaseLoop.Not t1 =&gt; Loop.Not (erase_test t1)
+  | ParallelLoop.BaseLoop.TConstantTest b =&gt; Loop.TConstantTest b
+  end.
+
+(** * Tagging, erasure, and sequential trace transport *)
+
+Lemma erase_tag_expr_eq :
+  forall e,
+    erase_expr (tag_expr e) = e.
+Proof.
+  induction e; simpl; try rewrite ?IHe, ?IHe1, ?IHe2; reflexivity.
+Qed.
+
+Lemma erase_tag_test_eq :
+  forall t,
+    erase_test (tag_test t) = t.
+Proof.
+  induction t; simpl; try rewrite ?IHt, ?IHt1, ?IHt2; try rewrite ?erase_tag_expr_eq; reflexivity.
+Qed.
+
+Lemma map_erase_tag_expr_eq :
+  forall es,
+    List.map erase_expr (List.map tag_expr es) = es.
+Proof.
+  induction es as [|e es IH]; simpl.
+  - reflexivity.
+  - rewrite erase_tag_expr_eq, IH. reflexivity.
+Qed.
+
+Fixpoint tag_loop_stmt_at (d : nat) (s : Loop.stmt) {struct s} : ParallelLoop.stmt
+with tag_loop_stmts_at (d : nat) (ss : Loop.stmt_list) {struct ss} : ParallelLoop.stmt_list.
+Proof.
+  - destruct s; simpl.
+    + exact (ParallelLoop.Loop ParallelLoop.SeqMode (Some d) (tag_expr e) (tag_expr e0) (tag_loop_stmt_at (S d) s)).
+    + exact (ParallelLoop.Instr i (List.map tag_expr l)).
+    + exact (ParallelLoop.Seq (tag_loop_stmts_at d s)).
+    + exact (ParallelLoop.Guard (tag_test t) (tag_loop_stmt_at d s)).
+  - destruct ss; simpl.
+    + exact ParallelLoop.SNil.
+    + exact (ParallelLoop.SCons (tag_loop_stmt_at d s) (tag_loop_stmts_at d ss)).
+Defined.
+
+Definition tag_loop (p : Loop.t) : ParallelLoop.t :=
+  match p with
+  | ((s, ctxt), vars) =&gt; (tag_loop_stmt_at 0 s, ctxt, vars)
+  end.
+
+Fixpoint erase_to_loop_stmt (s : ParallelLoop.stmt) {struct s} : Loop.stmt
+with erase_to_loop_stmts (ss : ParallelLoop.stmt_list) {struct ss} : Loop.stmt_list.
+Proof.
+  - destruct s; simpl.
+    + exact (Loop.Loop (erase_expr e) (erase_expr e0) (erase_to_loop_stmt s)).
+    + exact (Loop.Instr i (List.map erase_expr l)).
+    + exact (Loop.Seq (erase_to_loop_stmts s)).
+    + exact (Loop.Guard (erase_test t) (erase_to_loop_stmt s)).
+  - destruct ss; simpl.
+    + exact Loop.SNil.
+    + exact (Loop.SCons (erase_to_loop_stmt s) (erase_to_loop_stmts ss)).
+Defined.
+
+Definition erase_to_loop (p : ParallelLoop.t) : Loop.t :=
+  match p with
+  | ((s, ctxt), vars) =&gt; (erase_to_loop_stmt s, ctxt, vars)
+  end.
+
+Fixpoint tagged_from_depth_stmt (d : nat) (s : ParallelLoop.stmt) : Prop
+with tagged_from_depth_stmts (d : nat) (ss : ParallelLoop.stmt_list) : Prop.
+Proof.
+  - destruct s; simpl.
+    + exact (o = Some d /\ tagged_from_depth_stmt (S d) s).
+    + exact True.
+    + exact (tagged_from_depth_stmts d s).
+    + exact (tagged_from_depth_stmt d s).
+  - destruct ss; simpl.
+    + exact True.
+    + exact (tagged_from_depth_stmt d s /\ tagged_from_depth_stmts d ss).
+Defined.
+
+Definition tagged_from_top (p : ParallelLoop.t) : Prop :=
+  match p with
+  | ((s, _), _) =&gt; tagged_from_depth_stmt 0 s
+  end.
+
+Fixpoint tag_loop_stmt_tagged_from_depth
+  (d : nat) (s : Loop.stmt) {struct s}
+  : tagged_from_depth_stmt d (tag_loop_stmt_at d s)
+with tag_loop_stmts_tagged_from_depth
+  (d : nat) (ss : Loop.stmt_list) {struct ss}
+  : tagged_from_depth_stmts d (tag_loop_stmts_at d ss).
+Proof.
+  - destruct s; simpl.
+    + split; auto.
+    + auto.
+    + apply tag_loop_stmts_tagged_from_depth.
+    + apply tag_loop_stmt_tagged_from_depth.
+  - destruct ss; simpl.
+    + auto.
+    + split.
+      * apply tag_loop_stmt_tagged_from_depth.
+      * apply tag_loop_stmts_tagged_from_depth.
+Qed.
+
+(** Vector annotation never introduces a parallel loop.  Consequently the
+    external ordering invariant required by parallel semantics is structural
+    for every tagged vector program. *)
+Lemma vectorize_tag_loop_stmt_ordered :
+  forall target depth s,
+    ParallelLoop.parallel_families_ordered_stmt
+      (ParallelLoop.vectorize_dim_stmt target (tag_loop_stmt_at depth s))
+with vectorize_tag_loop_stmts_ordered :
+  forall target depth ss,
+    ParallelLoop.parallel_families_ordered_stmts
+      (ParallelLoop.vectorize_dim_stmts target (tag_loop_stmts_at depth ss)).
+Proof.
+  - intros target depth s.
+    destruct s; simpl.
+    + destruct (Nat.eqb target depth); simpl;
+        eapply vectorize_tag_loop_stmt_ordered.
+    + exact I.
+    + eapply vectorize_tag_loop_stmts_ordered.
+    + eapply vectorize_tag_loop_stmt_ordered.
+  - intros target depth ss.
+    destruct ss; simpl.
+    + exact I.
+    + split.
+      * eapply vectorize_tag_loop_stmt_ordered.
+      * eapply vectorize_tag_loop_stmts_ordered.
+Qed.
+
+Lemma tag_loop_stmt_ordered :
+  forall depth s,
+    ParallelLoop.parallel_families_ordered_stmt
+      (tag_loop_stmt_at depth s)
+with tag_loop_stmts_ordered :
+  forall depth ss,
+    ParallelLoop.parallel_families_ordered_stmts
+      (tag_loop_stmts_at depth ss).
+Proof.
+  - intros depth s. destruct s; simpl.
+    + eapply tag_loop_stmt_ordered.
+    + exact I.
+    + eapply tag_loop_stmts_ordered.
+    + eapply tag_loop_stmt_ordered.
+  - intros depth ss. destruct ss; simpl.
+    + exact I.
+    + split.
+      * eapply tag_loop_stmt_ordered.
+      * eapply tag_loop_stmts_ordered.
+Qed.
+
+Lemma tag_loop_ordered :
+  forall loop,
+    ParallelLoop.parallel_families_ordered (tag_loop loop).
+Proof.
+  intros [[s ctxt] vars]. simpl.
+  eapply tag_loop_stmt_ordered.
+Qed.
+
+Fixpoint erase_parallelize_dim_stmt_to_loop_eq
+  (d : nat) (s : ParallelLoop.stmt) {struct s}
+  : erase_to_loop_stmt (ParallelLoop.parallelize_dim_stmt d s) = erase_to_loop_stmt s
+with erase_parallelize_dim_stmts_to_loop_eq
+  (d : nat) (ss : ParallelLoop.stmt_list) {struct ss}
+  : erase_to_loop_stmts (ParallelLoop.parallelize_dim_stmts d ss) = erase_to_loop_stmts ss.
+Proof.
+  - destruct s; simpl.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_parallelize_dim_stmt_to_loop_eq; reflexivity.
+    + reflexivity.
+    + rewrite erase_parallelize_dim_stmts_to_loop_eq. reflexivity.
+    + rewrite erase_parallelize_dim_stmt_to_loop_eq. reflexivity.
+  - destruct ss; simpl.
+    + reflexivity.
+    + rewrite erase_parallelize_dim_stmt_to_loop_eq, erase_parallelize_dim_stmts_to_loop_eq.
+      reflexivity.
+Qed.
+
+Lemma erase_parallelize_dim_to_loop_eq :
+  forall d p,
+    erase_to_loop (ParallelLoop.parallelize_dim d p) = erase_to_loop p.
+Proof.
+  intros d [[s ctxt] vars]; simpl.
+  rewrite erase_parallelize_dim_stmt_to_loop_eq.
+  reflexivity.
+Qed.
+
+Fixpoint erase_vectorize_dim_stmt_to_loop_eq
+  (d : nat) (s : ParallelLoop.stmt) {struct s}
+  : erase_to_loop_stmt (ParallelLoop.vectorize_dim_stmt d s) = erase_to_loop_stmt s
+with erase_vectorize_dim_stmts_to_loop_eq
+  (d : nat) (ss : ParallelLoop.stmt_list) {struct ss}
+  : erase_to_loop_stmts (ParallelLoop.vectorize_dim_stmts d ss) = erase_to_loop_stmts ss.
+Proof.
+  - destruct s; simpl.
+    + destruct l; destruct o as [n|]; simpl; rewrite erase_vectorize_dim_stmt_to_loop_eq; reflexivity.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmts_to_loop_eq. reflexivity.
+    + rewrite erase_vectorize_dim_stmt_to_loop_eq. reflexivity.
+  - destruct ss; simpl.
+    + reflexivity.
+    + rewrite erase_vectorize_dim_stmt_to_loop_eq, erase_vectorize_dim_stmts_to_loop_eq.
+      reflexivity.
+Qed.
+
+Lemma erase_vectorize_dim_to_loop_eq :
+  forall d p,
+    erase_to_loop (ParallelLoop.vectorize_dim d p) = erase_to_loop p.
+Proof.
+  intros d [[s ctxt] vars]; simpl.
+  rewrite erase_vectorize_dim_stmt_to_loop_eq.
+  reflexivity.
+Qed.
+
+Lemma erase_tag_loop_stmt_at_eq :
+  forall d s,
+    erase_to_loop_stmt (tag_loop_stmt_at d s) = s
+with erase_tag_loop_stmts_at_eq :
+  forall d ss,
+    erase_to_loop_stmts (tag_loop_stmts_at d ss) = ss.
+Proof.
+  - intros d s. destruct s; simpl.
+    + rewrite !erase_tag_expr_eq, erase_tag_loop_stmt_at_eq. reflexivity.
+    + rewrite map_erase_tag_expr_eq. reflexivity.
+    + rewrite erase_tag_loop_stmts_at_eq. reflexivity.
+    + rewrite erase_tag_test_eq, erase_tag_loop_stmt_at_eq. reflexivity.
+  - intros d ss. destruct ss; simpl.
+    + reflexivity.
+    + rewrite erase_tag_loop_stmt_at_eq, erase_tag_loop_stmts_at_eq. reflexivity.
+Qed.
+
+Lemma erase_tag_loop_eq :
+  forall p,
+    erase_to_loop (tag_loop p) = p.
+Proof.
+  intros [[s ctxt] vars]; simpl.
+  rewrite erase_tag_loop_stmt_at_eq.
+  reflexivity.
+Qed.
+
+Lemma erase_expr_eval_eq :
+  forall env e,
+    Loop.eval_expr env (erase_expr e) =
+    ParallelLoop.BaseLoop.eval_expr env e.
+Proof.
+  induction e; simpl; try rewrite ?IHe, ?IHe1, ?IHe2; reflexivity.
+Qed.
+
+Lemma erase_expr_list_map_eval_eq :
+  forall env es,
+    List.map (Loop.eval_expr env) (List.map erase_expr es) =
+    List.map (ParallelLoop.BaseLoop.eval_expr env) es.
+Proof.
+  induction es as [|e es IH]; simpl.
+  - reflexivity.
+  - rewrite erase_expr_eval_eq, IH. reflexivity.
+Qed.
+
+Lemma erase_test_eval_eq :
+  forall env t,
+    Loop.eval_test env (erase_test t) =
+    ParallelLoop.BaseLoop.eval_test env t.
+Proof.
+  induction t; simpl; try rewrite ?IHt, ?IHt1, ?IHt2; try rewrite ?erase_expr_eval_eq; reflexivity.
+Qed.
+
+Lemma iter_semantics_refine_exact :
+  forall A (P Q : A -&gt; Instr.State.t -&gt; Instr.State.t -&gt; Prop),
+    forall xs st1 st2,
+      Instr.IterSem.iter_semantics P xs st1 st2 -&gt;
+      (forall x stA stB, In x xs -&gt; P x stA stB -&gt; Q x stA stB) -&gt;
+      Instr.IterSem.iter_semantics Q xs st1 st2.
+Proof.
+  intros A P Q xs st1 st2 Hiter.
+  induction Hiter; intros Hstep.
+  - constructor.
+  - econstructor.
+    + eapply Hstep; eauto.
+      left; reflexivity.
+    + eapply IHHiter.
+      intros y stA stB Hin HP.
+      eapply Hstep; eauto.
+      right; exact Hin.
+Qed.
+
+Scheme pl_stmt_mutind := Induction for ParallelLoop.stmt Sort Prop
+with pl_stmts_mutind := Induction for ParallelLoop.stmt_list Sort Prop.
+Combined Scheme pl_stmt_stmts_mutind from pl_stmt_mutind, pl_stmts_mutind.
+
+Lemma interleave_family_member_in_concat :
+  forall trs tr ip,
+    ParallelLoop.interleave_family trs tr -&gt;
+    In ip tr -&gt;
+    In ip (List.concat trs).
+Proof.
+  intros trs tr ip Hinter.
+  induction Hinter; intro Hin.
+  - contradiction.
+  - simpl. eapply IHHinter. exact Hin.
+  - simpl in Hin.
+    destruct Hin as [&lt;- | Hin].
+    + apply in_concat.
+      exists (x :: xs).
+      split.
+      * apply in_or_app. right. simpl. auto.
+      * simpl. auto.
+    + eapply ParallelLoop.concat_pop_in.
+      eapply IHHinter. exact Hin.
+Qed.
+
+Lemma Forall2_in_right_local :
   forall A B (R : A -&gt; B -&gt; Prop) xs ys y,
     Forall2 R xs ys -&gt;
     In y ys -&gt;
@@ -362,1089 +774,990 @@ Lemma Forall2_in_right :
 Proof.
   intros A B R xs ys y Hfor.
   induction Hfor; intro Hin.
-  - inversion Hin.
+  - contradiction.
   - simpl in Hin.
-    destruct Hin as [Heq | Hin].
-    + subst y. exists x. split; [left; reflexivity | assumption].
+    destruct Hin as [&lt;- | Hin].
+    + exists x. split; [left; reflexivity|assumption].
     + destruct (IHHfor Hin) as [x&#x27; [Hin&#x27; HR]].
-      exists x&#x27;. split; [right; exact Hin&#x27; | exact HR].
+      exists x&#x27;. split; [right; exact Hin&#x27;|exact HR].
 Qed.
 
-Lemma poly_trace_event_extends_env :
-  forall s env tr ev,
-    poly_trace s env tr -&gt;
-    In ev tr -&gt;
-    exists suffix, se_point ev = rev env ++ suffix.
-Proof.
-  induction s; intros env tr ev Htrace Hin;
-    inversion Htrace as
-      [instr0 exprs0 env0
-      |env0
-      |s1&#x27; s2&#x27; env0 tr1 tr2 Htrace1 Htrace2
-      |p&#x27; body env0 tr0 Htest Hbody
-      |p&#x27; body env0 Htest
-      |p&#x27; body env0 lb ub zs trs Hdomain Hrange Htraces];
-    subst.
-  - apply in_concat in Hin.
-    destruct Hin as [tr0 [Htr0 Hin]].
-    destruct (Forall2_in_right _ _ _ _ _ _ Htraces Htr0)
-      as [z [_ Hz]].
-    destruct (IHs (z :: env) tr0 ev Hz Hin) as [suffix Hevent].
-    exists (z :: suffix).
-    simpl in Hevent.
-    rewrite Hevent.
-    symmetry.
-    exact (app_assoc (rev env) [z] suffix).
-  - simpl in Hin.
-    destruct Hin as [Heq | Hin]; [subst ev | contradiction].
-    exists []. now rewrite app_nil_r.
-  - contradiction.
-  - apply in_app_iff in Hin.
-    destruct Hin as [Hin | Hin].
-    + eapply IHs1; eauto.
-    + eapply IHs2; eauto.
-  - eapply IHs; eauto.
-  - contradiction.
-Qed.
+Definition point_extends_stmt_goal (s : ParallelLoop.stmt) : Prop :=
+  forall env tr ip,
+    ParallelLoop.trace_safe_stmt s -&gt;
+    ParallelLoop.par_trace s env tr -&gt;
+    In ip tr -&gt;
+    exists suffix, ip.(ParallelLoop.ILSema.ip_index) = suffix ++ env.
 
-(** Schedule elimination inserts exactly [width] coordinates immediately after
-    the symbolic environment. *)
-Lemma pi_elim_schedule_inserted_coordinates :
-  forall width env_dim pi envv sched_coords source_coords,
-    (Datatypes.length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    Datatypes.length envv = env_dim -&gt;
-    Datatypes.length sched_coords = width -&gt;
-    in_poly
-      (envv ++ sched_coords ++ source_coords)
-      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
-    sched_coords =
-      resize width
-        (affine_product pi.(PolyLang.pi_schedule)
-          (envv ++ source_coords)).
-Proof.
-  intros width env_dim pi envv sched_coords source_coords
-    Hschedule_width Henv_width Hcoords_width Hdomain.
-  unfold PolyLang.pi_elim_schedule in Hdomain.
-  simpl in Hdomain.
-  rewrite in_poly_app in Hdomain.
-  apply andb_true_iff in Hdomain.
-  destruct Hdomain as [Hschedule_domain _].
-  rewrite
-    (PolyLang.make_sched_poly_correct
-       pi.(PolyLang.pi_schedule) width env_dim Hschedule_width
-       envv sched_coords source_coords Henv_width Hcoords_width)
-    in Hschedule_domain.
-  pose proof
-    (resize_eq_compat
-       width sched_coords
-       (affine_product pi.(PolyLang.pi_schedule)
-          (envv ++ source_coords))
-       Hschedule_domain) as Hresized.
-  rewrite resize_length_eq in Hresized by exact Hcoords_width.
-  exact Hresized.
-Qed.
+Definition point_extends_stmts_goal (ss : ParallelLoop.stmt_list) : Prop :=
+  forall env tr ip,
+    ParallelLoop.trace_safe_stmts ss -&gt;
+    ParallelLoop.par_traces ss env tr -&gt;
+    In ip tr -&gt;
+    exists suffix, ip.(ParallelLoop.ILSema.ip_index) = suffix ++ env.
 
-Lemma loop_trace_make_guard_inv :
-  forall tst body env tr,
-    loop_trace (Loop.make_guard tst body) env tr -&gt;
-    (Loop.eval_test env tst = true /\ loop_trace body env tr) \/
-    (Loop.eval_test env tst = false /\ tr = []).
+Lemma par_trace_point_extends_env_mutual :
+  (forall s, point_extends_stmt_goal s) /\
+  (forall ss, point_extends_stmts_goal ss).
 Proof.
-  intros tst body env tr Htrace.
-  unfold Loop.make_guard in Htrace.
-  destruct tst as [e1 e2 | e1 e2 | t1 t2 | t1 t2 | t | b];
-    simpl in Htrace |- *.
-  - inversion Htrace; subst; [left | right]; auto.
-  - inversion Htrace; subst; [left | right]; auto.
-  - inversion Htrace; subst; [left | right]; auto.
-  - inversion Htrace; subst; [left | right]; auto.
-  - inversion Htrace; subst; [left | right]; auto.
-  - destruct b.
-    + left. auto.
-    + inversion Htrace as [|ss env0 tr0 Hnil| | |]; subst.
-      inversion Hnil; subst.
-      right. split; reflexivity.
-Qed.
-
-Lemma loop_trace_make_let_inv :
-  forall value body env tr,
-    loop_trace (Loop.make_let value body) env tr -&gt;
-    loop_trace body (Loop.eval_expr env value :: env) tr.
-Proof.
-  intros value body env tr Htrace.
-  unfold Loop.make_let in Htrace.
-  inversion Htrace as
-    [| | | |lb ub body0 env0 zs trs Hrange Hiterations]; subst.
-  simpl in Hiterations.
-  rewrite Zrange_single in Hiterations.
-  inversion Hiterations as
-    [|z zs0 tr0 trs0 Hbody Hremaining]; subst.
-  inversion Hremaining; subst.
-  simpl.
-  now rewrite app_nil_r.
-Qed.
-
-Local Lemma empty_scan_trace_witness :
-  forall inner pol env tr,
-    tr = [] -&gt;
-    (forall x, in_poly (rev (x :: env)) pol = true -&gt; False) -&gt;
-    exists lb ub zs trs,
-      (forall x,
-        in_poly (rev (x :: env)) pol = true &lt;-&gt; lb &lt;= x &lt; ub) /\
-      zs = Zrange lb ub /\
-      tr = concat trs /\
-      Forall2 (fun z tri =&gt; loop_trace inner (z :: env) tri) zs trs.
-Proof.
-  intros inner pol env tr Htrace_empty Hdomain_empty.
-  subst tr.
-  exists 0, 0, [], [].
-  split.
-  - intro x. split.
-    + intro Hdomain. exfalso. eapply Hdomain_empty; eauto.
-    + lia.
-  - split.
-    + rewrite Zrange_empty by lia. reflexivity.
-    + split; [reflexivity | constructor].
-Qed.
-
-(** Trace counterpart of [LoopGenCore.scan_dimension_sem].  In particular, the
-    trace iterations are tied to the same interval that characterizes the
-    scanned polyhedron, rather than to an arbitrary list of coordinates. *)
-Lemma scan_dimension_trace_inv :
-  forall n inner pol out,
-    mayReturn (LoopGenCore.scan_dimension n inner pol) out -&gt;
-    forall env tr,
-      length env = n -&gt;
-      loop_trace out env tr -&gt;
-      exists lb ub zs trs,
-        (forall x,
-          in_poly (rev (x :: env)) pol = true &lt;-&gt; lb &lt;= x &lt; ub) /\
-        zs = Zrange lb ub /\
-        tr = concat trs /\
-        Forall2 (fun z tri =&gt; loop_trace inner (z :: env) tri) zs trs.
-Proof.
-  intros n inner pol out Hout env tr Henv.
-  unfold LoopGenCore.scan_dimension in Hout.
-  destruct (find_eq n pol) as [c |] eqn:Hfindeq.
-  - destruct (LoopGenCore.solve_eq n c) as [result test] eqn:Hsolve.
-    apply mayReturn_pure in Hout. subst out.
-    set (test1 :=
-      Loop.make_and test
-        (Loop.and_all
-          (map
-             (fun c1 =&gt;
-                LoopGenCore.make_affine_test n
-                  (make_constraint_with_eq n c c1))
-             (filter (fun c1 =&gt; negb (nth n (fst c1) 0 =? 0)) pol) ++
-           map (LoopGenCore.make_affine_test n)
-             (filter (fun c1 =&gt; nth n (fst c1) 0 =? 0) pol)))).
-    assert (Hcnth : 0 &lt; nth n (fst c) 0) by
-      (eapply find_eq_nth; eauto).
-    intro Htrace.
-    destruct (loop_trace_make_guard_inv test1
-      (Loop.make_let result inner) env tr Htrace)
-      as [[Htest1 Hbody] | [Htest1 Htr]].
-    + pose proof (loop_trace_make_let_inv result inner env tr Hbody)
-        as Hinner.
-      exists (Loop.eval_expr env result).
-      exists (Loop.eval_expr env (Loop.Sum result (Loop.Constant 1))).
-      exists [Loop.eval_expr env result].
-      exists [tr].
-      split.
-      * intros x. simpl.
-        unfold test1 in Htest1.
-        rewrite Loop.make_and_correct in Htest1; reflect.
-        rewrite Loop.and_all_correct in Htest1.
-        destruct Htest1 as [Htest Hcstr].
-        rewrite forallb_app, andb_true_iff in Hcstr.
-        destruct Hcstr as [Hcstr1 Hcstr2].
-        transitivity
-          (Loop.eval_expr env (fst (LoopGenCore.solve_eq n c)) = x /\
-           Loop.eval_test env (snd (LoopGenCore.solve_eq n c)) = true).
-        -- rewrite LoopGenCore.solve_eq_correct by (auto || lia).
-           split.
-           ++ intros H. unfold in_poly in H.
-              rewrite forallb_forall in H.
-              eapply find_eq_correct_1; eauto.
-           ++ intros H. unfold in_poly; rewrite forallb_forall.
-              intros c1 Hc1in.
-              rewrite forallb_map, forallb_forall in Hcstr1, Hcstr2.
-              specialize (Hcstr1 c1). specialize (Hcstr2 c1).
-              rewrite filter_In,
-                LoopGenCore.make_affine_test_correct in Hcstr1, Hcstr2 by auto.
-              destruct (nth n (fst c1) 0 =? 0) eqn:Hc1nth; reflect.
-              ** erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
-                   rewrite ?rev_length; eauto.
-              ** rewrite &lt;- make_constraint_with_eq_correct_1
-                   with (n := n) (c1 := c) by (auto || lia).
-                 erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
-                   rewrite ?rev_length; eauto.
-                 apply make_constraint_with_eq_nth; lia.
-        -- rewrite Hsolve. simpl. intuition lia.
-      * split.
-        -- simpl. rewrite Zrange_single. reflexivity.
-        -- split.
-           ++ simpl. now rewrite app_nil_r.
-           ++ constructor; [exact Hinner | constructor].
-    + eapply empty_scan_trace_witness; [exact Htr |].
-      intros x Hdomain.
-      enough (Loop.eval_test env test1 = true) by congruence.
-      unfold test1.
-      rewrite Loop.make_and_correct, Loop.and_all_correct,
-        forallb_app, !forallb_map.
-      reflect.
-      unfold in_poly in Hdomain.
-      rewrite forallb_forall in Hdomain.
-      assert (Heq : dot_product (rev (x :: env)) (fst c) = snd c) by
-        (eapply find_eq_correct_1; eauto).
-      simpl in Heq.
-      split; [|split].
-      * rewrite &lt;- LoopGenCore.solve_eq_correct in Heq;
-          [|exact Henv|lia].
-        rewrite Hsolve in Heq. simpl in Heq. tauto.
-      * rewrite forallb_forall. intros c1 Hc1in.
-        rewrite filter_In in Hc1in. reflect.
-        rewrite LoopGenCore.make_affine_test_correct by auto.
-        destruct Hc1in as [Hc1in Hc1n].
-        specialize (Hdomain c1 Hc1in).
-        rewrite &lt;- make_constraint_with_eq_correct_1
-          with (n := n) (c1 := c) in Hdomain by (auto || lia).
-        simpl in Hdomain.
-        erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
-          rewrite ?rev_length; eauto.
-        apply make_constraint_with_eq_nth; lia.
-      * rewrite forallb_forall. intros c1 Hc1in.
-        rewrite filter_In in Hc1in. reflect.
-        rewrite LoopGenCore.make_affine_test_correct by auto.
-        destruct Hc1in as [Hc1in Hc1n].
-        specialize (Hdomain c1 Hc1in).
-        simpl in Hdomain.
-        erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
-          rewrite ?rev_length; eauto.
-  - bind_imp_destruct Hout lb Hlb.
-    apply res_to_alarm_correct in Hlb.
-    bind_imp_destruct Hout ub Hub.
-    apply res_to_alarm_correct in Hub.
-    apply mayReturn_pure in Hout. subst out.
-    set (test1 :=
-      LoopGenCore.make_poly_test n
-        (filter (fun c =&gt; nth n (fst c) 0 =? 0) pol)).
-    intro Htrace.
-    destruct (loop_trace_make_guard_inv test1
-      (Loop.Loop lb ub inner) env tr Htrace)
-      as [[Htest1 Hbody] | [Htest1 Htr]].
-    + inversion Hbody as
-        [| | | |lb0 ub0 body0 env0 zs trs Hrange Hiterations]; subst.
-      exists (Loop.eval_expr env lb), (Loop.eval_expr env ub),
-        (Zrange (Loop.eval_expr env lb) (Loop.eval_expr env ub)), trs.
-      split.
-      * intros x.
-        rewrite LoopGenCore.find_bounds_correct;
-          [|exact Hlb|exact Hub|reflexivity].
-        unfold test1 in Htest1.
-        rewrite LoopGenCore.make_poly_test_correct in Htest1 by auto.
-        unfold in_poly in *.
-        rewrite forallb_forall.
-        rewrite forallb_forall in Htest1.
-        split.
-        -- intros H c Hc Hcnth. apply H; auto.
-        -- intros H c Hc.
-           destruct (nth (length env) (fst c) 0 =? 0) eqn:Hcnth; reflect.
-           ++ simpl.
-              erewrite LoopGenCore.satisfies_constraint_nth_zero_eq;
-                rewrite ?rev_length; [|eauto|eauto].
-              apply Htest1. rewrite filter_In. reflect. auto.
-           ++ apply H; auto.
-      * repeat split; try reflexivity.
-        exact Hiterations.
-    + eapply empty_scan_trace_witness; [exact Htr |].
-      intros x Hdomain.
-      unfold test1 in Htest1.
-      unfold in_poly in Hdomain.
-        rewrite forallb_forall in Hdomain.
-      eapply eq_true_false_abs; [|exact Htest1].
-      rewrite LoopGenCore.make_poly_test_correct by auto.
-      unfold in_poly. rewrite forallb_forall.
-      intros c Hc. rewrite filter_In in Hc.
-      destruct Hc as [Hcin Hcnth].
-      specialize (Hdomain c Hcin). reflect. simpl in Hdomain.
-      erewrite LoopGenCore.satisfies_constraint_nth_zero_eq in Hdomain;
-        rewrite ?rev_length; eauto.
-Qed.
-
-Lemma generated_instr_args_eval :
-  forall n es env,
-    length env = n -&gt;
-    map (Loop.eval_expr env)
-      (map
-        (fun e =&gt;
-          Loop.make_div
-            (LoopGenCore.make_affine_expr n (snd e))
-            (Zpos (fst e)))
-        es) =
-    map (PolyLoop.eval_affine_expr env) es.
-Proof.
-  intros n es env Henv.
-  rewrite map_map.
-  apply map_ext.
-  intros [k a]. simpl.
-  unfold PolyLoop.eval_affine_expr.
-  rewrite Loop.make_div_correct,
-    LoopGenCore.make_affine_expr_correct by auto.
-  reflexivity.
-Qed.
-
-Lemma loop_trace_empty_seq_inv :
-  forall env tr,
-    loop_trace (Loop.Seq Loop.SNil) env tr -&gt;
-    tr = [].
-Proof.
-  intros env tr Htrace.
-  inversion Htrace as [|ss env0 tr0 Hnil| | |]; subst.
-  inversion Hnil.
-  reflexivity.
-Qed.
-
-Lemma loop_trace_two_seq_inv :
-  forall s1 s2 env tr,
-    loop_trace
-      (Loop.Seq (Loop.SCons s1 (Loop.SCons s2 Loop.SNil))) env tr -&gt;
-    exists tr1 tr2,
-      tr = tr1 ++ tr2 /\
-      loop_trace s1 env tr1 /\
-      loop_trace s2 env tr2.
-Proof.
-  intros s1 s2 env tr Htrace.
-  inversion Htrace as [|ss env0 tr0 Hseq| | |]; subst.
-  inversion Hseq as
-    [|stmt1 tail1 env1 tr1 tr_tail1 Htrace1 Htail1]; subst.
-  inversion Htail1 as
-    [|stmt2 tail2 env2 tr2 tr_tail2 Htrace2 Htail2]; subst.
-  inversion Htail2; subst.
-  exists tr1, tr2.
-  split.
-  - simpl. now rewrite app_nil_r.
-  - split; assumption.
-Qed.
-
-(** The direct LoopGen path preserves the neutral event trace.  This theorem is
-    intentionally independent of state semantics: it records which generated
-    loop iteration emits each source instruction and its concrete arguments. *)
-(** * LoopGen trace reflection *)
-
-Theorem polyloop_to_loop_trace_reflect :
-  forall pstmt n out,
-    mayReturn (LoopGenCore.polyloop_to_loop n pstmt) out -&gt;
-    forall env tr,
-      length env = n -&gt;
-      loop_trace out env tr -&gt;
-      poly_trace pstmt env tr.
-Proof.
-  induction pstmt; intros n out Hout env tr Henv Htrace; simpl in Hout.
-  - bind_imp_destruct Hout inner1 Hinner.
-    destruct (scan_dimension_trace_inv n inner1 p out Hout env tr Henv Htrace)
-      as [lb [ub [zs [trs [Hdomain [Hrange [Htr Hfor]]]]]]].
-    subst tr.
-    eapply PETLoop; [exact Hdomain | exact Hrange |].
-    eapply Forall2_imp_in_left; [exact Hfor |].
-    intros z tri _ Hinner_trace.
-    eapply IHpstmt; eauto. simpl. lia.
-  - apply mayReturn_pure in Hout. subst out.
+  apply pl_stmt_stmts_mutind;
+    unfold point_extends_stmt_goal, point_extends_stmts_goal.
+  - intros mode od lb ub body IH env tr ip Hsafe Htrace Hin.
     inversion Htrace; subst.
-    rewrite generated_instr_args_eval by reflexivity.
-    constructor.
-  - apply mayReturn_pure in Hout. subst out.
-    apply loop_trace_empty_seq_inv in Htrace. subst tr.
-    constructor.
-  - bind_imp_destruct Hout out1 Hout1.
-    bind_imp_destruct Hout out2 Hout2.
-    apply mayReturn_pure in Hout. subst out.
-    destruct (loop_trace_two_seq_inv out1 out2 env tr Htrace)
-      as [tr1 [tr2 [Htr [Htrace1 Htrace2]]]].
-    subst tr.
-    constructor.
-    + eapply IHpstmt1; eauto.
-    + eapply IHpstmt2; eauto.
-  - bind_imp_destruct Hout inner1 Hinner.
-    apply mayReturn_pure in Hout. subst out.
-    destruct (loop_trace_make_guard_inv
-      (LoopGenCore.make_poly_test n p) inner1 env tr Htrace)
-      as [[Htest Hbody] | [Htest Htr]].
-    + apply PETGuardTrue.
-      * rewrite &lt;- (LoopGenCore.make_poly_test_correct n p env Henv).
-        exact Htest.
-      * eapply IHpstmt; eauto.
-    + subst tr. apply PETGuardFalse.
-      rewrite &lt;- (LoopGenCore.make_poly_test_correct n p env Henv).
-      exact Htest.
+    + apply in_concat in Hin.
+      destruct Hin as [tri [Htri Hin]].
+      destruct (Forall2_in_right_local _ _ _ _ _ _ H7 Htri)
+        as [z [Hz Hbody]].
+      destruct (IH (z :: env) tri ip Hsafe Hbody Hin) as [suffix Hsuffix].
+      exists (suffix ++ [z]).
+      rewrite Hsuffix. simpl. rewrite &lt;- app_assoc. reflexivity.
+    + apply in_concat in Hin.
+      destruct Hin as [tri [Htri Hin]].
+      destruct (Forall2_in_right_local _ _ _ _ _ _ H7 Htri)
+        as [z [Hz Hbody]].
+      destruct (IH (z :: env) tri ip Hsafe Hbody Hin) as [suffix Hsuffix].
+      exists (suffix ++ [z]).
+      rewrite Hsuffix. simpl. rewrite &lt;- app_assoc. reflexivity.
+    + pose proof
+        (interleave_family_member_in_concat _ _ _ H8 Hin) as Hin_concat.
+      apply in_concat in Hin_concat.
+      destruct Hin_concat as [tri [Htri Hintri]].
+      destruct (Forall2_in_right_local _ _ _ _ _ _ H7 Htri)
+        as [z [Hz Hbody]].
+      destruct (IH (z :: env) tri ip Hsafe Hbody Hintri) as [suffix Hsuffix].
+      exists (suffix ++ [z]).
+      rewrite Hsuffix. simpl. rewrite &lt;- app_assoc. reflexivity.
+  - intros i es env tr ip Hsafe Htrace Hin.
+    inversion Htrace; subst.
+    simpl in Hin.
+    destruct Hin as [&lt;- | Hin]; [|contradiction].
+    destruct Hsafe as [affs Haff].
+    exists []. unfold ParallelLoop.BaseLoop.mk_instr_point. rewrite Haff. reflexivity.
+  - intros ss IH env tr ip Hsafe Htrace Hin.
+    inversion Htrace; subst. eapply IH; eauto.
+  - intros test body IH env tr ip Hsafe Htrace Hin.
+    inversion Htrace; subst; [eapply IH; eauto|contradiction].
+  - intros env tr ip Hsafe Htrace Hin.
+    inversion Htrace; subst. contradiction.
+  - intros s IHs ss IHss env tr ip Hsafe Htrace Hin.
+    inversion Htrace; subst.
+    destruct Hsafe as [Hsafe_s Hsafe_ss].
+    apply in_app_or in Hin.
+    destruct Hin as [Hin | Hin]; [eapply IHs|eapply IHss]; eauto.
 Qed.
 
-(** Pointwise view of a [poly_trace].  Besides the leaf instruction effect, the
-    constructors retain every guard and scan-domain fact on the path to it. *)
-Inductive poly_event_origin :
-    PolyLoop.poly_stmt -&gt; list Z -&gt; scan_event -&gt; Prop :=
-| PEOInstr : forall i es env,
-    poly_event_origin
-      (PolyLoop.PInstr i es) env
-      {| se_point := rev env;
-         se_instr := i;
-         se_args := map (PolyLoop.eval_affine_expr env) es |}
-| PEOSeqLeft : forall s1 s2 env ev,
-    poly_event_origin s1 env ev -&gt;
-    poly_event_origin (PolyLoop.PSeq s1 s2) env ev
-| PEOSeqRight : forall s1 s2 env ev,
-    poly_event_origin s2 env ev -&gt;
-    poly_event_origin (PolyLoop.PSeq s1 s2) env ev
-| PEOGuard : forall pol body env ev,
-    in_poly (rev env) pol = true -&gt;
-    poly_event_origin body env ev -&gt;
-    poly_event_origin (PolyLoop.PGuard pol body) env ev
-| PEOLoop : forall pol body env x ev,
-    in_poly (rev (x :: env)) pol = true -&gt;
-    poly_event_origin body (x :: env) ev -&gt;
-    poly_event_origin (PolyLoop.PLoop pol body) env ev.
-
-Lemma poly_trace_event_origin :
-  forall s env tr ev,
-    poly_trace s env tr -&gt;
-    In ev tr -&gt;
-    poly_event_origin s env ev.
+Lemma par_trace_point_extends_env :
+  forall s env tr ip,
+    ParallelLoop.trace_safe_stmt s -&gt;
+    ParallelLoop.par_trace s env tr -&gt;
+    In ip tr -&gt;
+    exists suffix, ip.(ParallelLoop.ILSema.ip_index) = suffix ++ env.
 Proof.
-  induction s; intros env tr ev Htrace Hin;
-    inversion Htrace as
-      [instr0 exprs0 env0
-      |env0
-      |s1&#x27; s2&#x27; env0 tr1 tr2 Htrace1 Htrace2
-      |p&#x27; body env0 tr0 Htest Hbody
-      |p&#x27; body env0 Htest
-      |p&#x27; body env0 lb ub zs trs Hdomain Hrange Htraces];
-    subst.
-  - apply in_concat in Hin.
-    destruct Hin as [tri [Htri Hin]].
-    destruct (Forall2_in_right _ _ _ _ _ _ Htraces Htri)
-      as [x [Hx Hbody]].
-    apply PEOLoop with (x := x).
-    + apply Hdomain. apply Zrange_in. exact Hx.
-    + eapply IHs; eauto.
-  - simpl in Hin. destruct Hin as [Heq | Hin]; [subst ev | contradiction].
-    constructor.
-  - contradiction.
-  - apply in_app_iff in Hin. destruct Hin as [Hin | Hin].
-    + apply PEOSeqLeft. eapply IHs1; eauto.
-    + apply PEOSeqRight. eapply IHs2; eauto.
-  - apply PEOGuard.
-    + assumption.
-    + eapply IHs; eauto.
-  - contradiction.
+  exact (proj1 par_trace_point_extends_env_mutual).
 Qed.
 
-Record generated_pi_event_origin
-    (n : nat) (pi : PolyLang.PolyInstr) (ev : scan_event) : Prop := {
-  generated_event_point_length : length ev.(se_point) = n;
-  generated_event_point_in_domain :
-    in_poly ev.(se_point) pi.(PolyLang.pi_poly) = true;
-  generated_event_instruction : ev.(se_instr) = pi.(PolyLang.pi_instr);
-  generated_event_args :
-    ev.(se_args) =
-      PolyLang.current_src_args_in_dim n pi ev.(se_point)
+Definition par_trace_seq_cover_stmt_goal (s : ParallelLoop.stmt) : Prop :=
+  forall env tr,
+    ParallelLoop.trace_safe_stmt s -&gt;
+    ParallelLoop.par_trace s env tr -&gt;
+    exists seqtr,
+      ParallelLoop.seq_trace s env seqtr /\
+      (forall ip, In ip tr -&gt; In ip seqtr).
+
+Definition par_trace_seq_cover_stmts_goal (ss : ParallelLoop.stmt_list) : Prop :=
+  forall env tr,
+    ParallelLoop.trace_safe_stmts ss -&gt;
+    ParallelLoop.par_traces ss env tr -&gt;
+    exists seqtr,
+      ParallelLoop.seq_traces ss env seqtr /\
+      (forall ip, In ip tr -&gt; In ip seqtr).
+
+Lemma Forall2_par_trace_seq_cover :
+  forall body env,
+    par_trace_seq_cover_stmt_goal body -&gt;
+    forall zs trs,
+      ParallelLoop.trace_safe_stmt body -&gt;
+      Forall2 (fun z tr =&gt; ParallelLoop.par_trace body (z :: env) tr) zs trs -&gt;
+      exists seqtrs,
+        Forall2 (fun z tr =&gt; ParallelLoop.seq_trace body (z :: env) tr) zs seqtrs /\
+        (forall ip, In ip (List.concat trs) -&gt; In ip (List.concat seqtrs)).
+Proof.
+  intros body env IH zs trs Hsafe Hfor.
+  induction Hfor as [|z tr zs trs Htrace Hfor IHfor].
+  - exists []. split; [constructor|]. simpl. tauto.
+  - destruct (IH (z :: env) tr Hsafe Htrace)
+      as [seqtr [Hseq Hcover]].
+    destruct IHfor as [seqtrs [Hseqs Hcovers]].
+    exists (seqtr :: seqtrs).
+    split.
+    + constructor; assumption.
+    + intros ip Hin.
+      simpl in *.
+      apply in_app_or in Hin.
+      apply in_or_app.
+      destruct Hin as [Hin | Hin].
+      * left. eapply Hcover. exact Hin.
+      * right. eapply Hcovers. exact Hin.
+Qed.
+
+Lemma par_trace_seq_cover_mutual :
+  (forall s, par_trace_seq_cover_stmt_goal s) /\
+  (forall ss, par_trace_seq_cover_stmts_goal ss).
+Proof.
+  apply pl_stmt_stmts_mutind;
+    unfold par_trace_seq_cover_stmt_goal,
+      par_trace_seq_cover_stmts_goal.
+  - intros mode od lb ub body IH env tr Hsafe Htrace.
+    inversion Htrace; subst.
+    + destruct (Forall2_par_trace_seq_cover body env IH _ _ Hsafe H7)
+        as [seqtrs [Hseqtrs Hcover]].
+      exists (List.concat seqtrs).
+      split.
+      * econstructor; eauto.
+      * intros ip Hin. eapply Hcover. exact Hin.
+    + destruct (Forall2_par_trace_seq_cover body env IH _ _ Hsafe H7)
+        as [seqtrs [Hseqtrs Hcover]].
+      exists (List.concat seqtrs).
+      split.
+      * econstructor; eauto.
+      * intros ip Hin. eapply Hcover. exact Hin.
+    + destruct (Forall2_par_trace_seq_cover body env IH _ _ Hsafe H7)
+        as [seqtrs [Hseqtrs Hcover]].
+      exists (List.concat seqtrs).
+      split.
+      * econstructor; eauto.
+      * intros ip Hin.
+        eapply Hcover.
+        eapply interleave_family_member_in_concat; eauto.
+  - intros i es env tr Hsafe Htrace.
+    inversion Htrace; subst.
+    exists [ParallelLoop.BaseLoop.mk_instr_point i es env].
+    split; [constructor|]. tauto.
+  - intros ss IH env tr Hsafe Htrace.
+    inversion Htrace as [|env0 ss0 tr0 Hsub| | | | |]; subst.
+    destruct (IH env tr Hsafe Hsub) as [seqtr [Hseq Hcover]].
+    exists seqtr. split; [constructor; exact Hseq|exact Hcover].
+  - intros test body IH env tr Hsafe Htrace.
+    inversion Htrace as
+      [| |
+       env0 test0 body0 tr0 Htest Hbody
+       | env0 test0 body0 Htest
+       | | |]; subst.
+    + destruct (IH env tr Hsafe Hbody) as [seqtr [Hseq Hcover]].
+      exists seqtr. split; [econstructor; eauto|exact Hcover].
+    + exists []. split.
+      * apply ParallelLoop.STGuardFalse. assumption.
+      * auto.
+  - intros env tr Hsafe Htrace.
+    inversion Htrace; subst.
+    exists []. split; [constructor|].
+    contradiction.
+  - intros s IHs ss IHss env tr Hsafe Htrace.
+    inversion Htrace as
+      [|env0 s0 ss0 tr1 tr2 Hhead Htail]; subst.
+    destruct Hsafe as [Hsafe_s Hsafe_ss].
+    destruct (IHs env tr1 Hsafe_s Hhead)
+      as [seqtr1 [Hseq1 Hcover1]].
+    destruct (IHss env tr2 Hsafe_ss Htail)
+      as [seqtr2 [Hseq2 Hcover2]].
+    exists (seqtr1 ++ seqtr2).
+    split.
+    + econstructor; eauto.
+    + intros ip Hin.
+      apply in_app_or in Hin.
+      apply in_or_app.
+      destruct Hin as [Hin | Hin].
+      * left. eapply Hcover1. exact Hin.
+      * right. eapply Hcover2. exact Hin.
+Qed.
+
+Lemma par_trace_seq_cover :
+  forall s env tr,
+    ParallelLoop.trace_safe_stmt s -&gt;
+    ParallelLoop.par_trace s env tr -&gt;
+    exists seqtr,
+      ParallelLoop.seq_trace s env seqtr /\
+      (forall ip, In ip tr -&gt; In ip seqtr).
+Proof.
+  exact (proj1 par_trace_seq_cover_mutual).
+Qed.
+
+Definition seq_trace_parallelize_inv_stmt_goal (s : ParallelLoop.stmt) : Prop :=
+  forall d env tr,
+    ParallelLoop.seq_trace (ParallelLoop.parallelize_dim_stmt d s) env tr -&gt;
+    ParallelLoop.seq_trace s env tr.
+
+Definition seq_trace_parallelize_inv_stmts_goal (ss : ParallelLoop.stmt_list) : Prop :=
+  forall d env tr,
+    ParallelLoop.seq_traces (ParallelLoop.parallelize_dim_stmts d ss) env tr -&gt;
+    ParallelLoop.seq_traces ss env tr.
+
+Lemma seq_trace_parallelize_dim_inv_mutual :
+  (forall s, seq_trace_parallelize_inv_stmt_goal s) /\
+  (forall ss, seq_trace_parallelize_inv_stmts_goal ss).
+Proof.
+  apply pl_stmt_stmts_mutind;
+    unfold seq_trace_parallelize_inv_stmt_goal,
+      seq_trace_parallelize_inv_stmts_goal.
+  - intros mode od lb ub body IHbody d env tr Htrace.
+    destruct mode; destruct od as [origin|]; simpl in Htrace;
+      try destruct (Nat.eqb d origin);
+      inversion Htrace; subst.
+    all: econstructor; eauto.
+    all: eapply Forall2_imp;
+      [intros z tri Hbody; eapply IHbody; exact Hbody
+      | eassumption].
+  - intros i es d env tr Htrace. simpl in Htrace. exact Htrace.
+  - intros ss IH d env tr Htrace.
+    simpl in Htrace. inversion Htrace; subst.
+    constructor. eapply IH. eauto.
+  - intros test body IH d env tr Htrace.
+    simpl in Htrace. inversion Htrace; subst.
+    + econstructor; [eassumption|].
+      eapply IH; eassumption.
+    + econstructor; eassumption.
+  - intros d env tr Htrace. simpl in Htrace.
+    inversion Htrace; subst. constructor.
+  - intros s IHs ss IHss d env tr Htrace.
+    simpl in Htrace. inversion Htrace; subst.
+    econstructor.
+    + eapply IHs; eauto.
+    + eapply IHss; eauto.
+Qed.
+
+Lemma seq_trace_parallelize_dim_stmt_inv :
+  forall d s env tr,
+    ParallelLoop.seq_trace (ParallelLoop.parallelize_dim_stmt d s) env tr -&gt;
+    ParallelLoop.seq_trace s env tr.
+Proof.
+  intros d s.
+  exact ((proj1 seq_trace_parallelize_dim_inv_mutual) s d).
+Qed.
+
+Definition generated_event (ip : ParallelLoop.InstrPoint) : RawOrigin.scan_event :=
+  {| RawOrigin.se_point := rev ip.(ParallelLoop.ILSema.ip_index);
+     RawOrigin.se_instr := ip.(ParallelLoop.ILSema.ip_instruction);
+     RawOrigin.se_args :=
+       affine_product ip.(ParallelLoop.ILSema.ip_transformation)
+         ip.(ParallelLoop.ILSema.ip_index) |}.
+
+Lemma tag_expr_eval :
+  forall e env,
+    ParallelLoop.BaseLoop.eval_expr env (tag_expr e) = Loop.eval_expr env e.
+Proof.
+  induction e; intros env; simpl;
+    try rewrite ?IHe, ?IHe1, ?IHe2; reflexivity.
+Qed.
+
+Lemma map_tag_expr_eval :
+  forall es env,
+    map (ParallelLoop.BaseLoop.eval_expr env) (map tag_expr es) =
+    map (Loop.eval_expr env) es.
+Proof.
+  induction es as [|e es IH]; intros env; simpl.
+  - reflexivity.
+  - rewrite tag_expr_eval, IH. reflexivity.
+Qed.
+
+Lemma tag_test_eval :
+  forall test env,
+    ParallelLoop.BaseLoop.eval_test env (tag_test test) = Loop.eval_test env test.
+Proof.
+  induction test; intros env; simpl;
+    try rewrite ?IHtest, ?IHtest1, ?IHtest2;
+    try rewrite ?tag_expr_eval; reflexivity.
+Qed.
+
+Lemma map_concat_generated_event :
+  forall traces,
+    map generated_event (List.concat traces) =
+    List.concat (map (map generated_event) traces).
+Proof.
+  induction traces as [|tr traces IH]; simpl.
+  - reflexivity.
+  - rewrite map_app, IH. reflexivity.
+Qed.
+
+Scheme loop_stmt_mutind := Induction for Loop.stmt Sort Prop
+with loop_stmts_mutind := Induction for Loop.stmt_list Sort Prop.
+Combined Scheme loopl_stmt_stmts_mutind
+  from loop_stmt_mutind, loop_stmts_mutind.
+
+Definition tagged_seq_trace_origin_stmt_goal (s : Loop.stmt) : Prop :=
+  forall depth env tr,
+    ParallelLoop.trace_safe_stmt (tag_loop_stmt_at depth s) -&gt;
+    ParallelLoop.seq_trace (tag_loop_stmt_at depth s) env tr -&gt;
+    RawOrigin.loop_trace s env (map generated_event tr).
+
+Definition tagged_seq_trace_origin_stmts_goal (ss : Loop.stmt_list) : Prop :=
+  forall depth env tr,
+    ParallelLoop.trace_safe_stmts (tag_loop_stmts_at depth ss) -&gt;
+    ParallelLoop.seq_traces (tag_loop_stmts_at depth ss) env tr -&gt;
+    RawOrigin.loop_traces ss env (map generated_event tr).
+
+Lemma tagged_seq_trace_origin_mutual :
+  (forall s, tagged_seq_trace_origin_stmt_goal s) /\
+  (forall ss, tagged_seq_trace_origin_stmts_goal ss).
+Proof.
+  apply loopl_stmt_stmts_mutind;
+    unfold tagged_seq_trace_origin_stmt_goal,
+      tagged_seq_trace_origin_stmts_goal.
+  - intros lb ub body IH depth env tr Hsafe Htrace.
+    simpl in Htrace, Hsafe.
+    inversion Htrace as
+      [| | | |
+       mode0 od0 lb0 ub0 body0 env0 zs0 trs0 tr0
+         Hrange Htraces Hconcat]; subst.
+    rewrite map_concat_generated_event.
+    econstructor.
+    + reflexivity.
+    + rewrite &lt;- !tag_expr_eval.
+      clear Htrace.
+      induction Htraces as [|z tri zs trs Htri Htraces IHtraces].
+      * constructor.
+      * constructor.
+        -- eapply IH; eauto.
+        -- exact IHtraces.
+  - intros i es depth env tr Hsafe Htrace.
+    simpl in Hsafe, Htrace.
+    inversion Htrace; subst.
+    simpl.
+    destruct Hsafe as [affs Haff].
+    unfold generated_event, ParallelLoop.BaseLoop.mk_instr_point.
+    rewrite Haff. simpl.
+    assert (Hargs :
+      affine_product affs env = map (Loop.eval_expr env) es).
+    {
+      rewrite &lt;- map_tag_expr_eval.
+      symmetry.
+      eapply ParallelLoop.BaseLoop.exprlist_to_aff_correct. exact Haff.
+    }
+    rewrite Hargs.
+    constructor.
+  - intros ss IH depth env tr Hsafe Htrace.
+    simpl in Hsafe, Htrace.
+    inversion Htrace; subst.
+    constructor. eapply IH; eauto.
+  - intros test body IH depth env tr Hsafe Htrace.
+    simpl in Hsafe, Htrace.
+    inversion Htrace; subst.
+    + eapply RawOrigin.LETGuardTrue.
+      * rewrite &lt;- tag_test_eval. eassumption.
+      * eapply IH; eauto.
+    + eapply RawOrigin.LETGuardFalse.
+      rewrite &lt;- tag_test_eval. eassumption.
+  - intros depth env tr Hsafe Htrace.
+    simpl in Htrace. inversion Htrace; subst.
+    simpl. constructor.
+  - intros s IHs ss IHss depth env tr Hsafe Htrace.
+    simpl in Hsafe, Htrace.
+    destruct Hsafe as [Hsafe_s Hsafe_ss].
+    inversion Htrace; subst.
+    rewrite map_app.
+    constructor.
+    + eapply IHs; eauto.
+    + eapply IHss; eauto.
+Qed.
+
+Lemma tagged_seq_trace_origin :
+  forall s depth env tr,
+    ParallelLoop.trace_safe_stmt (tag_loop_stmt_at depth s) -&gt;
+    ParallelLoop.seq_trace (tag_loop_stmt_at depth s) env tr -&gt;
+    RawOrigin.loop_trace s env (map generated_event tr).
+Proof.
+  exact (proj1 tagged_seq_trace_origin_mutual).
+Qed.
+
+Definition erase_stmt_sem_goal (s : ParallelLoop.stmt) : Prop :=
+  forall env st1 st2,
+    ParallelLoop.BaseLoop.loop_semantics (ParallelLoop.erase_stmt s) env st1 st2 -&gt;
+    Loop.loop_semantics (erase_to_loop_stmt s) env st1 st2.
+
+Definition erase_stmts_sem_goal (ss : ParallelLoop.stmt_list) : Prop :=
+  forall env st1 st2,
+    ParallelLoop.BaseLoop.loop_semantics
+      (ParallelLoop.BaseLoop.Seq (ParallelLoop.erase_stmt_list ss)) env st1 st2 -&gt;
+    Loop.loop_semantics (Loop.Seq (erase_to_loop_stmts ss)) env st1 st2.
+
+Lemma erase_to_loop_stmt_semantics_mutual :
+  (forall s, erase_stmt_sem_goal s) /\
+  (forall ss, erase_stmts_sem_goal ss).
+Proof.
+  apply (pl_stmt_stmts_mutind erase_stmt_sem_goal erase_stmts_sem_goal).
+  - intros mode od lb ub body IHbody env st1 st2 Hsem.
+    inversion Hsem as
+      [| | | | |
+       env0 lb0 ub0 body0 st10 st20 Hiter]; subst.
+    eapply Loop.LLoop.
+    rewrite !erase_expr_eval_eq.
+    pose proof Hiter as Hiter&#x27;.
+    eapply iter_semantics_refine_exact with
+      (Q := fun x =&gt; Loop.loop_semantics (erase_to_loop_stmt body) (x :: env))
+      in Hiter&#x27;.
+    + exact Hiter&#x27;.
+    + intros x stA stB _ Hbody_sem.
+      eapply IHbody; eauto.
+  - intros i es env st1 st2 Hsem.
+    inversion Hsem; subst.
+    eapply Loop.LInstr.
+    rewrite erase_expr_list_map_eval_eq.
+    eauto.
+  - intros ss IHss env st1 st2 Hsem.
+    eapply IHss; eauto.
+  - intros test body IHbody env st1 st2 Hsem.
+    inversion Hsem; subst.
+    + eapply Loop.LGuardTrue.
+      * eapply IHbody; eauto.
+      * rewrite erase_test_eval_eq. eauto.
+    + eapply Loop.LGuardFalse.
+      rewrite erase_test_eval_eq. eauto.
+  - intros env st1 st2 Hsem.
+    inversion Hsem; subst.
+    constructor.
+  - intros s IHs ss IHss env st1 st2 Hsem.
+    inversion Hsem; subst.
+    eapply Loop.LSeq.
+    + eapply IHs; eauto.
+    + eapply IHss; eauto.
+Qed.
+
+Lemma erase_to_loop_stmt_semantics :
+  forall s env st1 st2,
+    ParallelLoop.BaseLoop.loop_semantics (ParallelLoop.erase_stmt s) env st1 st2 -&gt;
+    Loop.loop_semantics (erase_to_loop_stmt s) env st1 st2.
+Proof.
+  exact (proj1 erase_to_loop_stmt_semantics_mutual).
+Qed.
+
+Lemma erase_to_loop_stmts_semantics :
+  forall ss env st1 st2,
+    ParallelLoop.BaseLoop.loop_semantics
+      (ParallelLoop.BaseLoop.Seq (ParallelLoop.erase_stmt_list ss)) env st1 st2 -&gt;
+    Loop.loop_semantics (Loop.Seq (erase_to_loop_stmts ss)) env st1 st2.
+Proof.
+  exact (proj2 erase_to_loop_stmt_semantics_mutual).
+Qed.
+
+Lemma erase_to_loop_semantics :
+  forall p st1 st2,
+    ParallelLoop.BaseLoop.semantics (ParallelLoop.erase_parallel p) st1 st2 -&gt;
+    Loop.semantics (erase_to_loop p) st1 st2.
+Proof.
+  intros [[s ctxt] vars] st1 st2 Hsem.
+  inversion Hsem as [loop_ext loop ctxt&#x27; vars&#x27; env st1&#x27; st2&#x27; Heq Hcompat Hna Hinit Hloop];
+    subst.
+  inversion Heq; subst.
+  econstructor; eauto.
+  reflexivity.
+  eapply erase_to_loop_stmt_semantics; eauto.
+Qed.
+
+Definition tagged_prepared_codegen
+  (pp : PolyLang.t) : imp ParallelLoop.t :=
+  BIND loop &lt;- PrepareCore.prepared_codegen pp -;
+  pure (tag_loop loop).
+
+(** * Executable annotation paths *)
+
+Definition tagged_prepared_codegen_raw
+  (pp : PolyLang.t) : imp ParallelLoop.t :=
+  BIND loop &lt;- PrepareCore.prepared_codegen_raw pp -;
+  pure (tag_loop loop).
+
+Record codegen_matches_current_dims
+  (_pp : PolyLang.t) (pl : ParallelLoop.t) : Prop := {
+  cmd_origin_tagged :
+    tagged_from_top pl
 }.
 
-(** Pointwise origin for the single-statement AST generator.  This theorem is
-    the singleton branch used by the multi-statement origin induction. *)
-Theorem generate_loop_event_origin :
-  forall d n pi pstmt env ev,
-    (d &lt;= n)%nat -&gt;
-    mayReturn (ASTGenCore.generate_loop d n pi) pstmt -&gt;
-    length env = (n - d)%nat -&gt;
-    (forall c, In c pi.(PolyLang.pi_poly) -&gt;
-      fst c =v= resize n (fst c)) -&gt;
-    project_invariant (n - d)%nat pi.(PolyLang.pi_poly) (rev env) -&gt;
-    poly_event_origin pstmt env ev -&gt;
-    generated_pi_event_origin n pi ev.
+Definition annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen pp -;
+  pure (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Definition annotated_codegen_raw
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen_raw pp -;
+  pure (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Definition program_par_trace
+    (pl : ParallelLoop.t) (env : list Z) (tr : list ParallelLoop.InstrPoint) : Prop :=
+  let &#x27;((s, _), _) := pl in ParallelLoop.par_trace s env tr.
+
+Lemma generated_event_matches :
+  forall ip,
+    point_matches_event ip (generated_event ip).
 Proof.
-  induction d;
-    intros n pi pstmt env ev Hdn Hgen Henv Hcols Hinv Horigin;
-    simpl in Hgen.
-  - apply mayReturn_pure in Hgen. subst pstmt.
-    inversion Horigin as [instr0 exprs0 env0| | | |]; subst.
-    rewrite Nat.sub_0_r in Henv, Hinv.
-    constructor.
-    + simpl. rewrite rev_length. exact Henv.
-    + simpl. eapply project_id; eauto.
-    + simpl. reflexivity.
-    + unfold PolyLang.current_src_args_in_dim,
-        PolyLang.current_src_args_at.
-      simpl.
-      rewrite map_map.
-      apply map_ext.
-      intros [v c].
-      unfold PolyLoop.eval_affine_expr. simpl.
-      rewrite Z.div_1_r.
-      reflexivity.
-  - bind_imp_destruct Hgen proj Hproj.
-    bind_imp_destruct Hgen inner Hinner.
-    apply mayReturn_pure in Hgen. subst pstmt.
-    inversion Horigin as
-      [| | | |pol0 body0 env0 x0 ev0 Hprojected Hinner_origin]; subst.
-    eapply IHd with (env := x0 :: env).
-    + lia.
-    + exact Hinner.
-    + simpl. lia.
-    + exact Hcols.
-    + replace (n - d)%nat with (S (n - S d))%nat in * by lia.
-      eapply project_next_r_inclusion; [|exact Hproj|].
-      * simpl.
-        rewrite project_invariant_resize, resize_app
-          by (rewrite rev_length; auto).
-        exact Hinv.
-      * intros c Hcin Hcnth.
-        unfold in_poly in Hprojected.
-        rewrite forallb_forall in Hprojected.
-        apply Hprojected.
-        rewrite filter_In.
-        split; auto.
-        apply negb_true_iff.
-        apply Z.eqb_neq.
-        exact Hcnth.
-    + exact Hinner_origin.
+  intros ip.
+  unfold point_matches_event, generated_event.
+  simpl. split; [reflexivity|].
+  unfold point_has_effect.
+  intros st1 st2. split.
+  - intro Hsem.
+    inversion Hsem as [wcs rcs Hstep]; subst.
+    exists wcs, rcs. exact Hstep.
+  - intros [wcs [rcs Hstep]].
+    econstructor. exact Hstep.
 Qed.
 
-Lemma poly_event_origin_make_seq_inv :
-  forall ss env ev,
-    poly_event_origin (PolyLoop.make_seq ss) env ev -&gt;
-    exists s,
-      In s ss /\
-      poly_event_origin s env ev.
-Proof.
-  induction ss as [|s ss IH]; intros env ev Horigin; simpl in Horigin.
-  - inversion Horigin.
-  - inversion Horigin as
-      [|s1 s2 env0 ev0 Hleft1 Hleft2
-       |s1 s2 env0 ev0 Hright
-       | |]; subst.
-    + exists s. split; [left; reflexivity | exact Hleft1].
-    + destruct (IH env ev Hright) as [s&#x27; [Hin Hs&#x27;]].
-      exists s&#x27;. split; [right; exact Hin | exact Hs&#x27;].
-Qed.
-
-Local Lemma poly_event_origin_guarded_instr_inv :
-  forall pol instr args env ev,
-    poly_event_origin
-      (PolyLoop.PGuard pol (PolyLoop.PInstr instr args)) env ev -&gt;
-    in_poly (rev env) pol = true /\
-    ev =
-      {| se_point := rev env;
-         se_instr := instr;
-         se_args := map (PolyLoop.eval_affine_expr env) args |}.
-Proof.
-  intros pol instr args env ev Horigin.
-  inversion Horigin as
-    [| | |pol0 body0 env0 ev0 Hdomain Hinstr|]; subst.
-  inversion Hinstr; subst.
-  split; [exact Hdomain | reflexivity].
-Qed.
-
-Definition generated_program_event_origin
-    (n : nat) (pis : list PolyLang.PolyInstr) (ev : scan_event) : Prop :=
-  exists m pi,
-    nth_error pis m = Some pi /\
-    generated_pi_event_origin n pi ev.
-
-Lemma generate_loop_many_zero_event_origin :
-  forall n pis pstmt env ev,
-    mayReturn (ASTGenCore.generate_loop_many 0 n pis) pstmt -&gt;
-    length env = n -&gt;
-    poly_event_origin pstmt env ev -&gt;
-    generated_program_event_origin n pis ev.
-Proof.
-  intros n pis pstmt env ev Hgen Henv Horigin.
-  simpl in Hgen.
-  apply mayReturn_pure in Hgen. subst pstmt.
-  destruct (poly_event_origin_make_seq_inv _ _ _ Horigin)
-    as [stmt [Hstmt Hstmt_origin]].
-  rewrite in_map_iff in Hstmt.
-  destruct Hstmt as [pi [Heq Hinpi]]. subst stmt.
-  destruct (poly_event_origin_guarded_instr_inv _ _ _ _ _ Hstmt_origin)
-    as [Hdomain Hevent].
-  subst ev.
-  apply In_nth_error in Hinpi.
-  destruct Hinpi as [m Hnth].
-  exists m, pi. split; [exact Hnth |].
-  constructor.
-  - simpl. rewrite rev_length. exact Henv.
-  - simpl. exact Hdomain.
-  - simpl. reflexivity.
-  - simpl.
-    unfold PolyLang.current_src_args_in_dim,
-      PolyLang.current_src_args_at.
-    rewrite map_map.
-    apply map_ext.
-    intros [v c].
-    unfold PolyLoop.eval_affine_expr. simpl.
-    rewrite Z.div_1_r.
-    reflexivity.
-Qed.
-
-Lemma poly_event_origin_guard_inv :
-  forall pol stmt env ev,
-    poly_event_origin (PolyLoop.PGuard pol stmt) env ev -&gt;
-    in_poly (rev env) pol = true /\
-    poly_event_origin stmt env ev.
-Proof.
-  intros pol stmt env ev Horigin.
-  inversion Horigin; subst. auto.
-Qed.
-
-Lemma poly_event_origin_loop_inv :
-  forall pol stmt env ev,
-    poly_event_origin (PolyLoop.PLoop pol stmt) env ev -&gt;
-    exists x,
-      in_poly (rev (x :: env)) pol = true /\
-      poly_event_origin stmt (x :: env) ev.
-Proof.
-  intros pol stmt env ev Horigin.
-  inversion Horigin; subst. eauto.
-Qed.
-
-Definition pi_origin_rel
-    (pi npi : PolyLang.PolyInstr) : Prop :=
-  (forall p,
-    in_poly p npi.(PolyLang.pi_poly) = true -&gt;
-    in_poly p pi.(PolyLang.pi_poly) = true) /\
-  npi.(PolyLang.pi_instr) = pi.(PolyLang.pi_instr) /\
-  npi.(PolyLang.pi_point_witness) = pi.(PolyLang.pi_point_witness) /\
-  npi.(PolyLang.pi_transformation) = pi.(PolyLang.pi_transformation).
-
-Lemma Forall2_nth_error_right_exists :
-  forall A B (R : A -&gt; B -&gt; Prop) xs ys n y,
-    Forall2 R xs ys -&gt;
-    nth_error ys n = Some y -&gt;
-    exists x, nth_error xs n = Some x /\ R x y.
-Proof.
-  intros A B R xs ys n y Hforall Hy.
-  exact (Misc.Forall2_nth_error_right A B R n xs ys y Hforall Hy).
-Qed.
-
-Lemma make_npis_simplify_member_origin :
-  forall pis pol pl npis j npi,
-    mayReturn (ASTGenCore.make_npis_simplify pis pol pl) npis -&gt;
-    (forall t, In t pl -&gt; (t &lt; length pis)%nat) -&gt;
-    nth_error npis j = Some npi -&gt;
-    exists t pi,
-      nth_error pl j = Some t /\
-      nth_error pis t = Some pi /\
-      pi_origin_rel pi npi.
-Proof.
-  intros pis pol pl npis j npi Hnpis Hpl Hnth.
-  pose proof
-    (ASTGenCore.make_npis_simplify_equiv pis pol pl npis Hnpis) as Hequiv.
-  destruct
-    (Forall2_nth_error_right_exists _ _ _ _ _ _ _ Hequiv Hnth)
-    as [mpi [Hmpi_nth Hmpi_equiv]].
-  unfold ASTGenCore.make_npis in Hmpi_nth.
-  rewrite nth_error_map_iff in Hmpi_nth.
-  destruct Hmpi_nth as [t [Ht Hmpi]].
-  subst mpi.
-  assert (Htin : In t pl) by (eapply nth_error_In; eauto).
-  specialize (Hpl t Htin).
-  assert (Hpi :
-    nth_error pis t = Some (nth t pis ASTGenCore.dummy_pi)).
-  {
-    apply nth_error_nth&#x27;. exact Hpl.
-  }
-  exists t, (nth t pis ASTGenCore.dummy_pi).
-  split; [exact Ht |].
-  split; [exact Hpi |].
-  unfold pi_origin_rel.
-  unfold ASTGenCore.pi_equiv in Hmpi_equiv.
-  destruct Hmpi_equiv as [Hdom [Hinstr [Hwitness Htf]]].
-  simpl in Hinstr, Hwitness, Htf.
-  split.
-  - intros p Hp.
-    rewrite &lt;- Hdom in Hp.
-    unfold ASTGenCore.update_poly in Hp. simpl in Hp.
-    rewrite poly_inter_pure_def in Hp.
-    apply andb_true_iff in Hp. tauto.
-  - repeat split; congruence.
-Qed.
-
-Theorem generate_event_origin :
-  forall d n pi pstmt env ev,
-    (d &lt;= n)%nat -&gt;
-    mayReturn (ASTGenCore.generate d n pi) pstmt -&gt;
-    length env = (n - d)%nat -&gt;
-    (forall c, In c pi.(PolyLang.pi_poly) -&gt;
-      fst c =v= resize n (fst c)) -&gt;
-    poly_event_origin pstmt env ev -&gt;
-    generated_pi_event_origin n pi ev.
-Proof.
-  intros d n pi pstmt env ev Hdn Hgen Henv Hcols Horigin.
-  unfold ASTGenCore.generate in Hgen.
-  bind_imp_destruct Hgen inner Hinner.
-  bind_imp_destruct Hgen ctx Hctx.
-  apply mayReturn_pure in Hgen. subst pstmt.
-  destruct (poly_event_origin_guard_inv _ _ _ _ Horigin)
-    as [Hguard Hinner_origin].
-  eapply generate_loop_event_origin; eauto.
-  rewrite &lt;- (project_invariant_export_correct
-    (n - d)%nat (rev env) pi.(PolyLang.pi_poly) ctx Hctx).
-  exact Hguard.
-Qed.
-
-Lemma generated_pi_event_origin_transport :
-  forall n pi npi ev,
-    pi_origin_rel pi npi -&gt;
-    generated_pi_event_origin n npi ev -&gt;
-    generated_pi_event_origin n pi ev.
-Proof.
-  intros n pi npi ev Hrel Horigin.
-  destruct Hrel as [Hdom [Hinstr [Hwitness Htf]]].
-  destruct Horigin as [Hlen Hinside Hevent_instr Heffect].
-  constructor.
-  - exact Hlen.
-  - eapply Hdom. exact Hinside.
-  - rewrite &lt;- Hinstr. exact Hevent_instr.
-  - unfold PolyLang.current_src_args_in_dim,
-      PolyLang.current_src_args_at,
-      PolyLang.current_env_dim_in_dim,
-      PolyLang.current_transformation_at in *.
-    rewrite Hwitness, Htf in Heffect.
-    exact Heffect.
-Qed.
-
-(** * AST generation preserves source-event origin *)
-
-Theorem generate_loop_many_event_origin :
-  forall d n pis pstmt env ev,
-    (d &lt;= n)%nat -&gt;
-    mayReturn (ASTGenCore.generate_loop_many d n pis) pstmt -&gt;
-    length env = (n - d)%nat -&gt;
-    ASTGenCore.pis_have_dimension pis n -&gt;
-    poly_event_origin pstmt env ev -&gt;
-    generated_program_event_origin n pis ev.
-Proof.
-  induction d;
-    intros n pis pstmt env ev Hdn Hgen Henv Hpidim Horigin;
-    simpl in Hgen.
-  - eapply generate_loop_many_zero_event_origin.
-    + exact Hgen.
-    + rewrite Nat.sub_0_r in Henv. exact Henv.
-    + exact Horigin.
-  - bind_imp_destruct Hgen projs Hprojs.
-    bind_imp_destruct Hgen projsep Hprojsep.
-    bind_imp_destruct Hgen inners Hinners.
-    apply mayReturn_pure in Hgen. subst pstmt.
-    (* Every split group remains within the dimensions available to the
-       recursive generator. *)
-    assert (Hprojnrl :
-      forall ppl, In ppl projsep -&gt;
-        (poly_nrl (fst ppl) &lt;= n - d)%nat).
-    {
-      eapply split_and_sort_nrl; [exact Hprojsep |].
-      intros pol Hpolin.
-      eapply mapM_in_iff in Hpolin; [|exact Hprojs].
-      destruct Hpolin as [pi [Hpol Hpiin]].
-      rewrite &lt;- poly_nrl_def.
-      intros c Hcin.
-      eapply project_constraint_size; eauto.
-    }
-    (* Select the generated loop that actually contains the event. *)
-    destruct (poly_event_origin_make_seq_inv _ _ _ Horigin)
-      as [outer [Houterin Houterorigin]].
-    eapply mapM_in_iff in Houterin; [|exact Hinners].
-    destruct Houterin as [[pol pl] [Houter Hpolplin]].
-    bind_imp_destruct Houter npis Hnpis.
-    bind_imp_destruct Houter inside Hinside.
-    apply mayReturn_pure in Houter. subst outer.
-    destruct (poly_event_origin_loop_inv _ _ _ _ Houterorigin)
-      as [x [Hpol Hinsideorigin]].
-    (* Relate the selected split-group indices and simplified instructions
-       back to the original program. *)
-    assert (Hplvalid :
-      forall t, In t pl -&gt; (t &lt; length pis)%nat).
-    {
-      intros t Htin.
-      erewrite mapM_length; [|exact Hprojs].
-      eapply split_and_sort_index_correct
-        with (polpl := (pol, pl)); eauto.
-    }
-    assert (Hnpisdim : ASTGenCore.pis_have_dimension npis n).
-    {
-      eapply ASTGenCore.make_npis_simplify_have_dimension; eauto.
-      specialize (Hprojnrl (pol, pl) Hpolplin). simpl in Hprojnrl.
-      lia.
-    }
-    (* Recurse for an empty or multi-instruction group; a singleton group uses
-       the single-instruction generator theorem. *)
-    assert (Hnpisorigin : generated_program_event_origin n npis ev).
-    {
-      destruct npis as [|npi npis&#x27;].
-      - simpl in Hinside.
-        eapply IHd with (env := x :: env).
-        + lia.
-        + exact Hinside.
-        + simpl. lia.
-        + exact Hnpisdim.
-        + exact Hinsideorigin.
-      - destruct npis&#x27; as [|npi2 npis&#x27;&#x27;].
-        + simpl in Hinside.
-          exists 0%nat, npi. split; [reflexivity |].
-          refine
-            (generate_event_origin d n npi inside (x :: env) ev
-              ltac:(lia) Hinside ltac:(simpl; lia) _ Hinsideorigin).
-          apply (proj2
-            (poly_nrl_def n npi.(PolyLang.pi_poly))).
-          eapply ASTGenCore.pis_have_dimension_singleton; eauto.
-        + simpl in Hinside.
-          eapply IHd with (env := x :: env).
-          * lia.
-          * exact Hinside.
-          * simpl. lia.
-          * exact Hnpisdim.
-          * exact Hinsideorigin.
-    }
-    (* Transport the event origin through instruction simplification. *)
-    destruct Hnpisorigin as [j [npi [Hnpi_lookup Hnpi_origin]]].
-    destruct
-      (make_npis_simplify_member_origin
-         pis pol pl npis j npi Hnpis Hplvalid Hnpi_lookup)
-      as [t [pi [Hpl_lookup [Hpi_lookup Hrel]]]].
-    exists t, pi. split; [exact Hpi_lookup |].
-    eapply generated_pi_event_origin_transport; eauto.
-Qed.
-
-Definition drop_schedule_coords
-    (env_dim width : nat) (current : list Z) : list Z :=
-  resize env_dim current ++ skipn (width + env_dim)%nat current.
-
-Lemma drop_schedule_coords_length :
-  forall env_dim dim width current,
-    length current = (dim + width)%nat -&gt;
-    (env_dim &lt;= dim)%nat -&gt;
-    length (drop_schedule_coords env_dim width current) = dim.
-Proof.
-  intros env_dim dim width current Hlength Henvdim.
-  unfold drop_schedule_coords.
-  rewrite app_length, resize_length, skipn_length, Hlength.
-  lia.
-Qed.
-
-Lemma drop_schedule_coords_prefix :
-  forall env_dim width current,
-    firstn env_dim (drop_schedule_coords env_dim width current) =
-    resize env_dim current.
-Proof.
-  intros env_dim width current.
-  unfold drop_schedule_coords.
-  rewrite firstn_app, resize_length, Nat.sub_diag.
-  simpl. rewrite firstn_all2 by (rewrite resize_length; lia).
-  now rewrite app_nil_r.
-Qed.
-
-Lemma pi_elim_schedule_domain_source :
-  forall width env_dim pi current,
-    in_poly current
-      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
-    in_poly (drop_schedule_coords env_dim width current)
-      pi.(PolyLang.pi_poly) = true.
-Proof.
-  intros width env_dim pi current Hdomain.
-  unfold PolyLang.pi_elim_schedule in Hdomain.
-  simpl in Hdomain.
-  rewrite in_poly_app in Hdomain.
-  apply andb_true_iff in Hdomain.
-  destruct Hdomain as [_ Hsource].
-  unfold in_poly in *.
-  rewrite forallb_map, forallb_forall in Hsource.
-  rewrite forallb_forall.
-  intros c Hcin.
-  specialize (Hsource c Hcin).
-  unfold satisfies_constraint, PolyLang.insert_zeros_constraint in Hsource.
-  simpl in Hsource.
-  rewrite dot_product_commutative in Hsource.
-  rewrite PolyLang.insert_zeros_product_skipn in Hsource.
-  unfold satisfies_constraint, drop_schedule_coords.
-  rewrite dot_product_commutative.
-  exact Hsource.
-Qed.
-
-Lemma pi_elim_schedule_event_coordinates :
-  forall width env_dim pi current,
-    (length pi.(PolyLang.pi_schedule) &lt;= width)%nat -&gt;
-    in_poly current
-      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true -&gt;
-    resize width (skipn env_dim current) =
-      resize width
-        (affine_product pi.(PolyLang.pi_schedule)
-          (drop_schedule_coords env_dim width current)).
-Proof.
-  intros width env_dim pi current Hwidth Hdomain.
-  pose proof (PolyLang.split3_eq env_dim width current) as Hsplit.
-  assert (Hdomain_split :
-    in_poly
-      (resize env_dim current ++
-       resize width (skipn env_dim current) ++
-       skipn (width + env_dim)%nat current)
-      (PolyLang.pi_elim_schedule width env_dim pi).(PolyLang.pi_poly) = true).
-  {
-    rewrite Hsplit. exact Hdomain.
-  }
-  pose proof
-    (pi_elim_schedule_inserted_coordinates
-      width env_dim pi
-      (resize env_dim current)
-      (resize width (skipn env_dim current))
-      (skipn (width + env_dim)%nat current)
-      Hwidth (resize_length env_dim current)
-      (resize_length width (skipn env_dim current))
-      Hdomain_split) as Hcoords.
-  unfold drop_schedule_coords.
-  exact Hcoords.
-Qed.
-
-Definition prepared_source_event
-    (ppis : list PolyLang.PolyInstr)
-    (env_dim dim width : nat) (ev : scan_event) : Prop :=
-  exists source_nth source_pi,
-    nth_error ppis source_nth = Some source_pi /\
-    length (drop_schedule_coords env_dim width ev.(se_point)) = dim /\
-    in_poly (drop_schedule_coords env_dim width ev.(se_point))
-      source_pi.(PolyLang.pi_poly) = true /\
-    ev.(se_instr) = source_pi.(PolyLang.pi_instr) /\
-    ev.(se_args) =
-      PolyLang.current_src_args_in_dim dim source_pi
-        (drop_schedule_coords env_dim width ev.(se_point)) /\
-    firstn env_dim (drop_schedule_coords env_dim width ev.(se_point)) =
-      resize env_dim ev.(se_point) /\
-    resize width (skipn env_dim ev.(se_point)) =
-      resize width
-        (affine_product source_pi.(PolyLang.pi_schedule)
-          (drop_schedule_coords env_dim width ev.(se_point))).
-
-Theorem elim_schedule_event_source :
-  forall ppis env_dim dim width ev,
-    (env_dim &lt;= dim)%nat -&gt;
-    (forall pi, In pi ppis -&gt;
-      PolyLang.current_env_dim_in_dim dim pi.(PolyLang.pi_point_witness) =
-        env_dim) -&gt;
-    (forall pi, In pi ppis -&gt;
-      (length pi.(PolyLang.pi_schedule) &lt;= width)%nat) -&gt;
-    generated_program_event_origin
-      (dim + width)%nat (PolyLang.elim_schedule width env_dim ppis) ev -&gt;
-    prepared_source_event ppis env_dim dim width ev.
-Proof.
-  intros ppis env_dim dim width ev Henvdim Hcurrent_env Hwidth Horigin.
-  destruct Horigin as [m [epi [Hepi Hgenerated]]].
-  unfold PolyLang.elim_schedule in Hepi.
-  rewrite nth_error_map_iff in Hepi.
-  destruct Hepi as [pi [Hpi Helim]].
-  subst epi.
-  assert (Hpiin : In pi ppis) by (eapply nth_error_In; eauto).
-  destruct Hgenerated as [Hpoint_length Hdomain Hinstr Hargs].
-  exists m, pi.
-  split; [exact Hpi|].
-  repeat split.
-  - eapply drop_schedule_coords_length; eauto.
-  - eapply pi_elim_schedule_domain_source. exact Hdomain.
-  - rewrite Hinstr. reflexivity.
-  -
-    rewrite Hargs.
-    rewrite PolyLang.current_src_args_in_dim_pi_elim_schedule_resize.
-    rewrite (Hcurrent_env pi Hpiin).
-    unfold drop_schedule_coords.
-    reflexivity.
-  - apply drop_schedule_coords_prefix.
-  -
-    eapply pi_elim_schedule_event_coordinates; eauto.
-Qed.
-
-(** The ordinary raw generator retains PolyLoop simplification.  Reflecting
-    its trace through the simplifier exposes the AST generator&#x27;s source-origin
-    relation at the generated Loop program. *)
-(** * Standard raw codegen endpoint *)
-
-Theorem complete_generate_many_event_source :
-  forall env_dim dim pis out env tr ev,
-    (env_dim &lt;= dim)%nat -&gt;
-    mayReturn (CodeGenCore.complete_generate_many env_dim dim pis) out -&gt;
-    Datatypes.length env = env_dim -&gt;
-    ASTGenCore.pis_have_dimension pis dim -&gt;
-    (forall pi, In pi pis -&gt;
-      PolyLang.current_env_dim_in_dim dim
-        pi.(PolyLang.pi_point_witness) = env_dim) -&gt;
-    (forall pi, In pi pis -&gt;
-      (poly_nrl pi.(PolyLang.pi_schedule) &lt;= dim)%nat) -&gt;
-    loop_trace out env tr -&gt;
-    In ev tr -&gt;
-    prepared_source_event pis env_dim dim
-      (list_max
-        (map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule)) pis))
-      ev.
-Proof.
-  intros env_dim dim pis out env tr ev Henvdim Hgen Henv Hpis
-    Hpis_envdim Hpis_schedule Htrace Hevent.
-  unfold CodeGenCore.complete_generate_many in Hgen.
-  set (width :=
+Lemma prepared_schedule_width_eq :
+  forall pis varctxt vars cols,
     list_max
-      (map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule)) pis))
-    in *.
-  unfold CodeGenCore.complete_generate_lex_many in Hgen.
-  bind_imp_destruct Hgen pstmt Hpstmt.
-  bind_imp_destruct Hgen simp Hsimp.
-  assert (Helim_dim :
-    ASTGenCore.pis_have_dimension
-      (PolyLang.elim_schedule width env_dim pis) (dim + width)%nat).
-  {
-    unfold ASTGenCore.pis_have_dimension, PolyLang.elim_schedule in *.
-    rewrite forallb_map, forallb_forall in *.
-    intros pi Hpi.
-    specialize (Hpis pi Hpi).
-    reflect.
-    rewrite PolyLang.pi_elim_schedule_nrl by
-      (apply list_max_ge; rewrite in_map_iff; exists pi; auto).
-    specialize (Hpis_schedule pi Hpi).
-    lia.
-  }
-  assert (Hsimp_trace : poly_trace simp env tr).
-  {
-    eapply polyloop_to_loop_trace_reflect.
-    - exact Hgen.
-    - lia.
-    - exact Htrace.
-  }
-  assert (Hpolytrace : poly_trace pstmt env tr).
-  {
-    eapply polyloop_simplify_trace_reflect with
-      (n := env_dim) (ctx := nil) (nst := simp).
-    - unfold poly_nrl. simpl. lia.
-    - replace env_dim with
-        ((dim + width) - (dim + width - env_dim))%nat by lia.
-      exact Hsimp.
-    - exact Henv.
-    - reflexivity.
-    - exact Hsimp_trace.
-  }
-  assert (Horigin :
-    generated_program_event_origin
-      (dim + width)%nat (PolyLang.elim_schedule width env_dim pis) ev).
-  {
-    eapply (generate_loop_many_event_origin
-      (dim + width - env_dim)%nat (dim + width)%nat
-      (PolyLang.elim_schedule width env_dim pis) pstmt env ev).
-    - lia.
-    - exact Hpstmt.
-    - lia.
-    - exact Helim_dim.
-    - eapply poly_trace_event_origin; eauto.
-  }
-  eapply elim_schedule_event_source; eauto.
-  intros pi Hpi.
-  apply list_max_ge.
-  rewrite in_map_iff.
-  exists pi. auto.
+      (map (fun pi =&gt; Datatypes.length pi.(PolyLang.pi_schedule))
+        (map (PrepareCore.prepare_pi (Datatypes.length varctxt) cols) pis)) =
+    ParallelValidator.schedule_width ((pis, varctxt), vars).
+Proof.
+  intros pis varctxt vars cols.
+  unfold ParallelValidator.schedule_width, ParallelValidator.schedule_width_of_pis, ParallelValidator.pprog_pis.
+  simpl.
+  rewrite map_map.
+  f_equal.
+  apply map_ext.
+  intro pi.
+  simpl.
+  unfold PrepareCore.resize_affine_list.
+  rewrite map_length.
+  reflexivity.
 Qed.
 
-End RawCodegenOrigin.
+Definition trace_safe_parallelize_inv_stmt_goal (s : ParallelLoop.stmt) : Prop :=
+  forall d,
+    ParallelLoop.trace_safe_stmt (ParallelLoop.parallelize_dim_stmt d s) -&gt;
+    ParallelLoop.trace_safe_stmt s.
+
+Definition trace_safe_parallelize_inv_stmts_goal (ss : ParallelLoop.stmt_list) : Prop :=
+  forall d,
+    ParallelLoop.trace_safe_stmts (ParallelLoop.parallelize_dim_stmts d ss) -&gt;
+    ParallelLoop.trace_safe_stmts ss.
+
+Lemma trace_safe_parallelize_dim_inv_mutual :
+  (forall s, trace_safe_parallelize_inv_stmt_goal s) /\
+  (forall ss, trace_safe_parallelize_inv_stmts_goal ss).
+Proof.
+  apply pl_stmt_stmts_mutind;
+    unfold trace_safe_parallelize_inv_stmt_goal,
+      trace_safe_parallelize_inv_stmts_goal.
+  - intros mode od lb ub body IH d Hsafe.
+    destruct mode; destruct od as [origin|]; simpl in Hsafe |- *;
+      try destruct (Nat.eqb d origin);
+      eapply IH; exact Hsafe.
+  - intros i es d Hsafe. exact Hsafe.
+  - intros ss IH d Hsafe. simpl in Hsafe |- *. eapply IH; eauto.
+  - intros test body IH d Hsafe. simpl in Hsafe |- *. eapply IH; eauto.
+  - intros d Hsafe. exact I.
+  - intros s IHs ss IHss d Hsafe.
+    simpl in Hsafe |- *.
+    destruct Hsafe as [Hs Hss].
+    split; [eapply IHs|eapply IHss]; eauto.
+Qed.
+
+Lemma trace_safe_parallelize_dim_stmt_inv :
+  forall d s,
+    ParallelLoop.trace_safe_stmt (ParallelLoop.parallelize_dim_stmt d s) -&gt;
+    ParallelLoop.trace_safe_stmt s.
+Proof.
+  intros d s.
+  exact ((proj1 trace_safe_parallelize_dim_inv_mutual) s d).
+Qed.
+
+Definition vector_annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen pp -;
+  pure (ParallelLoop.vectorize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Definition vector_annotated_codegen_raw
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen_raw pp -;
+  pure (ParallelLoop.vectorize_dim cert.(ParallelValidator.certified_dim) pl).
+
+Fixpoint parallelize_certified_dims
+  (certs : list ParallelValidator.parallel_cert)
+  (pl : ParallelLoop.t) : ParallelLoop.t :=
+  match certs with
+  | nil =&gt; pl
+  | cons cert certs&#x27; =&gt;
+      parallelize_certified_dims
+        certs&#x27;
+        (ParallelLoop.parallelize_dim cert.(ParallelValidator.certified_dim) pl)
+  end.
+
+Definition annotated_codegen_many
+  (pp : PolyLang.t)
+  (certs : list ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen pp -;
+  pure (parallelize_certified_dims certs pl).
+
+Definition annotated_codegen_many_raw
+  (pp : PolyLang.t)
+  (certs : list ParallelValidator.parallel_cert)
+  : imp ParallelLoop.t :=
+  BIND pl &lt;- tagged_prepared_codegen_raw pp -;
+  pure (parallelize_certified_dims certs pl).
+
+Definition result_is_ok {A} (r : result A) : bool :=
+  match r with
+  | Okk _ =&gt; true
+  | Err _ =&gt; false
+  end.
+
+(** * Checked trace-safety and cleanup gates *)
+
+Fixpoint all_es_safeb_stmt (s : ParallelLoop.stmt) : bool
+with all_es_safeb_stmts (ss : ParallelLoop.stmt_list) : bool.
+Proof.
+  - destruct s; simpl.
+    + exact (all_es_safeb_stmt s).
+    + exact (result_is_ok (ParallelLoop.BaseLoop.exprlist_to_aff l)).
+    + exact (all_es_safeb_stmts s).
+    + exact (all_es_safeb_stmt s).
+  - destruct ss; simpl.
+    + exact true.
+    + exact (all_es_safeb_stmt s &amp;&amp; all_es_safeb_stmts ss).
+Defined.
+
+Definition all_es_safeb (p : ParallelLoop.t) : bool :=
+  match p with
+  | ((s, _), _) =&gt; all_es_safeb_stmt s
+  end.
+
+Lemma all_es_safeb_stmt_sound :
+  forall s,
+    all_es_safeb_stmt s = true -&gt;
+    ParallelLoop.trace_safe_stmt s
+with all_es_safeb_stmts_sound :
+  forall ss,
+    all_es_safeb_stmts ss = true -&gt;
+    ParallelLoop.trace_safe_stmts ss.
+Proof.
+  - intros s Hsafe.
+    destruct s; simpl in *.
+    + eapply all_es_safeb_stmt_sound; eauto.
+    + destruct (ParallelLoop.BaseLoop.exprlist_to_aff l) eqn:Haff;
+        inversion Hsafe; subst; eauto.
+    + eapply all_es_safeb_stmts_sound; eauto.
+    + eapply all_es_safeb_stmt_sound; eauto.
+  - intros ss Hsafe.
+    destruct ss; simpl in *.
+    + constructor.
+    + rewrite andb_true_iff in Hsafe.
+      destruct Hsafe as [Hs Hss].
+      split.
+      * eapply all_es_safeb_stmt_sound; eauto.
+      * eapply all_es_safeb_stmts_sound; eauto.
+Qed.
+
+Lemma all_es_safeb_sound :
+  forall p,
+    all_es_safeb p = true -&gt;
+    ParallelLoop.trace_safe p.
+Proof.
+  intros [[s ctxt] vars] Hsafe; simpl in *.
+  eapply all_es_safeb_stmt_sound; eauto.
+Qed.
+
+(** Cleanup is returned only when every representation used by its semantic
+    reflection proof has affine instruction traces.  The final simplifier can
+    remove a non-affine dead branch or reduce a non-affine expression such as
+    division by one, so checking only the final program would not establish
+    safety of the intermediate traces. *)
+Definition parallel_cleanup_safe (p : ParallelLoop.t) : Prop :=
+  match p with
+  | ((s, _), _) =&gt;
+      ParallelLoop.trace_safe_stmt s /\
+      ParallelLoop.trace_safe_stmt (ParallelLoop.simplify_stmt s) /\
+      ParallelLoop.trace_safe_stmt
+        (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s)) /\
+      ParallelLoop.trace_safe_stmt
+        (ParallelLoop.singleton_elim_stmt
+          (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s))) /\
+      ParallelLoop.trace_safe_stmt
+        (ParallelLoop.simplify_stmt
+          (ParallelLoop.singleton_elim_stmt
+            (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s)))) /\
+      ParallelLoop.trace_safe_stmt (ParallelLoop.cleanup_stmt_pass s)
+  end.
+
+Definition parallel_cleanup_safeb (p : ParallelLoop.t) : bool :=
+  match p with
+  | ((s, _), _) =&gt;
+      all_es_safeb_stmt s &amp;&amp;
+      all_es_safeb_stmt (ParallelLoop.simplify_stmt s) &amp;&amp;
+      all_es_safeb_stmt
+        (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s)) &amp;&amp;
+      all_es_safeb_stmt
+        (ParallelLoop.singleton_elim_stmt
+          (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s))) &amp;&amp;
+      all_es_safeb_stmt
+        (ParallelLoop.simplify_stmt
+          (ParallelLoop.singleton_elim_stmt
+            (ParallelLoop.cleanup_stmt (ParallelLoop.simplify_stmt s)))) &amp;&amp;
+      all_es_safeb_stmt (ParallelLoop.cleanup_stmt_pass s)
+  end.
+
+Lemma parallel_cleanup_safeb_sound :
+  forall p,
+    parallel_cleanup_safeb p = true -&gt;
+    parallel_cleanup_safe p.
+Proof.
+  intros [[s ctxt] vars] Hsafe.
+  unfold parallel_cleanup_safeb, parallel_cleanup_safe in *.
+  repeat rewrite andb_true_iff in Hsafe.
+  destruct Hsafe as [[[[[H0 H1] H2] H3] H4] H5].
+  repeat split; eapply all_es_safeb_stmt_sound; eauto.
+Qed.
+
+Definition vector_codegen_safeb (p : ParallelLoop.t) : bool :=
+  all_es_safeb p &amp;&amp; ParallelLoop.vector_annotations_innermostb p.
+
+Lemma vector_codegen_safeb_sound :
+  forall p,
+    vector_codegen_safeb p = true -&gt;
+    ParallelLoop.trace_safe p /\
+    ParallelLoop.vector_annotations_innermostb p = true.
+Proof.
+  intros p Hsafe.
+  apply andb_true_iff in Hsafe.
+  destruct Hsafe as [Htrace Hvector].
+  split.
+  - eapply all_es_safeb_sound; eauto.
+  - exact Hvector.
+Qed.
+
+Definition checked_annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp (result ParallelLoop.t) :=
+  BIND pl_raw &lt;- annotated_codegen_raw pp cert -;
+  let pl_clean := ParallelLoop.full_cleanup pl_raw in
+  if parallel_cleanup_safeb pl_raw then pure (Okk pl_clean)
+  else if all_es_safeb pl_raw then pure (Okk pl_raw)
+  else pure (Err &quot;Annotated parallel codegen produced non-affine instruction trace loop&quot;%string).
+
+Definition checked_vector_annotated_codegen
+  (pp : PolyLang.t)
+  (cert : ParallelValidator.parallel_cert)
+  : imp (result ParallelLoop.t) :=
+  BIND pl &lt;- vector_annotated_codegen pp cert -;
+  if vector_codegen_safeb pl then pure (Okk pl)
+  else
+    BIND pl_raw &lt;- vector_annotated_codegen_raw pp cert -;
+    if vector_codegen_safeb pl_raw then pure (Okk pl_raw)
+    else
+      pure
+        (Err
+           &quot;Annotated vector codegen produced a non-affine trace, a non-innermost vector loop, or no vector loop&quot;%string).
+
+Definition checked_annotated_codegen_many
+  (pp : PolyLang.t)
+  (certs : list ParallelValidator.parallel_cert)
+  : imp (result ParallelLoop.t) :=
+  BIND pl_raw &lt;- annotated_codegen_many_raw pp certs -;
+  let pl_clean := ParallelLoop.full_cleanup pl_raw in
+  if parallel_cleanup_safeb pl_raw then pure (Okk pl_clean)
+  else if all_es_safeb pl_raw then pure (Okk pl_raw)
+  else pure (Err &quot;Annotated parallel codegen produced non-affine instruction trace loop&quot;%string).
+
+Lemma tagged_prepared_codegen_matches :
+  forall pp pl,
+    mayReturn (tagged_prepared_codegen pp) pl -&gt;
+    codegen_matches_current_dims pp pl.
+Proof.
+  intros pp pl Hgen.
+  unfold tagged_prepared_codegen in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [loop [Hprep Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  constructor.
+  destruct loop as [[s ctxt] vars]; simpl.
+  apply tag_loop_stmt_tagged_from_depth.
+Qed.
+
+Lemma tagged_prepared_codegen_erase_eq :
+  forall pp pl,
+    mayReturn (tagged_prepared_codegen pp) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp pl Hgen.
+  unfold tagged_prepared_codegen in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [loop [Hprep Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  exists loop.
+  split; auto.
+  simpl.
+  apply erase_tag_loop_eq.
+Qed.
+
+Lemma tagged_prepared_codegen_raw_erase_eq :
+  forall pp pl,
+    mayReturn (tagged_prepared_codegen_raw pp) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp pl Hgen.
+  unfold tagged_prepared_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [loop [Hprep Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  exists loop.
+  split; auto.
+  simpl.
+  apply erase_tag_loop_eq.
+Qed.
+
+Lemma annotated_codegen_erase_eq :
+  forall pp cert pl,
+    mayReturn (annotated_codegen pp cert) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold annotated_codegen in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_parallelize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma annotated_codegen_raw_erase_eq :
+  forall pp cert pl,
+    mayReturn (annotated_codegen_raw pp cert) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold annotated_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_raw_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_parallelize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma vector_annotated_codegen_erase_eq :
+  forall pp cert pl,
+    mayReturn (vector_annotated_codegen pp cert) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold vector_annotated_codegen in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_vectorize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma vector_annotated_codegen_raw_erase_eq :
+  forall pp cert pl,
+    mayReturn (vector_annotated_codegen_raw pp cert) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp cert pl Hgen.
+  unfold vector_annotated_codegen_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_raw_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_vectorize_dim_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma erase_parallelize_certified_dims_to_loop_eq :
+  forall certs pl,
+    erase_to_loop (parallelize_certified_dims certs pl) = erase_to_loop pl.
+Proof.
+  induction certs as [|cert certs IH]; intros pl; simpl.
+  - reflexivity.
+  - rewrite IH.
+    apply erase_parallelize_dim_to_loop_eq.
+Qed.
+
+Lemma annotated_codegen_many_erase_eq :
+  forall pp certs pl,
+    mayReturn (annotated_codegen_many pp certs) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp certs pl Hgen.
+  unfold annotated_codegen_many in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_parallelize_certified_dims_to_loop_eq.
+  exact Herase.
+Qed.
+
+Lemma annotated_codegen_many_raw_erase_eq :
+  forall pp certs pl,
+    mayReturn (annotated_codegen_many_raw pp certs) pl -&gt;
+    exists loop,
+      mayReturn (PrepareCore.prepared_codegen_raw pp) loop /\
+      erase_to_loop pl = loop.
+Proof.
+  intros pp certs pl Hgen.
+  unfold annotated_codegen_many_raw in Hgen.
+  apply mayReturn_bind in Hgen.
+  destruct Hgen as [tagged [Htag Hpure]].
+  apply mayReturn_pure in Hpure.
+  subst pl.
+  pose proof (tagged_prepared_codegen_raw_erase_eq pp tagged Htag) as Herase.
+  destruct Herase as [loop [Hprep Herase]].
+  exists loop.
+  split; auto.
+  rewrite erase_parallelize_certified_dims_to_loop_eq.
+  exact Herase.
+Qed.
+
+
+End ParallelCodegenCore.
 </pre>
 </main>
 </body>

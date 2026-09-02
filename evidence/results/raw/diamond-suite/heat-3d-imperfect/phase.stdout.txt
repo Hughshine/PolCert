@@ -1,4 +1,4 @@
 [PHASE] affine(before, mid): OK
 [PHASE] tiling(mid, posttile): OK route=permutable-band
 [PHASE] affine(posttile, after): OK
-[OK] Diamond phase-aligned validation succeeded for (/tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.beforescheduling.scop -> /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop -> /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.posttile.scop -> /tmp/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.afterscheduling.scop).
+[OK] Diamond phase-aligned validation succeeded for (/release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.beforescheduling.scop -> /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.midtransform.scop -> /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.posttile.scop -> /release/polcert-artifact-check/diamond-suite/heat-3d-imperfect/diamond/heat-3d-imperfect.afterscheduling.scop).

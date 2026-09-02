@@ -18,8 +18,8 @@
     <div class="minor">
       <a href="#guarantee">Correctness statement</a>
       <a href="#top-theorems">Top theorems</a>
-      <a href="#proof-path">Proof path</a>
-      <a href="#components">Component reading</a>
+      <a href="#proof-path">Proof composition</a>
+      <a href="#components">Core components</a>
       <a href="proof/index.html" target="_blank" rel="noopener">Rocq proof index</a>
     </div>
   </nav>
@@ -27,9 +27,9 @@
   <main>
     <h1>Proof Guide</h1>
     <p class="lede">
-      Start with the correctness statement and the seven-step proof path. The
-      component table then points to the main theorem and source files for each
-      substantial argument.
+      PolCert's top-level refinement theorem composes correctness results for
+      extraction, validation, code generation, and loop postpasses. This page
+      links each argument to its main theorem and Rocq source.
     </p>
 
     <section id="guarantee">
@@ -91,7 +91,7 @@
     </section>
 
     <section id="proof-path">
-      <h2>Proof Path</h2>
+      <h2>Proof Composition</h2>
       <div class="proof-step">
         <div class="number">1</div>
         <div>
@@ -144,7 +144,7 @@
     </section>
 
     <section id="components">
-      <h2>Core Component Reading</h2>
+      <h2>Core Components</h2>
       <div class="wide-table">
         <table class="compact-table">
           <thead>
@@ -158,32 +158,32 @@
             <tr>
             <td>Extraction</td>
             <td>Induct over the source loop and reconstruct its ordered statement instances.</td>
-            <td><a href="files/3607.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a><br><a href="proof/polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct" target="_blank" rel="noopener"><code>extractor_correct</code></a></td>
+            <td><a href="files/3601.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a><br><a href="proof/polcert.src.ExtractorCorrect.html#ExtractorCorrect.extractor_correct" target="_blank" rel="noopener"><code>extractor_correct</code></a></td>
           </tr>
             <tr>
             <td>Index-set splitting</td>
             <td>Coverage preserves every instance; disjointness prevents duplication.</td>
-            <td><a href="files/3613.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a><br><a href="proof/polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct" target="_blank" rel="noopener"><code>checked_iss_complete_cut_shape_validate_semantics_correct</code></a></td>
+            <td><a href="files/3603.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a><br><a href="proof/polcert.src.ISSValidatorCorrect.html#ISSValidatorCorrect.checked_iss_complete_cut_shape_validate_semantics_correct" target="_blank" rel="noopener"><code>checked_iss_complete_cut_shape_validate_semantics_correct</code></a></td>
           </tr>
             <tr>
             <td>Affine scheduling</td>
             <td>Decompose the new order into adjacent exchanges and prove every reversed pair safe.</td>
-            <td><a href="files/3604.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a><br><a href="proof/polcert.src.AffineValidator.html#AffineValidator.validate_correct" target="_blank" rel="noopener"><code>validate_correct</code></a></td>
+            <td><a href="files/3599.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a><br><a href="proof/polcert.src.AffineValidator.html#AffineValidator.validate_correct" target="_blank" rel="noopener"><code>validate_correct</code></a></td>
           </tr>
             <tr>
             <td>Tiling</td>
             <td>Prove a bijection between source and tiled coordinates, then prove the checked band order safe.</td>
-            <td><a href="files/3626.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a><br><a href="files/3625.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a></td>
+            <td><a href="files/3616.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a><br><a href="files/3615.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a></td>
           </tr>
             <tr>
             <td>Parallel loops</td>
             <td>Map generated events to checked instances and reorder each interleaving into a sequential execution.</td>
-            <td><a href="files/3617.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a><br><a href="proof/polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.checked_annotated_codegen_many_correct_general_certified" target="_blank" rel="noopener"><code>checked_annotated_codegen_many_correct_general_certified</code></a></td>
+            <td><a href="files/3608.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a><br><a href="proof/polcert.src.ParallelCodegenCorrect.html#ParallelCodegenCorrect.checked_annotated_codegen_many_correct_general_certified" target="_blank" rel="noopener"><code>checked_annotated_codegen_many_correct_general_certified</code></a></td>
           </tr>
             <tr>
             <td>Unrolling and jam</td>
             <td>Cover the original range exactly; validate the exchanges needed to fuse inner loops.</td>
-            <td><a href="files/3598.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a><br><a href="files/3614.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a></td>
+            <td><a href="files/3596.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a><br><a href="files/3604.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a></td>
           </tr>
           </tbody>
         </table>
@@ -223,15 +223,14 @@
         </tbody>
       </table>
       <p>
-        Use the <a href="proof/index.html" target="_blank" rel="noopener">Rocq proof index</a> after choosing a
-        component above. The generated pages are declaration-level reference,
-        while this page supplies the reading order.
+        The <a href="proof/index.html" target="_blank" rel="noopener">Rocq proof index</a> provides
+        declaration-level documentation for these components.
       </p>
     </section>
 
     <p class="footer">
-      Build status and route coverage are recorded in the
-      <a href="files/3552.html" target="_blank" rel="noopener">proof report</a>.
+      The <a href="files/3551.html" target="_blank" rel="noopener">proof report</a> records
+      the clean build and proof-integrity checks.
     </p>
   </main>
 </div>

@@ -17,11 +17,11 @@ TESTS=tests/readscop tests/writescop
 
 include Makefile.menhir
 
-test: scopreader-test cpol2copenscop-test pluto-test csample1-test csample2-test csample3-test pluto-all-test typed-c-pipeline-test
+test: scopreader-test cpol2copenscop-test pluto-test csample1-test csample2-test csample3-test pluto-all-test typed-c-pipeline-test parallel-hint-mapping-test
 	@echo "All tests finished."
 
 # clean: scopreader-clean
-clean: scopreader-clean cpol2copenscop-clean pluto-clean csample1-clean csample2-clean csample3-clean pluto-all-clean typed-c-pipeline-clean
+clean: scopreader-clean cpol2copenscop-clean pluto-clean csample1-clean csample2-clean csample3-clean pluto-all-clean typed-c-pipeline-clean parallel-hint-mapping-clean
 	@echo "All tests cleaned."
 
 scopreader-test: 
@@ -89,3 +89,13 @@ typed-c-pipeline-clean:
 	rm -f tests/typed-c-pipeline/*.cm[iotx] \
 	      tests/typed-c-pipeline/*cmti \
 	      tests/typed-c-pipeline/*.o
+
+parallel-hint-mapping-test:
+	@echo "@@@@Testing Pluto hint coordinate mapping."
+	@$(MAKE) -f Makefile.extr test-parallel-hint-mapping --no-print-directory
+	@echo "@@@@Testing Pluto hint coordinate mapping finished."
+
+parallel-hint-mapping-clean:
+	rm -f tests/parallel-hint-mapping/*.cm[iotx] \
+	      tests/parallel-hint-mapping/*cmti \
+	      tests/parallel-hint-mapping/*.o

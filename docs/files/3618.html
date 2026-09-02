@@ -3,21 +3,1068 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion1.loop</title>
+  <title>SLoopCli.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/fusion1.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/syntax/SLoopCli.ml</code></h1>
+  <pre>type config = SLoopConfig.config = {
+  mutable dump_input : bool;
+  mutable dump_extracted_openscop : bool;
+  mutable dump_scheduled_openscop : bool;
+  mutable debug_scheduler : bool;
+  mutable extract_only : bool;
+  mutable profile_stages : bool;
+  mutable force_identity : bool;
+  mutable force_notile : bool;
+  mutable force_iss : bool;
+  mutable force_second_level_tile : bool;
+  mutable force_diamond_tile : bool;
+  mutable force_full_diamond_tile : bool;
+  mutable force_band_tiling_experiment : bool;
+  mutable force_legacy_generic_tiling : bool;
+  mutable force_const_unroll : bool;
+  mutable force_parallel : bool;
+  mutable force_parallel_strict : bool;
+  mutable force_multipar : bool;
+  mutable parallel_current_dim : int option;
+  mutable force_vector : bool;
+  mutable force_vector_strict : bool;
+  mutable vector_current_dim : int option;
+  mutable pluto_compat_mode : bool;
+  mutable pluto_compat_explain : bool;
+  mutable pluto_compat_dry_run : bool;
+  mutable pluto_tile_seen : bool;
+  mutable pluto_notile_seen : bool;
+  mutable pluto_diamond_seen : bool;
+  mutable pluto_nodiamond_seen : bool;
+  mutable pluto_parallel_seen : bool;
+  mutable pluto_no_parallel_seen : bool;
+  mutable pluto_isldep_seen : bool;
+  mutable pluto_candldep_seen : bool;
+  mutable pluto_intratileopt_seen : bool;
+  mutable pluto_no_intratileopt_seen : bool;
+  mutable pluto_prevector_seen : bool;
+  mutable pluto_no_prevector_seen : bool;
+  mutable pluto_unrolljam_seen : bool;
+  mutable pluto_no_unrolljam_seen : bool;
+  mutable pluto_extra_flags : string list;
+  mutable pluto_control_files : (string * string) list;
+  mutable pluto_compat_notes : string list;
+  mutable validate_affine_openscop : (string * string) option;
+  mutable extract_tiling_witness_openscop : (string * string) option;
+  mutable validate_tiling_openscop : (string * string) option;
+  mutable validate_iss_debug_dumps : (string * string) option;
+  mutable validate_iss_bridge : string option;
+  mutable validate_iss_pluto_suite : bool;
+  mutable validate_iss_pluto_live_suite : bool;
+  mutable input : string option;
+}
 
-for i in range(1, (N - 2)) {
-  A[i] = (0.33 * ((In[(i - 1)] + In[i]) + In[(i + 1)]));
-}
-for i in range(2, (N - 3)) {
-  Out[i] = (0.33 * ((A[(i - 1)] + A[i]) + A[(i + 1)]));
-}
+let usage prog =
+  String.concat &quot;&quot;
+    [
+      Printf.sprintf
+        &quot;Usage: %s [--dump-input] [--dump-extracted-openscop] [--dump-scheduled-openscop] [--debug-scheduler] [--extract-only] [--profile-stages] [--identity] [--identity-tiled] [--notile] [--iss] [--second-level-tile] [--diamond-tile] [--full-diamond-tile] [--intratileopt|--nointratileopt] [--rar] [--const-unroll] [--parallel] [--parallel-strict] [--parallel-current &lt;dim&gt;] [--vector] [--vector-strict] [--vector-current &lt;dim&gt;] &lt;file.loop&gt;\n&quot;
+        prog;
+      Printf.sprintf
+        &quot;       %s --pluto-compat [--explain] [--dry-run] &lt;Pluto-like optimizer flags&gt; &lt;file.loop&gt;\n&quot;
+        prog;
+      Printf.sprintf
+        &quot;       %s --validate-affine-openscop &lt;before.scop&gt; &lt;after.scop&gt;\n&quot;
+        prog;
+      &quot;         checks schedule refinement under supplied domains and trusted access summaries;\n&quot;;
+      &quot;         it does not check OpenScop statement bodies against those summaries\n&quot;;
+      Printf.sprintf
+        &quot;       %s [--second-level-tile] --extract-tiling-witness-openscop &lt;before.scop&gt; &lt;after.scop&gt;\n&quot;
+        prog;
+      Printf.sprintf
+        &quot;       %s [--second-level-tile] --validate-tiling-openscop &lt;before.scop&gt; &lt;after.scop&gt;\n&quot;
+        prog;
+      Printf.sprintf &quot;       %s --validate-iss-debug-dumps &lt;before.txt&gt; &lt;after.txt&gt;\n&quot; prog;
+      Printf.sprintf &quot;       %s --validate-iss-bridge &lt;bridge.txt&gt;\n&quot; prog;
+      Printf.sprintf &quot;       %s --validate-iss-pluto-suite\n&quot; prog;
+      Printf.sprintf &quot;       %s --validate-iss-pluto-live-suite\n&quot; prog;
+      &quot;\nDefault optimization path:\n&quot;;
+      &quot;  extracted theorem-aligned affine+tiling pipeline with band-aware ordinary tiling (`SBandTilingOpt.opt`)\n&quot;;
+      &quot;\nExplicit phase controls:\n&quot;;
+      &quot;  --profile-stages  : print OCaml-side stage timings for the default no-parallel\n&quot;;
+      &quot;                      theorem-aligned routes (`--identity`, `--notile`, or default)\n&quot;;
+      &quot;  --identity        : no Pluto phase, just checked extraction/strengthen/codegen\n&quot;;
+      &quot;  --identity-tiled  : native theorem-facing identity schedule plus checked Pluto\n&quot;;
+      &quot;                      tile-only route; can compose with --parallel-current\n&quot;;
+      &quot;  --notile          : stop after affine scheduling validation\n&quot;;
+      &quot;  --iss             : switch to the extracted theorem-aligned ISS+affine+tiling pipeline\n&quot;;
+      &quot;                       (`SBandTilingOpt.opt_with_iss`); identity+ISS requires --tile\n&quot;;
+      &quot;  --second-level-tile : checked nested tiling producer for tiled optimization routes\n&quot;;
+      &quot;                        and tiling witness/validation actions\n&quot;;
+      &quot;  --diamond-tile    : checked diamond midpoint + tiling route; composes with ISS,\n&quot;;
+      &quot;                      second-level tiling, and checked parallel/vector consumers\n&quot;;
+      &quot;  --full-diamond-tile : stronger diamond producer mode over the same checked route;\n&quot;;
+      &quot;                        supported on non-ISS/ISS and ordinary/second-level tiled paths\n&quot;;
+      &quot;  --intratileopt    : let Pluto reorder loops within each tile; validate tiling\n&quot;;
+      &quot;                       and the final affine rescheduling separately; requires tiling\n&quot;;
+      &quot;  --nointratileopt  : preserve the preselected intra-tile loop order (default)\n&quot;;
+      &quot;  --rar             : include Pluto read-after-read relations in the scheduling\n&quot;;
+      &quot;                      objective (disabled by default); valid on native and\n&quot;;
+      &quot;                      Pluto-compatible checked routes\n&quot;;
+      &quot;  --band-tiling-experiment : compatibility alias for the default band-aware\n&quot;;
+      &quot;                             ordinary tiling route; only valid on the default\n&quot;;
+      &quot;                             non-ISS full tiled path\n&quot;;
+      &quot;  --legacy-generic-tiling : deprecated compatibility alias; tiled routes still use\n&quot;;
+      &quot;                            the direct permutable-band checker and otherwise reject\n&quot;;
+      &quot;  --const-unroll    : checked post pass that fully unrolls statically constant\n&quot;;
+      &quot;                       sequential loops; parallel annotations are preserved\n&quot;;
+      &quot;  --parallel        : experimental verified `parallel for` route driven by Pluto `--parallel`\n&quot;;
+      &quot;                       loop hints; supported on both the default and `--iss` pipelines,\n&quot;;
+      &quot;                       with or without `--notile`\n&quot;;
+      &quot;                       In Pluto-compatible mode, --multipar enables checked\n&quot;;
+      &quot;                       schedule coordinates when the validator accepts them\n&quot;;
+      &quot;  --parallel-strict : with `--parallel`, require the certified parallel loop to be the\n&quot;;
+      &quot;                       Pluto-hinted dimension; reject if that dimension is not certifiable\n&quot;;
+      &quot;  --parallel-current d : theorem-aligned verified `parallel for` on padded\n&quot;;
+      &quot;                         schedule coordinate d (legacy option name); supported on identity, affine-only, and full\n&quot;;
+      &quot;                         tiled paths, including their `--iss` variants and the\n&quot;;
+      &quot;                         non-ISS and ISS diamond routes\n&quot;;
+      &quot;  --vector          : experimental checked `vector for` route driven by Pluto\n&quot;;
+      &quot;                       `--prevector` loop hints; only a certified structurally\n&quot;;
+      &quot;                       innermost hinted loop is annotated, otherwise the verified\n&quot;;
+      &quot;                       sequential producer is retained\n&quot;;
+      &quot;  --vector-strict   : compatibility spelling for explicit hint-only vector intent;\n&quot;;
+      &quot;                       the current vector route is already innermost-hint-only\n&quot;;
+      &quot;  --vector-current d : theorem-aligned checked `vector for` on padded schedule\n&quot;;
+      &quot;                         coordinate d (legacy option name), requiring doall and innermost checks\n&quot;;
+      &quot;  --pluto-compat    : parse Pluto-style optimizer flags in this OCaml driver,\n&quot;;
+      &quot;                      reject unsupported Pluto defaults/features with explicit\n&quot;;
+      &quot;                      reasons, then run the matching checked polopt route\n&quot;;
+      &quot;\nExamples:\n&quot;;
+      Printf.sprintf &quot;  %s file.loop                        # default theorem-aligned band-aware affine+tiling path\n&quot; prog;
+      Printf.sprintf &quot;  %s --profile-stages file.loop       # print per-stage timings for the default route\n&quot; prog;
+      Printf.sprintf &quot;  %s --second-level-tile file.loop    # full tiled checked path with second-level tiling enabled\n&quot; prog;
+      Printf.sprintf &quot;  %s --diamond-tile file.loop         # sequential checked diamond midpoint + tiling route\n&quot; prog;
+      Printf.sprintf &quot;  %s --iss --diamond-tile file.loop   # ISS split plus checked diamond route\n&quot; prog;
+      Printf.sprintf &quot;  %s --full-diamond-tile file.loop    # stronger diamond producer mode over the same checked route\n&quot; prog;
+      Printf.sprintf &quot;  %s --intratileopt file.loop         # checked tiling plus intra-tile loop reordering\n&quot; prog;
+      Printf.sprintf &quot;  %s --parallel file.loop             # Pluto-hinted verified parallel path\n&quot; prog;
+      Printf.sprintf &quot;  %s --parallel --parallel-strict file.loop\n&quot; prog;
+      Printf.sprintf &quot;  %s --parallel-current 0 file.loop   # theorem-aligned explicit schedule-coordinate parallel path\n&quot; prog;
+      Printf.sprintf &quot;  %s --vector-current 0 file.loop     # theorem-aligned explicit schedule-coordinate vector path\n&quot; prog;
+      Printf.sprintf &quot;  %s --diamond-tile --parallel-current 0 file.loop\n&quot; prog;
+      Printf.sprintf &quot;  %s --iss --parallel-current 0 file.loop\n&quot; prog;
+      Printf.sprintf &quot;  %s --notile file.loop               # affine-only checked path\n&quot; prog;
+      Printf.sprintf &quot;  %s --identity file.loop             # identity/no-schedule path\n&quot; prog;
+      Printf.sprintf &quot;  %s --identity-tiled --parallel-current 1 file.loop\n&quot; prog;
+      Printf.sprintf &quot;  %s --validate-affine-openscop before.scop mid.scop\n&quot; prog;
+      Printf.sprintf &quot;  %s --validate-tiling-openscop mid.scop after.scop\n&quot; prog;
+      Printf.sprintf &quot;  %s --second-level-tile --validate-tiling-openscop mid.scop after.scop\n&quot; prog;
+      Printf.sprintf &quot;  %s --identity --tile --iss file.loop # checked ISS plus identity-tiling path\n&quot; prog;
+      Printf.sprintf &quot;  %s --pluto-compat --tile --smartfuse --nointratileopt --prevector --nounrolljam --rar --nodiamond-tile --noparallel file.loop\n&quot; prog;
+    ]
+
+let usage_error prog msg =
+  prerr_endline msg;
+  prerr_endline (usage prog);
+  exit 2
+
+let pluto_reject prog msg =
+  ignore prog;
+  prerr_endline (&quot;[pluto-compat] reject: &quot; ^ msg);
+  exit 2
+
+let enable_pluto_compat cfg =
+  cfg.pluto_compat_mode &lt;- true
+
+let add_pluto_note cfg msg =
+  cfg.pluto_compat_notes &lt;- cfg.pluto_compat_notes @ [msg]
+
+let add_pluto_extra_flag cfg flag =
+  cfg.pluto_extra_flags &lt;- cfg.pluto_extra_flags @ [flag]
+
+let add_pluto_control_file prog cfg target path note =
+  enable_pluto_compat cfg;
+  if not (Sys.file_exists path) then
+    pluto_reject prog (Printf.sprintf &quot;%s: no such file&quot; path);
+  cfg.pluto_control_files &lt;- cfg.pluto_control_files @ [(target, path)];
+  add_pluto_note cfg note
+
+let starts_with s prefix =
+  let len_s = String.length s in
+  let len_p = String.length prefix in
+  len_s &gt;= len_p &amp;&amp; String.sub s 0 len_p = prefix
+
+let contains s needle =
+  try
+    ignore (Str.search_forward (Str.regexp_string needle) s 0);
+    true
+  with Not_found -&gt; false
+
+let pluto_executable_for_probe () =
+  match Sys.getenv_opt &quot;POLCERT_PLUTO&quot; with
+  | Some path when String.trim path &lt;&gt; &quot;&quot; -&gt; path
+  | _ -&gt;
+      let container_pluto = &quot;/pluto/tool/pluto&quot; in
+      if Sys.file_exists container_pluto then
+        container_pluto
+      else
+        &quot;pluto&quot;
+
+let pluto_help_cache = ref None
+
+let pluto_help_text () =
+  match !pluto_help_cache with
+  | Some text -&gt; text
+  | None -&gt;
+      let cmd = Filename.quote (pluto_executable_for_probe ()) ^ &quot; --help 2&gt;&amp;1&quot; in
+      let ic = Unix.open_process_in cmd in
+      let buf = Buffer.create 4096 in
+      begin
+        try
+          while true do
+            Buffer.add_string buf (input_line ic);
+            Buffer.add_char buf &#x27;\n&#x27;
+          done
+        with End_of_file -&gt; ()
+      end;
+      ignore (Unix.close_process_in ic);
+      let text = Buffer.contents buf in
+      pluto_help_cache := Some text;
+      text
+
+let pluto_supports_option flag =
+  contains (pluto_help_text ()) flag
+
+let pluto_has_lp_solver_support () =
+  pluto_supports_option &quot;--glpk&quot; || pluto_supports_option &quot;--gurobi&quot;
+
+let pluto_candldep_probe_cache = ref None
+
+let pluto_has_working_candldep () =
+  match !pluto_candldep_probe_cache with
+  | Some ok -&gt; ok
+  | None -&gt;
+      let src = Filename.temp_file &quot;polcert-candldep-probe&quot; &quot;.c&quot; in
+      let out = Filename.temp_file &quot;polcert-candldep-probe-out&quot; &quot;.c&quot; in
+      let oc = open_out src in
+      output_string oc
+        &quot;void candl_probe(int N, int A[]) {\n\
+         int i;\n\
+         #pragma scop\n\
+         for (i = 1; i &lt; N; i++) {\n\
+           A[i] = A[i - 1] + 1;\n\
+         }\n\
+         #pragma endscop\n\
+         }\n&quot;;
+      close_out oc;
+      let cmd =
+        String.concat &quot; &quot;
+          [
+            Filename.quote (pluto_executable_for_probe ());
+            &quot;--candldep --notile --noprevector --nounrolljam --nodiamond-tile --noparallel&quot;;
+            &quot;-o&quot;;
+            Filename.quote out;
+            Filename.quote src;
+            &quot;&gt;/dev/null 2&gt;/dev/null&quot;;
+          ]
+      in
+      let ok = Sys.command cmd = 0 in
+      begin try Sys.remove src with Sys_error _ -&gt; () end;
+      begin try Sys.remove out with Sys_error _ -&gt; () end;
+      pluto_candldep_probe_cache := Some ok;
+      ok
+
+let split_eq_flag s =
+  match String.index_opt s &#x27;=&#x27; with
+  | None -&gt; None
+  | Some idx -&gt;
+      Some
+        (String.sub s 0 idx,
+         String.sub s (idx + 1) (String.length s - idx - 1))
+
+let value_options = [
+  &quot;--cache-size&quot;;
+  &quot;--cloogf&quot;;
+  &quot;--cloogl&quot;;
+  &quot;--codegen-context&quot;;
+  &quot;--coeff-bound&quot;;
+  &quot;--data-element-size&quot;;
+  &quot;--ft&quot;;
+  &quot;--lt&quot;;
+  &quot;--ufactor&quot;;
+  &quot;-o&quot;;
+]
+
+let output_value_options = [
+  &quot;--cloogf&quot;;
+  &quot;--cloogl&quot;;
+  &quot;--codegen-context&quot;;
+  &quot;-o&quot;;
+]
+
+let tile_size_value_options = [
+  &quot;--cache-size&quot;;
+  &quot;--data-element-size&quot;;
+  &quot;--ufactor&quot;;
+]
+
+let tile_size_value_prefixes =
+  List.map (fun flag -&gt; flag ^ &quot;=&quot;) tile_size_value_options
+
+let positive_oracle_value_options = [
+  &quot;--cache-size&quot;;
+  &quot;--coeff-bound&quot;;
+  &quot;--data-element-size&quot;;
+  &quot;--ufactor&quot;;
+]
+
+let nonnegative_oracle_value_options = [
+  &quot;--forceparallel&quot;;
+  &quot;--ft&quot;;
+  &quot;--lt&quot;;
+]
+
+let known_rejection_reason = function
+  | &quot;--pet&quot; -&gt; Some &quot;frontend is polopt&#x27;s verified loop extractor, not Pluto/PET&quot;
+  | &quot;--readscop&quot; -&gt; Some &quot;frontend is polopt&#x27;s verified loop extractor, not Pluto OpenScop input&quot;
+  | &quot;--dumpscop&quot; -&gt; Some &quot;Pluto OpenScop dumps are an oracle-debug interface, not a polopt input/output mode&quot;
+  | &quot;--version&quot; -&gt; Some &quot;CLI version reporting is outside the optimizer-compatibility surface&quot;
+  | &quot;--bee&quot; -&gt; Some &quot;Bee pragmas are Pluto codegen output, while polopt uses its own codegen&quot;
+  | &quot;--cloogsh&quot; -&gt; Some &quot;Cloog codegen tuning is outside the polopt checked route&quot;
+  | &quot;--indent&quot; -&gt; Some &quot;formatting is outside the optimizer-validation route&quot;
+  | &quot;--dump-iss-bridge&quot; -&gt; Some &quot;this flag is not accepted by the current Pluto binary&quot;
+  | &quot;--lbtile&quot; -&gt; Some &quot;this flag appears in stale scripts but is not accepted by the current Pluto binary&quot;
+  | &quot;--multipipe&quot; -&gt; Some &quot;this flag appears in stale scripts but is not accepted by the current Pluto binary&quot;
+  | &quot;--output&quot; -&gt; Some &quot;the current Pluto binary uses -o, not --output&quot;
+  | &quot;--sched&quot; -&gt; Some &quot;this flag appears in stale scripts but is not accepted by the current Pluto binary&quot;
+  | &quot;--variables_not_global&quot; -&gt; Some &quot;this flag appears in stale scripts but is not accepted by the current Pluto binary&quot;
+  | _ -&gt; None
+
+let reject_value_option prog flag value =
+  if List.mem flag output_value_options then
+    pluto_reject prog (flag ^ &quot;: output/codegen shaping is outside the polopt checked route&quot;)
+  else
+    pluto_reject prog (Printf.sprintf &quot;%s: value %S is not exposed through the checked polopt route&quot; flag value)
+
+let parse_positive_int_value prog flag value =
+  try
+    let n = int_of_string value in
+    if n &lt;= 0 then
+      pluto_reject prog (flag ^ &quot;: value must be a positive integer&quot;);
+    value
+  with Failure _ -&gt;
+    pluto_reject prog (flag ^ &quot;: value must be a positive integer&quot;)
+
+let parse_nonnegative_int_value prog flag value =
+  try
+    let n = int_of_string value in
+    if n &lt; 0 then
+      pluto_reject prog (flag ^ &quot;: value must be a non-negative integer&quot;);
+    value
+  with Failure _ -&gt;
+    pluto_reject prog (flag ^ &quot;: value must be a non-negative integer&quot;)
+
+let add_pluto_value_flag prog cfg flag value =
+  let value = parse_positive_int_value prog flag value in
+  add_pluto_extra_flag cfg (flag ^ &quot;=&quot; ^ value);
+  if String.equal flag &quot;--ufactor&quot; then
+    add_pluto_note cfg
+      (flag ^ &quot;=&quot; ^ value
+       ^ &quot; accepted as Pluto&#x27;s unroll/tile factor; it is passed to the scheduler oracle only with --determine-tile-size&quot;)
+  else
+    add_pluto_note cfg (flag ^ &quot;=&quot; ^ value ^ &quot; passed through to Pluto&#x27;s checked scheduler oracle&quot;)
+
+let add_pluto_nonnegative_value_flag prog cfg flag value =
+  let value = parse_nonnegative_int_value prog flag value in
+  add_pluto_extra_flag cfg (flag ^ &quot;=&quot; ^ value);
+  add_pluto_note cfg (flag ^ &quot;=&quot; ^ value ^ &quot; passed through to Pluto&#x27;s checked scheduler oracle&quot;)
+
+let add_lp_solver_flag prog cfg flag =
+  if not (pluto_supports_option flag) then
+    pluto_reject prog (flag ^ &quot;: current Pluto binary does not advertise this LP/DFP option&quot;);
+  if
+    List.mem flag [&quot;--typedfuse&quot;; &quot;--hybridfuse&quot;; &quot;--delayedcut&quot;]
+    &amp;&amp; not (pluto_has_lp_solver_support ())
+  then
+    pluto_reject prog (flag ^ &quot;: requires a GLPK- or Gurobi-enabled Pluto binary&quot;);
+  add_pluto_extra_flag cfg flag;
+  add_pluto_note cfg (flag ^ &quot; passed through to Pluto&#x27;s checked scheduler oracle&quot;)
+
+let pluto_extra_has flag cfg =
+  List.exists (String.equal flag) cfg.pluto_extra_flags
+
+let pluto_extra_has_prefix prefix cfg =
+  List.exists (fun flag -&gt; starts_with flag prefix) cfg.pluto_extra_flags
+
+let pluto_extra_has_any_prefix prefixes cfg =
+  List.exists (fun prefix -&gt; pluto_extra_has_prefix prefix cfg) prefixes
+
+let pluto_ufactor_prefix = &quot;--ufactor=&quot;
+
+let pluto_scheduler_extra_flags cfg =
+  if cfg.pluto_unrolljam_seen
+     &amp;&amp; not (pluto_extra_has &quot;--determine-tile-size&quot; cfg)
+  then
+    List.filter
+      (fun flag -&gt; not (starts_with flag pluto_ufactor_prefix))
+      cfg.pluto_extra_flags
+  else
+    cfg.pluto_extra_flags
+
+let rec find_map f = function
+  | [] -&gt; None
+  | x :: xs -&gt;
+      begin match f x with
+      | None -&gt; find_map f xs
+      | some -&gt; some
+      end
+
+let pluto_extra_value prefix cfg =
+  find_map
+    (fun flag -&gt;
+       if starts_with flag prefix then
+         Some (String.sub flag (String.length prefix) (String.length flag - String.length prefix))
+       else
+         None)
+    cfg.pluto_extra_flags
+
+let pluto_polopt_args cfg =
+  let args = ref [] in
+  if cfg.force_iss then args := !args @ [&quot;--iss&quot;];
+  if cfg.force_identity then
+    begin
+      args := !args @ (if cfg.pluto_tile_seen then [&quot;--identity&quot;; &quot;--tile&quot;] else [&quot;--identity&quot;]);
+      if cfg.force_second_level_tile then args := !args @ [&quot;--second-level-tile&quot;]
+    end
+  else begin
+    if cfg.force_notile then args := !args @ [&quot;--notile&quot;];
+    if cfg.force_second_level_tile then args := !args @ [&quot;--second-level-tile&quot;];
+    if cfg.force_full_diamond_tile then args := !args @ [&quot;--full-diamond-tile&quot;]
+    else if cfg.force_diamond_tile then args := !args @ [&quot;--diamond-tile&quot;]
+  end;
+  if cfg.force_parallel then args := !args @ [&quot;--parallel&quot;];
+  if cfg.force_parallel_strict then args := !args @ [&quot;--parallel-strict&quot;];
+  if cfg.force_vector then args := !args @ [&quot;--vector&quot;];
+  if cfg.force_vector_strict then args := !args @ [&quot;--vector-strict&quot;];
+  if cfg.force_const_unroll then args := !args @ [&quot;--const-unroll&quot;];
+  if cfg.pluto_unrolljam_seen then args := !args @ [&quot;--unrolljam&quot;];
+  !args
+
+let print_pluto_explain cfg =
+  let args = pluto_polopt_args cfg in
+  let scheduler_flags =
+    pluto_scheduler_extra_flags cfg
+    @ if cfg.pluto_intratileopt_seen then [&quot;--intratileopt&quot;] else []
+  in
+  let post_flags =
+    if cfg.pluto_unrolljam_seen
+       &amp;&amp; not (pluto_extra_has &quot;--determine-tile-size&quot; cfg)
+    then
+      List.filter (fun flag -&gt; starts_with flag pluto_ufactor_prefix) cfg.pluto_extra_flags
+    else
+      []
+  in
+  print_endline &quot;[pluto-compat] accepted&quot;;
+  print_endline
+    (&quot;[pluto-compat] polopt args: &quot;
+     ^ (match args with [] -&gt; &quot;&lt;default&gt;&quot; | _ -&gt; String.concat &quot; &quot; args));
+  if scheduler_flags &lt;&gt; [] then
+    print_endline
+      (&quot;[pluto-compat] pluto oracle flags: &quot;
+       ^ String.concat &quot; &quot; scheduler_flags);
+  if post_flags &lt;&gt; [] then
+    print_endline
+      (&quot;[pluto-compat] checked post flags: &quot;
+       ^ String.concat &quot; &quot; post_flags);
+  if cfg.pluto_control_files &lt;&gt; [] then
+    print_endline
+      (&quot;[pluto-compat] pluto control files: &quot;
+       ^ String.concat &quot; &quot;
+           (List.map
+              (fun (target, source) -&gt; target ^ &quot;&lt;=&quot; ^ source)
+              cfg.pluto_control_files));
+  List.iter
+    (fun note -&gt; print_endline (&quot;[pluto-compat] note: &quot; ^ note))
+    cfg.pluto_compat_notes
+
+let validate_pluto_compat prog cfg =
+  if cfg.pluto_compat_mode then begin
+    if cfg.pluto_tile_seen &amp;&amp; cfg.pluto_notile_seen then
+      pluto_reject prog &quot;--tile and --notile are both present; this driver rejects contradictory phase controls&quot;;
+    if cfg.parallel_current_dim &lt;&gt; None then
+      pluto_reject prog &quot;--parallel-current: not a Pluto flag; use native polopt mode for explicit schedule-coordinate parallel certification&quot;;
+    if cfg.vector_current_dim &lt;&gt; None then
+      pluto_reject prog &quot;--vector-current: not a Pluto flag; use native polopt mode for explicit schedule-coordinate vector certification&quot;;
+    if cfg.pluto_parallel_seen &amp;&amp; cfg.pluto_no_parallel_seen then
+      pluto_reject prog &quot;--parallel and --noparallel are both present; this driver rejects contradictory phase controls&quot;;
+    if cfg.pluto_diamond_seen &amp;&amp; cfg.pluto_nodiamond_seen then
+      pluto_reject prog &quot;--diamond-tile/--full-diamond-tile and --nodiamond-tile are both present; this driver rejects contradictory phase controls&quot;;
+    if cfg.pluto_intratileopt_seen &amp;&amp; cfg.pluto_no_intratileopt_seen then
+      pluto_reject prog &quot;--intratileopt and --nointratileopt are both present; this driver rejects contradictory tile-schedule controls&quot;;
+    if cfg.pluto_prevector_seen &amp;&amp; cfg.pluto_no_prevector_seen then
+      pluto_reject prog &quot;--prevector and --noprevector are both present; this driver rejects contradictory vector controls&quot;;
+    if cfg.pluto_unrolljam_seen &amp;&amp; cfg.pluto_no_unrolljam_seen then
+      pluto_reject prog &quot;--unrolljam and --nounrolljam are both present; this driver rejects contradictory unroll controls&quot;;
+    if (pluto_extra_has &quot;--lastwriter&quot; cfg) &amp;&amp; (pluto_extra_has &quot;--nolastwriter&quot; cfg) then
+      pluto_reject prog &quot;--lastwriter and --nolastwriter are both present; this driver rejects contradictory dependence controls&quot;;
+    if cfg.pluto_isldep_seen &amp;&amp; cfg.pluto_candldep_seen then
+      pluto_reject prog &quot;--isldep and --candldep are both present; Pluto accepts only one dependence tester&quot;;
+    if (pluto_extra_has &quot;--scalpriv&quot; cfg) &amp;&amp; not cfg.pluto_candldep_seen then
+      pluto_reject prog &quot;--scalpriv requires --candldep in the checked polopt subset&quot;;
+    if (pluto_extra_has &quot;--lastwriter&quot; cfg) &amp;&amp; cfg.pluto_candldep_seen then
+      pluto_reject prog &quot;--lastwriter is only supported with Pluto&#x27;s ISL dependence tester, not --candldep&quot;;
+    if not (cfg.pluto_intratileopt_seen || cfg.pluto_no_intratileopt_seen) then
+      pluto_reject prog &quot;Pluto enables --intratileopt by default; pass --nointratileopt or --intratileopt explicitly&quot;;
+    if not cfg.pluto_no_prevector_seen then begin
+      cfg.force_vector &lt;- true;
+      add_pluto_note cfg
+        &quot;Pluto --prevector consumes only a mapped innermost hint and checks both doall and structural innermostness&quot;
+    end;
+    if not (cfg.pluto_no_unrolljam_seen || cfg.pluto_unrolljam_seen) then
+      pluto_reject prog &quot;Pluto enables --unrolljam by default; pass --nounrolljam or explicit --unrolljam&quot;;
+    if (not cfg.force_parallel) &amp;&amp; not cfg.pluto_no_parallel_seen then
+      pluto_reject prog &quot;Pluto enables --parallel by default; pass --noparallel or --parallel explicitly&quot;;
+    if cfg.force_vector &amp;&amp; cfg.force_parallel then
+      pluto_reject prog &quot;--prevector/--vector cannot be combined with --parallel in the current checked annotation surface&quot;;
+    if cfg.pluto_unrolljam_seen
+       &amp;&amp; (cfg.force_vector || cfg.vector_current_dim &lt;&gt; None)
+    then
+      pluto_reject prog
+        &quot;--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass&quot;;
+    if cfg.force_const_unroll
+       &amp;&amp; not cfg.pluto_unrolljam_seen
+       &amp;&amp; (cfg.force_vector || cfg.vector_current_dim &lt;&gt; None)
+    then
+      pluto_reject prog
+        &quot;--const-unroll cannot currently be combined with vector execution; parallel output preserves its annotations and unfolds only sequential loops&quot;;
+    if (not cfg.force_diamond_tile) &amp;&amp; not cfg.pluto_nodiamond_seen then
+      pluto_reject prog &quot;Pluto enables --diamond-tile by default; pass --nodiamond-tile or --diamond-tile explicitly&quot;;
+    if cfg.force_identity &amp;&amp; cfg.force_parallel &amp;&amp; not cfg.pluto_tile_seen then
+      pluto_reject prog &quot;--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint&quot;;
+    if cfg.force_identity &amp;&amp; cfg.force_vector &amp;&amp; not cfg.pluto_tile_seen then
+      pluto_reject prog &quot;--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint&quot;;
+    if cfg.force_identity &amp;&amp; cfg.force_second_level_tile &amp;&amp; not cfg.pluto_tile_seen then
+      pluto_reject prog &quot;--second-level-tile with --identity requires --tile&quot;;
+    if cfg.force_identity &amp;&amp; cfg.force_diamond_tile then
+      pluto_reject prog &quot;--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity&quot;;
+    if cfg.force_identity &amp;&amp; cfg.pluto_tile_seen then
+      add_pluto_note cfg
+        (if cfg.force_iss &amp;&amp; cfg.force_second_level_tile then
+           &quot;--identity --tile --iss --second-level-tile uses the checked ISS plus direct permutable-band identity-tiling route&quot;
+         else if cfg.force_second_level_tile then
+           &quot;--identity --tile --second-level-tile uses the checked direct permutable-band identity-tiling route&quot;
+         else if cfg.force_iss then
+           &quot;--identity --tile --iss uses the checked ISS plus identity-tiling route&quot;
+         else
+           &quot;--identity --tile uses the checked identity-tiling route&quot;);
+    if cfg.force_identity &amp;&amp; (not cfg.pluto_notile_seen) &amp;&amp; (not cfg.pluto_tile_seen) then
+      pluto_reject prog &quot;--identity: current Pluto keeps tiling enabled by default; use --identity --notile for polopt&#x27;s no-tiling identity route&quot;;
+    if cfg.force_second_level_tile &amp;&amp; cfg.force_notile then
+      pluto_reject prog &quot;--second-level-tile requires tiling and cannot be combined with --notile&quot;;
+    if cfg.force_second_level_tile &amp;&amp; cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen then
+      pluto_reject prog &quot;--second-level-tile with --identity requires --tile&quot;;
+    let has_cache_or_data_size =
+      pluto_extra_has_prefix &quot;--cache-size=&quot; cfg
+      || pluto_extra_has_prefix &quot;--data-element-size=&quot; cfg
+    in
+    let has_ufactor = pluto_extra_has_prefix pluto_ufactor_prefix cfg in
+    let has_determine_tile_size = pluto_extra_has &quot;--determine-tile-size&quot; cfg in
+    if has_cache_or_data_size &amp;&amp; not has_determine_tile_size then
+      pluto_reject prog &quot;--cache-size/--data-element-size require --determine-tile-size in the checked polopt subset&quot;;
+    if has_ufactor &amp;&amp; not has_determine_tile_size
+       &amp;&amp; not cfg.pluto_unrolljam_seen
+    then
+      pluto_reject prog &quot;--ufactor without --determine-tile-size requires --unrolljam in the checked polopt subset&quot;;
+    if
+      (has_cache_or_data_size || (has_ufactor &amp;&amp; has_determine_tile_size))
+      &amp;&amp; (cfg.force_notile || cfg.force_identity)
+    then
+      pluto_reject prog &quot;--cache-size/--data-element-size/--ufactor require a tiled route when used for Pluto tile-size modeling&quot;;
+    if has_ufactor &amp;&amp; not has_determine_tile_size &amp;&amp; cfg.pluto_unrolljam_seen then
+      add_pluto_note cfg
+        &quot;--ufactor is not passed to Pluto&#x27;s scheduler oracle here; --unrolljam uses proved block unrolling followed by locally validated jam attempts&quot;;
+    if
+      (pluto_extra_has_prefix &quot;--ft=&quot; cfg)
+      &lt;&gt; (pluto_extra_has_prefix &quot;--lt=&quot; cfg)
+    then
+      pluto_reject prog &quot;--ft and --lt must be supplied together in the checked polopt subset&quot;;
+    begin match pluto_extra_value &quot;--ft=&quot; cfg, pluto_extra_value &quot;--lt=&quot; cfg with
+    | Some ft, Some lt -&gt;
+        let ft = int_of_string ft in
+        let lt = int_of_string lt in
+        if ft &gt; lt then
+          pluto_reject prog &quot;--ft must be less than or equal to --lt&quot;;
+        if cfg.force_notile || cfg.force_identity then
+          pluto_reject prog &quot;--ft/--lt require a tiled route in the checked polopt subset&quot;
+    | _ -&gt; ()
+    end;
+    if cfg.force_diamond_tile then begin
+      if cfg.force_notile then
+        pluto_reject prog &quot;--diamond-tile requires tiling and cannot be combined with --notile&quot;;
+      if cfg.force_identity then
+        pluto_reject prog &quot;--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity&quot;;
+      ()
+    end
+  end
+
+let parse_args () : config =
+  let cfg : config =
+    {
+      dump_input = false;
+      dump_extracted_openscop = false;
+      dump_scheduled_openscop = false;
+      debug_scheduler = false;
+      extract_only = false;
+      profile_stages = false;
+      force_identity = false;
+      force_notile = false;
+      force_iss = false;
+      force_second_level_tile = false;
+      force_diamond_tile = false;
+      force_full_diamond_tile = false;
+      force_band_tiling_experiment = false;
+      force_legacy_generic_tiling = false;
+      force_const_unroll = false;
+      force_parallel = false;
+      force_parallel_strict = false;
+      force_multipar = false;
+      parallel_current_dim = None;
+      force_vector = false;
+      force_vector_strict = false;
+      vector_current_dim = None;
+      pluto_compat_mode = false;
+      pluto_compat_explain = false;
+      pluto_compat_dry_run = false;
+      pluto_tile_seen = false;
+      pluto_notile_seen = false;
+      pluto_diamond_seen = false;
+      pluto_nodiamond_seen = false;
+      pluto_parallel_seen = false;
+      pluto_no_parallel_seen = false;
+      pluto_isldep_seen = false;
+      pluto_candldep_seen = false;
+      pluto_intratileopt_seen = false;
+      pluto_no_intratileopt_seen = false;
+      pluto_prevector_seen = false;
+      pluto_no_prevector_seen = false;
+      pluto_unrolljam_seen = false;
+      pluto_no_unrolljam_seen = false;
+      pluto_extra_flags = [];
+      pluto_control_files = [];
+      pluto_compat_notes = [];
+      validate_affine_openscop = None;
+      extract_tiling_witness_openscop = None;
+      validate_tiling_openscop = None;
+      validate_iss_debug_dumps = None;
+      validate_iss_bridge = None;
+      validate_iss_pluto_suite = false;
+      validate_iss_pluto_live_suite = false;
+      input = None;
+    }
+  in
+  let invalid_non_negative_int prog =
+    usage_error prog &quot;option --parallel-current expects a non-negative integer&quot;
+  in
+  let invalid_vector_non_negative_int prog =
+    usage_error prog &quot;option --vector-current expects a non-negative integer&quot;
+  in
+  let rec go i =
+    if i &gt;= Array.length Sys.argv then cfg
+    else begin
+      match Sys.argv.(i) with
+      | &quot;--pluto-compat&quot; -&gt; enable_pluto_compat cfg; go (i + 1)
+      | &quot;--explain&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_compat_explain &lt;- true;
+          go (i + 1)
+      | &quot;--dry-run&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_compat_dry_run &lt;- true;
+          go (i + 1)
+      | &quot;--dump-input&quot; -&gt; cfg.dump_input &lt;- true; go (i + 1)
+      | &quot;--dump-extracted-openscop&quot; -&gt; cfg.dump_extracted_openscop &lt;- true; go (i + 1)
+      | &quot;--dump-scheduled-openscop&quot; -&gt; cfg.dump_scheduled_openscop &lt;- true; go (i + 1)
+      | &quot;--debug-scheduler&quot; -&gt; cfg.debug_scheduler &lt;- true; go (i + 1)
+      | &quot;--extract-only&quot; -&gt; cfg.extract_only &lt;- true; go (i + 1)
+      | &quot;--profile-stages&quot; -&gt; cfg.profile_stages &lt;- true; go (i + 1)
+      | &quot;--identity&quot; -&gt; cfg.force_identity &lt;- true; go (i + 1)
+      | &quot;--identity-tiled&quot; -&gt;
+          cfg.force_identity &lt;- true;
+          cfg.pluto_tile_seen &lt;- true;
+          cfg.force_notile &lt;- false;
+          go (i + 1)
+      | &quot;--tile&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_tile_seen &lt;- true;
+          cfg.force_notile &lt;- false;
+          go (i + 1)
+      | &quot;--notile&quot; -&gt;
+          cfg.force_notile &lt;- true;
+          cfg.pluto_notile_seen &lt;- true;
+          go (i + 1)
+      | &quot;--affine-only&quot; -&gt; cfg.force_notile &lt;- true; go (i + 1)
+      | &quot;--iss&quot; -&gt; cfg.force_iss &lt;- true; go (i + 1)
+      | &quot;--second-level-tile&quot; -&gt; cfg.force_second_level_tile &lt;- true; go (i + 1)
+      | &quot;--diamond-tile&quot; -&gt;
+          cfg.force_diamond_tile &lt;- true;
+          cfg.pluto_diamond_seen &lt;- true;
+          go (i + 1)
+      | &quot;--nodiamond-tile&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.force_diamond_tile &lt;- false;
+          cfg.force_full_diamond_tile &lt;- false;
+          cfg.pluto_nodiamond_seen &lt;- true;
+          go (i + 1)
+      | &quot;--full-diamond-tile&quot; -&gt;
+          cfg.force_diamond_tile &lt;- true;
+          cfg.force_full_diamond_tile &lt;- true;
+          cfg.pluto_diamond_seen &lt;- true;
+          go (i + 1)
+      | &quot;--band-tiling-experiment&quot; -&gt; cfg.force_band_tiling_experiment &lt;- true; go (i + 1)
+      | &quot;--legacy-generic-tiling&quot; -&gt; cfg.force_legacy_generic_tiling &lt;- true; go (i + 1)
+      | &quot;--const-unroll&quot; -&gt;
+          cfg.force_const_unroll &lt;- true;
+          go (i + 1)
+      | &quot;--parallel&quot; | &quot;--parallelize&quot; -&gt;
+          cfg.force_parallel &lt;- true;
+          cfg.pluto_parallel_seen &lt;- true;
+          go (i + 1)
+      | &quot;--multipar&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.force_parallel &lt;- true;
+          cfg.force_multipar &lt;- true;
+          cfg.pluto_parallel_seen &lt;- true;
+          add_pluto_extra_flag cfg &quot;--multipar&quot;;
+          add_pluto_note cfg &quot;--multipar enables checked parallel dimensions when available&quot;;
+          go (i + 1)
+      | &quot;--noparallel&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.force_parallel &lt;- false;
+          cfg.pluto_no_parallel_seen &lt;- true;
+          go (i + 1)
+      | &quot;--innerpar&quot; -&gt;
+          enable_pluto_compat cfg;
+          add_pluto_extra_flag cfg &quot;--innerpar&quot;;
+          add_pluto_note cfg &quot;--innerpar passed to Pluto&#x27;s checked tile-schedule oracle; the resulting parallel hint is independently certified&quot;;
+          go (i + 1)
+      | &quot;--parallel-strict&quot; -&gt; cfg.force_parallel_strict &lt;- true; go (i + 1)
+      | &quot;--vector&quot; | &quot;--vectorize&quot; -&gt;
+          cfg.force_vector &lt;- true;
+          cfg.pluto_prevector_seen &lt;- true;
+          go (i + 1)
+      | &quot;--vector-strict&quot; -&gt; cfg.force_vector_strict &lt;- true; go (i + 1)
+      | &quot;--tile-sizes-file&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) &quot;--tile-sizes-file requires a file path&quot;;
+          add_pluto_control_file Sys.argv.(0) cfg &quot;tile.sizes&quot; Sys.argv.(i + 1)
+            &quot;--tile-sizes-file installs an explicit Pluto tile.sizes file for the checked oracle run&quot;;
+          go (i + 2)
+      | &quot;--fusion-structure&quot; | &quot;--fst-file&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (Sys.argv.(i) ^ &quot; requires a file path&quot;);
+          add_pluto_control_file Sys.argv.(0) cfg &quot;.fst&quot; Sys.argv.(i + 1)
+            (Sys.argv.(i) ^ &quot; installs an explicit Pluto .fst file for the checked oracle run&quot;);
+          go (i + 2)
+      | &quot;--precut&quot; | &quot;--precut-file&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (Sys.argv.(i) ^ &quot; requires a file path&quot;);
+          add_pluto_control_file Sys.argv.(0) cfg &quot;.precut&quot; Sys.argv.(i + 1)
+            (Sys.argv.(i) ^ &quot; installs an explicit Pluto .precut file for the checked oracle run&quot;);
+          go (i + 2)
+      | s when starts_with s &quot;--tile-sizes-file=&quot; -&gt;
+          begin match split_eq_flag s with
+          | Some (_, path) -&gt;
+              add_pluto_control_file Sys.argv.(0) cfg &quot;tile.sizes&quot; path
+                &quot;--tile-sizes-file installs an explicit Pluto tile.sizes file for the checked oracle run&quot;;
+              go (i + 1)
+          | None -&gt; assert false
+          end
+      | s when starts_with s &quot;--fusion-structure=&quot; || starts_with s &quot;--fst-file=&quot; -&gt;
+          begin match split_eq_flag s with
+          | Some (flag, path) -&gt;
+              add_pluto_control_file Sys.argv.(0) cfg &quot;.fst&quot; path
+                (flag ^ &quot; installs an explicit Pluto .fst file for the checked oracle run&quot;);
+              go (i + 1)
+          | None -&gt; assert false
+          end
+      | s when starts_with s &quot;--precut=&quot; || starts_with s &quot;--precut-file=&quot; -&gt;
+          begin match split_eq_flag s with
+          | Some (flag, path) -&gt;
+              add_pluto_control_file Sys.argv.(0) cfg &quot;.precut&quot; path
+                (flag ^ &quot; installs an explicit Pluto .precut file for the checked oracle run&quot;);
+              go (i + 1)
+          | None -&gt; assert false
+          end
+      | &quot;--nointratileopt&quot; -&gt;
+          cfg.pluto_no_intratileopt_seen &lt;- true;
+          add_pluto_note cfg &quot;--nointratileopt selects the stable intra-tile loop order&quot;;
+          go (i + 1)
+      | &quot;--intratileopt&quot; -&gt;
+          cfg.pluto_intratileopt_seen &lt;- true;
+          add_pluto_note cfg &quot;--intratileopt selects checked intra-tile loop reordering&quot;;
+          go (i + 1)
+      | &quot;--noprevector&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_no_prevector_seen &lt;- true;
+          add_pluto_note cfg &quot;--noprevector accepted; no checked vector annotation is requested&quot;;
+          go (i + 1)
+      | &quot;--prevector&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_prevector_seen &lt;- true;
+          cfg.force_vector &lt;- true;
+          add_pluto_note cfg &quot;--prevector selects the innermost-hint-only checked vector annotation route&quot;;
+          go (i + 1)
+      | &quot;--nounrolljam&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_no_unrolljam_seen &lt;- true;
+          add_pluto_note cfg &quot;--nounrolljam accepted; no checked unroll post pass is requested&quot;;
+          go (i + 1)
+      | &quot;--unrolljam&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_unrolljam_seen &lt;- true;
+          add_pluto_note cfg &quot;--unrolljam selects checked block unrolling, local jam validation, and cleanup; parallel routes obtain a fresh annotation certificate afterward&quot;;
+          go (i + 1)
+      | ((&quot;--smartfuse&quot; | &quot;--nofuse&quot; | &quot;--maxfuse&quot; | &quot;--nodepbound&quot;
+         | &quot;--per-cc-obj&quot; | &quot;--flic&quot; | &quot;--fast-lin-ind-check&quot;
+         | &quot;--determine-tile-size&quot; | &quot;--lastwriter&quot; | &quot;--nolastwriter&quot;
+         | &quot;--isldepaccesswise&quot; | &quot;--isldepstmtwise&quot; | &quot;--isldepcoalesce&quot;
+         | &quot;--pipsolve&quot;) as flag) -&gt;
+          enable_pluto_compat cfg;
+          add_pluto_extra_flag cfg flag;
+          add_pluto_note cfg (flag ^ &quot; passed through to Pluto&#x27;s checked scheduler oracle&quot;);
+          go (i + 1)
+      | &quot;--candldep&quot; -&gt;
+          enable_pluto_compat cfg;
+          if not (pluto_has_working_candldep ()) then
+            pluto_reject Sys.argv.(0) &quot;--candldep: selected Pluto Candl importer aborts on a dependent probe; requires the Candl dependence-type import fix&quot;;
+          cfg.pluto_candldep_seen &lt;- true;
+          add_pluto_extra_flag cfg &quot;--candldep&quot;;
+          add_pluto_note cfg &quot;--candldep passed through to Pluto&#x27;s checked scheduler oracle&quot;;
+          go (i + 1)
+      | &quot;--scalpriv&quot; -&gt;
+          enable_pluto_compat cfg;
+          if not (pluto_has_working_candldep ()) then
+            pluto_reject Sys.argv.(0) &quot;--scalpriv: selected Pluto Candl importer aborts on a dependent probe; requires the Candl dependence-type import fix&quot;;
+          add_pluto_extra_flag cfg &quot;--scalpriv&quot;;
+          add_pluto_note cfg &quot;--scalpriv passed through only with --candldep; PolOpt still validates the output schedule under the original scalar storage semantics&quot;;
+          go (i + 1)
+      | ((&quot;--glpk&quot; | &quot;--gurobi&quot; | &quot;--lp&quot; | &quot;--dfp&quot; | &quot;--ilp&quot; | &quot;--lpcolor&quot;
+         | &quot;--clusterscc&quot; | &quot;--typedfuse&quot; | &quot;--hybridfuse&quot; | &quot;--delayedcut&quot;) as flag) -&gt;
+          enable_pluto_compat cfg;
+          add_lp_solver_flag Sys.argv.(0) cfg flag;
+          go (i + 1)
+      | &quot;--isldep&quot; -&gt;
+          enable_pluto_compat cfg;
+          cfg.pluto_isldep_seen &lt;- true;
+          add_pluto_note cfg &quot;--isldep accepted as Pluto&#x27;s default dependence tester for the checked polopt route&quot;;
+          go (i + 1)
+      | &quot;--rar&quot; -&gt;
+          add_pluto_extra_flag cfg &quot;--rar&quot;;
+          add_pluto_note cfg &quot;--rar passed through to Pluto&#x27;s checked scheduler oracle&quot;;
+          go (i + 1)
+      | ((&quot;--debug&quot; | &quot;--moredebug&quot; | &quot;--silent&quot;) as flag) -&gt;
+          enable_pluto_compat cfg;
+          add_pluto_note cfg (flag ^ &quot; accepted as a logging-only no-op for the checked polopt route&quot;);
+          go (i + 1)
+      | &quot;--nocloogbacktrack&quot; -&gt;
+          enable_pluto_compat cfg;
+          add_pluto_note cfg &quot;--nocloogbacktrack accepted as a no-op because PolOpt does not use Pluto&#x27;s CLooG code generator&quot;;
+          go (i + 1)
+      | &quot;--islsolve&quot; -&gt;
+          enable_pluto_compat cfg;
+          add_pluto_note cfg &quot;--islsolve accepted as Pluto&#x27;s default scheduler solver; --pipsolve or an LP solver still overrides it as in Pluto&quot;;
+          go (i + 1)
+      | &quot;--unroll&quot; -&gt;
+          pluto_reject Sys.argv.(0) &quot;--unroll: use explicit --unrolljam for polopt&#x27;s checked constant-bound unroll subset&quot;
+      | &quot;--parallel-current&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then invalid_non_negative_int Sys.argv.(0);
+          let dim =
+            try int_of_string Sys.argv.(i + 1)
+            with Failure _ -&gt; invalid_non_negative_int Sys.argv.(0)
+          in
+          if dim &lt; 0 then invalid_non_negative_int Sys.argv.(0);
+          cfg.parallel_current_dim &lt;- Some dim;
+          go (i + 2)
+      | &quot;--vector-current&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then invalid_vector_non_negative_int Sys.argv.(0);
+          let dim =
+            try int_of_string Sys.argv.(i + 1)
+            with Failure _ -&gt; invalid_vector_non_negative_int Sys.argv.(0)
+          in
+          if dim &lt; 0 then invalid_vector_non_negative_int Sys.argv.(0);
+          cfg.vector_current_dim &lt;- Some dim;
+          go (i + 2)
+      | &quot;--help&quot; | &quot;-h&quot; -&gt;
+          print_endline (usage Sys.argv.(0));
+          exit 0
+      | &quot;--validate-affine-openscop&quot; -&gt;
+          if i + 2 &gt;= Array.length Sys.argv then
+            usage_error Sys.argv.(0) &quot;option --validate-affine-openscop expects two file paths&quot;;
+          cfg.validate_affine_openscop &lt;- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
+          go (i + 3)
+      | &quot;--extract-tiling-witness-openscop&quot; -&gt;
+          if i + 2 &gt;= Array.length Sys.argv then
+            usage_error Sys.argv.(0) &quot;option --extract-tiling-witness-openscop expects two file paths&quot;;
+          cfg.extract_tiling_witness_openscop &lt;- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
+          go (i + 3)
+      | &quot;--validate-tiling-openscop&quot; -&gt;
+          if i + 2 &gt;= Array.length Sys.argv then
+            usage_error Sys.argv.(0) &quot;option --validate-tiling-openscop expects two file paths&quot;;
+          cfg.validate_tiling_openscop &lt;- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
+          go (i + 3)
+      | &quot;--validate-iss-debug-dumps&quot; -&gt;
+          if i + 2 &gt;= Array.length Sys.argv then
+            usage_error Sys.argv.(0) &quot;option --validate-iss-debug-dumps expects two file paths&quot;;
+          cfg.validate_iss_debug_dumps &lt;- Some (Sys.argv.(i + 1), Sys.argv.(i + 2));
+          go (i + 3)
+      | &quot;--validate-iss-bridge&quot; -&gt;
+          if i + 1 &gt;= Array.length Sys.argv then
+            usage_error Sys.argv.(0) &quot;option --validate-iss-bridge expects one file path&quot;;
+          cfg.validate_iss_bridge &lt;- Some Sys.argv.(i + 1);
+          go (i + 2)
+      | &quot;--validate-iss-pluto-suite&quot; -&gt;
+          cfg.validate_iss_pluto_suite &lt;- true;
+          go (i + 1)
+      | &quot;--validate-iss-pluto-live-suite&quot; -&gt;
+          cfg.validate_iss_pluto_live_suite &lt;- true;
+          go (i + 1)
+      | s when List.mem s positive_oracle_value_options -&gt;
+          enable_pluto_compat cfg;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (s ^ &quot; requires a value&quot;);
+          add_pluto_value_flag Sys.argv.(0) cfg s Sys.argv.(i + 1);
+          go (i + 2)
+      | s when
+          begin match split_eq_flag s with
+          | Some (flag, _) -&gt; List.mem flag positive_oracle_value_options
+          | None -&gt; false
+          end -&gt;
+          enable_pluto_compat cfg;
+          begin match split_eq_flag s with
+          | Some (flag, value) -&gt;
+              add_pluto_value_flag Sys.argv.(0) cfg flag value;
+              go (i + 1)
+          | None -&gt; assert false
+          end
+      | s when List.mem s nonnegative_oracle_value_options -&gt;
+          enable_pluto_compat cfg;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (s ^ &quot; requires a value&quot;);
+          add_pluto_nonnegative_value_flag Sys.argv.(0) cfg s Sys.argv.(i + 1);
+          go (i + 2)
+      | s when
+          begin match split_eq_flag s with
+          | Some (flag, _) -&gt; List.mem flag nonnegative_oracle_value_options
+          | None -&gt; false
+          end -&gt;
+          enable_pluto_compat cfg;
+          begin match split_eq_flag s with
+          | Some (flag, value) -&gt;
+              add_pluto_nonnegative_value_flag Sys.argv.(0) cfg flag value;
+              go (i + 1)
+          | None -&gt; assert false
+          end
+      | s when List.mem s value_options -&gt;
+          enable_pluto_compat cfg;
+          if i + 1 &gt;= Array.length Sys.argv then
+            pluto_reject Sys.argv.(0) (s ^ &quot; requires a value&quot;);
+          reject_value_option Sys.argv.(0) s Sys.argv.(i + 1)
+      | s when
+          begin match split_eq_flag s with
+          | Some (flag, _) -&gt; List.mem flag value_options
+          | None -&gt; false
+          end -&gt;
+          enable_pluto_compat cfg;
+          begin match split_eq_flag s with
+          | Some (flag, value) -&gt; reject_value_option Sys.argv.(0) flag value
+          | None -&gt; assert false
+          end
+      | s when
+          begin match known_rejection_reason s with
+          | Some reason -&gt; pluto_reject Sys.argv.(0) (s ^ &quot;: &quot; ^ reason)
+          | None -&gt; false
+          end -&gt;
+          assert false
+      | s when starts_with s &quot;--&quot; -&gt;
+          if cfg.pluto_compat_mode then
+            pluto_reject Sys.argv.(0) (s ^ &quot;: not in the current Pluto-compatible checked subset&quot;)
+          else
+            usage_error Sys.argv.(0) (&quot;unknown option: &quot; ^ s)
+      | s when String.length s &gt; 0 &amp;&amp; s.[0] = &#x27;-&#x27; -&gt;
+          usage_error Sys.argv.(0) (&quot;unknown option: &quot; ^ s)
+      | file -&gt;
+          begin match cfg.input with
+          | None -&gt; cfg.input &lt;- Some file; go (i + 1)
+          | Some _ -&gt; usage_error Sys.argv.(0) &quot;only one input file is supported&quot;
+          end
+    end
+  in
+  go 1
+
+let validate_flag_model prog (cfg : config) =
+  validate_pluto_compat prog cfg;
+  match SLoopRoute.normalize cfg with
+  | Ok selection -&gt;
+      if cfg.pluto_compat_mode &amp;&amp; cfg.pluto_compat_explain then
+        print_pluto_explain cfg;
+      selection
+  | Error msg -&gt; usage_error prog msg
+
+let configure_scheduler_modes selection (cfg : config) =
+  let schedule_mode, tiling_mode, diamond_mode, intra_tile_mode =
+    match selection with
+    | SLoopRoute.Standalone
+        (SLoopRoute.ExtractTilingWitness { second_level; _ }
+        | SLoopRoute.ValidateTiling { second_level; _ }) -&gt;
+        ( Scheduler.AffineSchedule,
+          (if second_level then Scheduler.SecondLevelTiling else Scheduler.OrdinaryTiling),
+          Scheduler.NoDiamondTiling,
+          Scheduler.DisableIntraTile )
+    | SLoopRoute.Standalone _ -&gt;
+        ( Scheduler.AffineSchedule,
+          Scheduler.OrdinaryTiling,
+          Scheduler.NoDiamondTiling,
+          Scheduler.DisableIntraTile )
+    | SLoopRoute.Optimize route -&gt;
+        let schedule_mode =
+          match route.SLoopRoute.schedule_family with
+          | SLoopRoute.AffineSchedule -&gt; Scheduler.AffineSchedule
+          | SLoopRoute.IdentitySchedule -&gt; Scheduler.IdentitySchedule
+        in
+        let tiling_mode =
+          match route.SLoopRoute.tiling_family with
+          | SLoopRoute.Tiled { levels = SLoopRoute.TwoLevels; _ } -&gt;
+              Scheduler.SecondLevelTiling
+          | SLoopRoute.NoTiling
+          | SLoopRoute.Tiled { levels = SLoopRoute.OneLevel; _ } -&gt;
+              Scheduler.OrdinaryTiling
+        in
+        let diamond_mode =
+          match route.SLoopRoute.tiling_family with
+          | SLoopRoute.Tiled {
+              shape = SLoopRoute.Diamond SLoopRoute.FullDimensionalStart; _
+            } -&gt; Scheduler.DiamondFullDimensionalStart
+          | SLoopRoute.Tiled {
+              shape = SLoopRoute.Diamond SLoopRoute.OneDimensionalStart; _
+            } -&gt; Scheduler.DiamondOneDimensionalStart
+          | SLoopRoute.NoTiling
+          | SLoopRoute.Tiled { shape = SLoopRoute.Rectangular; _ } -&gt;
+              Scheduler.NoDiamondTiling
+        in
+        let intra_tile_mode =
+          match route.SLoopRoute.intra_tile_policy with
+          | SLoopRoute.IntraTileDisabled -&gt; Scheduler.DisableIntraTile
+          | SLoopRoute.IntraTileEnabled -&gt; Scheduler.EnableIntraTile
+        in
+        (schedule_mode, tiling_mode, diamond_mode, intra_tile_mode)
+  in
+  Scheduler.set_schedule_mode schedule_mode;
+  Scheduler.set_tiling_mode
+    tiling_mode;
+  Scheduler.set_diamond_mode diamond_mode;
+  Scheduler.set_intra_tile_mode intra_tile_mode;
+  Scheduler.set_pluto_extra_flags (pluto_scheduler_extra_flags cfg);
+  Scheduler.set_pluto_control_files cfg.pluto_control_files
 </pre>
 </main>
 </body>

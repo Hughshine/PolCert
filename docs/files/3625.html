@@ -3,25 +3,370 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mxv-seq.loop</title>
+  <title>SLoopRoute.ml</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/mxv-seq.loop</code></h1>
-  <pre>context(N);
+  <h1><code>source/syntax/SLoopRoute.ml</code></h1>
+  <pre>type schedule_family =
+  | IdentitySchedule
+  | AffineSchedule
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    y[i] = (y[i] + (a[i][j] * x[j]));
-  }
+type structural_extension =
+  | Plain
+  | ISS
+
+type diamond_concurrent_start =
+  | OneDimensionalStart
+  | FullDimensionalStart
+
+type tiling_shape =
+  | Rectangular
+  | Diamond of diamond_concurrent_start
+
+type tiling_levels =
+  | OneLevel
+  | TwoLevels
+
+type tiling_family =
+  | NoTiling
+  | Tiled of {
+      shape : tiling_shape;
+      levels : tiling_levels;
+      explicitly_requested : bool;
+    }
+
+type execution_family =
+  | Sequential
+  | PlutoParallelHint of {
+      strict : bool;
+      multiple : bool;
+    }
+  | ParallelCurrent of int
+  | PlutoVectorHint of { strict : bool }
+  | VectorCurrent of int
+
+type intra_tile_policy =
+  | IntraTileDisabled
+  | IntraTileEnabled
+
+type optimize_route = {
+  schedule_family : schedule_family;
+  structural_extension : structural_extension;
+  tiling_family : tiling_family;
+  execution_family : execution_family;
+  intra_tile_policy : intra_tile_policy;
+  extract_only : bool;
+  profile_stages : bool;
 }
-for i in range(0, N) {
-  for j in range(0, N) {
-    z[i] = (z[i] + (b[i][j] * y[j]));
+
+type standalone_action =
+  | ValidateAffine of string * string
+  | ExtractTilingWitness of {
+      second_level : bool;
+      before_file : string;
+      after_file : string;
+    }
+  | ValidateTiling of {
+      second_level : bool;
+      before_file : string;
+      after_file : string;
+    }
+  | ValidateIssDebugDumps of string * string
+  | ValidateIssBridge of string
+  | ValidateIssPlutoSuite
+  | ValidateIssPlutoLiveSuite
+
+type selection =
+  | Optimize of optimize_route
+  | Standalone of standalone_action
+
+let has_parallel_current (cfg : SLoopConfig.config) =
+  Option.is_some cfg.parallel_current_dim
+
+let has_vector_current (cfg : SLoopConfig.config) =
+  Option.is_some cfg.vector_current_dim
+
+let has_parallel_or_vector_consumer (cfg : SLoopConfig.config) =
+  cfg.force_parallel
+  || cfg.force_vector
+  || has_parallel_current cfg
+  || has_vector_current cfg
+
+let has_tiling route =
+  match route.tiling_family with
+  | NoTiling -&gt; false
+  | Tiled _ -&gt; true
+
+let identity_schedule route =
+  route.schedule_family = IdentitySchedule
+
+let iss_enabled route =
+  route.structural_extension = ISS
+
+let tiling_explicitly_requested route =
+  match route.tiling_family with
+  | NoTiling -&gt; false
+  | Tiled { explicitly_requested; _ } -&gt; explicitly_requested
+
+let incompatible_standalone_route_flag_selected (cfg : SLoopConfig.config) =
+  cfg.force_identity
+  || cfg.force_notile
+  || cfg.force_iss
+  || cfg.force_parallel
+  || cfg.force_vector
+  || cfg.force_diamond_tile
+
+let standalone_actions (cfg : SLoopConfig.config) =
+  List.filter_map
+    (fun x -&gt; x)
+    [
+      Option.map
+        (fun (before_file, after_file) -&gt; ValidateAffine (before_file, after_file))
+        cfg.validate_affine_openscop;
+      Option.map
+        (fun (before_file, after_file) -&gt;
+          ExtractTilingWitness
+            {
+              second_level = cfg.force_second_level_tile;
+              before_file;
+              after_file;
+            })
+        cfg.extract_tiling_witness_openscop;
+      Option.map
+        (fun (before_file, after_file) -&gt;
+          ValidateTiling
+            {
+              second_level = cfg.force_second_level_tile;
+              before_file;
+              after_file;
+            })
+        cfg.validate_tiling_openscop;
+      Option.map
+        (fun (before_file, after_file) -&gt;
+          ValidateIssDebugDumps (before_file, after_file))
+        cfg.validate_iss_debug_dumps;
+      Option.map
+        (fun bridge_file -&gt; ValidateIssBridge bridge_file)
+        cfg.validate_iss_bridge;
+      (if cfg.validate_iss_pluto_suite then Some ValidateIssPlutoSuite else None);
+      (if cfg.validate_iss_pluto_live_suite then Some ValidateIssPlutoLiveSuite else None);
+    ]
+
+let optimize_route_of_config (cfg : SLoopConfig.config) =
+  let schedule_family =
+    if cfg.force_identity then IdentitySchedule else AffineSchedule
+  in
+  let structural_extension =
+    if cfg.force_iss then ISS else Plain
+  in
+  let tiling_family =
+    if cfg.force_notile || (cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen) then
+      NoTiling
+    else
+      Tiled {
+        shape =
+          (if cfg.force_diamond_tile then
+             Diamond
+               (if cfg.force_full_diamond_tile
+                then FullDimensionalStart
+                else OneDimensionalStart)
+           else
+             Rectangular);
+        levels =
+          (if cfg.force_second_level_tile then TwoLevels else OneLevel);
+        explicitly_requested =
+          cfg.pluto_tile_seen
+          || cfg.force_second_level_tile
+          || cfg.force_diamond_tile;
+      }
+  in
+  let execution_family =
+    match cfg.vector_current_dim, cfg.parallel_current_dim with
+    | Some dim, None -&gt; VectorCurrent dim
+    | None, Some dim -&gt; ParallelCurrent dim
+    | None, None -&gt;
+        if cfg.force_vector then
+          PlutoVectorHint { strict = cfg.force_vector_strict }
+        else if cfg.force_parallel then
+          PlutoParallelHint {
+            strict = cfg.force_parallel_strict;
+            multiple = cfg.force_multipar;
+          }
+        else
+          Sequential
+    | Some _, Some _ -&gt;
+        (* [normalize] rejects this case before the route can be used. *)
+        Sequential
+  in
+  let intra_tile_policy =
+    if cfg.pluto_intratileopt_seen then IntraTileEnabled
+    else IntraTileDisabled
+  in
+  {
+    schedule_family;
+    structural_extension;
+    tiling_family;
+    execution_family;
+    intra_tile_policy;
+    extract_only = cfg.extract_only;
+    profile_stages = cfg.profile_stages;
   }
-}
+
+let normalize (cfg : SLoopConfig.config) =
+  if cfg.pluto_tile_seen &amp;&amp; cfg.pluto_notile_seen then
+    Error &quot;--tile and --notile select contradictory tiling routes&quot;
+  else if cfg.pluto_diamond_seen &amp;&amp; cfg.pluto_nodiamond_seen then
+    Error &quot;--diamond-tile and --nodiamond-tile select contradictory tiling shapes&quot;
+  else if cfg.pluto_parallel_seen &amp;&amp; cfg.pluto_no_parallel_seen then
+    Error &quot;--parallel and --noparallel select contradictory execution modes&quot;
+  else if cfg.pluto_intratileopt_seen &amp;&amp; cfg.pluto_no_intratileopt_seen then
+    Error &quot;--intratileopt and --nointratileopt select contradictory intra-tile policies&quot;
+  else if cfg.pluto_prevector_seen &amp;&amp; cfg.pluto_no_prevector_seen then
+    Error &quot;--prevector and --noprevector select contradictory vector modes&quot;
+  else if cfg.pluto_unrolljam_seen &amp;&amp; cfg.pluto_no_unrolljam_seen then
+    Error &quot;--unrolljam and --nounrolljam select contradictory post passes&quot;
+  else
+  match standalone_actions cfg with
+  | _ :: _ :: _ -&gt;
+      Error &quot;only one experimental validation action may be selected&quot;
+  | [action] -&gt;
+      if incompatible_standalone_route_flag_selected cfg then
+        Error
+          &quot;optimization-route flags (--identity, --notile, --iss, --diamond-tile, --parallel, and --vector) cannot be combined with standalone validation actions&quot;
+      else if cfg.force_parallel_strict then
+        Error &quot;--parallel-strict cannot be combined with standalone validation actions&quot;
+      else if has_parallel_current cfg then
+        Error &quot;--parallel-current cannot be combined with standalone validation actions&quot;
+      else if cfg.force_vector_strict then
+        Error &quot;--vector-strict cannot be combined with standalone validation actions&quot;
+      else if has_vector_current cfg then
+        Error &quot;--vector-current cannot be combined with standalone validation actions&quot;
+      else if cfg.force_band_tiling_experiment then
+        Error
+          &quot;--band-tiling-experiment only applies to the default non-ISS full tiled optimization route&quot;
+      else if cfg.force_legacy_generic_tiling then
+        Error
+          &quot;--legacy-generic-tiling only applies to the default non-ISS full tiled optimization route&quot;
+      else if cfg.force_const_unroll || cfg.pluto_unrolljam_seen then
+        Error
+          &quot;--const-unroll/--unrolljam cannot be combined with standalone validation actions&quot;
+      else if cfg.pluto_intratileopt_seen then
+        Error &quot;--intratileopt applies to optimization routes, not standalone validation actions&quot;
+      else if cfg.force_second_level_tile
+              &amp;&amp; match action with
+                 | ExtractTilingWitness _ | ValidateTiling _ -&gt; false
+                 | _ -&gt; true
+      then
+        Error
+          &quot;--second-level-tile only applies to tiled optimization or tiling witness/validation actions&quot;
+      else
+        Ok (Standalone action)
+  | [] -&gt;
+      if has_parallel_current cfg &amp;&amp; cfg.extract_only then
+        Error &quot;--parallel-current cannot be combined with --extract-only&quot;
+      else if has_vector_current cfg &amp;&amp; cfg.extract_only then
+        Error &quot;--vector-current cannot be combined with --extract-only&quot;
+      else if (cfg.force_const_unroll || cfg.pluto_unrolljam_seen)
+              &amp;&amp; cfg.extract_only
+      then
+        Error &quot;--const-unroll/--unrolljam cannot be combined with --extract-only&quot;
+      else if cfg.force_iss &amp;&amp; cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen
+              &amp;&amp; not (has_parallel_or_vector_consumer cfg)
+      then
+        Error
+          &quot;sequential --iss --identity is not a verified compiler route; add --tile or a checked parallel/vector consumer&quot;
+      else if cfg.force_parallel_strict &amp;&amp; not cfg.force_parallel then
+        Error &quot;--parallel-strict requires --parallel&quot;
+      else if cfg.force_vector_strict &amp;&amp; not cfg.force_vector then
+        Error &quot;--vector-strict requires --vector&quot;
+      else if cfg.force_parallel &amp;&amp; cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen then
+        Error &quot;--parallel with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint&quot;
+      else if cfg.force_vector &amp;&amp; cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen then
+        Error &quot;--vector/--prevector with --identity requires --tile so the checked identity-tiling route has a Pluto loop hint&quot;
+      else if cfg.force_parallel &amp;&amp; has_parallel_current cfg then
+        Error &quot;--parallel cannot be combined with --parallel-current&quot;
+      else if cfg.force_parallel &amp;&amp; cfg.force_vector then
+        Error &quot;--parallel cannot be combined with --vector/--prevector&quot;
+      else if cfg.force_parallel &amp;&amp; has_vector_current cfg then
+        Error &quot;--parallel cannot be combined with --vector-current&quot;
+      else if cfg.force_vector &amp;&amp; has_parallel_current cfg then
+        Error &quot;--vector/--prevector cannot be combined with --parallel-current&quot;
+      else if cfg.force_vector &amp;&amp; has_vector_current cfg then
+        Error &quot;--vector/--prevector cannot be combined with --vector-current&quot;
+      else if has_parallel_current cfg &amp;&amp; has_vector_current cfg then
+        Error &quot;--parallel-current cannot be combined with --vector-current&quot;
+      else if cfg.force_multipar &amp;&amp; not cfg.force_parallel then
+        Error &quot;--multipar requires the Pluto-hinted --parallel route&quot;
+      else if cfg.pluto_unrolljam_seen
+              &amp;&amp; (cfg.force_vector || has_vector_current cfg)
+      then
+        Error &quot;--unrolljam cannot currently be combined with vector execution; parallel combinations revalidate annotations after the checked Loop postpass&quot;
+      else if cfg.force_const_unroll
+              &amp;&amp; not cfg.pluto_unrolljam_seen
+              &amp;&amp; (cfg.force_vector || has_vector_current cfg)
+      then
+        Error &quot;--const-unroll cannot currently be combined with vector execution; parallel output preserves its annotations and unfolds only sequential loops&quot;
+      else if cfg.force_band_tiling_experiment
+              &amp;&amp; cfg.force_legacy_generic_tiling
+      then
+        Error &quot;--band-tiling-experiment cannot be combined with --legacy-generic-tiling&quot;
+      else if cfg.force_band_tiling_experiment
+              &amp;&amp; (cfg.force_identity
+                  || cfg.force_notile
+                  || cfg.force_iss
+                  || cfg.force_parallel
+                  || cfg.force_parallel_strict
+                  || cfg.force_vector
+                  || cfg.force_vector_strict
+                  || cfg.force_second_level_tile
+                  || has_parallel_current cfg
+                  || has_vector_current cfg)
+      then
+        Error
+          &quot;--band-tiling-experiment is now only a compatibility alias for the default non-ISS full tiled route&quot;
+      else if cfg.force_legacy_generic_tiling
+              &amp;&amp; (cfg.force_identity
+                  || cfg.force_notile
+                  || cfg.force_iss
+                  || cfg.force_parallel
+                  || cfg.force_parallel_strict
+                  || cfg.force_vector
+                  || cfg.force_vector_strict
+                  || cfg.force_second_level_tile
+                  || has_parallel_current cfg
+                  || has_vector_current cfg)
+      then
+        Error
+          &quot;--legacy-generic-tiling only supports the default non-ISS full tiled route&quot;
+      else if cfg.force_second_level_tile &amp;&amp; cfg.force_identity &amp;&amp; not cfg.pluto_tile_seen then
+        Error
+          &quot;--second-level-tile with --identity requires --tile&quot;
+      else if cfg.force_second_level_tile &amp;&amp; cfg.force_notile then
+        Error
+          &quot;--second-level-tile requires tiling and cannot be combined with --notile&quot;
+      else if cfg.force_diamond_tile &amp;&amp; cfg.force_identity then
+        Error
+          &quot;--diamond-tile requires a Pluto tiling phase and cannot be combined with --identity&quot;
+      else if cfg.force_diamond_tile &amp;&amp; cfg.force_notile then
+        Error &quot;--diamond-tile requires tiling and cannot be combined with --notile&quot;
+      else if cfg.force_diamond_tile
+              &amp;&amp; cfg.force_band_tiling_experiment
+      then
+        Error &quot;--diamond-tile cannot be combined with --band-tiling-experiment&quot;
+      else if cfg.force_diamond_tile
+              &amp;&amp; cfg.force_legacy_generic_tiling
+      then
+        Error &quot;--diamond-tile cannot be combined with --legacy-generic-tiling&quot;
+      else
+        let route = optimize_route_of_config cfg in
+        if cfg.pluto_intratileopt_seen &amp;&amp; not (has_tiling route) then
+          Error
+            &quot;--intratileopt requires a tiling route (default, --identity-tiled, --second-level-tile, or --diamond-tile)&quot;
+        else
+          Ok (Optimize route)
 </pre>
 </main>
 </body>
