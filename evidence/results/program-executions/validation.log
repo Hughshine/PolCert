@@ -9,10 +9,10 @@
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=costfunc baseline=5b44b7c0d361 optimized=5b44b7c0d361 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=corcol3 baseline=c6bb100e4e61 optimized=c6bb100e4e61 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=corcol3 baseline=c6bb100e4e61 optimized=c6bb100e4e61 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=default optimization structural effects case=advect3d baseline=d9009ad301d1 optimized=d9009ad301d1 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: default-corpus case=advect3d baseline=d9009ad301d1 optimized=d9009ad301d1 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=covcol baseline=971dacc27258 optimized=971dacc27258 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=covcol baseline=971dacc27258 optimized=971dacc27258 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=default optimization structural effects case=advect3d baseline=d9009ad301d1 optimized=d9009ad301d1 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: default-corpus case=advect3d baseline=d9009ad301d1 optimized=d9009ad301d1 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=dsyrk baseline=e3f958783227 optimized=e3f958783227 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=dsyrk baseline=e3f958783227 optimized=e3f958783227 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=dsyr2k baseline=d3401f0ea430 optimized=d3401f0ea430 digest_match=true repeats=1
@@ -23,10 +23,10 @@
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=fdtd-1d baseline=dc6edea57055 optimized=dc6edea57055 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=floyd baseline=9b5c7855464c optimized=9b5c7855464c digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=floyd baseline=9b5c7855464c optimized=9b5c7855464c digest_match=true repeats=1
-[PAIR-EXEC] OK suite=default optimization structural effects case=fusion1 baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: default-corpus case=fusion1 baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=fusion10 baseline=80feb99459d9 optimized=80feb99459d9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=fusion10 baseline=80feb99459d9 optimized=80feb99459d9 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=default optimization structural effects case=fusion1 baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: default-corpus case=fusion1 baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=fdtd-2d baseline=befa82701ecf optimized=befa82701ecf digest_match=true repeats=1
@@ -87,14 +87,14 @@
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=pca baseline=1458744f22ad optimized=1458744f22ad digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=polynomial baseline=5b9fa4664a95 optimized=5b9fa4664a95 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=polynomial baseline=5b9fa4664a95 optimized=5b9fa4664a95 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=default optimization structural effects case=mxv-seq baseline=42828702f21d optimized=42828702f21d digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: default-corpus case=mxv-seq baseline=42828702f21d optimized=42828702f21d digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=seidel baseline=2e6a17883058 optimized=2e6a17883058 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=seidel baseline=2e6a17883058 optimized=2e6a17883058 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=seq baseline=19463faf57cd optimized=19463faf57cd digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=seq baseline=19463faf57cd optimized=19463faf57cd digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=shift baseline=1fa77e2ecc58 optimized=1fa77e2ecc58 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=shift baseline=1fa77e2ecc58 optimized=1fa77e2ecc58 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=default optimization structural effects case=mxv-seq baseline=42828702f21d optimized=42828702f21d digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: default-corpus case=mxv-seq baseline=42828702f21d optimized=42828702f21d digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=spatial baseline=e78a3ef7e7da optimized=e78a3ef7e7da digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=spatial baseline=e78a3ef7e7da optimized=e78a3ef7e7da digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=strmm baseline=f13dd51c7af8 optimized=f13dd51c7af8 digest_match=true repeats=1
@@ -105,10 +105,10 @@
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=ssymm baseline=e9c7a80645cc optimized=e9c7a80645cc digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=tmm baseline=dfb45f7978ba optimized=dfb45f7978ba digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=tmm baseline=dfb45f7978ba optimized=dfb45f7978ba digest_match=true repeats=1
-[PAIR-EXEC] OK suite=default optimization structural effects case=tricky1 baseline=9be582db0302 optimized=9be582db0302 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: default-corpus case=tricky1 baseline=9be582db0302 optimized=9be582db0302 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=tce baseline=877e3e4e6da9 optimized=877e3e4e6da9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=tce baseline=877e3e4e6da9 optimized=877e3e4e6da9 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=default optimization structural effects case=tricky1 baseline=9be582db0302 optimized=9be582db0302 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: default-corpus case=tricky1 baseline=9be582db0302 optimized=9be582db0302 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=tricky2 baseline=9ddf414d94e9 optimized=9ddf414d94e9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=tricky2 baseline=9ddf414d94e9 optimized=9ddf414d94e9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=tricky3 baseline=66687aadf862 optimized=66687aadf862 digest_match=true repeats=1
@@ -282,9 +282,9 @@
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-lastwriter-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-lp-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-lpcolor-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=identity-second-level baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=identity-second-level-iss baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity composition case=fusion7 [identity second-level] baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=identity-second-level baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=identity-tiled baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=identity-tiled-iss baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=identity-tiled-multipar baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=3
@@ -314,8 +314,8 @@
 [PAIR-EXEC] OK suite=driver option configurations case=intratileopt-parallel-iss baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=driver option configurations case=intratileopt-second-level baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=intratileopt-second-level-iss baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=intratileopt-vector baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=mixed-const-and-block-unrolljam baseline=9d4cac7220f4 optimized=9d4cac7220f4 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=intratileopt-vector baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=native-const-unroll-inside-parallel-current baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=driver option configurations case=native-const-unroll-inside-parallel-hint baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=handwritten C execution case=parallel_const_unroll baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=3
@@ -324,35 +324,35 @@
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-cache-size baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-candldep-scalpriv-affine baseline=5deecc75557c optimized=5deecc75557c digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-candldep-scalpriv-parallel-conservative baseline=5deecc75557c optimized=5deecc75557c digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-coeff-bound-tight-effect baseline=80feb99459d9 optimized=80feb99459d9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=default optimization structural effects case=mxv-seq3 baseline=b0ffae0935c1 optimized=b0ffae0935c1 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=generated execution: default-corpus case=mxv-seq3 baseline=b0ffae0935c1 optimized=b0ffae0935c1 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-coeff-bound-tight-effect baseline=80feb99459d9 optimized=80feb99459d9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-data-element-size baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-delayedcut-corcol-effect baseline=f1f27b846e4d optimized=f1f27b846e4d digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-dfp-corcol-effect baseline=f1f27b846e4d optimized=f1f27b846e4d digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-delayedcut-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-dfp-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-hybridfuse-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-typedfuse-affine baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-delayedcut-corcol-effect baseline=f1f27b846e4d optimized=f1f27b846e4d digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-dfp-corcol-effect baseline=f1f27b846e4d optimized=f1f27b846e4d digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-determine-tile-size baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-fst-file-fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-fst-file baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-precut-file baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-implicit-fst-file baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-implicit-precut-file baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-nofuse-affine baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-fst-file-fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-precut-file-fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-tile-sizes-file-nodep baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-tile-sizes-file baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-implicit-tile-sizes-file baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-explicit-tile-sizes-file-nodep baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-fast-lin-ind-check-affine baseline=5b44b7c0d361 optimized=5b44b7c0d361 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-flic-affine baseline=5b44b7c0d361 optimized=5b44b7c0d361 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-maxfuse-affine baseline=877a38b621c4 optimized=877a38b621c4 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-hybridfuse-adi-effect baseline=ddc31dcd7f94 optimized=ddc31dcd7f94 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-typedfuse-adi-effect baseline=ddc31dcd7f94 optimized=ddc31dcd7f94 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-maxfuse-affine baseline=877a38b621c4 optimized=877a38b621c4 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-nodepbound-affine baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=driver option configurations case=optimizer-per-cc-obj-affine baseline=928f3b7bb8d1 optimized=928f3b7bb8d1 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=optimizer-ufactor-tile-model baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=driver option configurations case=optimizer-per-cc-obj-affine baseline=928f3b7bb8d1 optimized=928f3b7bb8d1 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=ordinary-band-experiment-alias baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=ordinary-legacy-alias-band baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=ordinary-tiled baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=1
@@ -397,13 +397,13 @@
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-parallel-hint-iss-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-parallel-strict-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-parallel-strict-iss-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
-[PAIR-EXEC] OK suite=driver option configurations case=second-level-parallel-matmul-init baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=driver option configurations case=second-level-parallel-multipar baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=driver option configurations case=second-level-parallel-multipar-iss baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-identity-multipar-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-identity-multipar-iss-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-multipar-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-multipar-iss-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
+[PAIR-EXEC] OK suite=driver option configurations case=second-level-parallel-matmul-init baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=driver option configurations case=stride-loop-negative-literal baseline=7aa727ffe438 optimized=7aa727ffe438 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=stride-loop-positive-literal baseline=b7ffdfcb34b6 optimized=b7ffdfcb34b6 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=driver option configurations case=unrolljam-context-bound-escape-rejected baseline=0db421585f18 optimized=0db421585f18 digest_match=true repeats=1
@@ -411,16 +411,16 @@
 [PAIR-EXEC] OK suite=generated execution: parallel-effect case=matmul baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=handwritten C execution case=matmul [parallel] baseline=f926404729a7 optimized=f926404729a7 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=handwritten C execution case=const_unroll baseline=38c74c03263f optimized=38c74c03263f digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: parallel-effect case=doitgen baseline=18f06469e189 optimized=18f06469e189 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=handwritten C execution case=reverse_iss baseline=375ff91a7580 optimized=375ff91a7580 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: parallel-effect case=doitgen baseline=18f06469e189 optimized=18f06469e189 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=handwritten C execution case=stride_down baseline=7aa727ffe438 optimized=7aa727ffe438 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=handwritten C execution case=stride_even baseline=823fe5622c0b optimized=823fe5622c0b digest_match=true repeats=1
 [PAIR-EXEC] OK suite=handwritten C execution case=unrolljam_block_variable baseline=d467e4a0af52 optimized=d467e4a0af52 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=handwritten C execution case=unrolljam_dependent_guard baseline=a11c0d1ba597 optimized=a11c0d1ba597 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=costfunc baseline=5b44b7c0d361 optimized=5b44b7c0d361 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=adi baseline=ddc31dcd7f94 optimized=ddc31dcd7f94 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=identity-iss-sensitive-search case=dsyrk baseline=e3f958783227 optimized=e3f958783227 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=fusion10 baseline=80feb99459d9 optimized=80feb99459d9 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=identity-iss-sensitive-search case=dsyrk baseline=e3f958783227 optimized=e3f958783227 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=fusion2 baseline=6746f4e2acb9 optimized=6746f4e2acb9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=fusion6 baseline=877a38b621c4 optimized=877a38b621c4 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=fusion5 baseline=e48f9a70720f optimized=e48f9a70720f digest_match=true repeats=1
@@ -455,9 +455,9 @@
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=tricky2 baseline=9ddf414d94e9 optimized=9ddf414d94e9 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=trisolv baseline=c708fd13d735 optimized=c708fd13d735 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=unrolljam_context_bound_escape baseline=0db421585f18 optimized=0db421585f18 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=identity-iss-sensitive-search case=wavefront baseline=a2d4b81a4bae optimized=a2d4b81a4bae digest_match=true repeats=1
 [PAIR-EXEC] OK suite=innermost parallel-loop validation case=vector-current-positive baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=innermost parallel-loop validation case=vector-current-positive-iss baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=identity-iss-sensitive-search case=wavefront baseline=a2d4b81a4bae optimized=a2d4b81a4bae digest_match=true repeats=1
 [PAIR-EXEC] OK suite=one-level tiling configurations case=identity-iss-multipar baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=one-level tiling configurations case=identity-multipar baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=one-level tiling configurations case=ordinary-iss-multipar baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
@@ -473,6 +473,8 @@
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-diamond-multipar-iss-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-full-diamond-multipar-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-full-diamond-multipar-iss-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
+[PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-fusion-band baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
+[PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-fusion-iss-band baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-diamond-parallel-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-diamond-parallel-iss-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-full-diamond-parallel-band baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
@@ -489,8 +491,6 @@
 [PAIR-EXEC] OK suite=two-level tiling route checks case=second-level-full-diamond-tile-parallel-current-ISS baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling route checks case=second-level-full-diamond-tile-parallel-strict baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling route checks case=second-level-full-diamond-tile-parallel-strict-ISS baseline=eb6361834c5a optimized=eb6361834c5a digest_match=true repeats=3
-[PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-fusion-band baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-fusion-iss-band baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-identity-parallel-current-band baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-identity-parallel-current-iss-band baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=two-level tiling configurations case=second-level-identity-vector-current-band baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=1
@@ -507,8 +507,8 @@
 [PAIR-EXEC] OK suite=typed C instruction pipelines case=diamond-stencil baseline=dd429336c62f optimized=dd429336c62f digest_match=true repeats=1
 [PAIR-EXEC] OK suite=typed C instruction pipelines case=ordinary-tiling-pointwise baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=typed C instruction pipelines case=parallel-pointwise baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
-[PAIR-EXEC] OK suite=typed C instruction pipelines case=vector-pointwise baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=typed C instruction pipelines case=two-level-tiling-matmul baseline=0877591a043a optimized=0877591a043a digest_match=true repeats=1
+[PAIR-EXEC] OK suite=typed C instruction pipelines case=vector-pointwise baseline=326487695a13 optimized=326487695a13 digest_match=true repeats=3
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=fusion1 baseline=48b598a34d02 optimized=48b598a34d02 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=fdtd-1d baseline=dc6edea57055 optimized=dc6edea57055 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=fusion7 baseline=89840878edf7 optimized=89840878edf7 digest_match=true repeats=1
@@ -517,9 +517,9 @@
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=matmul-init baseline=9cd259eddb43 optimized=9cd259eddb43 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=mxv baseline=db9e6c78dd68 optimized=db9e6c78dd68 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=matmul-seq baseline=d7de6e22c551 optimized=d7de6e22c551 digest_match=true repeats=1
-[PAIR-EXEC] OK suite=default optimization structural effects case=mvt baseline=f8be8d36eebb optimized=f8be8d36eebb digest_match=true repeats=1
-[PAIR-EXEC] OK suite=generated execution: default-corpus case=mvt baseline=f8be8d36eebb optimized=f8be8d36eebb digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=nodep baseline=e4caf1b12ba6 optimized=e4caf1b12ba6 digest_match=true repeats=1
 [PAIR-EXEC] OK suite=unroll-and-jam exploration case=mxv-seq baseline=42828702f21d optimized=42828702f21d digest_match=true repeats=1
+[PAIR-EXEC] OK suite=default optimization structural effects case=mvt baseline=f8be8d36eebb optimized=f8be8d36eebb digest_match=true repeats=1
+[PAIR-EXEC] OK suite=generated execution: default-corpus case=mvt baseline=f8be8d36eebb optimized=f8be8d36eebb digest_match=true repeats=1
 [PAIR-EXEC] OK suite=identity-iss-sensitive-search case=intratileopt2 baseline=5066c4278e01 optimized=5066c4278e01 digest_match=true repeats=1
 [PAIR-EXEC-SUITE] PASS expected=524 actual=524 unique-configurations=202 coverage=all-accepted-Loop-pair-records interpretation=every-record-has-a-matching-modeled-state-digest
