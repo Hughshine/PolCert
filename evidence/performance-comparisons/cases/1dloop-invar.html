@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Performance: 1dloop-invar</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p class="breadcrumbs"><a href="../../../docs/index.html" target="_blank" rel="noopener">Overview</a><span>/</span><a href="../../../docs/evaluation.html" target="_blank" rel="noopener">Evaluation</a><span>/</span><a href="../index.html" target="_blank" rel="noopener">Performance</a><span>/</span> 1dloop-invar</p>
+  <h1><code>1dloop-invar</code></h1>
+  <p class="lede">
+    These are the complete baseline and PolCert-accepted Loop programs used
+    for this recorded whole-C comparison.
+  </p>
+  <dl class="performance-summary">
+    <div><dt>Baseline</dt><dd>0.001149 s</dd></div>
+    <div><dt>Accepted output</dt><dd>0.001069 s</dd></div>
+    <div><dt>Speedup</dt><dd>1.075x</dd></div>
+    <div><dt>Program result</dt><dd class="status-pass">Same</dd></div>
+  </dl>
+  <div class="loop-comparison compact-programs">
+    <section>
+      <h2>Before</h2>
+      <pre><code>context(M, N, i);
+
+for t in range(M, (N + 1)) {
+  a[i] = b[i];
+}
+</code></pre>
+      <p><a href="../../../docs/files/0254.html" target="_blank" rel="noopener">Open baseline program</a></p>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre><code>context(M, N, i);
+
+for i0 in range(M, (N + 1)) {
+  a[i] = b[i];
+}
+</code></pre>
+      <p><a href="../../../docs/files/0253.html" target="_blank" rel="noopener">Open accepted program</a></p>
+    </section>
+  </div>
+  <section class="reproduction-config">
+    <h2>Recorded Configuration</h2>
+    <dl>
+      <dt>Checked route</dt><dd>affine scheduling + tiling</dd>
+      <dt><code>polopt</code> options</dt><dd><code>default route</code></dd>
+      <dt>Kernel parameters</dt><dd><code>M=262144, N=262144, i=262144</code></dd>
+      <dt>C compilation</dt><dd><code>cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM</code></dd>
+      <dt>Execution</dt><dd>1 baseline run and 1 accepted-output run; 1 thread</dd>
+      <dt>Observed result</dt><dd>Both executions produced exactly the same output.</dd>
+    </dl>
+  </section>
+  <p class="case-pager"><a href="../index.html" target="_blank" rel="noopener">All 62 kernels</a> &middot; <a href="adi.html" target="_blank" rel="noopener">Next: <code>adi</code></a></p>
+</main>
+</body>
+</html>

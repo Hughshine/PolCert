@@ -3,32 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/86bc9a4cb719fe/after.c</code></h1>
-  <pre>#define S1(zT1,$i0)	A[2 * $i0] = 1;
-#define S2(zT1,$i0)	B[2 * $i0] = A[2 * $i0 + 2];
-
-		int t1, t2, t3, t4;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-for (t2=0;t2&lt;=3;t2++) {
-  for (t3=32*t2;t3&lt;=min(99,32*t2+31);t3++) {
-    S1(t2,t3);
+  <h1><code>evidence/results/program-comparisons/6f3ed6bf31bb35/after.loop</code></h1>
+  <pre>for i0 in range(0, 4) {
+  for i1 in range(0, 4) {
+    for i2 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+      for i3 in range(max(0, (32 * i1)), min(100, ((32 * i1) + 32))) {
+        A[i2][i3] = 1;
+      }
+    }
   }
 }
-for (t2=0;t2&lt;=3;t2++) {
-  for (t3=32*t2;t3&lt;=min(99,32*t2+31);t3++) {
-    S2(t2,t3);
+for i0 in range(0, 4) {
+  for i1 in range(0, 4) {
+    for i2 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+      for i3 in range(max(0, (32 * i1)), min(100, ((32 * i1) + 32))) {
+        B[i2][i3] = (A[(i2 + 1)][i3] + A[i2][(i3 + 1)]);
+      }
+    }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

@@ -9,52 +9,23 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/d37d58f14b721e/after.loop</code></h1>
-  <pre>context(m, n);
+  <h1><code>evidence/results/program-comparisons/c0ac3022018ec3/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-if (1 &lt;= m) {
-  parallel for i0 in range(0, ((m + 32) / 32)) {
-    for i1 in range(max(1, (32 * i0)), min((m + 1), ((32 * i0) + 32))) {
-      stddev[i1] = 0.0;
-      mean[i1] = 0.0;
-    }
-  }
-}
-if ((1 &lt;= m &amp;&amp; 1 &lt;= n)) {
-  parallel for i0 in range(0, ((m + 32) / 32)) {
-    for i1 in range(0, ((n + 32) / 32)) {
-      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
-        for i3 in range(max((32 * i1), 1), min(((32 * i1) + 32), (n + 1))) {
-          mean[i2] = (mean[i2] + data[i3][i2]);
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range(0, ((T + (N + 24)) / 32)) {
+      for i2 in range(max(0, (((-1 * N) + ((32 * i1) + 6)) / 32)), min(((T + 30) / 32), (((32 * i1) + 58) / 32))) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+          for i4 in range(max(max(10, ((32 * i2) + 5)), (32 * i1)), min(min((T + (N + -7)), (N + ((32 * i2) + 26))), ((32 * i1) + 32))) {
+            for i5 in range(max(max((32 * i2), 5), ((-1 * N) + (i4 + 6))), min(min(((32 * i2) + 32), (T + -1)), (i4 + -4))) {
+              for i6 in range((i4 + (-1 * i5)), (i4 + ((-1 * i5) + 1))) {
+                A[i3][(i5 + 1)][i6] = (0.125 * (A[i3][i5][(i6 + -1)] + A[i3][(i5 + -2)][(i6 + 1)]));
+              }
+            }
+          }
         }
       }
-    }
-  }
-}
-if (1 &lt;= m) {
-  parallel for i0 in range(0, ((m + 32) / 32)) {
-    for i1 in range(max(1, (32 * i0)), min((m + 1), ((32 * i0) + 32))) {
-      mean[i1] = (mean[i1] / float_n);
-    }
-  }
-}
-if ((1 &lt;= n &amp;&amp; 1 &lt;= m)) {
-  parallel for i0 in range(0, ((m + 32) / 32)) {
-    for i1 in range(0, ((n + 32) / 32)) {
-      for i2 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
-        for i3 in range(max((32 * i1), 1), min(((32 * i1) + 32), (n + 1))) {
-          stddev[i2] = (stddev[i2] + ((data[i3][i2] - mean[i2]) * (data[i3][i2] - mean[i2])));
-        }
-      }
-    }
-  }
-}
-if (1 &lt;= m) {
-  parallel for i0 in range(0, ((m + 32) / 32)) {
-    for i1 in range(max((32 * i0), 1), min(((32 * i0) + 32), (m + 1))) {
-      stddev[i1] = (stddev[i1] / float_n);
-      stddev[i1] = my_sqrt_array(stddev, i1);
-      stddev[i1] = ((stddev[i1] &lt;= eps) ? 1.0 : stddev[i1]);
     }
   }
 }

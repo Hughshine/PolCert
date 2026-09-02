@@ -3,15 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>optimized.observation.txt</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-executions/1047cab477522a/optimized.observation.txt</code></h1>
-  <pre>observed_value_count=20000
-state_sha256=326487695a13b98783080eb74b29fb18c8c77c52ed43c69d5c2c5a3e9d5e8112
+  <h1><code>evidence/results/program-comparisons/fd21b497d3c7de/after.loop</code></h1>
+  <pre>context(N);
+
+for i0 in range(1, min(3, (N + -2))) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+}
+for i0 in range(3, (N + -2)) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+  for i1 in range((i0 + -1), i0) {
+    Out[i1] = (0.33 * ((A[(i1 + -1)] + A[i1]) + A[(i1 + 1)]));
+  }
+}
 </pre>
 </main>
 </body>

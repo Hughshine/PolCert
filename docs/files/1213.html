@@ -3,26 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/9794f443a8bf49/before.c</code></h1>
-  <pre>#define S1($i0)	s = s + 1;
+  <h1><code>evidence/results/program-comparisons/822c42edba5d49/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-		int t1, t2, t3;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if (M &lt;= 0) {
-  for (t2=0;t2&lt;=-M;t2++) {
-    S1(t2);
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

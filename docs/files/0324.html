@@ -3,22 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/0b87e9c7429da9/after.loop</code></h1>
+  <h1><code>evidence/performance-comparisons/programs/matmul-seq3/before.loop</code></h1>
   <pre>context(N);
 
-for i0 in range(1, min(3, (N + -2))) {
-  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
+for i in range(0, N) {
+  for j in range(0, N) {
+    for k in range(0, N) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+    }
+  }
 }
-for i0 in range(3, (N + -2)) {
-  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
-  for i1 in range((i0 + -1), i0) {
-    Out[i1] = (0.33 * ((A[(i1 + -1)] + A[i1]) + A[(i1 + 1)]));
+for i in range(0, N) {
+  for j in range(0, N) {
+    for k in range(0, N) {
+      F[i][j] = (F[i][j] + (D[i][k] * E[k][j]));
+    }
+  }
+}
+for i in range(0, N) {
+  for j in range(0, N) {
+    for k in range(0, N) {
+      G[i][j] = (G[i][j] + (C[i][k] * F[k][j]));
+    }
   }
 }
 </pre>

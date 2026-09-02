@@ -3,15 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>baseline.observation.txt</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-executions/09d790f5727951/baseline.observation.txt</code></h1>
-  <pre>observed_value_count=10000
-state_sha256=e78a3ef7e7da813ec4015e8652e688277d3dc1fb077b12f88b49d3c3c53ffbbe
+  <h1><code>evidence/results/program-comparisons/f5658acf77e96e/before.loop</code></h1>
+  <pre>context(T, N);
+
+for t in range(0, T) {
+  for i in range(2, (N - 1)) {
+    b[i] = (0.33333 * ((a[(i - 1)] + a[i]) + a[(i + 1)]));
+  }
+  for j in range(2, (N - 1)) {
+    a[j] = b[j];
+  }
+}
 </pre>
 </main>
 </body>

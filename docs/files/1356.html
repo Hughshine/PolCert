@@ -9,25 +9,17 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/afcd285e1db923/after.loop</code></h1>
-  <pre>context(B, T, N);
+  <h1><code>evidence/results/program-comparisons/9adbbc466c5fbb/after.loop</code></h1>
+  <pre>context(NMAX);
 
-if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
-  parallel for i0 in range(0, ((B + 31) / 32)) {
-    for i1 in range((i0 / 8), ((i0 + 8) / 8)) {
-      for i2 in range(0, ((T + (N + 24)) / 32)) {
-        for i3 in range((i2 / 8), ((i2 + 8) / 8)) {
-          for i4 in range(max((((-1 * N) + ((32 * i2) + 6)) / 32), 0), min((((32 * i2) + 58) / 32), ((T + 30) / 32))) {
-            for i5 in range((i4 / 8), ((i4 + 8) / 8)) {
-              for i6 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
-                for i7 in range(max(max(10, ((32 * i4) + 5)), (32 * i2)), min(min((T + (N + -7)), (N + ((32 * i4) + 26))), ((32 * i2) + 32))) {
-                  for i8 in range(max(max((32 * i4), ((-1 * N) + (i7 + 6))), 5), min(min(((32 * i4) + 32), (i7 + -4)), (T + -1))) {
-                    for i9 in range((i7 + (-1 * i8)), (i7 + ((-1 * i8) + 1))) {
-                      A[i6][(i8 + 1)][i9] = (0.125 * (A[i6][i8][(i9 + -1)] + A[i6][(i8 + -2)][(i9 + 1)]));
-                    }
-                  }
-                }
-              }
+if (1 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {
+      for i2 in range(0, ((NMAX + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32))) {
+          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), NMAX)) {
+              c[i3][i4] = (c[i3][i4] + ((a[i5][i3] * b[i5][i4]) + (b[i5][i3] * a[i5][i4])));
             }
           }
         }

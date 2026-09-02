@@ -9,15 +9,15 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/3a31f924336fd8/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/2637130813eb79/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-for i0 in range(0, N) {
-  x[i0] = (a[i0] + b[i0]);
-}
-s = 0.0;
-for i0 in range(0, N) {
-  s = (s + (x[i0] * 3));
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
+  }
 }
 </pre>
 </main>

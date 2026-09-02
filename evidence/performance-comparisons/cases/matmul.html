@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Performance: matmul</title>
+  <link rel="stylesheet" href="../../../docs/artifact.css">
+</head>
+<body>
+<main>
+  <p class="breadcrumbs"><a href="../../../docs/index.html" target="_blank" rel="noopener">Overview</a><span>/</span><a href="../../../docs/evaluation.html" target="_blank" rel="noopener">Evaluation</a><span>/</span><a href="../index.html" target="_blank" rel="noopener">Performance</a><span>/</span> matmul</p>
+  <h1><code>matmul</code></h1>
+  <p class="lede">
+    These are the complete baseline and PolCert-accepted Loop programs used
+    for this recorded whole-C comparison.
+  </p>
+  <dl class="performance-summary">
+    <div><dt>Baseline</dt><dd>1.2752 s</dd></div>
+    <div><dt>Accepted output</dt><dd>0.3442 s</dd></div>
+    <div><dt>Speedup</dt><dd>3.705x</dd></div>
+    <div><dt>Program result</dt><dd class="status-pass">Same</dd></div>
+  </dl>
+  <div class="loop-comparison compact-programs">
+    <section>
+      <h2>Before</h2>
+      <pre><code>context(M, N, K);
+
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
+  }
+}
+</code></pre>
+      <p><a href="../../../docs/files/0318.html" target="_blank" rel="noopener">Open baseline program</a></p>
+    </section>
+    <section>
+      <h2>Accepted Output</h2>
+      <pre><code>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; (1 &lt;= N &amp;&amp; 1 &lt;= K))) {
+  for i0 in range(0, ((K + 31) / 32)) {
+    parallel for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(0, ((M + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), K)) {
+          for i4 in range(max((32 * i1), 0), min(((32 * i1) + 32), N)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), M)) {
+              C[i5][i4] = ((beta * C[i5][i4]) + ((alpha * A[i5][i3]) * B[i3][i4]));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+</code></pre>
+      <p><a href="../../../docs/files/0317.html" target="_blank" rel="noopener">Open accepted program</a></p>
+    </section>
+  </div>
+  <section class="reproduction-config">
+    <h2>Recorded Configuration</h2>
+    <dl>
+      <dt>Checked route</dt><dd>parallel route (4 threads)</dd>
+      <dt><code>polopt</code> options</dt><dd><code>--parallel</code></dd>
+      <dt>Kernel parameters</dt><dd><code>K=1536, M=1536, N=1536</code></dd>
+      <dt>C compilation</dt><dd><code>cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM</code></dd>
+      <dt>Execution</dt><dd>1 baseline run and 1 accepted-output run; 4 threads (OMP_NUM_THREADS=4, OMP_DYNAMIC=FALSE)</dd>
+      <dt>Observed result</dt><dd>Both executions produced exactly the same output.</dd>
+    </dl>
+  </section>
+  <p class="case-pager"><a href="../index.html" target="_blank" rel="noopener">All 62 kernels</a> &middot; <a href="lu.html" target="_blank" rel="noopener">Previous: <code>lu</code></a> &middot; <a href="matmul-init.html" target="_blank" rel="noopener">Next: <code>matmul-init</code></a></p>
+</main>
+</body>
+</html>

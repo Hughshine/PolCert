@@ -3,31 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>iss-suite.stdout.txt</title>
+  <title>summary.json</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/raw/iss-suite.stdout.txt</code></h1>
-  <pre>make -f Makefile.extr polopt
-make[1]: Entering directory &#x27;/polcert&#x27;
-make[1]: &#x27;polopt&#x27; is up to date.
-make[1]: Leaving directory &#x27;/polcert&#x27;
-python3 tools/iss/run_iss_multicut_adversarial.py
-[ISS-MULTICUT] PASS case=multicut-complete expected=accept,exit:0 actual=accept,exit:0 interpretation=all-four-sign-regions-proved
-[ISS-MULTICUT] PASS case=pluto-three-cut-four-piece-mismatch expected=reject,exit:1 actual=reject,exit:1 interpretation=incomplete-three-cut-sign-space-rejected
-[ISS-MULTICUT] PASS case=two-cut-missing-piece expected=reject,exit:1 actual=reject,exit:1 interpretation=missing-sign-region-rejected
-[ISS-MULTICUT] PASS expected=accepted:1,rejected:2 actual=accepted:1,rejected:2 interpretation=complete-cut-boundary-matched
-./polopt --validate-iss-pluto-suite
-[ISS] PASS case=reverse_before.txt-to-reverse_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=multi_stmt_periodic_before.txt-to-multi_stmt_periodic_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=jacobi_2d_periodic_before.txt-to-jacobi_2d_periodic_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=heat_2dp_before.txt-to-heat_2dp_after.txt expected=accept actual=accept,exit:0 interpretation=valid-ISS-split-was-accepted
-[ISS] PASS case=iss-name-collision expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=invalid-ISS-witness-was-rejected
-[ISS] PASS case=reverse_bad_halfspace expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=mutated-ISS-witness-was-rejected
-[ISS] PASS case=reverse_bad_payload expected=reject,exit:1,validation-fail:true actual=exit:1,validation-fail:true interpretation=mutated-ISS-witness-was-rejected
-[ISS-SUITE] PASS expected=accepted:4,rejected:3 actual=accepted:4,rejected:3 interpretation=positive-and-mutated-negative-ISS-contracts-matched
+  <h1><code>evidence/results/program-executions/edc85180dbd291/summary.json</code></h1>
+  <pre>{
+  &quot;baseline_observation&quot;: &quot;edc85180dbd291/baseline.observation.txt&quot;,
+  &quot;baseline_output_sha256&quot;: &quot;f926404729a706a5017b1d26b671fcf869cbd08e9f2c1d3f9ae8dd2f734ccd5e&quot;,
+  &quot;case&quot;: &quot;optimizer-implicit-tile-sizes-file&quot;,
+  &quot;exact_match&quot;: true,
+  &quot;execution_repeats&quot;: 1,
+  &quot;max_abs_diff&quot;: null,
+  &quot;max_rel_diff&quot;: null,
+  &quot;numeric_finite&quot;: true,
+  &quot;numeric_within_tolerance&quot;: false,
+  &quot;observation_mode&quot;: &quot;sha256-modeled-state&quot;,
+  &quot;observed_value_count&quot;: 30002,
+  &quot;omp_threads_requested&quot;: 4,
+  &quot;optimized_observation&quot;: &quot;edc85180dbd291/optimized.observation.txt&quot;,
+  &quot;optimized_output_sha256&quot;: &quot;f926404729a706a5017b1d26b671fcf869cbd08e9f2c1d3f9ae8dd2f734ccd5e&quot;,
+  &quot;outputs_match&quot;: true,
+  &quot;pair_id&quot;: &quot;edc85180dbd291&quot;,
+  &quot;parallelized_loop&quot;: false,
+  &quot;params&quot;: {
+    &quot;K&quot;: 96,
+    &quot;M&quot;: 96,
+    &quot;N&quot;: 96
+  },
+  &quot;result&quot;: &quot;ok&quot;,
+  &quot;suite&quot;: &quot;driver option configurations&quot;,
+  &quot;summary&quot;: &quot;edc85180dbd291/summary.json&quot;,
+  &quot;vectorized_loop&quot;: false
+}
 </pre>
 </main>
 </body>

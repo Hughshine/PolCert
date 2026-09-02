@@ -3,23 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/0d44ec529bc6ea/before.loop</code></h1>
-  <pre>context(M, N);
+  <h1><code>evidence/performance-comparisons/programs/negparam/after.loop</code></h1>
+  <pre>context(n);
 
-for j1 in range(1, ((M - 1) + 1)) {
-  symmat[j1][j1] = 1.0;
-  for j2 in range((j1 + 1), (M + 1)) {
-    symmat[j1][j2] = 0.0;
-    for i in range(1, (N + 1)) {
-      symmat[j1][j2] = (symmat[j1][j2] + (data[i][j1] * data[i][j2]));
+for i0 in range(((-1 * n) + 4), (n + 3)) {
+  for i1 in range(((-1 * n) + 4), ((-1 * n) + 5)) {
+    for i2 in range(((-1 * n) + 4), ((-1 * n) + 5)) {
+      a[i2][i0] = (a[(i2 + -1)][i0] + 2);
     }
-    symmat[j2][j1] = symmat[j1][j2];
+  }
+  for i1 in range(((-1 * n) + 5), (n + 3)) {
+    a[i1][i0] = (a[(i1 + -1)][i0] + 2);
+    for i2 in range((i1 + -1), i1) {
+      a[i2][i0] = (a[i2][i0] + 1);
+    }
+  }
+  for i1 in range((n + 3), (n + 4)) {
+    for i2 in range((n + 2), (n + 3)) {
+      a[i2][i0] = (a[i2][i0] + 1);
+    }
   }
 }
 </pre>

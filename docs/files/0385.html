@@ -3,52 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/148300db9e1231/before.c</code></h1>
-  <pre>#define S1(zT2,zT3,$i0,$i1)	y[$i0] = y[$i0] + a[$i0][$i1] * x[$i1];
-#define S2(zT2,zT3,$i0,$i1)	z[$i0] = z[$i0] + b[$i0][$i1] * y[$i1];
-#define S3(zT2,zT3,$i0,$i1)	w[$i0] = w[$i0] + b[$i0][$i1] * z[$i1];
+  <h1><code>evidence/rejected-optimizer-outputs/notile-unrolljam-nonpermutable/README.md</code></h1>
+  <pre># No-tile unroll-jam crosses a non-permutable loop
 
-		int t1, t2, t3, t4, t5, t6, t7, t8;
+Status: reproduced, minimized, validator-catches.
 
-	register int lbv, ubv;
+The outer `i,h` loops form a permutable band. The `j` loop carries a
+dependence: iteration `j + 1` reads element `a[...,j,3]`, which iteration `j`
+writes only when the inner `k` loop reaches `3`.
 
-/* Start of CLooG code */
-if (N &gt;= 1) {
-  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
-      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
-          S1(t2,t4,t5,t7);
-        }
-      }
-    }
-  }
-  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
-      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
-          S2(t2,t4,t5,t7);
-        }
-      }
-    }
-  }
-  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
-      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
-        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
-          S3(t2,t4,t5,t7);
-        }
-      }
-    }
-  }
-}
-/* End of CLooG code */
+At the pinned bug-reproduction commit
+`historical-bug-witness-pluto-snapshot`,
+the unroll-jam candidate search unconditionally treats the program as having
+one tiled level. With `--notile`, that skips the real band boundary and admits
+the non-permutable `j` loop. Pluto then emits adjacent `j` and `j + 1`
+statements inside the `k` loop. At `k = 0`, the second statement reads
+`a[...,j,3]` before it has been written.
+
+The original program prints `15`; Pluto&#x27;s generated program prints `1`.
+PolCert&#x27;s checked unroll-jam route does not emit the unsafe adjacent pair.
+The ordinary fixed Pluto baseline `ordinary-fixed-pluto-snapshot` also corrects the tiled-level
+count used for candidate discovery.
+
+Run the complete producer and validator check with:
+
+```sh
+python3 tools/pluto_bugs/run_notile_unrolljam_nonpermutable.py
+```
 </pre>
 </main>
 </body>

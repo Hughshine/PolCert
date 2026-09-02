@@ -3,28 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/bbcfeba3b79504/before.c</code></h1>
-  <pre>#define S1($i0,$i1)	a[$i0][$i1] = a[$i1][$i0] + a[$i0][$i1 - 1];
+  <h1><code>evidence/results/program-comparisons/a8a8d3696e7f58/before.loop</code></h1>
+  <pre>context(n);
 
-		int t1, t2, t3, t4, t5;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if (N &gt;= 2) {
-  for (t2=0;t2&lt;=N-1;t2++) {
-    for (t4=1;t4&lt;=N-1;t4++) {
-      S1(t2,t4);
-    }
+for i0 in range(0, n) {
+  for i1 in range(0, n) {
+    a[i0][i1] = (b[i0][(i1 + -1)] + a[i0][(i1 + -1)]);
+    b[i0][i1] = (a[(i0 + -1)][(i1 + 1)] + b[(i0 + -1)][i1]);
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

@@ -9,14 +9,52 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/ccf5786750e8c0/after.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/b9ef457d11ad30/after.loop</code></h1>
+  <pre>context(pointc, clusterc, dims);
 
-if (2 &lt;= N) {
-  for i0 in range(0, N) {
-    for i1 in range(1, N) {
-      a[i0][i1] = (a[i1][i0] + a[i0][(i1 + -1)]);
+if ((1 &lt;= dims &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    clusterv = 0;
+    for i1 in range(1, min(dims, clusterc)) {
+      dist = 0;
+      kmin = 0;
+      clusterv = 0;
     }
+    for i1 in range(clusterc, dims) {
+      clusterv = 0;
+    }
+    for i1 in range(dims, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
+  }
+}
+if ((clusterc &lt;= 0 &amp;&amp; 1 &lt;= dims)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    clusterv = 0;
+    for i1 in range(1, dims) {
+      clusterv = 0;
+    }
+  }
+}
+if ((dims &lt;= 0 &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    for i1 in range(1, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
+  }
+}
+if ((clusterc &lt;= 0 &amp;&amp; dims &lt;= 0)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
   }
 }
 </pre>

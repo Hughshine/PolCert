@@ -9,17 +9,12 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/1e0b12780b07ad/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/0a27fea2262cd3/before.loop</code></h1>
+  <pre>context(N, M);
 
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    x1[i0] = (x1[i0] + (a[i0][i1] * y_1[i1]));
-  }
-}
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    x2[i0] = (x2[i0] + (a[i1][i0] * y_2[i1]));
+for i in range(0, N) {
+  for j in range(0, M) {
+    A[i][j] = (B[i][j] + 1);
   }
 }
 </pre>

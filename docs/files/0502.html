@@ -9,11 +9,11 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/24f8d2249b4d59/after.loop</code></h1>
+  <h1><code>evidence/results/program-comparisons/135f18bbbe31a2/after.loop</code></h1>
   <pre>context(B, T, N);
 
 if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
-  for i0 in range(0, ((B + 31) / 32)) {
+  parallel for i0 in range(0, ((B + 31) / 32)) {
     for i1 in range((i0 / 8), ((i0 + 8) / 8)) {
       for i2 in range(0, ((T + (N + 24)) / 32)) {
         for i3 in range((i2 / 8), ((i2 + 8) / 8)) {

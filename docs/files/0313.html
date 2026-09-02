@@ -3,33 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/09c2def0d1e176/before.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/performance-comparisons/programs/jacobi-2d-imper/after.loop</code></h1>
+  <pre>context(T, N);
 
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, N) {
-      C[i0][i1] = (C[i0][i1] + (A[i0][i2] * B[i2][i1]));
+if (4 &lt;= N) {
+  for i0 in range(0, T) {
+    for i1 in range(2, (N + -1)) {
+      for i2 in range(2, (N + -1)) {
+        b[i1][i2] = (0.2 * ((((a[i1][i2] + a[i1][(i2 + -1)]) + a[i1][(i2 + 1)]) + a[(i1 + 1)][i2]) + a[(i1 + -1)][i2]));
+      }
     }
-  }
-}
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, N) {
-      F[i0][i1] = (F[i0][i1] + (D[i0][i2] * E[i2][i1]));
-    }
-  }
-}
-for i0 in range(0, N) {
-  for i1 in range(0, N) {
-    for i2 in range(0, N) {
-      G[i0][i1] = (G[i0][i1] + (C[i0][i2] * F[i2][i1]));
+    for i1 in range(2, (N + -1)) {
+      for i2 in range(2, (N + -1)) {
+        a[i1][i2] = b[i1][i2];
+      }
     }
   }
 }

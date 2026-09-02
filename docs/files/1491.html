@@ -3,116 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/c4af249df752a6/before.c</code></h1>
-  <pre>#define S1(zT1,$i0)	mean[$i0] = 0.0;
-#define S2(zT2,zT3,$i0,$i1)	mean[$i0] = mean[$i0] + data[$i1][$i0];
-#define S3(zT1,$i0)	mean[$i0] = mean[$i0] / float_n;
-#define S4(zT1,$i0)	stddev[$i0] = 0.0;
-#define S5(zT2,zT3,$i0,$i1)	stddev[$i0] = stddev[$i0] + data[$i1][$i0] - mean[$i0] * data[$i1][$i0] - mean[$i0];
-#define S6(zT1,$i0)	stddev[$i0] = stddev[$i0] / float_n;
-#define S7(zT1,$i0)	stddev[$i0] = sqrt(stddev[$i0]);
-#define S8(zT1,$i0)	stddev[$i0] = stddev[$i0] &lt;= eps ? 1.0 : stddev[$i0];
-#define S9($i0,$i1)	data[$i0][$i1] = data[$i0][$i1] - mean[$i1];
-#define S10($i0,$i1)	x = sqrt(float_n);
-#define S11($i0,$i1)	x = x * stddev[$i1];
-#define S12($i0,$i1)	data[$i0][$i1] = data[$i0][$i1] / x;
-#define S13(zT1,$i0)	symmat[$i0][$i0] = 1.0;
-#define S14(zT2,zT3,$i0,$i1)	symmat[$i0][$i1] = 0.0;
-#define S15(zT3,zT4,zT5,$i0,$i1,$i2)	symmat[$i0][$i1] = symmat[$i0][$i1] + data[$i2][$i0] * data[$i2][$i1];
-#define S16(zT2,zT3,$i0,$i1)	symmat[$i1][$i0] = symmat[$i0][$i1];
+  <h1><code>evidence/results/program-comparisons/b1c45e692747a7/before.loop</code></h1>
+  <pre>context(N);
 
-		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if (m &gt;= 1) {
-  for (t2=0;t2&lt;=floord(m,32);t2++) {
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S1(t2,t5);
-    }
-    if (n &gt;= 1) {
-      for (t4=0;t4&lt;=floord(n,32);t4++) {
-        for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-          for (t7=max(1,32*t4);t7&lt;=min(n,32*t4+31);t7++) {
-            S2(t2,t4,t5,t7);
-          }
-        }
-      }
-    }
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S3(t2,t5);
-    }
-  }
-  for (t2=0;t2&lt;=floord(m,32);t2++) {
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S4(t2,t5);
-    }
-    if (n &gt;= 1) {
-      for (t4=0;t4&lt;=floord(n,32);t4++) {
-        for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-          for (t7=max(1,32*t4);t7&lt;=min(n,32*t4+31);t7++) {
-            S5(t2,t4,t5,t7);
-          }
-        }
-      }
-    }
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S6(t2,t5);
-    }
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S7(t2,t5);
-    }
-    for (t5=max(1,32*t2);t5&lt;=min(m,32*t2+31);t5++) {
-      S8(t2,t5);
-    }
-  }
-  for (t2=1;t2&lt;=n;t2++) {
-    for (t4=1;t4&lt;=m;t4++) {
-      S9(t2,t4);
-      S10(t2,t4);
-      S11(t2,t4);
-      S12(t2,t4);
-    }
-  }
-  if (m &gt;= 2) {
-    for (t2=0;t2&lt;=floord(m-1,32);t2++) {
-      for (t7=max(1,32*t2);t7&lt;=min(m-1,32*t2+31);t7++) {
-        S13(t2,t7);
-      }
-      for (t4=t2;t4&lt;=floord(m,32);t4++) {
-        for (t7=max(1,32*t2);t7&lt;=min(min(m-1,32*t2+31),32*t4+30);t7++) {
-          for (t9=max(32*t4,t7+1);t9&lt;=min(m,32*t4+31);t9++) {
-            S14(t2,t4,t7,t9);
-          }
-        }
-        if (n &gt;= 1) {
-          for (t6=0;t6&lt;=floord(n,32);t6++) {
-            for (t7=max(1,32*t2);t7&lt;=min(min(m-1,32*t2+31),32*t4+30);t7++) {
-              for (t9=max(32*t4,t7+1);t9&lt;=min(m,32*t4+31);t9++) {
-                for (t11=max(1,32*t6);t11&lt;=min(n,32*t6+31);t11++) {
-                  S15(t2,t4,t6,t7,t9,t11);
-                }
-              }
-            }
-          }
-        }
-        for (t7=max(1,32*t2);t7&lt;=min(min(m-1,32*t2+31),32*t4+30);t7++) {
-          for (t9=max(32*t4,t7+1);t9&lt;=min(m,32*t4+31);t9++) {
-            S16(t2,t4,t7,t9);
-          }
-        }
-      }
+for i in range(0, N) {
+  for j in range(0, N) {
+    C[i][j] = 0;
+    for k in range(0, N) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
     }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

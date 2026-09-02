@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>matmul-init.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/matmul-init.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  for j in range(0, N) {
+    C[i][j] = 0;
+    for k in range(0, N) {
+      C[i][j] = (C[i][j] + (A[i][k] * B[k][j]));
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

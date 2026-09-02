@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test_generated_harness.py</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tools/end_to_end_c/test_generated_harness.py</code></h1>
+  <pre>#!/usr/bin/env python3
+from __future__ import annotations
+
+import hashlib
+import pathlib
+import struct
+import subprocess
+import tempfile
+
+from generated_harness import (
+    ArrayDim,
+    STATE_DIGEST_HELPERS_C,
+    collect_var_ranges,
+    div_candidates,
+    render_checksum_function,
+    render_state_digest_function,
+)
+from loop_to_c import INTEGER_HELPERS_C, transpile_loop_text
+from runner_common import evaluate_outputs, evaluate_state_digest_outputs
+
+
+def main() -&gt; int:
+    ranges = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range(0, min(n, 8), 2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert ranges[&quot;i&quot;] == (0, 5), ranges
+    descending = collect_var_ranges(
+        [
+            &quot;context(n);\n&quot;
+            &quot;for i in range((n + -1), -1, -2) {\n&quot;
+            &quot;  A[i] = i;\n&quot;
+            &quot;}\n&quot;
+        ],
+        {&quot;n&quot;: 6},
+    )
+    assert descending[&quot;i&quot;] == (0, 5), descending
+    assert div_candidates(-5, -5, 2, 2) == (-3, -3)
+    lowered = transpile_loop_text(
+        &quot;context(N);\n&quot;
+        &quot;for i in range(((-1 * N) / 32), ((N + 31) / 32)) {\n&quot;
+        &quot;  if (((i % 2) == 0 &amp;&amp; ((-1 * i) / 2) &lt;= 0)) {\n&quot;
+        &quot;    A[(((-1 * i) + 1) / 2)] = (B[i] / beta);\n&quot;
+        &quot;  }\n&quot;
+        &quot;}\n&quot;
+        &quot;innermost parallel for j in range(0, N) {\n&quot;
+        &quot;  A[j] = B[j];\n&quot;
+        &quot;}\n&quot;
+    )
+    assert &quot;polcert_z_div(-1 * N, 32)&quot; in lowered, lowered
+    assert &quot;polcert_z_mod(i, 2)&quot; in lowered, lowered
+    assert &quot;polcert_z_div(-1 * i, 2)&quot; in lowered, lowered
+    assert &quot;A[polcert_z_div(-1 * i + 1, 2)]&quot; in lowered, lowered
+    assert &quot;B[i] / beta&quot; in lowered, lowered
+    assert &quot;#pragma omp simd&quot; in lowered, lowered
+    nonfinite = evaluate_outputs(
+        &quot;nan\n&quot;, &quot;nan\n&quot;, abs_tolerance=1e-9, rel_tolerance=1e-9
+    )
+    assert nonfinite[&quot;exact_match&quot;]
+    assert not nonfinite[&quot;numeric_finite&quot;]
+    assert not nonfinite[&quot;outputs_match&quot;]
+    mixed_nonfinite = evaluate_outputs(
+        &quot;checksum=inf\n&quot;, &quot;checksum=inf\n&quot;, abs_tolerance=1e-9, rel_tolerance=1e-9
+    )
+    assert not mixed_nonfinite[&quot;outputs_match&quot;]
+    empty = evaluate_outputs(&quot;&quot;, &quot;&quot;, abs_tolerance=1e-9, rel_tolerance=1e-9)
+    assert not empty[&quot;outputs_match&quot;]
+    with tempfile.TemporaryDirectory(prefix=&quot;polcert-z-arithmetic-&quot;) as temporary:
+        source = pathlib.Path(temporary) / &quot;z_arithmetic.c&quot;
+        executable = pathlib.Path(temporary) / &quot;z_arithmetic&quot;
+        source.write_text(
+            &quot;#include &lt;limits.h&gt;\n#include &lt;math.h&gt;\n#include &lt;stdio.h&gt;\n&quot;
+            &quot;#include &lt;stdlib.h&gt;\n#include &lt;string.h&gt;\n&quot;
+            + INTEGER_HELPERS_C
+            + STATE_DIGEST_HELPERS_C
+            + &quot;int main(void) {\n&quot;
+            + &quot;  polcert_sha256_ctx ctx; unsigned char digest[32]; unsigned int i;\n&quot;
+            + &quot;  unsigned long long count = 0; polcert_sha256_init(&amp;ctx);\n&quot;
+            + &#x27;  printf(&quot;%lld %lld %lld %lld %lld %lld\\n&quot;,\n&#x27;
+            + &quot;    polcert_z_div(3, -2), polcert_z_mod(3, -2),\n&quot;
+            + &quot;    polcert_z_div(-3, -2), polcert_z_mod(-3, -2),\n&quot;
+            + &quot;    polcert_z_div(3, 0), polcert_z_mod(3, 0));\n&quot;
+            + &quot;  polcert_observe_double(&amp;ctx, &amp;count, 1.0);\n&quot;
+            + &quot;  polcert_observe_double(&amp;ctx, &amp;count, -2.5);\n&quot;
+            + &quot;  polcert_sha256_final(&amp;ctx, digest);\n&quot;
+            + &#x27;  printf(&quot;observed_value_count=%llu\\nstate_sha256=&quot;, count);\n&#x27;
+            + &#x27;  for (i = 0; i &lt; 32; ++i) printf(&quot;%02x&quot;, digest[i]);\n&#x27;
+            + &quot;  putchar(&#x27;\\n&#x27;);\n&quot;
+            + &quot;  return 0;\n}\n&quot;,
+            encoding=&quot;utf-8&quot;,
+        )
+        subprocess.run(
+            [&quot;cc&quot;, &quot;-std=c99&quot;, str(source), &quot;-o&quot;, str(executable)], check=True
+        )
+        observed = subprocess.run(
+            [str(executable)], text=True, capture_output=True, check=True
+        ).stdout
+        expected_digest = hashlib.sha256(
+            struct.pack(&quot;&lt;d&quot;, 1.0) + struct.pack(&quot;&lt;d&quot;, -2.5)
+        ).hexdigest()
+        assert observed == (
+            &quot;-2 -1 1 -1 0 0\n&quot;
+            f&quot;observed_value_count=2\nstate_sha256={expected_digest}\n&quot;
+        ), observed
+        digest_result = evaluate_state_digest_outputs(
+            observed.split(&quot;\n&quot;, 1)[1], observed.split(&quot;\n&quot;, 1)[1]
+        )
+        assert digest_result[&quot;outputs_match&quot;]
+        assert digest_result[&quot;numeric_value_count&quot;] == 2
+    checksum = render_checksum_function(
+        {&quot;A&quot;: (ArrayDim(0, 1, 0, 2), ArrayDim(0, 2, 0, 3))}, ()
+    )
+    assert &quot;((__i0) * 3 + __i1)&quot; in checksum, checksum
+    state_output = render_state_digest_function(
+        {&quot;A&quot;: (ArrayDim(0, 1, 0, 2), ArrayDim(0, 2, 0, 3))}, (&quot;alpha&quot;,)
+    )
+    assert &quot;polcert_observe_double(&amp;ctx, &amp;count, (double)alpha);&quot; in state_output
+    assert &quot;polcert_observe_double(&amp;ctx, &amp;count, (double)A[__i0][__i1]);&quot; in state_output
+    print(
+        &quot;[generated-harness-unit] PASS expected=range-checks-and-Rocq-Z-integer-operators &quot;
+        &quot;actual=parsed-state-observation-and-semantics-lowered &quot;
+        &quot;interpretation=generated-C-harness-matches-control-arithmetic-and-hashes-every-modeled-value&quot;
+    )
+    return 0
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())
+</pre>
+</main>
+</body>
+</html>

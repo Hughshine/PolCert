@@ -3,24 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/0bde0dd33981ef/after.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>evidence/performance-comparisons/programs/mxv/before.loop</code></h1>
+  <pre>context(N);
 
-if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((M + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
-          A[i2][i3] = (B[i2][i3] + 1);
-        }
-      }
-    }
+for i in range(0, N) {
+  y[i] = 0;
+  for j in range(0, N) {
+    y[i] = (y[i] + (a[i][j] * x[j]));
   }
 }
 </pre>

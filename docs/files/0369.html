@@ -3,21 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/124c346783e20d/before.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>evidence/performance-comparisons/programs/tricky3/after.loop</code></h1>
+  <pre>context(pointc, clusterc, dims);
 
-for i0 in range(0, T) {
-  for i1 in range(2, (N + -1)) {
-    b[i1] = (0.33333 * ((a[(i1 + -1)] + a[i1]) + a[(i1 + 1)]));
+if ((1 &lt;= dims &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    clusterv = 0;
+    for i1 in range(1, min(dims, clusterc)) {
+      dist = 0;
+      kmin = 0;
+      clusterv = 0;
+    }
+    for i1 in range(clusterc, dims) {
+      clusterv = 0;
+    }
+    for i1 in range(dims, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
   }
-  for i1 in range(2, (N + -1)) {
-    a[i1] = b[i1];
+}
+if ((clusterc &lt;= 0 &amp;&amp; 1 &lt;= dims)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    clusterv = 0;
+    for i1 in range(1, dims) {
+      clusterv = 0;
+    }
+  }
+}
+if ((dims &lt;= 0 &amp;&amp; 1 &lt;= clusterc)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
+    dist = 0;
+    kmin = 0;
+    for i1 in range(1, clusterc) {
+      dist = 0;
+      kmin = 0;
+    }
+  }
+}
+if ((clusterc &lt;= 0 &amp;&amp; dims &lt;= 0)) {
+  for i0 in range(0, pointc) {
+    dist_min = 0;
   }
 }
 </pre>

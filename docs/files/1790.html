@@ -9,25 +9,28 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/f5658acf77e96e/after.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>evidence/results/program-comparisons/e1adb838ae876c/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-if (4 &lt;= N) {
-  for i0 in range(0, T) {
-    for i1 in range(((2 * i0) + 2), ((2 * i0) + 3)) {
-      b[2] = (0.33333 * ((a[1] + a[2]) + a[3]));
-    }
-    for i1 in range(((2 * i0) + 3), (N + ((2 * i0) + -1))) {
-      for i2 in range(((-2 * i0) + i1), ((-2 * i0) + (i1 + 1))) {
-        b[i2] = (0.33333 * ((a[(i2 + -1)] + a[i2]) + a[(i2 + 1)]));
-      }
-      for i2 in range(((-2 * i0) + (i1 + -1)), ((-2 * i0) + i1)) {
-        a[i2] = b[i2];
-      }
-    }
-    for i1 in range((N + ((2 * i0) + -1)), (N + (2 * i0))) {
-      for i2 in range((N + -2), (N + -1)) {
-        a[i2] = b[i2];
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range((i0 / 8), ((i0 + 8) / 8)) {
+      for i2 in range(0, ((T + (N + 24)) / 32)) {
+        for i3 in range((i2 / 8), ((i2 + 8) / 8)) {
+          for i4 in range(max((((-1 * N) + ((32 * i2) + 6)) / 32), 0), min((((32 * i2) + 58) / 32), ((T + 30) / 32))) {
+            for i5 in range((i4 / 8), ((i4 + 8) / 8)) {
+              for i6 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+                for i7 in range(max(max(10, ((32 * i4) + 5)), (32 * i2)), min(min((T + (N + -7)), (N + ((32 * i4) + 26))), ((32 * i2) + 32))) {
+                  for i8 in range(max(max((32 * i4), ((-1 * N) + (i7 + 6))), 5), min(min(((32 * i4) + 32), (i7 + -4)), (T + -1))) {
+                    for i9 in range((i7 + (-1 * i8)), (i7 + ((-1 * i8) + 1))) {
+                      A[i6][(i8 + 1)][i9] = (0.125 * (A[i6][i8][(i9 + -1)] + A[i6][(i8 + -2)][(i9 + 1)]));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

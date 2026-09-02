@@ -3,15 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>optimized.observation.txt</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-executions/07898107b10486/optimized.observation.txt</code></h1>
-  <pre>observed_value_count=8064
-state_sha256=eb6361834c5aeeb20f4b728ba76c859056bca1e4ac5590f02cbe9793394579e1
+  <h1><code>evidence/results/program-comparisons/f23df88909172e/after.loop</code></h1>
+  <pre>context(N, M);
+
+for i0 in range(0, min(M, N)) {
+  a[i0] = b[i0];
+  a[i0] = b[i0];
+}
+for i0 in range(max(0, N), M) {
+  a[i0] = b[i0];
+}
+for i0 in range(max(M, 0), N) {
+  a[i0] = b[i0];
+}
 </pre>
 </main>
 </body>

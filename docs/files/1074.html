@@ -9,21 +9,27 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/7f49510b55042b/after.c</code></h1>
-  <pre>#define S1(zT1,$i0)	c[$i0] = $i0;
-#define S2(zT1,$i0)	b[$i0] = $i0;
+  <h1><code>evidence/results/program-comparisons/6a588e2f92ec10/after.c</code></h1>
+  <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = beta * C[$i0][$i1] + alpha * A[$i0][$i2] * B[$i2][$i1];
 
-		int t1, t2, t3, t4;
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
 
 	register int lbv, ubv;
 
 /* Start of CLooG code */
-for (t3=0;t3&lt;=1;t3++) {
-  S1(0,t3);
-}
-for (t2=0;t2&lt;=floord(N-1,32);t2++) {
-  for (t3=32*t2;t3&lt;=min(N-1,32*t2+31);t3++) {
-    S2(t2,t3);
+if ((K &gt;= 1) &amp;&amp; (M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
+  for (t2=0;t2&lt;=floord(M-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(K-1,32);t6++) {
+        for (t7=32*t2;t7&lt;=min(M-1,32*t2+31);t7++) {
+          for (t9=32*t4;t9&lt;=min(N-1,32*t4+31);t9++) {
+            for (t11=32*t6;t11&lt;=min(K-1,32*t6+31);t11++) {
+              S1(t2,t4,t6,t7,t9,t11);
+            }
+          }
+        }
+      }
+    }
   }
 }
 /* End of CLooG code */

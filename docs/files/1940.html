@@ -3,40 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>summary.json</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-executions/0bde0dd33981ef/summary.json</code></h1>
-  <pre>{
-  &quot;baseline_observation&quot;: &quot;0bde0dd33981ef/baseline.observation.txt&quot;,
-  &quot;baseline_output_sha256&quot;: &quot;326487695a13b98783080eb74b29fb18c8c77c52ed43c69d5c2c5a3e9d5e8112&quot;,
-  &quot;case&quot;: &quot;ordinary-iss-parallel-hint&quot;,
-  &quot;exact_match&quot;: true,
-  &quot;execution_repeats&quot;: 3,
-  &quot;max_abs_diff&quot;: null,
-  &quot;max_rel_diff&quot;: null,
-  &quot;numeric_finite&quot;: true,
-  &quot;numeric_within_tolerance&quot;: false,
-  &quot;observation_mode&quot;: &quot;sha256-modeled-state&quot;,
-  &quot;observed_value_count&quot;: 20000,
-  &quot;omp_threads_requested&quot;: 4,
-  &quot;optimized_observation&quot;: &quot;0bde0dd33981ef/optimized.observation.txt&quot;,
-  &quot;optimized_output_sha256&quot;: &quot;326487695a13b98783080eb74b29fb18c8c77c52ed43c69d5c2c5a3e9d5e8112&quot;,
-  &quot;outputs_match&quot;: true,
-  &quot;pair_id&quot;: &quot;0bde0dd33981ef&quot;,
-  &quot;parallelized_loop&quot;: true,
-  &quot;params&quot;: {
-    &quot;M&quot;: 96,
-    &quot;N&quot;: 96
-  },
-  &quot;result&quot;: &quot;ok&quot;,
-  &quot;suite&quot;: &quot;one-level tiling configurations&quot;,
-  &quot;summary&quot;: &quot;0bde0dd33981ef/summary.json&quot;,
-  &quot;vectorized_loop&quot;: false
+  <h1><code>evidence/results/program-comparisons/f829419380ce19/after.c</code></h1>
+  <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = C[$i0][$i1] + A[$i0][$i2] * B[$i2][$i1];
+#define S2(zT3,zT4,zT5,$i0,$i1,$i2)	D[$i0][$i1] = D[$i0][$i1] + C[$i0][$i2] * E[$i2][$i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(N-1,32);t6++) {
+        for (t7=32*t2;t7&lt;=min(N-1,32*t2+31);t7++) {
+          for (t9=32*t4;t9&lt;=min(N-1,32*t4+31);t9++) {
+            for (t11=32*t6;t11&lt;=min(N-1,32*t6+31);t11++) {
+              S1(t2,t4,t6,t7,t9,t11);
+            }
+          }
+        }
+      }
+    }
+  }
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t6=0;t6&lt;=floord(N-1,32);t6++) {
+        for (t7=32*t2;t7&lt;=min(N-1,32*t2+31);t7++) {
+          for (t9=32*t4;t9&lt;=min(N-1,32*t4+31);t9++) {
+            for (t11=32*t6;t11&lt;=min(N-1,32*t6+31);t11++) {
+              S2(t2,t4,t6,t7,t9,t11);
+            }
+          }
+        }
+      }
+    }
+  }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

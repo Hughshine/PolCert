@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>seidel.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/seidel.loop</code></h1>
+  <pre>context(T, N);
+
+for t in range(0, ((T - 1) + 1)) {
+  for i in range(1, ((N - 2) + 1)) {
+    for j in range(1, ((N - 2) + 1)) {
+      a[i][j] = (((((((((a[(i - 1)][(j - 1)] + a[(i - 1)][j]) + a[(i - 1)][(j + 1)]) + a[i][(j - 1)]) + a[i][j]) + a[i][(j + 1)]) + a[(i + 1)][(j - 1)]) + a[(i + 1)][j]) + a[(i + 1)][(j + 1)]) / 9.0);
+    }
+  }
+}
+</pre>
+</main>
+</body>
+</html>

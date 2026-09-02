@@ -3,73 +3,45 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.bridge</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/1a8a7b9c570d28/after.bridge</code></h1>
-  <pre>VAR_ORDER 5
-VAR T
-VAR N
-VAR i
-VAR j
-VAR t
-BEFORE_STMTS 1
-BEFORE_DOMAIN 6
-ROW 0,0,0,0,-1|-1
-ROW -1,0,0,0,1|-1
-ROW 0,0,-1,0,0|0
-ROW 0,-1,1,0,0|-1
-ROW 0,0,0,-1,0|0
-ROW 0,-1,0,1,0|-1
-AFTER_STMTS 4
-AFTER_DOMAIN 8
-ROW 0,0,0,0,-1|-1
-ROW -1,0,0,0,1|-1
-ROW 0,0,-1,0,0|0
-ROW 0,-1,1,0,0|-1
-ROW 0,0,0,-1,0|0
-ROW 0,-1,0,1,0|-1
-ROW 0,-1,2,0,0|-1
-ROW 0,-1,0,2,0|-1
-AFTER_DOMAIN 8
-ROW 0,0,0,0,-1|-1
-ROW -1,0,0,0,1|-1
-ROW 0,0,-1,0,0|0
-ROW 0,-1,1,0,0|-1
-ROW 0,0,0,-1,0|0
-ROW 0,-1,0,1,0|-1
-ROW 0,1,-2,0,0|0
-ROW 0,-1,0,2,0|-1
-AFTER_DOMAIN 8
-ROW 0,0,0,0,-1|-1
-ROW -1,0,0,0,1|-1
-ROW 0,0,-1,0,0|0
-ROW 0,-1,1,0,0|-1
-ROW 0,0,0,-1,0|0
-ROW 0,-1,0,1,0|-1
-ROW 0,-1,2,0,0|-1
-ROW 0,1,0,-2,0|0
-AFTER_DOMAIN 8
-ROW 0,0,0,0,-1|-1
-ROW -1,0,0,0,1|-1
-ROW 0,0,-1,0,0|0
-ROW 0,-1,1,0,0|-1
-ROW 0,0,0,-1,0|0
-ROW 0,-1,0,1,0|-1
-ROW 0,1,-2,0,0|0
-ROW 0,1,0,-2,0|0
-CUTS 2
-CUT 0,-1,2,0,0|1
-CUT 0,-1,0,2,0|0
-STMT_WITNESSES 4
-STMT_WITNESS 0 lt,lt
-STMT_WITNESS 0 ge,lt
-STMT_WITNESS 0 lt,ge
-STMT_WITNESS 0 ge,ge
-END
+  <h1><code>evidence/results/program-comparisons/07eac601deb2c2/after.loop</code></h1>
+  <pre>context(N);
+
+if (1 &lt;= N) {
+  for i0 in range(0, ((N + 255) / 256)) {
+    for i1 in range(0, ((N + 255) / 256)) {
+      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
+            for i5 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+              C[i4][i5] = 0;
+            }
+          }
+        }
+      }
+      for i2 in range(0, ((N + 255) / 256)) {
+        for i3 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
+          for i4 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
+            for i5 in range(max((8 * i2), 0), min(((8 * i2) + 8), ((N + 31) / 32))) {
+              for i6 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
+                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
+                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), N)) {
+                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

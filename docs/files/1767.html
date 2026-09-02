@@ -3,22 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/f17b87c52b7e4b/before.loop</code></h1>
-  <pre>context(M, N, K);
+  <h1><code>evidence/results/program-comparisons/dd391d56882821/before.c</code></h1>
+  <pre>#define S1($i0,$i1,$i2)	a[$i1][$i2] = a[$i1 - 1][$i2 - 1] + a[$i1 - 1][$i2] + a[$i1 - 1][$i2 + 1] + a[$i1][$i2 - 1] + a[$i1][$i2] + a[$i1][$i2 + 1] + a[$i1 + 1][$i2 - 1] + a[$i1 + 1][$i2] + a[$i1 + 1][$i2 + 1] / 9.0;
 
-for i in range(0, M) {
-  for j in range(0, N) {
-    for k in range(0, K) {
-      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+		int t1, t2, t3, t4, t5, t6, t7;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((N &gt;= 3) &amp;&amp; (T &gt;= 1)) {
+  for (t2=0;t2&lt;=T-1;t2++) {
+    for (t4=1;t4&lt;=N-2;t4++) {
+      for (t6=1;t6&lt;=N-2;t6++) {
+        S1(t2,t4,t6);
+      }
     }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

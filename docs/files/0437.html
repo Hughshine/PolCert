@@ -3,92 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.txt</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/1c7fcb2a15e3fe/before.txt</code></h1>
-  <pre>[pluto] compute_deps (isl)
-nvar = 1, npar = 1
-Parameters: N 
-S1 &quot;a[i] = 2 * a[N - 1 - i];&quot;
-ndims: 1; orig_depth: 1
-Index set
-Set #1
-[2 dims; 3 constraints]
-i &gt;= 0
--i+N-1 &gt;= 0
-N-1 &gt;= 0
+  <h1><code>evidence/results/program-comparisons/096f1675278763/before.loop</code></h1>
+  <pre>context(N);
 
-T(S1): (0, i, 0)
-loop types (loop, loop, loop)
-
-Read accesses
-a[-i+N-1]
-Write accesses
-a[i]
-Original loop: 0 -&gt; yes
-
---- Dep 1 from S1 to S1; satisfied: 0, sat level: -1; Type: RAW
-on variable: a
-Dependence polyhedron
-Set #1
-[3 dims; 3 constraints]
-i+i&#x27;-N+1 = 0
-i &gt;= 0
--2i+N-2 &gt;= 0
-
-
---- Dep 2 from S1 to S1; satisfied: 0, sat level: -1; Type: WAR
-on variable: a
-Dependence polyhedron
-Set #1
-[3 dims; 3 constraints]
-i+i&#x27;-N+1 = 0
-i &gt;= 0
--2i+N-2 &gt;= 0
-
-
-T(S1): (0, i, 0)
-loop types (loop, loop, loop)
-
-[pluto] Number of statements: 1
-[pluto] Total number of loops: 1
-[pluto] Number of deps: 2
-[pluto] Maximum domain dimensionality: 1
-[pluto] Number of parameters: 1
-[pluto] pluto_compute_dep_satisfaction
-[pluto] pluto_dep_satisfaction_reset
-[pluto] dep_satisfaction_update (level 0)
-	 0 dep(s) satisfied
-[pluto] dep_satisfaction_update (level 1)
-[pluto] dep_satisfaction_update: dep 1 satisfied
-[pluto] dep_satisfaction_update: dep 2 satisfied
-	 2 dep(s) satisfied
-[pluto] dep_satisfaction_update (level 2)
-	 0 dep(s) satisfied
-[pluto] Affine transformations [&lt;iter coeff&#x27;s&gt; &lt;param&gt; &lt;const&gt;]
-
-T(S1): (0, i, 0)
-loop types (loop, loop, loop)
-
-[pluto] generating Cloog file...
-[pluto] using Cloog -f/-l options: 1 3
-[pluto] cloog_input_read
-[pluto] cloog_clast_create
-[Pluto] Output written to reverse-iss.pluto.c
-
-[pluto] Timing statistics
-[pluto] SCoP extraction + dependence analysis time: 0.003902s
-[pluto] Auto-transformation time: 0.000000s
-[pluto] Tile size selection time: 0.000000s
-[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.000000s
-[pluto] Code generation time: 0.000643s
-[pluto] Other/Misc time: 0.011419s
-[pluto] Total time: 0.015964s
-[pluto] All times: 0.003902 0.000000 0.000643 0.011419
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          T1[i0][i1][i2][i3] = (T1[i0][i1][i2][i3] + (A[i4][i1][i2][i3] * C4[i4][i0]));
+        }
+      }
+    }
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          T2[i0][i1][i2][i3] = (T2[i0][i1][i2][i3] + (T1[i0][i4][i2][i3] * C3[i4][i1]));
+        }
+      }
+    }
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          T3[i0][i1][i2][i3] = (T3[i0][i1][i2][i3] + (T2[i0][i1][i4][i3] * C2[i4][i2]));
+        }
+      }
+    }
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      for i3 in range(0, N) {
+        for i4 in range(0, N) {
+          B[i0][i1][i2][i3] = (B[i0][i1][i2][i3] + (T3[i0][i1][i2][i4] * C1[i4][i3]));
+        }
+      }
+    }
+  }
+}
 </pre>
 </main>
 </body>

@@ -9,12 +9,14 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/20413b55400006/before.loop</code></h1>
+  <h1><code>evidence/results/program-comparisons/0e8fc386ff6061/before.loop</code></h1>
   <pre>context(N, M);
 
-for i0 in range(0, N) {
-  for i1 in range(0, M) {
-    A[i0][i1] = (B[i0][i1] + 1);
+if (1 &lt;= M) {
+  for i0 in range(0, N) {
+    for i1 in range(0, M) {
+      s = (s + a[i0][i1]);
+    }
   }
 }
 </pre>

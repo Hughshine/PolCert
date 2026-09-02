@@ -9,19 +9,12 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/2d8a0afbf4acbe/after.loop</code></h1>
-  <pre>context(N, M);
-
-if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
-  for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((M + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-        innermost parallel for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
-          A[i2][i3] = (B[i2][i3] + 1);
-        }
-      }
-    }
-  }
+  <h1><code>evidence/results/program-comparisons/1a948c01540a70/after.loop</code></h1>
+  <pre>parallel for i0 in range(0, 100) {
+  A[(4 * i0)] = ((2 * A[(4 * i0)]) + 2);
+  A[((4 * i0) + 1)] = ((2 * A[((4 * i0) + 1)]) + 2);
+  A[((4 * i0) + 2)] = ((2 * A[((4 * i0) + 2)]) + 2);
+  A[((4 * i0) + 3)] = ((2 * A[((4 * i0) + 3)]) + 2);
 }
 </pre>
 </main>

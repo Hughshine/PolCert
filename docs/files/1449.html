@@ -9,14 +9,12 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/bfa99a119f624a/before.loop</code></h1>
-  <pre>context(B, T, N);
+  <h1><code>evidence/results/program-comparisons/ab7d0ed2c283ce/before.loop</code></h1>
+  <pre>context(N, M);
 
-for t in range(5, (T - 1)) {
-  for i in range(5, (N - 5)) {
-    for p in range(0, B) {
-      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
-    }
+for i in range(0, N) {
+  for j in range(0, M) {
+    A[i][j] = (B[i][j] + 1);
   }
 }
 </pre>

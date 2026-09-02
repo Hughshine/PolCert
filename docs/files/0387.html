@@ -3,36 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>README.md</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/148f500975e6d9/before.c</code></h1>
-  <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	C[$i0][$i1] = C[$i0][$i1] + A[$i0][$i2] * B[$i2][$i1];
+  <h1><code>evidence/rejected-optimizer-outputs/vanished-outer-parallel/README.md</code></h1>
+  <pre># Vanished outer parallel loop
 
-		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
+Status: reproduced, minimized, validator-catches.
 
-	register int lbv, ubv;
+The outer `i` loop has exactly one iteration and is independent.  The inner
+`j` loop carries the recurrence `a[0][j - 1] -&gt; a[0][j]` and must remain
+sequential.
 
-/* Start of CLooG code */
-if (NMAX &gt;= 1) {
-  for (t2=0;t2&lt;=floord(NMAX-1,32);t2++) {
-    for (t4=t2;t4&lt;=floord(NMAX-1,32);t4++) {
-      for (t6=t2;t6&lt;=floord(NMAX-1,32);t6++) {
-        for (t7=32*t2;t7&lt;=min(NMAX-1,32*t2+31);t7++) {
-          for (t9=max(32*t4,t7);t9&lt;=min(NMAX-1,32*t4+31);t9++) {
-            for (t11=max(32*t6,t7);t11&lt;=min(NMAX-1,32*t6+31);t11++) {
-              S1(t2,t4,t6,t7,t9,t11);
-            }
-          }
-        }
-      }
-    }
-  }
-}
-/* End of CLooG code */
+At the pinned bug-reproduction commit
+`historical-bug-witness-pluto-snapshot`,
+the affine schedule is `(0, j)`.  CLooG therefore removes the constant outer
+schedule coordinate.  `tool/ast_transform.c:75-95` then searches inward for a
+loop on which to place the parallel annotation.  Its band-boundary test uses
+`&gt;` where the half-open band boundary requires `&gt;=`, so it crosses a width-one
+parallel band and marks the dependent `j` loop parallel. The ordinary fixed
+Pluto baseline `ordinary-fixed-pluto-snapshot` keeps the search inside the half-open band boundary.
+
+The raw Pluto command succeeds and produces an OpenMP program:
+
+```sh
+polycc --notile --nodiamond-tile --nointratileopt --noprevector \
+  --nounrolljam --parallel vanished_outer_parallel.c
+```
+
+With four OpenMP threads, the original program prints `10000`; the generated
+program prints a different value.  This is a silent miscompilation, not merely
+an imprecise hint or a missed optimization.
+
+PolCert handles both relevant boundaries defensively:
+
+- `--parallel --parallel-strict` rejects because Pluto&#x27;s `t1` metadata cannot
+  be mapped to a surviving certifiable loop.
+- `--notile --parallel-current 1` directly checks the actual inner loop chosen
+  by Pluto&#x27;s AST fallback and rejects it because it carries a dependence.
+
+Run the complete reproducer with:
+
+```sh
+opam exec -- make test-pluto-miscompilation-vanished-outer
+```
 </pre>
 </main>
 </body>

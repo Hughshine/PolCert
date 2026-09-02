@@ -9,13 +9,19 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/ad630d405280c6/before.loop</code></h1>
-  <pre>context(NMAX);
+  <h1><code>evidence/results/program-comparisons/98351a2103ed47/before.loop</code></h1>
+  <pre>context(N);
 
-for i0 in range(1, NMAX) {
-  for i1 in range(0, NMAX) {
-    for i2 in range(0, i0) {
-      b[i1][i2] = (b[i1][i2] + (a[i0][i2] * b[i1][i0]));
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    for i2 in range(0, N) {
+      sum[i0][i1][i2] = 0;
+      for i3 in range(0, N) {
+        sum[i0][i1][i2] = (sum[i0][i1][i2] + (A[i0][i1][i3] * C4[i3][i2]));
+      }
+    }
+    for i2 in range(0, N) {
+      A[i0][i1][i2] = sum[i0][i1][i2];
     }
   }
 }

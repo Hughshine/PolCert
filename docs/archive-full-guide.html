@@ -28,7 +28,7 @@
     <div class="minor">
       <a href="proof/toc.html" target="_blank" rel="noopener">Rocq module index</a>
       <a href="proof/declarations.html" target="_blank" rel="noopener">Declaration index</a>
-      <a href="files/3459.html" target="_blank" rel="noopener">Source map</a>
+      <a href="files/3585.html" target="_blank" rel="noopener">Source map</a>
       <a href="files/0001.html" target="_blank" rel="noopener">Evidence map</a>
     </div>
   </nav>
@@ -164,15 +164,15 @@
       <h3>Reusable Instruction Interface</h3>
       <p>
         PolCert does not hard-code one instruction language into its validators.
-        The <a href="files/3462.html" target="_blank" rel="noopener"><code>INSTR</code></a>
+        The <a href="files/3588.html" target="_blank" rel="noopener"><code>INSTR</code></a>
         interface supplies instruction semantics and memory effects. The
         polyhedral checks then reason about loop instances and those effects.
       </p>
       <p>
         The text <code>.loop</code> frontend uses the lightweight model in
-        <a href="files/3486.html" target="_blank" rel="noopener"><code>SInstr.v</code></a>. The
+        <a href="files/3612.html" target="_blank" rel="noopener"><code>SInstr.v</code></a>. The
         examples below instead use typed scalar and array instructions from
-        <a href="files/3470.html" target="_blank" rel="noopener"><code>CInstr.v</code></a>.
+        <a href="files/3596.html" target="_blank" rel="noopener"><code>CInstr.v</code></a>.
       </p>
 
       <h3 id="typed-loop-examples">Typed Loop Examples</h3>
@@ -337,7 +337,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
         </p>
       </article>
       <p>
-        <a href="files/3468.html" target="_blank" rel="noopener"><code>CTypedLoopSamples.v</code></a>
+        <a href="files/3594.html" target="_blank" rel="noopener"><code>CTypedLoopSamples.v</code></a>
         contains the four typed inputs. They are constructed directly in Rocq
         rather than parsed from C. Small computations check that extraction
         retains each program's loop depth and nonempty read/write accesses; the
@@ -345,9 +345,9 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           href="../evidence/results/test-catalog.html#typed-instruction-programs"
          target="_blank" rel="noopener">six compiler runs</a> then exercise the optimization paths shown above.
         Additional typed kernels cover
-        <a href="files/3465.html" target="_blank" rel="noopener">matrix multiplication</a>,
-        <a href="files/3466.html" target="_blank" rel="noopener">covariance</a>, and
-        <a href="files/3467.html" target="_blank" rel="noopener">GEMVER</a>.
+        <a href="files/3591.html" target="_blank" rel="noopener">matrix multiplication</a>,
+        <a href="files/3592.html" target="_blank" rel="noopener">covariance</a>, and
+        <a href="files/3593.html" target="_blank" rel="noopener">GEMVER</a>.
       </p>
     </section>
 
@@ -645,9 +645,9 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/3473.html" target="_blank" rel="noopener"><code>ExtractorFrontend.v</code></a>,
-            <a href="files/3472.html" target="_blank" rel="noopener"><code>ExtractorFacts.v</code></a>,
-            <a href="files/3471.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a>
+            <a href="files/3599.html" target="_blank" rel="noopener"><code>ExtractorFrontend.v</code></a>,
+            <a href="files/3598.html" target="_blank" rel="noopener"><code>ExtractorFacts.v</code></a>,
+            <a href="files/3597.html" target="_blank" rel="noopener"><code>ExtractorCorrect.v</code></a>
           </dd>
         </dl>
       </article>
@@ -682,9 +682,9 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/3475.html" target="_blank" rel="noopener"><code>ISSRefinement.v</code></a>,
-            <a href="files/3474.html" target="_blank" rel="noopener"><code>ISSCutSemantics.v</code></a>,
-            <a href="files/3476.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a>
+            <a href="files/3601.html" target="_blank" rel="noopener"><code>ISSRefinement.v</code></a>,
+            <a href="files/3600.html" target="_blank" rel="noopener"><code>ISSCutSemantics.v</code></a>,
+            <a href="files/3602.html" target="_blank" rel="noopener"><code>ISSValidatorCorrect.v</code></a>
           </dd>
         </dl>
       </article>
@@ -717,7 +717,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <code>validate_correct</code>.
           </dd>
           <dt>Source</dt>
-          <dd><a href="files/3469.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a></dd>
+          <dd><a href="files/3595.html" target="_blank" rel="noopener"><code>AffineValidator.v</code></a></dd>
         </dl>
       </article>
 
@@ -762,10 +762,10 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/3485.html" target="_blank" rel="noopener"><code>TilingWitness.v</code></a>,
-            <a href="files/3484.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a>,
-            <a href="files/3483.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a>,
-            <a href="files/3482.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a>
+            <a href="files/3611.html" target="_blank" rel="noopener"><code>TilingWitness.v</code></a>,
+            <a href="files/3610.html" target="_blank" rel="noopener"><code>TilingRelation.v</code></a>,
+            <a href="files/3609.html" target="_blank" rel="noopener"><code>TilingBandScheduleValidator.v</code></a>,
+            <a href="files/3608.html" target="_blank" rel="noopener"><code>TilingBandDirectRuntime.v</code></a>
           </dd>
         </dl>
       </article>
@@ -808,10 +808,10 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/3464.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a>,
-            <a href="files/3479.html" target="_blank" rel="noopener"><code>ParallelValidator.v</code></a>,
-            <a href="files/3481.html" target="_blank" rel="noopener"><code>RawCodegenOrigin.v</code></a>,
-            <a href="files/3478.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a>
+            <a href="files/3590.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a>,
+            <a href="files/3605.html" target="_blank" rel="noopener"><code>ParallelValidator.v</code></a>,
+            <a href="files/3607.html" target="_blank" rel="noopener"><code>RawCodegenOrigin.v</code></a>,
+            <a href="files/3604.html" target="_blank" rel="noopener"><code>ParallelCodegenCorrect.v</code></a>
           </dd>
         </dl>
         <p>
@@ -852,9 +852,9 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           </dd>
           <dt>Source</dt>
           <dd>
-            <a href="files/3463.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a>,
-            <a href="files/3477.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a>,
-            <a href="files/3460.html" target="_blank" rel="noopener"><code>VerifiedLoopPostpass.v</code></a>
+            <a href="files/3589.html" target="_blank" rel="noopener"><code>LoopUnroll.v</code></a>,
+            <a href="files/3603.html" target="_blank" rel="noopener"><code>LoopJamBridge.v</code></a>,
+            <a href="files/3586.html" target="_blank" rel="noopener"><code>VerifiedLoopPostpass.v</code></a>
           </dd>
         </dl>
       </article>
@@ -868,18 +868,18 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
           <tr>
             <td><a href="../source/src/" target="_blank" rel="noopener"><code>src/</code></a></td>
             <td>The polyhedral model and the checks for schedules, tiling, and parallel loops.</td>
-            <td><a href="files/3480.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a></td>
+            <td><a href="files/3606.html" target="_blank" rel="noopener"><code>PolyLang.v</code></a></td>
           </tr>
           <tr>
             <td><a href="../source/polygen/" target="_blank" rel="noopener"><code>polygen/</code></a></td>
             <td>Source and target loop languages, loop generation, and verified unrolling.</td>
-            <td><a href="files/3464.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a></td>
+            <td><a href="files/3590.html" target="_blank" rel="noopener"><code>ParallelLoop.v</code></a></td>
           </tr>
           <tr>
             <td><a href="../source/driver/" target="_blank" rel="noopener"><code>driver/</code></a></td>
             <td>Complete compiler configurations and their top-level theorems.</td>
             <td>
-              <a href="files/3461.html" target="_blank" rel="noopener">
+              <a href="files/3587.html" target="_blank" rel="noopener">
                 <code>VerifiedParallelCompilerConfig.v</code>
               </a>
             </td>
@@ -888,7 +888,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <td><a href="../source/syntax/" target="_blank" rel="noopener"><code>syntax/</code></a></td>
             <td>Concrete instructions, the text frontend, and the extracted command-line tool.</td>
             <td>
-              <a href="files/3487.html" target="_blank" rel="noopener">
+              <a href="files/3613.html" target="_blank" rel="noopener">
                 <code>SVerifiedParallelCompilerConfig.v</code>
               </a>
             </td>
@@ -897,7 +897,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <td><a href="../source/samples/" target="_blank" rel="noopener"><code>samples/</code></a></td>
             <td>Typed instruction instances and reference C computations.</td>
             <td>
-              <a href="files/3468.html" target="_blank" rel="noopener">
+              <a href="files/3594.html" target="_blank" rel="noopener">
                 <code>CTypedLoopSamples.v</code>
               </a>
             </td>
@@ -906,7 +906,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <td><a href="../source/tests/" target="_blank" rel="noopener"><code>tests/</code></a></td>
             <td>Loop examples, execution comparisons, and optimizer-rejection cases.</td>
             <td>
-              <a href="files/3488.html" target="_blank" rel="noopener">
+              <a href="files/3614.html" target="_blank" rel="noopener">
                 <code>end-to-end-c/README.md</code>
               </a>
             </td>
@@ -929,7 +929,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <td>End-to-end verified compilation</td>
             <td><a href="#claim-e2e">main theorem and executable compiler theorem</a></td>
             <td>
-              <a href="files/3426.html" target="_blank" rel="noopener">theorem and proof-build report</a>;
+              <a href="files/3552.html" target="_blank" rel="noopener">theorem and proof-build report</a>;
               <a href="../evidence/results/test-catalog.html" target="_blank" rel="noopener">program results by test case</a>;
               <a href="../evidence/performance-comparisons/index.html" target="_blank" rel="noopener">performance comparisons</a>
             </td>
@@ -938,7 +938,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             <td>Verified extraction</td>
             <td><a href="#claim-extraction"><code>extractor_correct</code></a></td>
             <td>
-              <a href="files/3426.html" target="_blank" rel="noopener">theorem and proof-build report</a>
+              <a href="files/3552.html" target="_blank" rel="noopener">theorem and proof-build report</a>
             </td>
           </tr>
           <tr>
@@ -993,7 +993,7 @@ if ((7 &lt;= T &amp;&amp; 11 &lt;= N)) {
             </td>
             <td>
               <a href="../evidence/rejected-optimizer-outputs/index.html" target="_blank" rel="noopener">full rejection, local refusal, and certified fallback cases</a>;
-              <a href="files/0254.html" target="_blank" rel="noopener">bug-report draft</a>
+              <a href="files/0380.html" target="_blank" rel="noopener">bug-report draft</a>
             </td>
           </tr>
         </tbody>

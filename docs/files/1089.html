@@ -3,44 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/828f2f5a24ff6e/before.c</code></h1>
-  <pre>#include &lt;stdio.h&gt;
+  <h1><code>evidence/results/program-comparisons/6d2c4cb92056ed/before.loop</code></h1>
+  <pre>context(N, M);
 
-#define I 2
-#define H 2
-#define J 6
-#define K 6
-
-static int a[I][H][J][K];
-static int b[I][H][K];
-
-int main(void) {
-  int i, h, j, k;
-
-  for (i = 0; i &lt; I; i++) {
-    for (h = 0; h &lt; H; h++) {
-      a[i][h][0][3] = 10;
-      for (k = 0; k &lt; K; k++)
-        b[i][h][k] = k + 1;
-    }
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    d[i1] = (d[i1] + a[i0][i1]);
   }
-
-#pragma scop
-  for (i = 0; i &lt; I; i++)
-    for (h = 0; h &lt; H; h++)
-      for (j = 1; j &lt; J; j++)
-        for (k = 0; k &lt; K; k++)
-          a[i][h][j][k] = a[i][h][j - 1][3] + b[i][h][k];
-#pragma endscop
-
-  printf(&quot;%d\n&quot;, a[0][0][2][0]);
-  return 0;
 }
 </pre>
 </main>

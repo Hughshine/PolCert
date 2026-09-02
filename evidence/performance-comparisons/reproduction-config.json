@@ -1,0 +1,20 @@
+{
+  "candidate_measurement_runs_per_program": 1,
+  "case_parameters": "results.json -> selected[].params",
+  "compiler": "cc -O3 -std=c99 PROGRAM.c -lm -o PROGRAM",
+  "container_commands": [
+    "docker build -f environment/Dockerfile -t polcert-artifact .",
+    "docker run --rm polcert-artifact performance"
+  ],
+  "note": "Elapsed times depend on the Docker host and should be remeasured locally.",
+  "parallel_compiler": "cc -fopenmp -O3 -std=c99 PROGRAM.c -lm -o PROGRAM",
+  "parallel_environment": {
+    "OMP_DYNAMIC": "FALSE",
+    "OMP_NUM_THREADS": 4
+  },
+  "programs": "programs/<case>/{before,after}.loop",
+  "route_options": "selected-pipelines.json -> pipelines",
+  "selected_routes": "selected-pipelines.json -> cases",
+  "tier": "perf",
+  "timeout_seconds_per_optimizer_or_program_run": 300
+}

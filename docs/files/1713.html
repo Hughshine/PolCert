@@ -9,15 +9,17 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/e82fd5e24869fe/before.loop</code></h1>
-  <pre>context(M, N);
+  <h1><code>evidence/results/program-comparisons/d48c971cdcb90c/before.loop</code></h1>
+  <pre>context(N);
 
-for i0 in range(1, (M + 1)) {
-  for i1 in range(i0, (M + 1)) {
-    for i2 in range(1, (N + 1)) {
-      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
+for i0 in range(0, N) {
+  for i1 in range((i0 + 1), N) {
+    a[i0][i1] = (a[i0][i1] / a[i0][i0]);
+  }
+  for i1 in range((i0 + 1), N) {
+    for i2 in range((i0 + 1), N) {
+      a[i1][i2] = (a[i1][i2] - (a[i1][i0] * a[i0][i2]));
     }
-    symmat[i1][i0] = symmat[i0][i1];
   }
 }
 </pre>

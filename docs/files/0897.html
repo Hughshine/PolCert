@@ -3,54 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/616ca246df5c03/before.c</code></h1>
-  <pre>#define S1(zT1,$i0)	symmat[$i0][$i0] = 1.0;
-#define S2(zT2,zT3,$i0,$i1)	symmat[$i0][$i1] = 0.0;
-#define S3(zT3,zT4,zT5,$i0,$i1,$i2)	symmat[$i0][$i1] = symmat[$i0][$i1] + data[$i2][$i0] * data[$i2][$i1];
-#define S4(zT2,zT3,$i0,$i1)	symmat[$i1][$i0] = symmat[$i0][$i1];
-
-		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if (M &gt;= 2) {
-  for (t2=0;t2&lt;=floord(M-1,32);t2++) {
-    for (t7=max(1,32*t2);t7&lt;=min(M-1,32*t2+31);t7++) {
-      S1(t2,t7);
-    }
-    for (t4=t2;t4&lt;=floord(M,32);t4++) {
-      for (t7=max(1,32*t2);t7&lt;=min(min(M-1,32*t2+31),32*t4+30);t7++) {
-        for (t9=max(32*t4,t7+1);t9&lt;=min(M,32*t4+31);t9++) {
-          S2(t2,t4,t7,t9);
-        }
-      }
-      if (N &gt;= 1) {
-        for (t6=0;t6&lt;=floord(N,32);t6++) {
-          for (t7=max(1,32*t2);t7&lt;=min(min(M-1,32*t2+31),32*t4+30);t7++) {
-            for (t9=max(32*t4,t7+1);t9&lt;=min(M,32*t4+31);t9++) {
-              for (t11=max(1,32*t6);t11&lt;=min(N,32*t6+31);t11++) {
-                S3(t2,t4,t6,t7,t9,t11);
-              }
-            }
-          }
-        }
-      }
-      for (t7=max(1,32*t2);t7&lt;=min(min(M-1,32*t2+31),32*t4+30);t7++) {
-        for (t9=max(32*t4,t7+1);t9&lt;=min(M,32*t4+31);t9++) {
-          S4(t2,t4,t7,t9);
-        }
-      }
-    }
+  <h1><code>evidence/results/program-comparisons/4e5f49e091bc7f/before.loop</code></h1>
+  <pre>for i in range(0, 100) {
+  for j in range(0, 4) {
+    A[((4 * i) + j)] = ((2 * A[((4 * i) + j)]) + 2);
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

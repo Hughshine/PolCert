@@ -3,38 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>README.md</title>
+  <title>summary.json</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>source/tests/end-to-end-c/README.md</code></h1>
-  <pre># Handwritten C-Level Examples
-
-These examples define typed PolCert programs by hand and include small C
-programs that show the intended computation. They test the extracted compiler
-without treating C parsing as part of the theorem.
-
-Representative cases cover:
-
-- construction of the polyhedral model and schedule checking;
-- ISS, ordinary tiling, two-level tiling, and diamond tiling;
-- checked parallel loops;
-- constant unrolling and supported unroll-and-jam routes;
-- dependent loops that must remain sequential or reject an unsafe rewrite.
-
-Each case directory contains a manifest, the structured `.loop` input, and the
-reference C program. Run the suite with:
-
-```sh
-opam exec -- make test-end-to-end-c
-```
-
-The test runner compiles baseline and optimized programs, compares their
-results, and checks that requested transformations occurred. The generated C,
-external compiler, and runtime are tested here but are not part of the Rocq
-theorem.
+  <h1><code>evidence/results/program-executions/f58260648d4458/summary.json</code></h1>
+  <pre>{
+  &quot;baseline_observation&quot;: &quot;f58260648d4458/baseline.observation.txt&quot;,
+  &quot;baseline_output_sha256&quot;: &quot;9be582db0302b99c180ac26ea790acabb6d71aae30173c1277fe71af13354a8b&quot;,
+  &quot;case&quot;: &quot;tricky1&quot;,
+  &quot;exact_match&quot;: true,
+  &quot;execution_repeats&quot;: 1,
+  &quot;max_abs_diff&quot;: null,
+  &quot;max_rel_diff&quot;: null,
+  &quot;numeric_finite&quot;: true,
+  &quot;numeric_within_tolerance&quot;: false,
+  &quot;observation_mode&quot;: &quot;sha256-modeled-state&quot;,
+  &quot;observed_value_count&quot;: 4100,
+  &quot;omp_threads_requested&quot;: 4,
+  &quot;optimized_observation&quot;: &quot;f58260648d4458/optimized.observation.txt&quot;,
+  &quot;optimized_output_sha256&quot;: &quot;9be582db0302b99c180ac26ea790acabb6d71aae30173c1277fe71af13354a8b&quot;,
+  &quot;outputs_match&quot;: true,
+  &quot;pair_id&quot;: &quot;f58260648d4458&quot;,
+  &quot;parallelized_loop&quot;: false,
+  &quot;params&quot;: {
+    &quot;N&quot;: 4096
+  },
+  &quot;result&quot;: &quot;ok&quot;,
+  &quot;suite&quot;: &quot;identity-iss-sensitive-search&quot;,
+  &quot;summary&quot;: &quot;f58260648d4458/summary.json&quot;,
+  &quot;vectorized_loop&quot;: false
+}
 </pre>
 </main>
 </body>

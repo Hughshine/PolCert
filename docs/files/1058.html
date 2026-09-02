@@ -3,60 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.bridge</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/7d3c017583c475/after.bridge</code></h1>
-  <pre>VAR_ORDER 4
-VAR i
-VAR j
-VAR k
-VAR t
-AFTER_STMTS 3
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW 2,0,0,0|14
-ROW 0,2,0,0|14
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW -2,0,0,0|-15
-ROW 0,2,0,0|14
-AFTER_DOMAIN 10
-ROW 0,0,0,-1|-1
-ROW 0,0,0,1|15
-ROW -1,0,0,0|0
-ROW 1,0,0,0|15
-ROW 0,-1,0,0|0
-ROW 0,1,0,0|15
-ROW 0,0,-1,0|0
-ROW 0,0,1,0|15
-ROW 2,0,0,0|14
-ROW 0,-2,0,0|-15
-CUTS 2
-CUT -2,0,0,0|14
-CUT 0,-2,0,0|14
-STMT_WITNESSES 3
-STMT_WITNESS 0 ge,ge
-STMT_WITNESS 0 lt,ge
-STMT_WITNESS 0 ge,lt
-END
+  <h1><code>evidence/results/program-comparisons/682d5b07b83145/after.loop</code></h1>
+  <pre>context(N);
+
+c[0] = 0;
+c[1] = 1;
+if (1 &lt;= N) {
+  if (1 &lt;= N) {
+    for i0 in range(0, (N / 2)) {
+      b[(2 * i0)] = (2 * i0);
+      b[((2 * i0) + 1)] = ((2 * i0) + 1);
+    }
+    for i0 in range((2 * (N / 2)), N) {
+      b[i0] = i0;
+    }
+  }
+}
 </pre>
 </main>
 </body>

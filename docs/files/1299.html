@@ -9,13 +9,14 @@
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement overview</a></p>
-  <h1><code>evidence/results/program-comparisons/a8a8d3696e7f58/before.loop</code></h1>
-  <pre>context(n);
+  <h1><code>evidence/results/program-comparisons/912537e0e6c50c/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-for i0 in range(0, n) {
-  for i1 in range(0, n) {
-    a[i0][i1] = (b[i0][(i1 + -1)] + a[i0][(i1 + -1)]);
-    b[i0][i1] = (a[(i0 + -1)][(i1 + 1)] + b[(i0 + -1)][i1]);
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+    }
   }
 }
 </pre>
