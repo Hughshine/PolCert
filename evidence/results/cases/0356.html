@@ -26,16 +26,11 @@
     <dl>
       <dt>Expected outcome</dt><dd>Pluto must stop in its source frontend before producing a diamond-tiling proposal; exit code 8 records that frontend rejection.</dd>
       <dt>Recorded outcome</dt><dd>Pluto reported a frontend rejection and returned 8. No optimizer candidate was produced, so this input did not reach PolCert validation or code generation.</dd>
-      <dt>Verdict</dt><dd>PASS means the observed Pluto frontend failure matched the producer-side expectation; PolCert did not receive a candidate.</dd>
       <dt>Why this test matters</dt><dd>The suite distinguishes a verified diamond proposal from inputs for which Pluto produces no usable proposal.</dd>
     </dl>
   </section>
 
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why the Pipeline Stops</h2>

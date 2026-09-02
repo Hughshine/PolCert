@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The validator must reject the malformed proposal and return exit code 1.</dd>
       <dt>Recorded outcome</dt><dd>Incomplete three cut sign space rejected.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>A multi-cut split is valid only when every source instance belongs to exactly one resulting region.</dd>
     </dl>
   </section>
@@ -117,10 +116,6 @@ END
     </section>
   </div>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

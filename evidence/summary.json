@@ -3,7 +3,7 @@
     "accepted_loop_pair_records": {
       "executed": 524,
       "failures": 0,
-      "matching_modeled_state_digests": 524,
+      "matching_results": 524,
       "unique_execution_configurations": 202
     },
     "baseline_vs_optimized": {

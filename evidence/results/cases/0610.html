@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>Baseline and generated executions must produce the same output and all 8 declared structural-effect checks must match.</dd>
       <dt>Recorded outcome</dt><dd>Required optimization effects occurred and optimized execution agrees with baseline.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>These examples show that the abstract validators compose with a stateful, typed instruction semantics.</dd>
     </dl>
   </section>
@@ -88,25 +87,14 @@ if (1 &lt;= M) {
   </div>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 10000 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>d467e4a0af5268e9fbf8ec1639d174d879d3f4fa9e4f32767d33702c05b438a5</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>d467e4a0af5268e9fbf8ec1639d174d879d3f4fa9e4f32767d33702c05b438a5</code></dd>
       <dt>Parameters</dt><dd><code>M=96, N=96</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
   </section>
 
 
@@ -123,7 +111,7 @@ if (1 &lt;= M) {
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0792.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0791.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2395.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2393.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2394.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2395.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2393.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/2394.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0609.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0611.html" data-same-tab>Next case</a></p>
 </main>

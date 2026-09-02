@@ -7,9 +7,15 @@
       "baseline_seconds": 0.00114910100819543,
       "case": "1dloop-invar",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0010693619988160208,
       "parallelized": false,
+      "params": {
+        "M": 262144,
+        "N": 262144,
+        "i": 262144
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.0745669001401723
@@ -18,9 +24,14 @@
       "baseline_seconds": 3.0891249350097496,
       "case": "adi",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.1686929279967444,
       "parallelized": false,
+      "params": {
+        "N": 768,
+        "T": 768
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 0.9748893329852262
@@ -29,9 +40,15 @@
       "baseline_seconds": 1.595320726002683,
       "case": "advect3d",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.3325571219902486,
       "parallelized": false,
+      "params": {
+        "nx": 320,
+        "ny": 320,
+        "nz": 320
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.1971874973884664
@@ -40,9 +57,14 @@
       "baseline_seconds": 1.7139643209957285,
       "case": "corcol",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.42507618899981026,
       "parallelized": false,
+      "params": {
+        "M": 1536,
+        "N": 1536
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 4.0321343922571335
@@ -51,9 +73,14 @@
       "baseline_seconds": 1.8989644660032354,
       "case": "corcol3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.48863282198726665,
       "parallelized": true,
+      "params": {
+        "m": 12288,
+        "n": 12288
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 3.886281028523951
@@ -62,9 +89,13 @@
       "baseline_seconds": 1.1306252190115629,
       "case": "costfunc",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.7711166869994486,
       "parallelized": false,
+      "params": {
+        "N": 12288
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.4662180679956824
@@ -73,9 +104,14 @@
       "baseline_seconds": 1.761309819004964,
       "case": "covcol",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.4120690479903715,
       "parallelized": false,
+      "params": {
+        "M": 1536,
+        "N": 1536
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 4.274307491899075
@@ -84,9 +120,13 @@
       "baseline_seconds": 3.689387820995762,
       "case": "dct",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.7102897420118097,
       "parallelized": false,
+      "params": {
+        "M": 1536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 0.9943664989881048
@@ -95,9 +135,13 @@
       "baseline_seconds": 7.904220076001366,
       "case": "doitgen",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.9920348820014624,
       "parallelized": true,
+      "params": {
+        "N": 384
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 3.967912483570437
@@ -106,9 +150,13 @@
       "baseline_seconds": 5.332616448009503,
       "case": "dsyr2k",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 2.1829598139884183,
       "parallelized": true,
+      "params": {
+        "NMAX": 3072
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 2.442837661892843
@@ -117,9 +165,13 @@
       "baseline_seconds": 3.9034339969948633,
       "case": "dsyrk",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.8748276749975048,
       "parallelized": true,
+      "params": {
+        "NMAX": 3072
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 2.082022816843718
@@ -128,9 +180,14 @@
       "baseline_seconds": 2.296023110000533,
       "case": "fdtd-1d",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 2.1838842049910454,
       "parallelized": false,
+      "params": {
+        "N": 65536,
+        "T": 65536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0513483749519346
@@ -139,9 +196,15 @@
       "baseline_seconds": 3.8156754470110172,
       "case": "fdtd-2d",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.735997274998226,
       "parallelized": false,
+      "params": {
+        "nx": 1536,
+        "ny": 1536,
+        "tmax": 1536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0213271493922138
@@ -150,9 +213,13 @@
       "baseline_seconds": 1.8927542630117387,
       "case": "floyd",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.8158717720070854,
       "parallelized": false,
+      "params": {
+        "NUM_NODES": 1536
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.0423391630344443
@@ -161,9 +228,13 @@
       "baseline_seconds": 0.004104126011952758,
       "case": "fusion1",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.003827581007499248,
       "parallelized": false,
+      "params": {
+        "N": 262144
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0722505948043124
@@ -172,9 +243,11 @@
       "baseline_seconds": 0.001477961995988153,
       "case": "fusion10",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0012759410019498318,
       "parallelized": false,
+      "params": {},
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.1583309837442344
@@ -183,9 +256,11 @@
       "baseline_seconds": 0.0015842940047150478,
       "case": "fusion2",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0011795150057878345,
       "parallelized": false,
+      "params": {},
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.3431740986261118
@@ -194,9 +269,11 @@
       "baseline_seconds": 1.0138322060083738,
       "case": "fusion3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.6195390799985034,
       "parallelized": false,
+      "params": {},
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.6364297890793633
@@ -205,9 +282,11 @@
       "baseline_seconds": 0.8951501560077304,
       "case": "fusion4",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.6807749760046136,
       "parallelized": false,
+      "params": {},
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.3148987368208787
@@ -216,9 +295,13 @@
       "baseline_seconds": 0.46062164299655706,
       "case": "fusion5",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.3230483610095689,
       "parallelized": false,
+      "params": {
+        "N": 6144
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.4258597120166572
@@ -227,9 +310,13 @@
       "baseline_seconds": 0.00392253500467632,
       "case": "fusion6",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0036596720019588247,
       "parallelized": false,
+      "params": {
+        "N": 262144
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.0718269294561913
@@ -238,9 +325,14 @@
       "baseline_seconds": 0.0030400300020119175,
       "case": "fusion7",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0027280879876343533,
       "parallelized": false,
+      "params": {
+        "M": 262144,
+        "N": 262144
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.1143445577237643
@@ -249,9 +341,11 @@
       "baseline_seconds": 0.0012137960002291948,
       "case": "fusion8",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0010332589881727472,
       "parallelized": false,
+      "params": {},
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.1747258084594219
@@ -260,9 +354,13 @@
       "baseline_seconds": 1.4421742630074732,
       "case": "fusion9",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.09922697200090624,
       "parallelized": true,
+      "params": {
+        "N": 32768
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 14.534095255817157
@@ -271,9 +369,13 @@
       "baseline_seconds": 1.4445694129972253,
       "case": "gemver",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.9813154820003547,
       "parallelized": false,
+      "params": {
+        "N": 12288
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.472074413880187
@@ -282,9 +384,14 @@
       "baseline_seconds": 1.5452991009951802,
       "case": "intratileopt1",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.8324848500051303,
       "parallelized": true,
+      "params": {
+        "M": 12288,
+        "N": 12288
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 1.856248916704799
@@ -293,9 +400,14 @@
       "baseline_seconds": 1.53177871099615,
       "case": "intratileopt2",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.841352616000222,
       "parallelized": true,
+      "params": {
+        "M": 12288,
+        "N": 12288
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 1.820614427133065
@@ -304,9 +416,14 @@
       "baseline_seconds": 2.4999988049967214,
       "case": "intratileopt3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.7264815859962255,
       "parallelized": true,
+      "params": {
+        "M": 24576,
+        "N": 24576
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 1.4480309696174118
@@ -315,9 +432,14 @@
       "baseline_seconds": 1.0156432799994946,
       "case": "intratileopt4",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.397796292003477,
       "parallelized": true,
+      "params": {
+        "M": 12288,
+        "N": 12288
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 2.553174326699398
@@ -326,9 +448,14 @@
       "baseline_seconds": 1.749600299008307,
       "case": "jacobi-1d-imper",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.6810940329887671,
       "parallelized": false,
+      "params": {
+        "N": 65536,
+        "T": 65536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0407510018328627
@@ -337,9 +464,14 @@
       "baseline_seconds": 1.9292862310103374,
       "case": "jacobi-2d-imper",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.882894947004388,
       "parallelized": false,
+      "params": {
+        "N": 1536,
+        "T": 1536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0246382752684933
@@ -348,9 +480,13 @@
       "baseline_seconds": 2.904085613001371,
       "case": "lu",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 2.9325704110087827,
       "parallelized": false,
+      "params": {
+        "N": 3072
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 0.9902867471142446
@@ -359,9 +495,15 @@
       "baseline_seconds": 1.275157553012832,
       "case": "matmul",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.3441706459998386,
       "parallelized": true,
+      "params": {
+        "K": 1536,
+        "M": 1536,
+        "N": 1536
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 3.7050154271826834
@@ -370,9 +512,13 @@
       "baseline_seconds": 1.3096200169966323,
       "case": "matmul-init",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.2733117790048709,
       "parallelized": true,
+      "params": {
+        "N": 1536
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 4.791670603312316
@@ -381,9 +527,13 @@
       "baseline_seconds": 2.5458632090012543,
       "case": "matmul-seq",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 2.5171019720000913,
       "parallelized": false,
+      "params": {
+        "N": 1536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0114263296922807
@@ -392,9 +542,13 @@
       "baseline_seconds": 3.750976957002422,
       "case": "matmul-seq3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.775829910999164,
       "parallelized": false,
+      "params": {
+        "N": 1536
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 0.9934178830660925
@@ -403,9 +557,15 @@
       "baseline_seconds": 0.0035091520112473518,
       "case": "multi-loop-param",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.002696102994377725,
       "parallelized": false,
+      "params": {
+        "L": 262144,
+        "M": 262144,
+        "N": 262144
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.3015645242652472
@@ -414,9 +574,13 @@
       "baseline_seconds": 0.007809945003828034,
       "case": "multi-stmt-stencil-seq",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.005718112995964475,
       "parallelized": false,
+      "params": {
+        "n": 262144
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.3658255808060906
@@ -425,9 +589,13 @@
       "baseline_seconds": 0.8897960930044064,
       "case": "mvt",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.43683816799602937,
       "parallelized": true,
+      "params": {
+        "N": 12288
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 2.036900981171806
@@ -436,9 +604,13 @@
       "baseline_seconds": 1.8556805299886037,
       "case": "mxv",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.539684641000349,
       "parallelized": true,
+      "params": {
+        "N": 24576
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 1.205234163265374
@@ -447,9 +619,13 @@
       "baseline_seconds": 1.0033624719944783,
       "case": "mxv-seq",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.9455987090041162,
       "parallelized": false,
+      "params": {
+        "N": 12288
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0610869731952126
@@ -458,9 +634,13 @@
       "baseline_seconds": 1.038335254008416,
       "case": "mxv-seq3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.0322880000021541,
       "parallelized": false,
+      "params": {
+        "N": 12288
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.0058581074334385
@@ -469,9 +649,13 @@
       "baseline_seconds": 0.0013194700004532933,
       "case": "negparam",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0010816180001711473,
       "parallelized": false,
+      "params": {
+        "n": 4
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.2199038849617057
@@ -480,9 +664,11 @@
       "baseline_seconds": 0.0012691930023720488,
       "case": "nodep",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0010109700087923557,
       "parallelized": false,
+      "params": {},
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.2554210227147597
@@ -491,9 +677,11 @@
       "baseline_seconds": 0.0014279629976954311,
       "case": "noloop",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.001100446010241285,
       "parallelized": false,
+      "params": {},
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.2976220408871622
@@ -502,9 +690,14 @@
       "baseline_seconds": 1.0022052040003473,
       "case": "pca",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.5570892429968808,
       "parallelized": false,
+      "params": {
+        "m": 1024,
+        "n": 2048
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.7990029723226209
@@ -513,9 +706,13 @@
       "baseline_seconds": 3.4509511350042885,
       "case": "polynomial",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.4666778879909543,
       "parallelized": false,
+      "params": {
+        "n": 131072
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 0.995463451322909
@@ -524,9 +721,14 @@
       "baseline_seconds": 3.705939405001118,
       "case": "seidel",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.4017302810098045,
       "parallelized": false,
+      "params": {
+        "N": 768,
+        "T": 768
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.0894277614217576
@@ -535,9 +737,14 @@
       "baseline_seconds": 2.605100571003277,
       "case": "seq",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.902899716005777,
       "parallelized": false,
+      "params": {
+        "M": 24576,
+        "N": 24576
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.3690162172452434
@@ -546,9 +753,13 @@
       "baseline_seconds": 0.9734001949982485,
       "case": "shift",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.9054670549958246,
       "parallelized": false,
+      "params": {
+        "n": 12288
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1.0750255237091284
@@ -557,9 +768,14 @@
       "baseline_seconds": 2.3188012429891387,
       "case": "spatial",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.735841541987611,
       "parallelized": true,
+      "params": {
+        "M": 24576,
+        "N": 24576
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 1.335836933787179
@@ -568,9 +784,13 @@
       "baseline_seconds": 4.655964614998084,
       "case": "ssymm",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.31597189500462264,
       "parallelized": true,
+      "params": {
+        "NMAX": 1536
+      },
       "pipeline": "iss_parallel_4",
       "pipeline_label": "ISS-enabled parallel route (4 threads)",
       "speedup": 14.735375799578527
@@ -579,9 +799,13 @@
       "baseline_seconds": 5.396353192001698,
       "case": "strmm",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 1.0648454309994122,
       "parallelized": true,
+      "params": {
+        "NMAX": 3072
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 5.067733808968821
@@ -590,9 +814,13 @@
       "baseline_seconds": 7.604562129999977,
       "case": "strsm",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.9731404439953621,
       "parallelized": true,
+      "params": {
+        "N": 3072
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 7.814454919557551
@@ -601,9 +829,13 @@
       "baseline_seconds": 3.5964337220066227,
       "case": "tce",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 3.190497632007464,
       "parallelized": false,
+      "params": {
+        "N": 72
+      },
       "pipeline": "identity",
       "pipeline_label": "identity fallback",
       "speedup": 1.1272328447847002
@@ -612,9 +844,13 @@
       "baseline_seconds": 7.518935376996524,
       "case": "tmm",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 2.207161468992126,
       "parallelized": true,
+      "params": {
+        "NMAX": 3072
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 3.4066086612276516
@@ -623,9 +859,13 @@
       "baseline_seconds": 1.944032598999911,
       "case": "tricky1",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0018896019901148975,
       "parallelized": false,
+      "params": {
+        "N": 65536
+      },
       "pipeline": "affine_only",
       "pipeline_label": "affine scheduling only",
       "speedup": 1028.8053299952885
@@ -634,9 +874,14 @@
       "baseline_seconds": 0.001373316001263447,
       "case": "tricky2",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.001136762002715841,
       "parallelized": false,
+      "params": {
+        "M": 32768,
+        "N": 32768
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.2080945685925941
@@ -645,9 +890,15 @@
       "baseline_seconds": 0.0012990690011065453,
       "case": "tricky3",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.001111306992243044,
       "parallelized": false,
+      "params": {
+        "clusterc": 32768,
+        "dims": 32768,
+        "pointc": 32768
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.1689560222099615
@@ -656,9 +907,13 @@
       "baseline_seconds": 0.0012594559957506135,
       "case": "tricky4",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 0.0011234919948037714,
       "parallelized": false,
+      "params": {
+        "M": 32768
+      },
       "pipeline": "iss",
       "pipeline_label": "ISS-enabled sequential route",
       "speedup": 1.1210191096827438
@@ -667,9 +922,13 @@
       "baseline_seconds": 1.2667794239969226,
       "case": "trisolv",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 4,
       "optimized_seconds": 0.22329702098795678,
       "parallelized": true,
+      "params": {
+        "N": 1536
+      },
       "pipeline": "parallel_4",
       "pipeline_label": "parallel route (4 threads)",
       "speedup": 5.673069073614038
@@ -678,9 +937,13 @@
       "baseline_seconds": 2.604864555003587,
       "case": "wavefront",
       "exact_match": true,
+      "measurement_runs": 1,
       "omp_threads": 1,
       "optimized_seconds": 1.7204476589977276,
       "parallelized": false,
+      "params": {
+        "N": 24576
+      },
       "pipeline": "default_no_iss_affine_tiling",
       "pipeline_label": "affine scheduling + tiling",
       "speedup": 1.5140620764488062

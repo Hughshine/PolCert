@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The route must produce an accepted Loop program; this case makes no separate structural-effect claim.</dd>
       <dt>Recorded outcome</dt><dd>No case-specific effect contract.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>Successful compilation alone would not show whether the requested optimization actually occurred.</dd>
     </dl>
   </section>
@@ -84,25 +83,14 @@ if (1 &lt;= n) {
   </div>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 20503 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>1fa77e2ecc5880a37beb4d6a17e83dbe6e9d7ec2b0a9b9f2dbdc2bf5985b0c06</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>1fa77e2ecc5880a37beb4d6a17e83dbe6e9d7ec2b0a9b9f2dbdc2bf5985b0c06</code></dd>
       <dt>Parameters</dt><dd><code>n=96</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
   </section>
 
 
@@ -119,7 +107,7 @@ if (1 &lt;= n) {
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1298.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1297.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2866.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2864.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2865.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3451.html" target="_blank" rel="noopener">local log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2866.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2864.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/2865.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/3451.html" target="_blank" rel="noopener">local log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0517.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0519.html" data-same-tab>Next case</a></p>
 </main>

@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The validator must reject the malformed proposal and return exit code 1.</dd>
       <dt>Recorded outcome</dt><dd>Mutated-live-ISS-witness-was-rejected.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>This connects the standalone ISS checker to the optimizer output used by the compiler route.</dd>
     </dl>
   </section>
@@ -163,10 +162,6 @@ END
   </div>
   <p class="comparison-note">The candidate differs by one corrupted cut constant; the ISS validator rejects it.</p>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

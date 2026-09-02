@@ -33003,6 +33003,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "No loop-structure change",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.00114910100819543,
+        "case": "1dloop-invar",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0010693619988160208,
+        "parallelized": false,
+        "params": {
+          "M": 262144,
+          "N": 262144,
+          "i": 262144
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.0745669001401723
+      },
       "program_evidence": [
         "program-comparisons/b953659ec26454/before.loop",
         "program-comparisons/b953659ec26454/after.loop"
@@ -33016,7 +33033,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows no loop-structure change.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33032,8 +33049,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33080,6 +33097,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.0891249350097496,
+        "case": "adi",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.1686929279967444,
+        "parallelized": false,
+        "params": {
+          "N": 768,
+          "T": 768
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 0.9748893329852262
+      },
       "program_evidence": [
         "program-comparisons/845c0f8d3760b0/before.loop",
         "program-comparisons/845c0f8d3760b0/after.loop"
@@ -33093,7 +33126,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33109,8 +33142,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33158,6 +33191,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.595320726002683,
+        "case": "advect3d",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.3325571219902486,
+        "parallelized": false,
+        "params": {
+          "nx": 320,
+          "ny": 320,
+          "nz": 320
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.1971874973884664
+      },
       "program_evidence": [
         "program-comparisons/425616ac7782ee/before.loop",
         "program-comparisons/425616ac7782ee/after.loop"
@@ -33171,7 +33221,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33187,8 +33237,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33235,6 +33285,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.7139643209957285,
+        "case": "corcol",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.42507618899981026,
+        "parallelized": false,
+        "params": {
+          "M": 1536,
+          "N": 1536
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 4.0321343922571335
+      },
       "program_evidence": [
         "program-comparisons/e07f223b68a2aa/before.loop",
         "program-comparisons/e07f223b68a2aa/after.loop"
@@ -33248,7 +33314,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33264,8 +33330,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33312,6 +33378,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.8989644660032354,
+        "case": "corcol3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.48863282198726665,
+        "parallelized": true,
+        "params": {
+          "m": 12288,
+          "n": 12288
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 3.886281028523951
+      },
       "program_evidence": [
         "program-comparisons/e9869982cc867e/before.loop",
         "program-comparisons/e9869982cc867e/after.loop"
@@ -33325,7 +33407,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33341,8 +33423,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33388,6 +33470,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.1306252190115629,
+        "case": "costfunc",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.7711166869994486,
+        "parallelized": false,
+        "params": {
+          "N": 12288
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.4662180679956824
+      },
       "program_evidence": [
         "program-comparisons/33be25ac8c5abf/before.loop",
         "program-comparisons/33be25ac8c5abf/after.loop"
@@ -33401,7 +33498,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33417,8 +33514,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33465,6 +33562,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.761309819004964,
+        "case": "covcol",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.4120690479903715,
+        "parallelized": false,
+        "params": {
+          "M": 1536,
+          "N": 1536
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 4.274307491899075
+      },
       "program_evidence": [
         "program-comparisons/e82fd5e24869fe/before.loop",
         "program-comparisons/e82fd5e24869fe/after.loop"
@@ -33478,7 +33591,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33494,8 +33607,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33541,6 +33654,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.689387820995762,
+        "case": "dct",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.7102897420118097,
+        "parallelized": false,
+        "params": {
+          "M": 1536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 0.9943664989881048
+      },
       "program_evidence": [
         "program-comparisons/2f83e58038cff8/before.loop",
         "program-comparisons/2f83e58038cff8/after.loop"
@@ -33554,7 +33682,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33570,8 +33698,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33617,6 +33745,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 7.904220076001366,
+        "case": "doitgen",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.9920348820014624,
+        "parallelized": true,
+        "params": {
+          "N": 384
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 3.967912483570437
+      },
       "program_evidence": [
         "program-comparisons/ba8added28ecfc/before.loop",
         "program-comparisons/ba8added28ecfc/after.loop"
@@ -33630,7 +33773,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33646,8 +33789,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33693,6 +33836,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 5.332616448009503,
+        "case": "dsyr2k",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 2.1829598139884183,
+        "parallelized": true,
+        "params": {
+          "NMAX": 3072
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 2.442837661892843
+      },
       "program_evidence": [
         "program-comparisons/9adbbc466c5fbb/before.loop",
         "program-comparisons/9adbbc466c5fbb/after.loop"
@@ -33706,7 +33864,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33722,8 +33880,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33769,6 +33927,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.9034339969948633,
+        "case": "dsyrk",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.8748276749975048,
+        "parallelized": true,
+        "params": {
+          "NMAX": 3072
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 2.082022816843718
+      },
       "program_evidence": [
         "program-comparisons/409251d2e02813/before.loop",
         "program-comparisons/409251d2e02813/after.loop"
@@ -33782,7 +33955,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33798,8 +33971,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33846,6 +34019,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.296023110000533,
+        "case": "fdtd-1d",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 2.1838842049910454,
+        "parallelized": false,
+        "params": {
+          "N": 65536,
+          "T": 65536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0513483749519346
+      },
       "program_evidence": [
         "program-comparisons/5d7bb37b181c02/before.loop",
         "program-comparisons/5d7bb37b181c02/after.loop"
@@ -33859,7 +34048,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33875,8 +34064,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -33924,6 +34113,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.8156754470110172,
+        "case": "fdtd-2d",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.735997274998226,
+        "parallelized": false,
+        "params": {
+          "nx": 1536,
+          "ny": 1536,
+          "tmax": 1536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0213271493922138
+      },
       "program_evidence": [
         "program-comparisons/71f38dac5925db/before.loop",
         "program-comparisons/71f38dac5925db/after.loop"
@@ -33937,7 +34143,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -33953,8 +34159,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34000,6 +34206,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.8927542630117387,
+        "case": "floyd",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.8158717720070854,
+        "parallelized": false,
+        "params": {
+          "NUM_NODES": 1536
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.0423391630344443
+      },
       "program_evidence": [
         "program-comparisons/9ab3f1e124f751/before.loop",
         "program-comparisons/9ab3f1e124f751/after.loop"
@@ -34013,7 +34234,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34029,8 +34250,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34076,6 +34297,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.004104126011952758,
+        "case": "fusion1",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.003827581007499248,
+        "parallelized": false,
+        "params": {
+          "N": 262144
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0722505948043124
+      },
       "program_evidence": [
         "program-comparisons/ca4b666fb9648d/before.loop",
         "program-comparisons/ca4b666fb9648d/after.loop"
@@ -34089,7 +34325,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34105,8 +34341,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34150,6 +34386,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.001477961995988153,
+        "case": "fusion10",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0012759410019498318,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.1583309837442344
+      },
       "program_evidence": [
         "program-comparisons/12573da7770d29/before.loop",
         "program-comparisons/12573da7770d29/after.loop"
@@ -34163,7 +34412,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34179,8 +34428,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34224,6 +34473,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0015842940047150478,
+        "case": "fusion2",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0011795150057878345,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.3431740986261118
+      },
       "program_evidence": [
         "program-comparisons/55313e735c3f55/before.loop",
         "program-comparisons/55313e735c3f55/after.loop"
@@ -34237,7 +34499,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34253,8 +34515,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34298,6 +34560,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.0138322060083738,
+        "case": "fusion3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.6195390799985034,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.6364297890793633
+      },
       "program_evidence": [
         "program-comparisons/626bcfb5b6e1c8/before.loop",
         "program-comparisons/626bcfb5b6e1c8/after.loop"
@@ -34311,7 +34586,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34327,8 +34602,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34372,6 +34647,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.8951501560077304,
+        "case": "fusion4",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.6807749760046136,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.3148987368208787
+      },
       "program_evidence": [
         "program-comparisons/a8b85b8cf5b8ec/before.loop",
         "program-comparisons/a8b85b8cf5b8ec/after.loop"
@@ -34385,7 +34673,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34401,8 +34689,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34448,6 +34736,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.46062164299655706,
+        "case": "fusion5",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.3230483610095689,
+        "parallelized": false,
+        "params": {
+          "N": 6144
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.4258597120166572
+      },
       "program_evidence": [
         "program-comparisons/5053f956a172a1/before.loop",
         "program-comparisons/5053f956a172a1/after.loop"
@@ -34461,7 +34764,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34477,8 +34780,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34524,6 +34827,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.00392253500467632,
+        "case": "fusion6",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0036596720019588247,
+        "parallelized": false,
+        "params": {
+          "N": 262144
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.0718269294561913
+      },
       "program_evidence": [
         "program-comparisons/3a31f924336fd8/before.loop",
         "program-comparisons/3a31f924336fd8/after.loop"
@@ -34537,7 +34855,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34553,8 +34871,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34601,6 +34919,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0030400300020119175,
+        "case": "fusion7",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0027280879876343533,
+        "parallelized": false,
+        "params": {
+          "M": 262144,
+          "N": 262144
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.1143445577237643
+      },
       "program_evidence": [
         "program-comparisons/6a124eac087466/before.loop",
         "program-comparisons/6a124eac087466/after.loop"
@@ -34614,7 +34948,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34630,8 +34964,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34675,6 +35009,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0012137960002291948,
+        "case": "fusion8",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0010332589881727472,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.1747258084594219
+      },
       "program_evidence": [
         "program-comparisons/c0ed63f8cbe8d3/before.loop",
         "program-comparisons/c0ed63f8cbe8d3/after.loop"
@@ -34688,7 +35035,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34704,8 +35051,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34751,6 +35098,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.4421742630074732,
+        "case": "fusion9",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.09922697200090624,
+        "parallelized": true,
+        "params": {
+          "N": 32768
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 14.534095255817157
+      },
       "program_evidence": [
         "program-comparisons/79a06976060d29/before.loop",
         "program-comparisons/79a06976060d29/after.loop"
@@ -34764,7 +35126,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34780,8 +35142,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34827,6 +35189,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.4445694129972253,
+        "case": "gemver",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.9813154820003547,
+        "parallelized": false,
+        "params": {
+          "N": 12288
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.472074413880187
+      },
       "program_evidence": [
         "program-comparisons/41ee67341b79d8/before.loop",
         "program-comparisons/41ee67341b79d8/after.loop"
@@ -34840,7 +35217,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34856,8 +35233,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34904,6 +35281,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.5452991009951802,
+        "case": "intratileopt1",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.8324848500051303,
+        "parallelized": true,
+        "params": {
+          "M": 12288,
+          "N": 12288
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 1.856248916704799
+      },
       "program_evidence": [
         "program-comparisons/212b685833c6df/before.loop",
         "program-comparisons/212b685833c6df/after.loop"
@@ -34917,7 +35310,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -34933,8 +35326,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -34981,6 +35374,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.53177871099615,
+        "case": "intratileopt2",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.841352616000222,
+        "parallelized": true,
+        "params": {
+          "M": 12288,
+          "N": 12288
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 1.820614427133065
+      },
       "program_evidence": [
         "program-comparisons/24352a69fb6fa1/before.loop",
         "program-comparisons/24352a69fb6fa1/after.loop"
@@ -34994,7 +35403,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35010,8 +35419,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35058,6 +35467,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.4999988049967214,
+        "case": "intratileopt3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.7264815859962255,
+        "parallelized": true,
+        "params": {
+          "M": 24576,
+          "N": 24576
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 1.4480309696174118
+      },
       "program_evidence": [
         "program-comparisons/6d2c4cb92056ed/before.loop",
         "program-comparisons/6d2c4cb92056ed/after.loop"
@@ -35071,7 +35496,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35087,8 +35512,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35135,6 +35560,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.0156432799994946,
+        "case": "intratileopt4",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.397796292003477,
+        "parallelized": true,
+        "params": {
+          "M": 12288,
+          "N": 12288
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 2.553174326699398
+      },
       "program_evidence": [
         "program-comparisons/60bbc66e667927/before.loop",
         "program-comparisons/60bbc66e667927/after.loop"
@@ -35148,7 +35589,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35164,8 +35605,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35212,6 +35653,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.749600299008307,
+        "case": "jacobi-1d-imper",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.6810940329887671,
+        "parallelized": false,
+        "params": {
+          "N": 65536,
+          "T": 65536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0407510018328627
+      },
       "program_evidence": [
         "program-comparisons/124c346783e20d/before.loop",
         "program-comparisons/124c346783e20d/after.loop"
@@ -35225,7 +35682,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35241,8 +35698,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35289,6 +35746,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.9292862310103374,
+        "case": "jacobi-2d-imper",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.882894947004388,
+        "parallelized": false,
+        "params": {
+          "N": 1536,
+          "T": 1536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0246382752684933
+      },
       "program_evidence": [
         "program-comparisons/27441a527fba06/before.loop",
         "program-comparisons/27441a527fba06/after.loop"
@@ -35302,7 +35775,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35318,8 +35791,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35365,6 +35838,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.904085613001371,
+        "case": "lu",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 2.9325704110087827,
+        "parallelized": false,
+        "params": {
+          "N": 3072
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 0.9902867471142446
+      },
       "program_evidence": [
         "program-comparisons/d48c971cdcb90c/before.loop",
         "program-comparisons/d48c971cdcb90c/after.loop"
@@ -35378,7 +35866,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35394,8 +35882,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35443,6 +35931,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.275157553012832,
+        "case": "matmul",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.3441706459998386,
+        "parallelized": true,
+        "params": {
+          "K": 1536,
+          "M": 1536,
+          "N": 1536
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 3.7050154271826834
+      },
       "program_evidence": [
         "program-comparisons/c63f83f2360e64/before.loop",
         "program-comparisons/c63f83f2360e64/after.loop"
@@ -35456,7 +35961,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35472,8 +35977,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35519,6 +36024,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.3096200169966323,
+        "case": "matmul-init",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.2733117790048709,
+        "parallelized": true,
+        "params": {
+          "N": 1536
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 4.791670603312316
+      },
       "program_evidence": [
         "program-comparisons/5a30397234a672/before.loop",
         "program-comparisons/5a30397234a672/after.loop"
@@ -35532,7 +36052,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35548,8 +36068,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35595,6 +36115,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.5458632090012543,
+        "case": "matmul-seq",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 2.5171019720000913,
+        "parallelized": false,
+        "params": {
+          "N": 1536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0114263296922807
+      },
       "program_evidence": [
         "program-comparisons/840a1e038acae2/before.loop",
         "program-comparisons/840a1e038acae2/after.loop"
@@ -35608,7 +36143,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35624,8 +36159,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35671,6 +36206,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.750976957002422,
+        "case": "matmul-seq3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.775829910999164,
+        "parallelized": false,
+        "params": {
+          "N": 1536
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 0.9934178830660925
+      },
       "program_evidence": [
         "program-comparisons/4fb5bd0d0a7936/before.loop",
         "program-comparisons/4fb5bd0d0a7936/after.loop"
@@ -35684,7 +36234,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35700,8 +36250,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35749,6 +36299,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0035091520112473518,
+        "case": "multi-loop-param",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.002696102994377725,
+        "parallelized": false,
+        "params": {
+          "L": 262144,
+          "M": 262144,
+          "N": 262144
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.3015645242652472
+      },
       "program_evidence": [
         "program-comparisons/f5b82a316e5332/before.loop",
         "program-comparisons/f5b82a316e5332/after.loop"
@@ -35762,7 +36329,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35778,8 +36345,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35825,6 +36392,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.007809945003828034,
+        "case": "multi-stmt-stencil-seq",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.005718112995964475,
+        "parallelized": false,
+        "params": {
+          "n": 262144
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.3658255808060906
+      },
       "program_evidence": [
         "program-comparisons/b5fae58d9a903e/before.loop",
         "program-comparisons/b5fae58d9a903e/after.loop"
@@ -35838,7 +36420,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35854,8 +36436,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35901,6 +36483,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.8897960930044064,
+        "case": "mvt",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.43683816799602937,
+        "parallelized": true,
+        "params": {
+          "N": 12288
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 2.036900981171806
+      },
       "program_evidence": [
         "program-comparisons/09196bf87094b6/before.loop",
         "program-comparisons/09196bf87094b6/after.loop"
@@ -35914,7 +36511,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -35930,8 +36527,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -35977,6 +36574,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.8556805299886037,
+        "case": "mxv",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.539684641000349,
+        "parallelized": true,
+        "params": {
+          "N": 24576
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 1.205234163265374
+      },
       "program_evidence": [
         "program-comparisons/551edf4f6ab9d0/before.loop",
         "program-comparisons/551edf4f6ab9d0/after.loop"
@@ -35990,7 +36602,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36006,8 +36618,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36053,6 +36665,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.0033624719944783,
+        "case": "mxv-seq",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.9455987090041162,
+        "parallelized": false,
+        "params": {
+          "N": 12288
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0610869731952126
+      },
       "program_evidence": [
         "program-comparisons/10c45514ca242e/before.loop",
         "program-comparisons/10c45514ca242e/after.loop"
@@ -36066,7 +36693,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36082,8 +36709,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36129,6 +36756,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.038335254008416,
+        "case": "mxv-seq3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.0322880000021541,
+        "parallelized": false,
+        "params": {
+          "N": 12288
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.0058581074334385
+      },
       "program_evidence": [
         "program-comparisons/681534a8a95fd8/before.loop",
         "program-comparisons/681534a8a95fd8/after.loop"
@@ -36142,7 +36784,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36158,8 +36800,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36205,6 +36847,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0013194700004532933,
+        "case": "negparam",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0010816180001711473,
+        "parallelized": false,
+        "params": {
+          "n": 4
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.2199038849617057
+      },
       "program_evidence": [
         "program-comparisons/1d4fecca151053/before.loop",
         "program-comparisons/1d4fecca151053/after.loop"
@@ -36218,7 +36875,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36234,8 +36891,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36279,6 +36936,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0012691930023720488,
+        "case": "nodep",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0010109700087923557,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.2554210227147597
+      },
       "program_evidence": [
         "program-comparisons/4612adfebe1d19/before.loop",
         "program-comparisons/4612adfebe1d19/after.loop"
@@ -36292,7 +36962,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36308,8 +36978,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36353,6 +37023,19 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "No loop-structure change",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0014279629976954311,
+        "case": "noloop",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.001100446010241285,
+        "parallelized": false,
+        "params": {},
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.2976220408871622
+      },
       "program_evidence": [
         "program-comparisons/e9e5e1502d6bc0/before.loop",
         "program-comparisons/e9e5e1502d6bc0/after.loop"
@@ -36366,7 +37049,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows no loop-structure change.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36382,8 +37065,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36430,6 +37113,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.0022052040003473,
+        "case": "pca",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.5570892429968808,
+        "parallelized": false,
+        "params": {
+          "m": 1024,
+          "n": 2048
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.7990029723226209
+      },
       "program_evidence": [
         "program-comparisons/b25634335c859a/before.loop",
         "program-comparisons/b25634335c859a/after.loop"
@@ -36443,7 +37142,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36459,8 +37158,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36506,6 +37205,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.4509511350042885,
+        "case": "polynomial",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.4666778879909543,
+        "parallelized": false,
+        "params": {
+          "n": 131072
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 0.995463451322909
+      },
       "program_evidence": [
         "program-comparisons/b8ddaaa7482ae9/before.loop",
         "program-comparisons/b8ddaaa7482ae9/after.loop"
@@ -36519,7 +37233,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36535,8 +37249,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36583,6 +37297,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.705939405001118,
+        "case": "seidel",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.4017302810098045,
+        "parallelized": false,
+        "params": {
+          "N": 768,
+          "T": 768
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.0894277614217576
+      },
       "program_evidence": [
         "program-comparisons/4f7fcffdc3d80f/before.loop",
         "program-comparisons/4f7fcffdc3d80f/after.loop"
@@ -36596,7 +37326,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36612,8 +37342,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36660,6 +37390,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Domain guard insertion",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.605100571003277,
+        "case": "seq",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.902899716005777,
+        "parallelized": false,
+        "params": {
+          "M": 24576,
+          "N": 24576
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.3690162172452434
+      },
       "program_evidence": [
         "program-comparisons/e4a48826574ae9/before.loop",
         "program-comparisons/e4a48826574ae9/after.loop"
@@ -36673,7 +37419,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows domain guard insertion.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36689,8 +37435,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36736,6 +37482,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.9734001949982485,
+        "case": "shift",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.9054670549958246,
+        "parallelized": false,
+        "params": {
+          "n": 12288
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1.0750255237091284
+      },
       "program_evidence": [
         "program-comparisons/4c6b33ef022158/before.loop",
         "program-comparisons/4c6b33ef022158/after.loop"
@@ -36749,7 +37510,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36765,8 +37526,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36813,6 +37574,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.3188012429891387,
+        "case": "spatial",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.735841541987611,
+        "parallelized": true,
+        "params": {
+          "M": 24576,
+          "N": 24576
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 1.335836933787179
+      },
       "program_evidence": [
         "program-comparisons/310abc2318b3cd/before.loop",
         "program-comparisons/310abc2318b3cd/after.loop"
@@ -36826,7 +37603,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36842,8 +37619,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36889,6 +37666,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 4.655964614998084,
+        "case": "ssymm",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.31597189500462264,
+        "parallelized": true,
+        "params": {
+          "NMAX": 1536
+        },
+        "pipeline": "iss_parallel_4",
+        "pipeline_label": "ISS-enabled parallel route (4 threads)",
+        "speedup": 14.735375799578527
+      },
       "program_evidence": [
         "program-comparisons/f618acc863bd72/before.loop",
         "program-comparisons/f618acc863bd72/after.loop"
@@ -36902,7 +37694,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36918,8 +37710,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -36965,6 +37757,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 5.396353192001698,
+        "case": "strmm",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 1.0648454309994122,
+        "parallelized": true,
+        "params": {
+          "NMAX": 3072
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 5.067733808968821
+      },
       "program_evidence": [
         "program-comparisons/3ebf5de0c8c770/before.loop",
         "program-comparisons/3ebf5de0c8c770/after.loop"
@@ -36978,7 +37785,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -36994,8 +37801,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37041,6 +37848,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 7.604562129999977,
+        "case": "strsm",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.9731404439953621,
+        "parallelized": true,
+        "params": {
+          "N": 3072
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 7.814454919557551
+      },
       "program_evidence": [
         "program-comparisons/75df24decc4c2d/before.loop",
         "program-comparisons/75df24decc4c2d/after.loop"
@@ -37054,7 +37876,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37070,8 +37892,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37117,6 +37939,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 3.5964337220066227,
+        "case": "tce",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 3.190497632007464,
+        "parallelized": false,
+        "params": {
+          "N": 72
+        },
+        "pipeline": "identity",
+        "pipeline_label": "identity fallback",
+        "speedup": 1.1272328447847002
+      },
       "program_evidence": [
         "program-comparisons/af1d5e22e3ac00/before.loop",
         "program-comparisons/af1d5e22e3ac00/after.loop"
@@ -37130,7 +37967,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37146,8 +37983,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37193,6 +38030,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 7.518935376996524,
+        "case": "tmm",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 2.207161468992126,
+        "parallelized": true,
+        "params": {
+          "NMAX": 3072
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 3.4066086612276516
+      },
       "program_evidence": [
         "program-comparisons/cefb05a1c7c859/before.loop",
         "program-comparisons/cefb05a1c7c859/after.loop"
@@ -37206,7 +38058,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37222,8 +38074,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37269,6 +38121,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.944032598999911,
+        "case": "tricky1",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0018896019901148975,
+        "parallelized": false,
+        "params": {
+          "N": 65536
+        },
+        "pipeline": "affine_only",
+        "pipeline_label": "affine scheduling only",
+        "speedup": 1028.8053299952885
+      },
       "program_evidence": [
         "program-comparisons/c6ad5c8807a147/before.loop",
         "program-comparisons/c6ad5c8807a147/after.loop"
@@ -37282,7 +38149,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37298,8 +38165,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37346,6 +38213,22 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Loop fusion; Domain splitting",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.001373316001263447,
+        "case": "tricky2",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.001136762002715841,
+        "parallelized": false,
+        "params": {
+          "M": 32768,
+          "N": 32768
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.2080945685925941
+      },
       "program_evidence": [
         "program-comparisons/d5bf60289d4292/before.loop",
         "program-comparisons/d5bf60289d4292/after.loop"
@@ -37359,7 +38242,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows loop fusion; domain splitting.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37375,8 +38258,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37424,6 +38307,23 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Inner-loop fusion; Domain splitting",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0012990690011065453,
+        "case": "tricky3",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.001111306992243044,
+        "parallelized": false,
+        "params": {
+          "clusterc": 32768,
+          "dims": 32768,
+          "pointc": 32768
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.1689560222099615
+      },
       "program_evidence": [
         "program-comparisons/5f615a462b8843/before.loop",
         "program-comparisons/5f615a462b8843/after.loop"
@@ -37437,7 +38337,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows inner-loop fusion; domain splitting.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37453,8 +38353,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37500,6 +38400,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "No loop-structure change",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 0.0012594559957506135,
+        "case": "tricky4",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 0.0011234919948037714,
+        "parallelized": false,
+        "params": {
+          "M": 32768
+        },
+        "pipeline": "iss",
+        "pipeline_label": "ISS-enabled sequential route",
+        "speedup": 1.1210191096827438
+      },
       "program_evidence": [
         "program-comparisons/85a061fa3a2664/before.loop",
         "program-comparisons/85a061fa3a2664/after.loop"
@@ -37513,7 +38428,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows no loop-structure change.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37529,8 +38444,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37576,6 +38491,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 1.2667794239969226,
+        "case": "trisolv",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 4,
+        "optimized_seconds": 0.22329702098795678,
+        "parallelized": true,
+        "params": {
+          "N": 1536
+        },
+        "pipeline": "parallel_4",
+        "pipeline_label": "parallel route (4 threads)",
+        "speedup": 5.673069073614038
+      },
       "program_evidence": [
         "program-comparisons/34a6c6874f08a3/before.loop",
         "program-comparisons/34a6c6874f08a3/after.loop"
@@ -37589,7 +38519,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37605,8 +38535,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:false,vector:false,effects-matched:not-applicable,omp-threads-requested:1",
@@ -37652,6 +38582,21 @@
       "family": "Executable Loop Comparisons",
       "observed_transformation": "Ordinary tiling",
       "occurrences": 1,
+      "performance": {
+        "baseline_seconds": 2.604864555003587,
+        "case": "wavefront",
+        "exact_match": true,
+        "measurement_runs": 1,
+        "omp_threads": 1,
+        "optimized_seconds": 1.7204476589977276,
+        "parallelized": false,
+        "params": {
+          "N": 24576
+        },
+        "pipeline": "default_no_iss_affine_tiling",
+        "pipeline_label": "affine scheduling + tiling",
+        "speedup": 1.5140620764488062
+      },
       "program_evidence": [
         "program-comparisons/65e97a5364024c/before.loop",
         "program-comparisons/65e97a5364024c/after.loop"
@@ -37665,7 +38610,7 @@
         "right_label": "Accepted Optimized Loop Program",
         "suite": "generated execution: default-corpus"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. This case has no separate structural-effect assertion.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows ordinary tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects not applicable: this case makes no separate structural-effect claim.",
@@ -37681,8 +38626,8 @@
       "suite": "generated execution: default-corpus",
       "verdict": "PASS means the recorded behavior matched the expected result for this case.",
       "view_kind": "accepted-program-pair",
-      "what_is_tested": "Executes the baseline and generated C programs on the same inputs and compares their outputs.",
-      "why_this_test_matters": "Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs."
+      "what_is_tested": "Runs the source and optimized programs with the same inputs and compares their results.",
+      "why_this_test_matters": "This confirms that the displayed optimization occurred and preserved the result for the tested inputs."
     },
     {
       "actual": "outputs-match:true,parallel:true,vector:false,effects-matched:true,omp-threads-requested:4",
@@ -37742,7 +38687,7 @@
         "right_label": "Accepted Program",
         "suite": "generated execution: parallel-effect"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. The declared structural effects also matched. A parallel loop was present.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows parallelization. A parallel loop was present.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects-matched:true: every declared structural optimization effect was observed.",
@@ -37818,7 +38763,7 @@
         "right_label": "Accepted Program",
         "suite": "generated execution: parallel-effect"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. The declared structural effects also matched. A parallel loop was present.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows parallelization. A parallel loop was present.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects-matched:true: every declared structural optimization effect was observed.",
@@ -37896,7 +38841,7 @@
         "right_label": "Accepted Program",
         "suite": "generated execution: parallel-effect"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. The declared structural effects also matched. A parallel loop was present.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows parallelization. A parallel loop was present.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects-matched:true: every declared structural optimization effect was observed.",
@@ -37972,7 +38917,7 @@
         "right_label": "Accepted Program",
         "suite": "generated execution: second-level-effect"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. The declared structural effects also matched.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows two-level tiling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects-matched:true: every declared structural optimization effect was observed.",
@@ -38050,7 +38995,7 @@
         "right_label": "Accepted Program",
         "suite": "generated execution: intratile-effect"
       },
-      "recorded_outcome": "Baseline and optimized outputs matched. The declared structural effects also matched.",
+      "recorded_outcome": "The source and optimized programs produced the same result. The optimized program shows intra-tile affine rescheduling.",
       "recorded_term_explanations": [
         "outputs-match: baseline and generated executions produced the same checked values.",
         "effects-matched:true: every declared structural optimization effect was observed.",

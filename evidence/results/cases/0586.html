@@ -22,12 +22,11 @@
 
   <section class="case-overview">
     <h2>What This Case Checks</h2>
-    <p>Executes the baseline and generated C programs on the same inputs and compares their outputs.</p>
+    <p>Runs the source and optimized programs with the same inputs and compares their results.</p>
     <dl>
       <dt>Expected outcome</dt><dd>Baseline and generated executions must produce the same output.</dd>
-      <dt>Recorded outcome</dt><dd>Baseline and optimized outputs matched. This case has no separate structural-effect assertion.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
-      <dt>Why this test matters</dt><dd>Execution checks complement the proof build by detecting integration or extraction mistakes in concrete generated programs.</dd>
+      <dt>Recorded outcome</dt><dd>The source and optimized programs produced the same result. The optimized program shows ordinary tiling.</dd>
+      <dt>Why this test matters</dt><dd>This confirms that the displayed optimization occurred and preserved the result for the tested inputs.</dd>
     </dl>
   </section>
 
@@ -69,25 +68,24 @@ if (1 &lt;= NMAX) {
   </div>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 30000 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>dfb45f7978ba9e89ec41d358a8505b9cdba87f523ea82f2dcc5f005eaad52c87</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>dfb45f7978ba9e89ec41d358a8505b9cdba87f523ea82f2dcc5f005eaad52c87</code></dd>
       <dt>Parameters</dt><dd><code>NMAX=96</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
+    <h3>Recorded Performance</h3>
+    <dl>
+      <dt>Selected optimization</dt><dd>parallel route (4 threads)</dd>
+      <dt>Parameters</dt><dd><code>NMAX=3072</code></dd>
+      <dt>Measurement</dt><dd>1 baseline run and 1 optimized run, 4 OpenMP threads</dd>
+      <dt>Baseline time</dt><dd>7.518935 s</dd>
+      <dt>Optimized time</dt><dd>2.207161 s</dd>
+      <dt>Measured speedup</dt><dd><strong>3.407x</strong></dd>
+    </dl>
+    <p><a href="../../performance-comparisons/index.html" target="_blank" rel="noopener">Compare all 62 recorded performance results</a></p>
   </section>
 
 
@@ -104,7 +102,7 @@ if (1 &lt;= NMAX) {
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1562.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1561.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3133.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3131.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/3132.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/0001.html" target="_blank" rel="noopener">validation log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3133.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3131.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/3132.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/0001.html" target="_blank" rel="noopener">validation log</a></p></details>
   </div>
   <p class="case-pager"><a href="0585.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0587.html" data-same-tab>Next case</a></p>
 </main>

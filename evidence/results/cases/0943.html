@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The route must reject or replace the uncertifiable effect described here: The hinted coordinate cannot be certified as a safe generated parallel loop for this matrix-multiplication schedule.</dd>
       <dt>Recorded outcome</dt><dd>Strict mode rejects with no output; permissive mode chooses a different certified dimension.</dd>
-      <dt>Verdict</dt><dd>PASS means the verified part was retained and the uncertifiable optional effect was not emitted.</dd>
       <dt>Why this test matters</dt><dd>These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim.</dd>
     </dl>
   </section>
@@ -49,10 +48,6 @@ for i in range(0, M) {
     or rejected candidate program to display.
   </p>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why the Requested Effect Is Not Applied</h2>

@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The search must compare the two accepted Loop outputs. This page must not infer an individual result when the retained log gives only totals.</dd>
       <dt>Recorded outcome</dt><dd>The retained log reports only the suite totals, so this input has no independent per-case outcome.</dd>
-      <dt>Verdict</dt><dd>This page reports membership in an aggregate search result, not a per-input pass or failure.</dd>
       <dt>Why this test matters</dt><dd>The search records whether ISS changes the generated program under an otherwise fixed schedule.</dd>
     </dl>
   </section>
@@ -64,25 +63,14 @@ for i0 in range(0, 2) {
   <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 16 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>80feb99459d9ce1c1c2937e078b16f9ae2978a2d74e362bdcec4e3f6b5483e87</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>80feb99459d9ce1c1c2937e078b16f9ae2978a2d74e362bdcec4e3f6b5483e87</code></dd>
       <dt>Parameters</dt><dd><code>none</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
   </section>
 
 
@@ -99,7 +87,7 @@ for i0 in range(0, 2) {
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/1732.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1731.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3310.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3308.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/3309.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3518.html" target="_blank" rel="noopener">fusion10.loop</a> &middot; <a href="../../../docs/files/3438.html" target="_blank" rel="noopener">test log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3310.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3308.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/3309.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/3518.html" target="_blank" rel="noopener">fusion10.loop</a> &middot; <a href="../../../docs/files/3438.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
   <p class="case-pager"><a href="0094.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0096.html" data-same-tab>Next case</a></p>
 </main>

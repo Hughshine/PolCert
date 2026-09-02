@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The tiling stage must remain accepted, while the uncertifiable optional annotation is omitted.</dd>
       <dt>Recorded outcome</dt><dd>The route stopped at the declared failing stage and emitted no unchecked continuation.</dd>
-      <dt>Verdict</dt><dd>PASS means the verified part was retained and the uncertifiable optional effect was not emitted.</dd>
       <dt>Why this test matters</dt><dd>A composed route must stop at the first uncertified stage and must never emit an unchecked program.</dd>
     </dl>
   </section>
@@ -75,25 +74,14 @@ if (1 &lt;= N) {
   </div>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 30000 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>9cd259eddb43d2798bee645c50ef0be2c7015c0f6cb74f1d49ad4295fd1e479e</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>9cd259eddb43d2798bee645c50ef0be2c7015c0f6cb74f1d49ad4295fd1e479e</code></dd>
       <dt>Parameters</dt><dd><code>N=96</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
   </section>
 
   <section class="rejection-explanation">
@@ -117,7 +105,7 @@ if (1 &lt;= N) {
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0842.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0841.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2437.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2435.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2436.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3582.html" target="_blank" rel="noopener">check_rejected_tiling_route.py</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2437.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2435.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/2436.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/3582.html" target="_blank" rel="noopener">check_rejected_tiling_route.py</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0883.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0885.html" data-same-tab>Next case</a></p>
 </main>

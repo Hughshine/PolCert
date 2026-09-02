@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The recorded result must satisfy this contract: both conversions succeed.</dd>
       <dt>Recorded outcome</dt><dd>Both conversions succeeded.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>The format bridge must complete before verified compiler components can consume the program.</dd>
     </dl>
   </section>
@@ -176,7 +175,7 @@ Read from: $11
   <p class="comparison-note">This smoke test checks that both conversions succeed; it does not claim structural equality of the two printed programs.</p>
 
   <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
+    <summary>No before/after program run</summary>
     <p>This component test compares typed polyhedral IR objects before standalone Loop code generation.</p>
   </details>
 

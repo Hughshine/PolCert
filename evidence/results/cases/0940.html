@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The route must reject or replace the uncertifiable effect described here: The supplied .fst grouping places a consumer before its producer, but Pluto accepts the complete lexicographically illegal schedule.</dd>
       <dt>Recorded outcome</dt><dd>The affine checker rejects the schedule and the complete route emits no optimized loop.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim.</dd>
     </dl>
   </section>
@@ -93,10 +92,6 @@ if (N &gt;= 1) {
   </div>
   <p class="comparison-note">This is the exact generated program from the pinned historical Pluto revision used by the rejection test.</p>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

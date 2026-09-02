@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The route must reject or replace the uncertifiable effect described here: Under --notile, candidate discovery assumes one tiled level and crosses the real permutable-band boundary, jamming a dependence-carrying loop.</dd>
       <dt>Recorded outcome</dt><dd>Proved block unrolling is retained, but the unsafe local jam is refused.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>These cases demonstrate that optimizer output is evidence to check, not a trusted correctness claim.</dd>
     </dl>
   </section>
@@ -125,10 +124,6 @@ if ((H &gt;= 1) &amp;&amp; (I &gt;= 1) &amp;&amp; (J &gt;= 2) &amp;&amp; (K &gt;
   </div>
   <p class="comparison-note">This is the exact generated program from the pinned historical Pluto revision used by the rejection test.</p>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

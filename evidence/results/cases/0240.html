@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The permutable-band validator must emit an optimized output, with no fallback or rejection alarm.</dd>
       <dt>Recorded outcome</dt><dd>Direct-only route contract matched.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>The route boundary prevents malformed or inapplicable tiling proposals from reaching code generation.</dd>
     </dl>
   </section>
@@ -49,25 +48,14 @@
   </div>
 
   <section class="dynamic-execution">
-    <h2>Dynamic Execution</h2>
-    <p>
-      The two displayed Loop programs were lowered with Rocq
-      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
-      run from the same deterministic state. The harness feeds every finite
-      modeled scalar and array element into SHA-256 in a fixed order.
-    </p>
+    <h2>Program Execution</h2>
+    <p>The source and optimized programs were compiled and run with the same inputs.</p>
     <dl>
-      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 104 finite values match</strong></dd>
-      <dt>Left modeled-state SHA-256</dt><dd><code>9b51c88a0a81fcf770f757874ee2dbf6870016a0d67c74fbc82aa8179320026c</code></dd>
-      <dt>Right modeled-state SHA-256</dt><dd><code>9b51c88a0a81fcf770f757874ee2dbf6870016a0d67c74fbc82aa8179320026c</code></dd>
       <dt>Parameters</dt><dd><code>none</code></dd>
-      <dt>Execution</dt><dd>1 run</dd>
+      <dt>Runs</dt><dd>1 run</dd>
+      <dt>Result</dt><dd><strong>PASS: both programs produced the same result in every run</strong></dd>
     </dl>
-    <p class="comparison-note">
-      This is a differential integration check, not part of the formal proof.
-      It detects parser, extraction, pretty-printing, lowering, and runtime
-      integration mistakes around the proved transformation.
-    </p>
+
   </section>
 
 
@@ -84,7 +72,7 @@
   </details>
   <div class="case-links">
     <p><strong>Compared files:</strong> <a href="../../../docs/files/0340.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0339.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1951.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/1949.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/1950.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3431.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1951.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/1949.html" target="_blank" rel="noopener">source execution record</a> &middot; <a href="../../../docs/files/1950.html" target="_blank" rel="noopener">optimized execution record</a> &middot; <a href="../../../docs/files/3431.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0239.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0241.html" data-same-tab>Next case</a></p>
 </main>

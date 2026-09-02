@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>Reject the malformed tiling before checking the explicit consumer.</dd>
       <dt>Recorded outcome</dt><dd>The route stopped at the declared failing stage and emitted no unchecked continuation.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>A composed route must stop at the first uncertified stage and must never emit an unchecked program.</dd>
     </dl>
   </section>
@@ -247,10 +246,6 @@ t1 t2 t3 t4 t5 t6
     </section>
   </div>
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The recorded result must satisfy this contract: checked block unrolling, local jam validation, and remainder loop.</dd>
       <dt>Recorded outcome</dt><dd>All checked markers present; optimized program accepted.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>A complete example is needed because correct local jamming also depends on remainder and code-generation handling.</dd>
     </dl>
   </section>
@@ -119,7 +118,7 @@ if ((K &gt;= 1) &amp;&amp; (M &gt;= 1) &amp;&amp; (N &gt;= 1)) {
   </div>
 
   <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
+    <summary>No before/after program run</summary>
     <p>These are generated C fragments without a common complete driver and input-state harness, so this page makes no execution claim.</p>
   </details>
 

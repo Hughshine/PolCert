@@ -26,16 +26,11 @@
     <dl>
       <dt>Expected outcome</dt><dd>The route must reject the requested innermost parallel annotation and emit no optimized output.</dd>
       <dt>Recorded outcome</dt><dd>Explicit invalid vector consumer failed closed.</dd>
-      <dt>Verdict</dt><dd>PASS means the expected rejection or certified fallback occurred at the declared boundary.</dd>
       <dt>Why this test matters</dt><dd>Composition is sound only when both tiling levels and the optional consumer are independently accepted.</dd>
     </dl>
   </section>
 
 
-  <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
-    <p>The requested candidate was not accepted as a target. This case checks rejection or certified fallback rather than a before/after target pair.</p>
-  </details>
 
   <section class="rejection-explanation">
     <h2>Why Rejection Is Correct</h2>

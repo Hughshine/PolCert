@@ -16,5 +16,5 @@ abs_tolerance=1.000e-09
 rel_tolerance=1.000e-09
 numeric_within_tolerance=false
 baseline_best_seconds=0.001271
-optimized_best_seconds=0.001547
-speedup=0.8216
+optimized_best_seconds=0.002001
+speedup=0.6352

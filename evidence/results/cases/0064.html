@@ -26,7 +26,6 @@
     <dl>
       <dt>Expected outcome</dt><dd>The validator must accept the proposal and return exit code 0.</dd>
       <dt>Recorded outcome</dt><dd>Valid-ISS-split-was-accepted.</dd>
-      <dt>Verdict</dt><dd>PASS means the recorded behavior matched the expected result for this case.</dd>
       <dt>Why this test matters</dt><dd>ISS may partition statement instances, but it must preserve every instance and its computation exactly once.</dd>
     </dl>
   </section>
@@ -3037,7 +3036,7 @@ Cost for loop: -30
   <p class="comparison-note">Component-level evidence: the ISS validator checks these polyhedral programs before verified Loop generation.</p>
 
   <details class="dynamic-execution-na">
-    <summary>Dynamic execution: not applicable</summary>
+    <summary>No before/after program run</summary>
     <p>This ISS component test compares polyhedral validator input, not standalone executable Loop programs.</p>
   </details>
 
