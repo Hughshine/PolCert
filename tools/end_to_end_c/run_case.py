@@ -40,11 +40,12 @@ def render_source(template: str, kernel_c: str) -> str:
     main_marker = "int main(void) {"
     if main_marker not in template:
         raise ValueError(f"missing C entry point {main_marker!r}")
-    with_runtime = (
-        template
-        if "#include <stdlib.h>" in template
-        else "#include <stdlib.h>\n" + template
+    missing_headers = "".join(
+        f"#include <{header}>\n"
+        for header in ("limits.h", "stdlib.h")
+        if f"#include <{header}>" not in template
     )
+    with_runtime = missing_headers + template
     with_helpers = with_runtime.replace(
         main_marker, f"{INTEGER_HELPERS_C}\n{main_marker}", 1
     )

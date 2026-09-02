@@ -11,9 +11,12 @@ import subprocess
 import sys
 import tempfile
 
+from generated_harness import build_harness, load_param_tiers
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUNNER = pathlib.Path(__file__).resolve().with_name("run_generated_case.py")
+PARAM_CONFIG = ROOT / "tests/end-to-end-generated/param_tiers.json"
 
 
 def positive_int(value: str) -> int:
@@ -36,6 +39,70 @@ def is_executable_loop_pair(pair: dict[str, object]) -> bool:
         and pathlib.Path(str(pair["before"])).suffix == ".loop"
         and pathlib.Path(str(pair["after"])).suffix == ".loop"
     )
+
+
+def execution_configuration(
+    pair: dict[str, object],
+    *,
+    pairs_root: pathlib.Path,
+    tier_overrides: dict[str, dict[str, dict[str, int]]],
+    omp_threads: int,
+) -> tuple[str, str, str, int, int]:
+    before_text = pair_path(pairs_root, str(pair["before"])).read_text(encoding="utf-8")
+    after_text = pair_path(pairs_root, str(pair["after"])).read_text(encoding="utf-8")
+    info = build_harness(
+        str(pair["case"]),
+        before_text,
+        after_text,
+        tier_overrides=tier_overrides,
+    )
+    repeats = 3 if "parallel for " in after_text else 1
+    return (
+        before_text,
+        after_text,
+        json.dumps(info.params, sort_keys=True),
+        repeats,
+        omp_threads,
+    )
+
+
+def materialize_pair_result(
+    base: dict[str, object],
+    pair: dict[str, object],
+    *,
+    pairs_root: pathlib.Path,
+    output_root: pathlib.Path,
+) -> dict[str, object]:
+    pair_id = pair_path(pairs_root, str(pair["before"])).parent.name
+    record = {
+        **base,
+        "suite": pair["suite"],
+        "case": pair["case"],
+        "pair_id": pair_id,
+    }
+    if record["result"] != "ok":
+        return record
+    source_dir = output_root / str(base["pair_id"])
+    target_dir = output_root / pair_id
+    if target_dir != source_dir:
+        target_dir.mkdir()
+        for name in (
+            "status.txt",
+            "baseline.observation.txt",
+            "optimized.observation.txt",
+        ):
+            shutil.copy2(source_dir / name, target_dir / name)
+    record.update(
+        {
+            "summary": f"{pair_id}/summary.json",
+            "baseline_observation": f"{pair_id}/baseline.observation.txt",
+            "optimized_observation": f"{pair_id}/optimized.observation.txt",
+        }
+    )
+    (target_dir / "summary.json").write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return record
 
 
 def run_pair(
@@ -64,6 +131,7 @@ def run_pair(
         str(output_root),
         "--harness-case-name",
         str(pair["case"]),
+        "--state-digest-output",
         "--timeout-seconds",
         str(timeout_seconds),
         "--benchmark-repeats",
@@ -71,14 +139,25 @@ def run_pair(
         "--omp-threads",
         str(omp_threads),
     ]
-    proc = subprocess.run(
-        command,
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-        timeout=timeout_seconds * 3 + 30,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=timeout_seconds * (2 * repeats) + 60,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        return {
+            "suite": pair["suite"],
+            "case": pair["case"],
+            "pair_id": pair_id,
+            "result": "fail",
+            "runner_exit": "timeout",
+            "runner_stdout": (error.stdout or "")[-4000:],
+            "runner_stderr": (error.stderr or "")[-4000:],
+        }
     result_dir = output_root / pair_id
     summary_path = result_dir / "summary.json"
     if proc.returncode != 0 or not summary_path.is_file():
@@ -95,34 +174,53 @@ def run_pair(
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     baseline_output = (result_dir / "baseline.stdout.txt").read_text(encoding="utf-8")
     optimized_output = (result_dir / "optimized.stdout.txt").read_text(encoding="utf-8")
+    baseline_sha256 = summary["baseline_output_sha256"]
+    optimized_sha256 = summary["optimized_output_sha256"]
+    strict_match = (
+        summary["result"] == "ok"
+        and summary["outputs_match"] is True
+        and summary["exact_match"] is True
+        and summary["numeric_finite"] is True
+        and summary["observation_mode"] == "sha256-modeled-state"
+        and int(summary["observed_value_count"]) > 0
+        and baseline_sha256 == optimized_sha256
+    )
     record: dict[str, object] = {
         "suite": pair["suite"],
         "case": pair["case"],
         "pair_id": pair_id,
-        "result": summary["result"],
-        "outputs_match": summary["outputs_match"],
+        "result": "ok" if strict_match else "fail",
+        "outputs_match": strict_match,
         "exact_match": summary["exact_match"],
         "numeric_finite": summary["numeric_finite"],
         "numeric_within_tolerance": summary["numeric_within_tolerance"],
         "max_abs_diff": summary["max_abs_diff"],
         "max_rel_diff": summary["max_rel_diff"],
-        "baseline_output": baseline_output.rstrip("\n"),
-        "optimized_output": optimized_output.rstrip("\n"),
+        "observation_mode": summary["observation_mode"],
+        "observed_value_count": summary["observed_value_count"],
+        "baseline_output_sha256": baseline_sha256,
+        "optimized_output_sha256": optimized_sha256,
         "params": summary["params"],
         "omp_threads_requested": summary["omp_threads_requested"],
         "execution_repeats": summary["execution_repeats"],
         "parallelized_loop": summary["parallelized_loop"],
         "vectorized_loop": summary["vectorized_loop"],
         "summary": f"{pair_id}/summary.json",
-        "baseline_stdout": f"{pair_id}/baseline.stdout.txt",
-        "optimized_stdout": f"{pair_id}/optimized.stdout.txt",
+        "baseline_observation": f"{pair_id}/baseline.observation.txt",
+        "optimized_observation": f"{pair_id}/optimized.observation.txt",
     }
+    (result_dir / "baseline.observation.txt").write_text(
+        baseline_output, encoding="utf-8"
+    )
+    (result_dir / "optimized.observation.txt").write_text(
+        optimized_output, encoding="utf-8"
+    )
     for path in result_dir.iterdir():
         if path.name not in {
             "summary.json",
             "status.txt",
-            "baseline.stdout.txt",
-            "optimized.stdout.txt",
+            "baseline.observation.txt",
+            "optimized.observation.txt",
         }:
             path.unlink()
     return record
@@ -156,38 +254,61 @@ def main() -> int:
     if not pairs:
         raise SystemExit("no accepted Loop pairs in the supplied index")
 
+    tier_overrides = load_param_tiers(PARAM_CONFIG)
+    grouped: dict[tuple[str, str, str, int, int], list[dict[str, object]]] = {}
+    for pair in pairs:
+        key = execution_configuration(
+            pair,
+            pairs_root=pairs_root,
+            tier_overrides=tier_overrides,
+            omp_threads=args.omp_threads,
+        )
+        grouped.setdefault(key, []).append(pair)
+
+    worker_count = min(
+        args.jobs, max(1, (os.cpu_count() or 1) // args.omp_threads)
+    )
     with tempfile.TemporaryDirectory(prefix="polcert-pair-execution-") as tmp:
         staging_root = pathlib.Path(tmp)
         results: list[dict[str, object]] = []
-        with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+        executed_configurations = 0
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
             futures = {
                 executor.submit(
                     run_pair,
-                    pair,
+                    grouped_pairs[0],
                     pairs_root=pairs_root,
                     output_root=output_root,
                     staging_root=staging_root,
                     timeout_seconds=args.timeout_seconds,
                     omp_threads=args.omp_threads,
-                ): pair
-                for pair in pairs
+                ): grouped_pairs
+                for grouped_pairs in grouped.values()
             }
             for future in as_completed(futures):
-                result = future.result()
-                results.append(result)
-                print(
-                    "[PAIR-EXEC] {} suite={} case={} baseline={} optimized={} "
-                    "exact={} repeats={}".format(
-                        str(result["result"]).upper(),
-                        result["suite"],
-                        result["case"],
-                        result.get("baseline_output", "unavailable"),
-                        result.get("optimized_output", "unavailable"),
-                        str(result.get("exact_match", False)).lower(),
-                        result.get("execution_repeats", 0),
-                    ),
-                    flush=True,
-                )
+                base_result = future.result()
+                executed_configurations += 1
+                for pair in futures[future]:
+                    result = materialize_pair_result(
+                        base_result,
+                        pair,
+                        pairs_root=pairs_root,
+                        output_root=output_root,
+                    )
+                    results.append(result)
+                    print(
+                        "[PAIR-EXEC] {} suite={} case={} baseline={} optimized={} "
+                        "digest_match={} repeats={}".format(
+                            str(result["result"]).upper(),
+                            result["suite"],
+                            result["case"],
+                            str(result.get("baseline_output_sha256", "unavailable"))[:12],
+                            str(result.get("optimized_output_sha256", "unavailable"))[:12],
+                            str(result.get("outputs_match", False)).lower(),
+                            result.get("execution_repeats", 0),
+                        ),
+                        flush=True,
+                    )
 
     results.sort(key=lambda item: (str(item["suite"]), str(item["case"])))
     failures = [result for result in results if result["result"] != "ok"]
@@ -195,9 +316,13 @@ def main() -> int:
         "schema": 1,
         "eligible_pairs": len(pairs),
         "executed_pairs": len(results),
+        "unique_execution_configurations": len(grouped),
+        "executed_configurations": executed_configurations,
+        "worker_count": worker_count,
         "matched_pairs": len(results) - len(failures),
         "failed_pairs": len(failures),
-        "integer_control_semantics": "Rocq Z.div and Z.mod",
+        "integer_control_semantics": "Rocq Z.div and Z.mod over tested signed 64-bit values",
+        "state_observation": "SHA-256 over every finite modeled scalar and array value",
         "results": results,
     }
     (output_root / "index.json").write_text(
@@ -218,8 +343,9 @@ def main() -> int:
         return 1
     print(
         f"[PAIR-EXEC-SUITE] PASS expected={len(pairs)} actual={len(results)} "
-        "coverage=all-accepted-Loop-pairs "
-        "interpretation=every-saved-Loop-pair-executed-with-matching-output"
+        f"unique-configurations={len(grouped)} "
+        "coverage=all-accepted-Loop-pair-records "
+        "interpretation=every-record-has-a-matching-modeled-state-digest"
     )
     return 0
 

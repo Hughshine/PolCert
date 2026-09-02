@@ -35,6 +35,120 @@ CASE_VALUE_OVERRIDES: dict[str, dict[str, int]] = {
 }
 DEFAULT_TIER = "smoke"
 
+STATE_DIGEST_HELPERS_C = r"""typedef struct {
+  unsigned char data[64];
+  unsigned int datalen;
+  unsigned long long bitlen;
+  unsigned int state[8];
+} polcert_sha256_ctx;
+
+static unsigned int polcert_rotr32(unsigned int value, unsigned int amount) {
+  return (value >> amount) | (value << (32U - amount));
+}
+
+static void polcert_sha256_transform(polcert_sha256_ctx *ctx) {
+  static const unsigned int k[64] = {
+    0x428a2f98U,0x71374491U,0xb5c0fbcfU,0xe9b5dba5U,0x3956c25bU,0x59f111f1U,0x923f82a4U,0xab1c5ed5U,
+    0xd807aa98U,0x12835b01U,0x243185beU,0x550c7dc3U,0x72be5d74U,0x80deb1feU,0x9bdc06a7U,0xc19bf174U,
+    0xe49b69c1U,0xefbe4786U,0x0fc19dc6U,0x240ca1ccU,0x2de92c6fU,0x4a7484aaU,0x5cb0a9dcU,0x76f988daU,
+    0x983e5152U,0xa831c66dU,0xb00327c8U,0xbf597fc7U,0xc6e00bf3U,0xd5a79147U,0x06ca6351U,0x14292967U,
+    0x27b70a85U,0x2e1b2138U,0x4d2c6dfcU,0x53380d13U,0x650a7354U,0x766a0abbU,0x81c2c92eU,0x92722c85U,
+    0xa2bfe8a1U,0xa81a664bU,0xc24b8b70U,0xc76c51a3U,0xd192e819U,0xd6990624U,0xf40e3585U,0x106aa070U,
+    0x19a4c116U,0x1e376c08U,0x2748774cU,0x34b0bcb5U,0x391c0cb3U,0x4ed8aa4aU,0x5b9cca4fU,0x682e6ff3U,
+    0x748f82eeU,0x78a5636fU,0x84c87814U,0x8cc70208U,0x90befffaU,0xa4506cebU,0xbef9a3f7U,0xc67178f2U
+  };
+  unsigned int m[64];
+  unsigned int a,b,c,d,e,f,g,h,t1,t2;
+  unsigned int i,j;
+  for (i = 0, j = 0; i < 16; ++i, j += 4) {
+    m[i] = ((unsigned int)ctx->data[j] << 24)
+      | ((unsigned int)ctx->data[j + 1] << 16)
+      | ((unsigned int)ctx->data[j + 2] << 8)
+      | (unsigned int)ctx->data[j + 3];
+  }
+  for (; i < 64; ++i) {
+    unsigned int s0 = polcert_rotr32(m[i - 15], 7) ^ polcert_rotr32(m[i - 15], 18) ^ (m[i - 15] >> 3);
+    unsigned int s1 = polcert_rotr32(m[i - 2], 17) ^ polcert_rotr32(m[i - 2], 19) ^ (m[i - 2] >> 10);
+    m[i] = m[i - 16] + s0 + m[i - 7] + s1;
+  }
+  a=ctx->state[0]; b=ctx->state[1]; c=ctx->state[2]; d=ctx->state[3];
+  e=ctx->state[4]; f=ctx->state[5]; g=ctx->state[6]; h=ctx->state[7];
+  for (i = 0; i < 64; ++i) {
+    unsigned int s1 = polcert_rotr32(e, 6) ^ polcert_rotr32(e, 11) ^ polcert_rotr32(e, 25);
+    unsigned int ch = (e & f) ^ ((~e) & g);
+    unsigned int s0 = polcert_rotr32(a, 2) ^ polcert_rotr32(a, 13) ^ polcert_rotr32(a, 22);
+    unsigned int maj = (a & b) ^ (a & c) ^ (b & c);
+    t1 = h + s1 + ch + k[i] + m[i];
+    t2 = s0 + maj;
+    h=g; g=f; f=e; e=d+t1; d=c; c=b; b=a; a=t1+t2;
+  }
+  ctx->state[0]+=a; ctx->state[1]+=b; ctx->state[2]+=c; ctx->state[3]+=d;
+  ctx->state[4]+=e; ctx->state[5]+=f; ctx->state[6]+=g; ctx->state[7]+=h;
+}
+
+static void polcert_sha256_init(polcert_sha256_ctx *ctx) {
+  ctx->datalen=0; ctx->bitlen=0;
+  ctx->state[0]=0x6a09e667U; ctx->state[1]=0xbb67ae85U;
+  ctx->state[2]=0x3c6ef372U; ctx->state[3]=0xa54ff53aU;
+  ctx->state[4]=0x510e527fU; ctx->state[5]=0x9b05688cU;
+  ctx->state[6]=0x1f83d9abU; ctx->state[7]=0x5be0cd19U;
+}
+
+static void polcert_sha256_update(polcert_sha256_ctx *ctx, const unsigned char *data, unsigned int len) {
+  unsigned int i;
+  for (i = 0; i < len; ++i) {
+    ctx->data[ctx->datalen++] = data[i];
+    if (ctx->datalen == 64) {
+      polcert_sha256_transform(ctx);
+      ctx->bitlen += 512;
+      ctx->datalen = 0;
+    }
+  }
+}
+
+static void polcert_sha256_final(polcert_sha256_ctx *ctx, unsigned char hash[32]) {
+  unsigned int i = ctx->datalen;
+  ctx->data[i++] = 0x80;
+  if (i > 56) {
+    while (i < 64) ctx->data[i++] = 0;
+    polcert_sha256_transform(ctx);
+    i = 0;
+  }
+  while (i < 56) ctx->data[i++] = 0;
+  ctx->bitlen += (unsigned long long)ctx->datalen * 8ULL;
+  for (i = 0; i < 8; ++i) ctx->data[63 - i] = (unsigned char)(ctx->bitlen >> (8U * i));
+  polcert_sha256_transform(ctx);
+  for (i = 0; i < 4; ++i) {
+    hash[i]      = (unsigned char)(ctx->state[0] >> (24U - 8U * i));
+    hash[i + 4]  = (unsigned char)(ctx->state[1] >> (24U - 8U * i));
+    hash[i + 8]  = (unsigned char)(ctx->state[2] >> (24U - 8U * i));
+    hash[i + 12] = (unsigned char)(ctx->state[3] >> (24U - 8U * i));
+    hash[i + 16] = (unsigned char)(ctx->state[4] >> (24U - 8U * i));
+    hash[i + 20] = (unsigned char)(ctx->state[5] >> (24U - 8U * i));
+    hash[i + 24] = (unsigned char)(ctx->state[6] >> (24U - 8U * i));
+    hash[i + 28] = (unsigned char)(ctx->state[7] >> (24U - 8U * i));
+  }
+}
+
+static void polcert_observe_double(polcert_sha256_ctx *ctx, unsigned long long *count, double value) {
+  unsigned long long bits;
+  unsigned char encoded[8];
+  unsigned int i;
+  if (!isfinite(value)) {
+    fputs("PolCert harness: non-finite modeled value\n", stderr);
+    exit(3);
+  }
+  if (sizeof(double) != 8 || sizeof(unsigned int) != 4) {
+    fputs("PolCert harness: unsupported numeric representation\n", stderr);
+    exit(4);
+  }
+  memcpy(&bits, &value, 8);
+  for (i = 0; i < 8; ++i) encoded[i] = (unsigned char)(bits >> (8U * i));
+  polcert_sha256_update(ctx, encoded, 8);
+  *count += 1;
+}
+"""
+
 
 @dataclasses.dataclass(frozen=True)
 class ArrayAccess:
@@ -435,6 +549,40 @@ def render_checksum_function(arrays: dict[str, tuple[ArrayDim, ...]], scalars: t
     return "\n".join(lines) + "\n"
 
 
+def render_state_digest_function(
+    arrays: dict[str, tuple[ArrayDim, ...]], scalars: tuple[str, ...]
+) -> str:
+    lines = [
+        "static void print_modeled_state_digest(void) {",
+        "  polcert_sha256_ctx ctx;",
+        "  unsigned char digest[32];",
+        "  unsigned long long count = 0;",
+        "  unsigned int digest_index;",
+        "  polcert_sha256_init(&ctx);",
+    ]
+    for name in scalars:
+        lines.append(f"  polcert_observe_double(&ctx, &count, (double){name});")
+    for name, dims in sorted(arrays.items()):
+        def body(indent: str, indices: list[str]) -> list[str]:
+            index = "".join(f"[{idx}]" for idx in indices)
+            return [
+                f"{indent}polcert_observe_double(&ctx, &count, "
+                f"(double){name}{index});"
+            ]
+
+        lines.extend(f"  {line}" for line in render_array_loops(name, dims, body))
+    lines.extend(
+        [
+            "  polcert_sha256_final(&ctx, digest);",
+            '  printf("observed_value_count=%llu\\nstate_sha256=", count);',
+            '  for (digest_index = 0; digest_index < 32; ++digest_index) printf("%02x", digest[digest_index]);',
+            '  putchar(\'\\n\');',
+            "}",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 def render_helper_functions(functions: tuple[str, ...], arrays: dict[str, tuple[ArrayDim, ...]]) -> str:
     lines: list[str] = []
     if "my_sqrt_array" in functions and "stddev" in arrays and len(arrays["stddev"]) == 1:
@@ -449,12 +597,16 @@ def render_helper_functions(functions: tuple[str, ...], arrays: dict[str, tuple[
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def render_program_source(info: HarnessInfo, *, optimized: bool) -> str:
+def render_program_source(
+    info: HarnessInfo, *, optimized: bool, state_digest_output: bool = False
+) -> str:
     kernel = info.optimized_kernel if optimized else info.baseline_kernel
     lines = [
         "#include <math.h>",
+        "#include <limits.h>",
         "#include <stdio.h>",
         "#include <stdlib.h>",
+        "#include <string.h>",
         "",
         "#ifndef max",
         "#define max(x, y) ((x) > (y) ? (x) : (y))",
@@ -464,16 +616,25 @@ def render_program_source(info: HarnessInfo, *, optimized: bool) -> str:
         "#endif",
         "",
         INTEGER_HELPERS_C.rstrip(),
+        STATE_DIGEST_HELPERS_C.rstrip() if state_digest_output else "",
         render_param_decls(info.params).rstrip(),
         render_array_decls(info.arrays).rstrip(),
         render_scalar_decls(info.scalars, info.params).rstrip(),
         render_helper_functions(info.functions, info.arrays).rstrip(),
         render_init_function(info.arrays, info.scalars, info.params).rstrip(),
-        render_checksum_function(info.arrays, info.scalars).rstrip(),
+        (
+            render_state_digest_function(info.arrays, info.scalars).rstrip()
+            if state_digest_output
+            else render_checksum_function(info.arrays, info.scalars).rstrip()
+        ),
         "int main(void) {",
         "  init_data();",
         kernel.rstrip(),
-        '  printf("%.17g\\n", checksum());',
+        (
+            "  print_modeled_state_digest();"
+            if state_digest_output
+            else '  printf("%.17g\\n", checksum());'
+        ),
         "  return 0;",
         "}",
         "",

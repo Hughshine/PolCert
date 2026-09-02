@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import pathlib
+import re
 import shutil
 import subprocess
 import time
@@ -10,6 +11,12 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OPT_MARKER = "== Optimized Loop ==\n"
+STATE_DIGEST_RE = re.compile(
+    r"observed_value_count=([1-9][0-9]*)\nstate_sha256=([0-9a-f]{64})\n"
+)
+NONFINITE_TOKEN_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9_])(?:[-+]?nan|[-+]?inf(?:inity)?)(?![A-Za-z0-9_])"
+)
 
 
 def has_parallel_loop(loop_text: str) -> bool:
@@ -115,6 +122,40 @@ def try_parse_float_lines(text: str) -> list[float] | None:
     return vals
 
 
+def parse_modeled_state_digest(text: str) -> dict[str, object] | None:
+    matched = STATE_DIGEST_RE.fullmatch(text)
+    if not matched:
+        return None
+    return {"observed_value_count": int(matched.group(1)), "sha256": matched.group(2)}
+
+
+def evaluate_state_digest_outputs(
+    baseline_stdout: str, optimized_stdout: str
+) -> dict[str, object]:
+    baseline = parse_modeled_state_digest(baseline_stdout)
+    optimized = parse_modeled_state_digest(optimized_stdout)
+    valid = baseline is not None and optimized is not None
+    count_match = valid and (
+        baseline["observed_value_count"] == optimized["observed_value_count"]
+    )
+    digest_match = valid and baseline["sha256"] == optimized["sha256"]
+    return {
+        "exact_match": baseline_stdout == optimized_stdout,
+        "numeric_comparable": False,
+        "numeric_finite": bool(valid),
+        "value_count_match": bool(count_match),
+        "numeric_value_count": (
+            baseline["observed_value_count"] if count_match else None
+        ),
+        "baseline_sha256": baseline["sha256"] if baseline else None,
+        "optimized_sha256": optimized["sha256"] if optimized else None,
+        "max_abs_diff": None,
+        "max_rel_diff": None,
+        "numeric_within_tolerance": False,
+        "outputs_match": bool(valid and count_match and digest_match),
+    }
+
+
 def compare_numeric_outputs(
     baseline_stdout: str,
     optimized_stdout: str,
@@ -126,6 +167,7 @@ def compare_numeric_outputs(
             "numeric_comparable": False,
             "numeric_finite": None,
             "value_count_match": False,
+            "numeric_value_count": None,
             "max_abs_diff": None,
             "max_rel_diff": None,
         }
@@ -136,6 +178,7 @@ def compare_numeric_outputs(
                 math.isfinite(value) for value in [*baseline_vals, *optimized_vals]
             ),
             "value_count_match": False,
+            "numeric_value_count": None,
             "max_abs_diff": None,
             "max_rel_diff": None,
         }
@@ -154,6 +197,7 @@ def compare_numeric_outputs(
         "numeric_comparable": True,
         "numeric_finite": numeric_finite,
         "value_count_match": True,
+        "numeric_value_count": len(baseline_vals),
         "max_abs_diff": max_abs_diff,
         "max_rel_diff": max_rel_diff,
     }
@@ -167,11 +211,17 @@ def evaluate_outputs(
     rel_tolerance: float,
 ) -> dict[str, object]:
     exact_match = baseline_stdout == optimized_stdout
+    nonempty_output = bool(baseline_stdout.strip()) and bool(optimized_stdout.strip())
+    contains_nonfinite = bool(
+        NONFINITE_TOKEN_RE.search(baseline_stdout)
+        or NONFINITE_TOKEN_RE.search(optimized_stdout)
+    )
     numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
     numeric_within_tolerance = (
         bool(numeric_summary["numeric_comparable"])
         and bool(numeric_summary["numeric_finite"])
         and bool(numeric_summary["value_count_match"])
+        and int(numeric_summary["numeric_value_count"] or 0) > 0
         and float(numeric_summary["max_abs_diff"]) <= abs_tolerance
         and float(numeric_summary["max_rel_diff"]) <= rel_tolerance
     )
@@ -180,11 +230,14 @@ def evaluate_outputs(
         "numeric_comparable": numeric_summary["numeric_comparable"],
         "numeric_finite": numeric_summary["numeric_finite"],
         "value_count_match": numeric_summary["value_count_match"],
+        "numeric_value_count": numeric_summary["numeric_value_count"],
         "max_abs_diff": numeric_summary["max_abs_diff"],
         "max_rel_diff": numeric_summary["max_rel_diff"],
         "numeric_within_tolerance": numeric_within_tolerance,
         "outputs_match": (
             exact_match
+            and nonempty_output
+            and not contains_nonfinite
             and (
                 not bool(numeric_summary["numeric_comparable"])
                 or bool(numeric_summary["numeric_finite"])
