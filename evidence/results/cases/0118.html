@@ -117,6 +117,28 @@ if (11 &lt;= n) {
   </div>
   <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 24598 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>6de25ce5677ce6a668dd93715bb757dec36b2711f6c35aded81e8feb41e561dc</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>6de25ce5677ce6a668dd93715bb757dec36b2711f6c35aded81e8feb41e561dc</code></dd>
+      <dt>Parameters</dt><dd><code>n=4096</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -130,8 +152,8 @@ if (11 &lt;= n) {
     <h3>Term meanings</h3><ul><li>SUITE RESULT: only aggregate totals are available for this input set.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/1519.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1518.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1712.html" target="_blank" rel="noopener">multi-stmt-stencil-seq.loop</a> &middot; <a href="../../../docs/files/1609.html" target="_blank" rel="noopener">test log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/1762.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1761.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3328.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3326.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/3327.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3541.html" target="_blank" rel="noopener">multi-stmt-stencil-seq.loop</a> &middot; <a href="../../../docs/files/3438.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
   <p class="case-pager"><a href="0117.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0119.html" data-same-tab>Next case</a></p>
 </main>

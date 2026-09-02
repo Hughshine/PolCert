@@ -1,0 +1,28 @@
+{
+  "baseline_observation": "09dbce45505fdf/baseline.observation.txt",
+  "baseline_output_sha256": "d7a9d13da41259b10cdc393ee2955d06586690c63b754f9a1e8a1c2d729607a8",
+  "case": "diamond-current-jacobi-batch-positive",
+  "exact_match": true,
+  "execution_repeats": 3,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 19600,
+  "omp_threads_requested": 4,
+  "optimized_observation": "09dbce45505fdf/optimized.observation.txt",
+  "optimized_output_sha256": "d7a9d13da41259b10cdc393ee2955d06586690c63b754f9a1e8a1c2d729607a8",
+  "outputs_match": true,
+  "pair_id": "09dbce45505fdf",
+  "parallelized_loop": true,
+  "params": {
+    "B": 96,
+    "N": 96,
+    "T": 96
+  },
+  "result": "ok",
+  "suite": "parallel-loop validation",
+  "summary": "09dbce45505fdf/summary.json",
+  "vectorized_loop": false
+}

@@ -3,31 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>gemver.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/gemver.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/e61e5b3a2329d0/before.loop</code></h1>
+  <pre>context(B, T, N);
 
-for i in range(0, N) {
-  for j in range(0, N) {
-    B[i][j] = ((A[i][j] + (u1[i] * v1[j])) + (u2[i] * v2[j]));
-  }
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    x[i] = (x[i] + ((beta * B[j][i]) * y[j]));
-  }
-}
-for i in range(0, N) {
-  x[i] = (x[i] + z[i]);
-}
-for i in range(0, N) {
-  for j in range(0, N) {
-    w[i] = (w[i] + ((alpha * B[i][j]) * x[j]));
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
+    }
   }
 }
 </pre>

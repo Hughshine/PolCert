@@ -3,170 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diff.patch</title>
+  <title>input.pretty.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/optimized-loop-examples/jacobi-2d-imper/diff.patch</code></h1>
-  <pre>--- input.pretty.loop
-+++ optimized.loop
-@@ -1,14 +1,146 @@
- context(T, N);
+  <h1><code>evidence/optimized-loop-examples/jacobi-2d-imper/input.pretty.loop</code></h1>
+  <pre>context(T, N);
 
--for i0 in range(0, T) {
--  for i1 in range(2, (N + -1)) {
--    for i2 in range(2, (N + -1)) {
--      b[i1][i2] = (0.2 * ((((a[i1][i2] + a[i1][(i2 + -1)]) + a[i1][(i2 + 1)]) + a[(i1 + 1)][i2]) + a[(i1 + -1)][i2]));
-+if ((4 &lt;= N &amp;&amp; 1 &lt;= T)) {
-+  for i0 in range(0, ((T + 31) / 32)) {
-+    for i1 in range(max((((64 * i0) + 3) / 32), 0), min((((2 * T) + (N + 28)) / 32), ((N + ((64 * i0) + 92)) / 32))) {
-+      for i2 in range(max(max(0, (((64 * i0) + 3) / 32)), (((-1 * N) + ((32 * i1) + 4)) / 32)), min(min(((N + ((32 * i1) + 59)) / 32), ((N + ((64 * i0) + 92)) / 32)), (((2 * T) + (N + 28)) / 32))) {
-+        if (((((-1 * N) + ((32 * i1) + 1)) % 2) == 0 &amp;&amp; ((N + (-32 * i1)) &lt;= 1 &amp;&amp; ((N + ((64 * i0) + (-32 * i1))) &lt;= 1 &amp;&amp; ((-1 * i1) + i2) &lt;= 0)))) {
-+          for i3 in range((N + ((2 * (((-1 * N) + ((32 * i1) + 1)) / 2)) + -1)), (N + (2 * (((-1 * N) + ((32 * i1) + 1)) / 2)))) {
-+            for i4 in range(max((32 * i2), ((2 * (((-1 * N) + ((32 * i1) + 1)) / 2)) + 3)), min(((32 * i2) + 32), (i3 + 1))) {
-+              if ((i3 % 32) == 0) {
-+                for i5 in range((N + -2), (N + -1)) {
-+                  for i6 in range(((-1 * i3) + (i4 + i5)), ((-1 * i3) + (i4 + (i5 + 1)))) {
-+                    a[i5][i6] = b[i5][i6];
-+                  }
-+                }
-+              }
-+            }
-+          }
-+        }
-+        if (((((-1 * N) + ((32 * i2) + 1)) % 2) == 0 &amp;&amp; ((N + (-32 * i2)) &lt;= 1 &amp;&amp; ((N + ((64 * i0) + (-32 * i2))) &lt;= 1 &amp;&amp; (i1 + (-1 * i2)) &lt;= -1)))) {
-+          for i3 in range(max((32 * i1), ((2 * (((-1 * N) + ((32 * i2) + 1)) / 2)) + 3)), ((32 * i1) + 32)) {
-+            for i4 in range((N + (i3 + ((-32 * i2) + -2))), (N + (i3 + ((-32 * i2) + -1)))) {
-+              for i5 in range(((-1 * i3) + ((32 * i2) + i4)), ((-1 * i3) + ((32 * i2) + (i4 + 1)))) {
-+                a[i4][i5] = b[i4][i5];
-+              }
-+            }
-+          }
-+        }
-+        for i3 in range(max(max(max((32 * i0), 0), (((-1 * N) + ((32 * i2) + 3)) / 2)), (((-1 * N) + ((32 * i1) + 3)) / 2)), min(min(min((((32 * i1) + 30) / 2), ((32 * i0) + 32)), T), (((32 * i2) + 30) / 2))) {
-+          if (((32 * i1) + (-2 * i3)) &lt;= 2) {
-+            for i4 in range(((2 * i3) + 2), ((2 * i3) + 3)) {
-+              for i5 in range(max((32 * i2), i4), min(((32 * i2) + 32), (N + (i4 + -3)))) {
-+                if (((i4 + -2) % 2) == 0) {
-+                  for i6 in range(((-1 * i4) + (i5 + 2)), ((-1 * i4) + (i5 + 3))) {
-+                    b[2][i6] = (0.2 * ((((a[2][i6] + a[2][(i6 + -1)]) + a[2][(i6 + 1)]) + a[3][i6]) + a[1][i6]));
-+                  }
-+                }
-+              }
-+            }
-+          }
-+          for i4 in range(max((32 * i1), ((2 * i3) + 3)), min(((32 * i1) + 32), (N + ((2 * i3) + -1)))) {
-+            if (((16 * i2) + (-1 * i3)) &lt;= 1) {
-+              for i5 in range(((2 * i3) + 2), ((2 * i3) + 3)) {
-+                for i6 in range((i4 + ((-1 * i5) + 2)), (i4 + ((-1 * i5) + 3))) {
-+                  b[i6][2] = (0.2 * ((((a[i6][2] + a[i6][1]) + a[i6][3]) + a[(i6 + 1)][2]) + a[(i6 + -1)][2]));
-+                }
-+              }
-+            }
-+            for i5 in range(max((32 * i2), ((2 * i3) + 3)), min(((32 * i2) + 32), (N + ((2 * i3) + -1)))) {
-+              for i6 in range((i4 + ((-2 * i3) + -1)), (i4 + (-2 * i3))) {
-+                for i7 in range(((-1 * i4) + (i5 + i6)), ((-1 * i4) + (i5 + (i6 + 1)))) {
-+                  a[i6][i7] = b[i6][i7];
-+                }
-+              }
-+              for i6 in range((i4 + (-2 * i3)), (i4 + ((-2 * i3) + 1))) {
-+                for i7 in range(((-1 * i4) + (i5 + i6)), ((-1 * i4) + (i5 + (i6 + 1)))) {
-+                  b[i6][i7] = (0.2 * ((((a[i6][i7] + a[i6][(i7 + -1)]) + a[i6][(i7 + 1)]) + a[(i6 + 1)][i7]) + a[(i6 + -1)][i7]));
-+                }
-+              }
-+            }
-+            if ((N + ((-32 * i2) + (2 * i3))) &lt;= 32) {
-+              for i5 in range((N + ((2 * i3) + -1)), (N + (2 * i3))) {
-+                for i6 in range((N + (i4 + ((-1 * i5) + -2))), (N + (i4 + ((-1 * i5) + -1)))) {
-+                  for i7 in range((N + -2), (N + -1)) {
-+                    a[i6][i7] = b[i6][i7];
-+                  }
-+                }
-+              }
-+            }
-+          }
-+          if ((N + ((-32 * i1) + (2 * i3))) &lt;= 32) {
-+            for i4 in range((N + ((2 * i3) + -1)), (N + (2 * i3))) {
-+              for i5 in range(max((32 * i2), ((2 * i3) + 3)), min(((32 * i2) + 32), (i4 + 1))) {
-+                for i6 in range((N + -2), (N + -1)) {
-+                  for i7 in range(((-1 * i4) + (i5 + i6)), ((-1 * i4) + (i5 + (i6 + 1)))) {
-+                    a[i6][i7] = b[i6][i7];
-+                  }
-+                }
-+              }
-+            }
-+          }
-+        }
-+      }
-+      if (((((2 * T) + (N + -3)) % 32) == 0 &amp;&amp; (((2 * T) + (-32 * i1)) &lt;= 30 &amp;&amp; ((2 * T) + (-64 * i0)) &lt;= 64))) {
-+        for i2 in range((T + -1), T) {
-+          for i3 in range(max((32 * i1), ((2 * i2) + 3)), ((32 * i1) + 32)) {
-+            for i4 in range(((-2 * T) + (i3 + 1)), ((-2 * T) + (i3 + 2))) {
-+              for i5 in range(((-1 * i3) + ((32 * (((2 * T) + (N + -3)) / 32)) + i4)), ((-1 * i3) + ((32 * (((2 * T) + (N + -3)) / 32)) + (i4 + 1)))) {
-+                a[i4][i5] = b[i4][i5];
-+              }
-+            }
-+          }
-+        }
-+      }
-+      if ((((N + ((64 * i0) + 61)) % 32) == 0 &amp;&amp; (((-1 * T) + (32 * i0)) &lt;= -33 &amp;&amp; ((2 * i0) + (-1 * i1)) &lt;= -2))) {
-+        for i2 in range(((32 * i0) + 31), ((32 * i0) + 32)) {
-+          for i3 in range(max((32 * i1), ((64 * i0) + 65)), ((32 * i1) + 32)) {
-+            for i4 in range(((32 * i0) + 31), ((32 * i0) + 32)) {
-+              for i5 in range((N + (i3 + ((-32 * ((N + ((64 * i0) + 61)) / 32)) + -2))), (N + (i3 + ((-32 * ((N + ((64 * i0) + 61)) / 32)) + -1)))) {
-+                for i6 in range(((-1 * i3) + ((32 * ((N + ((64 * i0) + 61)) / 32)) + i5)), ((-1 * i3) + ((32 * ((N + ((64 * i0) + 61)) / 32)) + (i5 + 1)))) {
-+                  a[i5][i6] = b[i5][i6];
-+                }
-+              }
-+            }
-+          }
-+        }
-+      }
-     }
--  }
--  for i1 in range(2, (N + -1)) {
--    for i2 in range(2, (N + -1)) {
--      a[i1][i2] = b[i1][i2];
-+    if ((((N + ((64 * i0) + 61)) % 32) == 0 &amp;&amp; ((-1 * T) + (32 * i0)) &lt;= -32)) {
-+      for i1 in range((((64 * i0) + 65) / 32), (((N + ((64 * i0) + 61)) / 32) + 1)) {
-+        for i2 in range(((32 * i0) + 31), ((32 * i0) + 32)) {
-+          for i3 in range((N + ((64 * i0) + 61)), (N + ((64 * i0) + 62))) {
-+            for i4 in range(max(((64 * i0) + 65), (32 * i1)), min(((32 * i1) + 32), (i3 + 1))) {
-+              if ((i3 % 32) == 0) {
-+                for i5 in range(((32 * i0) + 31), ((32 * i0) + 32)) {
-+                  for i6 in range((N + -2), (N + -1)) {
-+                    for i7 in range(((-1 * i3) + (i4 + i6)), ((-1 * i3) + (i4 + (i6 + 1)))) {
-+                      a[i6][i7] = b[i6][i7];
-+                    }
-+                  }
-+                }
-+              }
-+            }
-+          }
-+        }
-+      }
-+    }
-+    if (((((2 * T) + (N + -3)) % 32) == 0 &amp;&amp; ((2 * T) + (-64 * i0)) &lt;= 63)) {
-+      for i1 in range((((-1 * N) + ((32 * (((2 * T) + (N + -3)) / 32)) + 4)) / 32), ((((2 * T) + (N + -3)) / 32) + 1)) {
-+        for i2 in range((T + -1), T) {
-+          for i3 in range((N + ((2 * i2) + -1)), (N + (2 * i2))) {
-+            for i4 in range(max((32 * i1), ((2 * i2) + 3)), min(((32 * i1) + 32), (i3 + 1))) {
-+              if ((i3 % 32) == 0) {
-+                for i5 in range(((-2 * T) + (i3 + 1)), ((-2 * T) + (i3 + 2))) {
-+                  for i6 in range(((-1 * i3) + (i4 + i5)), ((-1 * i3) + (i4 + (i5 + 1)))) {
-+                    a[i5][i6] = b[i5][i6];
-+                  }
-+                }
-+              }
-+            }
-+          }
-+        }
-+      }
-     }
-   }
- }
+for i0 in range(0, T) {
+  for i1 in range(2, (N + -1)) {
+    for i2 in range(2, (N + -1)) {
+      b[i1][i2] = (0.2 * ((((a[i1][i2] + a[i1][(i2 + -1)]) + a[i1][(i2 + 1)]) + a[(i1 + 1)][i2]) + a[(i1 + -1)][i2]));
+    }
+  }
+  for i1 in range(2, (N + -1)) {
+    for i2 in range(2, (N + -1)) {
+      a[i1][i2] = b[i1][i2];
+    }
+  }
+}
 </pre>
 </main>
 </body>

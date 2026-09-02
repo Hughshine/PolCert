@@ -3,23 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fdtd-1d.loop</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-generated/inputs/fdtd-1d.loop</code></h1>
-  <pre>context(T, N);
+  <h1><code>evidence/results/program-comparisons/e18cd90080cbd6/after.c</code></h1>
+  <pre>#define S1(zT1,$i0)	a[$i0] = b[$i0];
+#define S2(zT1,$i0)	a[$i0] = b[$i0];
 
-for t in range(1, (T + 1)) {
-  for i in range(1, ((N - 1) + 1)) {
-    e[i] = (e[i] - (coeff1 * (h[i] - h[(i - 1)])));
-  }
-  for i in range(0, ((N - 1) + 1)) {
-    h[i] = (h[i] - (coeff2 * (e[(i + 1)] - e[i])));
+		int t1, t2, t3, t4;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+  for (t3=32*t2;t3&lt;=min(N-1,32*t2+31);t3++) {
+    S1(t2,t3);
   }
 }
+for (t2=0;t2&lt;=floord(M-1,32);t2++) {
+  for (t3=32*t2;t3&lt;=min(M-1,32*t2+31);t3++) {
+    S2(t2,t3);
+  }
+}
+/* End of CLooG code */
 </pre>
 </main>
 </body>

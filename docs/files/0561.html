@@ -3,35 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/3648ee81d7d9eb/before.c</code></h1>
-  <pre>#include &lt;stdio.h&gt;
+  <h1><code>evidence/results/program-comparisons/2ea2a0443f7429/after.loop</code></h1>
+  <pre>context(NMAX);
 
-#define N 16
-
-static int a[N][N];
-
-int main(void) {
-  int i, j;
-
-  for (i = 0; i &lt; N; i++) {
-    a[i][0] = 1;
-    a[0][i] = 1;
+if (1 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(max(((32 * i0) / 32), 0), ((NMAX + 31) / 32)) {
+      for i2 in range(0, ((NMAX + 31) / 32)) {
+        for i3 in range(max((32 * i0), 0), min(min(NMAX, ((32 * i1) + 32)), ((32 * i0) + 32))) {
+          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), NMAX)) {
+            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), NMAX)) {
+              c[i3][i4] = (c[i3][i4] + ((a[i5][i3] * b[i5][i4]) + (b[i5][i3] * a[i5][i4])));
+            }
+          }
+        }
+      }
+    }
   }
-
-#pragma scop
-  for (i = 1; i &lt; N; i++)
-    for (j = 1; j &lt; N; j++)
-      a[i][j] = a[i - 1][j] + a[i][j - 1] + 1;
-#pragma endscop
-
-  printf(&quot;%d\n&quot;, a[N - 1][N - 1]);
-  return 0;
 }
 </pre>
 </main>

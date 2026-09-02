@@ -3,27 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/d5c6e4a0699a95/after.loop</code></h1>
-  <pre>context(B, T, N);
+  <h1><code>evidence/results/program-comparisons/b4525867b44139/before.loop</code></h1>
+  <pre>context(NMAX);
 
-if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
-  for i0 in range(0, ((B + 31) / 32)) {
-    for i1 in range(0, ((T + (N + 24)) / 32)) {
-      for i2 in range(max(0, (((-1 * N) + ((32 * i1) + 6)) / 32)), min(((T + 30) / 32), (((32 * i1) + 58) / 32))) {
-        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
-          for i4 in range(max(max(10, ((32 * i2) + 5)), (32 * i1)), min(min((T + (N + -7)), (N + ((32 * i2) + 26))), ((32 * i1) + 32))) {
-            for i5 in range(max(max((32 * i2), 5), ((-1 * N) + (i4 + 6))), min(min(((32 * i2) + 32), (T + -1)), (i4 + -4))) {
-              for i6 in range((i4 + (-1 * i5)), (i4 + ((-1 * i5) + 1))) {
-                A[i3][(i5 + 1)][i6] = (0.125 * (A[i3][i5][(i6 + -1)] + A[i3][(i5 + -2)][(i6 + 1)]));
-              }
-            }
+if (3 &lt;= NMAX) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(0, ((NMAX + 31) / 32)) {
+      for i2 in range(max(0, (32 * i0)), min(NMAX, ((32 * i0) + 32))) {
+        for i3 in range((32 * i1), 2) {
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+        }
+        for i3 in range(max(2, (32 * i1)), min(NMAX, ((32 * i1) + 32))) {
+          for i4 in range(0, (i3 + -1)) {
+            c[i2][i4] = (c[i2][i4] + (a[i3][i4] * b[i2][i3]));
+            c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
           }
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
+        }
+      }
+    }
+  }
+}
+if (NMAX &lt;= 2) {
+  for i0 in range(0, ((NMAX + 31) / 32)) {
+    for i1 in range(0, ((NMAX + 31) / 32)) {
+      for i2 in range((32 * i0), NMAX) {
+        for i3 in range(max((32 * i1), 0), min(((32 * i1) + 32), NMAX)) {
+          c[i2][i3] = (c[i2][i3] + (a[i3][i3] * b[i2][i3]));
         }
       }
     }

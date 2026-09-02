@@ -799,6 +799,564 @@
       "suite": "code-generation gap exploration"
     },
     {
+      "after": "program-comparisons/f85bc2e98ea4ff/after.loop",
+      "before": "program-comparisons/f85bc2e98ea4ff/before.loop",
+      "case": "1dloop-invar",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/01ebc02a2b767a/after.loop",
+      "before": "program-comparisons/01ebc02a2b767a/before.loop",
+      "case": "adi",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/c6dcacc244686b/after.loop",
+      "before": "program-comparisons/c6dcacc244686b/before.loop",
+      "case": "advect3d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ef441818c6c447/after.loop",
+      "before": "program-comparisons/ef441818c6c447/before.loop",
+      "case": "corcol",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/f275f69c92a037/after.loop",
+      "before": "program-comparisons/f275f69c92a037/before.loop",
+      "case": "corcol3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ffa8c6b5539937/after.loop",
+      "before": "program-comparisons/ffa8c6b5539937/before.loop",
+      "case": "costfunc",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/4b4e1c02bc863b/after.loop",
+      "before": "program-comparisons/4b4e1c02bc863b/before.loop",
+      "case": "covcol",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/f9cf955747b021/after.loop",
+      "before": "program-comparisons/f9cf955747b021/before.loop",
+      "case": "dct",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/98351a2103ed47/after.loop",
+      "before": "program-comparisons/98351a2103ed47/before.loop",
+      "case": "doitgen",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/2ea2a0443f7429/after.loop",
+      "before": "program-comparisons/2ea2a0443f7429/before.loop",
+      "case": "dsyr2k",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/3ca55a86543638/after.loop",
+      "before": "program-comparisons/3ca55a86543638/before.loop",
+      "case": "dsyrk",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/e2800129942ba5/after.loop",
+      "before": "program-comparisons/e2800129942ba5/before.loop",
+      "case": "fdtd-1d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ab769b554f7d74/after.loop",
+      "before": "program-comparisons/ab769b554f7d74/before.loop",
+      "case": "fdtd-2d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/5b1909f53abf9a/after.loop",
+      "before": "program-comparisons/5b1909f53abf9a/before.loop",
+      "case": "floyd",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/0b87e9c7429da9/after.loop",
+      "before": "program-comparisons/0b87e9c7429da9/before.loop",
+      "case": "fusion1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/2603136d6e0274/after.loop",
+      "before": "program-comparisons/2603136d6e0274/before.loop",
+      "case": "fusion10",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/049dba449ffcfc/after.loop",
+      "before": "program-comparisons/049dba449ffcfc/before.loop",
+      "case": "fusion2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/685fac66e6ad4f/after.loop",
+      "before": "program-comparisons/685fac66e6ad4f/before.loop",
+      "case": "fusion3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/27705cb9317bb3/after.loop",
+      "before": "program-comparisons/27705cb9317bb3/before.loop",
+      "case": "fusion4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/a30c50b8629d0f/after.loop",
+      "before": "program-comparisons/a30c50b8629d0f/before.loop",
+      "case": "fusion5",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/b3f9d1f7d77171/after.loop",
+      "before": "program-comparisons/b3f9d1f7d77171/before.loop",
+      "case": "fusion6",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/17482b32c1754a/after.loop",
+      "before": "program-comparisons/17482b32c1754a/before.loop",
+      "case": "fusion7",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/614a098a9643f8/after.loop",
+      "before": "program-comparisons/614a098a9643f8/before.loop",
+      "case": "fusion8",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/d9a46f4fa2ac13/after.loop",
+      "before": "program-comparisons/d9a46f4fa2ac13/before.loop",
+      "case": "fusion9",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/4ac4bcb9f0f588/after.loop",
+      "before": "program-comparisons/4ac4bcb9f0f588/before.loop",
+      "case": "gemver",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/c21b0f4e221da5/after.loop",
+      "before": "program-comparisons/c21b0f4e221da5/before.loop",
+      "case": "intratileopt1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/fc3a1955ac4cf4/after.loop",
+      "before": "program-comparisons/fc3a1955ac4cf4/before.loop",
+      "case": "intratileopt2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/e6bbd6390cf478/after.loop",
+      "before": "program-comparisons/e6bbd6390cf478/before.loop",
+      "case": "intratileopt3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/448ae751c3eff5/after.loop",
+      "before": "program-comparisons/448ae751c3eff5/before.loop",
+      "case": "intratileopt4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/397b11de81cdf2/after.loop",
+      "before": "program-comparisons/397b11de81cdf2/before.loop",
+      "case": "jacobi-1d-imper",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/2bf9da0a1ef4c4/after.loop",
+      "before": "program-comparisons/2bf9da0a1ef4c4/before.loop",
+      "case": "jacobi-2d-imper",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/8e8d8a06b8e345/after.loop",
+      "before": "program-comparisons/8e8d8a06b8e345/before.loop",
+      "case": "lu",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/721e6402e30feb/after.loop",
+      "before": "program-comparisons/721e6402e30feb/before.loop",
+      "case": "matmul",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/5988548e97dffb/after.loop",
+      "before": "program-comparisons/5988548e97dffb/before.loop",
+      "case": "matmul-init",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/b85ba29ac8372f/after.loop",
+      "before": "program-comparisons/b85ba29ac8372f/before.loop",
+      "case": "matmul-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/09c2def0d1e176/after.loop",
+      "before": "program-comparisons/09c2def0d1e176/before.loop",
+      "case": "matmul-seq3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ee004ce42f8dcb/after.loop",
+      "before": "program-comparisons/ee004ce42f8dcb/before.loop",
+      "case": "multi-loop-param",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/59f22dd4378faa/after.loop",
+      "before": "program-comparisons/59f22dd4378faa/before.loop",
+      "case": "multi-stmt-stencil-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/1e0b12780b07ad/after.loop",
+      "before": "program-comparisons/1e0b12780b07ad/before.loop",
+      "case": "mvt",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/56092f8028d87b/after.loop",
+      "before": "program-comparisons/56092f8028d87b/before.loop",
+      "case": "mxv",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/9c78d61a6959e5/after.loop",
+      "before": "program-comparisons/9c78d61a6959e5/before.loop",
+      "case": "mxv-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/6eaff694d827df/after.loop",
+      "before": "program-comparisons/6eaff694d827df/before.loop",
+      "case": "mxv-seq3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/e4180ffff0f5a1/after.loop",
+      "before": "program-comparisons/e4180ffff0f5a1/before.loop",
+      "case": "negparam",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/6676be83ed6929/after.loop",
+      "before": "program-comparisons/6676be83ed6929/before.loop",
+      "case": "nodep",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/91613be80996b2/after.loop",
+      "before": "program-comparisons/91613be80996b2/before.loop",
+      "case": "noloop",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/8e188ae4177b33/after.loop",
+      "before": "program-comparisons/8e188ae4177b33/before.loop",
+      "case": "pca",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/d106a1c11649d2/after.loop",
+      "before": "program-comparisons/d106a1c11649d2/before.loop",
+      "case": "polynomial",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/366b84a958bc0b/after.loop",
+      "before": "program-comparisons/366b84a958bc0b/before.loop",
+      "case": "seidel",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/39e097c158186d/after.loop",
+      "before": "program-comparisons/39e097c158186d/before.loop",
+      "case": "seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/a8a8d3696e7f58/after.loop",
+      "before": "program-comparisons/a8a8d3696e7f58/before.loop",
+      "case": "shift",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/223298c53ac8b9/after.loop",
+      "before": "program-comparisons/223298c53ac8b9/before.loop",
+      "case": "spatial",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/94330bdaf2235d/after.loop",
+      "before": "program-comparisons/94330bdaf2235d/before.loop",
+      "case": "ssymm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ad630d405280c6/after.loop",
+      "before": "program-comparisons/ad630d405280c6/before.loop",
+      "case": "strmm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/ad160b96ec8ebf/after.loop",
+      "before": "program-comparisons/ad160b96ec8ebf/before.loop",
+      "case": "strsm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/096f1675278763/after.loop",
+      "before": "program-comparisons/096f1675278763/before.loop",
+      "case": "tce",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/d1225d7397813c/after.loop",
+      "before": "program-comparisons/d1225d7397813c/before.loop",
+      "case": "tmm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/46cd7d0d754261/after.loop",
+      "before": "program-comparisons/46cd7d0d754261/before.loop",
+      "case": "tricky1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/464977af3cae12/after.loop",
+      "before": "program-comparisons/464977af3cae12/before.loop",
+      "case": "tricky2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/b9ef457d11ad30/after.loop",
+      "before": "program-comparisons/b9ef457d11ad30/before.loop",
+      "case": "tricky3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/dcce6f09b370fc/after.loop",
+      "before": "program-comparisons/dcce6f09b370fc/before.loop",
+      "case": "tricky4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/164d3e846fcb85/after.loop",
+      "before": "program-comparisons/164d3e846fcb85/before.loop",
+      "case": "trisolv",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
+      "after": "program-comparisons/7f6a16f566b1f9/after.loop",
+      "before": "program-comparisons/7f6a16f566b1f9/before.loop",
+      "case": "wavefront",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "default optimization structural effects"
+    },
+    {
       "after": "program-comparisons/8b52a7be49eb4a/after.c",
       "before": "program-comparisons/8b52a7be49eb4a/before.c",
       "case": "diamond-tile-example.c",
@@ -2293,6 +2851,564 @@
       "suite": "driver option configurations"
     },
     {
+      "after": "program-comparisons/b953659ec26454/after.loop",
+      "before": "program-comparisons/b953659ec26454/before.loop",
+      "case": "1dloop-invar",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/845c0f8d3760b0/after.loop",
+      "before": "program-comparisons/845c0f8d3760b0/before.loop",
+      "case": "adi",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/425616ac7782ee/after.loop",
+      "before": "program-comparisons/425616ac7782ee/before.loop",
+      "case": "advect3d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/e07f223b68a2aa/after.loop",
+      "before": "program-comparisons/e07f223b68a2aa/before.loop",
+      "case": "corcol",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/e9869982cc867e/after.loop",
+      "before": "program-comparisons/e9869982cc867e/before.loop",
+      "case": "corcol3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/33be25ac8c5abf/after.loop",
+      "before": "program-comparisons/33be25ac8c5abf/before.loop",
+      "case": "costfunc",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/e82fd5e24869fe/after.loop",
+      "before": "program-comparisons/e82fd5e24869fe/before.loop",
+      "case": "covcol",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/2f83e58038cff8/after.loop",
+      "before": "program-comparisons/2f83e58038cff8/before.loop",
+      "case": "dct",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/ba8added28ecfc/after.loop",
+      "before": "program-comparisons/ba8added28ecfc/before.loop",
+      "case": "doitgen",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/9adbbc466c5fbb/after.loop",
+      "before": "program-comparisons/9adbbc466c5fbb/before.loop",
+      "case": "dsyr2k",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/409251d2e02813/after.loop",
+      "before": "program-comparisons/409251d2e02813/before.loop",
+      "case": "dsyrk",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/5d7bb37b181c02/after.loop",
+      "before": "program-comparisons/5d7bb37b181c02/before.loop",
+      "case": "fdtd-1d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/71f38dac5925db/after.loop",
+      "before": "program-comparisons/71f38dac5925db/before.loop",
+      "case": "fdtd-2d",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/9ab3f1e124f751/after.loop",
+      "before": "program-comparisons/9ab3f1e124f751/before.loop",
+      "case": "floyd",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/ca4b666fb9648d/after.loop",
+      "before": "program-comparisons/ca4b666fb9648d/before.loop",
+      "case": "fusion1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/12573da7770d29/after.loop",
+      "before": "program-comparisons/12573da7770d29/before.loop",
+      "case": "fusion10",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/55313e735c3f55/after.loop",
+      "before": "program-comparisons/55313e735c3f55/before.loop",
+      "case": "fusion2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/626bcfb5b6e1c8/after.loop",
+      "before": "program-comparisons/626bcfb5b6e1c8/before.loop",
+      "case": "fusion3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/a8b85b8cf5b8ec/after.loop",
+      "before": "program-comparisons/a8b85b8cf5b8ec/before.loop",
+      "case": "fusion4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/5053f956a172a1/after.loop",
+      "before": "program-comparisons/5053f956a172a1/before.loop",
+      "case": "fusion5",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/3a31f924336fd8/after.loop",
+      "before": "program-comparisons/3a31f924336fd8/before.loop",
+      "case": "fusion6",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/6a124eac087466/after.loop",
+      "before": "program-comparisons/6a124eac087466/before.loop",
+      "case": "fusion7",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/c0ed63f8cbe8d3/after.loop",
+      "before": "program-comparisons/c0ed63f8cbe8d3/before.loop",
+      "case": "fusion8",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/79a06976060d29/after.loop",
+      "before": "program-comparisons/79a06976060d29/before.loop",
+      "case": "fusion9",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/41ee67341b79d8/after.loop",
+      "before": "program-comparisons/41ee67341b79d8/before.loop",
+      "case": "gemver",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/212b685833c6df/after.loop",
+      "before": "program-comparisons/212b685833c6df/before.loop",
+      "case": "intratileopt1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/24352a69fb6fa1/after.loop",
+      "before": "program-comparisons/24352a69fb6fa1/before.loop",
+      "case": "intratileopt2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/6d2c4cb92056ed/after.loop",
+      "before": "program-comparisons/6d2c4cb92056ed/before.loop",
+      "case": "intratileopt3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/60bbc66e667927/after.loop",
+      "before": "program-comparisons/60bbc66e667927/before.loop",
+      "case": "intratileopt4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/124c346783e20d/after.loop",
+      "before": "program-comparisons/124c346783e20d/before.loop",
+      "case": "jacobi-1d-imper",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/27441a527fba06/after.loop",
+      "before": "program-comparisons/27441a527fba06/before.loop",
+      "case": "jacobi-2d-imper",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/d48c971cdcb90c/after.loop",
+      "before": "program-comparisons/d48c971cdcb90c/before.loop",
+      "case": "lu",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/c63f83f2360e64/after.loop",
+      "before": "program-comparisons/c63f83f2360e64/before.loop",
+      "case": "matmul",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/5a30397234a672/after.loop",
+      "before": "program-comparisons/5a30397234a672/before.loop",
+      "case": "matmul-init",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/840a1e038acae2/after.loop",
+      "before": "program-comparisons/840a1e038acae2/before.loop",
+      "case": "matmul-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/4fb5bd0d0a7936/after.loop",
+      "before": "program-comparisons/4fb5bd0d0a7936/before.loop",
+      "case": "matmul-seq3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/f5b82a316e5332/after.loop",
+      "before": "program-comparisons/f5b82a316e5332/before.loop",
+      "case": "multi-loop-param",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/b5fae58d9a903e/after.loop",
+      "before": "program-comparisons/b5fae58d9a903e/before.loop",
+      "case": "multi-stmt-stencil-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/09196bf87094b6/after.loop",
+      "before": "program-comparisons/09196bf87094b6/before.loop",
+      "case": "mvt",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/551edf4f6ab9d0/after.loop",
+      "before": "program-comparisons/551edf4f6ab9d0/before.loop",
+      "case": "mxv",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/10c45514ca242e/after.loop",
+      "before": "program-comparisons/10c45514ca242e/before.loop",
+      "case": "mxv-seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/681534a8a95fd8/after.loop",
+      "before": "program-comparisons/681534a8a95fd8/before.loop",
+      "case": "mxv-seq3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/1d4fecca151053/after.loop",
+      "before": "program-comparisons/1d4fecca151053/before.loop",
+      "case": "negparam",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/4612adfebe1d19/after.loop",
+      "before": "program-comparisons/4612adfebe1d19/before.loop",
+      "case": "nodep",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/e9e5e1502d6bc0/after.loop",
+      "before": "program-comparisons/e9e5e1502d6bc0/before.loop",
+      "case": "noloop",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/b25634335c859a/after.loop",
+      "before": "program-comparisons/b25634335c859a/before.loop",
+      "case": "pca",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/b8ddaaa7482ae9/after.loop",
+      "before": "program-comparisons/b8ddaaa7482ae9/before.loop",
+      "case": "polynomial",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/4f7fcffdc3d80f/after.loop",
+      "before": "program-comparisons/4f7fcffdc3d80f/before.loop",
+      "case": "seidel",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/e4a48826574ae9/after.loop",
+      "before": "program-comparisons/e4a48826574ae9/before.loop",
+      "case": "seq",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/4c6b33ef022158/after.loop",
+      "before": "program-comparisons/4c6b33ef022158/before.loop",
+      "case": "shift",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/310abc2318b3cd/after.loop",
+      "before": "program-comparisons/310abc2318b3cd/before.loop",
+      "case": "spatial",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/f618acc863bd72/after.loop",
+      "before": "program-comparisons/f618acc863bd72/before.loop",
+      "case": "ssymm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/3ebf5de0c8c770/after.loop",
+      "before": "program-comparisons/3ebf5de0c8c770/before.loop",
+      "case": "strmm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/75df24decc4c2d/after.loop",
+      "before": "program-comparisons/75df24decc4c2d/before.loop",
+      "case": "strsm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/af1d5e22e3ac00/after.loop",
+      "before": "program-comparisons/af1d5e22e3ac00/before.loop",
+      "case": "tce",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/cefb05a1c7c859/after.loop",
+      "before": "program-comparisons/cefb05a1c7c859/before.loop",
+      "case": "tmm",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/c6ad5c8807a147/after.loop",
+      "before": "program-comparisons/c6ad5c8807a147/before.loop",
+      "case": "tricky1",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/d5bf60289d4292/after.loop",
+      "before": "program-comparisons/d5bf60289d4292/before.loop",
+      "case": "tricky2",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/5f615a462b8843/after.loop",
+      "before": "program-comparisons/5f615a462b8843/before.loop",
+      "case": "tricky3",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/85a061fa3a2664/after.loop",
+      "before": "program-comparisons/85a061fa3a2664/before.loop",
+      "case": "tricky4",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/34a6c6874f08a3/after.loop",
+      "before": "program-comparisons/34a6c6874f08a3/before.loop",
+      "case": "trisolv",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
+      "after": "program-comparisons/65e97a5364024c/after.loop",
+      "before": "program-comparisons/65e97a5364024c/before.loop",
+      "case": "wavefront",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "generated execution: default-corpus"
+    },
+    {
       "after": "program-comparisons/c00132dcdc3be2/after.loop",
       "before": "program-comparisons/c00132dcdc3be2/before.loop",
       "case": "matmul",
@@ -2338,6 +3454,15 @@
       "suite": "generated execution: second-level-effect"
     },
     {
+      "after": "program-comparisons/1af488afc5ac3a/after.loop",
+      "before": "program-comparisons/1af488afc5ac3a/before.loop",
+      "case": "const_unroll",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "handwritten C execution"
+    },
+    {
       "after": "program-comparisons/adc4f4a2209cf2/after.loop",
       "before": "program-comparisons/adc4f4a2209cf2/before.loop",
       "case": "matmul [innermost-parallel]",
@@ -2380,6 +3505,42 @@
       "kind": "accepted-program-pair",
       "left_label": "Before Program",
       "right_label": "Accepted Program",
+      "suite": "handwritten C execution"
+    },
+    {
+      "after": "program-comparisons/8b80d84e435e45/after.loop",
+      "before": "program-comparisons/8b80d84e435e45/before.loop",
+      "case": "stride_down",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "handwritten C execution"
+    },
+    {
+      "after": "program-comparisons/79cec9d3ff351c/after.loop",
+      "before": "program-comparisons/79cec9d3ff351c/before.loop",
+      "case": "stride_even",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "handwritten C execution"
+    },
+    {
+      "after": "program-comparisons/519d41fe5752d1/after.loop",
+      "before": "program-comparisons/519d41fe5752d1/before.loop",
+      "case": "unrolljam_block_variable",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
+      "suite": "handwritten C execution"
+    },
+    {
+      "after": "program-comparisons/404478316500cc/after.loop",
+      "before": "program-comparisons/404478316500cc/before.loop",
+      "case": "unrolljam_dependent_guard",
+      "kind": "accepted-program-pair",
+      "left_label": "Source Loop Program",
+      "right_label": "Accepted Optimized Loop Program",
       "suite": "handwritten C execution"
     },
     {

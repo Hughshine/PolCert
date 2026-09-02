@@ -8,7 +8,7 @@ import pathlib
 import subprocess
 import sys
 
-from loop_to_c import transpile_loop_text
+from loop_to_c import INTEGER_HELPERS_C, transpile_loop_text
 from runner_common import (
     ROOT,
     compile_c,
@@ -37,7 +37,19 @@ def positive_int(value: str) -> int:
 def render_source(template: str, kernel_c: str) -> str:
     if KERNEL_MARKER not in template:
         raise ValueError(f"missing kernel marker {KERNEL_MARKER!r}")
-    return template.replace(KERNEL_MARKER, kernel_c.rstrip())
+    main_marker = "int main(void) {"
+    if main_marker not in template:
+        raise ValueError(f"missing C entry point {main_marker!r}")
+    missing_headers = "".join(
+        f"#include <{header}>\n"
+        for header in ("limits.h", "stdlib.h")
+        if f"#include <{header}>" not in template
+    )
+    with_runtime = missing_headers + template
+    with_helpers = with_runtime.replace(
+        main_marker, f"{INTEGER_HELPERS_C}\n{main_marker}", 1
+    )
+    return with_helpers.replace(KERNEL_MARKER, kernel_c.rstrip())
 
 
 def load_meta(case_dir: pathlib.Path) -> dict[str, object]:
@@ -361,6 +373,7 @@ def main() -> int:
         "omp_threads_requested": args.omp_threads,
         "execution_repeats": execution_repeats,
         "numeric_comparable": comparison["numeric_comparable"],
+        "numeric_finite": comparison["numeric_finite"],
         "value_count_match": comparison["value_count_match"],
         "max_abs_diff": comparison["max_abs_diff"],
         "max_rel_diff": comparison["max_rel_diff"],
@@ -375,7 +388,7 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nvectorized_loop={}\nopenmp={}\nomp_threads_requested={}\nexecution_repeats={}\nnumeric_comparable={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\noutputs_match={}\nexact_match={}\nparallelized_loop={}\nvectorized_loop={}\nopenmp={}\nomp_threads_requested={}\nexecution_repeats={}\nnumeric_comparable={}\nnumeric_finite={}\nvalue_count_match={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             str(outputs_match).lower(),
             str(exact_match).lower(),
@@ -385,6 +398,7 @@ def main() -> int:
             args.omp_threads,
             execution_repeats,
             str(bool(comparison["numeric_comparable"])).lower(),
+            str(bool(comparison["numeric_finite"])).lower(),
             str(bool(comparison["value_count_match"])).lower(),
             comparison["max_abs_diff"],
             comparison["max_rel_diff"],

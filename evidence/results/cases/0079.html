@@ -53,6 +53,28 @@ for i0 in range(M, (N + 1)) {
   </div>
   <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 10 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>ac7275a876c8e5dcd6298c997bf31896fcffe29630bc1d4c5221f866cce596f7</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>ac7275a876c8e5dcd6298c997bf31896fcffe29630bc1d4c5221f866cce596f7</code></dd>
+      <dt>Parameters</dt><dd><code>M=4096, N=4096, i=4096</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -66,8 +88,8 @@ for i0 in range(M, (N + 1)) {
     <h3>Term meanings</h3><ul><li>SUITE RESULT: only aggregate totals are available for this input set.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/0995.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0994.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1673.html" target="_blank" rel="noopener">1dloop-invar.loop</a> &middot; <a href="../../../docs/files/1609.html" target="_blank" rel="noopener">test log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/1146.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1145.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2728.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2726.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2727.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3502.html" target="_blank" rel="noopener">1dloop-invar.loop</a> &middot; <a href="../../../docs/files/3438.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
   <p class="case-pager"><a href="0078.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0080.html" data-same-tab>Next case</a></p>
 </main>

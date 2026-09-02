@@ -3,70 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>optimized.loop</title>
+  <title>status.txt</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/optimized-loop-examples/jacobi-1d-imper/optimized.loop</code></h1>
-  <pre>context(T, N);
-
-if ((4 &lt;= N &amp;&amp; 1 &lt;= T)) {
-  for i0 in range(0, ((T + 31) / 32)) {
-    for i1 in range(max(0, (((64 * i0) + 3) / 32)), min(((N + ((64 * i0) + 92)) / 32), (((2 * T) + (N + 28)) / 32))) {
-      if (((((-1 * N) + ((32 * i1) + 1)) % 2) == 0 &amp;&amp; ((N + ((64 * i0) + (-32 * i1))) &lt;= 1 &amp;&amp; (N + (-32 * i1)) &lt;= 1))) {
-        for i2 in range((N + ((2 * (((-1 * N) + ((32 * i1) + 1)) / 2)) + -1)), (N + (2 * (((-1 * N) + ((32 * i1) + 1)) / 2)))) {
-          for i3 in range((N + -2), (N + -1)) {
-            a[i3] = b[i3];
-          }
-        }
-      }
-      for i2 in range(max(max(0, (32 * i0)), (((-1 * N) + ((32 * i1) + 3)) / 2)), min(min((((32 * i1) + 30) / 2), T), ((32 * i0) + 32))) {
-        if (((16 * i1) + (-1 * i2)) &lt;= 1) {
-          for i3 in range(((2 * i2) + 2), ((2 * i2) + 3)) {
-            b[2] = (0.33333 * ((a[1] + a[2]) + a[3]));
-          }
-        }
-        for i3 in range(max((32 * i1), ((2 * i2) + 3)), min(((32 * i1) + 32), (N + ((2 * i2) + -1)))) {
-          for i4 in range(((-2 * i2) + i3), ((-2 * i2) + (i3 + 1))) {
-            b[i4] = (0.33333 * ((a[(i4 + -1)] + a[i4]) + a[(i4 + 1)]));
-          }
-          for i4 in range(((-2 * i2) + (i3 + -1)), ((-2 * i2) + i3)) {
-            a[i4] = b[i4];
-          }
-        }
-        if ((N + ((-32 * i1) + (2 * i2))) &lt;= 32) {
-          for i3 in range((N + ((2 * i2) + -1)), (N + (2 * i2))) {
-            for i4 in range((N + -2), (N + -1)) {
-              a[i4] = b[i4];
-            }
-          }
-        }
-      }
-    }
-    if (((((2 * T) + (N + -3)) % 32) == 0 &amp;&amp; ((2 * T) + (-64 * i0)) &lt;= 64)) {
-      for i1 in range((T + -1), T) {
-        for i2 in range((N + ((2 * i1) + -1)), (N + (2 * i1))) {
-          for i3 in range(((-2 * T) + ((32 * (((2 * T) + (N + -3)) / 32)) + 1)), ((-2 * T) + ((32 * (((2 * T) + (N + -3)) / 32)) + 2))) {
-            a[i3] = b[i3];
-          }
-        }
-      }
-    }
-    if ((((N + ((64 * i0) + 61)) % 32) == 0 &amp;&amp; ((-1 * T) + (32 * i0)) &lt;= -33)) {
-      for i1 in range(((32 * i0) + 31), ((32 * i0) + 32)) {
-        for i2 in range((N + ((2 * i1) + -1)), (N + (2 * i1))) {
-          if (((i1 + -31) % 32) == 0) {
-            for i3 in range((N + -2), (N + -1)) {
-              a[i3] = b[i3];
-            }
-          }
-        }
-      }
-    }
-  }
-}
+  <h1><code>evidence/optimized-loop-examples/jacobi-1d-imper/status.txt</code></h1>
+  <pre>exit_code=0
+result=ok
+changed=true
 </pre>
 </main>
 </body>

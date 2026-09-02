@@ -3,32 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/325846f768a08b/after.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/2a5315279305fa/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-if (1 &lt;= N) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((N + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-        for i3 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
-          C[i2][i3] = 0;
-        }
-      }
-      for i2 in range(0, ((N + 31) / 32)) {
-        for i3 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-          for i4 in range(max(0, (32 * i1)), min(N, ((32 * i1) + 32))) {
-            for i5 in range(max((32 * i2), 0), min(((32 * i2) + 32), N)) {
-              C[i3][i4] = (C[i3][i4] + (A[i3][i5] * B[i5][i4]));
-            }
-          }
-        }
-      }
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
     }
   }
 }

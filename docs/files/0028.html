@@ -3,21 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>input.pretty.loop</title>
+  <title>optimized.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/optimized-loop-examples/covcol/input.pretty.loop</code></h1>
+  <h1><code>evidence/optimized-loop-examples/covcol/optimized.loop</code></h1>
   <pre>context(M, N);
 
-for i0 in range(1, (M + 1)) {
-  for i1 in range(i0, (M + 1)) {
-    for i2 in range(1, (N + 1)) {
-      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
+if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
+  for i0 in range(0, ((M + 32) / 32)) {
+    for i1 in range(max(0, ((32 * i0) / 32)), ((M + 32) / 32)) {
+      for i2 in range(0, ((N + 32) / 32)) {
+        for i3 in range(max((32 * i0), 1), min(min(((32 * i1) + 32), (M + 1)), ((32 * i0) + 32))) {
+          for i4 in range(max((32 * i1), i3), min(((32 * i1) + 32), (M + 1))) {
+            for i5 in range(max(1, (32 * i2)), min((N + 1), ((32 * i2) + 32))) {
+              symmat[i3][i4] = (symmat[i3][i4] + (data[i5][i3] * data[i5][i4]));
+            }
+          }
+        }
+      }
     }
-    symmat[i1][i0] = symmat[i0][i1];
+  }
+}
+if (1 &lt;= M) {
+  for i0 in range(0, ((M + 32) / 32)) {
+    for i1 in range(max(0, ((32 * i0) / 32)), ((M + 32) / 32)) {
+      for i2 in range(max(1, (32 * i0)), min(min((M + 1), ((32 * i1) + 32)), ((32 * i0) + 32))) {
+        for i3 in range(max(i2, (32 * i1)), min((M + 1), ((32 * i1) + 32))) {
+          symmat[i3][i2] = symmat[i2][i3];
+        }
+      }
+    }
   }
 }
 </pre>

@@ -3,38 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/0d44ec529bc6ea/after.loop</code></h1>
-  <pre>context(M, N);
+  <h1><code>evidence/results/program-comparisons/0b87e9c7429da9/before.loop</code></h1>
+  <pre>context(N);
 
-if ((1 &lt;= N &amp;&amp; 2 &lt;= M)) {
-  for i0 in range(1, M) {
-    for i1 in range((i0 + 1), (M + 1)) {
-      symmat[i0][i1] = 0.0;
-      for i2 in range(1, (N + 1)) {
-        symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
-      }
-      symmat[i1][i0] = symmat[i0][i1];
-    }
-  }
+for i0 in range(1, (N + -2)) {
+  A[i0] = (0.33 * ((In[(i0 + -1)] + In[i0]) + In[(i0 + 1)]));
 }
-if ((N &lt;= 0 &amp;&amp; 2 &lt;= M)) {
-  for i0 in range(1, M) {
-    for i1 in range((i0 + 1), (M + 1)) {
-      symmat[i0][i1] = 0.0;
-      symmat[i1][i0] = symmat[i0][i1];
-    }
-  }
-}
-if (2 &lt;= M) {
-  for i0 in range(1, M) {
-    symmat[i0][i0] = 1.0;
-  }
+for i0 in range(2, (N + -3)) {
+  Out[i0] = (0.33 * ((A[(i0 + -1)] + A[i0]) + A[(i0 + 1)]));
 }
 </pre>
 </main>

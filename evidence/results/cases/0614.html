@@ -55,6 +55,28 @@ for i0 in range(((RI_N + 1) / 2), RI_N) {
     </section>
   </div>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 4100 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>375ff91a7580e4d09edd94747dc853eec7a120410288afc239440d46bf2879d1</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>375ff91a7580e4d09edd94747dc853eec7a120410288afc239440d46bf2879d1</code></dd>
+      <dt>Parameters</dt><dd><code>RI_N=4096</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -68,8 +90,8 @@ for i0 in range(((RI_N + 1) / 2), RI_N) {
     <h3>Term meanings</h3><ul><li>Loop-shape counters: loops, divisions, remainders, guards, instructions, and coupled bounds in the displayed program.</li><li>statement counts: number of source statements before and after index-set splitting.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/0537.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0536.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/0584.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0583.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2188.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2186.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2187.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0613.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0615.html" data-same-tab>Next case</a></p>
 </main>

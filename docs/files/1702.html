@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>intratileopt4.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/intratileopt4.loop</code></h1>
+  <h1><code>evidence/results/program-comparisons/e6bbd6390cf478/before.loop</code></h1>
   <pre>context(N, M);
 
-for i in range(0, N) {
-  for j in range(0, M) {
-    a[i] = (a[i] + (b[j] * c[j][i]));
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    d[i1] = (d[i1] + a[i0][i1]);
   }
 }
 </pre>

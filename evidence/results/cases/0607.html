@@ -33,7 +33,7 @@
 
   <div class="loop-comparison">
     <section>
-      <h2>Before</h2>
+      <h2>Source Loop Program</h2>
       <pre>context(N);
 
 for i in range(0, N, 2) {
@@ -42,7 +42,7 @@ for i in range(0, N, 2) {
 </pre>
     </section>
     <section>
-      <h2>Accepted Output</h2>
+      <h2>Accepted Optimized Loop Program</h2>
       <pre>context(N);
 
 for i0 in range(0, ((N + 1) / 2)) {
@@ -51,6 +51,28 @@ for i0 in range(0, ((N + 1) / 2)) {
 </pre>
     </section>
   </div>
+
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 4100 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>823fe5622c0bbd0f950520986620359fca73fb8e407f0f5f94e1cda7c3af1857</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>823fe5622c0bbd0f950520986620359fca73fb8e407f0f5f94e1cda7c3af1857</code></dd>
+      <dt>Parameters</dt><dd><code>N=4096</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
 
 
   <details class="recorded-fields">
@@ -65,8 +87,8 @@ for i0 in range(0, ((N + 1) / 2)) {
     <h3>Term meanings</h3><ul><li>outputs-match: baseline and generated executions produced the same checked values.</li><li>effects-matched:true: every declared structural optimization effect was observed.</li><li>required-effects: number of structural markers that must be present.</li><li>forbidden-effects: number of structural markers that must be absent.</li><li>parallel: whether the generated Loop contains a general parallel loop.</li><li>vector: whether the generated Loop contains the restricted innermost parallel form.</li><li>unrolled: whether the generated Loop contains the declared unrolling effect.</li><li>omp-threads-requested: thread count used by the execution check, not a proof claim.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../optimized-loop-examples/e2e-stride-even/comparison.html" target="_blank" rel="noopener">before/after</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1605.html" target="_blank" rel="noopener">test log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/1046.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1045.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2647.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2645.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2646.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3434.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
   <p class="case-pager"><a href="0606.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0608.html" data-same-tab>Next case</a></p>
 </main>

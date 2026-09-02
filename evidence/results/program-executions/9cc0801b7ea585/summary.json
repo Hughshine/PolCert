@@ -1,0 +1,28 @@
+{
+  "baseline_observation": "9cc0801b7ea585/baseline.observation.txt",
+  "baseline_output_sha256": "0877591a043a058623e0c59176b153c777686db3b7a5f00912effa840c723b6b",
+  "case": "two-level-tiling-matmul",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 30000,
+  "omp_threads_requested": 4,
+  "optimized_observation": "9cc0801b7ea585/optimized.observation.txt",
+  "optimized_output_sha256": "0877591a043a058623e0c59176b153c777686db3b7a5f00912effa840c723b6b",
+  "outputs_match": true,
+  "pair_id": "9cc0801b7ea585",
+  "parallelized_loop": false,
+  "params": {
+    "K": 96,
+    "M": 96,
+    "N": 96
+  },
+  "result": "ok",
+  "suite": "typed C instruction pipelines",
+  "summary": "9cc0801b7ea585/summary.json",
+  "vectorized_loop": false
+}

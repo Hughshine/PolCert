@@ -80,6 +80,28 @@ if (1 &lt;= N) {
     </section>
   </div>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 30000 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>9cd259eddb43d2798bee645c50ef0be2c7015c0f6cb74f1d49ad4295fd1e479e</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>9cd259eddb43d2798bee645c50ef0be2c7015c0f6cb74f1d49ad4295fd1e479e</code></dd>
+      <dt>Parameters</dt><dd><code>N=96</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -93,8 +115,8 @@ if (1 &lt;= N) {
     <h3>Term meanings</h3><ul><li>route:permutable-band: the direct checked band-tiling route was selected.</li><li>optimized-output:true: the route emitted an optimized Loop program.</li><li>alarm:false: no unexpected certification alarm was reported.</li><li>fallbacks:0: the route did not use an unchecked fallback.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/0823.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0822.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1602.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/0950.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0949.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2557.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2555.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2556.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3431.html" target="_blank" rel="noopener">test log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0254.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0256.html" data-same-tab>Next case</a></p>
 </main>

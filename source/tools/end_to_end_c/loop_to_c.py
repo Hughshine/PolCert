@@ -2,7 +2,114 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import pathlib
+import re
+
+
+INTEGER_HELPERS_C = r"""static long long polcert_z_div(long long numerator, long long denominator) {
+  if (denominator == 0) {
+    return 0;
+  }
+  if (numerator == LLONG_MIN && denominator == -1) {
+    fputs("PolCert harness: Z.div result exceeds signed 64-bit range\n", stderr);
+    abort();
+  }
+  long long quotient = numerator / denominator;
+  long long remainder = numerator % denominator;
+  if (remainder != 0 && ((remainder < 0) != (denominator < 0))) {
+    quotient -= 1;
+  }
+  return quotient;
+}
+
+static long long polcert_z_mod(long long numerator, long long denominator) {
+  if (denominator == 0) {
+    return 0;
+  }
+  if (numerator == LLONG_MIN && denominator == -1) {
+    return 0;
+  }
+  long long remainder = numerator % denominator;
+  if (remainder != 0 && ((remainder < 0) != (denominator < 0))) {
+    remainder += denominator;
+  }
+  return remainder;
+}
+"""
+
+
+class _LowerIntegerOperators(ast.NodeTransformer):
+    def visit_BinOp(self, node: ast.BinOp) -> ast.expr:
+        node = self.generic_visit(node)
+        if isinstance(node.op, (ast.Div, ast.FloorDiv)):
+            return ast.copy_location(
+                ast.Call(
+                    func=ast.Name(id="polcert_z_div", ctx=ast.Load()),
+                    args=[node.left, node.right],
+                    keywords=[],
+                ),
+                node,
+            )
+        if isinstance(node.op, ast.Mod):
+            return ast.copy_location(
+                ast.Call(
+                    func=ast.Name(id="polcert_z_mod", ctx=ast.Load()),
+                    args=[node.left, node.right],
+                    keywords=[],
+                ),
+                node,
+            )
+        return node
+
+
+def _rewrite_python_expr(text: str) -> str:
+    tree = ast.parse(text, mode="eval")
+    lowered = _LowerIntegerOperators().visit(tree)
+    ast.fix_missing_locations(lowered)
+    return ast.unparse(lowered.body)
+
+
+def rewrite_integer_expr(text: str) -> str:
+    """Lower Loop integer division and modulo to Rocq-Z-compatible helpers."""
+    return _rewrite_python_expr(text)
+
+
+def rewrite_integer_test(text: str) -> str:
+    python = text.replace("&&", " and ").replace("||", " or ")
+    python = re.sub(r"(?<![=!<>])!(?!=)", " not ", python)
+    python = re.sub(r"\btrue\b", "True", python)
+    python = re.sub(r"\bfalse\b", "False", python)
+    lowered = _rewrite_python_expr(python)
+    lowered = re.sub(r"\band\b", "&&", lowered)
+    lowered = re.sub(r"\bor\b", "||", lowered)
+    lowered = re.sub(r"\bnot\s+", "!", lowered)
+    lowered = re.sub(r"\bTrue\b", "1", lowered)
+    return re.sub(r"\bFalse\b", "0", lowered)
+
+
+def rewrite_array_subscripts(line: str) -> str:
+    out: list[str] = []
+    cursor = 0
+    while cursor < len(line):
+        if line[cursor] != "[":
+            out.append(line[cursor])
+            cursor += 1
+            continue
+        depth = 1
+        end = cursor + 1
+        while end < len(line) and depth:
+            if line[end] == "[":
+                depth += 1
+            elif line[end] == "]":
+                depth -= 1
+            end += 1
+        if depth:
+            raise ValueError(f"unterminated array subscript: {line!r}")
+        inner = line[cursor + 1 : end - 1]
+        out.append(f"[{rewrite_integer_expr(inner)}]")
+        cursor = end
+    return "".join(out)
 
 
 def split_top_level_commas(text: str) -> list[str]:
@@ -46,12 +153,21 @@ def transpile_line(line: str) -> list[str]:
 
     if (
         stripped.startswith("parallel for ")
+        or stripped.startswith("innermost parallel for ")
         or stripped.startswith("vector for ")
         or stripped.startswith("for ")
     ):
         is_parallel = stripped.startswith("parallel for ")
-        is_vector = stripped.startswith("vector for ")
-        prefix = "parallel for " if is_parallel else "vector for " if is_vector else "for "
+        is_vector = stripped.startswith(("vector for ", "innermost parallel for "))
+        prefix = (
+            "parallel for "
+            if is_parallel
+            else "innermost parallel for "
+            if stripped.startswith("innermost parallel for ")
+            else "vector for "
+            if is_vector
+            else "for "
+        )
         rest = stripped[len(prefix) :]
         marker = " in range("
         if marker not in rest or not rest.endswith(") {"):
@@ -66,6 +182,9 @@ def transpile_line(line: str) -> list[str]:
             lb, ub, step = parts
         else:
             raise ValueError(f"unsupported range arity: {line!r}")
+        lb = rewrite_integer_expr(lb)
+        ub = rewrite_integer_expr(ub)
+        step = rewrite_integer_expr(step)
         step_lit = parse_int_literal(step)
         if step_lit == 0:
             raise ValueError(f"zero range step: {line!r}")
@@ -86,9 +205,9 @@ def transpile_line(line: str) -> list[str]:
         cond = stripped[3:]
         if not cond.endswith("{"):
             raise ValueError(f"unsupported if syntax: {line!r}")
-        return [f"{indent}if {cond}"]
+        return [f"{indent}if ({rewrite_integer_test(cond[:-1].strip())}) {{"]
 
-    return [line]
+    return [rewrite_array_subscripts(line)]
 
 
 def transpile_loop_text(text: str) -> str:

@@ -1,0 +1,27 @@
+{
+  "baseline_observation": "d01c3c87c75190/baseline.observation.txt",
+  "baseline_output_sha256": "ddc31dcd7f9465baf9df86d67388f7fd56a84808527922b044f1e1a2a080e8fe",
+  "case": "optimizer-typedfuse-adi-effect",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 30402,
+  "omp_threads_requested": 4,
+  "optimized_observation": "d01c3c87c75190/optimized.observation.txt",
+  "optimized_output_sha256": "ddc31dcd7f9465baf9df86d67388f7fd56a84808527922b044f1e1a2a080e8fe",
+  "outputs_match": true,
+  "pair_id": "d01c3c87c75190",
+  "parallelized_loop": false,
+  "params": {
+    "N": 96,
+    "T": 96
+  },
+  "result": "ok",
+  "suite": "driver option configurations",
+  "summary": "d01c3c87c75190/summary.json",
+  "vectorized_loop": false
+}

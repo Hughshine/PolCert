@@ -1,0 +1,26 @@
+{
+  "baseline_observation": "88e75eaa04ae6f/baseline.observation.txt",
+  "baseline_output_sha256": "5deecc75557c98ed66269c09264ca5624fb31cd8d9718cb706a4c442015a64d5",
+  "case": "optimizer-candldep-scalpriv-parallel-conservative",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 4101,
+  "omp_threads_requested": 4,
+  "optimized_observation": "88e75eaa04ae6f/optimized.observation.txt",
+  "optimized_output_sha256": "5deecc75557c98ed66269c09264ca5624fb31cd8d9718cb706a4c442015a64d5",
+  "outputs_match": true,
+  "pair_id": "88e75eaa04ae6f",
+  "parallelized_loop": false,
+  "params": {
+    "N": 4096
+  },
+  "result": "ok",
+  "suite": "driver option configurations",
+  "summary": "88e75eaa04ae6f/summary.json",
+  "vectorized_loop": false
+}

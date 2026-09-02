@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fusion9.loop</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/polopt-regression/inputs/fusion9.loop</code></h1>
+  <pre>context(N);
+
+for i in range(0, N) {
+  for j in range(0, N) {
+    a[(2 * i)] = (a[(2 * i)] + b[j]);
+  }
+  for j in range(1, N) {
+    a[((2 * i) + 1)] = (a[((2 * i) + 1)] + b[j]);
+  }
+}
+</pre>
+</main>
+</body>
+</html>

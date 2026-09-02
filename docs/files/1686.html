@@ -3,32 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fdtd-2d.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/fdtd-2d.loop</code></h1>
-  <pre>context(tmax, ny, nx);
+  <h1><code>evidence/results/program-comparisons/e475d5bf8e34cb/before.loop</code></h1>
+  <pre>context(B, T, N);
 
-for t in range(0, tmax) {
-  for j in range(0, ny) {
-    ey[0][j] = t;
-  }
-  for i in range(1, nx) {
-    for j in range(0, ny) {
-      ey[i][j] = (ey[i][j] - (0.5 * (hz[i][j] - hz[(i - 1)][j])));
-    }
-  }
-  for i in range(0, nx) {
-    for j in range(1, ny) {
-      ex[i][j] = (ex[i][j] - (0.5 * (hz[i][j] - hz[i][(j - 1)])));
-    }
-  }
-  for i in range(0, nx) {
-    for j in range(0, ny) {
-      hz[i][j] = (hz[i][j] - (0.7 * (((ex[i][(j + 1)] - ex[i][j]) + ey[(i + 1)][j]) - ey[i][j])));
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
     }
   }
 }

@@ -23,6 +23,12 @@
   "snapshot": "cpp-supplement-r3",
   "validation": {
     "execution_comparisons": {
+      "accepted_loop_pair_records": {
+        "executed": 524,
+        "failures": 0,
+        "matching_modeled_state_digests": 524,
+        "unique_execution_configurations": 202
+      },
       "baseline_vs_optimized": {
         "passed": 62,
         "total": 62
@@ -76,6 +82,8 @@
       "before_after_programs": 692,
       "categories": 5,
       "distinct_suite_cases": 998,
+      "dynamic_execution_matches": 529,
+      "dynamic_execution_not_applicable": 474,
       "families": 17,
       "input_rejected_candidates": 117,
       "listed_test_configurations": 1003,

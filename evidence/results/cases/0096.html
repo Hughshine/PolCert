@@ -79,6 +79,28 @@ for i0 in range(0, 4) {
   </div>
   <p class="comparison-note">This search compares two accepted outputs; it is not a source-to-target compilation count.</p>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 21841 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>6746f4e2acb99f4494cc0c5d77c6167a0840b0c63963f8a70dedf9b8783a5bc5</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>6746f4e2acb99f4494cc0c5d77c6167a0840b0c63963f8a70dedf9b8783a5bc5</code></dd>
+      <dt>Parameters</dt><dd><code>none</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -92,8 +114,8 @@ for i0 in range(0, 4) {
     <h3>Term meanings</h3><ul><li>SUITE RESULT: only aggregate totals are available for this input set.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/0853.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0852.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1690.html" target="_blank" rel="noopener">fusion2.loop</a> &middot; <a href="../../../docs/files/1609.html" target="_blank" rel="noopener">test log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/0984.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0983.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2593.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2591.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2592.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3519.html" target="_blank" rel="noopener">fusion2.loop</a> &middot; <a href="../../../docs/files/3438.html" target="_blank" rel="noopener">test log</a></p></details>
   </div>
   <p class="case-pager"><a href="0095.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0097.html" data-same-tab>Next case</a></p>
 </main>

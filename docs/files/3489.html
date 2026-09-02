@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>multicut_valid.bridge</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/tests/iss-pluto-dumps/multicut_valid.bridge</code></h1>
+  <pre>VAR_ORDER 4
+VAR i
+VAR j
+VAR k
+VAR t
+BEFORE_STMTS 1
+BEFORE_DOMAIN 8
+ROW 0,0,0,-1|-1
+ROW 0,0,0,1|15
+ROW -1,0,0,0|0
+ROW 1,0,0,0|15
+ROW 0,-1,0,0|0
+ROW 0,1,0,0|15
+ROW 0,0,-1,0|0
+ROW 0,0,1,0|15
+AFTER_STMTS 4
+AFTER_DOMAIN 10
+ROW 0,0,0,-1|-1
+ROW 0,0,0,1|15
+ROW -1,0,0,0|0
+ROW 1,0,0,0|15
+ROW 0,-1,0,0|0
+ROW 0,1,0,0|15
+ROW 0,0,-1,0|0
+ROW 0,0,1,0|15
+ROW 2,0,0,0|14
+ROW 0,2,0,0|14
+AFTER_DOMAIN 10
+ROW 0,0,0,-1|-1
+ROW 0,0,0,1|15
+ROW -1,0,0,0|0
+ROW 1,0,0,0|15
+ROW 0,-1,0,0|0
+ROW 0,1,0,0|15
+ROW 0,0,-1,0|0
+ROW 0,0,1,0|15
+ROW -2,0,0,0|-15
+ROW 0,2,0,0|14
+AFTER_DOMAIN 10
+ROW 0,0,0,-1|-1
+ROW 0,0,0,1|15
+ROW -1,0,0,0|0
+ROW 1,0,0,0|15
+ROW 0,-1,0,0|0
+ROW 0,1,0,0|15
+ROW 0,0,-1,0|0
+ROW 0,0,1,0|15
+ROW 2,0,0,0|14
+ROW 0,-2,0,0|-15
+AFTER_DOMAIN 10
+ROW 0,0,0,-1|-1
+ROW 0,0,0,1|15
+ROW -1,0,0,0|0
+ROW 1,0,0,0|15
+ROW 0,-1,0,0|0
+ROW 0,1,0,0|15
+ROW 0,0,-1,0|0
+ROW 0,0,1,0|15
+ROW -2,0,0,0|-15
+ROW 0,-2,0,0|-15
+CUTS 2
+CUT -2,0,0,0|14
+CUT 0,-2,0,0|14
+STMT_WITNESSES 4
+STMT_WITNESS 0 ge,ge
+STMT_WITNESS 0 lt,ge
+STMT_WITNESS 0 ge,lt
+STMT_WITNESS 0 lt,lt
+END
+</pre>
+</main>
+</body>
+</html>

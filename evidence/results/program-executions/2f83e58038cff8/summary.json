@@ -1,0 +1,26 @@
+{
+  "baseline_observation": "2f83e58038cff8/baseline.observation.txt",
+  "baseline_output_sha256": "be089c7f04568f609f288734a8913adf60667da28b6e4e4be1c829d7e63f8676",
+  "case": "dct",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 40000,
+  "omp_threads_requested": 4,
+  "optimized_observation": "2f83e58038cff8/optimized.observation.txt",
+  "optimized_output_sha256": "be089c7f04568f609f288734a8913adf60667da28b6e4e4be1c829d7e63f8676",
+  "outputs_match": true,
+  "pair_id": "2f83e58038cff8",
+  "parallelized_loop": false,
+  "params": {
+    "M": 96
+  },
+  "result": "ok",
+  "suite": "generated execution: default-corpus",
+  "summary": "2f83e58038cff8/summary.json",
+  "vectorized_loop": false
+}

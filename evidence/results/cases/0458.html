@@ -61,6 +61,28 @@ for i0 in range(3, (N + -2)) {
     </section>
   </div>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 12295 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>48b598a34d029612918a9f03f23c58536f324a813a7c57cc865e344df3e6ea3f</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>48b598a34d029612918a9f03f23c58536f324a813a7c57cc865e344df3e6ea3f</code></dd>
+      <dt>Parameters</dt><dd><code>N=4096</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -74,8 +96,8 @@ for i0 in range(3, (N + -2)) {
     <h3>Term meanings</h3><ul><li>checked-effect: whether the checked Loop output exhibits unroll-and-jam structure.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../../docs/files/1579.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1578.html" target="_blank" rel="noopener">after.loop</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1625.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/1662.html" target="_blank" rel="noopener">fusion1.loop</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/1834.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/1833.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/3400.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3398.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/3399.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3454.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/3491.html" target="_blank" rel="noopener">fusion1.loop</a></p></details>
   </div>
   <p class="case-pager"><a href="0457.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0459.html" data-same-tab>Next case</a></p>
 </main>

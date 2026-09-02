@@ -3,26 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/989e1cc277a8b3/after.loop</code></h1>
-  <pre>context(N, M);
+  <h1><code>evidence/results/program-comparisons/7d25b5f4a0fc82/before.c</code></h1>
+  <pre>#define S1(zT2,$i0,$i1)	b[$i1] = 0.33333 * a[$i1 - 1] + a[$i1] + a[$i1 + 1];
+#define S2(zT2,$i0,$i1)	a[$i1] = b[$i1];
 
-if ((1 &lt;= N &amp;&amp; 1 &lt;= M)) {
-  parallel for i0 in range(0, ((N + 31) / 32)) {
-    for i1 in range(0, ((M + 31) / 32)) {
-      for i2 in range(max(0, (32 * i0)), min(N, ((32 * i0) + 32))) {
-        for i3 in range(max(0, (32 * i1)), min(M, ((32 * i1) + 32))) {
-          A[i2][i3] = (B[i2][i3] + 1);
-        }
+		int t1, t2, t3, t4, t5, t6;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if ((N &gt;= 4) &amp;&amp; (T &gt;= 1)) {
+  for (t2=0;t2&lt;=T-1;t2++) {
+    for (t4=0;t4&lt;=floord(N-2,32);t4++) {
+      for (t5=max(2,32*t4);t5&lt;=min(N-2,32*t4+31);t5++) {
+        S1(t4,t2,t5);
+      }
+    }
+    for (t4=0;t4&lt;=floord(N-2,32);t4++) {
+      for (t5=max(2,32*t4);t5&lt;=min(N-2,32*t4+31);t5++) {
+        S2(t4,t2,t5);
       }
     }
   }
 }
+/* End of CLooG code */
 </pre>
 </main>
 </body>

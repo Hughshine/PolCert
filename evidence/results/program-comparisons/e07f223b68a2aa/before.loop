@@ -1,0 +1,12 @@
+context(M, N);
+
+for i0 in range(1, ((M + -1) + 1)) {
+  symmat[i0][i0] = 1.0;
+  for i1 in range((i0 + 1), (M + 1)) {
+    symmat[i0][i1] = 0.0;
+    for i2 in range(1, (N + 1)) {
+      symmat[i0][i1] = (symmat[i0][i1] + (data[i2][i0] * data[i2][i1]));
+    }
+    symmat[i1][i0] = symmat[i0][i1];
+  }
+}

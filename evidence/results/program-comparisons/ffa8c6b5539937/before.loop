@@ -1,0 +1,7 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(1, N) {
+    a[i0][i1] = (a[i1][i0] + a[i0][(i1 + -1)]);
+  }
+}

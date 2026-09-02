@@ -1,0 +1,27 @@
+{
+  "baseline_observation": "27441a527fba06/baseline.observation.txt",
+  "baseline_output_sha256": "af7278a9a488f1699cec6558452a4a46df082f17eb0ef8d45f75f729dbabc72e",
+  "case": "jacobi-2d-imper",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 19210,
+  "omp_threads_requested": 4,
+  "optimized_observation": "27441a527fba06/optimized.observation.txt",
+  "optimized_output_sha256": "af7278a9a488f1699cec6558452a4a46df082f17eb0ef8d45f75f729dbabc72e",
+  "outputs_match": true,
+  "pair_id": "27441a527fba06",
+  "parallelized_loop": false,
+  "params": {
+    "N": 96,
+    "T": 96
+  },
+  "result": "ok",
+  "suite": "generated execution: default-corpus",
+  "summary": "27441a527fba06/summary.json",
+  "vectorized_loop": false
+}

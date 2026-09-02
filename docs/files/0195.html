@@ -3,28 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diff.patch</title>
+  <title>input.pretty.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/optimized-loop-examples/seq/diff.patch</code></h1>
-  <pre>--- input.pretty.loop
-+++ optimized.loop
-@@ -1,7 +1,9 @@
- context(N, M);
+  <h1><code>evidence/optimized-loop-examples/seq/input.pretty.loop</code></h1>
+  <pre>context(N, M);
 
--for i0 in range(0, N) {
--  for i1 in range(0, M) {
--    s = (s + a[i0][i1]);
-+if (1 &lt;= M) {
-+  for i0 in range(0, N) {
-+    for i1 in range(0, M) {
-+      s = (s + a[i0][i1]);
-+    }
-   }
- }
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    s = (s + a[i0][i1]);
+  }
+}
 </pre>
 </main>
 </body>

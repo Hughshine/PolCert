@@ -3,19 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/48e2c70cc7e0a6/before.loop</code></h1>
-  <pre>context(M, N, K);
+  <h1><code>evidence/results/program-comparisons/404478316500cc/after.loop</code></h1>
+  <pre>context(N, M);
 
-for i in range(0, M) {
-  for j in range(0, N) {
-    for k in range(0, K) {
-      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
+if (1 &lt;= M) {
+  if (2 &lt;= N) {
+    for i0 in range(0, ((N + -1) / 3)) {
+      if (1 &lt;= M) {
+        for i1 in range(0, (M / 3)) {
+          A[((3 * i0) + 1)][(3 * i1)] = (A[(3 * i0)][((3 * i1) + 1)] + 1);
+          A[((3 * i0) + 1)][((3 * i1) + 1)] = (A[(3 * i0)][((3 * i1) + 2)] + 1);
+          A[((3 * i0) + 1)][((3 * i1) + 2)] = (A[(3 * i0)][((3 * i1) + 3)] + 1);
+        }
+        for i1 in range((3 * (M / 3)), M) {
+          A[((3 * i0) + 1)][i1] = (A[(3 * i0)][(i1 + 1)] + 1);
+        }
+      }
+      if (1 &lt;= M) {
+        for i1 in range(0, (M / 3)) {
+          A[((3 * i0) + 2)][(3 * i1)] = (A[((3 * i0) + 1)][((3 * i1) + 1)] + 1);
+          A[((3 * i0) + 2)][((3 * i1) + 1)] = (A[((3 * i0) + 1)][((3 * i1) + 2)] + 1);
+          A[((3 * i0) + 2)][((3 * i1) + 2)] = (A[((3 * i0) + 1)][((3 * i1) + 3)] + 1);
+        }
+        for i1 in range((3 * (M / 3)), M) {
+          A[((3 * i0) + 2)][i1] = (A[((3 * i0) + 1)][(i1 + 1)] + 1);
+        }
+      }
+      if (1 &lt;= M) {
+        for i1 in range(0, (M / 3)) {
+          A[((3 * i0) + 3)][(3 * i1)] = (A[((3 * i0) + 2)][((3 * i1) + 1)] + 1);
+          A[((3 * i0) + 3)][((3 * i1) + 1)] = (A[((3 * i0) + 2)][((3 * i1) + 2)] + 1);
+          A[((3 * i0) + 3)][((3 * i1) + 2)] = (A[((3 * i0) + 2)][((3 * i1) + 3)] + 1);
+        }
+        for i1 in range((3 * (M / 3)), M) {
+          A[((3 * i0) + 3)][i1] = (A[((3 * i0) + 2)][(i1 + 1)] + 1);
+        }
+      }
+    }
+    for i0 in range(((3 * ((N + -1) / 3)) + 1), N) {
+      if (1 &lt;= M) {
+        for i1 in range(0, (M / 3)) {
+          A[i0][(3 * i1)] = (A[(i0 + -1)][((3 * i1) + 1)] + 1);
+          A[i0][((3 * i1) + 1)] = (A[(i0 + -1)][((3 * i1) + 2)] + 1);
+          A[i0][((3 * i1) + 2)] = (A[(i0 + -1)][((3 * i1) + 3)] + 1);
+        }
+        for i1 in range((3 * (M / 3)), M) {
+          A[i0][i1] = (A[(i0 + -1)][(i1 + 1)] + 1);
+        }
+      }
     }
   }
 }

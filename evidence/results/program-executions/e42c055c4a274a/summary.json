@@ -1,0 +1,26 @@
+{
+  "baseline_observation": "e42c055c4a274a/baseline.observation.txt",
+  "baseline_output_sha256": "5b44b7c0d361154a7ca144b2d38dbac5dc898c76459b6ff01e66b224e44af73c",
+  "case": "costfunc",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 10000,
+  "omp_threads_requested": 4,
+  "optimized_observation": "e42c055c4a274a/optimized.observation.txt",
+  "optimized_output_sha256": "5b44b7c0d361154a7ca144b2d38dbac5dc898c76459b6ff01e66b224e44af73c",
+  "outputs_match": true,
+  "pair_id": "e42c055c4a274a",
+  "parallelized_loop": false,
+  "params": {
+    "N": 96
+  },
+  "result": "ok",
+  "suite": "identity-iss-sensitive-search",
+  "summary": "e42c055c4a274a/summary.json",
+  "vectorized_loop": false
+}

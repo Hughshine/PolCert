@@ -1,0 +1,22 @@
+context(tmax, ny, nx);
+
+for i0 in range(0, tmax) {
+  for i1 in range(0, ny) {
+    ey[0][i1] = i0;
+  }
+  for i1 in range(1, nx) {
+    for i2 in range(0, ny) {
+      ey[i1][i2] = (ey[i1][i2] - (0.5 * (hz[i1][i2] - hz[(i1 + -1)][i2])));
+    }
+  }
+  for i1 in range(0, nx) {
+    for i2 in range(1, ny) {
+      ex[i1][i2] = (ex[i1][i2] - (0.5 * (hz[i1][i2] - hz[i1][(i2 + -1)])));
+    }
+  }
+  for i1 in range(0, nx) {
+    for i2 in range(0, ny) {
+      hz[i1][i2] = (hz[i1][i2] - (0.7 * (((ex[i1][(i2 + 1)] - ex[i1][i2]) + ey[(i1 + 1)][i2]) - ey[i1][i2])));
+    }
+  }
+}

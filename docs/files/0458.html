@@ -3,36 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.c</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/23097d9ac0d1b6/after.c</code></h1>
-  <pre>#define S1(zT3,zT4,zT5,t,i,j)	u[t][i][j] = u[(t - 1)][i - 1][j] + u[(t - 1)][i][j + 1] + u[(t - 1)][i + 1][j] + u[(t - 1)][i][j - 1];
+  <h1><code>evidence/results/program-comparisons/1eb247568dac05/before.loop</code></h1>
+  <pre>context(N);
 
-		int t1, t2, t3, t4, t5, t6;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-if ((N &gt;= 2) &amp;&amp; (T &gt;= 2)) {
-  for (t1=ceild(-N-29,32);t1&lt;=floord(T-2,32);t1++) {
-    for (t2=max(t1,-t1-1);t2&lt;=min(min(floord(-16*t1+T-1,16),floord(16*t1+N+14,16)),floord(T+N-2,32));t2++) {
-      for (t3=max(max(0,ceild(t1+t2-1,2)),ceild(32*t2-N-29,32));t3&lt;=min(min(floord(T+N-2,32),floord(32*t2+N+29,32)),floord(16*t1+16*t2+N+30,32));t3++) {
-        for (t4=max(max(max(max(1,16*t1+16*t2),32*t1+1),32*t2-N+1),32*t3-N+1);t4&lt;=min(min(min(min(T-1,32*t2+30),32*t3+30),16*t1+16*t2+31),32*t1+N+30);t4++) {
-          for (t5=max(max(32*t2,t4+1),-32*t1+2*t4-31);t5&lt;=min(min(-32*t1+2*t4,32*t2+31),t4+N-1);t5++) {
-            for (t6=max(32*t3,t4+1);t6&lt;=min(32*t3+31,t4+N-1);t6++) {
-              S1(t1,t2,t3,t4,(-t4+t5),(-t4+t6));
-            }
-          }
+if (2 &lt;= N) {
+  for i0 in range(0, ((N + 31) / 32)) {
+    for i1 in range(0, ((N + 31) / 32)) {
+      for i2 in range(max(1, (32 * i0)), min(N, ((32 * i0) + 32))) {
+        for i3 in range(max(1, (32 * i1)), min(N, ((32 * i1) + 32))) {
+          a[i2][i3] = (a[(i2 + -1)][i3] + a[i2][(i3 + -1)]);
         }
       }
     }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

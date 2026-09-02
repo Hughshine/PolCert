@@ -3,21 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>fusion10.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>source/tests/polopt-regression/inputs/fusion10.loop</code></h1>
-  <pre>for x in range(0, 2) {
-  for z in range(0, 2) {
-    A[((2 * x) + z)] = 1;
-  }
-}
-for x in range(0, 2) {
-  for z in range(0, 2) {
-    B[((2 * x) + z)] = A[((2 * x) + z)];
+  <h1><code>evidence/results/program-comparisons/e50bfc1b94a6df/after.loop</code></h1>
+  <pre>context(M, N, K);
+
+if ((1 &lt;= M &amp;&amp; 1 &lt;= N)) {
+  for i0 in range(0, K) {
+    for i1 in range(0, N) {
+      for i2 in range(0, M) {
+        C[i2][i1] = ((beta * C[i2][i1]) + ((alpha * A[i2][i0]) * B[i0][i1]));
+      }
+    }
   }
 }
 </pre>

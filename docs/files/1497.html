@@ -3,60 +3,45 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/ec34c55696adbe/before.c</code></h1>
-  <pre>#define S1($i0)	dist_min = 0;
-#define S2($i0,$i1)	dist = 0;
-#define S3($i0,$i1)	kmin = 0;
-#define S4($i0,$i1)	clusterv = 0;
+  <h1><code>evidence/results/program-comparisons/c5a8414ac569e8/after.c</code></h1>
+  <pre>#include &lt;omp.h&gt;
+#include &lt;math.h&gt;
+#define ceild(n,d)  (((n)&lt;0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))
+#define floord(n,d) (((n)&lt;0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))
+#define max(x,y)    ((x) &gt; (y)? (x) : (y))
+#define min(x,y)    ((x) &lt; (y)? (x) : (y))
 
-		int t1, t2, t3, t4, t5;
+#include &lt;stdio.h&gt;
 
-	register int lbv, ubv;
+#define N 10000
 
-/* Start of CLooG code */
-if (pointc &gt;= 1) {
-  if ((clusterc &gt;= 1) &amp;&amp; (dims &gt;= 1)) {
-    for (t2=0;t2&lt;=pointc-1;t2++) {
-      S1(t2);
-      for (t4=0;t4&lt;=clusterc-1;t4++) {
-        S2(t2,t4);
-        S3(t2,t4);
-      }
-      for (t4=0;t4&lt;=dims-1;t4++) {
-        S4(t2,t4);
-      }
-    }
-  }
-  if ((clusterc &gt;= 1) &amp;&amp; (dims &lt;= 0)) {
-    for (t2=0;t2&lt;=pointc-1;t2++) {
-      S1(t2);
-      for (t4=0;t4&lt;=clusterc-1;t4++) {
-        S2(t2,t4);
-        S3(t2,t4);
-      }
-    }
-  }
-  if ((clusterc &lt;= 0) &amp;&amp; (dims &gt;= 1)) {
-    for (t2=0;t2&lt;=pointc-1;t2++) {
-      S1(t2);
-      for (t4=0;t4&lt;=dims-1;t4++) {
-        S4(t2,t4);
-      }
-    }
-  }
-  if ((clusterc &lt;= 0) &amp;&amp; (dims &lt;= 0)) {
-    for (t2=0;t2&lt;=pointc-1;t2++) {
-      S1(t2);
-    }
+static int a[1][N];
+
+int main(void) {
+  int i, j;
+  a[0][0] = 1;
+
+  int t1, t2;
+ int lb, ub, lbp, ubp, lb2, ub2;
+ register int lbv, ubv;
+if (N &gt;= 2) {
+  lbp=1;
+  ubp=N-1;
+#pragma omp parallel for private(lbv,ubv)
+  for (t2=lbp;t2&lt;=ubp;t2++) {
+    a[0][t2] = a[0][t2 - 1] + 1;;
   }
 }
-/* End of CLooG code */
+
+  printf(&quot;%d\n&quot;, a[0][N - 1]);
+  return 0;
+}
 </pre>
 </main>
 </body>

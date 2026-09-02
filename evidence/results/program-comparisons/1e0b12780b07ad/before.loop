@@ -1,0 +1,12 @@
+context(N);
+
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    x1[i0] = (x1[i0] + (a[i0][i1] * y_1[i1]));
+  }
+}
+for i0 in range(0, N) {
+  for i1 in range(0, N) {
+    x2[i0] = (x2[i0] + (a[i1][i0] * y_2[i1]));
+  }
+}

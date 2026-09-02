@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CSample3.c</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/samples/CSample3.c</code></h1>
+  <pre>// gemver, Vector Multiplication and Matrix Addition
+// Link to examples to pluto&#x27;s examples: https://github.com/bondhugula/pluto/blob/eddc38537d61cd49d55e454831086848d51473d7/examples/gemver/gemver.c#L81
+
+#pragma scop
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j];
+
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            x[i] = x[i] + beta* B[j][i]*y[j];
+
+
+    for (i=0; i&lt;N; i++)
+        x[i] = x[i] + z[i];
+
+    for (i=0; i&lt;N; i++)
+        for (j=0; j&lt;N; j++)
+            w[i] = w[i] + alpha* B[i][j]*x[j];
+#pragma endscop
+</pre>
+</main>
+</body>
+</html>

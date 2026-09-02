@@ -1,0 +1,27 @@
+{
+  "baseline_observation": "366b84a958bc0b/baseline.observation.txt",
+  "baseline_output_sha256": "2e6a17883058145fc7f805ff674eb103017c2812b5bce569dfa555f5a089aef9",
+  "case": "seidel",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 10000,
+  "omp_threads_requested": 4,
+  "optimized_observation": "366b84a958bc0b/optimized.observation.txt",
+  "optimized_output_sha256": "2e6a17883058145fc7f805ff674eb103017c2812b5bce569dfa555f5a089aef9",
+  "outputs_match": true,
+  "pair_id": "366b84a958bc0b",
+  "parallelized_loop": false,
+  "params": {
+    "N": 96,
+    "T": 96
+  },
+  "result": "ok",
+  "suite": "default optimization structural effects",
+  "summary": "366b84a958bc0b/summary.json",
+  "vectorized_loop": false
+}

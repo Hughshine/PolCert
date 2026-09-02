@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CInstr.v</title>
+  <link rel="stylesheet" href="../artifact.css">
+</head>
+<body>
+<main>
+  <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
+  <h1><code>source/src/CInstr.v</code></h1>
+  <pre>Require Import CState.
+Require Import InstrTy.
+Require Import ZArith.
+Require Import IterSemantics.
+Require Import ImpureAlarmConfig.
+Require Import Base. 
+Require Import PolyBase.
+Require Import AST.
+Require Import Ctypes.
+Require Import List.
+Require Import OpenScop.
+Require Import String.
+Require Import Cop.
+Require Import Csem.
+Require Import Values.
+Require Import Bool.
+Require Import Integers.
+Require Import Memory.
+Require Import Linalg.
+Require Import Coqlib.
+Import List.ListNotations.
+Require Import sflib.
+Require Import LibTactics. 
+Require Import CTy.
+Local Open Scope string_scope.
+
+(** A[i][...] = B[j][...] +/-/... *)
+(* CTy is a self-defined type, as a sugar of CompCert.type *)
+(* we will convert it to original version for dynamic semantics *)
+Module CInstr &lt;: INSTR.
+  Module State := CState.
+  Module Ty := CTy.
+  Definition ident := AST.ident.
+  Definition ident_eqb := Pos.eqb.
+  Definition ident_eqb_eq := Pos.eqb_eq.
+  Definition ident_to_openscop_ident (id: ident) := id.
+  Definition openscop_ident_to_ident (id: ident) := id.
+  
+  Definition ident_to_varname := AST.ident_to_varname.
+  Definition varname_to_ident := AST.varname_to_ident.
+  Definition bind_ident_varname := AST.bind_ident_varname.
+  Definition iterator_to_varname := AST.iterator_to_varname.
+
+  (** may-affine expression for array index *)
+  (** change to all Z, no type (assuming int32s as defaulted when evalutaing to value) *)
+  Inductive ma_expr: Type :=
+  | MAval (v: Z)
+  | MAvarz (n: nat)
+    (* identifier in polyhedral model is nameless. *) 
+    (* all iterators are deprived of their characters and can be considered as normal symbolic constant *)
+  | MAunop (op: unary_operation) (r: ma_expr)
+  | MAbinop (op: binary_operation) (r1 r2: ma_expr)
+  .
+  
+  (* each dimension&#x27;s upper bound is restricted in typing environment *)
+  Inductive arr_access: Type := 
+  | Avar (id: ident) (ty: Ty.basetype)
+    (** pure variable, non-affine-related *)
+  | Aarr (id: ident) (el: ma_exprlist) (ty: Ty.basetype)
+    (** multi-dimension arr *)
+  with ma_exprlist : Type :=
+  | MAsingleton (r: ma_expr)
+  | MAcons (r1: ma_expr) (rl: ma_exprlist).
+
+  Inductive expr: Type := 
+  | Eval (v: val) (ty: Ty.basetype)
+  | Evarz (n: nat) (ty: Ty.basetype)            
+    (** affine related variable (varctxt and iterators); ty should be signed integer *)
+    (* The semantics will change value of Z to int32s. *)
+    (* The transition may induce overflow. This is not what we deal with here. *)
+  | Eaccess (x: arr_access) (ty: Ty.basetype)           
+  | Eunop (op: unary_operation) (r: expr) (ty: Ty.basetype)
+                                              (**r unary arithmetic operation *)
+  | Ebinop (op: binary_operation) (r1 r2: expr) (ty: Ty.basetype)
+                                          (**r binary arithmetic operation *)
+  (* | Eseqand (r1 r2: expr) (ty: type)        *)
+                          (**r sequential &quot;and&quot; [r1 &amp;&amp; r2] *)
+  (* | Eseqor (r1 r2: expr) (ty: type)         *)
+                          (**r sequential &quot;or&quot; [r1 || r2] *)
+  .
+
+  (* CompCert compcert_typeof_expr *)
+  Definition typeof_expr (a: expr) : Ty.basetype :=
+    match a with
+    | Evarz _ ty =&gt; ty
+    | Eval _ ty =&gt; ty
+    | Eunop _ _ ty =&gt; ty
+    | Ebinop _ _ _ ty =&gt; ty
+    | Eaccess _ ty =&gt; ty
+    end.
+
+  Definition typeof_access (a: arr_access): Ty.basetype := 
+    match a with
+    | Avar _ ty =&gt; ty
+    | Aarr _ _ ty =&gt; ty
+    end.
+
+
+  Inductive CInstr: Type := 
+    | Iskip: CInstr
+    | Iassign: arr_access -&gt; expr -&gt; CInstr 
+      (* eval expr under ty of arr_access, and assign it to arr_access&#x27;s cell *)
+    .
+
+  Definition t : Type := CInstr.
+
+  Fixpoint ma_expr_to_openscop (e: ma_expr) (names: list varname): option AffineExpr := 
+    match e with
+    | MAval v =&gt; Some (AfInt v)
+    | MAvarz n =&gt; 
+        match nth_error names n with
+        | Some name =&gt; Some (AfVar name)
+        | None =&gt; Some (AfVar (ident_to_varname (free_ident tt)))
+                  (* should not be in this case *)
+        end
+    | MAunop Cop.Oneg r =&gt; 
+        match ma_expr_to_openscop r names with
+        | Some r&#x27; =&gt; Some (AfMinus (AfInt 0%Z) r&#x27;)
+        | None =&gt; None
+        end
+    | MAbinop Cop.Oadd r1 r2 =&gt; 
+        match ma_expr_to_openscop r1 names, ma_expr_to_openscop r2 names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (AfAdd r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | MAbinop Cop.Osub r1 r2 =&gt;
+        match ma_expr_to_openscop r1 names, ma_expr_to_openscop r2 names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (AfMinus r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | MAbinop Cop.Omul r1 r2 =&gt;
+        match ma_expr_to_openscop r1 names, ma_expr_to_openscop r2 names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (AfMulti r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | MAbinop Cop.Odiv r1 r2 =&gt;
+        match ma_expr_to_openscop r1 names, ma_expr_to_openscop r2 names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (AfDiv r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | _ =&gt; None 
+    end
+  .
+
+
+  Fixpoint ma_exprlist_to_openscop (el: ma_exprlist) (names: list varname): option (list AffineExpr) :=
+    match el with 
+    | MAsingleton r =&gt; 
+      match ma_expr_to_openscop r names with
+      | Some r&#x27; =&gt; Some (r&#x27; :: nil)
+      | None =&gt; None
+      end
+    | MAcons r rl =&gt; 
+      match ma_expr_to_openscop r names, ma_exprlist_to_openscop rl names with
+      | Some r&#x27;, Some rl&#x27; =&gt; Some (r&#x27; :: rl&#x27;)
+      | _, _ =&gt; None
+      end
+    end.
+
+  Definition access_to_openscop (a: arr_access) (names: list varname): option ArrayAccess := 
+    match a with
+    | Avar id _ =&gt; Some (ArrAccess (ident_to_varname id) nil)
+    | Aarr id el _ =&gt; 
+      match ma_exprlist_to_openscop el names with
+      | Some el&#x27; =&gt; Some (ArrAccess (ident_to_varname id) el&#x27;)
+      | None =&gt; None 
+      end
+    end
+  .
+
+  Fixpoint expr_to_openscop (e: expr) (iter_names: list varname): option ArrayExpr := 
+    match e with
+    | Eval v _ =&gt; 
+      match v with
+      | Vint n =&gt; Some (ArrAtom (AInt (Int.signed n)))
+      | Vfloat f =&gt; Some (ArrAtom (AFloat f))
+      | _ =&gt; None
+      end
+    | Evarz n _ =&gt; 
+        match nth_error iter_names n with
+        | Some name =&gt; Some (ArrAtom (AVar name))
+        | None =&gt; Some (ArrAtom (AVar (ident_to_varname (free_ident tt))))
+        end
+    | Eaccess a _ =&gt; 
+      match access_to_openscop a iter_names with
+      | Some a&#x27; =&gt; Some (ArrAccessAtom a&#x27;)
+      | None =&gt; None
+      end
+    | Eunop Cop.Oneg r _ =&gt; 
+        match expr_to_openscop r iter_names with
+        | Some r&#x27; =&gt; Some (ArrMinus (ArrAtom (AInt 0%Z)) r&#x27;)
+        | None =&gt; None
+        end
+    | Ebinop Cop.Oadd r1 r2 _ =&gt;
+        match expr_to_openscop r1 iter_names, expr_to_openscop r2 iter_names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (ArrAdd r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | Ebinop Cop.Osub r1 r2 _ =&gt;
+        match expr_to_openscop r1 iter_names, expr_to_openscop r2 iter_names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (ArrMinus r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | Ebinop Cop.Omul r1 r2 _ =&gt;
+        match expr_to_openscop r1 iter_names, expr_to_openscop r2 iter_names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (ArrMulti r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | Ebinop Cop.Odiv r1 r2 _ =&gt;
+        match expr_to_openscop r1 iter_names, expr_to_openscop r2 iter_names with
+        | Some r1&#x27;, Some r2&#x27; =&gt; Some (ArrDiv r1&#x27; r2&#x27;)
+        | _, _ =&gt; None
+        end
+    | _ =&gt; None 
+    end.
+
+  (* Transformation to openscop arraystmt *)
+  Definition to_openscop (cinstr: t) (iter_names: list varname): option OpenScop.ArrayStmt :=
+    match cinstr with 
+    | Iskip =&gt; Some ArrSkip
+    | Iassign a e =&gt; 
+      match access_to_openscop a iter_names, expr_to_openscop e iter_names with
+      | Some a&#x27;, Some e&#x27; =&gt; Some (ArrAssign a&#x27; e&#x27;)
+      | _, _ =&gt; None
+      end
+    end.
+  
+
+  (* return the max varz&#x27;s natural number *)
+  Fixpoint depth_ma_expr (r: ma_expr) := 
+    match r with 
+    | MAval _ =&gt; 0
+    | MAvarz n =&gt; n
+    | MAunop _ r =&gt; depth_ma_expr r
+    | MAbinop _ r1 r2 =&gt; Nat.max (depth_ma_expr r1) (depth_ma_expr r2)
+    end.
+  
+  Fixpoint depth_ma_exprlist (el: ma_exprlist) :=
+    match el with 
+    | MAsingleton r =&gt; depth_ma_expr r
+    | MAcons r rl =&gt; Nat.max (depth_ma_expr r) (depth_ma_exprlist rl)
+    end.
+
+  Definition depth_access (a: arr_access) := 
+    match a with
+    | Avar _ _ =&gt; 0
+    | Aarr _ el _ =&gt; depth_ma_exprlist el
+    end.
+
+  Fixpoint depth_expr (e: expr) := 
+    match e with 
+    | Eval _ _ =&gt; 0
+    | Evarz n _ =&gt; n
+    | Eaccess a _ =&gt; depth_access a
+    | Eunop _ r _ =&gt; depth_expr r
+    | Ebinop _ r1 r2 _ =&gt; Nat.max (depth_expr r1) (depth_expr r2)
+    (* | Eseqand r1 r2 _ =&gt; Nat.max (depth_expr r1) (depth_expr r2) *)
+    (* | Eseqor r1 r2 _ =&gt; Nat.max (depth_expr r1) (depth_expr r2) *)
+    end.
+  
+  Definition depth (i: t): nat :=
+    match i with
+    | Iskip =&gt; 0
+    | Iassign a e =&gt; Nat.max (depth_access a) (depth_expr e)
+    end.
+
+
+  (* affine expr do not access memory, evaluating in Z only *)
+  (* currently, only support basic operators *)
+  Definition sem_unary_operation_Z
+  (op: unary_operation)
+  (v: Z): option Z :=
+  match op with
+    | Oneg =&gt; Some (Z.opp v)
+    | _ =&gt; None
+  end.
+
+  Lemma sem_unary_operation_Z_correct:
+    forall v,
+      sem_unary_operation_Z Oneg v = Some (Z.opp v).
+  Proof. intros. simpls. trivial. Qed.
+
+  Definition sem_binary_operation_Z
+  (op: binary_operation)
+  (v1: Z) (v2: Z): option Z :=
+  match op with
+  | Oadd =&gt; Some (Z.add v1 v2)
+  | Osub =&gt; Some (Z.sub v1 v2)
+  | Omul =&gt; Some (Z.mul v1 v2)
+  | _ =&gt; None 
+  end.
+
+  Inductive eval_maexpr: ma_expr -&gt; list Z -&gt; Z -&gt; Prop :=
+  | eval_ma_val: forall envv v,
+    eval_maexpr (MAval v) envv v
+  | eval_ma_var: forall n envv z,
+    nth_error envv n = Some z -&gt;
+    eval_maexpr (MAvarz n) envv z
+  | eval_ma_unop: forall op r envv v v&#x27;,
+    eval_maexpr r envv v -&gt;
+    sem_unary_operation_Z op v = Some v&#x27; -&gt;
+    eval_maexpr (MAunop op r) envv v&#x27;
+  | eval_ma_binop: forall r1 r2 envv v1 v2 v op,
+    eval_maexpr r1 envv v1 -&gt;
+    eval_maexpr r2 envv v2 -&gt;
+    sem_binary_operation_Z op v1 v2 = Some v -&gt;
+    eval_maexpr (MAbinop op r1 r2) envv v
+  .
+
+  
+  Fixpoint eval_maexpr_symb (e: ma_expr): option (list Z * Z) :=
+    match e with
+    | MAval z =&gt; Some (nil, z)
+    | MAvarz n =&gt; Some (List.app (V0 (n)) [1%Z], 0%Z)
+    | MAunop op r =&gt; 
+      match eval_maexpr_symb r with
+      | Some (v, c) =&gt;
+        match op with
+        | Oneg =&gt; Some (--v, Z.opp c)
+        | _ =&gt; None
+        end
+      | _ =&gt; None
+      end
+    | MAbinop op r1 r2 =&gt;
+      match eval_maexpr_symb r1, eval_maexpr_symb r2 with
+      | Some (v1, c1), Some (v2, c2) =&gt; 
+        match op with
+        | Oadd =&gt; Some (add_vector v1 v2, Z.add c1 c2)
+        | Osub =&gt; Some (add_vector v1 (--v2), Z.sub c1 c2)
+        | Omul =&gt;
+            (* trivially let all lhs is constant *) 
+            if negb (is_null v1) then None
+            else Some (mult_vector c1 v2, Z.mul c1 c2)
+        | _ =&gt; None
+        end
+      | _, _ =&gt; None
+      end 
+    end.
+
+  
+  Definition M := MAvarz 0%nat.
+  Definition N := MAvarz 1%nat.
+  Definition x := MAvarz 2%nat.
+  Definition y := MAvarz 3%nat.
+  Delimit Scope aff_scope with aff.
+  Notation &quot;x * y&quot; := (MAbinop Omul x y) : aff_scope.
+  Notation &quot;x + y&quot; := (MAbinop Oadd x y) : aff_scope.
+  Notation &quot;x - y&quot; := (MAbinop Osub x y) : aff_scope.
+  Notation &quot;- x&quot; := (MAunop Oneg x) : aff_scope.
+  Notation &quot;$ x&quot; := (MAval x) (at level 30) : aff_scope.
+
+  Local Open Scope aff_scope.
+  Example eval_maexpr_symb_test:
+    eval_maexpr_symb ( $(-8) + M + ($3 * $2) * x + (-y) + $4 )%aff = 
+    Some ([1%Z; 0%Z; 6%Z; (-1)%Z], (-4)%Z).
+  Proof. simpl. reflexivity. Qed.
+
+
+  Inductive eval_maexpr_list: ma_exprlist -&gt; list Z -&gt; list Z -&gt; Prop :=
+  | eval_ma_singleton:
+    forall e envv v,
+    eval_maexpr e envv v -&gt;
+    eval_maexpr_list (MAsingleton e) envv (v::nil)
+  | eval_ma_cons:
+    forall e envv v el vl,
+    eval_maexpr e envv v -&gt;
+    eval_maexpr_list el envv vl -&gt;
+    eval_maexpr_list (MAcons e el) envv (v::vl)
+  .
+
+  Inductive access_cell: arr_access -&gt; list Z -&gt; MemCell -&gt; Prop :=
+  | AccessVar: forall a envv id ty, 
+    a = Avar id ty -&gt;
+    access_cell a envv {|arr_id := id; arr_index := nil|}
+  | AccessArr: forall a id envv el zl ty, 
+    a = Aarr id el ty -&gt;
+    eval_maexpr_list el envv zl -&gt;
+    access_cell a envv {|arr_id := id; arr_index := zl|}
+  .
+
+
+  (** Definitions of syntax and semantics *)
+  (* while evaluation, only &quot;read&quot; is possible *)
+  Inductive eval_expr: expr -&gt; list Z -&gt; list MemCell -&gt; State.t -&gt; val -&gt; Prop := 
+  | eval_val: forall v ty envv st,
+    eval_expr (Eval v ty) envv nil st v
+  | eval_var: forall n ty envv st z,
+    nth_error envv n = Some z -&gt;
+    eval_expr (Evarz n ty) envv nil st (Values.Vint (Int.repr z))
+  | eval_access: forall a envv rcell ty v st,
+    access_cell a envv rcell -&gt; 
+    State.read_cell rcell ty v st -&gt;
+    eval_expr (Eaccess a ty) envv (rcell::nil) st v 
+  | eval_unop: forall op r ty envv rcells st v v&#x27; ge e m,
+    st = (ge, e, m) -&gt;
+    eval_expr r envv rcells st v -&gt;
+    sem_unary_operation op v (Ty.basetype_to_compcert_type (typeof_expr r)) m = Some v&#x27; -&gt;
+    eval_expr (Eunop op r ty) envv rcells st v&#x27;
+  | eval_binop: forall st ge e m r1 r2 envv rcs1 rcs2 v1 v2 v op ty,
+    st = (ge, e, m) -&gt;
+    eval_expr r1 envv rcs1 st v1 -&gt;
+    eval_expr r2 envv rcs2 st v2 -&gt;
+    sem_binary_operation ge op v1 (Ty.basetype_to_compcert_type (typeof_expr r1)) v2 (Ty.basetype_to_compcert_type (typeof_expr r2)) m = Some v -&gt;
+    eval_expr (Ebinop op r1 r2 ty) envv (rcs1++rcs2) st v
+  .
+
+
+  Inductive semantics : t -&gt; list Z -&gt; list MemCell -&gt; list MemCell -&gt; State.t -&gt; State.t -&gt; Prop :=
+  | IskipSem:  forall vl st st&#x27;,
+      State.eq st st&#x27; -&gt;
+      semantics Iskip vl nil nil st st&#x27;
+  | IassignSem: 
+      forall a e envv st st&#x27; v wcell rcells,
+        access_cell a envv wcell -&gt;
+        eval_expr e envv rcells st v -&gt; 
+        State.write_cell wcell (typeof_access a) v st st&#x27; -&gt; 
+        semantics (Iassign a e) envv (wcell::nil) rcells st st&#x27;
+  .
+
+  Definition instr := t.
+  Definition dummy_instr := Iskip.
+  Definition instr_semantics := semantics. 
+  Module IterSem := IterSem State.
+  Module IterSemImpure := IterSem.IterImpureSemantics(CoreAlarmed).
+
+  (* could be stronger *)
+  Definition NonAlias (st: State.t) : Prop :=
+      State.non_alias st.
+
+  Lemma sema_prsv_nonalias:
+    forall i p wcs rcs st1 st2,
+        NonAlias st1 -&gt;
+        instr_semantics i p wcs rcs st1 st2 -&gt;
+        NonAlias st2.
+  Proof.
+    intros. inv H0; trivial.
+    - eapply State.eq_prsv_nonalias; eauto.
+    - eapply State.write_cell_prsv_nonalias; eauto.
+  Qed.
+
+  (* initial context&#x27;s values are inherited from the state *)
+  (* below we suppose all context should be int32s *)
+  Definition InitEnv (vars: list ident) (vals: list Z) (st: State.t) : Prop :=
+      List.length vars = List.length vals /\
+      (forall n var z, 
+        nth_error vars n = Some var -&gt;
+        nth_error vals n = Some z -&gt;
+        exists z&#x27;, 
+        State.read_cell {| arr_id := var; arr_index := nil |}
+          Ty.int32s (Vint z&#x27;) st /\ z = Int.signed z&#x27;
+      ).
+
+  (* initial state should be compatible to variables declarations, like, correctly allocated *)
+  Inductive Compat&#x27;: list (ident * Ty.arrtype) -&gt; State.t -&gt; Prop :=
+  | compat_nil:
+      forall st, Compat&#x27; nil st
+  | compat_cons:
+      forall id ty vars st,
+        State.valid id ty st -&gt;
+        Compat&#x27; vars st -&gt;
+        Compat&#x27; ((id, ty) :: vars) st.
+
+  Definition Compat (vars: list (ident * Ty.arrtype)) (st: State.t): Prop := Compat&#x27; vars st.
+
+  Lemma init_env_samelen: 
+      forall vars vals st, InitEnv vars vals st -&gt; List.length vars = List.length vals.
+  Proof. intros. destruct H; trivial. Qed.
+
+  (** Symbolic evaluation of may-affine expressions *)
+  Fixpoint eval_maexpr_list_symb (el: ma_exprlist): option (list (list Z * Z)) :=
+    match el with
+    | MAsingleton e =&gt;
+      match eval_maexpr_symb e with
+      | Some listzz =&gt; Some (listzz::nil)
+      | _ =&gt; None
+      end
+    | MAcons e el =&gt;
+      match eval_maexpr_symb e, eval_maexpr_list_symb el with
+      | Some listzz, Some listzzs =&gt; Some (listzz::listzzs)
+      | _, _ =&gt; None
+      end
+    end.
+
+  Lemma eval_maexpr_opp_val_opp:
+    forall e p v,
+      eval_maexpr e p v &lt;-&gt;
+      eval_maexpr (-e) p (-v).
+  Proof. 
+    intros e p v. split; intro Heval.
+    - econstructor; [exact Heval|apply sem_unary_operation_Z_correct].
+    - inversion Heval as
+          [| |op r envv arg result Harg Hop|]; subst.
+      rewrite sem_unary_operation_Z_correct in Hop.
+      inversion Hop; subst.
+      replace arg with v in Harg by lia.
+      exact Harg.
+  Qed.
+
+  Lemma eval_opp_maexpr_val_opp:
+    forall e p v,
+      eval_maexpr e p v &lt;-&gt;
+      eval_maexpr (-(-e)) p v.
+  Proof.
+    intros. 
+    do 2 rewrite eval_maexpr_opp_val_opp. 
+    assert (v = -(-v))%Z. lia. rewrite H at 2.
+    split; trivial. 
+  Qed.
+
+  Lemma eval_add_maexpr_val_add:
+    forall e1 e2 p v,
+    eval_maexpr (e1 + e2) p v -&gt;
+    exists v1 v2,
+    eval_maexpr e1 p v1 /\
+    eval_maexpr e2 p v2 /\
+    (v1 + v2 = v)%Z.
+  Proof. 
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
+  Qed.
+
+  Lemma eval_add_maexpr_val_sub:
+    forall e1 e2 p v,
+    eval_maexpr (e1 - e2) p v -&gt;
+    exists v1 v2,
+    eval_maexpr e1 p v1 /\
+    eval_maexpr e2 p v2 /\
+    (v1 - v2 = v)%Z.
+  Proof. 
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
+  Qed.
+
+  Lemma eval_add_maexpr_val_mul:
+    forall e1 e2 p v,
+    eval_maexpr (e1 * e2) p v -&gt;
+    exists v1 v2,
+    eval_maexpr e1 p v1 /\
+    eval_maexpr e2 p v2 /\
+    (v1 * v2 = v)%Z.
+  Proof. 
+    intros e1 e2 p v Heval.
+    inversion Heval as
+        [| | |r1 r2 envv v1 v2 result op Hleft Hright Hop]; subst.
+    simpl in Hop. inversion Hop; subst.
+    exists v1. exists v2. repeat split; assumption.
+  Qed.
+
+  Lemma eval_maexpr_symb_correct:
+    forall e v1 c1 p v,
+      eval_maexpr_symb e = Some (v1, c1) -&gt;
+      eval_maexpr e p v -&gt;
+      (dot_product v1 p + c1)%Z = v.
+  Proof.
+    induction e as
+        [constant|index|op e IHe|op e1 IHe1 e2 IHe2];
+      intros coeff offset env result Hsymbolic Heval.
+    - simpl in Hsymbolic. inversion Hsymbolic; subst.
+      inversion Heval; subst. simpl. destruct env; reflexivity.
+    - simpl in Hsymbolic. inversion Hsymbolic; subst.
+      inversion Heval as [|index&#x27; env&#x27; result&#x27; Hnth| |]; subst.
+      eapply v0_n_app_1_dot_product_p_is_nth_p in Hnth.
+      rewrite Hnth. lia.
+    - simpl in Hsymbolic.
+      destruct (eval_maexpr_symb e) as [[inner_coeff inner_offset]|]
+        eqn:Hinner_symbolic; try discriminate.
+      destruct op; try discriminate.
+      inversion Hsymbolic; subst.
+      rewrite dot_product_opp_l.
+      assert
+        (Hinner_value :
+          (dot_product inner_coeff env + inner_offset)%Z = (- result)%Z).
+      {
+        eapply IHe; eauto.
+        apply eval_maexpr_opp_val_opp in Heval.
+        apply eval_opp_maexpr_val_opp. exact Heval.
+      }
+      lia.
+    - simpl in Hsymbolic.
+      destruct (eval_maexpr_symb e1) as [[coeff1 offset1]|]
+        eqn:Hleft_symbolic; try discriminate.
+      destruct (eval_maexpr_symb e2) as [[coeff2 offset2]|]
+        eqn:Hright_symbolic; try discriminate.
+      destruct op; try discriminate.
+      + (* Oadd *)
+        inversion Hsymbolic; subst.
+        rewrite add_vector_dot_product_distr_left.
+        apply eval_add_maexpr_val_add in Heval.
+        destruct Heval as (v1 &amp; v2 &amp; Heval1 &amp; Heval2 &amp; Hadd).
+        eapply IHe1 in Heval1; eauto.
+        eapply IHe2 in Heval2; eauto.
+        lia.
+      + (* Osub *)
+        inversion Hsymbolic; subst.
+        rewrite add_vector_dot_product_distr_left.
+        rewrite dot_product_opp_l.
+        apply eval_add_maexpr_val_sub in Heval.
+        destruct Heval as (v1 &amp; v2 &amp; Heval1 &amp; Heval2 &amp; Hsub).
+        eapply IHe1 in Heval1; eauto.
+        eapply IHe2 in Heval2; eauto.
+        lia.
+      + (* Omul *)
+        destruct (negb (is_null coeff1)) eqn:Hnonconstant;
+          try discriminate.
+        inversion Hsymbolic; subst.
+        apply negb_false_iff in Hnonconstant.
+        rewrite dot_product_mult_left.
+        apply eval_add_maexpr_val_mul in Heval.
+        destruct Heval as (v1 &amp; v2 &amp; Heval1 &amp; Heval2 &amp; Hmul).
+        assert
+          (Hproduct :
+            (offset1 * (dot_product coeff2 env + offset2) = result)%Z).
+        {
+          eapply IHe1 in Heval1; eauto.
+          eapply IHe2 in Heval2; eauto.
+          rewrite dot_product_null_left in Heval1; [|exact Hnonconstant].
+          lia.
+        }
+        lia.
+  Qed.
+
+  Lemma eval_maexpr_list_symb_correct:
+    forall (el: ma_exprlist) func func&#x27; p c id ty,
+      eval_maexpr_list_symb el = Some func -&gt;
+      length func&#x27; = length func -&gt;
+      forallb
+         (fun aff1aff2 : list Z * Z * (list Z * Z) =&gt;
+          let (aff1, aff2) := aff1aff2 in
+          let (v1, c1) := aff1 in let (v2, c2) := aff2 in is_eq v1 v2 &amp;&amp; (c1 =? c2)%Z)
+         (combine func&#x27; func) = true -&gt;
+      access_cell (Aarr id el ty) p c -&gt;
+      cell_eq (exact_cell (id, func&#x27;) p) c.
+  Proof.  
+    induction el.
+    - intros.
+      simpls. destruct (eval_maexpr_symb r) eqn:Hevalr; tryfalse. inv H.
+      rename p0 into vec.
+      destruct func&#x27; eqn:Hfunc&#x27;; tryfalse.
+      rename p0 into vec&#x27;. 
+      assert (l = nil). {
+        destruct l eqn:Hl; tryfalse. trivial.
+      }
+      subst; simpls. clear H0.
+      destruct vec as (v1, c1).
+      destruct vec&#x27; as (v2, c2).
+      do 2 rewrite andb_true_iff in H1.
+      destruct H1 as ((Heq &amp; Hc) &amp; Haff).
+      eapply Z.eqb_eq in Hc. subst.
+      inv H2; tryfalse.
+      unfold cell_eq. 
+      inv H0; tryfalse. inv H.
+      split; simpls; trivial.
+      eapply eval_maexpr_symb_correct in Hevalr; eauto.
+      assert (veq v2 v1). {trivial. }
+      rewrite H.
+      unfold veq. simpls. rewrite andb_true_iff.
+      split; trivial. lia.
+    - intros.
+      simpls. destruct (eval_maexpr_symb r1) eqn:Hevalr1; tryfalse. inv H0.
+      destruct (eval_maexpr_list_symb el) eqn:Hevalel; tryfalse. inv H2; tryfalse.
+      inv H0. unfold cell_eq. simpl; split; trivial.
+      inv H. destruct func&#x27; eqn:Hfunc&#x27;; tryfalse.
+      simpls.
+      rewrite andb_true_iff in H1. destruct H1.
+      destruct zl eqn:Hzl.
+      + inv H3; tryfalse.
+      + inv H3.
+        destruct p1 as (v1, c1). destruct p0 as (v2, c2).
+        rewrite andb_true_iff in H. destruct H.
+        assert (veq v1 v2). {trivial. }
+        eapply Z.eqb_eq in H1. subst.
+        (* assert (exists cell, arr_index cell ) *)
+        eapply IHel with (p:=p) in H0; eauto.
+        {
+          unfold cell_eq in H0.
+          destruct H0.
+          unfold veq. simpl.
+          rewrite andb_true_iff.
+          split; trivial.
+          eapply eval_maexpr_symb_correct with (p:=p) (v:=z) in Hevalr1; trivial. 
+          - rewrite H2. clear - Hevalr1. lia.
+          - simpls.
+            rewrite H1. 
+            instantiate (1:= {|arr_id := 1%positive; arr_index:=l1 |}). simpl.
+            eapply is_eq_reflexive.
+        }
+        {
+          econs; eauto.
+        }
+    Unshelve. exact Ty.int32s.
+  Qed.
+
+  Lemma access_cell_var_implies_cell_eq:
+    forall id p c ty,
+      access_cell (Avar id ty) p c -&gt;
+      cell_eq (exact_cell (id, []) p) c.
+  Proof. 
+    intros.
+    inv H; tryfalse.
+    simpls. unfold cell_eq. simpls. inv H0. split; trivial. eapply veq_refl. 
+  Qed.
+
+  Lemma access_cell_arr_implies_cell_eq:
+    forall el id p c l (af: AccessFunction) ty,
+      access_cell (Aarr id el ty) p c -&gt;
+      eval_maexpr_list_symb el = Some l -&gt;
+      (let (id&#x27;, func) := af in
+        (id&#x27; =? id)%positive &amp;&amp; (Datatypes.length func =? Datatypes.length l)%nat &amp;&amp;
+        forallb
+          (fun aff1aff2 : list Z * Z * (list Z * Z) =&gt;
+            let (aff1, aff2) := aff1aff2 in
+            let (v1, c1) := aff1 in let (v2, c2) := aff2 in is_eq v1 v2 &amp;&amp; (c1 =? c2)%Z) 
+          (combine func l)) = true -&gt;
+      cell_eq (exact_cell af p) c.
+  Proof. 
+    intros.
+    destruct af as (id&#x27; &amp; func&#x27;).
+    do 2 rewrite andb_true_iff in H1.
+    destruct H1 as ((Hid &amp; Hlen) &amp; Haff).
+    eapply Pos.eqb_eq in Hid.
+    eapply Nat.eqb_eq in Hlen.
+    subst.
+    eapply eval_maexpr_list_symb_correct; eauto.
+  Qed.
+
+  (** Properties of semantics *)
+  Lemma eval_expr_prsv_val_if_state_eq:
+    forall e p rcs st st&#x27; v,
+      State.eq st st&#x27; -&gt;
+      eval_expr e p rcs st v -&gt;
+      eval_expr e p rcs st&#x27; v.
+  Proof. 
+    induction e; intros.
+    - inv H0. econs; eauto.
+    - inv H0. econs; eauto.
+    - inv H0. econs; eauto.
+      eapply State.read_cell_stable_under_eq; eauto. 
+    - inv H0. 
+      destruct st&#x27; as ((ge&#x27;, e&#x27;), m&#x27;).
+      econs; eauto.
+      eapply State.sem_unary_operation_eq_invariant; eauto.
+    - inv H0.
+      destruct st&#x27; as ((ge&#x27;, e&#x27;), m&#x27;).
+      econs; eauto.
+      eapply State.sem_binary_operation_eq_invariant; eauto.  
+  Qed.
+
+  Lemma eval_expr_prsv_val_if_neq_wr_cell:
+  forall e p wc rcs v v&#x27; st1 st2 bty,
+    State.write_cell wc bty v&#x27; st1 st2 -&gt;
+    Forall (fun rc =&gt; cell_neq rc wc) rcs -&gt;
+    State.non_alias st1 -&gt;
+    eval_expr e p rcs st2 v &lt;-&gt;
+    eval_expr e p rcs st1 v.
+  Proof.
+    induction e.
+    all: try solve [intros; split; intro; inv H2; econstructor; eauto].
+    - (* Eaccess *)
+      intros until bty. intros H H0 Halias.  split; intro.
+      + inv H1. inv H0. clear H5.
+        econstructor; eauto.
+        eapply State.read_after_write_cell_neq; eauto. eapply cell_neq_symm; trivial.
+      + inv H1. inv H0. clear H5.
+        econstructor; eauto.
+        rewrite &lt;- State.read_after_write_cell_neq; eauto. eapply cell_neq_symm; trivial.
+    - (* unop *)
+      intros until bty. intros H H0 Halias. split; intro.
+      + inversion_clear H1.
+        rename e0 into env2. rename m into m2. rename ge into ge2.
+        destruct st1 as ((ge1 &amp; env1) &amp; m1) eqn:Hst1. subst.
+        assert (sem_unary_operation op v0 (Ty.basetype_to_compcert_type (typeof_expr e)) m1 = Some v). {
+          eapply State.sem_unary_operation_write_cell_invariant with
+            (op:=op) (v:=v0) (ty&#x27;:= (typeof_expr e)) (v&#x27;:=v) in H; eauto.
+          eapply H. trivial.
+        }
+        rewrite IHe with (st2:=(ge2, env2, m2)) in H3; eauto.
+        eapply eval_unop; eauto.
+      + inversion_clear H1.
+        rename e0 into env1. rename m into m1. rename ge into ge1.
+        destruct st2 as ((ge2 &amp; env2) &amp; m2) eqn:Hst2. subst.
+        assert (sem_unary_operation op v0  (Ty.basetype_to_compcert_type (typeof_expr e)) m2 = Some v). {
+          eapply State.sem_unary_operation_write_cell_invariant with
+            (op:=op) (v:=v0) (ty&#x27;:= ((typeof_expr e))) (v&#x27;:=v) in H; eauto.
+          eapply H. trivial.
+        }
+        rewrite &lt;- IHe with (st2:=(ge2, env2, m2)) in H3; eauto.
+        eapply eval_unop; eauto.
+    - (* binop *)
+      intros until bty. intros H H0 Halias. split; intro.
+      + inversion H1. subst.
+        destruct st1 as ((ge1 &amp; env1) &amp; m1) eqn:Hst1. subst.
+        assert (sem_binary_operation ge op v1 (Ty.basetype_to_compcert_type (typeof_expr e1)) v2 (Ty.basetype_to_compcert_type (typeof_expr e2)) m1 = Some v). {
+          pose proof State.sem_binary_operation_write_cell_invariant op v1 v2.
+          eapply H2 with (m4:=m) (m3:=m1) in H13; trivial.
+          assert (ge = ge1).
+          {inv H. clear - H16 H17. destruct H16. destruct H17. subst; trivial. }
+          subst. eauto.
+        }
+        rewrite IHe1 with (st2:=(ge, e, m)) in H11; eauto.
+        2: {eapply Forall_app in H0; destruct H0; trivial. }
+        rewrite IHe2 with (st2:=(ge, e, m)) in H12; eauto.
+        2: {eapply Forall_app in H0; destruct H0; trivial. }
+        eapply eval_binop; eauto.
+        assert (ge1 = ge).
+        {inv H. clear - H16 H15. destruct H16. destruct H15. subst; trivial.  }
+        subst. trivial.
+      + inversion H1. subst.
+        destruct st2 as ((ge2 &amp; env2) &amp; m2) eqn:Hst2. subst.
+        assert (sem_binary_operation ge op v1 (Ty.basetype_to_compcert_type (typeof_expr e1)) v2 (Ty.basetype_to_compcert_type (typeof_expr e2)) m2 = Some v). {
+          pose proof State.sem_binary_operation_write_cell_invariant op v1 v2.
+          eapply H2 with (m4:=m2) in H13; trivial. eauto.
+        }
+        rewrite &lt;- IHe1 with (st1:=(ge, e, m)) in H11; eauto.
+        2: {eapply Forall_app in H0; destruct H0; trivial. }
+        rewrite &lt;- IHe2 with (st1:=(ge, e, m)) in H12; eauto.
+        2: {eapply Forall_app in H0; destruct H0; trivial. }
+        eapply eval_binop; eauto.
+        assert (ge = ge2).
+        {inv H. clear - H16 H15. destruct H16. destruct H15. subst; trivial. }
+        subst. trivial.
+  Qed.
+
+  Lemma instr_semantics_stable_under_state_eq:
+    forall i p wcs rcs st1 st2 st1&#x27; st2&#x27;,
+      State.eq st1 st1&#x27; -&gt;
+      State.eq st2 st2&#x27; -&gt;
+      instr_semantics i p wcs rcs st1 st2 -&gt;
+      instr_semantics i p wcs rcs st1&#x27; st2&#x27;.
+  Proof.
+    destruct i.
+    - intros. inv H1. econs; eauto.
+      eapply State.eq_sym in H.
+      eapply State.eq_trans; eauto.  
+      eapply State.eq_trans; eauto.  
+    - intros. inv H1. 
+      econs; trivial.
+      instantiate (1:=v).
+      eapply eval_expr_prsv_val_if_state_eq; eauto.
+      eapply State.write_cell_stable_under_eq; eauto.
+  Qed.
+
+
+  Fixpoint ma_expr_eqb (e1 e2: ma_expr) := 
+    match e1, e2 with 
+    | MAval v, MAval v&#x27; =&gt; Z.eqb v v&#x27;
+    | MAvarz n, MAvarz n&#x27; =&gt; 
+        Nat.eqb n n&#x27;
+    | MAunop op r, MAunop op&#x27; r&#x27; =&gt; 
+      unaryop_eq_dec op op&#x27; &amp;&amp; ma_expr_eqb r r&#x27;
+    | MAbinop op r1 r2, MAbinop op&#x27; r1&#x27; r2&#x27; =&gt;
+      biop_eq_dec op op&#x27; &amp;&amp; ma_expr_eqb r1 r1&#x27; &amp;&amp; ma_expr_eqb r2 r2&#x27;
+    | _, _ =&gt; false
+    end.
+  
+  Fixpoint ma_exprlist_eqb (el1 el2: ma_exprlist) := 
+    match el1, el2 with
+    | MAsingleton r1, MAsingleton r2 =&gt; 
+      ma_expr_eqb r1 r2
+    | MAcons r1 rl1, MAcons r2 rl2 =&gt; 
+      ma_expr_eqb r1 r2 &amp;&amp; ma_exprlist_eqb rl1 rl2
+    | _, _ =&gt; false
+    end.
+  
+  Definition arr_access_eqb (a a&#x27;: arr_access):= 
+    match a, a&#x27; with
+    | Aarr id el ty, Aarr id&#x27; el&#x27; ty&#x27; =&gt; 
+      Pos.eqb id id&#x27; &amp;&amp; ma_exprlist_eqb el el&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    | Avar id ty, Avar id&#x27; ty&#x27; =&gt;
+      Pos.eqb id id&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    | _, _ =&gt; false
+    end.
+  
+  Fixpoint expr_eqb (e1 e2: expr) := 
+    match e1, e2 with 
+    | Eval v ty, Eval v&#x27; ty&#x27; =&gt; 
+      Val.eqb v v&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    (* | Evar id ty, Evar id&#x27; ty&#x27; =&gt;  *)
+      (* Pos.eqb id id&#x27; &amp;&amp; type_eqb ty ty&#x27; *)
+    | Evarz n ty, Evarz n&#x27; ty&#x27; 
+      =&gt; Nat.eqb n n&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    | Eaccess a ty, Eaccess a&#x27; ty&#x27; =&gt; 
+      arr_access_eqb a a&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    | Eunop op r ty, Eunop op&#x27; r&#x27; ty&#x27; =&gt; 
+      unaryop_eq_dec op op&#x27; &amp;&amp; expr_eqb r r&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    | Ebinop op r1 r2 ty, Ebinop op&#x27; r1&#x27; r2&#x27; ty&#x27; =&gt;
+      biop_eq_dec op op&#x27; &amp;&amp; expr_eqb r1 r1&#x27; &amp;&amp; expr_eqb r2 r2&#x27; &amp;&amp; Ty.basetype_eqb ty ty&#x27;
+    (* | Eseqand r1 r2 ty, Eseqand r1&#x27; r2&#x27; ty&#x27; =&gt;
+      expr_eqb r1 r1&#x27; &amp;&amp; expr_eqb r2 r2&#x27; &amp;&amp; type_eqb ty ty&#x27;
+    | Eseqor r1 r2 ty, Eseqor r1&#x27; r2&#x27; ty&#x27; =&gt;
+      expr_eqb r1 r1&#x27; &amp;&amp; expr_eqb r2 r2&#x27; &amp;&amp; type_eqb ty ty&#x27; *)
+    | _, _ =&gt; false
+    end.
+  
+  Definition cinst_eqb (inst1 inst2: CInstr) := 
+    match inst1, inst2 with 
+    | Iskip, Iskip =&gt; true 
+    | Iassign a1 e1, Iassign a2 e2 =&gt; 
+      arr_access_eqb a1 a2 &amp;&amp; expr_eqb e1 e2
+    | _, _ =&gt; false 
+    end
+  . 
+
+  Definition eqb (i1 i2: t) : bool :=
+    cinst_eqb i1 i2.
+
+  Lemma ma_expr_eqb_refl: 
+    forall e, 
+      ma_expr_eqb e e = true.
+  Proof.
+    induction e; 
+    unfold ma_expr_eqb; fold ma_expr_eqb. 
+    {
+      eapply Z.eqb_refl.
+    }
+    {
+        eapply Nat.eqb_refl.
+    }
+    {
+      rewrite andb_true_iff. 
+      split. eapply unaryop_eqb_refl. eapply IHe.
+    }
+    {
+      do 2 rewrite andb_true_iff.
+      eapply and_assoc.
+      splits.
+      eapply biop_eqb_refl.
+      eapply IHe1.
+      eapply IHe2.
+    }
+  Qed.
+  
+  Lemma ma_expr_eqb_eq: 
+    forall e e&#x27;, 
+      ma_expr_eqb e e&#x27; = true &lt;-&gt; 
+      e = e&#x27;.
+  Proof.
+    induction e as [v|n|op e IHe|op e1 IHe1 e2 IHe2];
+      intros e&#x27;; split; intro Heq.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply Z.eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply Nat.eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hop Harg].
+      apply unaryop_eqb_eq in Hop.
+      apply IHe in Harg.
+      subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      do 2 rewrite andb_true_iff in Heq.
+      destruct Heq as [[Hop Hleft] Hright].
+      apply biop_eqb_eq in Hop.
+      apply IHe1 in Hleft.
+      apply IHe2 in Hright.
+      subst. reflexivity.
+    - subst. apply ma_expr_eqb_refl.
+  Qed.
+
+  Local Lemma ma_exprlist_eqb_refl:
+    forall es,
+      ma_exprlist_eqb es es = true.
+  Proof.
+    induction es as [e|e es IHes]; simpl.
+    - apply ma_expr_eqb_refl.
+    - rewrite andb_true_iff. split; [apply ma_expr_eqb_refl|exact IHes].
+  Qed.
+  
+  Lemma ma_exprlist_eqb_eq: 
+    forall es es&#x27;, 
+      ma_exprlist_eqb es es&#x27; = true &lt;-&gt; 
+      es = es&#x27;.
+  Proof.
+    induction es as [e|e es IHes];
+      intros es&#x27;; split; intro Heq.
+    - destruct es&#x27;; simpl in Heq; try discriminate.
+      apply ma_expr_eqb_eq in Heq. subst. reflexivity.
+    - subst. apply ma_exprlist_eqb_refl.
+    - destruct es&#x27;; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hhead Htail].
+      apply ma_expr_eqb_eq in Hhead.
+      apply IHes in Htail.
+      subst. reflexivity.
+    - subst. apply ma_exprlist_eqb_refl.
+  Qed.
+
+  Local Lemma arr_access_eqb_refl:
+    forall a,
+      arr_access_eqb a a = true.
+  Proof.
+    intros [id ty|id es ty]; unfold arr_access_eqb.
+    - rewrite andb_true_iff. split.
+      + apply Pos.eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 2 rewrite andb_true_iff.
+      split; [split|].
+      + apply Pos.eqb_refl.
+      + apply ma_exprlist_eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+  Qed.
+  
+  Lemma arr_access_eqb_eq: 
+      forall a a&#x27;, 
+      arr_access_eqb a a&#x27; = true &lt;-&gt; 
+      a = a&#x27;.
+  Proof.
+    intros a a&#x27;. split; intro Heq.
+    - destruct a; destruct a&#x27;; simpl in Heq; try discriminate.
+      + apply andb_true_iff in Heq as [Hid Hty].
+        apply Pos.eqb_eq in Hid.
+        apply Ty.basetype_eqb_eq in Hty.
+        subst. reflexivity.
+      + do 2 rewrite andb_true_iff in Heq.
+        destruct Heq as [[Hid Hindices] Hty].
+        apply Pos.eqb_eq in Hid.
+        apply ma_exprlist_eqb_eq in Hindices.
+        apply Ty.basetype_eqb_eq in Hty.
+        subst. reflexivity.
+    - subst. apply arr_access_eqb_refl.
+  Qed.
+
+  Local Lemma expr_eqb_refl:
+    forall e,
+      expr_eqb e e = true.
+  Proof.
+    induction e as [v ty|n ty|a ty|op e IHe ty|op e1 IHe1 e2 IHe2 ty];
+      simpl.
+    - rewrite andb_true_iff. split.
+      + apply Val.eqb_eq. reflexivity.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - rewrite andb_true_iff. split.
+      + apply Nat.eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - rewrite andb_true_iff. split.
+      + apply arr_access_eqb_refl.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 2 rewrite andb_true_iff.
+      split; [split|].
+      + apply unaryop_eqb_refl.
+      + exact IHe.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+    - do 3 rewrite andb_true_iff.
+      split; [split; [split|]|].
+      + apply biop_eqb_refl.
+      + exact IHe1.
+      + exact IHe2.
+      + apply Ty.basetype_eqb_eq. reflexivity.
+  Qed.
+  
+  Lemma expr_eqb_eq: 
+    forall e1 e2, 
+      expr_eqb e1 e2 = true &lt;-&gt; 
+      e1 = e2.
+  Proof.
+    induction e1 as
+        [v ty|n ty|a ty|op e IHe ty|op e1 IHe1 e2 IHe2 ty];
+      intros e&#x27;; split; intro Heq.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hval Hty].
+      apply Val.eqb_eq in Hval.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Hindex Hty].
+      apply Nat.eqb_eq in Hindex.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      apply andb_true_iff in Heq as [Haccess Hty].
+      apply arr_access_eqb_eq in Haccess.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      do 2 rewrite andb_true_iff in Heq.
+      destruct Heq as [[Hop Harg] Hty].
+      apply unaryop_eqb_eq in Hop.
+      apply IHe in Harg.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+    - destruct e&#x27;; simpl in Heq; try discriminate.
+      do 3 rewrite andb_true_iff in Heq.
+      destruct Heq as [[[Hop Hleft] Hright] Hty].
+      apply biop_eqb_eq in Hop.
+      apply IHe1 in Hleft.
+      apply IHe2 in Hright.
+      apply Ty.basetype_eqb_eq in Hty.
+      subst. reflexivity.
+    - subst. apply expr_eqb_refl.
+  Qed.
+  
+  
+  Lemma cinst_eqb_eq: 
+    forall i1 i2, 
+      cinst_eqb i1 i2 = true &lt;-&gt; 
+      i1 = i2.
+  Proof.
+    intros. split.
+    {
+      intro.
+      destruct i1; destruct i2; simpl; tryfalse; try tauto.
+      simpls.
+      eapply andb_true_iff in H.
+      destruct H.
+      eapply arr_access_eqb_eq in H.
+      eapply expr_eqb_eq in H0.
+      subst; eauto.
+    }
+    {
+      intro.
+      subst.
+      destruct i2; simpl; trivial.
+      eapply andb_true_iff. split.
+      eapply arr_access_eqb_eq; trivial.
+      eapply expr_eqb_eq; trivial.
+    }
+  Qed.
+
+  Lemma eqb_eq : forall i1 i2, eqb i1 i2 = true &lt;-&gt; i1 = i2.
+  Proof. 
+      intros. unfold eqb. 
+      eapply cinst_eqb_eq; eauto.
+  Qed.
+
+
+  Definition eval_arr_access_to_function (a: arr_access): option AccessFunction 
+  := match a with
+  | Avar id _ =&gt; Some (id, nil)
+  | Aarr id el _ =&gt; 
+    match eval_maexpr_list_symb el with
+    | Some func =&gt; Some (id, func) 
+    | None =&gt; None
+    end
+  end.
+
+  Fixpoint eval_expr_access_to_functions (e: expr): option (list AccessFunction) :=
+    match e with
+    | Eval _ _ =&gt; Some nil
+    | Evarz id _ =&gt; Some nil
+    | Eaccess a _ =&gt; 
+      match eval_arr_access_to_function a with
+      | Some func =&gt; Some (func :: nil)
+      | None =&gt; None
+      end
+    | Eunop _ e _ =&gt;
+      match eval_expr_access_to_functions e with
+      | Some func =&gt; Some func
+      | None =&gt; None
+      end
+    | Ebinop _ e1 e2 _ =&gt;
+      match eval_expr_access_to_functions e1, eval_expr_access_to_functions e2 with
+      | Some func1, Some func2 =&gt; Some (List.app func1 func2)
+      | _, _ =&gt; None
+      end
+    end.
+
+
+  (** FIXME *)
+  Definition waccess (i: t): option (list AccessFunction) := 
+    match i with
+    | Iskip =&gt; Some nil
+    | Iassign a e =&gt; match eval_arr_access_to_function a with 
+      | Some func =&gt; Some (func :: nil)
+      | None =&gt; None
+      end
+    end
+  .
+
+  Definition raccess (i: t): option (list AccessFunction) := 
+    match i with
+    | Iskip =&gt; Some nil
+    | Iassign a e =&gt; eval_expr_access_to_functions e
+    end         
+  .
+
+  (* Definition valid_access_cells (p: DomIndex) (cells: list MemCell) (al: list AccessFunction): Prop :=
+    forall c,
+      In c cells -&gt;
+      exists a,
+        In a al -&gt;
+        cell_eq (exact_cell a p) c. *)
+
+(* forall p, p|=i access cell c, c equals to some (wa, p) while wa in wal*)
+  (* Definition valid_waccess_function (wal: list AccessFunction) (i: t): Prop := 
+    forall p wa,
+      State.compat st p -&gt;
+      instr_semantics i p envv wcells rcells st st&#x27; -&gt;
+      exists wa,
+        In wa wal /\ In wcells  *)
+  (* Definition valid_raccess_function (ral: list AccessFunction) (i: t): Prop := True. *)
+
+  Definition valid_access_function (wal: list AccessFunction) (ral: list AccessFunction) (i: t): Prop := 
+    forall p st st&#x27; wcells rcells,
+      (* State.compat st p -&gt; *)
+      instr_semantics i p wcells rcells st st&#x27; -&gt;
+      valid_access_cells p wcells wal /\ valid_access_cells p rcells ral.
+
+  (* if always return true, we suppose the access function always correct *)
+  Definition access_function_checker_access 
+    (al: list AccessFunction) (a: arr_access) := 
+    match a with
+    | Avar id _ =&gt;
+        existsb (fun (a:AccessFunction) =&gt; 
+          let (id&#x27;, func) := a in 
+          Pos.eqb id&#x27; id &amp;&amp; Nat.eqb (length func) 0
+        ) al
+    | Aarr id el _ =&gt; 
+        match eval_maexpr_list_symb el with
+        | Some func&#x27; =&gt; 
+          existsb (fun (a:AccessFunction) =&gt; 
+            let (id&#x27;, func) := a in 
+            Pos.eqb id&#x27; id &amp;&amp;
+            Nat.eqb (length func) (length func&#x27;) &amp;&amp;
+            forallb (fun (aff1aff2: (list Z * Z) * (list Z * Z)) =&gt; 
+              let (aff1, aff2) := aff1aff2 in
+              let (v1, c1) := aff1 in
+              let (v2, c2) := aff2 in
+              is_eq v1 v2 &amp;&amp; Z.eqb c1 c2 
+            ) (combine func func&#x27;)
+          ) al
+        | None =&gt; false
+        end
+    end
+  . 
+
+  (* expr only reads, so only read access function list here *)
+  Fixpoint access_function_checker_e (rl: list AccessFunction) (e: expr): bool := 
+    match e with
+    | Eval v _ =&gt; true
+    | Evarz n _ =&gt; true
+    | Eunop _ e _ =&gt;
+      access_function_checker_e rl e
+    | Ebinop _ e1 e2 _ =&gt; 
+      access_function_checker_e rl e1 &amp;&amp; 
+      access_function_checker_e rl e2
+    | Eaccess a _ =&gt;
+      access_function_checker_access rl a
+    end
+  .
+
+  Definition access_function_checker (wl rl: list AccessFunction) (i: t): bool :=
+    match i with
+    | Iskip =&gt; true
+    | Iassign a e =&gt;
+      access_function_checker_access wl a &amp;&amp;
+      access_function_checker_e rl e
+    end.
+
+
+  Lemma access_function_checker_access_correct:
+    forall al a p cell,
+      access_function_checker_access al a = true -&gt;
+      access_cell a p cell -&gt;
+      valid_access_cells p [cell] al.
+  Proof.
+    intros.
+    unfold access_function_checker_access in H.
+    unfold valid_access_cells.
+    intros c Hin. inv Hin; tryfalse.
+    destruct a eqn:Ha.
+    - (* access a variable *) 
+      eapply existsb_exists in H.
+      destruct H as (af &amp; Haf &amp; H).
+      exists af.
+      destruct af as (id&#x27; &amp; func&#x27;).
+      rewrite andb_true_iff in H.
+      destruct H. eapply Pos.eqb_eq in H. eapply Nat.eqb_eq in H1.
+      eapply length_zero_iff_nil in H1. subst.
+      split; trivial.
+      eapply access_cell_var_implies_cell_eq; eauto.
+    - (* acccess an array *)
+      destruct (eval_maexpr_list_symb el) eqn:Heval; tryfalse.
+      eapply existsb_exists in H.
+      destruct H as (af &amp; Haf &amp; H).
+      exists af.
+      split; trivial.
+      eapply access_cell_arr_implies_cell_eq; eauto.
+  Qed.
+
+  Lemma access_function_checker_expr_correct:
+    forall e rl p rcells st v,
+      access_function_checker_e rl e = true -&gt;
+      eval_expr e p rcells st v -&gt;
+      valid_access_cells p rcells rl.
+  Proof. 
+    induction e.
+    - intros. simpls. inv H0. 
+      unfold valid_access_cells. intros. inv H0.
+    - intros. simpls. inv H0. 
+      unfold valid_access_cells. intros. inv H0.
+    - intros. simpls. inv H0.
+      eapply  access_function_checker_access_correct; eauto.
+    - intros. simpls. inv H0.
+      eapply IHe; eauto.
+    - intros. simpls. rewrite andb_true_iff in H.
+      destruct H. inv H0.
+      eapply IHe1 with (p:=p) (rcells:=rcs1) in H11; eauto. 
+      eapply IHe2 with (p:=p) (rcells:=rcs2) in H12; eauto.
+      clear - H11 H12.
+      unfolds valid_access_cells. intros. eapply in_app in H.
+      destruct H.
+      eapply H11; eauto.
+      eapply H12; eauto.
+  Qed. 
+
+  (** correct access function implies BC condition *)
+  Lemma access_function_checker_correct:
+    forall wl rl i, 
+      access_function_checker wl rl i = true -&gt; 
+      valid_access_function wl rl i.
+  Proof. 
+    intros.
+    unfold access_function_checker in H.
+    unfold valid_access_function. intros.
+    destruct i.
+    - (* Iskip *)
+      inv H0. firstorder.
+    - (* Iassign *)
+      rewrite andb_true_iff in H.
+      destruct H as (WC &amp; RC).
+      inv H0. split.
+      + (* write *)
+        clear H3 RC.
+        eapply access_function_checker_access_correct; eauto.
+      + (* read *)
+        clear H2 H9 WC.
+        eapply access_function_checker_expr_correct; eauto.
+  Qed.
+
+  (* Well formed check should include this. *)
+  Definition check_never_written (varctxt: list ident) (i: t): bool :=
+    match i with
+    | Iskip =&gt; true
+    | Iassign a e =&gt; 
+      match a with
+      | Avar id _ =&gt; 
+        negb (existsb (fun x =&gt; Pos.eqb x id) varctxt)
+      | Aarr id _ _ =&gt;
+        negb (existsb (fun x =&gt; Pos.eqb x id) varctxt)
+      end
+    end.
+
+  Local Lemma replay_write_on_equivalent_source:
+    forall wcell1 bty1 v1 st1 st2 wcell2 bty2 v2 st3,
+      State.write_cell wcell1 bty1 v1 st1 st2 -&gt;
+      State.write_cell wcell2 bty2 v2 st2 st3 -&gt;
+      exists st1&#x27; st2&#x27;,
+        State.write_cell_dec wcell2 bty2 v2 st1&#x27; = Some st2&#x27; /\
+        State.eq st1 st1&#x27;.
+  Proof.
+    intros wcell1 bty1 v1 st1 st2 wcell2 bty2 v2 st3
+      Hwrite1 Hwrite2.
+    inversion Hwrite1 as
+        [cell1 value1 raw_source1 raw_target1 source1 target1
+         id1 sub1 raw_ge1 raw_env1 raw_mem1 raw_mem1_after
+         block1 comp_ty1 offset1 arr_ty1 base_ty1 chunk1
+         Hcell1 Hraw_source1 Hlookup1 Harr_ty1 Hbase_ty1
+         Hoffset1 Hmode1 Hstore1 Hraw_target1
+         Hsource1_eq Htarget1_eq].
+    inversion Hwrite2 as
+        [cell2 value2 raw_source2 raw_target2 source2 target2
+         id2 sub2 raw_ge2 raw_env2 raw_mem2 raw_mem2_after
+         block2 comp_ty2 offset2 arr_ty2 base_ty2 chunk2
+         Hcell2 Hraw_source2 Hlookup2 Harr_ty2 Hbase_ty2
+         Hoffset2 Hmode2 Hstore2 Hraw_target2
+         Hsource2_eq Htarget2_eq].
+    subst raw_source1. subst raw_target1.
+    subst raw_source2. subst raw_target2.
+    destruct st1 as [[outer_ge1 outer_env1] outer_mem1].
+    destruct st2 as [[outer_ge2 outer_env2] outer_mem2].
+    destruct st3 as [[outer_ge3 outer_env3] outer_mem3].
+    unfold State.eq in
+      Hsource1_eq, Htarget1_eq, Hsource2_eq, Htarget2_eq.
+    simpl in Hsource1_eq, Htarget1_eq, Hsource2_eq, Htarget2_eq.
+    destruct Hsource1_eq as
+      (Hge_source1 &amp; Henv_source1 &amp; Hmem_source1).
+    destruct Htarget1_eq as
+      (Hge_target1 &amp; Henv_target1 &amp; Hmem_target1).
+    destruct Hsource2_eq as
+      (Hge_source2 &amp; Henv_source2 &amp; Hmem_source2).
+    destruct Htarget2_eq as
+      (Hge_target2 &amp; Henv_target2 &amp; Hmem_target2).
+    assert (Hintermediate_mem : State.mem_eq raw_mem1_after raw_mem2).
+    {
+      eapply State.mem_eq_trans; [exact Hmem_target1|].
+      apply State.mem_eq_sym. exact Hmem_source2.
+    }
+    destruct
+      (State.advance_store_valid
+        chunk1 raw_mem1 block1 offset1 v1
+        chunk2 raw_mem1_after block2 offset2 v2 raw_mem2_after
+        raw_mem2 Hstore1 Hintermediate_mem Hstore2)
+      as [replayed_mem Hstore2_source].
+    exists
+      (raw_ge2, raw_env2, raw_mem1)
+      (raw_ge2, raw_env2, replayed_mem).
+    split.
+    - unfold State.write_cell_dec.
+      rewrite Hcell2. simpl.
+      simpl in Hlookup2.
+      rewrite Hlookup2, Harr_ty2.
+      rewrite Hbase_ty2, Ty.basetype_eqb_refl, Hoffset2, Hmode2.
+      rewrite Hstore2_source. reflexivity.
+    - unfold State.eq. simpl.
+      split; [congruence|].
+      split; [congruence|].
+      apply State.mem_eq_sym. exact Hmem_source1.
+  Qed.
+
+  Local Lemma singleton_writes_disjoint:
+    forall wcell1 wcell2,
+      Forall
+        (fun wc2 =&gt; Forall (fun wc1 =&gt; cell_neq wc1 wc2) [wcell1])
+        [wcell2] -&gt;
+      cell_neq wcell1 wcell2.
+  Proof.
+    intros wcell1 wcell2 Hwrites.
+    inversion Hwrites as [|wc2 rest Hagainst Hrest]; subst.
+    inversion Hagainst as [|wc1 rest&#x27; Hneq Hrest&#x27;]; subst.
+    exact Hneq.
+  Qed.
+
+  Local Lemma reads_avoid_prior_write:
+    forall wcell reads,
+      Forall
+        (fun rc =&gt; Forall (fun wc&#x27; =&gt; cell_neq wc&#x27; rc) [wcell])
+        reads -&gt;
+      Forall (fun rc =&gt; cell_neq rc wcell) reads.
+  Proof.
+    intros wcell reads Hreads.
+    apply Forall_forall.
+    intros rcell Hin.
+    apply Forall_forall with (x := rcell) in Hreads; [|exact Hin].
+    inversion Hreads as [|wc rest Hneq Hrest]; subst.
+    apply cell_neq_symm. exact Hneq.
+  Qed.
+
+  Local Lemma prior_reads_avoid_write:
+    forall reads wcell,
+      Forall
+        (fun wc =&gt; Forall (fun rc =&gt; cell_neq rc wc) reads)
+        [wcell] -&gt;
+      Forall (fun rc =&gt; cell_neq rc wcell) reads.
+  Proof.
+    intros reads wcell Hreads.
+    inversion Hreads as [|wc rest Hdisjoint Hrest]; subst.
+    exact Hdisjoint.
+  Qed.
+
+  Lemma bc_condition_implie_permutbility:
+    forall i1 p1 wcs1 rcs1 st1 st2 st3 i2 p2 wcs2 rcs2,
+      NonAlias st1 -&gt;
+      (instr_semantics i1 p1 wcs1 rcs1 st1 st2 /\ instr_semantics i2 p2 wcs2 rcs2 st2 st3) -&gt;
+      (
+        Forall (fun wc2 =&gt; 
+            Forall (fun wc1 =&gt; cell_neq wc1 wc2) wcs1
+        ) wcs2
+      )
+      /\
+      (
+          Forall (fun rc2 =&gt; 
+              Forall (fun wc1 =&gt; cell_neq wc1 rc2) wcs1
+          ) rcs2
+      )
+      /\
+      (
+          Forall (fun wc2 =&gt; 
+              Forall (fun rc1 =&gt; cell_neq rc1 wc2 ) rcs1
+          ) wcs2
+      )
+      -&gt;
+      (exists st2&#x27; st3&#x27;, instr_semantics i2 p2 wcs2 rcs2 st1 st2&#x27; /\ instr_semantics i1 p1 wcs1 rcs1 st2&#x27; st3&#x27; /\ State.eq st3 st3&#x27;)
+    .
+  Proof. 
+    intros until rcs2.
+    intros NOALIAS SEMA BC.
+    destruct SEMA as (SEMA1 &amp; SEMA2).
+    destruct BC as (WW &amp; WR &amp; RW).
+    inversion SEMA1 as
+        [env1 state1 state2 Hskip1
+         |a1 e1 env1 state1 state2 v1 wcell1 reads1
+            Haccess1 Heval1 Hwrite1]; subst;
+      inversion SEMA2 as
+        [env2 state2&#x27; state3 Hskip2
+         |a2 e2 env2 state2&#x27; state3 v2 wcell2 reads2
+            Haccess2 Heval2 Hwrite2]; subst.
+    {
+      (* Case: skip, skip. trivial. *)
+      exists st3 st3. 
+      split; econs; eauto. 
+      eapply State.eq_trans; eauto. econs; eauto.
+      eapply State.eq_refl.
+      eapply State.eq_refl.
+    }
+    {
+      (* Case: skip, assign. trivial. *)
+      exists st3 st3. splits.
+      eapply eval_expr_prsv_val_if_state_eq with (st&#x27;:=st1) in Heval2.
+      econs; eauto.
+      eapply State.write_cell_stable_under_eq; eauto.
+      eapply State.eq_sym; trivial. eapply State.eq_refl. 
+      eapply State.eq_sym; trivial. econs; eapply State.eq_refl.
+      eapply State.eq_refl.
+    }
+    {
+      (* Case: assign, skip. trivial. *)
+      exists st1 st3. splits. econs; eauto. 
+      eapply State.eq_refl.
+      econs; eauto. 
+      eapply State.write_cell_stable_under_eq 
+        with (st1:=st1) (st1&#x27;:=st1) (st2:=st2) (st2&#x27;:=st3)
+        in Hwrite1; eauto.
+      eapply State.eq_refl. 
+      eapply State.eq_refl.
+    }
+    {
+      (* Case: assign, assign. *)    
+      destruct
+        (replay_write_on_equivalent_source
+          wcell1 (typeof_access a1) v1 st1 st2
+          wcell2 (typeof_access a2) v2 st3 Hwrite1 Hwrite2)
+        as (st1&#x27; &amp; st2&#x27; &amp; Hw2_dec &amp; HEQ1).
+      eapply State.write_cell_dec_correct in Hw2_dec.
+      pose proof (singleton_writes_disjoint wcell1 wcell2 WW) as NEQ.
+      assert
+        (Hwrite2_source :
+          State.write_cell wcell2 (typeof_access a2) v2 st1 st2&#x27;).
+      {
+        clear - Hw2_dec HEQ1.
+        eapply State.write_cell_stable_under_eq in Hw2_dec; eauto.
+        eapply State.eq_sym; trivial.
+        eapply State.eq_refl.
+      }
+      pose proof
+        (State.write_after_write_cell_neq wcell1 wcell2 v1 v2
+          st1 st2 st3 st2&#x27; (typeof_access a1) (typeof_access a2)
+          Hwrite1 Hwrite2 NEQ Hwrite2_source NOALIAS)
+        as Hswapped_writes.
+      destruct Hswapped_writes as (st3&#x27; &amp; Hw1&#x27; &amp; Heq).
+      (* Execute the second assignment first. *)
+      exists st2&#x27; st3&#x27;. split.
+      - eapply IassignSem with (v:=v2); eauto.
+        + (* Its right-hand side does not read the first write cell. *)
+          eapply eval_expr_prsv_val_if_neq_wr_cell with (wc:=wcell1) (st2:=st2) (v:=v2); eauto.
+          eapply reads_avoid_prior_write. exact WR.
+      - split. 
+        eapply IassignSem with (v:=v1); eauto.
+        + (* The first right-hand side does not read the second write cell. *)
+          eapply eval_expr_prsv_val_if_neq_wr_cell with (st1:=st1) (wc:=wcell2) (v&#x27;:=v2) (bty:=(typeof_access a2)); trivial.
+          eapply prior_reads_avoid_write. exact RW.
+        + trivial.
+    }
+  Qed.
+End CInstr.
+</pre>
+</main>
+</body>
+</html>

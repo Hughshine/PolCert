@@ -3,20 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.domain</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/91084e6d675e10/after.domain</code></h1>
-  <pre>Accepted split of S0 by cuts i &lt;= 7 and j &lt;= 7
-  S0_0: original domain, i &lt;= 7, j &lt;= 7
-  S0_1: original domain, i &gt;= 8, j &lt;= 7
-  S0_2: original domain, i &lt;= 7, j &gt;= 8
-  S0_3: original domain, i &gt;= 8, j &gt;= 8
+  <h1><code>evidence/results/program-comparisons/739db951ec2f07/before.loop</code></h1>
+  <pre>context(B, T, N);
 
-The four sign combinations cover the source domain exactly once.
+for t in range(5, (T - 1)) {
+  for i in range(5, (N - 5)) {
+    for p in range(0, B) {
+      A[p][(t + 1)][i] = (0.125 * (A[p][t][(i - 1)] + A[p][(t - 2)][(i + 1)]));
+    }
+  }
+}
 </pre>
 </main>
 </body>

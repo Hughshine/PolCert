@@ -1,0 +1,7 @@
+context(N, M);
+
+for i0 in range(0, N) {
+  for i1 in range(0, M) {
+    s = (s + a[i0][i1]);
+  }
+}

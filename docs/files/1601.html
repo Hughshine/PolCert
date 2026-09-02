@@ -3,33 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>diamond-suite.stdout.txt</title>
+  <title>after.c</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/raw/diamond-suite.stdout.txt</code></h1>
-  <pre>[diamond-suite] PASS case=diamond-tile-example.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=fdtd-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=heat-3d-imperfect.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d-imper.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-2d.c expected=effect:diamond,route:permutable-band,phase:true actual=effect:diamond,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=multi-stmt-stencil-seq.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=seidel.c expected=effect:no_effect,route:permutable-band,phase:true actual=effect:no_effect,affine:true,tiling:true,phase:true interpretation=diamond-effect-and-three-phase-contract-matched
-[diamond-suite] PASS case=jacobi-1d-imper.c expected=status:pluto_final_schedule_rejected,exit:1 actual=status:pluto_final_schedule_rejected,exit:1 interpretation=fixed-producer-refused-an-illegal-final-schedule
-[diamond-suite] PASS case=heat-2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-2dp.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=heat-3d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-mod.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic-even.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-1d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-17pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-imper.par2d.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-2d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-25pt.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS case=jacobi-3d-periodic.c expected=status:pluto_frontend_rejected,exit:8 actual=status:pluto_frontend_rejected,exit:8 interpretation=unsupported-input-was-rejected
-[diamond-suite] PASS expected=19 actual=19 interpretation=all-declared-diamond-effects-and-rejections-matched
+  <h1><code>evidence/results/program-comparisons/d6b5f97eb75260/after.c</code></h1>
+  <pre>#define S1(zT2,zT3,$i0,$i1)	a[2 * $i0] = a[2 * $i0] + b[$i1];
+#define S2(zT2,zT3,$i0,$i1)	a[2 * $i0 + 1] = a[2 * $i0 + 1] + b[$i1];
+
+		int t1, t2, t3, t4, t5, t6, t7, t8;
+
+	register int lbv, ubv;
+
+/* Start of CLooG code */
+if (N &gt;= 1) {
+  for (t2=0;t2&lt;=floord(N-1,32);t2++) {
+    for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+      for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+        for (t7=32*t4;t7&lt;=min(N-1,32*t4+31);t7++) {
+          S1(t2,t4,t5,t7);
+        }
+      }
+    }
+    if (N &gt;= 2) {
+      for (t4=0;t4&lt;=floord(N-1,32);t4++) {
+        for (t5=32*t2;t5&lt;=min(N-1,32*t2+31);t5++) {
+          for (t7=max(1,32*t4);t7&lt;=min(N-1,32*t4+31);t7++) {
+            S2(t2,t4,t5,t7);
+          }
+        }
+      }
+    }
+  }
+}
+/* End of CLooG code */
 </pre>
 </main>
 </body>

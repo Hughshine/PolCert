@@ -13,12 +13,12 @@
   <p class="lede">
     Each row compares an unoptimized Loop program with a PolCert-accepted
     output inside the same generated whole-C harness. Both executables received
-    the same deterministic input, and every selected pair produced exactly the
-    same output.
+    the same deterministic input, and every selected pair produced the same
+    index-weighted summary of its modeled state.
   </p>
   <dl class="performance-summary">
     <div><dt>Compared kernels</dt><dd>62</dd></div>
-    <div><dt>Exact output matches</dt><dd>62</dd></div>
+    <div><dt>Exact summary matches</dt><dd>62</dd></div>
     <div><dt>Non-identity routes selected</dt><dd>47</dd></div>
     <div><dt>Selected parallel outputs</dt><dd>19</dd></div>
   </dl>
@@ -48,76 +48,76 @@
           <th>Program result</th>
         </tr>
       </thead>
-      <tbody><tr><td><code>1dloop-invar</code></td><td>affine scheduling + tiling</td><td>0.001149 s</td><td>0.001069 s</td><td>1.075x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>adi</code></td><td>identity fallback</td><td>3.0891 s</td><td>3.1687 s</td><td>0.975x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>advect3d</code></td><td>ISS-enabled sequential route</td><td>1.5953 s</td><td>1.3326 s</td><td>1.197x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>corcol</code></td><td>affine scheduling only</td><td>1.7140 s</td><td>0.4251 s</td><td>4.032x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>corcol3</code></td><td>parallel route (4 threads)</td><td>1.8990 s</td><td>0.4886 s</td><td>3.886x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>costfunc</code></td><td>affine scheduling + tiling</td><td>1.1306 s</td><td>0.7711 s</td><td>1.466x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>covcol</code></td><td>affine scheduling only</td><td>1.7613 s</td><td>0.4121 s</td><td>4.274x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>dct</code></td><td>identity fallback</td><td>3.6894 s</td><td>3.7103 s</td><td>0.994x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>doitgen</code></td><td>parallel route (4 threads)</td><td>7.9042 s</td><td>1.9920 s</td><td>3.968x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>dsyr2k</code></td><td>parallel route (4 threads)</td><td>5.3326 s</td><td>2.1830 s</td><td>2.443x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>dsyrk</code></td><td>parallel route (4 threads)</td><td>3.9034 s</td><td>1.8748 s</td><td>2.082x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fdtd-1d</code></td><td>identity fallback</td><td>2.2960 s</td><td>2.1839 s</td><td>1.051x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fdtd-2d</code></td><td>identity fallback</td><td>3.8157 s</td><td>3.7360 s</td><td>1.021x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>floyd</code></td><td>ISS-enabled sequential route</td><td>1.8928 s</td><td>1.8159 s</td><td>1.042x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion1</code></td><td>identity fallback</td><td>0.004104 s</td><td>0.003828 s</td><td>1.072x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion10</code></td><td>ISS-enabled sequential route</td><td>0.001478 s</td><td>0.001276 s</td><td>1.158x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion2</code></td><td>affine scheduling only</td><td>0.001584 s</td><td>0.001180 s</td><td>1.343x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion3</code></td><td>affine scheduling only</td><td>1.0138 s</td><td>0.6195 s</td><td>1.636x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion4</code></td><td>affine scheduling + tiling</td><td>0.8952 s</td><td>0.6808 s</td><td>1.315x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion5</code></td><td>affine scheduling only</td><td>0.4606 s</td><td>0.3230 s</td><td>1.426x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion6</code></td><td>affine scheduling + tiling</td><td>0.003923 s</td><td>0.003660 s</td><td>1.072x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion7</code></td><td>affine scheduling + tiling</td><td>0.003040 s</td><td>0.002728 s</td><td>1.114x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion8</code></td><td>ISS-enabled sequential route</td><td>0.001214 s</td><td>0.001033 s</td><td>1.175x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>fusion9</code></td><td>ISS-enabled parallel route (4 threads)</td><td>1.4422 s</td><td>0.0992 s</td><td>14.534x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>gemver</code></td><td>affine scheduling only</td><td>1.4446 s</td><td>0.9813 s</td><td>1.472x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>intratileopt1</code></td><td>ISS-enabled parallel route (4 threads)</td><td>1.5453 s</td><td>0.8325 s</td><td>1.856x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>intratileopt2</code></td><td>parallel route (4 threads)</td><td>1.5318 s</td><td>0.8414 s</td><td>1.821x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>intratileopt3</code></td><td>ISS-enabled parallel route (4 threads)</td><td>2.5000 s</td><td>1.7265 s</td><td>1.448x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>intratileopt4</code></td><td>parallel route (4 threads)</td><td>1.0156 s</td><td>0.3978 s</td><td>2.553x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>jacobi-1d-imper</code></td><td>identity fallback</td><td>1.7496 s</td><td>1.6811 s</td><td>1.041x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>jacobi-2d-imper</code></td><td>identity fallback</td><td>1.9293 s</td><td>1.8829 s</td><td>1.025x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>lu</code></td><td>identity fallback</td><td>2.9041 s</td><td>2.9326 s</td><td>0.990x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>matmul</code></td><td>parallel route (4 threads)</td><td>1.2752 s</td><td>0.3442 s</td><td>3.705x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>matmul-init</code></td><td>parallel route (4 threads)</td><td>1.3096 s</td><td>0.2733 s</td><td>4.792x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>matmul-seq</code></td><td>identity fallback</td><td>2.5459 s</td><td>2.5171 s</td><td>1.011x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>matmul-seq3</code></td><td>identity fallback</td><td>3.7510 s</td><td>3.7758 s</td><td>0.993x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>multi-loop-param</code></td><td>ISS-enabled sequential route</td><td>0.003509 s</td><td>0.002696 s</td><td>1.302x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>multi-stmt-stencil-seq</code></td><td>identity fallback</td><td>0.007810 s</td><td>0.005718 s</td><td>1.366x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>mvt</code></td><td>ISS-enabled parallel route (4 threads)</td><td>0.8898 s</td><td>0.4368 s</td><td>2.037x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>mxv</code></td><td>parallel route (4 threads)</td><td>1.8557 s</td><td>1.5397 s</td><td>1.205x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>mxv-seq</code></td><td>identity fallback</td><td>1.0034 s</td><td>0.9456 s</td><td>1.061x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>mxv-seq3</code></td><td>identity fallback</td><td>1.0383 s</td><td>1.0323 s</td><td>1.006x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>negparam</code></td><td>affine scheduling only</td><td>0.001319 s</td><td>0.001082 s</td><td>1.220x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>nodep</code></td><td>ISS-enabled sequential route</td><td>0.001269 s</td><td>0.001011 s</td><td>1.255x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>noloop</code></td><td>affine scheduling + tiling</td><td>0.001428 s</td><td>0.001100 s</td><td>1.298x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>pca</code></td><td>affine scheduling + tiling</td><td>1.0022 s</td><td>0.5571 s</td><td>1.799x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>polynomial</code></td><td>identity fallback</td><td>3.4510 s</td><td>3.4667 s</td><td>0.995x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>seidel</code></td><td>ISS-enabled sequential route</td><td>3.7059 s</td><td>3.4017 s</td><td>1.089x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>seq</code></td><td>affine scheduling + tiling</td><td>2.6051 s</td><td>1.9029 s</td><td>1.369x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>shift</code></td><td>affine scheduling only</td><td>0.9734 s</td><td>0.9055 s</td><td>1.075x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>spatial</code></td><td>ISS-enabled parallel route (4 threads)</td><td>2.3188 s</td><td>1.7358 s</td><td>1.336x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>ssymm</code></td><td>ISS-enabled parallel route (4 threads)</td><td>4.6560 s</td><td>0.3160 s</td><td>14.735x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>strmm</code></td><td>parallel route (4 threads)</td><td>5.3964 s</td><td>1.0648 s</td><td>5.068x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>strsm</code></td><td>parallel route (4 threads)</td><td>7.6046 s</td><td>0.9731 s</td><td>7.814x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tce</code></td><td>identity fallback</td><td>3.5964 s</td><td>3.1905 s</td><td>1.127x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tmm</code></td><td>parallel route (4 threads)</td><td>7.5189 s</td><td>2.2072 s</td><td>3.407x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tricky1</code></td><td>affine scheduling only</td><td>1.9440 s</td><td>0.001890 s</td><td>1028.805x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tricky2</code></td><td>ISS-enabled sequential route</td><td>0.001373 s</td><td>0.001137 s</td><td>1.208x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tricky3</code></td><td>ISS-enabled sequential route</td><td>0.001299 s</td><td>0.001111 s</td><td>1.169x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>tricky4</code></td><td>ISS-enabled sequential route</td><td>0.001259 s</td><td>0.001123 s</td><td>1.121x</td><td>no</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>trisolv</code></td><td>parallel route (4 threads)</td><td>1.2668 s</td><td>0.2233 s</td><td>5.673x</td><td>yes</td><td class="status-pass">exact match</td></tr>
-<tr><td><code>wavefront</code></td><td>affine scheduling + tiling</td><td>2.6049 s</td><td>1.7204 s</td><td>1.514x</td><td>no</td><td class="status-pass">exact match</td></tr></tbody>
+      <tbody><tr><td><code>1dloop-invar</code></td><td>affine scheduling + tiling</td><td>0.001149 s</td><td>0.001069 s</td><td>1.075x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>adi</code></td><td>identity fallback</td><td>3.0891 s</td><td>3.1687 s</td><td>0.975x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>advect3d</code></td><td>ISS-enabled sequential route</td><td>1.5953 s</td><td>1.3326 s</td><td>1.197x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>corcol</code></td><td>affine scheduling only</td><td>1.7140 s</td><td>0.4251 s</td><td>4.032x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>corcol3</code></td><td>parallel route (4 threads)</td><td>1.8990 s</td><td>0.4886 s</td><td>3.886x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>costfunc</code></td><td>affine scheduling + tiling</td><td>1.1306 s</td><td>0.7711 s</td><td>1.466x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>covcol</code></td><td>affine scheduling only</td><td>1.7613 s</td><td>0.4121 s</td><td>4.274x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>dct</code></td><td>identity fallback</td><td>3.6894 s</td><td>3.7103 s</td><td>0.994x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>doitgen</code></td><td>parallel route (4 threads)</td><td>7.9042 s</td><td>1.9920 s</td><td>3.968x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>dsyr2k</code></td><td>parallel route (4 threads)</td><td>5.3326 s</td><td>2.1830 s</td><td>2.443x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>dsyrk</code></td><td>parallel route (4 threads)</td><td>3.9034 s</td><td>1.8748 s</td><td>2.082x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fdtd-1d</code></td><td>identity fallback</td><td>2.2960 s</td><td>2.1839 s</td><td>1.051x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fdtd-2d</code></td><td>identity fallback</td><td>3.8157 s</td><td>3.7360 s</td><td>1.021x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>floyd</code></td><td>ISS-enabled sequential route</td><td>1.8928 s</td><td>1.8159 s</td><td>1.042x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion1</code></td><td>identity fallback</td><td>0.004104 s</td><td>0.003828 s</td><td>1.072x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion10</code></td><td>ISS-enabled sequential route</td><td>0.001478 s</td><td>0.001276 s</td><td>1.158x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion2</code></td><td>affine scheduling only</td><td>0.001584 s</td><td>0.001180 s</td><td>1.343x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion3</code></td><td>affine scheduling only</td><td>1.0138 s</td><td>0.6195 s</td><td>1.636x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion4</code></td><td>affine scheduling + tiling</td><td>0.8952 s</td><td>0.6808 s</td><td>1.315x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion5</code></td><td>affine scheduling only</td><td>0.4606 s</td><td>0.3230 s</td><td>1.426x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion6</code></td><td>affine scheduling + tiling</td><td>0.003923 s</td><td>0.003660 s</td><td>1.072x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion7</code></td><td>affine scheduling + tiling</td><td>0.003040 s</td><td>0.002728 s</td><td>1.114x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion8</code></td><td>ISS-enabled sequential route</td><td>0.001214 s</td><td>0.001033 s</td><td>1.175x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>fusion9</code></td><td>ISS-enabled parallel route (4 threads)</td><td>1.4422 s</td><td>0.0992 s</td><td>14.534x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>gemver</code></td><td>affine scheduling only</td><td>1.4446 s</td><td>0.9813 s</td><td>1.472x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>intratileopt1</code></td><td>ISS-enabled parallel route (4 threads)</td><td>1.5453 s</td><td>0.8325 s</td><td>1.856x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>intratileopt2</code></td><td>parallel route (4 threads)</td><td>1.5318 s</td><td>0.8414 s</td><td>1.821x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>intratileopt3</code></td><td>ISS-enabled parallel route (4 threads)</td><td>2.5000 s</td><td>1.7265 s</td><td>1.448x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>intratileopt4</code></td><td>parallel route (4 threads)</td><td>1.0156 s</td><td>0.3978 s</td><td>2.553x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>jacobi-1d-imper</code></td><td>identity fallback</td><td>1.7496 s</td><td>1.6811 s</td><td>1.041x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>jacobi-2d-imper</code></td><td>identity fallback</td><td>1.9293 s</td><td>1.8829 s</td><td>1.025x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>lu</code></td><td>identity fallback</td><td>2.9041 s</td><td>2.9326 s</td><td>0.990x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>matmul</code></td><td>parallel route (4 threads)</td><td>1.2752 s</td><td>0.3442 s</td><td>3.705x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>matmul-init</code></td><td>parallel route (4 threads)</td><td>1.3096 s</td><td>0.2733 s</td><td>4.792x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>matmul-seq</code></td><td>identity fallback</td><td>2.5459 s</td><td>2.5171 s</td><td>1.011x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>matmul-seq3</code></td><td>identity fallback</td><td>3.7510 s</td><td>3.7758 s</td><td>0.993x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>multi-loop-param</code></td><td>ISS-enabled sequential route</td><td>0.003509 s</td><td>0.002696 s</td><td>1.302x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>multi-stmt-stencil-seq</code></td><td>identity fallback</td><td>0.007810 s</td><td>0.005718 s</td><td>1.366x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>mvt</code></td><td>ISS-enabled parallel route (4 threads)</td><td>0.8898 s</td><td>0.4368 s</td><td>2.037x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>mxv</code></td><td>parallel route (4 threads)</td><td>1.8557 s</td><td>1.5397 s</td><td>1.205x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>mxv-seq</code></td><td>identity fallback</td><td>1.0034 s</td><td>0.9456 s</td><td>1.061x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>mxv-seq3</code></td><td>identity fallback</td><td>1.0383 s</td><td>1.0323 s</td><td>1.006x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>negparam</code></td><td>affine scheduling only</td><td>0.001319 s</td><td>0.001082 s</td><td>1.220x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>nodep</code></td><td>ISS-enabled sequential route</td><td>0.001269 s</td><td>0.001011 s</td><td>1.255x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>noloop</code></td><td>affine scheduling + tiling</td><td>0.001428 s</td><td>0.001100 s</td><td>1.298x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>pca</code></td><td>affine scheduling + tiling</td><td>1.0022 s</td><td>0.5571 s</td><td>1.799x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>polynomial</code></td><td>identity fallback</td><td>3.4510 s</td><td>3.4667 s</td><td>0.995x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>seidel</code></td><td>ISS-enabled sequential route</td><td>3.7059 s</td><td>3.4017 s</td><td>1.089x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>seq</code></td><td>affine scheduling + tiling</td><td>2.6051 s</td><td>1.9029 s</td><td>1.369x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>shift</code></td><td>affine scheduling only</td><td>0.9734 s</td><td>0.9055 s</td><td>1.075x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>spatial</code></td><td>ISS-enabled parallel route (4 threads)</td><td>2.3188 s</td><td>1.7358 s</td><td>1.336x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>ssymm</code></td><td>ISS-enabled parallel route (4 threads)</td><td>4.6560 s</td><td>0.3160 s</td><td>14.735x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>strmm</code></td><td>parallel route (4 threads)</td><td>5.3964 s</td><td>1.0648 s</td><td>5.068x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>strsm</code></td><td>parallel route (4 threads)</td><td>7.6046 s</td><td>0.9731 s</td><td>7.814x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tce</code></td><td>identity fallback</td><td>3.5964 s</td><td>3.1905 s</td><td>1.127x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tmm</code></td><td>parallel route (4 threads)</td><td>7.5189 s</td><td>2.2072 s</td><td>3.407x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tricky1</code></td><td>affine scheduling only</td><td>1.9440 s</td><td>0.001890 s</td><td>1028.805x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tricky2</code></td><td>ISS-enabled sequential route</td><td>0.001373 s</td><td>0.001137 s</td><td>1.208x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tricky3</code></td><td>ISS-enabled sequential route</td><td>0.001299 s</td><td>0.001111 s</td><td>1.169x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>tricky4</code></td><td>ISS-enabled sequential route</td><td>0.001259 s</td><td>0.001123 s</td><td>1.121x</td><td>no</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>trisolv</code></td><td>parallel route (4 threads)</td><td>1.2668 s</td><td>0.2233 s</td><td>5.673x</td><td>yes</td><td class="status-pass">summary match</td></tr>
+<tr><td><code>wavefront</code></td><td>affine scheduling + tiling</td><td>2.6049 s</td><td>1.7204 s</td><td>1.514x</td><td>no</td><td class="status-pass">summary match</td></tr></tbody>
     </table>
   </div>
   <details class="supporting-files">
     <summary>Supporting data</summary>
     <p>
-      <a href="../../docs/files/0252.html" target="_blank" rel="noopener">selected measurements</a> &middot;
-      <a href="../../docs/files/0251.html" target="_blank" rel="noopener">all pipeline candidates</a> &middot;
-      <a href="../../docs/files/0253.html" target="_blank" rel="noopener">selected pipeline map</a>
+      <a href="../../docs/files/0251.html" target="_blank" rel="noopener">selected measurements</a> &middot;
+      <a href="../../docs/files/0250.html" target="_blank" rel="noopener">all pipeline candidates</a> &middot;
+      <a href="../../docs/files/0252.html" target="_blank" rel="noopener">selected pipeline map</a>
     </p>
   </details>
 </main>

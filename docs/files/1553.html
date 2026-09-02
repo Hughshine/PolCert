@@ -3,21 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.loop</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/f602d85f1ae895/before.loop</code></h1>
-  <pre>for i0 in range(0, 4) {
-  for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), 100)) {
-    A[(2 * i1)] = 1;
-  }
-}
-for i0 in range(0, 4) {
-  for i1 in range(max((32 * i0), 0), min(((32 * i0) + 32), 100)) {
-    B[(2 * i1)] = A[((2 * i1) + 2)];
+  <h1><code>evidence/results/program-comparisons/cda4c6ea12b188/after.loop</code></h1>
+  <pre>parallel for i0 in range(0, 4) {
+  parallel for i1 in range(max(0, (32 * i0)), min(100, ((32 * i0) + 32))) {
+    parallel for i2 in range(0, 4) {
+      A[((4 * i1) + i2)] = ((2 * A[((4 * i1) + i2)]) + 2);
+    }
   }
 }
 </pre>

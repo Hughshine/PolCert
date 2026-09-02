@@ -3,28 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>before.c</title>
+  <title>after.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/558fc6487fa218/before.c</code></h1>
-  <pre>#define S1(zT3,zT4,zT5,$i0,$i1,$i2)	A[16 * $i0 + 4 * $i1 + $i2] = A[16 * $i0 + 4 * $i1 + $i2] + 1;
+  <h1><code>evidence/results/program-comparisons/47034704297589/after.loop</code></h1>
+  <pre>context(B, T, N);
 
-		int t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12;
-
-	register int lbv, ubv;
-
-/* Start of CLooG code */
-for (t7=0;t7&lt;=3;t7++) {
-  for (t9=0;t9&lt;=3;t9++) {
-    for (t11=0;t11&lt;=3;t11++) {
-      S1(0,0,0,t7,t9,t11);
+if ((1 &lt;= B &amp;&amp; (7 &lt;= T &amp;&amp; 11 &lt;= N))) {
+  parallel for i0 in range(0, ((B + 31) / 32)) {
+    for i1 in range(0, ((T + (N + 24)) / 32)) {
+      for i2 in range(max(0, (((-1 * N) + ((32 * i1) + 6)) / 32)), min(((T + 30) / 32), (((32 * i1) + 58) / 32))) {
+        for i3 in range(max((32 * i0), 0), min(((32 * i0) + 32), B)) {
+          for i4 in range(max(max(10, ((32 * i2) + 5)), (32 * i1)), min(min((T + (N + -7)), (N + ((32 * i2) + 26))), ((32 * i1) + 32))) {
+            for i5 in range(max(max((32 * i2), 5), ((-1 * N) + (i4 + 6))), min(min(((32 * i2) + 32), (T + -1)), (i4 + -4))) {
+              for i6 in range((i4 + (-1 * i5)), (i4 + ((-1 * i5) + 1))) {
+                A[i3][(i5 + 1)][i6] = (0.125 * (A[i3][i5][(i6 + -1)] + A[i3][(i5 + -2)][(i6 + 1)]));
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
-/* End of CLooG code */
 </pre>
 </main>
 </body>

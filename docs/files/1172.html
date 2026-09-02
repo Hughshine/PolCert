@@ -3,48 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>after.loop</title>
+  <title>before.loop</title>
   <link rel="stylesheet" href="../artifact.css">
 </head>
 <body>
 <main>
   <p><a href="../index.html" target="_blank" rel="noopener">Supplement guide</a></p>
-  <h1><code>evidence/results/program-comparisons/af37a31f698deb/after.loop</code></h1>
-  <pre>context(N);
+  <h1><code>evidence/results/program-comparisons/912537e0e6c50c/before.loop</code></h1>
+  <pre>context(M, N, K);
 
-if (1 &lt;= N) {
-  for i0 in range(0, ((N + 255) / 256)) {
-    for i1 in range(0, ((N + 255) / 256)) {
-      for i2 in range(max((8 * i0), 0), min(((8 * i0) + 8), ((N + 31) / 32))) {
-        for i3 in range(max((8 * i1), 0), min(((8 * i1) + 8), ((N + 31) / 32))) {
-          for i4 in range(max(0, (32 * i2)), min(N, ((32 * i2) + 32))) {
-            for i5 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
-              C[i4][i5] = 0;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-if (1 &lt;= N) {
-  for i0 in range(0, ((N + 255) / 256)) {
-    for i1 in range(0, ((N + 255) / 256)) {
-      for i2 in range(0, ((N + 255) / 256)) {
-        for i3 in range(max(0, (8 * i0)), min(((N + 31) / 32), ((8 * i0) + 8))) {
-          for i4 in range(max(0, (8 * i1)), min(((N + 31) / 32), ((8 * i1) + 8))) {
-            for i5 in range(max(0, (8 * i2)), min(((N + 31) / 32), ((8 * i2) + 8))) {
-              for i6 in range(max(0, (32 * i3)), min(N, ((32 * i3) + 32))) {
-                for i7 in range(max((32 * i4), 0), min(((32 * i4) + 32), N)) {
-                  for i8 in range(max((32 * i5), 0), min(((32 * i5) + 32), N)) {
-                    C[i6][i7] = (C[i6][i7] + (A[i6][i8] * B[i8][i7]));
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+for i in range(0, M) {
+  for j in range(0, N) {
+    for k in range(0, K) {
+      C[i][j] = ((beta * C[i][j]) + ((alpha * A[i][k]) * B[k][j]));
     }
   }
 }

@@ -1,0 +1,27 @@
+{
+  "baseline_observation": "223298c53ac8b9/baseline.observation.txt",
+  "baseline_output_sha256": "e78a3ef7e7da813ec4015e8652e688277d3dc1fb077b12f88b49d3c3c53ffbbe",
+  "case": "spatial",
+  "exact_match": true,
+  "execution_repeats": 1,
+  "max_abs_diff": null,
+  "max_rel_diff": null,
+  "numeric_finite": true,
+  "numeric_within_tolerance": false,
+  "observation_mode": "sha256-modeled-state",
+  "observed_value_count": 10000,
+  "omp_threads_requested": 4,
+  "optimized_observation": "223298c53ac8b9/optimized.observation.txt",
+  "optimized_output_sha256": "e78a3ef7e7da813ec4015e8652e688277d3dc1fb077b12f88b49d3c3c53ffbbe",
+  "outputs_match": true,
+  "pair_id": "223298c53ac8b9",
+  "parallelized_loop": false,
+  "params": {
+    "M": 96,
+    "N": 96
+  },
+  "result": "ok",
+  "suite": "default optimization structural effects",
+  "summary": "223298c53ac8b9/summary.json",
+  "vectorized_loop": false
+}

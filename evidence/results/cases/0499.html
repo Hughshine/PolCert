@@ -33,7 +33,7 @@
 
   <div class="loop-comparison">
     <section>
-      <h2>Before</h2>
+      <h2>Source Loop Program</h2>
       <pre>context(T, N);
 
 for i0 in range(0, T) {
@@ -51,7 +51,7 @@ for i0 in range(0, T) {
 </pre>
     </section>
     <section>
-      <h2>Accepted Output</h2>
+      <h2>Accepted Optimized Loop Program</h2>
       <pre>context(T, N);
 
 if ((4 &lt;= N &amp;&amp; 1 &lt;= T)) {
@@ -202,6 +202,28 @@ if ((4 &lt;= N &amp;&amp; 1 &lt;= T)) {
     </section>
   </div>
 
+  <section class="dynamic-execution">
+    <h2>Dynamic Execution</h2>
+    <p>
+      The two displayed Loop programs were lowered with Rocq
+      <code>Z.div</code>/<code>Z.mod</code> control semantics, compiled, and
+      run from the same deterministic state. The harness feeds every finite
+      modeled scalar and array element into SHA-256 in a fixed order.
+    </p>
+    <dl>
+      <dt>Result</dt><dd><strong>PASS: SHA-256 digests over 19210 finite values match</strong></dd>
+      <dt>Left modeled-state SHA-256</dt><dd><code>af7278a9a488f1699cec6558452a4a46df082f17eb0ef8d45f75f729dbabc72e</code></dd>
+      <dt>Right modeled-state SHA-256</dt><dd><code>af7278a9a488f1699cec6558452a4a46df082f17eb0ef8d45f75f729dbabc72e</code></dd>
+      <dt>Parameters</dt><dd><code>N=96, T=96</code></dd>
+      <dt>Execution</dt><dd>1 run</dd>
+    </dl>
+    <p class="comparison-note">
+      This is a differential integration check, not part of the formal proof.
+      It detects parser, extraction, pretty-printing, lowering, and runtime
+      integration mistakes around the proved transformation.
+    </p>
+  </section>
+
 
   <details class="recorded-fields">
     <summary>Recorded Fields and Terms</summary>
@@ -215,8 +237,8 @@ if ((4 &lt;= N &amp;&amp; 1 &lt;= T)) {
     <h3>Term meanings</h3><ul><li>changed: whether the accepted Loop text differs from the input Loop text.</li><li>nontrivial: whether the structural oracle found a change beyond renaming or formatting.</li><li>tiled: whether the structural oracle found the expected tile/point loop pattern.</li><li>PASS: the expected acceptance, effect, refinement, or execution result was observed.</li></ul>
   </details>
   <div class="case-links">
-    <p><strong>Compared files:</strong> <a href="../../optimized-loop-examples/jacobi-2d-imper/comparison.html" target="_blank" rel="noopener">before/after</a> &middot; <a href="../../../docs/files/0124.html" target="_blank" rel="noopener">before</a> &middot; <a href="../../../docs/files/0125.html" target="_blank" rel="noopener">after</a> &middot; <a href="../../../docs/files/0123.html" target="_blank" rel="noopener">diff</a></p>
-<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/1622.html" target="_blank" rel="noopener">local log</a> &middot; <a href="../../../docs/files/1618.html" target="_blank" rel="noopener">CI log</a></p></details>
+    <p><strong>Compared files:</strong> <a href="../../../docs/files/0544.html" target="_blank" rel="noopener">before.loop</a> &middot; <a href="../../../docs/files/0543.html" target="_blank" rel="noopener">after.loop</a></p>
+<details class="supporting-files"><summary>Supporting files</summary><p><a href="../../../docs/files/2155.html" target="_blank" rel="noopener">summary.json</a> &middot; <a href="../../../docs/files/2153.html" target="_blank" rel="noopener">left modeled-state digest</a> &middot; <a href="../../../docs/files/2154.html" target="_blank" rel="noopener">right modeled-state digest</a> &middot; <a href="../../../docs/files/3451.html" target="_blank" rel="noopener">local log</a> &middot; <a href="../../../docs/files/3447.html" target="_blank" rel="noopener">CI log</a></p></details>
   </div>
   <p class="case-pager"><a href="0498.html" data-same-tab>Previous case</a><span> &middot; </span><a href="../test-catalog.html" data-same-tab>Back to test catalog</a><span> &middot; </span><a href="0500.html" data-same-tab>Next case</a></p>
 </main>
