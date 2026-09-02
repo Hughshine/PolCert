@@ -171,12 +171,13 @@ not currently add randomized dimensions or sanitizer instrumentation.
 
 ## Accepted Loop-pair audit
 
-`tools/end_to_end_c/run_program_pair_suite.py` applies the same executable check
-to every accepted before/after `.loop` pair in an artifact program-comparison
-index. It generates a complete C harness for each pair and initializes both
-sides from the same deterministic state. The harness feeds every finite modeled
-scalar and array element, in a fixed order, into SHA-256. The runner requires
-the value count and digest to match.
+`tools/end_to_end_c/run_program_pair_suite.py` covers every accepted before/after
+`.loop` pair record in an artifact program-comparison index. It generates a
+complete C harness and executes each unique program and parameter configuration;
+duplicate records reuse that result. Both sides start from the same deterministic
+state. The harness feeds every finite modeled scalar and array element, in a
+fixed order, into SHA-256. The runner requires the value count and digest to
+match.
 General `parallel for` targets run three times with four requested OpenMP
 threads to expose unstable results. The runner stores the chosen parameters
 with each pair.

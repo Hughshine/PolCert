@@ -228,7 +228,10 @@ def run_pair(
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Execute every accepted Loop pair saved by the test artifact."
+        description=(
+            "Cover every accepted Loop-pair record by executing each unique "
+            "program and parameter configuration."
+        )
     )
     ap.add_argument("--index", type=pathlib.Path, required=True)
     ap.add_argument("--pairs-root", type=pathlib.Path, required=True)
