@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import math
 import pathlib
 import shutil
 import subprocess
@@ -12,11 +13,16 @@ OPT_MARKER = "== Optimized Loop ==\n"
 
 
 def has_parallel_loop(loop_text: str) -> bool:
-    return "parallel for" in loop_text
+    return any(
+        line.strip().startswith("parallel for ") for line in loop_text.splitlines()
+    )
 
 
 def has_vector_loop(loop_text: str) -> bool:
-    return "vector for" in loop_text
+    return any(
+        line.strip().startswith(("vector for ", "innermost parallel for "))
+        for line in loop_text.splitlines()
+    )
 
 
 def loop_requires_openmp(loop_text: str) -> bool:
@@ -118,6 +124,7 @@ def compare_numeric_outputs(
     if baseline_vals is None or optimized_vals is None:
         return {
             "numeric_comparable": False,
+            "numeric_finite": None,
             "value_count_match": False,
             "max_abs_diff": None,
             "max_rel_diff": None,
@@ -125,10 +132,16 @@ def compare_numeric_outputs(
     if len(baseline_vals) != len(optimized_vals):
         return {
             "numeric_comparable": True,
+            "numeric_finite": all(
+                math.isfinite(value) for value in [*baseline_vals, *optimized_vals]
+            ),
             "value_count_match": False,
             "max_abs_diff": None,
             "max_rel_diff": None,
         }
+    numeric_finite = all(
+        math.isfinite(value) for value in [*baseline_vals, *optimized_vals]
+    )
     max_abs_diff = 0.0
     max_rel_diff = 0.0
     for baseline, optimized in zip(baseline_vals, optimized_vals):
@@ -139,6 +152,7 @@ def compare_numeric_outputs(
         max_rel_diff = max(max_rel_diff, rel_diff)
     return {
         "numeric_comparable": True,
+        "numeric_finite": numeric_finite,
         "value_count_match": True,
         "max_abs_diff": max_abs_diff,
         "max_rel_diff": max_rel_diff,
@@ -156,6 +170,7 @@ def evaluate_outputs(
     numeric_summary = compare_numeric_outputs(baseline_stdout, optimized_stdout)
     numeric_within_tolerance = (
         bool(numeric_summary["numeric_comparable"])
+        and bool(numeric_summary["numeric_finite"])
         and bool(numeric_summary["value_count_match"])
         and float(numeric_summary["max_abs_diff"]) <= abs_tolerance
         and float(numeric_summary["max_rel_diff"]) <= rel_tolerance
@@ -163,11 +178,19 @@ def evaluate_outputs(
     return {
         "exact_match": exact_match,
         "numeric_comparable": numeric_summary["numeric_comparable"],
+        "numeric_finite": numeric_summary["numeric_finite"],
         "value_count_match": numeric_summary["value_count_match"],
         "max_abs_diff": numeric_summary["max_abs_diff"],
         "max_rel_diff": numeric_summary["max_rel_diff"],
         "numeric_within_tolerance": numeric_within_tolerance,
-        "outputs_match": exact_match or numeric_within_tolerance,
+        "outputs_match": (
+            exact_match
+            and (
+                not bool(numeric_summary["numeric_comparable"])
+                or bool(numeric_summary["numeric_finite"])
+            )
+        )
+        or numeric_within_tolerance,
     }
 
 

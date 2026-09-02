@@ -44,6 +44,7 @@ def main() -> int:
     ap.add_argument("--polopt")
     ap.add_argument("--polopt-arg", action="append", default=[])
     ap.add_argument("--pipeline-name", default="")
+    ap.add_argument("--harness-case-name")
     ap.add_argument("--use-input-loop-as-optimized", action="store_true")
     ap.add_argument("--output-root", default="tests/end-to-end-generated/out")
     ap.add_argument("--benchmark-repeats", type=positive_int, default=1)
@@ -66,6 +67,7 @@ def main() -> int:
 
     case_dir = pathlib.Path(args.case_dir).resolve()
     case_name = case_dir.name
+    harness_case_name = args.harness_case_name or case_name
     out_dir = (ROOT / args.output_root / case_name).resolve()
     recreate_dir(out_dir)
 
@@ -133,7 +135,7 @@ def main() -> int:
             return 1
     tier_overrides = load_param_tiers((ROOT / args.param_config).resolve())
     info = build_harness(
-        case_name,
+        harness_case_name,
         input_loop,
         optimized_loop,
         tier=args.tier,
@@ -252,6 +254,7 @@ def main() -> int:
         "outputs_match": outputs_match,
         "exact_match": exact_match,
         "numeric_comparable": comparison["numeric_comparable"],
+        "numeric_finite": comparison["numeric_finite"],
         "value_count_match": comparison["value_count_match"],
         "max_abs_diff": comparison["max_abs_diff"],
         "max_rel_diff": comparison["max_rel_diff"],
@@ -278,7 +281,7 @@ def main() -> int:
     write_text(out_dir / "summary.json", json.dumps(summary, indent=2, sort_keys=True) + "\n")
     write_text(
         out_dir / "status.txt",
-        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nvalue_count_match={}\nparallelized_loop={}\nvectorized_loop={}\nomp_threads_requested={}\nexecution_repeats={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
+        "result={}\npipeline_name={}\noptimized_loop_source={}\noutputs_match={}\nexact_match={}\nnumeric_comparable={}\nnumeric_finite={}\nvalue_count_match={}\nparallelized_loop={}\nvectorized_loop={}\nomp_threads_requested={}\nexecution_repeats={}\nmax_abs_diff={}\nmax_rel_diff={}\nabs_tolerance={:.3e}\nrel_tolerance={:.3e}\nnumeric_within_tolerance={}\nbaseline_best_seconds={:.6f}\noptimized_best_seconds={:.6f}\nspeedup={:.4f}\n".format(
             "ok" if outputs_match else "fail",
             args.pipeline_name,
             (
@@ -289,6 +292,7 @@ def main() -> int:
             str(outputs_match).lower(),
             str(exact_match).lower(),
             str(bool(comparison["numeric_comparable"])).lower(),
+            str(bool(comparison["numeric_finite"])).lower(),
             str(bool(comparison["value_count_match"])).lower(),
             str(parallelized_loop).lower(),
             str(vectorized_loop).lower(),

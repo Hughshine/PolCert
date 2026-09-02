@@ -29,9 +29,9 @@ observable markers for ordinary tiling, parallel/vector annotations,
 constant unrolling, checked block unroll-jam, and stride normalization. The
 ISS case checks route acceptance plus executable equality; the dedicated ISS
 suites separately check that valid split witnesses are accepted and mutated
-witnesses are rejected. Diamond effects and validation phases are checked by
-the dedicated diamond suite because the auxiliary C lowering does not yet
-implement the verified integer division semantics for negative operands.
+witnesses are rejected. The auxiliary C lowering implements Rocq's
+`Z.div`/`Z.mod` semantics in loop bounds, guards, and array subscripts,
+including negative operands used by diamond schedules.
 
 For the broader generated whole-C campaign over the 62-case regression corpus,
 see [../end-to-end-generated](../end-to-end-generated). That path synthesizes a
@@ -136,6 +136,7 @@ It now records both:
 
 - exact stdout equality
 - numeric drift summaries (`max_abs_diff`, `max_rel_diff`)
+- rejection of non-finite output (`NaN` or infinity), even when both strings match
 - whether optimized output contains `parallel for` or `vector for`
 
 So if a future case uses tolerances, the numeric difference is still reported
@@ -167,3 +168,17 @@ the original benchmark driver code. The generated summary uses index-weighted
 checksums to expose value permutations, but a checksum is not a proof of
 element-wise memory equality. CI uses fixed deterministic parameters and does
 not currently add randomized dimensions or sanitizer instrumentation.
+
+## Accepted Loop-pair audit
+
+`tools/end_to_end_c/run_program_pair_suite.py` applies the same executable check
+to every accepted before/after `.loop` pair in an artifact program-comparison
+index. It generates a complete C harness for each pair, initializes both sides
+from the same deterministic state, and compares their finite numeric output.
+General `parallel for` targets run three times with four requested OpenMP
+threads to expose unstable results. The runner stores the exact output and the
+chosen parameters with each pair.
+
+This audit checks the executable integration around the verified compiler. It
+does not replace the refinement theorem, and both sides still share the same
+auxiliary Loop-to-C lowering.

@@ -55,14 +55,15 @@ Default CI runs the one-repeat smoke tier over all 62 materialized cases and
 compares each optimized executable with its baseline. Repeated performance
 runs, pipeline search, and tuning are intentionally **not** part of default CI.
 
-The current textual `.loop` to C lowering uses C integer `/` and `%`. That
-agrees with the checked loop semantics for the positive operands exercised by
-the default corpus, but not for every negative intermediate bound. In
-particular, diamond schedules can contain negative division numerators, so
-diamond correctness remains gated by the verified route/effect suites rather
-than this auxiliary C harness. Such cases must not be admitted here by widening
-numeric tolerances; the lowering needs semantics-correct integer expression
-translation first.
+The textual `.loop` to C lowering uses explicit helpers for Rocq `Z.div` and
+`Z.mod` in loop bounds, guards, and array subscripts. This covers negative
+intermediate values introduced by diamond schedules. Division in instruction
+right-hand sides remains ordinary floating-point C division, as required by
+the generated numeric kernels.
+
+The runner rejects `NaN` and infinity even when both output strings match.
+General parallel loops run repeatedly in the all-pair artifact audit so a
+single coincidental output cannot hide an unstable result.
 It is heavier than the normal regression suite and is meant for local artifact
 evaluation.
 

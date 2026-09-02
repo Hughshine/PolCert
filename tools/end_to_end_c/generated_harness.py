@@ -9,22 +9,29 @@ import pathlib
 import re
 from typing import Iterable
 
-from loop_to_c import split_top_level_commas, transpile_loop_text
+from loop_to_c import INTEGER_HELPERS_C, split_top_level_commas, transpile_loop_text
 from runner_common import loop_requires_openmp
 
 
 LOOP_RE = re.compile(
-    r"^\s*(?:(?:parallel|vector)\s+)?for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.*)\)\s*\{\s*$"
+    r"^\s*(?:(?:parallel|vector|innermost\s+parallel)\s+)?for\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s+in\s+range\((.*)\)\s*\{\s*$"
 )
 TOKEN_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
-KEYWORDS = {"context", "for", "in", "range", "if", "skip", "parallel", "vector"}
+KEYWORDS = {
+    "context", "for", "in", "range", "if", "skip", "parallel", "vector",
+    "innermost",
+}
 MATH_NAMES = {"sqrt", "ceil", "floor", "max", "min", "abs"}
 CASE_VALUE_OVERRIDES: dict[str, dict[str, int]] = {
     "advect3d": {"nx": 20, "ny": 20, "nz": 20},
+    "adi": {"T": 2, "N": 16},
     "negparam": {"n": 4},
+    "strsm": {"N": 12},
     "tce": {"N": 6},
     "doitgen": {"N": 12},
     "pca": {"m": 32, "n": 64},
+    "trisolv": {"N": 12},
 }
 DEFAULT_TIER = "smoke"
 
@@ -400,7 +407,10 @@ def render_init_function(arrays: dict[str, tuple[ArrayDim, ...]], scalars: tuple
         def body(indent: str, indices: list[str]) -> list[str]:
             linear = " + ".join(f"({i} + {pos + 1}) * {17 + pos}" for pos, i in enumerate(indices)) or "0"
             index = "".join(f"[{idx}]" for idx in indices)
-            return [f"{indent}{name}{index} = ((double)(({linear} + {seed}) % 97) / 13.0);"]
+            return [
+                f"{indent}{name}{index} = "
+                f"((double)((({linear} + {seed}) % 97) + 1) / 13.0);"
+            ]
 
         lines.extend(f"  {line}" for line in render_array_loops(name, dims, body))
     lines.append("}")
@@ -453,6 +463,7 @@ def render_program_source(info: HarnessInfo, *, optimized: bool) -> str:
         "#define min(x, y) ((x) < (y) ? (x) : (y))",
         "#endif",
         "",
+        INTEGER_HELPERS_C.rstrip(),
         render_param_decls(info.params).rstrip(),
         render_array_decls(info.arrays).rstrip(),
         render_scalar_decls(info.scalars, info.params).rstrip(),
