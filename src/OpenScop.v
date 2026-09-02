@@ -148,3 +148,29 @@ Definition dummy_scop := {|
   statements := nil;
   glb_exts := nil;
 |}.
+
+(** A raw scattering row survives PolyLang schedule canonicalization exactly
+    when it is nonzero for at least one statement. *)
+Definition scattering_row_is_zero (sctt: Relation) (idx: nat) : bool :=
+  let coeffs := snd (List.nth idx (constrs sctt) (false, nil)) in
+  let aff := skipn (out_dim_nb (meta sctt)) (List.removelast coeffs) in
+  forallb (Z.eqb 0) aff && Z.eqb (List.last coeffs 0) 0.
+
+Definition scattering_row_is_kept (scop: OpenScop) (idx: nat) : bool :=
+  existsb
+    (fun stmt => negb (scattering_row_is_zero (scattering stmt) idx))
+    (statements scop).
+
+Fixpoint kept_scattering_rows_before (scop: OpenScop) (raw: nat) : nat :=
+  match raw with
+  | O => O
+  | S raw' =>
+      let kept := kept_scattering_rows_before scop raw' in
+      if scattering_row_is_kept scop raw' then S kept else kept
+  end.
+
+Definition raw_to_canonical_schedule_dim
+    (scop: OpenScop) (raw: nat) : option nat :=
+  if scattering_row_is_kept scop raw
+  then Some (kept_scattering_rows_before scop raw)
+  else None.

@@ -29,18 +29,18 @@ Current cases:
     validator and complete compatibility route reject it
   - this deliberately inconsistent `.fst` file does not demonstrate that
     Pluto's automatic affine scheduler discovers an illegal schedule
-- `matmul_parallel_hint` (unsafe hint, not a demonstrated raw-Pluto miscompile)
-  - with explicitly requested `--rar`, Pluto's `--parallel` hint selects
-    current dimension `0`
-  - the checked PolCert parallel route rejects that dimension
-  - the non-strict frontend falls back to certified current dimension `1`
-  - the strict frontend keeps the loop sequential
+- `matmul_parallel_hint` (parallel-hint coordinate-mapping regression)
+  - with explicitly requested `--rar`, Pluto's `--parallel` hint names raw
+    scattering row `1`
+  - the checked PolCert route maps and certifies canonical coordinate `1`
+  - strict and non-strict frontends both parallelize the intended loop
 - `vanished-outer-parallel` (confirmed silent miscompilation)
   - Pluto marks an independent one-trip outer schedule coordinate parallel
   - CLooG removes that constant coordinate
   - Pluto's AST fallback transfers the annotation to a dependent inner loop
   - the original prints `10000`, while the OpenMP output differs
-  - both PolCert's strict hint route and direct inner-loop check reject it
+  - PolCert maps the hint to its canonical singleton coordinate, while a direct
+    check of the dependent inner coordinate rejects it
 - `notile-unrolljam-nonpermutable` (confirmed silent miscompilation)
   - Pluto's no-tile candidate search skips the real outer-band boundary
   - it jams a dependence-carrying `j` loop into the inner `k` loop
@@ -51,8 +51,8 @@ Current cases:
   - Pluto's `--innerpar` path clears a dependence bit without changing schedule
   - the resulting OpenMP tiled program produces values that differ from the
     original recurrence
-  - PolCert accepts the legal tiling boundary but rejects the unsafe parallel
-    overlay
+  - PolCert accepts the legal tiling and the mapped singleton coordinate, but
+    never applies the unsafe nontrivial parallel overlay
 
 Run all cases:
 
@@ -66,7 +66,7 @@ Artifact version policy:
   at `/pluto`;
 - the five active producer miscompilations use only the pinned historical
   checkout at `/opt/polcert/pluto-buggy`;
-- the fixed diamond regression and the matmul unsafe-hint check use the normal
+- the fixed diamond regression and the matmul hint-mapping check use the normal
   fixed checkout;
 - a missing historical checkout is an error, not a fallback to `/pluto`.
 

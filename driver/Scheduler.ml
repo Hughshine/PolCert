@@ -8,6 +8,13 @@ open Camlcoq
 open Filename
 open Str  (* Required for regular expressions *)
 
+type pluto_raw_loop_hint = {
+  raw_hint_iterator : string;
+  raw_hint_stmt_ids : int list;
+  raw_hint_dim : int;
+  raw_hint_directive : int;
+}
+
 type pluto_parallel_hint = {
   hint_iterator : string;
   hint_stmt_ids : int list;
@@ -364,11 +371,11 @@ let extract_loop_hints_from_outscop directive_mask outscop_file =
           parse loop_count [] rest
     in
     let loop_entries = parse_loop_entries loop_payload in
-    let rec find_index iterator i = function
-      | [] -> None
+    let rec find_indices iterator i = function
+      | [] -> []
       | name :: rest ->
-          if String.equal name iterator then Some i
-          else find_index iterator (i + 1) rest
+          let tail = find_indices iterator (i + 1) rest in
+          if String.equal name iterator then i :: tail else tail
     in
     let rec add_unique seen acc = function
       | [] -> List.rev acc
@@ -376,23 +383,22 @@ let extract_loop_hints_from_outscop directive_mask outscop_file =
           if directive land directive_mask = 0 then
             add_unique seen acc rest
           else
-            match find_index iterator 0 scatnames with
-            | None -> add_unique seen acc rest
-            | Some dim ->
+            match find_indices iterator 0 scatnames with
+            | [dim] ->
                 let key = (iterator, stmt_ids, directive) in
                 if List.mem key seen then
                   add_unique seen acc rest
                 else
                   let hint =
                     {
-                      hint_iterator = iterator;
-                      hint_stmt_ids = stmt_ids;
-                      hint_raw_dim = dim;
-                      hint_current_dim = dim;
-                      hint_directive = directive;
+                      raw_hint_iterator = iterator;
+                      raw_hint_stmt_ids = stmt_ids;
+                      raw_hint_dim = dim;
+                      raw_hint_directive = directive;
                     }
                   in
                   add_unique (key :: seen) (hint :: acc) rest
+            | _ -> add_unique seen acc rest
     in
     add_unique [] [] loop_entries
   with
@@ -414,6 +420,28 @@ let extract_vector_hint_from_outscop outscop_file =
   match extract_vector_hints_from_outscop outscop_file with
   | [] -> None
   | hint :: _ -> Some hint
+
+let map_parallel_hints_to_canonical_dims outscop hints =
+  List.filter_map
+    (fun hint ->
+      match
+        OpenScop.raw_to_canonical_schedule_dim
+          outscop
+          (Camlcoq.Nat.of_int hint.raw_hint_dim)
+      with
+      | Some dim ->
+          let canonical_dim = Camlcoq.Nat.to_int dim in
+          Some
+            {
+              hint_iterator = hint.raw_hint_iterator;
+              hint_stmt_ids = hint.raw_hint_stmt_ids;
+              hint_raw_dim = hint.raw_hint_dim;
+              hint_current_dim = canonical_dim;
+              hint_directive = hint.raw_hint_directive;
+            }
+      | None ->
+          None)
+    hints
 
 type pluto_stmt_loop_path = {
   path_stmt_id : int;
@@ -481,7 +509,7 @@ let pluto_c_stmt_loop_paths pluto_c_file =
     |> scan [] []
   with Sys_error _ -> []
 
-let remap_loop_hints_to_current_dims _outscop_file pluto_c_file hints =
+let map_vector_hints_to_c_loop_dims pluto_c_file hints =
   let paths = pluto_c_stmt_loop_paths pluto_c_file in
   let rec find_index iterator idx = function
     | [] -> None
@@ -497,22 +525,30 @@ let remap_loop_hints_to_current_dims _outscop_file pluto_c_file hints =
       let dims =
         List.fold_left
           (fun dims path ->
-            if hint.hint_stmt_ids <> []
-               && not (List.mem path.path_stmt_id hint.hint_stmt_ids)
+            if hint.raw_hint_stmt_ids <> []
+               && not (List.mem path.path_stmt_id hint.raw_hint_stmt_ids)
             then dims
             else
-              match find_index hint.hint_iterator 0 path.path_iterators with
+              match find_index hint.raw_hint_iterator 0 path.path_iterators with
               | None -> dims
               | Some dim -> add_unique dim dims)
           []
           paths
       in
       match dims with
-      | [dim] -> Some { hint with hint_current_dim = dim }
+      | [dim] ->
+          Some
+            {
+              hint_iterator = hint.raw_hint_iterator;
+              hint_stmt_ids = hint.raw_hint_stmt_ids;
+              hint_raw_dim = hint.raw_hint_dim;
+              hint_current_dim = dim;
+              hint_directive = hint.raw_hint_directive;
+            }
       | _ -> None)
     hints
 
-let run_pluto_scop_with_loop_hint extractor flags inscop =
+let run_pluto_scop_with_loop_hint extractor map_hints flags inscop =
   match implicit_pluto_control_file_error () with
   | Some msg -> Err msg
   | None ->
@@ -540,7 +576,7 @@ let run_pluto_scop_with_loop_hint extractor flags inscop =
   | Some outscop ->
       Okk
         (outscop,
-         remap_loop_hints_to_current_dims outscop_file pluto_c_file hints)
+         map_hints outscop pluto_c_file hints)
   | None ->
       if exc <> 0 then (
         safe_remove outscop_file;
@@ -551,10 +587,18 @@ let run_pluto_scop_with_loop_hint extractor flags inscop =
         Err (coqstring_of_camlstring ("scheduler failed"))
 
 let run_pluto_scop_with_parallel_hint flags inscop =
-  run_pluto_scop_with_loop_hint extract_parallel_hints_from_outscop flags inscop
+  run_pluto_scop_with_loop_hint
+    extract_parallel_hints_from_outscop
+    (fun outscop _ hints -> map_parallel_hints_to_canonical_dims outscop hints)
+    flags
+    inscop
 
 let run_pluto_scop_with_vector_hint flags inscop =
-  run_pluto_scop_with_loop_hint extract_vector_hints_from_outscop flags inscop
+  run_pluto_scop_with_loop_hint
+    extract_vector_hints_from_outscop
+    (fun _ pluto_c_file hints -> map_vector_hints_to_c_loop_dims pluto_c_file hints)
+    flags
+    inscop
 
 let run_pluto_bridge flags inscop =
   match implicit_pluto_control_file_error () with

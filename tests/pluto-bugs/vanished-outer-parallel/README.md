@@ -28,8 +28,8 @@ an imprecise hint or a missed optimization.
 
 PolCert handles both relevant boundaries defensively:
 
-- `--parallel --parallel-strict` rejects because Pluto's `t1` metadata cannot
-  be mapped to a surviving certifiable loop.
+- `--parallel --parallel-strict` maps Pluto's `t1` metadata to its canonical
+  one-iteration coordinate and does not transfer the annotation inward.
 - `--notile --parallel-current 1` directly checks the actual inner loop chosen
   by Pluto's AST fallback and rejects it because it carries a dependence.
 

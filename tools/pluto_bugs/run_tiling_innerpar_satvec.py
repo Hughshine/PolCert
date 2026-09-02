@@ -128,19 +128,39 @@ def main():
 
         strict = run([polopt, *PLUTO_FLAGS, "--parallel-strict", loop], cwd=work, env=polcert_env)
         require(
-            strict.returncode != 0
-            and (
-                "[parallel-validation] status=rejected source=pluto-hint "
-                "reason=no-certifiable-dimension"
-            )
-            in strict.stdout
-            and "[alarm] requested checked optimization was rejected" in strict.stdout
-            and "== Optimized Loop ==" not in strict.stdout,
-            f"PolCert strict route did not fail closed:\n{strict.stdout}",
+            strict.returncode == 0
+            and "[tiling-validation] route=permutable-band" in strict.stdout
+            and strict.stdout.count("parallel for") == 1
+            and "parallel for i1 in range(0, 1)" in strict.stdout,
+            "PolCert strict route did not confine the mapped hint to the "
+            f"semantically sequential singleton loop:\n{strict.stdout}",
         )
         print(
-            f"[pluto-tiling-bug] strict-pipeline: expected=rejected,no-output "
-            f"actual=exit-{strict.returncode},alarm interpretation=fail-closed"
+            "[pluto-tiling-bug] strict-pipeline: "
+            "expected=tiling-accepted,no-nontrivial-parallel-loop "
+            "actual=exit-0,permutable-band,singleton-parallel "
+            "interpretation=mapped-hint-remains-semantically-sequential"
+        )
+
+        unsafe_tile_loop = run(
+            [polopt, "--identity-tiled", "--parallel-current", "2", loop],
+            cwd=work,
+            env=polcert_env,
+        )
+        require(
+            unsafe_tile_loop.returncode != 0
+            and (
+                "source=explicit-current reason=not-certifiable-or-out-of-range"
+                in unsafe_tile_loop.stdout
+            )
+            and "== Optimized Loop ==" not in unsafe_tile_loop.stdout,
+            "PolCert accepted the dependence-carrying tile-loop coordinate:\n"
+            f"{unsafe_tile_loop.stdout}",
+        )
+        print(
+            "[pluto-tiling-bug] dependent-tile-loop: "
+            f"expected=rejected actual=exit-{unsafe_tile_loop.returncode} "
+            "interpretation=dependence-detected"
         )
 
     print("[pluto-tiling-bug] OK")

@@ -151,9 +151,9 @@ The original deterministically prints `310235039`; repeated four-thread
 executions of Pluto's output produce differing smaller values.
 
 This case exposes a useful phase boundary. PolCert accepts the rectangular
-tiling through the permutable-band theorem, then finds no certifiable parallel
-dimension. Its non-strict route emits the correct sequential tiled loop; its
-strict route rejects the requested parallel overlay and emits no optimized
+tiling through the permutable-band theorem and maps Pluto's hint to a canonical
+one-iteration coordinate. Both strict and non-strict routes emit only that
+semantically sequential singleton parallel loop, never Pluto's dependent tile
 loop. The defect is therefore in Pluto's tiling-to-parallel metadata handoff,
 not a demonstrated failure of ordinary sequential strip-mining.
 
