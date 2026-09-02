@@ -175,9 +175,8 @@ not currently add randomized dimensions or sanitizer instrumentation.
 `.loop` pair record in an artifact program-comparison index. It generates a
 complete C harness and executes each unique program and parameter configuration;
 duplicate records reuse that result. Both sides start from the same deterministic
-state. The harness feeds every finite modeled scalar and array element, in a
-fixed order, into SHA-256. The runner requires the value count and digest to
-match.
+input. The runner requires the source and optimized programs to produce the same
+result.
 General `parallel for` targets run three times with four requested OpenMP
 threads to expose unstable results. The runner stores the chosen parameters
 with each pair.

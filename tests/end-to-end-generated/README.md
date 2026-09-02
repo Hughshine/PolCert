@@ -62,10 +62,10 @@ right-hand sides remains ordinary floating-point C division, as required by
 the generated numeric kernels.
 
 The runner rejects `NaN` and infinity even when both output strings match.
-The all-pair artifact audit uses a separate state-digest mode. It feeds every
-modeled scalar and array element into SHA-256 instead of using this suite's
-performance-oriented weighted checksum. General parallel loops run repeatedly
-so one coincidental execution cannot hide an unstable result.
+The all-pair artifact audit separately runs every accepted source/optimized
+program configuration and requires the results to agree. General parallel
+loops run repeatedly so one coincidental execution cannot hide an unstable
+result.
 It is heavier than the normal regression suite and is meant for local artifact
 evaluation.
 
